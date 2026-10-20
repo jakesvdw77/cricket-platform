@@ -22,6 +22,19 @@ describe('InfoCard', () => {
     expect(within(fields[2]).getByText('–')).toBeInTheDocument()
   })
 
+  it('shows a field caption under its value and lays the fields out in the requested columns', () => {
+    render(
+      <InfoCard
+        title="Stats"
+        icon={<span />}
+        columns={3}
+        fields={[{ label: 'Strike rate', value: '96.30', caption: 'from 9 of 14 innings' }]}
+      />,
+    )
+    expect(screen.getByText('from 9 of 14 innings')).toBeInTheDocument()
+    expect(screen.getByTestId('player-info-field').parentElement).toHaveStyle({ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' })
+  })
+
   it('renders chips marking those not on file', () => {
     render(
       <InfoCard
@@ -68,5 +81,26 @@ describe('InfoCard', () => {
     rerender(<InfoCard title="Check these names" icon={<span data-testid="icon" />} testId="card" />)
     const defaultBackground = getComputedStyle(screen.getByTestId('icon').parentElement as HTMLElement).backgroundColor
     expect(warningBackground).not.toBe(defaultBackground)
+  })
+
+  it('puts the chips above the fields with chipsFirst, and below them by default', () => {
+    const props = { title: 'Cricket', icon: <span />, chips: [{ label: 'Bats', on: true }], fields: [{ label: 'Runs', value: '412' }] }
+    const { rerender } = render(<InfoCard {...props} />)
+    const after = (a: HTMLElement, b: HTMLElement) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(after(screen.getByTestId('player-info-field'), screen.getByTestId('player-info-chip'))).toBe(true)
+
+    rerender(<InfoCard {...props} chipsFirst />)
+    expect(after(screen.getByTestId('player-info-chip'), screen.getByTestId('player-info-field'))).toBe(true)
+  })
+
+  it('draws the field values larger with fieldSize large, and leaves the default size alone', () => {
+    const props = { title: 'Cricket', icon: <span />, fields: [{ label: 'Runs', value: '412' }] }
+    const { rerender } = render(<InfoCard {...props} />)
+    expect(getComputedStyle(screen.getByText('Runs')).fontSize).not.toBe('0.875rem')
+    expect(getComputedStyle(screen.getByText('412')).lineHeight).not.toBe('1.3')
+
+    rerender(<InfoCard {...props} fieldSize="large" />)
+    expect(getComputedStyle(screen.getByText('Runs')).fontSize).toBe('0.875rem')
+    expect(getComputedStyle(screen.getByText('412')).lineHeight).toBe('1.3')
   })
 })

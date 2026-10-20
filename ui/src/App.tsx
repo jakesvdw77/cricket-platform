@@ -30,6 +30,8 @@ import TeamList from './pages/manage/TeamList'
 import PlayerList from './pages/manage/PlayerList'
 import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerDetailPage from './pages/manage/PlayerDetailPage'
+import LeaderboardsPage from './pages/manage/leaderboards/LeaderboardsPage'
+import PlayerStatsPage from './pages/manage/playerStats/PlayerStatsPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
 import { LeagueEditRoute } from './pages/manage/LeagueEditRoute'
@@ -204,6 +206,8 @@ function App() {
               <Route path="players/new" element={<PlayerFormPage />} />
               <Route path="players/:playerId" element={<PlayerDetailPage />} />
               <Route path="players/:playerId/edit" element={<PlayerFormPage />} />
+              {/* docs/specs/103-player-stats.md: one player's statistics breakdown */}
+              <Route path="players/:playerId/stats" element={<PlayerStatsPage />} />
               {/* docs/specs/029-league-management.md: League/Season/Match administration and
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
                   nav cards finally get real screens. docs/specs/056-club-profile-overview.md
@@ -251,6 +255,8 @@ function App() {
               <Route path="results/import" element={<ResultImportPage />} />
               <Route path="results/:matchId" element={<ResultDetailPage />} />
               <Route path="results/:matchId/capture" element={<ResultCapturePage />} />
+              {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
+              <Route path="leaderboards" element={<LeaderboardsPage />} />
               <Route
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}

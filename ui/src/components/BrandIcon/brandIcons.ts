@@ -31,6 +31,7 @@ export const BRAND_ICON_NAMES = [
   'nav/cricket-leagues',
   'nav/cricket-players',
   'nav/ground-oval',
+  'nav/leaderboard-cricket',
   'nav/match-results',
   'nav/notifications',
   'nav/overview-home',

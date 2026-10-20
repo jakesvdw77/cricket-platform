@@ -31,6 +31,7 @@ describe('SideMenu', () => {
       'Availability',
       'Team selection',
       'Results',
+      'Leaderboards',
       'Teams',
       'Players',
       'Communication',

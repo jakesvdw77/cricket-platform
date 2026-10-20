@@ -34,3 +34,22 @@ export const WithHeaderAction: Story = {
     ),
   },
 }
+
+export const ChipsFirstLargeFields: Story = {
+  args: {
+    title: 'Cricket',
+    chips: [
+      { label: 'Bats: Right-hand', on: true },
+      { label: 'Bowls: Right-arm medium', on: true },
+      { label: 'Wicketkeeper', on: false },
+    ],
+    chipsFirst: true,
+    fieldSize: 'large',
+    columns: 3,
+    fields: [
+      { label: 'Matches', value: '24' },
+      { label: 'Runs', value: '412' },
+      { label: 'Wickets', value: '18' },
+    ],
+  },
+}

@@ -305,6 +305,7 @@ export default function PlayerList() {
           players={visiblePlayers}
           sectionNamesFor={sectionNamesFor}
           viewTo={(player) => `/manage/players/${player.id}`}
+          statsTo={(player) => `/manage/players/${player.id}/stats`}
           onStatusAction={(player, action) => statusActions.requestAction(player, action)}
         />
       )}
@@ -318,6 +319,7 @@ export default function PlayerList() {
               sectionNames={sectionNamesFor(player)}
               viewTo={`/manage/players/${player.id}`}
               editTo={`/manage/players/${player.id}/edit`}
+              statsTo={`/manage/players/${player.id}/stats`}
               onStatusAction={(action) => statusActions.requestAction(player, action)}
             />
           ))}

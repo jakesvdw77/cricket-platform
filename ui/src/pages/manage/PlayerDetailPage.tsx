@@ -11,8 +11,6 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { avatarSx, badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
@@ -30,6 +28,7 @@ import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
 import { fullName } from './PlayerList'
 import { PlayerKeyFigures } from './playerDetail/PlayerKeyFigures'
+import { PlayerStatsCard } from './playerDetail/PlayerStatsCard'
 import { InfoCard } from '../../components/InfoCard'
 import type { InfoCardChip } from '../../components/InfoCard'
 
@@ -271,21 +270,10 @@ export default function PlayerDetailPage() {
           }
         />
 
-        <InfoCard title="Cricket info" icon={<SportsCricketOutlinedIcon />} chips={cricketChips} />
-
-        {/* Games are real (the platform's own selections); runs and wickets have no data source yet, so they stay "–"
-            and are never invented (docs/specs/060 non-goals). */}
-        <InfoCard
-          title="Stats"
-          icon={<EqualizerOutlinedIcon />}
-          note="More coming soon"
-          fields={[
-            { label: 'Games this season', value: String(player.gamesThisSeason) },
-            { label: 'Games overall', value: String(player.gamesOverall) },
-            { label: 'Runs', value: null },
-            { label: 'Wickets', value: null },
-          ]}
-        />
+        {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a desktop. */}
+        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+          <PlayerStatsCard clubId={clubId} playerId={player.id} chips={cricketChips} />
+        </Box>
       </Box>
 
       <PlayerStatusMenu

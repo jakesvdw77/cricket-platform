@@ -12,6 +12,13 @@ import org.springframework.data.jpa.domain.Specification;
  */
 public final class ResultVisibility {
 
+    /**
+     * The published status as the literal a native SQL query needs (docs/specs/103: the statistics repositories read
+     * {@code match_result} with a join query, which cannot use {@link #published()}); a constant, not a retyped string,
+     * so there is one spelling of the gate. Must equal {@code ResultStatus.PUBLISHED.name()}.
+     */
+    public static final String PUBLISHED_STATUS = "PUBLISHED";
+
     private ResultVisibility() {}
 
     /** All results for a caller who can capture them, only published ones for everyone else. */

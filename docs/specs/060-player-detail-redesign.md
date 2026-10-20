@@ -4,6 +4,8 @@
 
 **Status:** approved.
 
+**Superseded in part by `103-player-stats.md` (merged Cricket card):** the Stats placeholder described below ("Coming soon", dashed-out Matches/Runs/Wickets/Average) is replaced by `103`'s live **Cricket** card, which merges this spec's Cricket Info chips with the statistics (six headline figures, two recent-form strips and a View full breakdown button to `/manage/players/:playerId/stats`). The text below is kept as history of the original design.
+
 ## Problem & Goals
 
 `PlayerDetailPage.tsx` is the one remaining `/manage` detail screen still built on the generic `RecordDetailScreen` shape: Basic Info, Contact Info, Cricket Info, and Sections render as four full-width `ContentCard`s stacked one under the other, regardless of how much horizontal space is available. This wastes screen width on anything wider than a phone (each card carries at most two field-grid columns inside a full-page-wide box), and gives a player's club section(s) — a single-value, glanceable fact — a whole card of its own at the bottom of the page. `TeamDetailPage` already solved the same problem in `057`: a header with chips under the name for glanceable facts, and a two-column card grid for everything else. `PlayerDetailPage` never got the equivalent pass. Separately, `Player.medicalAidProvider`/`medicalAidMemberNumber` exist on the entity and are editable on `PlayerFormPage`, but are not shown anywhere on the read-only detail screen — a real gap for a club admin trying to check a player's medical aid details without opening the edit form.

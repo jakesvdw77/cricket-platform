@@ -83,6 +83,13 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/results',
         icon: 'nav/result-scorecard',
       },
+      {
+        id: 'leaderboards',
+        label: 'Leaderboards',
+        description: 'Standings tables and awards',
+        to: '/manage/leaderboards',
+        icon: 'nav/leaderboard-cricket',
+      },
     ],
   },
   {

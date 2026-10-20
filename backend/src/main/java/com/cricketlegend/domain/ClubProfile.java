@@ -21,6 +21,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * A club's organisation type, branding, address, and contact details — 1:1 with {@link Club},
@@ -73,6 +75,14 @@ public class ClubProfile {
     @Column(name = "share_initials_only", nullable = false)
     @Builder.Default
     private boolean shareInitialsOnly = false;
+
+    /**
+     * docs/specs/103-player-stats.md, decision 18: the LeaderboardBoard codes shown on the Awards view; null means the
+     * nine defaults. Not part of the profile form (written only by the leaderboard settings service).
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "leaderboard_award_categories", columnDefinition = "jsonb")
+    private List<String> leaderboardAwardCategories;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

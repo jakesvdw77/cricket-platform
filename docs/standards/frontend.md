@@ -98,6 +98,15 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 - **Share appears on published results only:** the filled Share button on the result page and the Share footer button on the Results card; never on a draft.
 - Section-scoped managers may not be able to read leagues, sections, sponsors or the club profile; a failed read fails safe (junior lock on, logos skipped), see the roadmap for the planned share-context read.
 
+## Player statistics and leaderboards (`docs/specs/103-player-stats.md`)
+
+- **No statistic is computed in the client.** Every figure, rank, sample and coverage comes from the API (`PlayerStatsCalculator` on the server); the client formats (`oversFormat`, a dash for `null`, `PlayerName`). The catalogue (`GET /leaderboards`) supplies the columns, their short and long labels, direction and minimum kind, so a column is never hard-coded.
+- **Routes.** `/manage/players/:playerId/stats` (tabs `?tab=batting|bowling|fielding|awards`, default Batting; Season, League, Section and Team ride along as `seasonId`, `leagueId`, `sectionId`, `teamId`) and `/manage/leaderboards` (`?tab=batting|bowling|fielding|awards`, `?sort=<column code>`, `?dir=asc|desc`; there is no `?board=`). Tabs use `utils/viewTabs.ts`; a row on a standings table is a link to the player's stats page carrying the filters.
+- **Persisted filters.** `playerStats:filters:<clubId>` keeps Season and League only (Team, Section and Competition are per visit); `leaderboards:filters:<clubId>` keeps Season, League, Section and Team. A saved value that is no longer offered falls back to the default. Both go through `usePersistedListFilters`.
+- **Filters offer only values with data.** The options come from the filter-options endpoints (`.../players/{playerId}/stats/filter-options` and `.../leaderboards/filter-options`), never the full club lists; a section is shown with its ancestors so the tree stays connected, and picking a parent still includes its descendants.
+- **Standings are tables, not boards.** Each of Batting, Bowling and Fielding is one fixed-column table (the columns come from the catalogue); the sort is chosen from the Sort by select (long labels) or by tapping a column heading, and a second tap on the current column reverses it (`?dir=`). Ranks come back in displayed order; players with no defined figure follow the divider unranked. The optional minimum shows only when the sorted column is a rate. Show more is `useInfiniteQuery` (`initialPageParam: 0`) appending the next server page, never slicing.
+- **Shared pieces.** `FormStrip` (`components/FormStrip`, four-file anatomy) draws the last-5 batting innings and bowling spells on the Player page's Cricket card and the breakdown page. `InfoCard` gained additive props only, `columns`, a per-field `caption`, `fieldSize` (`'default' | 'large'`) and `chipsFirst`; omitted, every existing card is unchanged. The Players list Stats shortcut is the fourth footer button on `PlayerCard` and a Stats icon button beside Change status on `PlayerTable`.
+
 ## Folder structure
 
 ```

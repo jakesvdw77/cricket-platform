@@ -61,6 +61,7 @@ const meta: Meta<typeof PlayerCard> = {
     sectionNames: ['Vets'],
     viewTo: '/manage/players/player-1',
     editTo: '/manage/players/player-1/edit',
+    statsTo: '/manage/players/player-1/stats',
     onStatusAction: () => undefined,
   },
 }

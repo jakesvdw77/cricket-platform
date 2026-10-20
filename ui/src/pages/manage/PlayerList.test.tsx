@@ -259,6 +259,7 @@ describe('PlayerList', () => {
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
     expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
+    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/players/player-1/stats')
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
@@ -333,7 +334,7 @@ describe('PlayerList', () => {
     await user.click(screen.getByRole('button', { name: /a to z/i }))
     await user.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
 
-    expect(screen.getAllByTestId('player-row').map((row) => within(row).getByRole('link').textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
+    expect(screen.getAllByTestId('player-row').map((row) => within(row).getAllByRole('link')[0].textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
   })
 
   it('reapplies a persisted section filter on mount, and never persists the search text, the switch or the quick filter', async () => {

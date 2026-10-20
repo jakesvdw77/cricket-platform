@@ -29,6 +29,30 @@ vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
 
+const usePlayerStats = vi.fn()
+vi.mock('../../api/playerStatsApi', () => ({
+  usePlayerStats: (...args: unknown[]) => usePlayerStats(...args),
+}))
+
+function makeStats(overrides: Record<string, unknown> = {}) {
+  return {
+    playerId: 'player-1',
+    scope: { kind: 'CLUB_VERIFIED', seasonId: null, leagueId: null, teamId: null, competition: null },
+    basis: { matchesCounted: 18, resultsWithBattingCard: 14, resultsWithBowlingCard: 12 },
+    batting: { runs: 412, average: 29.43, strikeRate: 96.3 },
+    bowling: { wickets: 21, economy: 5.8 },
+    form: {
+      batting: [
+        { matchId: 'm1', matchDate: '2026-10-01', runs: 56, notOut: true, balls: 40 },
+        { matchId: 'm2', matchDate: '2026-09-24', runs: 0, notOut: false, balls: 2 },
+      ],
+      bowling: [{ matchId: 'm1', matchDate: '2026-10-01', wickets: 2, runs: 21, balls: 24 }],
+    },
+    notCaptured: [],
+    ...overrides,
+  }
+}
+
 const listSeasons = vi.fn()
 vi.mock('../../api/seasonApi', () => ({
   listSeasons: (clubId: string) => listSeasons(clubId),
@@ -43,6 +67,7 @@ beforeEach(() => {
   ])
   listSections.mockResolvedValue([])
   listPlayerSections.mockResolvedValue([])
+  usePlayerStats.mockReturnValue({ data: makeStats(), isPending: false, refetch: vi.fn() })
 })
 
 function makePlayer(overrides: Partial<Player> = {}): Player {
@@ -125,7 +150,7 @@ describe('PlayerDetailPage', () => {
     expect(listPlayers).not.toHaveBeenCalled()
   })
 
-  it('loads the matching player and renders the four cards, with tagged sections as header chips', async () => {
+  it('loads the matching player and renders the three cards, with tagged sections as header chips', async () => {
     listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' }), makePlayer({ id: 'player-2' })])
     listPlayerSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'U15' })])
     listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'U15' })])
@@ -135,7 +160,7 @@ describe('PlayerDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
     expect(listPlayers).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-1' })
 
-    for (const name of ['Basic info', 'Contact info', 'Cricket info', 'Stats']) {
+    for (const name of ['Basic info', 'Contact info', 'Cricket']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
 
@@ -267,7 +292,7 @@ describe('PlayerDetailPage', () => {
     }
   })
 
-  it('shows the real games counts in the key figures and the Stats card, with runs and wickets as dashes', async () => {
+  it('shows the real games counts in the key figures and the merged Cricket card with its figures and form strips', async () => {
     listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', gamesThisSeason: 12, gamesOverall: 48, jerseyNumber: 9 })])
 
     renderPage('/manage/players/player-1', 'test-club-id')
@@ -278,14 +303,51 @@ describe('PlayerDetailPage', () => {
     expect(screen.getByTestId('key-figure-overall-value')).toHaveTextContent('48')
     expect(screen.getByTestId('key-figure-jersey-value')).toHaveTextContent('#9')
 
-    expect(screen.getByText('More coming soon')).toBeInTheDocument()
-    const statsFields = within(screen.getByRole('heading', { name: 'Stats' }).closest('.MuiCard-root') as HTMLElement)
-      .getAllByTestId('player-info-field')
+    expect(screen.queryByText('More coming soon')).not.toBeInTheDocument()
+    const card = screen.getByTestId('player-stats-card')
+    const statsFields = within(card).getAllByTestId('player-info-field')
     const byLabel = (label: string) => statsFields.find((field) => field.textContent?.startsWith(label)) as HTMLElement
-    expect(byLabel('Games this season')).toHaveTextContent('12')
-    expect(byLabel('Games overall')).toHaveTextContent('48')
-    expect(byLabel('Runs')).toHaveTextContent('–')
-    expect(byLabel('Wickets')).toHaveTextContent('–')
+    expect(byLabel('Matches')).toHaveTextContent('18')
+    expect(byLabel('Runs')).toHaveTextContent('412')
+    expect(byLabel('Batting avg')).toHaveTextContent('29.43')
+    expect(byLabel('Wickets')).toHaveTextContent('21')
+    expect(byLabel('Economy')).toHaveTextContent('5.80')
+    expect(within(card).getByText('56*')).toBeInTheDocument()
+    expect(within(card).getByText('2/21')).toBeInTheDocument()
+    expect(within(card).getByRole('link', { name: 'View full breakdown' })).toHaveAttribute('href', '/manage/players/player-1/stats')
+  })
+
+  it('shows dashes and a quiet Try again when the statistics fail to load', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+    usePlayerStats.mockReturnValue({ data: undefined, isPending: false, refetch: vi.fn() })
+
+    renderPage('/manage/players/player-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    const card = screen.getByTestId('player-stats-card')
+    expect(within(card).getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(within(card).getAllByTestId('player-info-field').every((field) => field.textContent?.includes('–'))).toBe(true)
+  })
+
+  it('keeps the three chips inside the Cricket card while the statistics load or fail, and puts them first', async () => {
+    listPlayers.mockResolvedValue([makePlayer({ id: 'player-1' })])
+    usePlayerStats.mockReturnValue({ data: undefined, isPending: true, refetch: vi.fn() })
+    const { unmount } = renderPage('/manage/players/player-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    let card = screen.getByTestId('player-stats-card')
+    expect(within(card).getAllByTestId('player-info-chip')).toHaveLength(3)
+    expect(within(card).getByLabelText('Loading statistics')).toBeInTheDocument()
+    unmount()
+
+    usePlayerStats.mockReturnValue({ data: undefined, isPending: false, refetch: vi.fn() })
+    renderPage('/manage/players/player-1', 'test-club-id')
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    card = screen.getByTestId('player-stats-card')
+    const chips = within(card).getAllByTestId('player-info-chip')
+    expect(chips).toHaveLength(3)
+    const firstField = within(card).getAllByTestId('player-info-field')[0]
+    expect(chips[2].compareDocumentPosition(firstField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('offers Call and Email links for a phone number and an email, and omits them when there are none', async () => {

@@ -52,6 +52,7 @@ function renderCard(props: Partial<Parameters<typeof PlayerCard>[0]> = {}) {
           sectionNames={[]}
           viewTo="/manage/players/player-1"
           editTo="/manage/players/player-1/edit"
+          statsTo="/manage/players/player-1/stats"
           onStatusAction={onStatusAction}
           {...props}
         />
@@ -110,6 +111,7 @@ describe('PlayerCard', () => {
               sectionNames={['Vets', 'Over 40', 'Social']}
               viewTo="/p"
               editTo="/p/edit"
+              statsTo="/p/stats"
               onStatusAction={vi.fn()}
             />
           </MemoryRouter>
@@ -183,11 +185,12 @@ describe('PlayerCard', () => {
       [{ verificationStatus: 'UNVERIFIED' as const, active: true }],
       [{ verificationStatus: 'REJECTED' as const, active: true }],
       [{ verificationStatus: 'VERIFIED' as const, active: false }],
-    ])('has the same three footer buttons, Status, Edit and View, for %j', (overrides) => {
+    ])('has the same four footer buttons, Status, Edit, View and Stats, for %j', (overrides) => {
       renderCard({ player: makePlayer(overrides) })
 
-      const names = [screen.getByRole('button', { name: 'Change status' }), screen.getByRole('link', { name: 'Edit' }), screen.getByRole('link', { name: 'View' })]
-      expect(names.map((node) => node.textContent)).toEqual(['Status', 'Edit', 'View'])
+      const names = [screen.getByRole('button', { name: 'Change status' }), screen.getByRole('link', { name: 'Edit' }), screen.getByRole('link', { name: 'View' }), screen.getByRole('link', { name: 'Stats' })]
+      expect(names.map((node) => node.textContent)).toEqual(['Status', 'Edit', 'View', 'Stats'])
+      expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/players/player-1/stats')
     })
 
     it.each([

@@ -4,6 +4,7 @@ import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
 import { PlayerStatusMenu } from '../PlayerStatusMenu'
@@ -20,6 +21,8 @@ export interface PlayerTableProps {
   // Already resolved client-side by the caller (PlayerList's own join) - this component only shows the first name and a +N.
   sectionNamesFor: (player: Player) => string[]
   viewTo: (player: Player) => string
+  // docs/specs/103 (decision 20): the Stats icon button beside Change status.
+  statsTo: (player: Player) => string
   // The Status button's menu: the caller does the work and the confirmations (usePlayerStatusActions).
   onStatusAction: (player: Player, action: PlayerStatusAction) => void
 }
@@ -29,8 +32,8 @@ const NOT_ON_FILE = '–'
 // Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, Status button. A phone keeps Player (the
 // status badge moves under the name), Season, Phone and the button, in that order (see `phoneOrder`).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 104px 44px',
-  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px',
+  xs: 'minmax(0, 1fr) 54px 104px 44px 44px',
+  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px 44px',
 }
 
 const gridSx = {
@@ -79,11 +82,13 @@ function PlayerRow({
   player,
   sections,
   viewTo,
+  statsTo,
   onStatusAction,
 }: {
   player: Player
   sections: string[]
   viewTo: string
+  statsTo: string
   onStatusAction: (action: PlayerStatusAction) => void
 }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -158,9 +163,21 @@ function PlayerRow({
           size="small"
           onClick={(event) => setAnchor(event.currentTarget)}
           // position: relative lifts it above the row's stretched link, so using the menu never navigates
-          sx={{ position: 'relative', color: 'primary.dark', width: 36, height: 36 }}
+          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
         >
           <ManageAccountsOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center', ...phoneOrder(4) }}>
+        <IconButton
+          component={RouterLink}
+          to={statsTo}
+          aria-label="Stats"
+          title="Stats"
+          size="small"
+          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
+        >
+          <EqualizerOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
       <PlayerStatusMenu status={status} anchorEl={anchor} onClose={() => setAnchor(null)} onAction={onStatusAction} />
@@ -172,7 +189,7 @@ function PlayerRow({
 // bordered panel with a header row that sticks to the top of the scrolling page and zebra rows of equal height; the whole
 // row opens the player, and each row has the same Status button and menu as the card. A value that is not on file
 // shows "-"; a phone keeps only Player, Season, Phone and the Status button.
-export function PlayerTable({ players, sectionNamesFor, viewTo, onStatusAction }: PlayerTableProps) {
+export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, onStatusAction }: PlayerTableProps) {
   return (
     <Box
       role="table"
@@ -215,6 +232,7 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, onStatusAction }
         <Box role="columnheader" sx={{ ...phoneOrder(1), textAlign: 'right' }}>Season</Box>
         <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Overall</Box>
         <Box role="columnheader" aria-label="Status actions" sx={phoneOrder(3)} />
+        <Box role="columnheader" aria-label="Stats" sx={phoneOrder(4)} />
       </Box>
       <Box role="rowgroup">
         {players.map((player) => (
@@ -223,6 +241,7 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, onStatusAction }
             player={player}
             sections={sectionNamesFor(player)}
             viewTo={viewTo(player)}
+            statsTo={statsTo(player)}
             onStatusAction={(action) => onStatusAction(player, action)}
           />
         ))}

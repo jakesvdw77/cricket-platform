@@ -116,7 +116,75 @@ class LayeringRulesTest {
                 + "|domain\\.(MatchResult|MatchInnings|ResultPlayer|BattingEntry|BowlingEntry|FieldingEntry|MatchAward)"
                 + "|repository\\.(MatchResultRepository|MatchInningsRepository|ResultPlayerRepository"
                 + "|BattingEntryRepository|BowlingEntryRepository|FieldingEntryRepository|MatchAwardRepository"
+                + "|PlayerStatsAggregateRepository|PlayerStatsFactsRepository"
                 + "|MatchSpecifications|ResultVisibility))"
                 + "(\\$.*)?";
+    }
+
+    // ---- docs/specs/103-player-stats.md: statistics are computed from published results by one set of classes ----
+
+    private static final String STATS_REPOSITORIES =
+            "com\\.cricketlegend\\.repository\\.(PlayerStatsAggregateRepository|PlayerStatsFactsRepository)(\\$.*)?";
+
+    /**
+     * The statistics services and their two helpers that read a stats repository row type: the only classes that may
+     * use the stats repositories.
+     */
+    private static final String STATS_SERVICES =
+            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl)"
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists))(\\$.*)?";
+
+    @Test
+    void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
+        ArchRule rule = noClasses()
+                .that(DescribedPredicate.not(HasName.Predicates.nameMatching(
+                        STATS_SERVICES + "|" + STATS_REPOSITORIES + "|com\\.cricketlegend\\.repository\\.PlayerStatsSql")))
+                .should().dependOnClassesThat().haveNameMatching(STATS_REPOSITORIES)
+                .because("the stats repositories read published results with their own copy of the publish gate (spec 103)")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void theStatsRepositoryUsersAreExactlyWhoWeExpect() {
+        // proves the rule above is not vacuous: the statistics service really is a user of both repositories
+        java.util.Set<String> users = CLASSES.stream()
+                .filter(c -> c.getDirectDependenciesFromSelf().stream()
+                        .anyMatch(d -> d.getTargetClass().getName().matches(STATS_REPOSITORIES)))
+                .map(c -> c.getName())
+                .filter(n -> !n.matches(STATS_REPOSITORIES))
+                .collect(java.util.stream.Collectors.toSet());
+        org.assertj.core.api.Assertions.assertThat(users)
+                .containsExactlyInAnyOrder(
+                        "com.cricketlegend.service.impl.PlayerStatsServiceImpl",
+                        "com.cricketlegend.service.impl.LeaderboardServiceImpl",
+                        "com.cricketlegend.service.support.PlayerStatsCountersReader",
+                        "com.cricketlegend.service.support.StatsFilterOptionLists");
+    }
+
+    /** The pure statistics classes: definitions and ranking that a player-facing route must be able to reuse. */
+    private static final String PURE_STATS_CLASSES =
+            "com\\.cricketlegend\\.service\\.support\\."
+                    + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
+                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers)(\\$.*)?";
+
+    @Test
+    void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
+        ArchRule rule = noClasses().that().haveNameMatching(PURE_STATS_CLASSES)
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..", "..repository..", "..config..", "..service.impl..", "..controller..",
+                        "jakarta.persistence..")
+                .orShould().dependOnClassesThat().areAnnotatedWith(jakarta.persistence.Entity.class)
+                .because("a figure is defined without any caller, access or storage information (spec 103)")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void thePureStatsClassesExist() {
+        // proves the rule above is not vacuous: exactly the 11 named top-level classes plus their nested types (32 in all).
+        // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
+        long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(32);
     }
 }

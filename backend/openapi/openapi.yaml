@@ -6923,6 +6923,383 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ShareSettingsDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/stats:
+    get:
+      tags:
+      - player-stats-controller
+      operationId: get_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerStatsDto"
+        "400":
+          description: Unknown competition
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown player, season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/stats/filter-options:
+    get:
+      tags:
+      - player-stats-controller
+      operationId: getPlayerStatsFilterOptions
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerStatsFilterOptionsDto"
+        "403":
+          description: The player is outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown player
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/leaderboards:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboardCatalogue
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardCatalogueDto"
+  /api/v1/manage/clubs/{clubId}/leaderboards/{group}:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboardTable
+      description: One page of a standings table (group batting, bowling or fielding), sorted and ranked by one column.
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: group
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - batting
+          - bowling
+          - fielding
+      - name: sort
+        in: query
+        required: false
+        description: A column code of the group; absent means runs, wickets or total
+        schema:
+          type: string
+      - name: direction
+        in: query
+        required: false
+        description: asc (lowest first) or desc (highest first); absent means the column's natural direction; reverses the sort column only
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: minimum
+        in: query
+        required: false
+        description: Optional minimum (innings or overs by the sort column); absent means none; ignored unless the sort is a rate
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: Default 10, capped at 100
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardTableDto"
+        "400":
+          description: Unknown sort, invalid direction, minimum, page or size, or too many players in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown group, season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/leaderboards/awards:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getAwardsView
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: minimumInnings
+        in: query
+        required: false
+        description: Absent means the filter-aware default
+        schema:
+          type: string
+      - name: minimumOvers
+        in: query
+        required: false
+        description: Absent means the filter-aware default
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AwardsViewDto"
+        "400":
+          description: Invalid minimum, or too many players in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/leaderboards/filter-options:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboardFilterOptions
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/leaderboard-settings:
+    get:
+      tags:
+      - club-leaderboard-settings-controller
+      operationId: getLeaderboardSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardSettingsDto"
+    put:
+      tags:
+      - club-leaderboard-settings-controller
+      operationId: updateLeaderboardSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaderboardSettingsDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardSettingsDto"
+        "400":
+          description: Unknown or non-award category, or an empty list
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -12731,3 +13108,782 @@ components:
       properties:
         initialsOnlyDefault:
           type: boolean
+    PlayerStatsDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        scope:
+          $ref: "#/components/schemas/PlayerStatsScope"
+        basis:
+          $ref: "#/components/schemas/PlayerStatsBasis"
+        batting:
+          $ref: "#/components/schemas/PlayerBatting"
+        bowling:
+          $ref: "#/components/schemas/PlayerBowling"
+        fielding:
+          $ref: "#/components/schemas/PlayerFielding"
+        awards:
+          $ref: "#/components/schemas/PlayerAwards"
+        record:
+          $ref: "#/components/schemas/PlayerRecord"
+        form:
+          $ref: "#/components/schemas/PlayerForm"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerNotCaptured"
+    PlayerStatsFilterOptionsDto:
+      type: object
+      properties:
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        leagueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        teamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        competitions:
+          type: array
+          items:
+            type: string
+    PlayerStatsScope:
+      type: object
+      properties:
+        kind:
+          type: string
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    PlayerStatsBasis:
+      type: object
+      properties:
+        matchesCounted:
+          type: integer
+          format: int64
+        resultsWithBattingCard:
+          type: integer
+          format: int64
+        resultsWithBowlingCard:
+          type: integer
+          format: int64
+    PlayerHighestScore:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+    PlayerBattingPosition:
+      type: object
+      properties:
+        position:
+          type: integer
+          format: int32
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+    PlayerBattingCoverage:
+      type: object
+      properties:
+        inningsWithBalls:
+          type: integer
+          format: int64
+        inningsWithBoundaries:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    PlayerBatting:
+      type: object
+      properties:
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        fours:
+          type: integer
+          format: int64
+        sixes:
+          type: integer
+          format: int64
+        ducks:
+          type: integer
+          format: int64
+        goldenDucks:
+          type: integer
+          format: int64
+        thirtyPlus:
+          type: integer
+          format: int64
+        fiftyPlus:
+          type: integer
+          format: int64
+        hundredPlus:
+          type: integer
+          format: int64
+        centuries:
+          type: integer
+          format: int64
+        halfCenturies:
+          type: integer
+          format: int64
+        highestScore:
+          $ref: "#/components/schemas/PlayerHighestScore"
+        dismissalModes:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBattingPosition"
+        average:
+          type: number
+        strikeRate:
+          type: number
+        boundaryPercentage:
+          type: number
+        ballsPerBoundary:
+          type: number
+        coverage:
+          $ref: "#/components/schemas/PlayerBattingCoverage"
+    PlayerBestBowling:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+    PlayerBowlingCoverage:
+      type: object
+      properties:
+        inningsWithWides:
+          type: integer
+          format: int64
+        inningsWithNoBalls:
+          type: integer
+          format: int64
+        inningsWithDots:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    PlayerBowling:
+      type: object
+      properties:
+        inningsBowled:
+          type: integer
+          format: int64
+        ballsBowled:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: array
+          items:
+            type: integer
+            format: int32
+        mixedOverLengths:
+          type: boolean
+        runsConceded:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        maidens:
+          type: integer
+          format: int64
+        wides:
+          type: integer
+          format: int64
+        noBalls:
+          type: integer
+          format: int64
+        dots:
+          type: integer
+          format: int64
+        threeWicketHauls:
+          type: integer
+          format: int64
+        fourWicketHauls:
+          type: integer
+          format: int64
+        fiveWicketHauls:
+          type: integer
+          format: int64
+        best:
+          $ref: "#/components/schemas/PlayerBestBowling"
+        dismissalModes:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        dismissalsNotRecorded:
+          type: integer
+          format: int64
+        average:
+          type: number
+        economy:
+          type: number
+        strikeRate:
+          type: number
+        dotBallPercentage:
+          type: number
+        coverage:
+          $ref: "#/components/schemas/PlayerBowlingCoverage"
+    PlayerFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        dismissalsPerMatch:
+          type: number
+    PlayerAwards:
+      type: object
+      properties:
+        playerOfTheMatch:
+          type: integer
+          format: int64
+        teamPlayerOfTheMatch:
+          type: integer
+          format: int64
+    PlayerRecord:
+      type: object
+      properties:
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        internal:
+          type: integer
+          format: int64
+    PlayerBattingInnings:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        runs:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        balls:
+          type: integer
+          format: int32
+    PlayerBowlingSpell:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+    PlayerForm:
+      type: object
+      properties:
+        batting:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBattingInnings"
+        bowling:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBowlingSpell"
+    PlayerNotCaptured:
+      type: object
+      properties:
+        code:
+          type: string
+        tab:
+          type: string
+        label:
+          type: string
+        reason:
+          type: string
+    LeaderboardCatalogueDto:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardCatalogueGroup"
+    LeaderboardCatalogueGroup:
+      type: object
+      properties:
+        group:
+          type: string
+        code:
+          type: string
+          nullable: true
+          description: Route segment of the standings table (batting, bowling, fielding); null for AWARDS
+        label:
+          type: string
+        defaultSort:
+          type: string
+          nullable: true
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardColumnInfo"
+        boards:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardBoardInfo"
+    LeaderboardColumnInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        longLabel:
+          type: string
+        sortable:
+          type: boolean
+        direction:
+          type: string
+          enum:
+          - HIGHEST
+          - LOWEST
+        minimumKind:
+          type: string
+          enum:
+          - NONE
+          - INNINGS
+          - OVERS
+    LeaderboardBoardInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        group:
+          type: string
+        label:
+          type: string
+        figureLabel:
+          type: string
+        direction:
+          type: string
+        minimumKind:
+          type: string
+        help:
+          type: string
+        awardEligible:
+          type: boolean
+        awardDefault:
+          type: boolean
+    LeaderboardTableDto:
+      type: object
+      properties:
+        group:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardColumnInfo"
+        sort:
+          $ref: "#/components/schemas/LeaderboardSort"
+        scope:
+          $ref: "#/components/schemas/LeaderboardScope"
+        minimum:
+          $ref: "#/components/schemas/LeaderboardMinimum"
+        basis:
+          $ref: "#/components/schemas/LeaderboardBasis"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardTableRow"
+    LeaderboardSort:
+      type: object
+      properties:
+        code:
+          type: string
+        direction:
+          type: string
+          description: Effective direction; HIGHEST ranks the highest value first (direction=desc), LOWEST the lowest first (direction=asc)
+          enum:
+          - HIGHEST
+          - LOWEST
+    LeaderboardTableRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        active:
+          type: boolean
+        teamName:
+          type: string
+          nullable: true
+        smallSample:
+          type: boolean
+        values:
+          type: object
+          description: Keyed by column code
+          additionalProperties:
+            $ref: "#/components/schemas/LeaderboardCell"
+    LeaderboardCell:
+      type: object
+      properties:
+        value:
+          type: number
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+    LeaderboardScope:
+      type: object
+      properties:
+        kind:
+          type: string
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+    LeaderboardMinimum:
+      type: object
+      properties:
+        applies:
+          type: boolean
+        value:
+          type: integer
+          format: int32
+        suggestedDefault:
+          type: integer
+          format: int32
+        unit:
+          type: string
+    LeaderboardBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        playersListed:
+          type: integer
+          format: int64
+        playersRanked:
+          type: integer
+          format: int64
+        belowMinimum:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/LeaderboardCoverage"
+    LeaderboardCoverage:
+      type: object
+      properties:
+        used:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    LeaderboardPageInfo:
+      type: object
+      properties:
+        number:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        hasMore:
+          type: boolean
+    LeaderboardWicketsRuns:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+    LeaderboardRunsNotOut:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+    LeaderboardSample:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        overs:
+          type: number
+        ballsPerOver:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int64
+    LeaderboardDetail:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponent:
+          type: string
+    LeaderboardRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        active:
+          type: boolean
+        figure:
+          description: A number, a wickets/runs object (best bowling), a runs/notOut object (highest score), or null
+          nullable: true
+          oneOf:
+          - type: number
+          - $ref: "#/components/schemas/LeaderboardWicketsRuns"
+          - $ref: "#/components/schemas/LeaderboardRunsNotOut"
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        sample:
+          $ref: "#/components/schemas/LeaderboardSample"
+        smallSample:
+          type: boolean
+        detail:
+          $ref: "#/components/schemas/LeaderboardDetail"
+    AwardsViewDto:
+      type: object
+      properties:
+        scope:
+          $ref: "#/components/schemas/LeaderboardScope"
+        basis:
+          $ref: "#/components/schemas/AwardsBasis"
+        minimums:
+          $ref: "#/components/schemas/AwardsMinimums"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsCategory"
+        omitted:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsOmittedCategory"
+    AwardsBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        playersConsidered:
+          type: integer
+          format: int64
+    AwardsMinimums:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int32
+        overs:
+          type: integer
+          format: int32
+        defaultInnings:
+          type: integer
+          format: int32
+        defaultOvers:
+          type: integer
+          format: int32
+    AwardsCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        leaders:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardRow"
+    AwardsOmittedCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        reason:
+          type: string
+    LeaderboardFilterOptionsDto:
+      type: object
+      properties:
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        leagueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        teamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        competitions:
+          type: array
+          items:
+            type: string
+    LeaderboardSettingsDto:
+      type: object
+      properties:
+        awardCategories:
+          type: array
+          items:
+            type: string
+        selectableCategories:
+          type: array
+          items:
+            type: string

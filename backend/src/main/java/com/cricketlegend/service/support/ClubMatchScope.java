@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
  * GET .../availability-polls/open} (docs/specs/035): the caller's accessible sections, narrowed to
  * a validated {@code sectionId}'s closure, a {@code teamId} (404 for another club's, 403 for one
  * out of scope) defining its own section as the scope. Used by the team-selection overview
- * (docs/specs/093); {@code PlayerAvailabilityServiceImpl} keeps its own copy until it is moved here.
+ * (docs/specs/093) and by the statistics services (docs/specs/103: through {@code StatsScopeResolver}, which {@code PlayerStatsServiceImpl} and {@code LeaderboardServiceImpl} call); {@code PlayerAvailabilityServiceImpl} keeps its own copy until it is moved here.
  */
 @Component
 public class ClubMatchScope {
