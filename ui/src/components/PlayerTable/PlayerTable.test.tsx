@@ -205,4 +205,15 @@ describe('PlayerTable', () => {
       expect(onStatusAction).toHaveBeenCalledWith(players[1], 'reject')
     })
   })
+
+  // docs/specs/103 (decision 20): the Stats icon button beside Change status
+  it('has a Stats link per row to that player\'s stats page, and using it does not open the player', async () => {
+    renderTable([makePlayer({ id: 'p1' }), makePlayer({ id: 'p2', firstName: 'Amy', lastName: 'Ansell' })])
+
+    const links = screen.getAllByRole('link', { name: 'Stats' })
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/manage/players/p1/stats', '/manage/players/p2/stats'])
+
+    await userEvent.click(links[1])
+    expect(screen.getByText('At: /manage/players/p2/stats')).toBeInTheDocument()
+  })
 })
