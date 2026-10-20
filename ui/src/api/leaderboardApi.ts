@@ -44,6 +44,8 @@ export interface LeaderboardCatalogueGroup {
 export interface LeaderboardColumn {
   code: string
   label: string
+  // the full name, used by the Sort by select (the table heading keeps the short label)
+  longLabel?: string
   sortable: boolean
   direction: 'HIGHEST' | 'LOWEST'
   minimumKind: MinimumKind

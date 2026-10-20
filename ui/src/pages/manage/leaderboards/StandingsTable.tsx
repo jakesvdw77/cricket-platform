@@ -40,20 +40,38 @@ export interface StandingsTableProps {
   enabled: boolean
 }
 
-// Column widths: rank, the pinned player column, then one fixed width per figure (15 px text needs room for "Stumpings").
-const RANK_W = { xs: 40, sm: 52 }
-const PLAYER_W = { xs: 156, sm: 230 }
-const CELL_W = { xs: 80, sm: 92 }
+// Column widths: rank, the pinned player column, then one fixed width per figure. Desktop is compact so the 13-column Bowling
+// table (1046 px) and the 12-column Batting table (974 px) fit about 1100 px of content; phones keep roomier columns and scroll.
+const RANK_W = { xs: 40, sm: 40 }
+const PLAYER_W = { xs: 156, sm: 190 }
+const CELL_W = { xs: 80, sm: 62 }
+// Columns whose figure or heading needs more room than CELL_W.
+const WIDE_CELL_W: Record<string, { xs: number; sm: number }> = {
+  overs: { xs: 80, sm: 68 },
+  best: { xs: 80, sm: 66 },
+  catches: { xs: 80, sm: 72 },
+  runOuts: { xs: 88, sm: 76 },
+  stumpings: { xs: 96, sm: 84 },
+}
+const cellWidth = (code: string) => WIDE_CELL_W[code] ?? CELL_W
 
-const gridSx = (count: number) => ({
+const trackMins = (columns: LeaderboardColumn[], bp: 'xs' | 'sm') => [RANK_W[bp], PLAYER_W[bp], ...columns.map((c) => cellWidth(c.code)[bp])]
+const template = (columns: LeaderboardColumn[], bp: 'xs' | 'sm') => {
+  const [rank, player, ...cells] = trackMins(columns, bp)
+  return `${rank}px minmax(${player}px, 1.6fr) ${cells.map((w) => `minmax(${w}px, 1fr)`).join(' ')}`
+}
+// The table is as wide as the card, and never narrower than the sum of its minimum column widths (below that it scrolls sideways).
+const tableMinWidth = (columns: LeaderboardColumn[]) => ({
+  xs: `${trackMins(columns, 'xs').reduce((a, b) => a + b, 0)}px`,
+  sm: `${trackMins(columns, 'sm').reduce((a, b) => a + b, 0)}px`,
+})
+
+const gridSx = (columns: LeaderboardColumn[]) => ({
   display: 'grid',
-  gridTemplateColumns: {
-    xs: `${RANK_W.xs}px ${PLAYER_W.xs}px repeat(${count}, ${CELL_W.xs}px)`,
-    sm: `${RANK_W.sm}px ${PLAYER_W.sm}px repeat(${count}, ${CELL_W.sm}px)`,
-  },
+  gridTemplateColumns: { xs: template(columns, 'xs'), sm: template(columns, 'sm') },
   alignItems: 'center',
-  width: 'max-content',
-  minWidth: '100%',
+  width: '100%',
+  minWidth: tableMinWidth(columns),
 })
 
 // Rank and player stay put while the figures scroll sideways; they take the row's own (opaque) background.
@@ -91,20 +109,20 @@ function HeaderRow({ columns, sortCode, direction, onSortChange }: { columns: Le
     <Box
       data-testid="standings-header-row"
       sx={[
-        gridSx(columns.length),
-        { minHeight: 44, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider', color: 'text.secondary' },
+        gridSx(columns),
+        { minHeight: { xs: 44, sm: 36 }, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider', color: 'text.secondary' },
       ]}
     >
-      <Box sx={{ ...pinnedRank, fontSize: '0.8125rem', fontWeight: 700 }}>#</Box>
-      <Box sx={{ ...pinnedPlayer, fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Player</Box>
+      <Box sx={{ ...pinnedRank, fontSize: '0.75rem', fontWeight: 700 }}>#</Box>
+      <Box sx={{ ...pinnedPlayer, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Player</Box>
       {columns.map((column) => {
         const sorted = column.code === sortCode
         const Arrow = direction === 'LOWEST' ? ArrowUpwardIcon : ArrowDownwardIcon
         const label = !column.sortable
           ? column.label
           : sorted
-            ? `${column.label}, sorted ${direction === 'LOWEST' ? 'ascending' : 'descending'}; click to reverse`
-            : `Sort by ${column.label}`
+            ? `${column.longLabel ?? column.label}, sorted ${direction === 'LOWEST' ? 'ascending' : 'descending'}; click to reverse`
+            : `Sort by ${column.longLabel ?? column.label}`
         return (
           <Box key={column.code} aria-sort={sorted ? (direction === 'LOWEST' ? 'ascending' : 'descending') : undefined} sx={{ alignSelf: 'stretch', display: 'flex', bgcolor: sorted ? sortedTint : 'transparent' }}>
             <ButtonBase
@@ -114,12 +132,12 @@ function HeaderRow({ columns, sortCode, direction, onSortChange }: { columns: Le
               data-sorted={sorted ? 'true' : undefined}
               sx={{
                 flex: 1,
-                minHeight: 44,
+                minHeight: { xs: 44, sm: 36 },
                 justifyContent: 'flex-end',
                 gap: 0.25,
-                px: 1,
+                px: 0.75,
                 fontFamily: 'inherit',
-                fontSize: '0.8125rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
@@ -128,7 +146,7 @@ function HeaderRow({ columns, sortCode, direction, onSortChange }: { columns: Le
                 '&.Mui-disabled': { color: 'text.secondary' },
               }}
             >
-              {sorted && <Arrow aria-hidden sx={{ fontSize: 16 }} />}
+              {sorted && <Arrow aria-hidden sx={{ fontSize: 14 }} />}
               {column.label}
             </ButtonBase>
           </Box>
@@ -149,9 +167,9 @@ function StandingsRow({ row, columns, sortCode, view, filters }: { row: Leaderbo
       data-testid="standings-row"
       data-rank={unranked ? 'none' : row.rank}
       sx={[
-        gridSx(columns.length),
+        gridSx(columns),
         {
-          minHeight: { xs: 60, sm: 52 },
+          minHeight: { xs: 48, sm: 40 },
           textDecoration: 'none',
           color: 'text.primary',
           bgcolor: 'background.paper',
@@ -162,22 +180,22 @@ function StandingsRow({ row, columns, sortCode, view, filters }: { row: Leaderbo
         leader && { boxShadow: (theme: Theme) => `inset 3px 0 0 ${theme.palette.primary.main}` },
       ]}
     >
-      <Box sx={{ ...pinnedRank, fontSize: '0.9375rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unranked ? 'text.secondary' : 'primary.dark' }}>{rankText(row.rank)}</Box>
+      <Box sx={{ ...pinnedRank, fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unranked ? 'text.secondary' : 'primary.dark' }}>{rankText(row.rank)}</Box>
       <Box sx={pinnedPlayer}>
-        <Box sx={{ minWidth: 0, py: 0.75 }}>
-          <Typography component="div" sx={{ fontSize: '0.9375rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
+        <Box sx={{ minWidth: 0, py: { xs: 0.75, sm: 0.5 } }}>
+          <Typography component="div" sx={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
             <PlayerName person={person} view={view} />
           </Typography>
           {row.teamName && (
-            <Typography component="div" sx={{ fontSize: '0.8125rem', color: 'text.secondary', lineHeight: 1.25 }}>
+            <Typography component="div" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.25 }}>
               {row.teamName}
             </Typography>
           )}
           {(!row.active || row.smallSample) && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-              {!row.active && <Chip size="small" label="Inactive" sx={badgeSx('muted')} />}
+              {!row.active && <Chip size="small" label="Inactive" sx={{ ...badgeSx('muted'), height: 20, fontSize: '0.6875rem' }} />}
               {row.smallSample && (
-                <Chip size="small" label="Small sample" sx={{ height: 22, fontSize: '0.8125rem', fontWeight: 600, color: 'warning.dark', bgcolor: (theme) => alpha(theme.palette.warning.main, 0.14) }} />
+                <Chip size="small" label="Small sample" sx={{ height: 20, fontSize: '0.6875rem', fontWeight: 600, color: 'warning.dark', bgcolor: (theme) => alpha(theme.palette.warning.main, 0.14) }} />
               )}
             </Box>
           )}
@@ -195,8 +213,8 @@ function StandingsRow({ row, columns, sortCode, view, filters }: { row: Leaderbo
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
-              px: 1,
-              fontSize: '0.9375rem',
+              px: 0.75,
+              fontSize: '0.875rem',
               fontVariantNumeric: 'tabular-nums',
               fontWeight: sorted ? 700 : 400,
               color: row.values[column.code] && text !== '-' ? 'text.primary' : 'text.secondary',
@@ -321,7 +339,7 @@ export function StandingsTable({
                 {index === firstUnranked && (
                   <Box
                     data-testid="unranked-divider"
-                    sx={{ width: 'max-content', minWidth: '100%', bgcolor: 'action.hover', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}
+                    sx={{ width: '100%', minWidth: tableMinWidth(shownColumns), bgcolor: 'action.hover', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}
                   >
                     <Box
                       sx={{
@@ -330,7 +348,7 @@ export function StandingsTable({
                         width: 'fit-content',
                         px: 1.5,
                         py: 1,
-                        fontSize: '0.8125rem',
+                        fontSize: '0.75rem',
                         fontWeight: 700,
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase',

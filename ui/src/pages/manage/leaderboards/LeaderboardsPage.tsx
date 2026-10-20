@@ -157,14 +157,14 @@ export default function LeaderboardsPage() {
   } else if (group && catalogueGroup) {
     content = (
       <>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, maxWidth: { sm: 376 } }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Input select label="Sort by" value={sortCode} onChange={(event) => selectSort(event.target.value)}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+          <Box sx={{ flex: { xs: 1, sm: '0 0 220px' }, minWidth: 0 }}>
+          <Input select size="small" label="Sort by" value={sortCode} onChange={(event) => selectSort(event.target.value)}>
             {columns
               .filter((column) => column.sortable)
               .map((column) => (
                 <MenuItem key={column.code} value={column.code}>
-                  {column.label}
+                  {column.longLabel ?? column.label}
                 </MenuItem>
               ))}
           </Input>
@@ -173,7 +173,7 @@ export default function LeaderboardsPage() {
             aria-label="Reverse order"
             title="Reverse order"
             onClick={reverseSort}
-            sx={{ width: 44, height: 44, mt: 0.5, border: 1, borderColor: 'divider', borderRadius: 1, color: sortDirection ? 'primary.dark' : 'text.secondary' }}
+            sx={{ position: 'relative', flexShrink: 0, width: 40, height: 40, p: 0, border: 1, borderColor: 'divider', borderRadius: 1, color: sortDirection ? 'primary.dark' : 'text.secondary', '&::after': { content: '""', position: 'absolute', inset: -2 } }}
           >
             <SwapVertIcon />
           </IconButton>
