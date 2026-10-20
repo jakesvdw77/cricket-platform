@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, IconButton, MenuItem, Skeleton } from '@mui/material'
 import SwapVertIcon from '@mui/icons-material/SwapVert'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
@@ -10,9 +9,9 @@ import { FilterBar } from '../../../components/FilterBar'
 import { Input } from '../../../components/Input'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { NameModeToggle } from '../../../components/NameModeToggle'
-import { getManagedClubProfile } from '../../../api/clubApi'
 import { DEFAULT_SORT, catalogueBoards, useLeaderboardCatalogue } from '../../../api/leaderboardApi'
 import type { LeaderboardColumn, SortDirection, StandingsGroup } from '../../../api/leaderboardApi'
+import { useManagedClubProfile } from '../../../hooks/useManagedClubProfile'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
@@ -60,11 +59,7 @@ export default function LeaderboardsPage() {
   const sortColumn = columns.find((column) => column.code === sortCode)
   const naturalDirection = sortColumn?.direction ?? 'HIGHEST'
   const effectiveDirection = sortDirection ? (sortDirection === 'asc' ? 'LOWEST' : 'HIGHEST') : naturalDirection
-  const profileQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'profile'],
-    queryFn: () => getManagedClubProfile(clubId as string),
-    enabled: Boolean(clubId) && isAwardsTab,
-  })
+  const profileQuery = useManagedClubProfile(clubId, isAwardsTab)
 
   // The optional minimum of a rate sort: per visit, never saved; it belongs to one tab, sort and set of filters and is dropped
   // when any of them changes.
@@ -173,7 +168,7 @@ export default function LeaderboardsPage() {
             aria-label="Reverse order"
             title="Reverse order"
             onClick={reverseSort}
-            sx={{ position: 'relative', flexShrink: 0, width: 40, height: 40, p: 0, border: 1, borderColor: 'divider', borderRadius: 1, color: sortDirection ? 'primary.dark' : 'text.secondary', '&::after': { content: '""', position: 'absolute', inset: -2 } }}
+            sx={{ flexShrink: 0, width: { xs: 44, sm: 40 }, height: { xs: 44, sm: 40 }, p: 0, border: 1, borderColor: 'divider', borderRadius: 1, color: sortDirection ? 'primary.dark' : 'text.secondary' }}
           >
             <SwapVertIcon />
           </IconButton>

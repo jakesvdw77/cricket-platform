@@ -163,7 +163,7 @@ function PlayerRow({
           size="small"
           onClick={(event) => setAnchor(event.currentTarget)}
           // position: relative lifts it above the row's stretched link, so using the menu never navigates
-          sx={{ position: 'relative', color: 'primary.dark', width: 36, height: 36 }}
+          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
         >
           <ManageAccountsOutlinedIcon fontSize="small" />
         </IconButton>
@@ -175,7 +175,7 @@ function PlayerRow({
           aria-label="Stats"
           title="Stats"
           size="small"
-          sx={{ position: 'relative', color: 'primary.dark', width: 36, height: 36 }}
+          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
         >
           <EqualizerOutlinedIcon fontSize="small" />
         </IconButton>

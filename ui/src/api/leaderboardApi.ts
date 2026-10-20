@@ -3,7 +3,7 @@ import api from './axiosConfig'
 
 // docs/specs/103-player-stats.md ("API Contract (leaderboards)"): the leaderboard catalogue, one board page by page, the
 // awards view and the club-wide filter options. Every figure, rank and tie-break is decided by the server; this file only
-// types the responses. The shapes mirror the backend DTOs (LeaderboardCatalogueDto, LeaderboardPageDto, AwardsViewDto,
+// types the responses. The shapes mirror the backend DTOs (LeaderboardCatalogueDto, the standings table response, AwardsViewDto,
 // LeaderboardFilterOptionsDto) exactly.
 
 export type LeaderboardGroup = 'BATTING' | 'BOWLING' | 'FIELDING' | 'AWARDS'

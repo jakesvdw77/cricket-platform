@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, Link, Stack, Typography } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { Button } from '../../../components/Button'
 import { ContentControlsLine, SortLink } from '../../../components/ContentControlsLine'
@@ -303,7 +304,7 @@ export default function ResultList() {
         action={
           // docs/specs/104: Import result sits beside Capture result; the capture picker also offers it.
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => navigate('/manage/leaderboards')}>
+            <Button variant="secondary" startIcon={<EmojiEventsOutlinedIcon />} onClick={() => navigate('/manage/leaderboards')}>
               Leaderboards
             </Button>
             <Button variant="secondary" onClick={() => navigate(resultImportTo())}>

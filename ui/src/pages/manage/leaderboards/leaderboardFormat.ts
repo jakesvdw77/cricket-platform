@@ -69,11 +69,14 @@ export function awardLine(board: LeaderboardBoardInfo, row: LeaderboardRow): str
   return tail ? `${head} · ${tail}` : head
 }
 
+// Decimals per standings column (spec 103, Derived figures): averages, economy and the batting strike rate show two; the bowling
+// strike rate (balls per wicket) shows one. `strikeRate` exists in both groups, so the group decides.
 const TWO_DECIMAL_COLUMNS = new Set(['average', 'strikeRate', 'economy'])
+const ONE_DECIMAL_COLUMNS = new Set(['bowling:strikeRate'])
 
 // One standings cell as text (decision 26): 94* for a highest score, 4/17 for best bowling, overs notation for overs, two
 // decimals for averages and rates, a dash when the figure is not defined. Display only; nothing is computed here.
-export function cellText(columnCode: string, cell: LeaderboardCell | undefined): string {
+export function cellText(group: string, columnCode: string, cell: LeaderboardCell | undefined): string {
   if (!cell) return NOT_ON_FILE
   if (columnCode === 'highestScore') return cell.runs === null || cell.runs === undefined ? NOT_ON_FILE : `${cell.runs}${cell.notOut ? '*' : ''}`
   if (columnCode === 'best') return cell.wickets === null || cell.wickets === undefined ? NOT_ON_FILE : `${cell.wickets}/${cell.runs ?? 0}`
@@ -83,6 +86,7 @@ export function cellText(columnCode: string, cell: LeaderboardCell | undefined):
     if (cell.balls !== null && cell.balls !== undefined && cell.ballsPerOver) return ballsToOvers(cell.balls, cell.ballsPerOver)
     return String(cell.value)
   }
+  if (ONE_DECIMAL_COLUMNS.has(`${group.toLowerCase()}:${columnCode}`)) return cell.value.toFixed(1)
   if (TWO_DECIMAL_COLUMNS.has(columnCode)) return cell.value.toFixed(2)
   return String(cell.value)
 }

@@ -3,7 +3,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { PLAYER_STATS_TABS, resolvePlayerStatsTab } from './playerStatsTabConfig'
 import { VIEW_TABS_PROPS, viewTabsSx, viewTabSx } from '../../../utils/viewTabs'
 
-// docs/specs/103-player-stats.md: the Batting | Bowling | Fielding strip of the breakdown page. The active tab lives in
+// docs/specs/103-player-stats.md: the Batting | Bowling | Fielding | Awards & record strip of the breakdown page. The active tab lives in
 // ?tab= (default Batting), each tab a router link that replaces the history entry and keeps the other parameters; the
 // same convention as LeagueEditTabs.
 export function PlayerStatsTabs() {

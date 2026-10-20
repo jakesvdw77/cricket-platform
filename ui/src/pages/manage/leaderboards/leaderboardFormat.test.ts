@@ -28,25 +28,37 @@ describe('figureText', () => {
 
 describe('cellText', () => {
   it('shows a dash for a missing cell or a null value (the dots column when never recorded)', () => {
-    expect(cellText('dots', undefined)).toBe('–')
-    expect(cellText('dots', cell())).toBe('–')
+    expect(cellText('bowling', 'dots', undefined)).toBe('–')
+    expect(cellText('bowling', 'dots', cell())).toBe('–')
   })
   it('formats highest score and best bowling cells', () => {
-    expect(cellText('highestScore', cell({ runs: 94, notOut: true }))).toBe('94*')
-    expect(cellText('highestScore', cell({ runs: 12, notOut: false }))).toBe('12')
-    expect(cellText('highestScore', cell())).toBe('–')
-    expect(cellText('best', cell({ wickets: 4, runs: 17 }))).toBe('4/17')
-    expect(cellText('best', cell())).toBe('–')
+    expect(cellText('batting', 'highestScore', cell({ runs: 94, notOut: true }))).toBe('94*')
+    expect(cellText('batting', 'highestScore', cell({ runs: 12, notOut: false }))).toBe('12')
+    expect(cellText('batting', 'highestScore', cell())).toBe('–')
+    expect(cellText('bowling', 'best', cell({ wickets: 4, runs: 17 }))).toBe('4/17')
+    expect(cellText('bowling', 'best', cell())).toBe('–')
   })
   it('formats overs in cricket notation when balls are known, else the server value', () => {
-    expect(cellText('overs', cell({ value: 36.67, balls: 220, ballsPerOver: 6 }))).toBe('36.4')
-    expect(cellText('overs', cell({ value: 36.67, balls: 220, ballsPerOver: null }))).toBe('36.67')
+    expect(cellText('bowling', 'overs', cell({ value: 36.67, balls: 220, ballsPerOver: 6 }))).toBe('36.4')
+    expect(cellText('bowling', 'overs', cell({ value: 36.67, balls: 220, ballsPerOver: null }))).toBe('36.67')
   })
   it('uses two decimals for average, strikeRate and economy only', () => {
-    expect(cellText('average', cell({ value: 30 }))).toBe('30.00')
-    expect(cellText('economy', cell({ value: 5.8 }))).toBe('5.80')
-    expect(cellText('runs', cell({ value: 412 }))).toBe('412')
-    expect(cellText('wickets', cell({ value: 0 }))).toBe('0')
+    expect(cellText('batting', 'average', cell({ value: 30 }))).toBe('30.00')
+    expect(cellText('bowling', 'economy', cell({ value: 5.8 }))).toBe('5.80')
+    expect(cellText('batting', 'strikeRate', cell({ value: 85.5 }))).toBe('85.50')
+    expect(cellText('bowling', 'average', cell({ value: 21.4 }))).toBe('21.40')
+    expect(cellText('batting', 'runs', cell({ value: 412 }))).toBe('412')
+    expect(cellText('bowling', 'wickets', cell({ value: 0 }))).toBe('0')
+  })
+})
+
+describe('cellText strike rate is group-aware', () => {
+  it('bowling strike rate shows one decimal, batting strike rate two', () => {
+    expect(cellText('bowling', 'strikeRate', cell({ value: 17.46 }))).toBe('17.5')
+    expect(cellText('bowling', 'strikeRate', cell({ value: 18 }))).toBe('18.0')
+    expect(cellText('Bowling', 'strikeRate', cell({ value: 18 }))).toBe('18.0')
+    expect(cellText('batting', 'strikeRate', cell({ value: 17.46 }))).toBe('17.46')
+    expect(cellText('bowling', 'strikeRate', cell())).toBe('–')
   })
 })
 

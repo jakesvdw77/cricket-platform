@@ -60,7 +60,7 @@ function ChooserForm({ clubId, catalogue, onDone }: ChooserFormProps) {
       {settingsQuery.isError ? (
         <Typography role="alert" sx={{ color: 'error.main', fontSize: '0.9375rem' }}>
           Could not load the categories.{' '}
-          <MuiButton variant="text" onClick={() => settingsQuery.refetch()}>
+          <MuiButton variant="text" onClick={() => settingsQuery.refetch()} sx={{ minHeight: 44 }}>
             Try again
           </MuiButton>
         </Typography>

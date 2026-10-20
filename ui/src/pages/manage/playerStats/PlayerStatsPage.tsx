@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
@@ -10,14 +10,10 @@ import { FilterBar } from '../../../components/FilterBar'
 import { usePlayerStats, usePlayerStatsFilterOptions } from '../../../api/playerStatsApi'
 import type { PlayerStats, StatsCompetition } from '../../../api/playerStatsApi'
 import { listPlayers } from '../../../api/playerApi'
-import { listSeasons } from '../../../api/seasonApi'
-import { listLeagues } from '../../../api/leagueApi'
-import { listSections } from '../../../api/sectionApi'
-import { listTeamsForClub } from '../../../api/teamApi'
 import { useAvailabilitySeason } from '../../../hooks/useAvailabilitySeason'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
+import { useStatsFilterLookups } from '../../../hooks/useStatsFilterLookups'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
-import { sectionsWithAncestors } from '../../../utils/sectionAncestors'
 import { playerStatusBadge, playerStatusOf } from '../../../utils/playerStatus'
 import { fullName } from '../PlayerList'
 import { PlayerStatsTabs } from './PlayerStatsTabs'
@@ -81,38 +77,19 @@ export default function PlayerStatsPage() {
   const player = playerQuery.data
   useDocumentTitle(player ? `${fullName(player)} · Statistics` : 'Statistics')
 
-  // Club lookups for the filters. A manager who cannot read one of them simply does not get that filter's options.
-  const seasonsQuery = useQuery({ queryKey: ['managed-club', clubId, 'seasons'], queryFn: () => listSeasons(clubId as string), enabled: Boolean(clubId) })
-  const leaguesQuery = useQuery({ queryKey: ['managed-club', clubId, 'leagues'], queryFn: () => listLeagues(clubId as string), enabled: Boolean(clubId) })
-  const sectionsQuery = useQuery({ queryKey: ['managed-club', clubId, 'sections'], queryFn: () => listSections(clubId as string), enabled: Boolean(clubId) })
-  const teamsQuery = useQuery({ queryKey: ['managed-club', clubId, 'teams'], queryFn: () => listTeamsForClub(clubId as string), enabled: Boolean(clubId) })
-
   // Every filter offers only what the player has data for (spec 103 decision 22). Until the options load nothing is offered,
   // so unfiltered club-wide lists never show; a select with no options for this player is left out.
   const optionsQuery = usePlayerStatsFilterOptions(clubId, playerId)
   const available = optionsQuery.data
-
-  const seasonOptions = useMemo(() => {
-    const ids = new Set(available?.seasonIds ?? [])
-    return (seasonsQuery.data ?? []).filter((season) => ids.has(season.id)).map((season) => ({ id: season.id, name: season.label }))
-  }, [seasonsQuery.data, available])
-  const leagueOptions = useMemo(() => {
-    const ids = new Set(available?.leagueIds ?? [])
-    return (leaguesQuery.data ?? []).filter((league) => ids.has(league.id)).map((league) => ({ id: league.id, name: league.name }))
-  }, [leaguesQuery.data, available])
-  const teamOptions = useMemo(() => {
-    const ids = new Set(available?.teamIds ?? [])
-    return (teamsQuery.data ?? []).filter((team) => ids.has(team.id)).map((team) => ({ id: team.id, name: team.name }))
-  }, [teamsQuery.data, available])
-  // The player's sections plus every ancestor, so the tree select stays connected.
-  const sectionOptions = useMemo(() => sectionsWithAncestors(sectionsQuery.data ?? [], available?.sectionIds ?? []), [sectionsQuery.data, available])
+  const lookups = useStatsFilterLookups(clubId, available)
+  const { seasons: seasonOptions, leagues: leagueOptions, teams: teamOptions, sections: sectionOptions } = lookups
   const competitionOptions = COMPETITION_OPTIONS.filter((option) => available?.competitions.includes(option.value as StatsCompetition))
 
   // A saved choice that is not offered (gone, or no data for this player) falls back to none (All seasons / All leagues).
   const wantedSeason = seasonOverride !== undefined ? seasonOverride : saved.seasonId
   const wantedLeague = leagueOverride !== undefined ? leagueOverride : saved.leagueId
-  const seasonId = wantedSeason && (!available || !seasonsQuery.data || seasonOptions.some((option) => option.id === wantedSeason)) ? wantedSeason : null
-  const leagueId = wantedLeague && (!available || !leaguesQuery.data || leagueOptions.some((option) => option.id === wantedLeague)) ? wantedLeague : null
+  const seasonId = wantedSeason && (!available || !lookups.allSeasons || seasonOptions.some((option) => option.id === wantedSeason)) ? wantedSeason : null
+  const leagueId = wantedLeague && (!available || !lookups.allLeagues || leagueOptions.some((option) => option.id === wantedLeague)) ? wantedLeague : null
 
   const filters = { seasonId, leagueId, teamId, sectionId, competition }
   const hasFilters = Boolean(seasonId || leagueId || teamId || sectionId || competition)

@@ -31,5 +31,3 @@ export const Bowling: Story = {
     ],
   },
 }
-
-export const Comfortable: Story = { args: { size: 'comfortable' } }

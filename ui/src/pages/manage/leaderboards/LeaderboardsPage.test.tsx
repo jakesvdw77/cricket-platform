@@ -129,6 +129,22 @@ describe('LeaderboardsPage', () => {
       expect(within(screen.getAllByTestId('standings-row')[0]).getByTestId('cell-highestScore')).toHaveTextContent('94*')
     })
 
+    it('is an accessible table: table, rows, column headers with aria-sort, and the player as the row header', async () => {
+      renderPage()
+      await screen.findAllByTestId('standings-row', {}, wait)
+      const table = screen.getByRole('table', { name: 'Batting leaderboard' })
+      expect(table).toHaveAttribute('aria-colcount', '7')
+      // the header row plus one row per player
+      const tableRows = within(table).getAllByRole('row')
+      expect(tableRows).toHaveLength(3)
+      const headers = within(tableRows[0]).getAllByRole('columnheader')
+      expect(headers.map((h) => h.textContent)).toEqual(['#', 'Player', 'M', 'Runs', 'Avg', 'SR', 'HS'])
+      expect(within(tableRows[1]).getByRole('rowheader')).toHaveTextContent('Sam Visser')
+      expect(within(tableRows[1]).getAllByRole('cell').length).toBeGreaterThan(0)
+      // only the sorted column carries aria-sort
+      expect(headers.filter((h) => h.hasAttribute('aria-sort'))).toHaveLength(1)
+    })
+
     it('does not offer a heading or the Sort by select for a column the catalogue says is not sortable', async () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
@@ -194,6 +210,7 @@ describe('LeaderboardsPage', () => {
       renderPage()
       const sorted = await screen.findByRole('button', { name: /^Runs scored, sorted ascending/ }, wait)
       expect(sorted.closest('[aria-sort]')).toHaveAttribute('aria-sort', 'ascending')
+      expect(sorted.closest('[role="columnheader"]')).toHaveAttribute('aria-sort', 'ascending')
     })
 
     it('Reverse order does the same as clicking the sorted heading', async () => {
@@ -293,15 +310,15 @@ describe('LeaderboardsPage', () => {
       renderPage()
       const rows = await screen.findAllByTestId('standings-row', {}, wait)
       // the current season is the default
-      expect(rows[0]).toHaveAttribute('href', '/manage/players/p1/stats?seasonId=season-1&leagueId=&teamId=&sectionId=')
-      expect(rows[1]).toHaveAttribute('href', '/manage/players/p2/stats?seasonId=season-1&leagueId=&teamId=&sectionId=')
+      expect(within(rows[0]).getByRole('link')).toHaveAttribute('href', '/manage/players/p1/stats?seasonId=season-1&leagueId=&teamId=&sectionId=')
+      expect(within(rows[1]).getByRole('link')).toHaveAttribute('href', '/manage/players/p2/stats?seasonId=season-1&leagueId=&teamId=&sectionId=')
     })
 
     it('the link carries a chosen League and Team too', async () => {
       localStorage.setItem('leaderboards:filters:club-1', JSON.stringify({ seasonId: 'all', leagueId: 'league-1', sectionId: null, teamId: 'team-1' }))
       renderPage()
       const rows = await screen.findAllByTestId('standings-row', {}, wait)
-      expect(rows[0]).toHaveAttribute('href', '/manage/players/p1/stats?seasonId=&leagueId=league-1&teamId=team-1&sectionId=')
+      expect(within(rows[0]).getByRole('link')).toHaveAttribute('href', '/manage/players/p1/stats?seasonId=&leagueId=league-1&teamId=team-1&sectionId=')
     })
 
     it('shows a dash for a dots column nobody recorded, and states the dots coverage in the footer', async () => {

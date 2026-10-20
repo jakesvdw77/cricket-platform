@@ -104,7 +104,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
 
       {stats.form.bowling.length > 0 && (
         <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 spells, newest first">
-          <FormStrip title="Bowling, last 5 spells" items={bowlingFormItems(stats.form.bowling)} size="comfortable" hideTitle />
+          <FormStrip title="Bowling, last 5 spells" items={bowlingFormItems(stats.form.bowling)} hideTitle />
         </InfoCard>
       )}
 

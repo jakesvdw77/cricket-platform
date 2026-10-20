@@ -17,8 +17,6 @@ export interface FormStripProps {
   // The strip's heading, e.g. "Batting, last 5 innings"
   title: string
   items: FormStripItem[]
-  // Kept for existing callers; both sizes now draw the same 36 px chip (docs/specs/103 readability pass)
-  size?: 'compact' | 'comfortable'
   // The heading is already shown by the card around the strip; it stays as the list's accessible name
   hideTitle?: boolean
 }

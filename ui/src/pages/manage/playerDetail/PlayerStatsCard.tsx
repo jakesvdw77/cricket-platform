@@ -15,8 +15,8 @@ export interface PlayerStatsCardProps {
   chips: InfoCardChip[]
 }
 
-// docs/specs/103-player-stats.md: the Player page's merged Cricket card (decision 24: chips, then, fed by GET .../players/{playerId}/stats with no filters
-// (career). Six headline figures, the two recent-form strips and the View full breakdown button. Loading shows a
+// docs/specs/103-player-stats.md: the Player page's merged Cricket card (decision 24): the Bats / Bowls / Wicketkeeper chips, then, fed by GET .../players/{playerId}/stats with
+// no filters (career), six headline figures, the two recent-form strips and the View full breakdown button. Loading shows a
 // skeleton; a failed read shows the figures as dashes with a quiet Try again, never an error page for a card. Every
 // figure is the server's; a figure that rests on a card nobody captured is a dash, not a zero.
 export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProps) {
@@ -74,7 +74,7 @@ export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProp
         <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0, fontSize: '0.875rem', lineHeight: 1.4 }}>
           {basis}{' '}
           {!stats && (
-            <MuiButton variant="text" size="small" onClick={() => statsQuery.refetch()} sx={{ minHeight: 0, p: 0, verticalAlign: 'baseline', textTransform: 'none' }}>
+            <MuiButton variant="text" size="small" onClick={() => statsQuery.refetch()} sx={{ minHeight: 44, minWidth: 44, px: 1, verticalAlign: 'middle', textTransform: 'none' }}>
               Try again
             </MuiButton>
           )}

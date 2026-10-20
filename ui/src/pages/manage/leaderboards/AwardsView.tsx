@@ -144,7 +144,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
           <Box sx={{ width: { xs: 'calc(50% - 6px)', sm: 180 } }}>
             <IntegerField label="Minimum overs" ariaLabel="Minimum overs" value={shownOvers} onChange={setOvers} max={999} maxLength={3} />
           </Box>
-          <MuiButton variant="text" disabled={!customised} onClick={() => { setInnings(null); setOvers(null) }} sx={{ minHeight: 40 }}>
+          <MuiButton variant="text" disabled={!customised} onClick={() => { setInnings(null); setOvers(null) }} sx={{ minHeight: 44 }}>
             Reset to default
           </MuiButton>
         </Box>

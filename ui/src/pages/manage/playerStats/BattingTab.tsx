@@ -95,7 +95,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
 
       {stats.form.batting.length > 0 && (
         <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
-          <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} size="comfortable" hideTitle />
+          <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
         </InfoCard>
       )}
 
