@@ -7024,11 +7024,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeaderboardCatalogueDto"
-  /api/v1/manage/clubs/{clubId}/leaderboards/{board}:
+  /api/v1/manage/clubs/{clubId}/leaderboards/{group}:
     get:
       tags:
       - leaderboard-controller
-      operationId: getLeaderboard
+      operationId: getLeaderboardTable
+      description: One page of a standings table (group batting, bowling or fielding), sorted and ranked by one column.
       parameters:
       - name: clubId
         in: path
@@ -7036,11 +7037,30 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: board
+      - name: group
         in: path
         required: true
         schema:
           type: string
+          enum:
+          - batting
+          - bowling
+          - fielding
+      - name: sort
+        in: query
+        required: false
+        description: A column code of the group; absent means runs, wickets or total
+        schema:
+          type: string
+      - name: direction
+        in: query
+        required: false
+        description: asc (lowest first) or desc (highest first); absent means the column's natural direction; reverses the sort column only
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
       - name: seasonId
         in: query
         required: false
@@ -7068,7 +7088,7 @@ paths:
       - name: minimum
         in: query
         required: false
-        description: Optional minimum (innings or overs by the board); absent means none; ignored on a board without a minimum
+        description: Optional minimum (innings or overs by the sort column); absent means none; ignored unless the sort is a rate
         schema:
           type: string
       - name: page
@@ -7090,15 +7110,15 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/LeaderboardPageDto"
+                $ref: "#/components/schemas/LeaderboardTableDto"
         "400":
-          description: Invalid minimum, page or size, or too many players in scope
+          description: Unknown sort, invalid direction, minimum, page or size, or too many players in scope
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
-          description: Unknown board, season, league, team or section
+          description: Unknown group, season, league, team or section
           content:
             application/problem+json:
               schema:
@@ -13439,12 +13459,43 @@ components:
       properties:
         group:
           type: string
+        code:
+          type: string
+          nullable: true
+          description: Route segment of the standings table (batting, bowling, fielding); null for AWARDS
         label:
           type: string
+        defaultSort:
+          type: string
+          nullable: true
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardColumnInfo"
         boards:
           type: array
           items:
             $ref: "#/components/schemas/LeaderboardBoardInfo"
+    LeaderboardColumnInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        sortable:
+          type: boolean
+        direction:
+          type: string
+          enum:
+          - HIGHEST
+          - LOWEST
+        minimumKind:
+          type: string
+          enum:
+          - NONE
+          - INNINGS
+          - OVERS
     LeaderboardBoardInfo:
       type: object
       properties:
@@ -13466,11 +13517,17 @@ components:
           type: boolean
         awardDefault:
           type: boolean
-    LeaderboardPageDto:
+    LeaderboardTableDto:
       type: object
       properties:
-        board:
-          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        group:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardColumnInfo"
+        sort:
+          $ref: "#/components/schemas/LeaderboardSort"
         scope:
           $ref: "#/components/schemas/LeaderboardScope"
         minimum:
@@ -13482,7 +13539,63 @@ components:
         rows:
           type: array
           items:
-            $ref: "#/components/schemas/LeaderboardRow"
+            $ref: "#/components/schemas/LeaderboardTableRow"
+    LeaderboardSort:
+      type: object
+      properties:
+        code:
+          type: string
+        direction:
+          type: string
+          description: Effective direction; HIGHEST ranks the highest value first (direction=desc), LOWEST the lowest first (direction=asc)
+          enum:
+          - HIGHEST
+          - LOWEST
+    LeaderboardTableRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        active:
+          type: boolean
+        teamName:
+          type: string
+          nullable: true
+        smallSample:
+          type: boolean
+        values:
+          type: object
+          description: Keyed by column code
+          additionalProperties:
+            $ref: "#/components/schemas/LeaderboardCell"
+    LeaderboardCell:
+      type: object
+      properties:
+        value:
+          type: number
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
     LeaderboardScope:
       type: object
       properties:

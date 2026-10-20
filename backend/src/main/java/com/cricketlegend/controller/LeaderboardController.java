@@ -3,7 +3,7 @@ package com.cricketlegend.controller;
 import com.cricketlegend.dto.AwardsViewDto;
 import com.cricketlegend.dto.LeaderboardCatalogueDto;
 import com.cricketlegend.dto.LeaderboardFilterOptionsDto;
-import com.cricketlegend.dto.LeaderboardPageDto;
+import com.cricketlegend.dto.LeaderboardTableDto;
 import com.cricketlegend.service.LeaderboardService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * docs/specs/103-player-stats.md, "API Contract (leaderboards)": standings and awards from published results. Any club
+ * docs/specs/103-player-stats.md, "API Contract (leaderboards)": standings tables and awards from published results. Any club
  * manager ({@code canAccessClub}); a section-scoped manager is narrowed to their sections inside the service. The literal
  * routes {@code /leaderboards/awards} and {@code /leaderboards/filter-options} are more specific than
- * {@code /leaderboards/{board}}, so Spring MVC matches them first.
+ * {@code /leaderboards/{group}}, so Spring MVC matches them first.
  */
 @RestController
 public class LeaderboardController {
@@ -58,11 +58,13 @@ public class LeaderboardController {
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
-    @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards/{board}")
-    public ResponseEntity<LeaderboardPageDto> getLeaderboard(
+    @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards/{group}")
+    public ResponseEntity<LeaderboardTableDto> getLeaderboardTable(
             Authentication authentication,
             @PathVariable UUID clubId,
-            @PathVariable String board,
+            @PathVariable String group,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String direction,
             @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID teamId,
@@ -70,7 +72,7 @@ public class LeaderboardController {
             @RequestParam(required = false) String minimum,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        return ResponseEntity.ok(leaderboardService.board(
-                authentication, clubId, board, seasonId, leagueId, teamId, sectionId, minimum, page, size));
+        return ResponseEntity.ok(leaderboardService.table(
+                authentication, clubId, group, sort, direction, seasonId, leagueId, teamId, sectionId, minimum, page, size));
     }
 }

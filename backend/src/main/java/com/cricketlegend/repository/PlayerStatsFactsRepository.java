@@ -259,6 +259,37 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerIds") Collection<UUID> playerIds);
 
+    /**
+     * How many counted matches each player played for each of the club's teams in the scope (the row's side picks the
+     * team), so the standings can show the most frequent one as the player's team. Pass null {@code playerId} for the whole
+     * club.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.pid as "playerId", t.name as "teamName", count(distinct ap.mrid) as "total"
+            from ap
+            join match m on m.id = ap.match_id
+            join team t on t.id = case when ap.side = 'HOME' then m.home_team_id else m.away_team_id end
+                       and t.club_id = :clubId
+            group by ap.pid, t.id, t.name
+            """, nativeQuery = true)
+    List<PlayerTeamView> playerTeams(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    interface PlayerTeamView {
+        UUID getPlayerId();
+
+        String getTeamName();
+
+        Long getTotal();
+    }
+
     interface PlayerNameView {
         UUID getPlayerId();
 

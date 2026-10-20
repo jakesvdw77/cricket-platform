@@ -1,10 +1,10 @@
 package com.cricketlegend.service.support;
 
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardCoverage;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardRow;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardRunsNotOut;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardSample;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardWicketsRuns;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardRow;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardRunsNotOut;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardSample;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardWicketsRuns;
+import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardCoverage;
 import com.cricketlegend.dto.PlayerStatsDto.PlayerBatting;
 import com.cricketlegend.dto.PlayerStatsDto.PlayerBowling;
 import com.cricketlegend.service.support.LeaderboardBoard.MinimumKind;
@@ -21,6 +21,7 @@ import java.util.function.ToLongFunction;
 
 /**
  * docs/specs/103-player-stats.md, "Leaderboards": for one board, which players are listed, in what order, with what rank.
+ * Serves the Awards view; {@link LeaderboardTableRanker} reuses its orderings for the standings tables.
  * Pure (no Spring, no repository, no entity, no caller or access information), so a later player-facing route can reuse it.
  *
  * <p>Every figure is the {@link PlayerStatsCalculator} figure of the same player, so a board figure always equals the
@@ -36,7 +37,7 @@ public final class LeaderboardRanker {
 
     private static final int OVERS_SHOWN_SCALE = 2;
 
-    private static final Comparator<Candidate> BY_NAME = Comparator.comparing(Candidate::displayName, String.CASE_INSENSITIVE_ORDER)
+    static final Comparator<Candidate> BY_NAME = Comparator.comparing(Candidate::displayName, String.CASE_INSENSITIVE_ORDER)
             .thenComparing(Candidate::playerId);
 
     /** One player in scope: identity, additive counters and the calculator's figures. */
@@ -57,17 +58,7 @@ public final class LeaderboardRanker {
      * The whole ordered list for one board: the ranked players, then the unranked group. {@code listed} counts both,
      * {@code ranked} the first group, {@code belowMinimum} the players a minimum removed.
      */
-    public record Ranking(
-            List<LeaderboardRow> rows, long listed, long ranked, long belowMinimum, LeaderboardCoverage coverage) {
-
-        /** One page of the list (empty past the end). */
-        public List<LeaderboardRow> page(int page, int size) {
-            long from = (long) page * size;
-            if (from >= rows.size()) {
-                return List.of();
-            }
-            return rows.subList((int) from, (int) Math.min(rows.size(), from + size));
-        }
+    public record Ranking(List<LeaderboardRow> rows, long listed, long ranked, long belowMinimum) {
 
         /** Every player at rank 1, so a tie gives joint leaders. The unranked group never leads. */
         public List<LeaderboardRow> leaders() {
@@ -120,8 +111,7 @@ public final class LeaderboardRanker {
         for (Candidate current : unrankedGroup) {
             rows.add(toRow(board, current, null, defaults));
         }
-        return new Ranking(
-                List.copyOf(rows), rows.size(), rankedGroup.size(), below, coverage(board, candidates));
+        return new Ranking(List.copyOf(rows), rows.size(), rankedGroup.size(), below);
     }
 
     /**
@@ -199,7 +189,7 @@ public final class LeaderboardRanker {
         };
     }
 
-    private static boolean isRanked(LeaderboardBoard board, Candidate c) {
+    static boolean isRanked(LeaderboardBoard board, Candidate c) {
         return switch (board) {
             case BATTING_AVERAGE -> c.figures().batting().average() != null;
             case BOWLING_AVERAGE -> c.figures().bowling().average() != null;
@@ -211,17 +201,17 @@ public final class LeaderboardRanker {
     // ---- minimum and sample ----
 
     /** Innings behind a batting rate figure: innings that recorded balls for strike rate, otherwise all innings. */
-    private static long sampleInnings(LeaderboardBoard board, Candidate c) {
+    static long sampleInnings(LeaderboardBoard board, Candidate c) {
         PlayerBatting b = c.figures().batting();
         return board == LeaderboardBoard.STRIKE_RATE ? b.coverage().inningsWithBalls() : b.innings();
     }
 
-    private static BigDecimal overs(Candidate c) {
+    static BigDecimal overs(Candidate c) {
         BigDecimal overs = c.counters().bowling().overs();
         return (overs == null ? BigDecimal.ZERO : overs).setScale(OVERS_COMPARE_SCALE, RoundingMode.HALF_UP);
     }
 
-    private static boolean meetsMinimum(LeaderboardBoard board, Candidate c, int minimum) {
+    static boolean meetsMinimum(LeaderboardBoard board, Candidate c, int minimum) {
         return switch (board.getMinimumKind()) {
             case INNINGS -> sampleInnings(board, c) >= minimum;
             case OVERS -> overs(c).compareTo(BigDecimal.valueOf(minimum)) >= 0;
@@ -229,7 +219,7 @@ public final class LeaderboardRanker {
         };
     }
 
-    private static boolean isSmallSample(LeaderboardBoard board, Candidate c, Defaults defaults) {
+    static boolean isSmallSample(LeaderboardBoard board, Candidate c, Defaults defaults) {
         return switch (board.getMinimumKind()) {
             case INNINGS -> sampleInnings(board, c) < defaults.innings();
             case OVERS -> overs(c).compareTo(BigDecimal.valueOf(defaults.overs())) < 0;
@@ -257,7 +247,7 @@ public final class LeaderboardRanker {
 
     // ---- ordering ----
 
-    private static Comparator<Candidate> criteria(LeaderboardBoard board, Map<UUID, LeaderboardInningsFact> innings) {
+    static Comparator<Candidate> criteria(LeaderboardBoard board, Map<UUID, LeaderboardInningsFact> innings) {
         return switch (board) {
             case MOST_RUNS -> descL(c -> count(board, c)).thenComparing(ascL(LeaderboardRanker::battingInnings))
                     .thenComparing(descL(LeaderboardRanker::highestKey));
@@ -319,11 +309,11 @@ public final class LeaderboardRanker {
         return board == LeaderboardBoard.BATTING_AVERAGE ? descL(LeaderboardRanker::runs) : descD(LeaderboardRanker::overs);
     }
 
-    private static long runs(Candidate c) {
+    static long runs(Candidate c) {
         return c.figures().batting().runs();
     }
 
-    private static long battingInnings(Candidate c) {
+    static long battingInnings(Candidate c) {
         return c.figures().batting().innings();
     }
 
@@ -339,21 +329,21 @@ public final class LeaderboardRanker {
         return fact == null || fact.balls() == null ? Long.MAX_VALUE : fact.balls();
     }
 
-    private static Comparator<Candidate> descL(ToLongFunction<Candidate> key) {
+    static Comparator<Candidate> descL(ToLongFunction<Candidate> key) {
         return Comparator.<Candidate>comparingLong(key).reversed();
     }
 
-    private static Comparator<Candidate> ascL(ToLongFunction<Candidate> key) {
+    static Comparator<Candidate> ascL(ToLongFunction<Candidate> key) {
         return Comparator.comparingLong(key);
     }
 
     /** Descending by a decimal, a missing value last. */
-    private static Comparator<Candidate> descD(Function<Candidate, BigDecimal> key) {
+    static Comparator<Candidate> descD(Function<Candidate, BigDecimal> key) {
         return Comparator.comparing(key, Comparator.nullsLast(Comparator.<BigDecimal>reverseOrder()));
     }
 
     /** Ascending by a decimal, a missing value last. */
-    private static Comparator<Candidate> ascD(Function<Candidate, BigDecimal> key) {
+    static Comparator<Candidate> ascD(Function<Candidate, BigDecimal> key) {
         return Comparator.comparing(key, Comparator.nullsLast(Comparator.<BigDecimal>naturalOrder()));
     }
 
@@ -400,7 +390,7 @@ public final class LeaderboardRanker {
     }
 
     /** Innings that recorded the figure out of innings counted, for boards built on optional columns. */
-    private static LeaderboardCoverage coverage(LeaderboardBoard board, List<Candidate> candidates) {
+    static LeaderboardCoverage coverage(LeaderboardBoard board, List<Candidate> candidates) {
         if (board != LeaderboardBoard.STRIKE_RATE
                 && board != LeaderboardBoard.MOST_FOURS
                 && board != LeaderboardBoard.MOST_SIXES

@@ -9,8 +9,27 @@ import java.util.List;
  */
 public record LeaderboardCatalogueDto(List<LeaderboardCatalogueGroup> groups) {
 
-    /** One tab: BATTING, BOWLING, FIELDING or AWARDS, with its boards in display order. */
-    public record LeaderboardCatalogueGroup(String group, String label, List<LeaderboardBoardInfo> boards) {
+    /**
+     * One tab: BATTING, BOWLING, FIELDING or AWARDS. {@code code} is the lower-case route segment of the standings table
+     * (batting, bowling, fielding; null for AWARDS), {@code columns} its fixed columns in display order (empty for AWARDS)
+     * and {@code defaultSort} the column code sorted by default. {@code boards} lists the group's boards in display order
+     * (the award categories a club may choose from are the ones with {@code awardEligible}).
+     */
+    public record LeaderboardCatalogueGroup(
+            String group,
+            String code,
+            String label,
+            String defaultSort,
+            List<LeaderboardColumnInfo> columns,
+            List<LeaderboardBoardInfo> boards) {
+    }
+
+    /**
+     * One standings column: {@code code} is also the {@code sort} value; {@code direction} is HIGHEST or LOWEST (which end
+     * ranks first); {@code minimumKind} is NONE, INNINGS or OVERS (the optional minimum available when sorting by it).
+     */
+    public record LeaderboardColumnInfo(
+            String code, String label, boolean sortable, String direction, String minimumKind) {
     }
 
     /** One board's definition, also echoed on every board page and awards category. */

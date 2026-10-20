@@ -166,7 +166,7 @@ class LayeringRulesTest {
     private static final String PURE_STATS_CLASSES =
             "com\\.cricketlegend\\.service\\.support\\."
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
-                    + "|LeaderboardRanker|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers)(\\$.*)?";
+                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {

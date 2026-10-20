@@ -5,10 +5,10 @@ import com.cricketlegend.dto.LeaderboardCatalogueDto;
 import com.cricketlegend.dto.LeaderboardCatalogueDto.LeaderboardBoardInfo;
 import com.cricketlegend.dto.LeaderboardCatalogueDto.LeaderboardCatalogueGroup;
 import com.cricketlegend.dto.LeaderboardFilterOptionsDto;
-import com.cricketlegend.dto.LeaderboardPageDto;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardDetail;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardRow;
-import com.cricketlegend.dto.LeaderboardPageDto.LeaderboardScope;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardDetail;
+import com.cricketlegend.dto.AwardsViewDto.LeaderboardRow;
+import com.cricketlegend.dto.LeaderboardTableDto;
+import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardScope;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeaderboardMapper;
@@ -17,13 +17,16 @@ import com.cricketlegend.repository.PlayerStatsAggregateRepository.PlayerStatsAg
 import com.cricketlegend.repository.PlayerStatsFactsRepository;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.BestInningsView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.PlayerNameView;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.PlayerTeamView;
 import com.cricketlegend.service.ClubLeaderboardSettingsService;
 import com.cricketlegend.service.LeaderboardService;
 import com.cricketlegend.service.support.LeaderboardBoard;
+import com.cricketlegend.service.support.LeaderboardColumn;
 import com.cricketlegend.service.support.LeaderboardInningsFact;
 import com.cricketlegend.service.support.LeaderboardPlayers;
 import com.cricketlegend.service.support.LeaderboardQualification;
 import com.cricketlegend.service.support.LeaderboardRanker;
+import com.cricketlegend.service.support.LeaderboardTableRanker;
 import com.cricketlegend.service.support.PlayerStatsCalculator;
 import com.cricketlegend.service.support.PlayerStatsCounters;
 import com.cricketlegend.service.support.PlayerStatsCountersReader;
@@ -33,7 +36,9 @@ import com.cricketlegend.service.support.StatsScope;
 import com.cricketlegend.service.support.StatsScopeResolver;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -91,17 +96,26 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                     .filter(board -> board.getGroup() == group)
                     .map(mapper::toInfo)
                     .toList();
-            groups.add(new LeaderboardCatalogueGroup(group.name(), group.getLabel(), boards));
+            boolean standings = group != LeaderboardBoard.Group.AWARDS;
+            groups.add(new LeaderboardCatalogueGroup(
+                    group.name(),
+                    standings ? routeCode(group) : null,
+                    group.getLabel(),
+                    standings ? LeaderboardColumn.defaultFor(group).getCode() : null,
+                    standings ? LeaderboardColumn.of(group).stream().map(mapper::toColumnInfo).toList() : List.of(),
+                    boards));
         }
         return new LeaderboardCatalogueDto(groups);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public LeaderboardPageDto board(
+    public LeaderboardTableDto table(
             Authentication authentication,
             UUID clubId,
-            String boardCode,
+            String groupCode,
+            String sortCode,
+            String directionText,
             UUID seasonId,
             UUID leagueId,
             UUID teamId,
@@ -109,10 +123,25 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             String minimumText,
             Integer pageNumber,
             Integer pageSize) {
-        LeaderboardBoard board = LeaderboardBoard.byCode(boardCode)
-                .orElseThrow(() -> new NotFoundException("Leaderboard not found: " + boardCode));
+        LeaderboardBoard.Group group = Arrays.stream(LeaderboardBoard.Group.values())
+                .filter(g -> g != LeaderboardBoard.Group.AWARDS && routeCode(g).equals(groupCode))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Leaderboard not found: " + groupCode));
+        LeaderboardColumn sort = sortCode == null || sortCode.isBlank()
+                ? LeaderboardColumn.defaultFor(group)
+                : LeaderboardColumn.byCode(group, sortCode)
+                        .orElseThrow(() -> new ValidationException("Unknown sort for " + groupCode + ": " + sortCode));
+        LeaderboardBoard.Direction direction = sort.getDirection();
+        if (directionText != null && !directionText.isBlank()) {
+            direction = switch (directionText.trim().toLowerCase(Locale.ROOT)) {
+                case "asc" -> LeaderboardBoard.Direction.LOWEST;
+                case "desc" -> LeaderboardBoard.Direction.HIGHEST;
+                default -> throw new ValidationException("direction must be asc or desc.");
+            };
+        }
         Integer minimum = parseMinimum(minimumText, "minimum");
-        if (board.getMinimumKind() == LeaderboardBoard.MinimumKind.NONE) {
+        boolean rate = sort.getMinimumKind() != LeaderboardBoard.MinimumKind.NONE;
+        if (!rate) {
             minimum = null;
         }
         int page = pageNumber == null ? 0 : pageNumber;
@@ -127,29 +156,30 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
         LeaderboardPlayers loaded = load(authentication, clubId, seasonId, leagueId, teamId, sectionId);
         LeaderboardQualification.Defaults defaults = defaultsOf(loaded);
-        Map<UUID, LeaderboardInningsFact> facts = new HashMap<>(tieBreakFacts(board, loaded));
-        LeaderboardRanker.Ranking ranking =
-                LeaderboardRanker.rank(board, loaded.candidates(), minimum, defaults, facts);
-        List<LeaderboardRow> rows = withDetails(board, loaded, ranking.page(page, size), facts);
+        Map<UUID, LeaderboardInningsFact> facts = new HashMap<>(tieBreakFacts(sort.getBoard(), loaded));
+        LeaderboardTableRanker.Table table = LeaderboardTableRanker.rank(
+                group, sort, direction, loaded.candidates(), minimum, defaults, teamNames(loaded), facts);
 
-        LeaderboardPageDto.LeaderboardMinimum minimumDto = new LeaderboardPageDto.LeaderboardMinimum(
-                board.getMinimumKind() != LeaderboardBoard.MinimumKind.NONE,
+        LeaderboardTableDto.LeaderboardMinimum minimumDto = new LeaderboardTableDto.LeaderboardMinimum(
+                rate,
                 minimum,
-                LeaderboardQualification.suggestedFor(board, defaults),
-                board.getMinimumKind().name());
-        return new LeaderboardPageDto(
-                mapper.toInfo(board),
+                rate ? LeaderboardQualification.suggestedFor(sort.getBoard(), defaults) : null,
+                sort.getMinimumKind().name());
+        return new LeaderboardTableDto(
+                routeCode(group),
+                LeaderboardColumn.of(group).stream().map(mapper::toColumnInfo).toList(),
+                new LeaderboardTableDto.LeaderboardSort(sort.getCode(), direction.name()),
                 new LeaderboardScope(KIND, seasonId, leagueId, teamId, sectionId),
                 minimumDto,
-                new LeaderboardPageDto.LeaderboardBasis(
-                        loaded.resultsCounted(),
-                        ranking.listed(),
-                        ranking.ranked(),
-                        ranking.belowMinimum(),
-                        ranking.coverage()),
-                new LeaderboardPageDto.LeaderboardPageInfo(
-                        page, size, ranking.listed(), ((long) page + 1) * size < ranking.listed()),
-                rows);
+                new LeaderboardTableDto.LeaderboardBasis(
+                        loaded.resultsCounted(), table.listed(), table.ranked(), table.belowMinimum(), table.coverage()),
+                new LeaderboardTableDto.LeaderboardPageInfo(
+                        page, size, table.listed(), ((long) page + 1) * size < table.listed()),
+                table.page(page, size));
+    }
+
+    private static String routeCode(LeaderboardBoard.Group group) {
+        return group.name().toLowerCase(Locale.ROOT);
     }
 
     @Override
@@ -285,6 +315,34 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private static LeaderboardQualification.Defaults defaultsOf(LeaderboardPlayers loaded) {
         return LeaderboardQualification.defaultsForScope(
                 loaded.candidates().stream().map(LeaderboardRanker.Candidate::counters).toList());
+    }
+
+    /** Each player's most frequent counted own-side team in scope (ties: the name first alphabetically); one grouped query. */
+    private Map<UUID, String> teamNames(LeaderboardPlayers loaded) {
+        if (loaded.candidates().isEmpty()) {
+            return Map.of();
+        }
+        StatsScope scope = loaded.scope();
+        Map<UUID, PlayerTeamView> best = new HashMap<>();
+        for (PlayerTeamView view : factsRepository.playerTeams(
+                scope.clubId(),
+                null,
+                scope.seasonId(),
+                scope.leagueId(),
+                scope.teamId(),
+                StatsScopeResolver.competitionName(scope),
+                scope.sectionRestricted(),
+                StatsScopeResolver.sectionTeamParameter(scope))) {
+            PlayerTeamView current = best.get(view.getPlayerId());
+            if (current == null || view.getTotal() > current.getTotal()
+                    || (view.getTotal().equals(current.getTotal())
+                            && view.getTeamName().compareToIgnoreCase(current.getTeamName()) < 0)) {
+                best.put(view.getPlayerId(), view);
+            }
+        }
+        Map<UUID, String> names = new HashMap<>();
+        best.forEach((playerId, view) -> names.put(playerId, view.getTeamName()));
+        return names;
     }
 
     // ---- single-innings facts ----
