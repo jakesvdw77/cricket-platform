@@ -73,10 +73,10 @@ describe('managerNav', () => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
 
-  it('groups People as Teams, Players, Availability, Team selection, Communication, with no Availability group of its own', () => {
+  it('orders Schedule as Seasons, Leagues, Matches, Availability, Team selection, Results and People as Teams, Players, Communication', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
-    expect(labels('People')).toEqual(['Teams', 'Players', 'Availability', 'Team selection', 'Communication'])
-    expect(labels('Schedule')?.[0]).toBe('Seasons')
+    expect(labels('Schedule')).toEqual(['Seasons', 'Leagues', 'Matches', 'Availability', 'Team selection', 'Results'])
+    expect(labels('People')).toEqual(['Teams', 'Players', 'Communication'])
     expect(MANAGER_NAV.map((group) => group.label)).toEqual([null, 'Schedule', 'People', 'Club'])
   })
 
