@@ -541,7 +541,7 @@ Per `docs/standards/testing.md`. The calculator and ranking tiers carry the bulk
 
 ### Open questions for the product owner
 
-**Answered 2026-10-20 (see "Decisions of 2026-10-20"):** 1 to 4, 6 to 13, 16, 17 and 18 are settled. **Still open:** 5 (does the Player page also get Section and Team filters?), 14 (where the selectable award categories are stored), 15 (is ranking juniors on the manager boards acceptable? output rules are deferred).
+**Answered 2026-10-20 (see "Decisions of 2026-10-20"):** 1 to 4, 6 to 13, 16, 17 and 18 are settled. **Provisional (2026-10-20, owner), to be reviewed once the mockups are seen:** 5 yes, the Player page also gets Section and Team filters (narrowed for section-scoped managers); 14 yes, selectable award categories stored per club (server-side); 15 yes, ranking juniors on the manager boards is acceptable (output rules deferred). **All questions below stay on the list for review after the mockups; any answer, settled or provisional, can change then.**
 
 **Decided 2026-10-18 (owner), no longer open:** leaderboards are in Part 1; the suggested extras are all kept (recent form as small strips); missing and partial statistics are shown as **Not captured yet** in one panel and results capture is not changed; retired out is a dismissal but not a duck; hauls are the exclusive bands 3, 4 and 5 or more; leaderboards are filtered by Season, League, Team and Section and default to the current season; **minimums apply to the Awards view only by default, and the standings show everyone with an optional minimum preview (default none)**; **this part is manager-only and players see leaderboards later with the player view**.
 
