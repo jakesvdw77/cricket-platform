@@ -1,5 +1,6 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
+import type { DismissalType } from './matchResultApi'
 
 // docs/specs/103-player-stats.md: one player's statistics from published results (GET .../players/{playerId}/stats).
 // Every figure is computed by the server (PlayerStatsCalculator); this file only types it. The shapes mirror the spec's
@@ -250,4 +251,150 @@ export function usePlayerStatsFilterOptions(clubId: string | undefined, playerId
     queryFn: () => getPlayerStatsFilterOptions(clubId as string, playerId as string),
     enabled: Boolean(clubId) && Boolean(playerId),
   })
+}
+
+// docs/specs/115-player-match-list.md: one page of the player's counted matches (GET .../players/{playerId}/stats/matches).
+// Every figure and status is decided on the server (PlayerMatchRowBuilder); the client formats only. Overs are balls.
+export type PlayerMatchResultCode = 'WON' | 'LOST' | 'TIED' | 'DRAWN' | 'NO_RESULT' | 'ABANDONED' | 'INTERNAL'
+export type PlayerMatchBattingStatus = 'NO_CARD' | 'DID_NOT_BAT' | 'BATTED'
+export type PlayerMatchBowlingStatus = 'NO_CARD' | 'DID_NOT_BOWL' | 'BOWLED'
+export type PlayerMatchFieldingStatus = 'NO_CARD' | 'RECORDED'
+
+export interface PlayerMatchOurTeam {
+  // HOME or AWAY
+  side: string
+  // null when the side is a free-text name
+  teamId: string | null
+  teamName: string
+}
+
+export interface PlayerMatchInnings {
+  runs: number | null
+  // null when not recorded (or the balls = 0, runs > 0 case)
+  balls: number | null
+  notOut: boolean
+  howOut: DismissalType | null
+  fours: number | null
+  sixes: number | null
+}
+
+export interface PlayerMatchBatting {
+  status: PlayerMatchBattingStatus
+  // figures present only when status = BATTED
+  innings?: PlayerMatchInnings[] | null
+  inningsCount?: number | null
+  runs?: number | null
+  ballsFaced?: number | null
+  fours?: number | null
+  sixes?: number | null
+}
+
+export interface PlayerMatchSpell {
+  balls: number
+  maidens: number
+  runs: number
+  wickets: number
+  dots: number | null
+  wides: number | null
+  noBalls: number | null
+}
+
+export interface PlayerMatchBowling {
+  status: PlayerMatchBowlingStatus
+  // figures present only when status = BOWLED
+  spells?: PlayerMatchSpell[] | null
+  balls?: number | null
+  maidens?: number | null
+  runs?: number | null
+  wickets?: number | null
+  dots?: number | null
+}
+
+export interface PlayerMatchFielding {
+  status: PlayerMatchFieldingStatus
+  catches?: number | null
+  stumpings?: number | null
+  runOuts?: number | null
+}
+
+export interface PlayerMatchRow {
+  matchId: string
+  resultId: string
+  // ISO instant
+  matchDate: string
+  ourTeams: PlayerMatchOurTeam[]
+  // null for a derby
+  opponentName: string | null
+  derby: boolean
+  leagueId: string | null
+  leagueName: string | null
+  competition: StatsCompetition
+  result: PlayerMatchResultCode
+  ballsPerOver: number
+  hasBattingCard: boolean
+  hasBowlingCard: boolean
+  batting: PlayerMatchBatting
+  bowling: PlayerMatchBowling
+  fielding: PlayerMatchFielding
+  awards: PlayerAwardCounts
+}
+
+export interface PlayerMatchList {
+  playerId: string
+  scope: PlayerStatsScope
+  page: { number: number; size: number; totalElements: number; hasMore: boolean }
+  rows: PlayerMatchRow[]
+}
+
+export type MatchDirection = 'asc' | 'desc'
+export const PLAYER_MATCHES_PAGE_SIZE = 20
+
+export async function getPlayerMatches(
+  clubId: string,
+  playerId: string,
+  filters: PlayerStatsFilters,
+  direction: MatchDirection,
+  page: number,
+  size = PLAYER_MATCHES_PAGE_SIZE,
+): Promise<PlayerMatchList> {
+  const { data } = await api.get<PlayerMatchList>(`/manage/clubs/${clubId}/players/${playerId}/stats/matches`, {
+    params: { ...filterParams(filters), direction, page, size },
+  })
+  return data
+}
+
+// Show more asks the server for the next page and the pages are flattened here; rows are never sliced in the browser.
+// Under the stats prefix, so an unpublish or guest link that refreshes the stats refreshes this too.
+export function usePlayerMatches(
+  clubId: string | undefined,
+  playerId: string | undefined,
+  filters: PlayerStatsFilters,
+  direction: MatchDirection,
+) {
+  const query = useInfiniteQuery({
+    queryKey: [
+      ...playerStatsKey(clubId as string, playerId as string),
+      'matches',
+      {
+        seasonId: filters.seasonId ?? null,
+        leagueId: filters.leagueId ?? null,
+        teamId: filters.teamId ?? null,
+        sectionId: filters.sectionId ?? null,
+        competition: filters.competition ?? null,
+      },
+      direction,
+    ],
+    queryFn: ({ pageParam }) => getPlayerMatches(clubId as string, playerId as string, filters, direction, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.page.hasMore ? last.page.number + 1 : undefined),
+    enabled: Boolean(clubId) && Boolean(playerId),
+    placeholderData: keepPreviousData,
+  })
+  const pages = query.data?.pages ?? []
+  return {
+    ...query,
+    firstPage: pages[0],
+    lastPage: pages[pages.length - 1],
+    rows: pages.flatMap((page) => page.rows),
+  }
 }

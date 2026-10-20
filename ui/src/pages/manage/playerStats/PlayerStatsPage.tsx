@@ -8,7 +8,7 @@ import { badgeSx } from '../../../components/RecordCard'
 import { EmptyState } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
 import { usePlayerStats, usePlayerStatsFilterOptions } from '../../../api/playerStatsApi'
-import type { PlayerStats, StatsCompetition } from '../../../api/playerStatsApi'
+import type { MatchDirection, PlayerStats, StatsCompetition } from '../../../api/playerStatsApi'
 import { listPlayers } from '../../../api/playerApi'
 import { useAvailabilitySeason } from '../../../hooks/useAvailabilitySeason'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
@@ -22,6 +22,7 @@ import { BattingTab } from './BattingTab'
 import { BowlingTab } from './BowlingTab'
 import { FieldingTab } from './FieldingTab'
 import { AwardsTab } from './AwardsTab'
+import { MatchesTab } from './MatchesTab'
 import { resultsPhrase } from './statsFormat'
 
 const COMPETITION_OPTIONS = [
@@ -44,7 +45,7 @@ function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStats
 export default function PlayerStatsPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { playerId } = useParams<{ playerId?: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const tab = resolvePlayerStatsTab(searchParams.get('tab'))
 
   const [saved, updateSaved] = usePersistedListFilters<{ seasonId: string | null; leagueId: string | null }>(
@@ -59,12 +60,13 @@ export default function PlayerStatsPage() {
     leagueId: searchParams.has('leagueId') ? searchParams.get('leagueId') || null : undefined,
     teamId: searchParams.get('teamId') || null,
     sectionId: searchParams.get('sectionId') || null,
+    competition: ((value) => (value === 'LEAGUE' || value === 'FRIENDLY' ? value : null))(searchParams.get('competition')) as StatsCompetition | null,
   }))
   const [seasonOverride, setSeasonOverride] = useState<string | null | undefined>(linked.seasonId)
   const [leagueOverride, setLeagueOverride] = useState<string | null | undefined>(linked.leagueId)
   const [teamId, setTeamId] = useState<string | null>(linked.teamId)
   const [sectionId, setSectionId] = useState<string | null>(linked.sectionId)
-  const [competition, setCompetition] = useState<StatsCompetition | null>(null)
+  const [competition, setCompetition] = useState<StatsCompetition | null>(linked.competition)
 
   // The player's name and status come from the roster read the Player page uses (same cache entry).
   const { seasonId: defaultSeasonId, seasonsLoading } = useAvailabilitySeason(clubId)
@@ -95,6 +97,27 @@ export default function PlayerStatsPage() {
   const hasFilters = Boolean(seasonId || leagueId || teamId || sectionId || competition)
   const statsQuery = usePlayerStats(clubId, playerId, filters, { keepPrevious: true })
   const stats = statsQuery.data
+
+  // docs/specs/115: the Matches tab is newest first; ?dir=asc reverses it (the Date heading toggles it, replacing the history entry).
+  const direction: MatchDirection = searchParams.get('dir') === 'asc' ? 'asc' : 'desc'
+  const toggleDirection = () =>
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        if (direction === 'desc') next.set('dir', 'asc')
+        else next.delete('dir')
+        return next
+      },
+      { replace: true },
+    )
+  // Where the result page's "Back to Matches" returns: this tab with the filters in force. Season and League are always written
+  // (an empty value means All, so it is not replaced by the saved choice on return).
+  const backParams = new URLSearchParams({ tab: 'matches', seasonId: seasonId ?? '', leagueId: leagueId ?? '' })
+  if (teamId) backParams.set('teamId', teamId)
+  if (sectionId) backParams.set('sectionId', sectionId)
+  if (competition) backParams.set('competition', competition)
+  if (direction === 'asc') backParams.set('dir', 'asc')
+  const backTo = `/manage/players/${playerId}/stats?${backParams.toString()}`
 
   const clearFilters = () => {
     updateSaved({ seasonId: null, leagueId: null })
@@ -169,6 +192,9 @@ export default function PlayerStatsPage() {
         {tab === 'bowling' && <BowlingTab stats={stats} />}
         {tab === 'fielding' && <FieldingTab stats={stats} />}
         {tab === 'awards' && <AwardsTab stats={stats} />}
+        {tab === 'matches' && playerId && (
+          <MatchesTab clubId={clubId} playerId={playerId} stats={stats} filters={filters} direction={direction} onToggleDirection={toggleDirection} backTo={backTo} />
+        )}
       </>
     )
   }
