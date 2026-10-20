@@ -131,8 +131,8 @@ class LayeringRulesTest {
      * use the stats repositories.
      */
     private static final String STATS_SERVICES =
-            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl)"
-                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists))(\\$.*)?";
+            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl)"
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
@@ -158,6 +158,8 @@ class LayeringRulesTest {
                 .containsExactlyInAnyOrder(
                         "com.cricketlegend.service.impl.PlayerStatsServiceImpl",
                         "com.cricketlegend.service.impl.LeaderboardServiceImpl",
+                        "com.cricketlegend.service.impl.PlayerMatchListServiceImpl",
+                        "com.cricketlegend.service.support.PlayerMatchFactsReader",
                         "com.cricketlegend.service.support.PlayerStatsCountersReader",
                         "com.cricketlegend.service.support.StatsFilterOptionLists");
     }
@@ -166,7 +168,7 @@ class LayeringRulesTest {
     private static final String PURE_STATS_CLASSES =
             "com\\.cricketlegend\\.service\\.support\\."
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
-                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers)(\\$.*)?";
+                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers|PlayerMatchRowBuilder)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
@@ -182,9 +184,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous: exactly the 11 named top-level classes plus their nested types (32 in all).
+        // proves the rule above is not vacuous: exactly the 12 named top-level classes plus their nested types (39 in all: the builder, its five input records and a compiler-generated switch helper).
         // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(32);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(39);
     }
 }

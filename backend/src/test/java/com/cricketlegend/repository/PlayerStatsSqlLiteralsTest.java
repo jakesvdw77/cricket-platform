@@ -35,6 +35,9 @@ class PlayerStatsSqlLiteralsTest {
         List<String> sql = new ArrayList<>();
         sql.add(PlayerStatsSql.APPEARANCES);
         sql.add(PlayerStatsSql.AGGREGATE);
+        sql.add(PlayerStatsSql.HAS_BATTING_CARD);
+        sql.add(PlayerStatsSql.HAS_BOWLING_CARD);
+        sql.add(PlayerStatsSql.VALID_BALLS);
         for (Class<?> repository : List.of(PlayerStatsFactsRepository.class, PlayerStatsAggregateRepository.class)) {
             for (Method method : repository.getDeclaredMethods()) {
                 Query query = method.getAnnotation(Query.class);
