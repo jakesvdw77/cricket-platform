@@ -95,6 +95,22 @@ Import rules (spec 104):
 
 - **The club default for "First names as initials" is the `club_profile.share_initials_only` column** (`boolean not null default false`, migration `051-club-share-initials-only.sql`), read and written only through `ClubShareSettingsController` and `ClubShareSettingsService`: `GET` and `PUT /api/v1/manage/clubs/{clubId}/share-settings`, body `ShareSettingsDto { initialsOnlyDefault }`, both guarded by `@access.canAccessClub` (any manager of the club, not only the club admin). The club profile `PUT` never resets it, and a club with no profile row reads as false.
 
+## Statistics (spec 103)
+
+- **Statistics are computed on read, never stored.** There is no stats table and no cache; an unpublish, a guest link or a deleted result is correct on the next read. A materialised table needs a measured problem first (spec 103, "Architecture proposal").
+- **`PlayerStatsCalculator` (`service.support`) is the only place a figure is defined.** The aggregate SQL (`PlayerStatsSql`, `PlayerStatsAggregateRepository`) only sums and counts stored columns into additive counters (the one logic beyond that is the encoded `max` keys for highest score and best bowling); averages, rates, percentages, haul bands, coverage and the `notCaptured` catalogue all come from the calculator. Never compute a figure in SQL, a mapper, a ranker or the client.
+- **The stats repositories are the second permitted reader of the result tables.** `PlayerStatsAggregateRepository` and `PlayerStatsFactsRepository` may read `match_result` and its children, gated by the fixed predicate built from the shared constant `ResultVisibility.PUBLISHED_STATUS` (never a re-typed string); they are touched only by the statistics services (ArchUnit, `LayeringRulesTest`). A draft or unpublished result is never read, counted or detected.
+- **What counts** (spec 103, "What counts"): a published result of this club, our non-substitute row linked to a registered profile, on `REGULAR` innings only. Guests, opposition rows, substitutes and unconfirmed import guesses never count. **The played rule (decision 17):** WON, TIE or DRAW counts; NO_RESULT or ABANDONED counts only when at least one ball was bowled (a `REGULAR` innings with `balls > 0`, or a `bowling_entry.balls > 0`), and adds to none of won, lost, tied or drawn; a FORFEIT never counts. A deactivated match with a published result still counts (`match.active` is not a counting rule).
+- **Stored credits are never recomputed.** Bowler `wickets` and fielder `catches`, `stumpings`, `run_outs` are read as stored, whether `DERIVED` or `MANUAL` (spec 101).
+- **Bounded server-side ranking is a deliberate exception to the `LIMIT`/`OFFSET` rule above.** A leaderboard needs the whole ordered set for competition ranking, ties, the optional minimum and one set of definitions, so the service ranks one aggregate row per player (refused with a 400 and logged above 5,000 players) and slices the page (`page`/`size`, default 10, maximum 100) on the server; the browser never receives or slices more than one page. This is the only list allowed to do so, and only because the set is bounded by the roster.
+- **A table figure equals the Player page figure.** Both come from the same counters through `PlayerStatsCalculator`; a parity test asserts it for every player on every column, and a change to a definition changes both.
+- **The calculator, `LeaderboardBoard`/`LeaderboardColumn`, the rankers (`LeaderboardRanker`, `LeaderboardTableRanker`) and `LeaderboardQualification` carry no access information** (no caller, role, section list or Spring/entity dependency), so a later player-facing controller reuses them unchanged. Access (`canAccessClub`, section narrowing) lives in the controller and the service entry methods only.
+- **Names are never logged** (a player name appears in no log line or exception message in the statistics services).
+
+## Leaderboard settings (spec 103)
+
+- **The club's chosen Awards categories are the `club_profile.leaderboard_award_categories` column** (`jsonb`, nullable, null means the nine default categories; migration `052-club-leaderboard-award-categories.sql`), read and written only through `ClubLeaderboardSettingsController` and `ClubLeaderboardSettingsService`: `GET` and `PUT /api/v1/manage/clubs/{clubId}/leaderboard-settings`, both guarded by `@access.canAccessClub` (any manager of the club). The club profile `PUT` never resets it, and a club with no profile row reads as the defaults.
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:
@@ -109,7 +125,7 @@ A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `Security
 
 ## Draft visibility and validation (match results, spec 100)
 
-- **The publish gate.** A `match_result` in `DRAFT` is visible to managers only. Every non-manager read of `match_result` goes through `ResultVisibility`; nothing else filters drafts. Only the result services touch `MatchResultRepository`, so no other service can bypass the gate — enforced by `LayeringRulesTest`.
+- **The publish gate.** A `match_result` in `DRAFT` is visible to managers only. Every non-manager read of `match_result` goes through `ResultVisibility`; nothing else filters drafts. Only the result services touch `MatchResultRepository`, apart from the two statistics repositories (spec 103, the second permitted reader of the result tables, see "Statistics (spec 103)"), so no other service can bypass the gate — enforced by `LayeringRulesTest`.
 - **Warnings and errors.** Result validation returns both. Errors block publishing. Warnings are acknowledgeable: the manager confirms them at publish, and the server checks that they were acknowledged.
 
 ## Scorecard rows (spec 101)

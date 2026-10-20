@@ -137,7 +137,7 @@ erDiagram
     RESULT_PLAYER ||--o{ MATCH_AWARD : "who won it, name kept if row removed"
     RESULT_PLAYER }o--o| PLAYER_PROFILE : "linked registered player, null for a guest or the opposition"
     BATTING_ENTRY }o--o| RESULT_PLAYER : "dismissing bowler and fielder"
-    MATCH_RESULT ||--o{ PLAYER_STATS : "future — 103, stats"
+    CLUB ||--o| CLUB_PROFILE : "profile settings, incl. the Awards categories (103)"
     CLUB ||--o{ RESULT_NAME_ALIAS : "remembered names, per club"
 
     MATCH_RESULT {
@@ -185,6 +185,11 @@ erDiagram
         string side
         string display_name "refreshed on every save"
     }
+    CLUB_PROFILE {
+        uuid club_id
+        boolean share_initials_only "114, migration 051"
+        jsonb leaderboard_award_categories "103, migration 052, null means the nine default categories"
+    }
 ```
 
 - **`MATCH_RESULT`** — one row per `MATCH`, starts as `DRAFT` and becomes `PUBLISHED`. A draft is visible to managers only; every other read goes through `ResultVisibility` (`docs/standards/backend.md`). `source` and `external_id` exist so a later import (104) can find and update the result it created instead of duplicating it. `detail_level` is set by the server from what was captured.
@@ -194,7 +199,25 @@ erDiagram
 - **`MATCH_AWARD`** — one official player of the match plus one team award per ours side; it keeps the name when the player's row is removed (045).
 - **Adaptors built:** `JSON` (104, the common format itself, with a copyable conversion prompt) and `CRICCLUBS_CSV` (107, a deterministic line reader for the CricClubs report export; `CricClubsScorecardMapper` holds the reusable dismissal, retirement and result rules) and `STUMPS_PDF` (108, a deterministic reader of the STUMPS match report PDF: `StumpsPdfText` is the one class that uses Apache PDFBox and turns the PDF into numbered lines, `StumpsReportParser` is a pure lines-in, common-document-out parser with page and line errors, the report's match id becomes the idempotency key; ball-by-ball pages are ignored). The Anthropic AI adaptor (106) is a draft awaiting legal advice.
 - **Import (104, built):** `Adaptor` (stateless, found by `AdaptorRegistry`) to the common `ImportedResultDto` to the Result Processor (location, team mapping, deterministic name matching, draft derivation) to `ResultService.saveImportedDraft`, which writes a `DRAFT` with `match_result.source = IMPORT:<provider>` and `external_id` (unique together, so a re-import finds the draft). Nothing is published and nothing is sent to an AI service. `result_player.import_match` flags a guessed name until a person confirms it (publishing is blocked meanwhile). `result_name_alias` (migration 048) remembers a confirmed spelling per club and is written inside the scorecard save.
-- **Future (not built):** player and team stats (`103`) hang off these tables. **Decided order: `104` (import) is built before `103` (stats)**, so real scorecards prove the wizard rules first; see `docs/roadmap.md`.
+- **Player statistics and leaderboards (`103`, built, in review):** there is **no stats table**. A statistics read model is computed on read over `MATCH` (season, league, teams), `MATCH_RESULT` (published only), `RESULT_PLAYER` (ours, registered, non-substitute) and the batting, bowling, fielding and award entries. `PlayerStatsAggregateRepository` sums and counts stored columns into additive counters per player, `PlayerStatsFactsRepository` reads the few per-player fact rows (recent form, positions, bowler dismissal modes), and the pure `PlayerStatsCalculator` is the only place a figure is defined; the Player page, the three standings tables and the Awards view all read through it, so they cannot disagree. Unpublishing a result or linking a guest changes every figure on the next read. The one stored setting is `club_profile.leaderboard_award_categories` (migration 052). Team statistics (Part 2) are not built.
+
+```mermaid
+flowchart LR
+    M["MATCH<br/>season, league, teams"] --> R
+    R["MATCH_RESULT<br/>PUBLISHED only"] --> RP["RESULT_PLAYER<br/>ours, linked, not substitute"]
+    RP --> E["BATTING / BOWLING / FIELDING entries<br/>MATCH_AWARD"]
+    RP --> A["PlayerStatsAggregateRepository<br/>sums and counts"]
+    E --> A
+    RP --> F["PlayerStatsFactsRepository<br/>form, positions, dismissal modes"]
+    A --> C["PlayerStatsCalculator<br/>every figure defined here"]
+    F --> C
+    C --> P["Player page and breakdown"]
+    C --> L["LeaderboardTableRanker<br/>standings tables"]
+    C --> W["LeaderboardRanker<br/>Awards view"]
+    CP["CLUB_PROFILE.leaderboard_award_categories"] --> W
+```
+
+**Decided order: `104` (import) was built before `103` (stats)**, so real scorecards proved the wizard rules first; see `docs/roadmap.md`.
 - **Validation issues** carry a stable `code`, the wizard `step`, the `side` and a `severity`, built on `ResultValidator.WarningCode`/`ErrorCode`.
 - **Capture picker gaps:** the awaiting-match picker lacks the team's section on each row and a "show all seasons" toggle.
 - Open review questions are listed in `100`'s and `101`'s Rollout Notes.
