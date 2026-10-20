@@ -3,8 +3,8 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { LEADERBOARD_TABS, resolveLeaderboardTab } from './leaderboardTabConfig'
 import { VIEW_TABS_PROPS, viewTabsSx, viewTabSx } from '../../../utils/viewTabs'
 
-// docs/specs/103-player-stats.md: the Standings | Awards strip, bound to ?tab= (default Standings). Each tab is a router link
-// that replaces the history entry and keeps the other parameters (?board=), the pattern of PlayerStatsTabs.
+// docs/specs/103-player-stats.md: the Batting | Bowling | Fielding | Awards strip, bound to ?tab= (default Batting). Each tab is a router link
+// that replaces the history entry and keeps the other parameters (?sort=), the pattern of PlayerStatsTabs.
 export function LeaderboardTabs() {
   const [searchParams] = useSearchParams()
   const active = resolveLeaderboardTab(searchParams.get('tab'))

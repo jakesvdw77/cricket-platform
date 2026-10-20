@@ -1,4 +1,4 @@
-import type { LeaderboardBoardInfo, LeaderboardFigure, LeaderboardFilters, LeaderboardRow } from '../../../api/leaderboardApi'
+import type { LeaderboardBoardInfo, LeaderboardCell, LeaderboardFigure, LeaderboardFilters, LeaderboardRow, MinimumKind } from '../../../api/leaderboardApi'
 import { isBowlingSample } from '../../../api/leaderboardApi'
 import { NOT_ON_FILE } from '../../../utils/playerFormat'
 import { ballsToOvers } from '../../../utils/oversFormat'
@@ -21,12 +21,6 @@ export function figureText(boardCode: string, figure: LeaderboardFigure): string
 }
 
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`
-
-// "12 matches, 11 innings" (innings only on batting and bowling boards).
-export function supportingLine(row: LeaderboardRow): string {
-  const matches = plural(row.matches, 'match', 'matches')
-  return row.innings === null || row.innings === undefined ? matches : `${matches}, ${row.innings} innings`
-}
 
 // The sample behind a rate figure: "3 innings, 41 balls" or "4.2 overs, 2 wickets". Mixed over lengths show balls.
 export function sampleLine(row: LeaderboardRow): string | null {
@@ -55,13 +49,15 @@ export function rankText(rank: number | null): string {
   return rank === null || rank === undefined ? NOT_ON_FILE : String(rank)
 }
 
-// What the unranked group is called on a board ("Not ranked: no dismissals yet").
-export function unrankedReason(board: Pick<LeaderboardBoardInfo, 'code'>): string {
-  return board.code === 'BATTING_AVERAGE' ? 'no dismissals yet' : 'no wickets yet'
+// What the unranked group is called on a table ("Not ranked: no dismissals yet"): the sorted column decides.
+export function unrankedReason(group: string, sortCode: string): string {
+  if (group.toLowerCase() === 'batting' && sortCode === 'average') return 'no dismissals yet'
+  if (group.toLowerCase() === 'bowling') return 'no wickets yet'
+  return 'no figure yet'
 }
 
-export function minimumLabel(board: Pick<LeaderboardBoardInfo, 'minimumKind'>): string {
-  return board.minimumKind === 'OVERS' ? 'Minimum overs' : 'Minimum innings'
+export function minimumLabel(kind: MinimumKind): string {
+  return kind === 'OVERS' ? 'Minimum overs' : 'Minimum innings'
 }
 
 // One line for a leader on the Awards view: the figure and what stands behind it ("412 runs · 14 innings").
@@ -73,8 +69,23 @@ export function awardLine(board: LeaderboardBoardInfo, row: LeaderboardRow): str
   return tail ? `${head} · ${tail}` : head
 }
 
-// The grid of a board row and its header row (Rank, Player, figure, and from sm the sample).
-export const BOARD_COLUMNS = { xs: '40px minmax(0, 1fr) auto', sm: '56px minmax(0, 1fr) 120px minmax(160px, 240px)' }
+const TWO_DECIMAL_COLUMNS = new Set(['average', 'strikeRate', 'economy'])
+
+// One standings cell as text (decision 26): 94* for a highest score, 4/17 for best bowling, overs notation for overs, two
+// decimals for averages and rates, a dash when the figure is not defined. Display only; nothing is computed here.
+export function cellText(columnCode: string, cell: LeaderboardCell | undefined): string {
+  if (!cell) return NOT_ON_FILE
+  if (columnCode === 'highestScore') return cell.runs === null || cell.runs === undefined ? NOT_ON_FILE : `${cell.runs}${cell.notOut ? '*' : ''}`
+  if (columnCode === 'best') return cell.wickets === null || cell.wickets === undefined ? NOT_ON_FILE : `${cell.wickets}/${cell.runs ?? 0}`
+  if (cell.value === null || cell.value === undefined) return NOT_ON_FILE
+  if (columnCode === 'overs') {
+    // cricket notation when the balls are known and over lengths are uniform, else the server's decimal overs
+    if (cell.balls !== null && cell.balls !== undefined && cell.ballsPerOver) return ballsToOvers(cell.balls, cell.ballsPerOver)
+    return String(cell.value)
+  }
+  if (TWO_DECIMAL_COLUMNS.has(columnCode)) return cell.value.toFixed(2)
+  return String(cell.value)
+}
 
 // Season, League, Team and Section ride along as query params. An empty value means "none" (so an All seasons board opens the
 // stats page on All seasons instead of the saved season).

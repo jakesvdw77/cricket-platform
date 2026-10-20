@@ -30,7 +30,23 @@ export interface LeaderboardBoardInfo {
 export interface LeaderboardCatalogueGroup {
   group: LeaderboardGroup
   label: string
+  // lower-case route segment of the standings table (batting, bowling, fielding); null on Awards
+  code: string | null
+  // the column code sorted by default (empty on Awards)
+  defaultSort: string | null
+  // the awards categories (and the chooser) still read the boards
   boards: LeaderboardBoardInfo[]
+  // the table columns of a standings group, in display order (empty on the Awards group)
+  columns: LeaderboardColumn[]
+}
+
+// One column of a standings table (decision 26); `code` is also the lower-case sort code.
+export interface LeaderboardColumn {
+  code: string
+  label: string
+  sortable: boolean
+  direction: 'HIGHEST' | 'LOWEST'
+  minimumKind: MinimumKind
 }
 
 export interface LeaderboardCatalogue {
@@ -131,14 +147,48 @@ export interface LeaderboardPageInfo {
   hasMore: boolean
 }
 
-export interface LeaderboardPage {
-  board: LeaderboardBoardInfo
+// One cell of a standings row: `value` for plain numbers, runs + notOut for highest score, wickets + runs for best bowling.
+// Everything is null when the figure is not defined.
+export interface LeaderboardCell {
+  value: number | null
+  runs: number | null
+  wickets: number | null
+  notOut: boolean | null
+  // the bowling overs cell only: balls bowled and balls per over (null when over lengths are mixed)
+  balls?: number | null
+  ballsPerOver?: number | null
+}
+
+export interface LeaderboardTableRow {
+  // null for the unranked group
+  rank: number | null
+  playerId: string
+  firstName: string
+  lastName: string
+  active: boolean
+  teamName: string | null
+  smallSample: boolean
+  // keyed by column code
+  values: Record<string, LeaderboardCell | undefined>
+}
+
+export interface LeaderboardTable {
+  group: LeaderboardGroup
+  columns: LeaderboardColumn[]
+  sort: { code: string; direction: 'HIGHEST' | 'LOWEST' }
   scope: LeaderboardScope
   minimum: LeaderboardMinimum
   basis: LeaderboardBasis
   page: LeaderboardPageInfo
-  rows: LeaderboardRow[]
+  rows: LeaderboardTableRow[]
 }
+
+// The requested sort direction; absent means the column's natural direction.
+export type SortDirection = 'asc' | 'desc'
+
+export const STANDINGS_GROUPS = ['batting', 'bowling', 'fielding'] as const
+export type StandingsGroup = (typeof STANDINGS_GROUPS)[number]
+export const DEFAULT_SORT: Record<StandingsGroup, string> = { batting: 'runs', bowling: 'wickets', fielding: 'total' }
 
 export interface AwardsMinimums {
   // the values used
@@ -190,8 +240,8 @@ export const leaderboardKeys = {
   awardsAll: (clubId: string) => [...leaderboardsKey(clubId), 'awards'] as const,
   awards: (clubId: string, filters: LeaderboardFilters, minimumInnings: number | null, minimumOvers: number | null) =>
     [...leaderboardsKey(clubId), 'awards', filters.seasonId ?? null, filters.leagueId ?? null, filters.teamId ?? null, filters.sectionId ?? null, minimumInnings, minimumOvers] as const,
-  board: (clubId: string, board: string, filters: LeaderboardFilters, minimum: number | null) =>
-    [...leaderboardsKey(clubId), 'board', board, filters.seasonId ?? null, filters.leagueId ?? null, filters.teamId ?? null, filters.sectionId ?? null, minimum] as const,
+  table: (clubId: string, group: string, sort: string, direction: SortDirection | null, filters: LeaderboardFilters, minimum: number | null) =>
+    [...leaderboardsKey(clubId), 'table', group, sort, direction, filters.seasonId ?? null, filters.leagueId ?? null, filters.teamId ?? null, filters.sectionId ?? null, minimum] as const,
 }
 
 // Only the filters that are set are sent; none is all time.
@@ -211,18 +261,22 @@ export async function getLeaderboardCatalogue(clubId: string): Promise<Leaderboa
   return data
 }
 
-export async function getLeaderboardPage(
+export async function getLeaderboardTable(
   clubId: string,
-  board: string,
+  group: StandingsGroup,
+  sort: string,
+  direction: SortDirection | null,
   filters: LeaderboardFilters,
   minimum: number | null,
   page: number,
   size: number,
-): Promise<LeaderboardPage> {
-  const params: Record<string, string | number> = { ...filterParams(filters), page, size }
-  // Absent means no minimum on a board (the opposite of the awards route).
+): Promise<LeaderboardTable> {
+  const params: Record<string, string | number> = { ...filterParams(filters), sort, page, size }
+  // Absent means the column's natural direction.
+  if (direction) params.direction = direction
+  // Absent means no minimum (the opposite of the awards route).
   if (minimum !== null) params.minimum = minimum
-  const { data } = await api.get<LeaderboardPage>(`${basePath(clubId)}/${board}`, { params })
+  const { data } = await api.get<LeaderboardTable>(`${basePath(clubId)}/${group}`, { params })
   return data
 }
 
@@ -256,31 +310,31 @@ export function useLeaderboardCatalogue(clubId: string | undefined) {
 
 export const LEADERBOARD_PAGE_SIZE = 10
 
-// One board, page by page: Show more asks the server for the next page and the pages are flattened here. Rows are never sliced
-// in the browser (docs/standards/frontend.md).
-export function useLeaderboard(
+// One standings table, page by page: Show more asks the server for the next page and the pages are flattened here. Rows are
+// never sliced in the browser (docs/standards/frontend.md).
+export function useLeaderboardTable(
   clubId: string | undefined,
-  board: string | undefined,
+  group: StandingsGroup,
+  sort: string,
+  direction: SortDirection | null,
   filters: LeaderboardFilters,
   minimum: number | null,
   enabled = true,
 ) {
   const query = useInfiniteQuery({
-    queryKey: leaderboardKeys.board(clubId as string, board as string, filters, minimum),
-    queryFn: ({ pageParam }) => getLeaderboardPage(clubId as string, board as string, filters, minimum, pageParam, LEADERBOARD_PAGE_SIZE),
+    queryKey: leaderboardKeys.table(clubId as string, group, sort, direction, filters, minimum),
+    queryFn: ({ pageParam }) => getLeaderboardTable(clubId as string, group, sort, direction, filters, minimum, pageParam, LEADERBOARD_PAGE_SIZE),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.page.hasMore ? last.page.number + 1 : undefined),
-    enabled: Boolean(clubId) && Boolean(board) && enabled,
+    enabled: Boolean(clubId) && enabled,
     placeholderData: keepPreviousData,
   })
   const pages = query.data?.pages ?? []
-  const first = pages[0]
-  const last = pages[pages.length - 1]
   return {
     ...query,
-    // the first page carries board, scope, minimum and basis; the last carries the running paging totals
-    firstPage: first,
-    lastPage: last,
+    // the first page carries columns, sort, scope, minimum and basis; the last carries the running paging totals
+    firstPage: pages[0],
+    lastPage: pages[pages.length - 1],
     rows: pages.flatMap((page) => page.rows),
   }
 }
