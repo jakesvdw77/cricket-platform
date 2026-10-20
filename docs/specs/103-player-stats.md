@@ -39,6 +39,10 @@ These supersede anything older in this file.
 11. **Awards categories should be selectable** (a club chooses which categories show; the nine headline categories are the defaults, and extra ones such as most sixes can be added). Where the choice is stored is still open (open question 14).
 12. **Filters:** Leaderboards filter by Season, League, Team and Section; section-scoped managers are narrowed to their sections. Whether the Player page also gets Section and Team filters is still open (open question 5).
 13. **Manager-only now; players see leaderboards only once the player login exists** (open question 6 resolved).
+17. **What is a match played (owner, 2026-10-20, supersedes decision 7 and the "played" rule in "What counts").** A result contributes when its outcome is WON, TIE or DRAW, **or** its outcome is NO_RESULT or ABANDONED **and at least one ball was bowled** (some `REGULAR` innings has `balls > 0`, or some `bowling_entry.balls > 0`). Such a match **counts as a match played** and its figures count. A NO_RESULT or ABANDONED match with no ball bowled counts for nothing, and a FORFEIT never counts. A no-result or abandoned match adds to none of won, lost, tied or drawn. This overrides `101`'s appearance rule for statistics only.
+18. **Award categories are stored per club (supersedes "No migration" and the per-category settings non-goal).** Migration `052` adds a nullable `club_profile.leaderboard_award_categories` (jsonb; null means the nine defaults), read and written through `GET/PUT /api/v1/manage/clubs/{clubId}/leaderboard-settings`, mirroring `114`'s share-settings. Any club manager may change it.
+19. **Player page filters (Q5):** `GET /players/{playerId}/stats` also takes `sectionId` (same descendant rule and section-scoped narrowing as the boards), and the breakdown page offers Season, League, Section, Team and Competition. The Stats card on the Player page stays unfiltered career.
+20. **Players list Stats shortcut form (owner, 2026-10-20):** a fourth footer button (icon over caption "Stats") on `PlayerCard` and a Stats icon button beside Change status on `PlayerTable`. The mockup's outlined text button and the "View stats" menu item are not built (the list has no row menu).
 14. **Accepted as proposed:** open questions 1 to 4, 8, 10, 12, 13, 16, 17 and 18.
 15. **Mockups approved (2026-10-20)**: the lean three (Player page Stats card, Leaderboards, Awards view), then the rest: Batting, Bowling and Fielding tabs, empty and partial states, leaderboard empty states, menu and Results button, the navigation flow and the Players list Stats shortcut. Canvas: https://claude.ai/artifact/RSGd22A8U4aHRpSVeS82J7 (11 boards, private to the owner). Open question 1 is resolved; the owner may still change answers after seeing them. The Awards PDF mockup is not made (decision 10).
 16. **Navigation to one player's stats** (flow board 10): three routes, all ending on `/manage/players/:playerId/stats`. (a) Players list, the player, **View full breakdown**. (b) **A Stats button on each Players list row** goes straight to the stats page. (c) **Tapping a player row on a leaderboard goes straight to the stats page**, not the Player page, carrying the board's Season, League, Team and Section filters. Tapping the Players list row itself still opens the Player page, as today. The stats page is always one player; boards compare players.
@@ -56,7 +60,7 @@ These supersede anything older in this file.
 - **Super-over runs and wickets.** `101` rejects scorecard entries on super-over innings; `105` owns whether they ever count. The queries still filter `match_innings.kind = 'REGULAR'`.
 - **Format-aware thresholds** (a fifty meaning something different in a 20-over junior game) and all-round "good performance" measures. The counters the owner listed are fixed (30, 50, 100); suggested all-round measures need the relative-threshold work that standouts deferred.
 - **Materialised or cached statistics.** Compute on read (see Architecture) unless a concrete measured problem is shown. No new table.
-- **A per-category settings screen for leaderboards or awards** (which categories appear, custom categories): the categories are fixed in code in this part; which ones clubs want is open question 14.
+- **Custom (club-invented) award categories.** The categories a club can pick from are fixed in code; only the choice of which ones show is stored per club (decision 18).
 - **Changing any scorecard rule.** Everything about what counts is restated from `101`, not altered.
 - **Rewriting the Player page key figures strip** (`PlayerKeyFigures`, selection-based "Games this season / overall"). It stays; see open question 9.
 
@@ -86,7 +90,7 @@ The owner's team list: Matches Played, Wins, Losses, Ties, No Results, Win Perce
 
 ## Data Model Changes
 
-**None. No migration.** Statistics and boards are computed on read from the existing tables (the Architecture section explains why and what would change that). The existing indexes cover the queries (see Rollout Notes). Every table and column below was read from migrations `043` to `048` (plus `017`, `018`, `020`, `021`) and the entities `ResultPlayer`, `BattingEntry`, `BowlingEntry`, `DismissalType`, `Match` and `League`; items marked **not verified** were not read.
+**One small migration (`052`, the per-club award category choice, decision 18) and nothing else.** Statistics and boards are computed on read from the existing tables (the Architecture section explains why and what would change that). The existing indexes cover the queries (see Rollout Notes). Every table and column below was read from migrations `043` to `048` (plus `017`, `018`, `020`, `021`) and the entities `ResultPlayer`, `BattingEntry`, `BowlingEntry`, `DismissalType`, `Match` and `League`; items marked **not verified** were not read.
 
 ### What counts (rules fixed by `101`, restated, not changed)
 
@@ -95,7 +99,7 @@ A **counted appearance** is a `result_player` row `rp` where **all** of these ho
 | Rule | Column / source | Why |
 |---|---|---|
 | The result is **published** | `match_result.status = 'PUBLISHED'` | Drafts never count (`100`, `ResultVisibility`). Unpublish removes a result from every figure and board at once |
-| The match was **played** | `match_result.outcome_type IN ('WON','TIE','DRAW')` | `101`: a list on a match later recorded as `FORFEIT`, `ABANDONED` or `NO_RESULT` is never an appearance. The same filter applies to every batting, bowling, fielding and award row of that match (open question 7: a no-result match with play) |
+| The match was **played** (decision 17) | `match_result.outcome_type IN ('WON','TIE','DRAW')`, or `outcome_type IN ('NO_RESULT','ABANDONED')` with at least one ball bowled (a `REGULAR` innings with `balls > 0`, or a `bowling_entry.balls > 0`) | A `FORFEIT`, or a no-result or abandoned match with no ball bowled, is never an appearance. The same rule applies to every batting, bowling, fielding and award row of that match |
 | The row is **ours** | `result_player.opposition = false` | Opposition rows are names only, never statistics (`101`) |
 | The row is **linked to a registered profile** | `result_player.player_profile_id IS NOT NULL` | A guest (`NULL`) counts for nobody until linked (`101`, "Guests and borrowed players") |
 | The row is **not a substitute** | `result_player.substitute = false` | `101`'s appearance rule. A 12th man who bats, bowls or fields is promoted to `substitute = false` when his first row is saved, so he counts. A substitute fielder's catch is therefore not credited (open question 8) |
@@ -516,7 +520,7 @@ Per `docs/standards/testing.md`. The calculator and ranking tiers carry the bulk
 - A player who moved teams in a season is one player on a Season board; a Team filter counts only their games for that team.
 - **The Awards view** shows the leader(s) of each headline category on one screen for the chosen filters, (PDF and text output deferred, decision 10), with names through the existing on-screen name rules; a category nobody qualifies for is omitted with a note.
 - **Manager-only:** the endpoints are guarded by `canAccessClub`; another club's player, season, league, team or section is 404; responses are DTOs; services are `@Transactional(readOnly = true)`; no entity crosses the controller boundary; no player-facing or public route exists, and the calculator, ranker and aggregate repository carry no caller or access information, so a later player view reuses them without changing a definition.
-- No migration and no new table; no new dependency (jsPDF is already approved); the OpenAPI changes are additive; one new menu item and its brand icon.
+- One migration (`052`, per-club award categories) and no new table; no new dependency; the OpenAPI changes are additive; one new menu item and its brand icon.
 - `backend.md`, `frontend.md`, `docs/roadmap.md` and `docs/architecture.md` are updated in the build PR (see Rollout Notes).
 - Team statistics, public or player-facing boards, cross-club statistics and own-record scopes are **not** present.
 
