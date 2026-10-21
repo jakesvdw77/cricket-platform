@@ -154,18 +154,18 @@ export default function TeamStatsPage() {
     )
   } else {
     body = (
-      <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         <Box data-testid="stats-basis">
           {teamPageBasisLines(stats.basis).map((line) => (
-            <Typography key={line} component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.875rem', lineHeight: 1.4, mr: 0.75 }}>
+            <Typography key={line} component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8125rem', lineHeight: 1.4, mr: 0.75 }}>
               {line}
             </Typography>
           ))}
         </Box>
         <StatTileStrip>
           <StatTile testId="tile-played" icon={<SportsCricketOutlinedIcon />} label="Played" value={countText(stats.record.played)} />
-          <StatTile testId="tile-won" icon={<EmojiEventsOutlinedIcon />} label="Won" value={countText(stats.record.won)} />
-          <StatTile testId="tile-lost" icon={<TrendingDownOutlinedIcon />} label="Lost" value={countText(stats.record.lost)} />
+          <StatTile testId="tile-won" tone="success" icon={<EmojiEventsOutlinedIcon />} label="Won" value={countText(stats.record.won)} />
+          <StatTile testId="tile-lost" tone="error" icon={<TrendingDownOutlinedIcon />} label="Lost" value={countText(stats.record.lost)} />
           <StatTile testId="tile-win-percent" icon={<PercentOutlinedIcon />} label="Win %" value={winPercentText(stats.record.winPercent)} />
         </StatTileStrip>
         <TeamFormStrip items={stats.form} backTo={pageUrl} />
@@ -178,12 +178,12 @@ export default function TeamStatsPage() {
           <NetRunRateCard stats={stats} />
         </CardGrid>
         <NotCapturedPanel items={stats.notCaptured} />
-      </>
+      </Box>
     )
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}

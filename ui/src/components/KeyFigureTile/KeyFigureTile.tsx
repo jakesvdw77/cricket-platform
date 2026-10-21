@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 
@@ -26,11 +27,15 @@ export interface KeyFigureTileProps {
   // A button drawn under the caption (the match page's poll tile: Open availability). Only for a tile that is not itself a
   // button or link, so the two never nest.
   action?: ReactNode
+  // The statistics pages' shorter tile (10 px padding, 32 px icon tile, 20-22 px value, 13 px label). Omitted, the tile is unchanged.
+  compact?: boolean
+  // With `compact`: the figure's meaning. Draws a faint tint of that colour, the value in its dark colour and a stronger icon tile.
+  emphasis?: 'primary' | 'success' | 'error'
 }
 
 // docs/specs/088 (Player page) and docs/specs/089 (match page): one non-clickable tile of a key-figure strip - a tinted
 // icon tile, a large value and a caption. The strip itself (a 4-up / 2-up grid) belongs to the page.
-export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to, action }: KeyFigureTileProps) {
+export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to, action, compact = false, emphasis }: KeyFigureTileProps) {
   const warn = tone === 'warning'
   const asLink = Boolean(to) && !onClick
   const interactive = Boolean(onClick) || asLink
@@ -61,25 +66,26 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         }),
         display: 'flex',
         alignItems: 'center',
-        gap: { xs: 1.25, md: 1.75 },
+        gap: compact ? 1.25 : { xs: 1.25, md: 1.75 },
         minWidth: 0,
         bgcolor: 'background.paper',
+        ...(compact && { backgroundImage: (theme: Theme) => `linear-gradient(${alpha(theme.palette[emphasis ?? 'primary'].main, 0.06)}, ${alpha(theme.palette[emphasis ?? 'primary'].main, 0.06)})` }),
         borderRadius: 1,
         boxShadow: 1,
-        px: { xs: 1.5, md: 2 },
-        py: { xs: 1.25, md: 1.75 },
+        px: compact ? 1.5 : { xs: 1.5, md: 2 },
+        py: compact ? 1.25 : { xs: 1.25, md: 1.75 },
       }}
     >
       <Box
         component="span"
         aria-hidden
         sx={(theme) => ({
-          width: { xs: 36, md: 44 },
-          height: { xs: 36, md: 44 },
+          width: compact ? 32 : { xs: 36, md: 44 },
+          height: compact ? 32 : { xs: 36, md: 44 },
           flex: 'none',
           borderRadius: { xs: 1, md: 1.25 },
-          bgcolor: alpha(warn ? theme.palette.warning.main : theme.palette.primary.main, warn ? 0.18 : 0.12),
-          color: warn ? 'warning.dark' : 'primary.dark',
+          bgcolor: alpha(warn ? theme.palette.warning.main : theme.palette[compact ? (emphasis ?? 'primary') : 'primary'].main, warn ? 0.18 : compact ? 0.22 : 0.12),
+          color: warn ? 'warning.dark' : compact ? `${emphasis ?? 'primary'}.dark` : 'primary.dark',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -92,16 +98,17 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
           component="b"
           data-testid={testId ? `${testId}-value` : undefined}
           sx={{
-            fontSize: textValue ? { xs: '0.95rem', md: '1.05rem' } : { xs: '1.3rem', md: '1.6rem' },
+            fontSize: textValue ? { xs: '0.95rem', md: '1.05rem' } : compact ? { xs: '1.25rem', md: '1.375rem' } : { xs: '1.3rem', md: '1.6rem' },
             lineHeight: 1.15,
             fontWeight: 700,
+            ...(compact && { color: `${emphasis ?? 'primary'}.dark` }),
             fontVariantNumeric: 'tabular-nums',
             overflowWrap: 'anywhere',
           }}
         >
           {value}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.8125rem' } }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: compact ? '0.8125rem' : { xs: '0.75rem', md: '0.8125rem' }, lineHeight: compact ? 1.3 : undefined }}>
           {label}
         </Typography>
         {action && !interactive && <Box sx={{ mt: 1 }}>{action}</Box>}

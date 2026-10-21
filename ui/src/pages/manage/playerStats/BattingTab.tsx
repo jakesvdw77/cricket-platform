@@ -57,7 +57,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Matches', value: String(basis.matchesCounted) },
             { label: 'Innings', value: String(batting.innings) },
             { label: 'Not outs', value: String(batting.notOuts) },
-            { label: 'Runs', value: String(batting.runs) },
+            { label: 'Runs', value: String(batting.runs), emphasis: 'primary' },
             { label: 'Highest score', value: highestScoreText(batting.highestScore) },
             { label: 'Average', value: decimals(batting.average, 2) },
             { label: 'Balls faced', value: String(batting.ballsFaced), caption: ballsCaption },
@@ -69,7 +69,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
           ]}
         />
         {/* Right column: Milestones at its natural height, Recent form grows to fill, so together they match Scoring's height. */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 }, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
           <Box sx={{ flex: hasForm ? 'none' : 1, display: 'flex', flexDirection: 'column' }}>
             <InfoCard fieldSize="large"
               title="Milestones"

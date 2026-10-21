@@ -190,7 +190,7 @@ export default function PlayerStatsPage() {
   } else {
     body = (
       <>
-        <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.8125rem', lineHeight: 1.4 }}>
           {basisLine(stats, tab)}
         </Typography>
         {tab === 'batting' && <BattingTab stats={stats} />}
@@ -205,7 +205,7 @@ export default function PlayerStatsPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}

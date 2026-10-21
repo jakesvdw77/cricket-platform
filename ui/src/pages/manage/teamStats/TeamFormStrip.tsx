@@ -1,5 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Chip, Stack, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { badgeSx } from '../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../components/RecordCard'
 import type { TeamFormItem, TeamFormResult } from '../../../api/teamStatsApi'
@@ -16,6 +18,16 @@ const FORM_TONE: Record<TeamFormResult, RecordCardBadgeTone> = {
   NO_RESULT: 'muted',
 }
 
+// A stronger fill than the shared badge: a 22% tint of the palette colour, its dark text, a matching border, bold letters.
+const strongSx = (colour: 'success' | 'error') => (theme: Theme) => ({
+  bgcolor: alpha(theme.palette[colour].main, 0.22),
+  color: `${colour}.dark`,
+  border: 1,
+  borderColor: alpha(theme.palette[colour].main, 0.5),
+  fontWeight: 700,
+  '&:hover': { bgcolor: alpha(theme.palette[colour].main, 0.3) },
+})
+
 export interface TeamFormStripProps {
   items: TeamFormItem[]
   // the team page URL with its current filters: the result page's Back returns here
@@ -28,12 +40,12 @@ export interface TeamFormStripProps {
 export function TeamFormStrip({ items, backTo }: TeamFormStripProps) {
   if (items.length === 0) return null
   return (
-    <Box data-testid="team-form-strip" sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, p: { xs: 1.75, md: 2 } }}>
-      <Stack spacing={1}>
-        <Typography variant="caption" component="p" sx={{ m: 0, fontSize: '0.9375rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+    <Box data-testid="team-form-strip" sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, px: 1.5, py: 1 }}>
+      <Stack spacing={0.75}>
+        <Typography variant="caption" component="p" sx={{ m: 0, fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           Form, last {items.length === 1 ? 'result' : `${items.length} results`}, newest first
         </Typography>
-        <Stack component="ul" direction="row" flexWrap="wrap" useFlexGap spacing={1} aria-label="Last results, newest first" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+        <Stack component="ul" direction="row" flexWrap="wrap" useFlexGap spacing={0.75} aria-label="Last results, newest first" sx={{ m: 0, p: 0, listStyle: 'none' }}>
           {items.map((item) => {
             const tone = FORM_TONE[item.result]
             const markers = [item.derby ? 'internal' : '', item.forfeit ? 'forfeit' : ''].filter(Boolean)
@@ -60,7 +72,7 @@ export function TeamFormStrip({ items, backTo }: TeamFormStripProps) {
                       ))}
                     </Box>
                   }
-                  sx={[{ height: 40, minWidth: 44, fontSize: '0.9375rem', fontWeight: 700 }, badgeSx(tone)]}
+                  sx={[{ height: 32, minWidth: 40, fontSize: '0.875rem', fontWeight: 700 }, badgeSx(tone), ...(tone === 'positive' ? [strongSx('success')] : tone === 'closed' ? [strongSx('error')] : [])]}
                 />
               </li>
             )

@@ -96,11 +96,11 @@ describe('InfoCard', () => {
   it('draws the field values larger with fieldSize large, and leaves the default size alone', () => {
     const props = { title: 'Cricket', icon: <span />, fields: [{ label: 'Runs', value: '412' }] }
     const { rerender } = render(<InfoCard {...props} />)
-    expect(getComputedStyle(screen.getByText('Runs')).fontSize).not.toBe('0.875rem')
+    expect(getComputedStyle(screen.getByText('Runs')).fontSize).not.toBe('0.8125rem')
     expect(getComputedStyle(screen.getByText('412')).lineHeight).not.toBe('1.3')
 
     rerender(<InfoCard {...props} fieldSize="large" />)
-    expect(getComputedStyle(screen.getByText('Runs')).fontSize).toBe('0.875rem')
+    expect(getComputedStyle(screen.getByText('Runs')).fontSize).toBe('0.8125rem')
     expect(getComputedStyle(screen.getByText('412')).lineHeight).toBe('1.3')
   })
 })

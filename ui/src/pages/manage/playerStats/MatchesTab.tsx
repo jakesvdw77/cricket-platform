@@ -155,7 +155,7 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
         <StatTileStrip>
           <StatTile testId="tile-matches" icon={<SportsScoreOutlinedIcon />} label="Matches" value={tileValue(stats.basis.matchesCounted)} />
           <StatTile testId="tile-runs" icon={<SportsCricketOutlinedIcon />} label="Runs" value={tileValue(stats.batting.runs)} />
-          <StatTile testId="tile-wickets" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={tileValue(stats.bowling.wickets)} />
+          <StatTile testId="tile-wickets" tone="success" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={tileValue(stats.bowling.wickets)} />
           <StatTile testId="tile-catches" icon={<PanToolOutlinedIcon />} label="Catches" value={tileValue(stats.fielding.catches)} />
         </StatTileStrip>
       )}

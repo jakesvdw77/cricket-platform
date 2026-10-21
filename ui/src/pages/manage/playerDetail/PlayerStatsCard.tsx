@@ -50,12 +50,12 @@ export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProp
   const hasBowling = Boolean(stats && stats.basis.resultsWithBowlingCard > 0)
   const matches = stats ? stats.basis.matchesCounted : null
   const fields = [
-    { label: 'Matches', value: matches === null ? null : String(matches) },
-    { label: 'Runs', value: stats && hasBatting ? String(stats.batting.runs) : null },
-    { label: 'Batting avg', value: stats && hasBatting ? decimals(stats.batting.average, 2) : null },
-    { label: 'Strike rate', value: stats && hasBatting ? decimals(stats.batting.strikeRate, 2) : null },
-    { label: 'Wickets', value: stats && hasBowling ? String(stats.bowling.wickets) : null },
-    { label: 'Economy', value: stats && hasBowling ? decimals(stats.bowling.economy, 2) : null },
+    { label: 'Matches', value: matches === null ? null : String(matches), emphasis: 'primary' as const },
+    { label: 'Runs', value: stats && hasBatting ? String(stats.batting.runs) : null, emphasis: 'primary' as const },
+    { label: 'Batting avg', value: stats && hasBatting ? decimals(stats.batting.average, 2) : null, emphasis: 'primary' as const },
+    { label: 'Strike rate', value: stats && hasBatting ? decimals(stats.batting.strikeRate, 2) : null, emphasis: 'primary' as const },
+    { label: 'Wickets', value: stats && hasBowling ? String(stats.bowling.wickets) : null, emphasis: 'success' as const },
+    { label: 'Economy', value: stats && hasBowling ? decimals(stats.bowling.economy, 2) : null, emphasis: 'primary' as const },
   ]
 
   let basis: string
@@ -71,7 +71,7 @@ export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProp
       {stats && stats.form.batting.length > 0 && <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} />}
       {stats && stats.form.bowling.length > 0 && <FormStrip title="Bowling, last 5 spells" items={bowlingFormItems(stats.form.bowling)} />}
       <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1.5 }}>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0, fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0, fontSize: '0.8125rem', lineHeight: 1.4 }}>
           {basis}{' '}
           {!stats && (
             <MuiButton variant="text" size="small" onClick={() => statsQuery.refetch()} sx={{ minHeight: 44, minWidth: 44, px: 1, verticalAlign: 'middle', textTransform: 'none' }}>
