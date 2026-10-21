@@ -91,6 +91,27 @@ public final class PlayerStatsSeed {
     /** The guest row (Gary Guest, 77 runs) of {@link #guestMatch}. */
     public UUID garyRowResultPlayer;
 
+    // ---- docs/specs/116 team-stats scenarios: created only by seedTeamStats(), so the 103/115 tests' club is unchanged ----
+
+    /** The main team: 17 published results of every kind (see {@link #seedTeamStats()}). In Seniors A. */
+    public Team tsHawks;
+    /** The derby opponent of {@link #tsHawks}, in the grandchild section Seniors A1. */
+    public Team tsKites;
+    /** A team whose only result is a draw (Seniors). */
+    public Team tsOwls;
+    /** Two identical wins, one against a free-text opponent and one against a team of another club (Juniors). */
+    public Team tsSwifts;
+    /** Three Duckworth-Lewis results (Seniors A). */
+    public Team tsDoves;
+    /** A team with no match at all (Juniors). */
+    public Team tsWrens;
+    /** A team of the OTHER club, the away side of one of the Swifts' wins. */
+    public Team tsRivals;
+    /** Present in every non-forfeit Hawks result, on the Hawks side (the cross-check against the player record of 103). */
+    public PlayerProfile tess;
+    /** The matches of {@link #seedTeamStats()} by their scenario key (H1, D1, X2...). */
+    public final Map<String, Match> tsMatches = new java.util.LinkedHashMap<>();
+
     private final JdbcTemplate jdbc;
     private final List<UUID> clubIds;
     private int day;
@@ -418,6 +439,180 @@ public final class PlayerStatsSeed {
         d.award("TEAM_PLAYER_OF_MATCH", "AWAY", away);
     }
 
+    // ---- docs/specs/116 team scenarios (opt-in) ----
+
+    /**
+     * Adds the spec 116 teams and results to the club. NOT called by the constructor, so the 103 and 115 expectations stay
+     * as they are. Every figure is hand-computable: scores are written in the code below, the expectations are in
+     * {@code TeamStatsIntegrationTest}. Ordering of creation is the order of the match dates (each match is a day later).
+     *
+     * <pre>
+     * Hawks (Seniors A) at home, s1/l1 unless noted; innings written "runs/wickets/balls" (AO = all out), scheduled 120 balls
+     *   H1  WON 50 runs      Hawks 200/6/120 v 150/10/100 AO, opposition extras 12 (5 wides, 2 no-balls, 3 byes, 2 leg byes, 0 penalty)
+     *   H2  WON 6 wickets    chase: 180/8/120 v Hawks 184/4/100 (20 balls left), opposition extras 8 (6, 1, 1, 0, penalty not recorded)
+     *   H3  LOST 8 wickets   Hawks 95/10/80 AO v 96/2/70, opposition extras 5 (no breakdown)
+     *   H4  TIE              140/7/120 each way
+     *   H6  WON by super over  regular innings 100/9/120 v 100/8/120, plus SUPER_OVER innings 15/0/6 and 12/1/6 (ignored)
+     *   H7  FORFEIT received  default stray innings 150 / 100 (ignored)
+     *   H8  FORFEIT conceded  default stray innings (ignored)
+     *   H9  NO_RESULT, no ball bowled: not counted, reported
+     *   H10 ABANDONED with play: Hawks 45/2/30 v 0/0/0 (counted as a no result; never a high, low or NRR)
+     *   H11 WON 40 runs, SUMMARY level, match deactivated: 160/5/120 v 120/10/100 AO, no extras
+     *   H12 WON, the opposition innings is missing: Hawks 130/4/120, scheduled balls unknown
+     *   H15 s1/l2, 8 balls per over, 160 scheduled: WON 30 runs, 150/5/160 v 120/9/160
+     *   D1  derby v Kites WON 20 runs: 150/5/120 v 130/9/120, opposition extras 7 (4, 1, 1, 1, 0)
+     *   H18 WON 50 runs again, later than H1: 200/8/120 v 150/10/110 AO, opponent "Late Visitors"
+     *   H16 s2/l1 WON 20 runs: 130/6/120 v 110/10/100 AO
+     *   H17 s2 friendly, scheduled 60: WON 6 wickets chasing 90/10/55 AO with 91/3/50 (10 balls left)
+     *   D2  s2 friendly derby v Kites TIE: 120/6/120 v 120/8/120
+     * Kites   the other side of D1 (lost) and D2 (tie)
+     * Owls    s1/l1 DRAW 160/5/120 v 140/6/120
+     * Swifts  X1 v free-text "Occasionals", X2 v Rivals TS (another club's team), identical: WON 20 runs 140/4/120 v 120/8/120, extras 6
+     * Doves   s1/l1: DV1 won by DLS chasing (190/2/100 v 160/6/120), DV2 lost by DLS all out 120/10/90, DV3 lost by DLS 30/1 in a full 120 balls
+     * Wrens   no match
+     * </pre>
+     */
+    public void seedTeamStats() {
+        tsRivals = fixtures.team(other.club(), other.seniors(), "Rivals TS");
+        tess = fixtures.player(w, "Tess", true);
+        tsHawks = fixtures.team(w.club(), seniorsA, "TS Hawks");
+        tsKites = fixtures.team(w.club(), seniorsA1, "TS Kites");
+        tsOwls = fixtures.team(w.club(), w.seniors(), "TS Owls");
+        tsSwifts = fixtures.team(w.club(), w.juniors(), "TS Swifts");
+        tsDoves = fixtures.team(w.club(), seniorsA, "TS Doves");
+        tsWrens = fixtures.team(w.club(), w.juniors(), "TS Wrens");
+
+        Res h1 = tsResult("H1", tsHawks, null, s1, l1, true, "WON", "HOME", true);
+        h1.set(1, "HOME", 200, 6, 120, false);
+        h1.set(2, "AWAY", 150, 10, 100, true);
+        h1.decide("REGULAR", "RUNS", 50, 120, 6);
+        h1.extras(2, 12, 5, 2, 3, 2, 0);
+
+        Res h2 = tsResult("H2", tsHawks, null, s1, l1, true, "WON", "HOME", true);
+        h2.set(1, "AWAY", 180, 8, 120, false);
+        h2.set(2, "HOME", 184, 4, 100, false);
+        h2.decide("REGULAR", "WICKETS", 6, 120, 6);
+        h2.extras(1, 8, 6, 1, 1, 0, null);
+
+        Res h3 = tsResult("H3", tsHawks, null, s1, l1, true, "WON", "AWAY", true);
+        h3.set(1, "HOME", 95, 10, 80, true);
+        h3.set(2, "AWAY", 96, 2, 70, false);
+        h3.decide("REGULAR", "WICKETS", 8, 120, 6);
+        h3.extras(2, 5, null, null, null, null, null);
+
+        Res h4 = tsResult("H4", tsHawks, null, s1, l1, true, "TIE", null, true);
+        h4.set(1, "HOME", 140, 7, 120, false);
+        h4.set(2, "AWAY", 140, 9, 120, false);
+        h4.decide("REGULAR", null, null, 120, 6);
+
+        Res h6 = tsResult("H6", tsHawks, null, s1, l1, true, "WON", "HOME", true);
+        h6.set(1, "HOME", 100, 9, 120, false);
+        h6.set(2, "AWAY", 100, 8, 120, false);
+        h6.decide("SUPER_OVER", null, null, 120, 6);
+        h6.innings(3, "SUPER_OVER", "HOME", 15, 0, 6);
+        h6.innings(4, "SUPER_OVER", "AWAY", 12, 1, 6);
+
+        tsResult("H7", tsHawks, null, s1, l1, true, "FORFEIT", "HOME", false);
+        tsResult("H8", tsHawks, null, s1, l1, true, "FORFEIT", "AWAY", false);
+
+        Res h9 = tsResult("H9", tsHawks, null, s1, l1, true, "NO_RESULT", null, true);
+        h9.inningsBalls(0, 0);
+
+        Res h10 = tsResult("H10", tsHawks, null, s1, l1, true, "ABANDONED", null, true);
+        h10.set(1, "HOME", 45, 2, 30, false);
+        h10.set(2, "AWAY", 0, 0, 0, false);
+        h10.decide("REGULAR", null, null, 120, 6);
+
+        Res h11 = tsResult("H11", tsHawks, null, s1, l1, false, "WON", "HOME", true);
+        h11.set(1, "HOME", 160, 5, 120, false);
+        h11.set(2, "AWAY", 120, 10, 100, true);
+        h11.decide("REGULAR", "RUNS", 40, 120, 6);
+        jdbc.update("update match_result set detail_level = 'SUMMARY' where id = ?", h11.id);
+
+        Res h12 = tsResult("H12", tsHawks, null, s1, l1, true, "WON", "HOME", true);
+        h12.set(1, "HOME", 130, 4, 120, false);
+        h12.dropSecond();
+
+        Res h15 = tsResult("H15", tsHawks, null, s1, l2, true, "WON", "HOME", true);
+        h15.set(1, "HOME", 150, 5, 160, false);
+        h15.set(2, "AWAY", 120, 9, 160, false);
+        h15.decide("REGULAR", "RUNS", 30, 160, 8);
+
+        Res d1 = tsResult("D1", tsHawks, tsKites, s1, l1, true, "WON", "HOME", true);
+        d1.set(1, "HOME", 150, 5, 120, false);
+        d1.set(2, "AWAY", 130, 9, 120, false);
+        d1.decide("REGULAR", "RUNS", 20, 120, 6);
+        d1.extras(2, 7, 4, 1, 1, 1, 0);
+
+        Res h18 = tsResult("H18", tsHawks, null, s1, l1, true, "WON", "HOME", true);
+        h18.set(1, "HOME", 200, 8, 120, false);
+        h18.set(2, "AWAY", 150, 10, 110, true);
+        h18.decide("REGULAR", "RUNS", 50, 120, 6);
+        jdbc.update("update match set away_team_name = 'Late Visitors' where id = ?", tsMatches.get("H18").getId());
+
+        Res h16 = tsResult("H16", tsHawks, null, s2, l1, true, "WON", "HOME", true);
+        h16.set(1, "HOME", 130, 6, 120, false);
+        h16.set(2, "AWAY", 110, 10, 100, true);
+        h16.decide("REGULAR", "RUNS", 20, 120, 6);
+
+        Res h17 = tsResult("H17", tsHawks, null, s2, null, true, "WON", "HOME", true);
+        h17.set(1, "AWAY", 90, 10, 55, true);
+        h17.set(2, "HOME", 91, 3, 50, false);
+        h17.decide("REGULAR", "WICKETS", 6, 60, 6);
+
+        Res d2 = tsResult("D2", tsHawks, tsKites, s2, null, true, "TIE", null, true);
+        d2.set(1, "HOME", 120, 6, 120, false);
+        d2.set(2, "AWAY", 120, 8, 120, false);
+        d2.decide("REGULAR", null, null, 120, 6);
+
+        for (String key : List.of("X1", "X2")) {
+            Res x = tsResult(key, tsSwifts, "X2".equals(key) ? tsRivals : null, s1, l1, true, "WON", "HOME", false);
+            x.set(1, "HOME", 140, 4, 120, false);
+            x.set(2, "AWAY", 120, 8, 120, false);
+            x.decide("REGULAR", "RUNS", 20, 120, 6);
+            x.extras(2, 6, 3, 1, 1, 1, 0);
+        }
+
+        Res o1 = tsResult("O1", tsOwls, null, s1, l1, true, "DRAW", null, false);
+        o1.set(1, "HOME", 160, 5, 120, false);
+        o1.set(2, "AWAY", 140, 6, 120, false);
+        o1.decide("REGULAR", null, null, 120, 6);
+
+        Res dv1 = tsResult("DV1", tsDoves, null, s1, l1, true, "WON", "HOME", false);
+        dv1.set(1, "AWAY", 160, 6, 120, false);
+        dv1.set(2, "HOME", 190, 2, 100, false);
+        dv1.decide("DLS", "WICKETS", 8, 120, 6);
+        Res dv2 = tsResult("DV2", tsDoves, null, s1, l1, true, "WON", "AWAY", false);
+        dv2.set(1, "HOME", 120, 10, 90, true);
+        dv2.set(2, "AWAY", 80, 3, 60, false);
+        dv2.decide("DLS", "RUNS", 5, 120, 6);
+        Res dv3 = tsResult("DV3", tsDoves, null, s1, l1, true, "WON", "AWAY", false);
+        dv3.set(1, "HOME", 30, 1, 120, false);
+        dv3.set(2, "AWAY", 31, 0, 40, false);
+        dv3.decide("DLS", "WICKETS", 10, 120, 6);
+    }
+
+    /** One scenario result of the home team {@code home} (and {@code away}, a free-text opponent when null). */
+    private Res tsResult(String key, Team home, Team away, Season season, League league, boolean active, String outcome,
+            String winningSide, boolean withTess) {
+        Match m = match(home, away, season, league, active);
+        tsMatches.put(key, m);
+        Res r = published(m, outcome, winningSide);
+        if (withTess) {
+            r.ours("HOME", tess);
+        }
+        return r;
+    }
+
+    /** {@code n} more teams in Seniors A, each with one published win against a free-text opponent (statement-count guard). */
+    public void addTeamBulk(int n) {
+        for (int i = 0; i < n; i++) {
+            Team t = fixtures.team(w.club(), seniorsA, "Bulk team " + i);
+            Res r = published(match(t, null, s1, l1, true), "WON", "HOME");
+            r.decide("REGULAR", "RUNS", 50, 120, 6);
+        }
+    }
+
     /** {@code n} more published results of the club in which the player bats, bowls and takes a catch. */
     public void addMatchesFor(PlayerProfile player, int n) {
         for (int i = 0; i < n; i++) {
@@ -513,6 +708,34 @@ public final class PlayerStatsSeed {
         public void inningsBalls(int first, int second) {
             jdbc.update("update match_innings set balls = ? where id = ?", first, inn1);
             jdbc.update("update match_innings set balls = ? where id = ?", second, inn2);
+        }
+
+        /** Rewrites the regular innings with this sequence (1 or 2) of the default result: who bats and its totals. */
+        public void set(int sequence, String battingSide, int runs, int wickets, int balls, boolean allOut) {
+            jdbc.update("update match_innings set batting_side = ?, runs = ?, wickets = ?, balls = ?, all_out = ?"
+                            + " where match_result_id = ? and sequence = ?",
+                    battingSide, runs, wickets, balls, allOut, id, sequence);
+        }
+
+        /** Removes the second regular innings (a published result may lack one). */
+        public void dropSecond() {
+            jdbc.update("delete from match_innings where id = ?", inn2);
+        }
+
+        /** How and by how much the result was decided, the scheduled quota and the balls in an over. */
+        public void decide(String decidedBy, String marginType, Integer marginValue, Integer scheduledBalls,
+                int ballsPerOver) {
+            jdbc.update("update match_result set decided_by = ?, margin_type = ?, margin_value = ?, scheduled_balls = ?,"
+                            + " balls_per_over = ? where id = ?",
+                    decidedBy, marginType, marginValue, scheduledBalls, ballsPerOver, id);
+        }
+
+        /** The extras of the innings with this sequence: the total and its five components (null = not recorded). */
+        public void extras(int sequence, Integer total, Integer wides, Integer noBalls, Integer byes, Integer legByes,
+                Integer penaltyRuns) {
+            jdbc.update("update match_innings set extras = ?, wides = ?, no_balls = ?, byes = ?, leg_byes = ?,"
+                            + " penalty_runs = ? where match_result_id = ? and sequence = ?",
+                    total, wides, noBalls, byes, legByes, penaltyRuns, id, sequence);
         }
 
         public UUID ours(String side, PlayerProfile player) {
