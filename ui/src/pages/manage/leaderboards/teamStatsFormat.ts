@@ -145,8 +145,6 @@ export function recordedCaption(recorded: number | null | undefined, counted: nu
   return `from ${recorded} of ${counted} innings ${what}`
 }
 
-export const NRR_RULE_LABEL = 'Full-quota rule'
-
 // The Net run rate card: the value (or a dash), and the line under it.
 export function netRunRateCard(nrr: TeamStatsNetRunRate): { value: string; detail: string } {
   if (nrr.status === 'SHOWN') {

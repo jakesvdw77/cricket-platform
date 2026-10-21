@@ -40,7 +40,7 @@ public enum TeamStatsColumn {
             "Runs conceded per wicket taken. Lower is better.", Direction.LOWEST, true),
     ECONOMY("economy", "Econ", "Economy rate", "Runs conceded per over bowled. Lower is better.", Direction.LOWEST, true),
     NET_RUN_RATE("netRunRate", "NRR", "Net run rate",
-            "Full-quota rule. Shown for one league in one season.", Direction.HIGHEST, true);
+            "Shown for one league in one season.", Direction.HIGHEST, true);
 
     private final String code;
     private final String label;

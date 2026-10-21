@@ -16,7 +16,6 @@ import {
   countText,
   matchLineText,
   netRunRateCard,
-  NRR_RULE_LABEL,
   rateText,
   recordedCaption,
   winPercentText,
@@ -214,9 +213,6 @@ export function NetRunRateCard({ stats }: { stats: TeamStatsPageData }) {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
       <Typography data-testid="nrr-value" sx={{ fontSize: '1.875rem', fontWeight: 700, lineHeight: 1.1, color: shown ? 'primary.dark' : 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
         {value}
-      </Typography>
-      <Typography variant="body2" sx={{ fontSize: '0.9375rem', fontWeight: 600 }}>
-        {NRR_RULE_LABEL}
       </Typography>
       <Typography variant="body2" color="text.secondary" data-testid="nrr-detail" sx={{ fontSize: '0.9375rem', lineHeight: 1.4 }}>
         An all-out innings counts at the full overs. {detail}
