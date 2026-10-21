@@ -150,6 +150,8 @@ export interface TeamStatsServer {
   tableCalls: Record<string, unknown>[]
   pageCalls: { teamId: string; params: Record<string, unknown> }[]
   optionCalls: number
+  // the query parameters of each filter-options read (teamId on the team page)
+  optionParams: Record<string, unknown>[]
 }
 
 export const badRequest = () =>
@@ -172,6 +174,7 @@ export function defaultTeamStatsServer(): TeamStatsServer {
     tableCalls: [],
     pageCalls: [],
     optionCalls: 0,
+    optionParams: [],
   }
 }
 
@@ -187,6 +190,7 @@ export function teamStatsApi(server: TeamStatsServer, fallback?: (url: string, c
       const params = config?.params ?? {}
       if (url.endsWith('/team-stats/filter-options')) {
         server.optionCalls += 1
+        server.optionParams.push(params)
         return respond(server.options)
       }
       if (url.endsWith('/team-stats')) {

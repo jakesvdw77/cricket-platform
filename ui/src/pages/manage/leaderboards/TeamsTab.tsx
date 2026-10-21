@@ -12,6 +12,10 @@ import { TeamStandingsTable } from './TeamStandingsTable'
 
 export const DEFAULT_TEAM_SORT = 'won'
 
+// The 15 team column codes (docs/specs/116-team-stats.md). A ?sort= outside this list (a carried player sort, a hand-typed
+// address) is dropped before any request, so the server never has to answer 400 for it.
+const TEAM_SORT_CODES = ['played', 'won', 'lost', 'tied', 'drawn', 'noResult', 'winPercent', 'runs', 'battingAverage', 'runRate', 'highTotal', 'wicketsTaken', 'bowlingAverage', 'economy', 'netRunRate']
+
 export interface TeamsTabProps {
   clubId: string
   filters: LeaderboardFilters
@@ -22,11 +26,13 @@ export interface TeamsTabProps {
 }
 
 // docs/specs/116-team-stats.md (The Teams tab): the Sort by select, the reverse button and the Teams table. The columns come from
-// the response, so ?sort= is validated by the server: a sort that is not a team column (a carried player sort) answers 400 and
-// falls back to the default Wins. ?dir= is sent only together with a ?sort=.
+// the response; ?sort= is checked against the team column codes before the first request, so a sort that is not a team column (a
+// carried player sort) is dropped from the address and the default Wins is asked for. ?dir= is sent only together with a ?sort=.
 export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilters, enabled }: TeamsTabProps) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const sortParam = searchParams.get('sort')
+  const rawSort = searchParams.get('sort')
+  const unknownSort = Boolean(rawSort) && !TEAM_SORT_CODES.includes(rawSort as string)
+  const sortParam = unknownSort ? null : rawSort
   const dirParam = searchParams.get('dir')
   const requestedSort = sortParam || DEFAULT_TEAM_SORT
   const requestedDirection: SortDirection | null = sortParam && (dirParam === 'asc' || dirParam === 'desc') ? dirParam : null
@@ -55,7 +61,7 @@ export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilt
   if (first && first.columns !== columnsSeen && first.columns.length !== columnsSeen.length) setColumnsSeen(first.columns)
 
   // A ?sort= the server does not know (a carried player sort) falls back to the default.
-  const badSort = Boolean(sortParam) && query.isError && !first && isAxiosError(query.error) && query.error.response?.status === 400
+  const badSort = unknownSort || (Boolean(sortParam) && query.isError && !first && isAxiosError(query.error) && query.error.response?.status === 400)
   useEffect(() => {
     if (!badSort) return
     const next = new URLSearchParams(searchParams)

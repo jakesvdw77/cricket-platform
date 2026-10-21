@@ -209,7 +209,8 @@ export const TEAM_STATS_PAGE_SIZE = 25
 export const teamStatsKey = (clubId: string) => ['managed-club', clubId, 'team-stats'] as const
 export const teamStatsKeys = {
   all: teamStatsKey,
-  filterOptions: (clubId: string) => [...teamStatsKey(clubId), 'filter-options'] as const,
+  filterOptions: (clubId: string, teamId?: string) =>
+    (teamId ? [...teamStatsKey(clubId), 'filter-options', teamId] : [...teamStatsKey(clubId), 'filter-options']) as readonly string[],
   team: (clubId: string, teamId: string, filters: TeamStatsPageFilters) =>
     [...teamStatsKey(clubId), 'team', teamId, { seasonId: filters.seasonId ?? null, leagueId: filters.leagueId ?? null, competition: filters.competition ?? null }] as const,
   table: (clubId: string, params: TeamStatsTableParams) =>
@@ -241,8 +242,9 @@ export async function getTeamStatsTable(clubId: string, params: TeamStatsTablePa
   return data
 }
 
-export async function getTeamStatsFilterOptions(clubId: string): Promise<TeamStatsFilterOptions> {
-  const { data } = await api.get<TeamStatsFilterOptions>(`${basePath(clubId)}/filter-options`)
+// teamId (optional) narrows every list to that team's own counted results (the team page); absent = the whole club.
+export async function getTeamStatsFilterOptions(clubId: string, teamId?: string): Promise<TeamStatsFilterOptions> {
+  const { data } = await api.get<TeamStatsFilterOptions>(`${basePath(clubId)}/filter-options`, { params: teamId ? { teamId } : undefined })
   return data
 }
 
@@ -267,10 +269,10 @@ export function useTeamStatsTable(clubId: string | undefined, params: TeamStatsT
   }
 }
 
-export function useTeamStatsFilterOptions(clubId: string | undefined, enabled = true) {
+export function useTeamStatsFilterOptions(clubId: string | undefined, enabled = true, teamId?: string) {
   return useQuery({
-    queryKey: teamStatsKeys.filterOptions(clubId as string),
-    queryFn: () => getTeamStatsFilterOptions(clubId as string),
+    queryKey: teamStatsKeys.filterOptions(clubId as string, teamId),
+    queryFn: () => getTeamStatsFilterOptions(clubId as string, teamId),
     enabled: Boolean(clubId) && enabled,
   })
 }
@@ -289,12 +291,12 @@ export function useTeamStats(
   clubId: string | undefined,
   teamId: string | undefined,
   filters: TeamStatsPageFilters = {},
-  options: { keepPrevious?: boolean } = {},
+  options: { keepPrevious?: boolean; enabled?: boolean } = {},
 ) {
   return useQuery({
     queryKey: teamStatsKeys.team(clubId as string, teamId as string, filters),
     queryFn: () => getTeamStats(clubId as string, teamId as string, filters),
-    enabled: Boolean(clubId) && Boolean(teamId),
+    enabled: Boolean(clubId) && Boolean(teamId) && (options.enabled ?? true),
     ...(options.keepPrevious ? { placeholderData: keepPreviousData } : {}),
   })
 }

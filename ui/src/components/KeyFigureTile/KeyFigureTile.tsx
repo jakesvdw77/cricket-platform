@@ -27,7 +27,7 @@ export interface KeyFigureTileProps {
   // A button drawn under the caption (the match page's poll tile: Open availability). Only for a tile that is not itself a
   // button or link, so the two never nest.
   action?: ReactNode
-  // The statistics pages' shorter tile (10 px padding, 32 px icon tile, 20-22 px value, 13 px label). Omitted, the tile is unchanged.
+  // The statistics pages' shorter tile (12 px side and 10 px top and bottom padding, 32 px icon tile, 20-22 px value, 13 px label). Omitted, the tile is unchanged.
   compact?: boolean
   // With `compact`: the figure's meaning. Draws a faint tint of that colour, the value in its dark colour and a stronger icon tile.
   emphasis?: 'primary' | 'success' | 'error'

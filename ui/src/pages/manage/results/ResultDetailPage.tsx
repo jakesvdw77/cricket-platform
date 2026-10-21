@@ -34,27 +34,20 @@ import {
 import { ImportedChip } from './import/ImportedChip'
 import { ResultBody } from './ResultBody'
 import { usePublishResult } from './usePublishResult'
+import { backTarget } from '../../../utils/backTarget'
 
 const RESULTS_PATH = '/manage/results'
 const MATCHES_PATH = '/manage/fixtures/matches'
 
-// docs/specs/115-player-match-list.md: a page that links here may pass router state { backTo, backLabel } so the back link returns to it
-// ("Back to Matches" on the player's Matches tab). Only an in-app /manage/ address is honoured; anything else is ignored.
-function backTarget(state: unknown): { to: string; label: string } {
-  const candidate = state as { backTo?: unknown; backLabel?: unknown } | null | undefined
-  if (candidate && typeof candidate.backTo === 'string' && candidate.backTo.startsWith('/manage/')) {
-    const label = typeof candidate.backLabel === 'string' && candidate.backLabel.trim() ? candidate.backLabel.trim() : 'previous page'
-    return { to: candidate.backTo, label }
-  }
-  return { to: RESULTS_PATH, label: 'Results' }
-}
+const DEFAULT_BACK = { to: RESULTS_PATH, label: 'Results' }
+
 // docs/specs/100-match-results-core.md, Result page: the read page of one match's result, on PageHeaderBand like the
 // Match page. Draft: Edit (the wizard), Publish, Delete draft. Published: Unpublish, and Edit disabled until then.
 export default function ResultDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId?: string }>()
   const navigate = useNavigate()
-  const back = backTarget(useLocation().state)
+  const back = backTarget(useLocation().state, DEFAULT_BACK)
   const queryClient = useQueryClient()
   useDocumentTitle('Result')
 

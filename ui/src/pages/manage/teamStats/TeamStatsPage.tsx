@@ -15,6 +15,9 @@ import type { TeamStatsCompetition } from '../../../api/teamStatsApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { useStatsFilterLookups } from '../../../hooks/useStatsFilterLookups'
+import { backTarget } from '../../../utils/backTarget'
+import { pickDefaultSeasonId } from '../../../utils/defaultSeason'
+import { parseCompetition } from '../../../utils/statsCompetition'
 import { CardGrid, NotCapturedPanel, StatTile, StatTileStrip } from '../playerStats/statsParts'
 import { countText, teamPageBasisLines, teamStatsLink, winPercentText } from '../leaderboards/teamStatsFormat'
 import { TeamFormStrip } from './TeamFormStrip'
@@ -25,22 +28,10 @@ const COMPETITION_OPTIONS = [
   { value: 'FRIENDLY', label: 'Friendlies' },
 ]
 
+// Stored in place of a season id when All seasons was chosen on purpose (null means "never chosen": the current season).
+const ALL_SEASONS = 'all'
+
 const DEFAULT_BACK = { to: '/manage/leaderboards?tab=teams', label: 'Teams' }
-
-// ?competition= from a link: only the two known values count, anything else means no filter.
-function parseCompetition(value: string | null): TeamStatsCompetition | null {
-  return value === 'LEAGUE' || value === 'FRIENDLY' ? value : null
-}
-
-// docs/specs/115: a page that links here may pass router state { backTo, backLabel }; only an in-app /manage/ path is followed.
-function backTarget(state: unknown): { to: string; label: string } {
-  const candidate = state as { backTo?: unknown; backLabel?: unknown } | null | undefined
-  if (candidate && typeof candidate.backTo === 'string' && candidate.backTo.startsWith('/manage/')) {
-    const label = typeof candidate.backLabel === 'string' && candidate.backLabel.trim() ? candidate.backLabel.trim() : 'previous page'
-    return { to: candidate.backTo, label }
-  }
-  return DEFAULT_BACK
-}
 
 // docs/specs/116-team-stats.md: one team's statistics (/manage/teams/:teamId/stats). Back (to the Teams table or the Team detail
 // page it came from), the team name and status, a compact FilterBar (Season, League, Competition; Season and League are saved per
@@ -51,7 +42,7 @@ export default function TeamStatsPage() {
   const { teamId } = useParams<{ teamId?: string }>()
   const [searchParams] = useSearchParams()
   const location = useLocation()
-  const back = backTarget(location.state)
+  const back = backTarget(location.state, DEFAULT_BACK)
 
   const [saved, updateSaved] = usePersistedListFilters<{ seasonId: string | null; leagueId: string | null }>(
     `teamStats:filters:${clubId}`,
@@ -68,27 +59,38 @@ export default function TeamStatsPage() {
   const [leagueOverride, setLeagueOverride] = useState<string | null | undefined>(linked.leagueId)
   const [competition, setCompetition] = useState<TeamStatsCompetition | null>(linked.competition)
 
-  // There is no per-team options read, so the bar offers the club-wide values that have counted team results
-  // (GET /team-stats/filter-options); a team with nothing under one of them simply shows the empty state.
-  const optionsQuery = useTeamStatsFilterOptions(clubId)
+  // The bar offers only the values this team has counted results under (GET /team-stats/filter-options?teamId=).
+  const optionsQuery = useTeamStatsFilterOptions(clubId, true, teamId)
   const options = optionsQuery.data
   const available = useMemo(
     () => (options ? { seasonIds: options.seasonIds, leagueIds: options.leagueIds, teamIds: [], sectionIds: options.sectionIds } : undefined),
     [options],
   )
-  const lookups = useStatsFilterLookups(clubId, available)
+  const lookups = useStatsFilterLookups(clubId, available, optionsQuery.isError)
   const { seasons: seasonOptions, leagues: leagueOptions } = lookups
   const competitionOptions = COMPETITION_OPTIONS.filter((option) => options?.competitions.includes(option.value))
+  const defaultSeasonId = useMemo(() => pickDefaultSeasonId(lookups.allSeasons ?? []) ?? null, [lookups.allSeasons])
 
-  // A saved choice that is not offered falls back to none (All seasons / All leagues).
-  const wantedSeason = seasonOverride !== undefined ? seasonOverride : saved.seasonId
+  // Season, like the Teams table: a link's value (empty = All seasons), else All seasons if that was chosen, else the saved season
+  // if it is still offered, else the current season if this team has data in it, else All. League: the link, else the saved one
+  // if offered, else All.
+  const offered = (list: { id: string }[], id: string | null | undefined) => (id && list.some((option) => option.id === id) ? id : null)
+  const seasonId =
+    seasonOverride !== undefined
+      ? !seasonOverride || !available || offered(seasonOptions, seasonOverride)
+        ? seasonOverride
+        : null
+      : saved.seasonId === ALL_SEASONS
+        ? null
+        : (offered(seasonOptions, saved.seasonId) ?? offered(seasonOptions, defaultSeasonId))
   const wantedLeague = leagueOverride !== undefined ? leagueOverride : saved.leagueId
-  const seasonId = wantedSeason && (!available || !lookups.allSeasons || seasonOptions.some((option) => option.id === wantedSeason)) ? wantedSeason : null
   const leagueId = wantedLeague && (!available || !lookups.allLeagues || leagueOptions.some((option) => option.id === wantedLeague)) ? wantedLeague : null
+  // The page waits for the options before asking for figures unless a link fixed the Season, so the default is chosen once.
+  const ready = seasonOverride !== undefined || (!optionsQuery.isLoading && !lookups.loading)
 
   const filters = { seasonId, leagueId, competition }
   const hasFilters = Boolean(seasonId || leagueId || competition)
-  const statsQuery = useTeamStats(clubId, teamId, filters, { keepPrevious: true })
+  const statsQuery = useTeamStats(clubId, teamId, filters, { keepPrevious: true, enabled: ready })
   const stats = statsQuery.data
   useDocumentTitle(stats ? `${stats.teamName} · Statistics` : 'Team statistics')
 
@@ -97,7 +99,7 @@ export default function TeamStatsPage() {
   const pageUrl = teamId ? teamStatsLink(teamId, filters, competition) : ''
 
   const clearFilters = () => {
-    updateSaved({ seasonId: null, leagueId: null })
+    updateSaved({ seasonId: ALL_SEASONS, leagueId: null })
     setSeasonOverride(undefined)
     setLeagueOverride(undefined)
     setCompetition(null)
@@ -213,7 +215,7 @@ export default function TeamStatsPage() {
           leagueId={leagueId}
           onSeasonChange={(value) => {
             setSeasonOverride(undefined)
-            updateSaved({ seasonId: value })
+            updateSaved({ seasonId: value ?? ALL_SEASONS })
           }}
           onLeagueChange={(value) => {
             setLeagueOverride(undefined)

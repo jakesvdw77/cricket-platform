@@ -368,7 +368,7 @@ export default function TeamDetailPage() {
         actions={
           <MuiButton
             component={RouterLink}
-            to={`/manage/teams/${team.id}/stats`}
+            to={`/manage/teams/${team.id}/stats?seasonId=${encodeURIComponent(selectedSeasonId)}`}
             state={{ backTo: `${location.pathname}${location.search}`, backLabel: team.name || 'Team' }}
             variant="outlined"
             sx={{ minHeight: 44 }}

@@ -1,7 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Chip, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
 import { badgeSx } from '../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../components/RecordCard'
 import type { TeamFormItem, TeamFormResult } from '../../../api/teamStatsApi'
@@ -17,16 +15,6 @@ const FORM_TONE: Record<TeamFormResult, RecordCardBadgeTone> = {
   DRAWN: 'neutral',
   NO_RESULT: 'muted',
 }
-
-// A stronger fill than the shared badge: a 22% tint of the palette colour, its dark text, a matching border, bold letters.
-const strongSx = (colour: 'success' | 'error') => (theme: Theme) => ({
-  bgcolor: alpha(theme.palette[colour].main, 0.22),
-  color: `${colour}.dark`,
-  border: 1,
-  borderColor: alpha(theme.palette[colour].main, 0.5),
-  fontWeight: 700,
-  '&:hover': { bgcolor: alpha(theme.palette[colour].main, 0.3) },
-})
 
 export interface TeamFormStripProps {
   items: TeamFormItem[]
@@ -72,7 +60,18 @@ export function TeamFormStrip({ items, backTo }: TeamFormStripProps) {
                       ))}
                     </Box>
                   }
-                  sx={[{ height: 32, minWidth: 40, fontSize: '0.875rem', fontWeight: 700 }, badgeSx(tone), ...(tone === 'positive' ? [strongSx('success')] : tone === 'closed' ? [strongSx('error')] : [])]}
+                  sx={[
+                    {
+                      height: 32,
+                      minWidth: 40,
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      // a 44 px hit area on a phone without changing the chip's look: the link's box grows, the chip does not
+                      position: 'relative',
+                      '&::after': { content: '""', position: 'absolute', top: -6, bottom: -6, left: -2, right: -2, display: { xs: 'block', md: 'none' } },
+                    },
+                    badgeSx(tone, { strong: true }),
+                  ]}
                 />
               </li>
             )

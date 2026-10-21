@@ -139,10 +139,36 @@ describe('TeamStatsPage', () => {
   })
 
   describe('filters', () => {
-    it('asks for the whole record with no filters when nothing is saved or linked', async () => {
+    it('defaults Season to the current season when the team has data in it and nothing is saved or linked', async () => {
+      renderPage()
+      await loaded()
+      expect(lastPage()).toEqual({ teamId: 'team-1', params: { seasonId: 'season-1' } })
+      expect(server.pageCalls.every((call) => call.params.seasonId === 'season-1')).toBe(true)
+    })
+
+    it('defaults to All seasons when the current season has no data for this team', async () => {
+      server.options = { seasonIds: ['season-2'], leagueIds: [], sectionIds: [], competitions: ['LEAGUE'] }
       renderPage()
       await loaded()
       expect(lastPage()).toEqual({ teamId: 'team-1', params: {} })
+    })
+
+    it('keeps All seasons when that was chosen on purpose (saved), and a saved season over the default', async () => {
+      localStorage.setItem('teamStats:filters:club-1', JSON.stringify({ seasonId: 'all', leagueId: null }))
+      const { unmount } = renderPage()
+      await loaded()
+      expect(lastPage().params).toEqual({})
+      unmount()
+
+      localStorage.setItem('teamStats:filters:club-1', JSON.stringify({ seasonId: 'season-2', leagueId: null }))
+      renderPage()
+      await waitFor(() => expect(lastPage().params).toEqual({ seasonId: 'season-2' }), wait)
+    })
+
+    it('reads the filter options for this team only (teamId is sent)', async () => {
+      renderPage()
+      await loaded()
+      expect(server.optionParams).toEqual([{ teamId: 'team-1' }])
     })
 
     it('honours Season, League and Competition from the address, once', async () => {
@@ -314,6 +340,7 @@ describe('TeamStatsPage', () => {
       })
 
       it('uses an empty season and league in the way back when none is chosen (All, not the saved one)', async () => {
+        localStorage.setItem('teamStats:filters:club-1', JSON.stringify({ seasonId: 'all', leagueId: null }))
         renderPage()
         await loaded()
         await userEvent.click(within(screen.getByTestId('team-form-strip')).getAllByRole('link')[0])
@@ -589,6 +616,7 @@ describe('TeamStatsPage', () => {
 
     it('a team with no published results: says so, offers Go to Results and hides the filters, tiles and cards', async () => {
       serve(none())
+      server.options = { seasonIds: [], leagueIds: [], sectionIds: [], competitions: [] }
       renderPage()
       expect(await screen.findByText('No published results yet', {}, wait)).toBeInTheDocument()
       expect(screen.getByText('Team statistics appear here once a published result includes this team.')).toBeInTheDocument()
@@ -607,7 +635,7 @@ describe('TeamStatsPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
       await loaded()
       expect(lastPage().params).toEqual({})
-      expect(JSON.parse(localStorage.getItem('teamStats:filters:club-1') as string)).toMatchObject({ seasonId: null, leagueId: null })
+      expect(JSON.parse(localStorage.getItem('teamStats:filters:club-1') as string)).toMatchObject({ seasonId: 'all', leagueId: null })
     })
 
     it('a failed load shows Try again, which reloads', async () => {

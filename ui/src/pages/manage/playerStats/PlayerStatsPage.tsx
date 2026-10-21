@@ -24,16 +24,12 @@ import { FieldingTab } from './FieldingTab'
 import { AwardsTab } from './AwardsTab'
 import { MatchesTab } from './MatchesTab'
 import { resultsPhrase } from './statsFormat'
+import { parseCompetition } from '../../../utils/statsCompetition'
 
 const COMPETITION_OPTIONS = [
   { value: 'LEAGUE', label: 'League' },
   { value: 'FRIENDLY', label: 'Friendlies' },
 ]
-
-// ?competition= from a link: only the two known values count, anything else means no filter.
-function parseCompetition(value: string | null): StatsCompetition | null {
-  return value === 'LEAGUE' || value === 'FRIENDLY' ? value : null
-}
 
 function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStatsTab>): string {
   const { matchesCounted, resultsWithBattingCard, resultsWithBowlingCard } = stats.basis

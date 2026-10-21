@@ -1,17 +1,6 @@
 import { Chip, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
 import { badgeSx } from '../RecordCard'
 import type { RecordCardBadgeTone } from '../RecordCard'
-
-// A stronger tone fill than the shared badge: a 22% tint of the palette colour with its dark text and a matching border.
-const strongSx = (colour: 'success' | 'error') => (theme: Theme) => ({
-  bgcolor: alpha(theme.palette[colour].main, 0.22),
-  color: `${colour}.dark`,
-  border: 1,
-  borderColor: alpha(theme.palette[colour].main, 0.5),
-  fontWeight: 700,
-})
 
 export interface FormStripItem {
   // A stable key (the match id)
@@ -59,7 +48,7 @@ export function FormStrip({ title, items, hideTitle = false }: FormStripProps) {
               variant={item.tone && item.tone !== 'neutral' ? 'filled' : 'outlined'}
               sx={[
                 { height, minWidth: 40, fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
-                ...(item.tone && item.tone !== 'neutral' ? [badgeSx(item.tone), item.tone === 'positive' ? strongSx('success') : {}] : []),
+                ...(item.tone && item.tone !== 'neutral' ? [badgeSx(item.tone, { strong: true })] : []),
               ]}
             />
           </li>

@@ -232,7 +232,22 @@ function isOutlinedTone(tone: RecordCardBadgeTone) {
   return tone === 'neutral' || tone === 'noPoll'
 }
 
-export function badgeSx(tone: RecordCardBadgeTone) {
+// `strong` (positive and closed only) is the form-chip fill: a 22% tint of success / error with its dark text, a matching
+// border and bold letters (FormStrip, the team page form strip). Other tones ignore it.
+function strongBadgeSx(colour: 'success' | 'error') {
+  return {
+    bgcolor: (theme: Theme) => alpha(theme.palette[colour].main, 0.22),
+    color: `${colour}.dark`,
+    border: 1,
+    borderColor: (theme: Theme) => alpha(theme.palette[colour].main, 0.5),
+    fontWeight: 700,
+    '&:hover': { bgcolor: (theme: Theme) => alpha(theme.palette[colour].main, 0.3) },
+  }
+}
+
+export function badgeSx(tone: RecordCardBadgeTone, options: { strong?: boolean } = {}) {
+  if (options.strong && tone === 'positive') return strongBadgeSx('success')
+  if (options.strong && tone === 'closed') return strongBadgeSx('error')
   if (tone === 'positive') {
     return {
       bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),

@@ -159,7 +159,8 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
 
   // docs/specs/116 (decision 21): the Stats shortcut opens the team's statistics page, whose Back returns to this list
   // (with its query string).
-  const statsTo = (teamId: string) => `/manage/teams/${teamId}/stats`
+  // docs/specs/116: the chosen season travels to the team statistics page (empty = All seasons).
+  const statsTo = (teamId: string) => `/manage/teams/${teamId}/stats?seasonId=${encodeURIComponent(seasonId)}`
   const statsState = { backTo: `${location.pathname}${location.search}`, backLabel: 'Teams' }
 
   const figure = (value: number) => (counters.loaded ? value : NOT_ON_FILE)

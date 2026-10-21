@@ -212,7 +212,7 @@ export default function LeaderboardsPage() {
       <ManageScreenHeader
         title="Leaderboards"
         action={
-          !isAwardsTab ? (
+          !isAwardsTab && !isTeamsTab ? (
             <MuiButton variant="contained" startIcon={<EmojiEventsOutlinedIcon />} onClick={showAwards} sx={{ minHeight: 44 }}>
               Awards
             </MuiButton>
@@ -222,11 +222,14 @@ export default function LeaderboardsPage() {
 
       <LeaderboardTabs />
 
-      <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
-        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-          <NameModeToggle />
+      {/* No person is named on the Teams tab, so the name toggle is not offered there. */}
+      {!isTeamsTab && (
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+          <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <NameModeToggle />
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <FilterBar
         density="compact"

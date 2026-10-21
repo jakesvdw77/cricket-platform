@@ -118,6 +118,13 @@ describe('Teams tab', () => {
       expect(screen.getByRole('table', { name: 'Teams statistics' })).toBeInTheDocument()
     })
 
+    it('offers neither the name toggle nor the Awards button (no person is named there)', async () => {
+      renderPage()
+      await screen.findAllByTestId('standings-row', {}, wait)
+      expect(screen.queryByRole('button', { name: 'Full name' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Awards' })).not.toBeInTheDocument()
+    })
+
     it('clicking Teams writes ?tab=teams and drops a player sort; leaving Teams drops the team sort', async () => {
       renderPage('/manage/leaderboards?sort=average')
       await userEvent.click(await screen.findByRole('tab', { name: 'Teams' }, wait))
@@ -318,12 +325,12 @@ describe('Teams tab', () => {
       expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent('Wins')
     })
 
-    it('a sort the server answers 400 for clears ?sort= and ?dir= and loads the default', async () => {
+    it('an unknown sort is dropped before any request: ?sort= and ?dir= are cleared and only the default is asked for', async () => {
       renderPage('/manage/leaderboards?tab=teams&sort=zzz&dir=desc')
       await waitFor(() => expect(search().has('sort')).toBe(false), wait)
       expect(search().has('dir')).toBe(false)
       expect(await screen.findAllByTestId('standings-row', {}, wait)).toHaveLength(2)
-      expect(server.tableCalls.map((c) => c.sort)).toEqual(['zzz', 'won'])
+      expect(server.tableCalls.map((c) => c.sort)).toEqual(['won'])
     })
 
     it('does not treat a failure that is not a bad request as a bad sort', async () => {

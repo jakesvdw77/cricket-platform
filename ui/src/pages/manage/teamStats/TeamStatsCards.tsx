@@ -50,7 +50,7 @@ function Highlights({ items, backTo }: { items: Highlight[]; backTo: string }) {
               to={resultViewTo(item.match.matchId)}
               state={{ backTo, backLabel: 'Team' }}
               aria-label={`${item.label}, ${matchLineText(item.match) || 'match'}, open result`}
-              sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', display: 'inline-flex', alignItems: 'center', minHeight: 24 }}
+              sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', display: 'inline-flex', alignItems: 'center', minHeight: 24, position: 'relative', '&::after': { content: '""', position: 'absolute', top: -10, bottom: -10, left: 0, right: 0, display: { xs: 'block', md: 'none' } } }}
             >
               {matchLineText(item.match) || 'Open result'}
             </MuiLink>

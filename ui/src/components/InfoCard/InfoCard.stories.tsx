@@ -53,3 +53,33 @@ export const ChipsFirstLargeFields: Story = {
     ],
   },
 }
+
+// Large field text with the key figure tinted by its meaning; fewer than six fields draw 2 columns on a phone and 3 from md.
+export const LargeFieldsWithEmphasis: Story = {
+  args: {
+    title: 'Record',
+    fieldSize: 'large',
+    fields: [
+      { label: 'Played', value: '24', emphasis: 'primary' },
+      { label: 'Won', value: '15', emphasis: 'success' },
+      { label: 'Lost', value: '7', emphasis: 'error' },
+      { label: 'Tied', value: '1', caption: 'of 24' },
+    ],
+  },
+}
+
+// Six or more large fields: 2 columns on a phone, 3 from sm, 4 from md.
+export const LargeFieldsFourColumns: Story = {
+  args: {
+    title: 'Batting',
+    fieldSize: 'large',
+    fields: [
+      { label: 'Runs', value: '3120', emphasis: 'primary' },
+      { label: 'Wickets lost', value: '142' },
+      { label: 'Innings', value: '24' },
+      { label: 'Average', value: '21.97' },
+      { label: 'Run rate', value: '4.8' },
+      { label: 'Balls faced', value: '3900' },
+    ],
+  },
+}
