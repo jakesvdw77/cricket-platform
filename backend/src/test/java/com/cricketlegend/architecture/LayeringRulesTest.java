@@ -117,6 +117,7 @@ class LayeringRulesTest {
                 + "|repository\\.(MatchResultRepository|MatchInningsRepository|ResultPlayerRepository"
                 + "|BattingEntryRepository|BowlingEntryRepository|FieldingEntryRepository|MatchAwardRepository"
                 + "|PlayerStatsAggregateRepository|PlayerStatsFactsRepository"
+                + "|TeamStatsAggregateRepository|TeamStatsFactsRepository"
                 + "|MatchSpecifications|ResultVisibility))"
                 + "(\\$.*)?";
     }
@@ -124,21 +125,23 @@ class LayeringRulesTest {
     // ---- docs/specs/103-player-stats.md: statistics are computed from published results by one set of classes ----
 
     private static final String STATS_REPOSITORIES =
-            "com\\.cricketlegend\\.repository\\.(PlayerStatsAggregateRepository|PlayerStatsFactsRepository)(\\$.*)?";
+            "com\\.cricketlegend\\.repository\\.(PlayerStatsAggregateRepository|PlayerStatsFactsRepository"
+                    + "|TeamStatsAggregateRepository|TeamStatsFactsRepository)(\\$.*)?";
 
     /**
      * The statistics services and their two helpers that read a stats repository row type: the only classes that may
      * use the stats repositories.
      */
     private static final String STATS_SERVICES =
-            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl)"
-                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader))(\\$.*)?";
+            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl|TeamStatsServiceImpl)"
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
         ArchRule rule = noClasses()
                 .that(DescribedPredicate.not(HasName.Predicates.nameMatching(
-                        STATS_SERVICES + "|" + STATS_REPOSITORIES + "|com\\.cricketlegend\\.repository\\.PlayerStatsSql")))
+                        STATS_SERVICES + "|" + STATS_REPOSITORIES
+                                + "|com\\.cricketlegend\\.repository\\.(PlayerStatsSql|TeamStatsSql|StatsCountingSql)")))
                 .should().dependOnClassesThat().haveNameMatching(STATS_REPOSITORIES)
                 .because("the stats repositories read published results with their own copy of the publish gate (spec 103)")
                 .allowEmptyShould(true);
@@ -159,16 +162,19 @@ class LayeringRulesTest {
                         "com.cricketlegend.service.impl.PlayerStatsServiceImpl",
                         "com.cricketlegend.service.impl.LeaderboardServiceImpl",
                         "com.cricketlegend.service.impl.PlayerMatchListServiceImpl",
+                        "com.cricketlegend.service.impl.TeamStatsServiceImpl",
                         "com.cricketlegend.service.support.PlayerMatchFactsReader",
                         "com.cricketlegend.service.support.PlayerStatsCountersReader",
-                        "com.cricketlegend.service.support.StatsFilterOptionLists");
+                        "com.cricketlegend.service.support.StatsFilterOptionLists",
+                        "com.cricketlegend.service.support.TeamStatsCountersReader");
     }
 
     /** The pure statistics classes: definitions and ranking that a player-facing route must be able to reuse. */
     private static final String PURE_STATS_CLASSES =
             "com\\.cricketlegend\\.service\\.support\\."
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
-                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers|PlayerMatchRowBuilder)(\\$.*)?";
+                    + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers|PlayerMatchRowBuilder"
+                    + "|TeamStatsCalculator|TeamStatsCounters|TeamStatsColumn|TeamTableRanker)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
@@ -184,9 +190,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous: exactly the 12 named top-level classes plus their nested types (39 in all: the builder, its five input records and a compiler-generated switch helper).
+        // proves the rule above is not vacuous: exactly the 16 named top-level classes plus their nested types (70 in all: 39 from specs 103 and 115, and 31 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers).
         // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(39);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(70);
     }
 }

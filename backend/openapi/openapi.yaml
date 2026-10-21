@@ -7353,6 +7353,124 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeaderboardFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/team-stats:
+    get:
+      tags:
+      - team-stats-controller
+      operationId: getTeamStatsTable
+      description: One page of the club's teams table (spec 116), sorted and ranked by one column. Net run rate is rounded to 2 decimals.
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sort
+        in: query
+        required: false
+        description: A team column code; absent means won
+        schema:
+          type: string
+      - name: direction
+        in: query
+        required: false
+        description: asc (lowest first) or desc (highest first); absent means the column's natural direction; reverses the sort column only
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: LEAGUE or FRIENDLY; absent means all
+        schema:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+      - name: minimum
+        in: query
+        required: false
+        description: Optional minimum matches played; absent means none; ignored unless the sort is a rate
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: Default 25, 1 to 100 (above 100 is refused, not capped)
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamStatsTableDto"
+        "400":
+          description: Unknown sort, invalid direction, competition, minimum, page or size, or too many teams in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown season, league or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/team-stats/filter-options:
+    get:
+      tags:
+      - team-stats-controller
+      operationId: getTeamStatsFilterOptions
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamStatsFilterOptionsDto"
   /api/v1/manage/clubs/{clubId}/leaderboard-settings:
     get:
       tags:
@@ -14191,6 +14309,188 @@ components:
             type: string
             format: uuid
         teamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        competitions:
+          type: array
+          items:
+            type: string
+    TeamStatsTableDto:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStatsColumnInfo"
+        sort:
+          $ref: "#/components/schemas/TeamStatsSort"
+        scope:
+          $ref: "#/components/schemas/TeamStatsScope"
+        minimum:
+          $ref: "#/components/schemas/TeamStatsMinimum"
+        basis:
+          $ref: "#/components/schemas/TeamStatsBasis"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStatsTableRow"
+    TeamStatsColumnInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        longLabel:
+          type: string
+        sortable:
+          type: boolean
+        direction:
+          type: string
+          description: Natural direction; HIGHEST ranks the highest value first, LOWEST the lowest first
+          enum:
+          - HIGHEST
+          - LOWEST
+        minimumKind:
+          type: string
+          enum:
+          - NONE
+          - MATCHES
+        help:
+          type: string
+    TeamStatsSort:
+      type: object
+      properties:
+        code:
+          type: string
+        direction:
+          type: string
+          description: Effective direction; HIGHEST is direction=desc, LOWEST is direction=asc
+          enum:
+          - HIGHEST
+          - LOWEST
+    TeamStatsScope:
+      type: object
+      properties:
+        kind:
+          type: string
+          description: Always CLUB_VERIFIED
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+          description: LEAGUE, FRIENDLY or null
+    TeamStatsMinimum:
+      type: object
+      properties:
+        applies:
+          type: boolean
+        value:
+          type: integer
+          format: int32
+        unit:
+          type: string
+          description: Always MATCHES
+    TeamStatsBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        internalResults:
+          type: integer
+          format: int64
+        resultsNoBallBowled:
+          type: integer
+          format: int64
+        forfeits:
+          type: integer
+          format: int64
+        teamsListed:
+          type: integer
+          format: int64
+        teamsRanked:
+          type: integer
+          format: int64
+        belowMinimum:
+          type: integer
+          format: int64
+    TeamStatsTableRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+          description: Null for the unranked group
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        sectionName:
+          type: string
+        active:
+          type: boolean
+        values:
+          type: object
+          description: One cell per column, keyed by column code
+          additionalProperties:
+            $ref: "#/components/schemas/TeamStatsCell"
+    TeamStatsCell:
+      type: object
+      description: One figure; all null when not defined. Net run rate is signed and rounded to 2 decimals.
+      properties:
+        value:
+          type: number
+        runs:
+          type: integer
+          format: int64
+          description: Highest total only
+        wickets:
+          type: integer
+          format: int64
+          description: Highest total only
+        status:
+          type: string
+          description: Net run rate only
+          enum:
+          - SHOWN
+          - NOT_ONE_COMPETITION
+          - NO_USABLE_RESULTS
+        rule:
+          type: string
+          description: Net run rate only; FULL_QUOTA
+        matchesUsed:
+          type: integer
+          format: int64
+        matchesCounted:
+          type: integer
+          format: int64
+    TeamStatsFilterOptionsDto:
+      type: object
+      properties:
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        leagueIds:
           type: array
           items:
             type: string

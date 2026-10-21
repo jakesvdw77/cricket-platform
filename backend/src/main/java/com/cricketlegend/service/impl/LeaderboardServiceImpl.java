@@ -437,17 +437,6 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     // ---- parameters ----
 
     private static Integer parseMinimum(String text, String name) {
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-        try {
-            int value = Integer.parseInt(text.trim());
-            if (value < 0) {
-                throw new ValidationException(name + " must be a whole number of zero or more.");
-            }
-            return value;
-        } catch (NumberFormatException e) {
-            throw new ValidationException(name + " must be a whole number of zero or more.");
-        }
+        return StatsScopeResolver.parseMinimum(text, name);
     }
 }
