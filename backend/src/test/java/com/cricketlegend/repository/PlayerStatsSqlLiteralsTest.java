@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cricketlegend.domain.AwardType;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.InningsKind;
+import com.cricketlegend.domain.ResultDecidedBy;
+import com.cricketlegend.domain.ResultMarginType;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ResultStatus;
@@ -40,7 +42,24 @@ class PlayerStatsSqlLiteralsTest {
         sql.add(PlayerStatsSql.VALID_BALLS);
         sql.add(PlayerStatsSql.COUNTED_BATTING_ROW);
         sql.add(PlayerStatsSql.COUNTED_SPELL);
-        for (Class<?> repository : List.of(PlayerStatsFactsRepository.class, PlayerStatsAggregateRepository.class)) {
+        sql.add(StatsCountingSql.PUBLISHED);
+        sql.add(StatsCountingSql.PLAYED_RESULT);
+        sql.add(TeamStatsSql.TEAM_RESULTS);
+        sql.add(TeamStatsSql.TEAM_INNINGS);
+        sql.add(TeamStatsSql.AGGREGATE);
+        sql.add(TeamStatsSql.BASIS);
+        sql.add(TeamStatsSql.FILTER_OPTIONS);
+        sql.add(TeamStatsSql.USABLE_INNINGS);
+        sql.add(TeamStatsSql.HIGH_LOW_RESULT);
+        sql.add(TeamStatsSql.COMPLETE_INNINGS);
+        sql.add(TeamStatsSql.CLASSIFIABLE_INNINGS);
+        sql.add(TeamStatsSql.SUCCESSFUL_CHASE);
+        sql.add(TeamStatsSql.NRR_RESULT);
+        for (Class<?> repository : List.of(
+                PlayerStatsFactsRepository.class,
+                PlayerStatsAggregateRepository.class,
+                TeamStatsAggregateRepository.class,
+                TeamStatsFactsRepository.class)) {
             for (Method method : repository.getDeclaredMethods()) {
                 Query query = method.getAnnotation(Query.class);
                 if (query != null) {
@@ -132,6 +151,33 @@ class PlayerStatsSqlLiteralsTest {
     @Test
     void theAppearancesFragmentGatesOnThePublishedStatusEnum() {
         assertThat(PlayerStatsSql.APPEARANCES).contains("r.status = '" + ResultStatus.PUBLISHED.name() + "'");
+    }
+
+    @Test
+    void theTeamLiteralsAreValuesOfTheEnumsTheyAreComparedTo() {
+        Pattern outcomeEq = Pattern.compile("outcome(?:_type)?\\s*(?:=|<>)\\s*'([A-Z_]+)'");
+        Pattern decidedBy = Pattern.compile("decided_by\\s*(?:=|<>)\\s*'([A-Z_]+)'");
+        Pattern marginType = Pattern.compile("margin_type\\s*=\\s*'([A-Z_]+)'");
+        Pattern battingSide = Pattern.compile("batting_side\\s*=\\s*'([A-Z_]+)'");
+        Pattern winningSide = Pattern.compile("winning_side\\s*(?:=|<>)\\s*'([A-Z_]+)'");
+        int checked = 0;
+        for (String sql : allSql()) {
+            checked += assertAll(outcomeEq, sql, names(ResultOutcomeType.values()));
+            checked += assertAll(decidedBy, sql, names(ResultDecidedBy.values()));
+            checked += assertAll(marginType, sql, names(ResultMarginType.values()));
+            checked += assertAll(battingSide, sql, names(ResultSide.values()));
+            checked += assertAll(winningSide, sql, names(ResultSide.values()));
+        }
+        assertThat(checked).isGreaterThan(10);
+        assertThat(TeamStatsSql.AGGREGATE).contains("outcome = 'FORFEIT'").contains("decided_by = 'REGULAR'");
+        assertThat(TeamStatsSql.TEAM_RESULTS).contains("r.outcome_type = 'FORFEIT'");
+    }
+
+    @Test
+    void thePublishedAndPlayedPredicatesAreSplicedFromTheSharedHolder() {
+        assertThat(StatsCountingSql.PUBLISHED).isEqualTo("r.status = '" + ResultStatus.PUBLISHED.name() + "'");
+        assertThat(PlayerStatsSql.APPEARANCES).contains(StatsCountingSql.PUBLISHED);
+        assertThat(TeamStatsSql.TEAM_RESULTS).contains(StatsCountingSql.PUBLISHED).contains(StatsCountingSql.PLAYED_RESULT);
     }
 
     private static int assertAll(Pattern pattern, String sql, Set<String> allowed) {

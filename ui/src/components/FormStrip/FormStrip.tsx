@@ -26,9 +26,9 @@ export interface FormStripProps {
 // nothing for an empty list, so a player with no innings shows no strip. Only formats what it is given.
 export function FormStrip({ title, items, hideTitle = false }: FormStripProps) {
   if (items.length === 0) return null
-  const height = 36
+  const height = 32
   return (
-    <Stack spacing={0.75} data-testid="form-strip">
+    <Stack spacing={0.5} data-testid="form-strip">
       {!hideTitle && (
         <Typography
           variant="caption"
@@ -47,8 +47,8 @@ export function FormStrip({ title, items, hideTitle = false }: FormStripProps) {
               data-tone={item.tone ?? 'neutral'}
               variant={item.tone && item.tone !== 'neutral' ? 'filled' : 'outlined'}
               sx={[
-                { height, minWidth: 40, fontSize: '0.9375rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' },
-                ...(item.tone && item.tone !== 'neutral' ? [badgeSx(item.tone)] : []),
+                { height, minWidth: 40, fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+                ...(item.tone && item.tone !== 'neutral' ? [badgeSx(item.tone, { strong: true })] : []),
               ]}
             />
           </li>

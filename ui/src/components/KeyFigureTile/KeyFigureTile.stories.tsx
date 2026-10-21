@@ -37,3 +37,12 @@ export const AsLink: Story = {
 export const WithAction: Story = {
   args: { icon: <EventAvailableOutlinedIcon />, value: 'None', label: 'No poll yet', textValue: true, action: <button type="button">Open availability</button> },
 }
+
+// docs/specs/103: the statistics pages' shorter tile, with the figure's meaning as a faint tint.
+export const Compact: Story = { args: { icon: <EventAvailableOutlinedIcon />, value: '24', label: 'Played', compact: true } }
+
+export const CompactEmphasisSuccess: Story = { args: { icon: <EventAvailableOutlinedIcon />, value: '15', label: 'Won', compact: true, emphasis: 'success' } }
+
+export const CompactEmphasisError: Story = { args: { icon: <EventAvailableOutlinedIcon />, value: '7', label: 'Lost', compact: true, emphasis: 'error' } }
+
+export const CompactEmphasisPrimary: Story = { args: { icon: <EventAvailableOutlinedIcon />, value: '62%', label: 'Win %', compact: true, emphasis: 'primary' } }

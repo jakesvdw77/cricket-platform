@@ -1,21 +1,17 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { Box, ButtonBase, Button as MuiButton, Chip, Link as MuiLink, Skeleton, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import { Box, Button as MuiButton, Chip, Link as MuiLink, Typography } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { IntegerField } from '../../../components/IntegerField'
 import { PlayerName } from '../../../components/PlayerName'
 import { badgeSx } from '../../../components/RecordCard'
 import { useLeaderboardTable } from '../../../api/leaderboardApi'
 import type { LeaderboardColumn, LeaderboardFilters, LeaderboardTableRow, SortDirection, StandingsGroup } from '../../../api/leaderboardApi'
-import { zebraTint } from '../../../utils/zebraTint'
 import { LeagueEditPanel } from '../leagueEdit/LeagueEditPanel'
-import { hoverTint } from '../leagueEdit/leagueEditRowStyles'
 import { cellText, minimumLabel, rankText, statsLink, unrankedReason } from './leaderboardFormat'
+import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, TableFooter, UnrankedDivider } from './standingsLayout'
+import { playerCellWidth } from './standingsGrid'
 
 export interface StandingsTableProps {
   clubId: string
@@ -40,203 +36,42 @@ export interface StandingsTableProps {
   enabled: boolean
 }
 
-// Column widths: rank, the pinned player column, then one fixed width per figure. Desktop is compact so the 13-column Bowling
-// table (1046 px) and the 12-column Batting table (974 px) fit about 1100 px of content; phones keep roomier columns and scroll.
-const RANK_W = { xs: 40, sm: 40 }
-const PLAYER_W = { xs: 156, sm: 190 }
-const CELL_W = { xs: 80, sm: 62 }
-// Columns whose figure or heading needs more room than CELL_W.
-const WIDE_CELL_W: Record<string, { xs: number; sm: number }> = {
-  overs: { xs: 80, sm: 68 },
-  best: { xs: 80, sm: 66 },
-  catches: { xs: 80, sm: 72 },
-  runOuts: { xs: 88, sm: 76 },
-  stumpings: { xs: 96, sm: 84 },
-}
-const cellWidth = (code: string) => WIDE_CELL_W[code] ?? CELL_W
-
-const trackMins = (columns: LeaderboardColumn[], bp: 'xs' | 'sm') => [RANK_W[bp], PLAYER_W[bp], ...columns.map((c) => cellWidth(c.code)[bp])]
-const template = (columns: LeaderboardColumn[], bp: 'xs' | 'sm') => {
-  const [rank, player, ...cells] = trackMins(columns, bp)
-  return `${rank}px minmax(${player}px, 1.6fr) ${cells.map((w) => `minmax(${w}px, 1fr)`).join(' ')}`
-}
-// The table is as wide as the card, and never narrower than the sum of its minimum column widths (below that it scrolls sideways).
-const tableMinWidth = (columns: LeaderboardColumn[]) => ({
-  xs: `${trackMins(columns, 'xs').reduce((a, b) => a + b, 0)}px`,
-  sm: `${trackMins(columns, 'sm').reduce((a, b) => a + b, 0)}px`,
-})
-
-const gridSx = (columns: LeaderboardColumn[]) => ({
-  display: 'grid',
-  gridTemplateColumns: { xs: template(columns, 'xs'), sm: template(columns, 'sm') },
-  alignItems: 'center',
-  width: '100%',
-  minWidth: tableMinWidth(columns),
-})
-
-// Rank and player stay put while the figures scroll sideways; they take the row's own (opaque) background.
-const pinnedRank = { position: 'sticky', left: 0, zIndex: 2, bgcolor: 'inherit', alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center' } as const
-const pinnedPlayer = {
-  position: 'sticky',
-  left: RANK_W,
-  zIndex: 2,
-  bgcolor: 'inherit',
-  alignSelf: 'stretch',
-  display: 'flex',
-  alignItems: 'center',
-  minWidth: 0,
-  px: 0.5,
-  boxShadow: (theme: Theme) => `1px 0 0 ${theme.palette.divider}`,
-} as const
-
-const sortedTint = (theme: Theme) => alpha(theme.palette.primary.main, 0.1)
-
-function Notice({ title, description, action, tone = 'info' }: { title: string; description: string; action?: ReactNode; tone?: 'info' | 'error' }) {
-  return (
-    <Box
-      role={tone === 'error' ? 'alert' : undefined}
-      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, textAlign: 'center', px: 2, py: 3.5, borderTop: 1, borderColor: tone === 'error' ? 'error.main' : 'divider' }}
-    >
-      <Typography sx={{ fontSize: '1.0625rem', fontWeight: 700, color: tone === 'error' ? 'error.main' : 'text.primary' }}>{title}</Typography>
-      <Typography sx={{ fontSize: '0.9375rem', color: 'text.secondary', maxWidth: 460 }}>{description}</Typography>
-      {action && <Box sx={{ mt: 1 }}>{action}</Box>}
-    </Box>
-  )
-}
-
-function HeaderRow({ columns, sortCode, direction, onSortChange }: { columns: LeaderboardColumn[]; sortCode: string; direction: 'HIGHEST' | 'LOWEST'; onSortChange: (code: string) => void }) {
-  return (
-    <Box
-      role="row"
-      data-testid="standings-header-row"
-      sx={[
-        gridSx(columns),
-        { minHeight: { xs: 44, sm: 36 }, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider', color: 'text.secondary' },
-      ]}
-    >
-      <Box role="columnheader" sx={{ ...pinnedRank, fontSize: '0.75rem', fontWeight: 700 }}>#</Box>
-      <Box role="columnheader" sx={{ ...pinnedPlayer, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Player</Box>
-      {columns.map((column) => {
-        const sorted = column.code === sortCode
-        const Arrow = direction === 'LOWEST' ? ArrowUpwardIcon : ArrowDownwardIcon
-        const label = !column.sortable
-          ? column.label
-          : sorted
-            ? `${column.longLabel ?? column.label}, sorted ${direction === 'LOWEST' ? 'ascending' : 'descending'}; click to reverse`
-            : `Sort by ${column.longLabel ?? column.label}`
-        return (
-          <Box key={column.code} role="columnheader" aria-sort={sorted ? (direction === 'LOWEST' ? 'ascending' : 'descending') : undefined} sx={{ alignSelf: 'stretch', display: 'flex', bgcolor: sorted ? sortedTint : 'transparent' }}>
-            <ButtonBase
-              disabled={!column.sortable}
-              onClick={() => onSortChange(column.code)}
-              aria-label={label}
-              data-sorted={sorted ? 'true' : undefined}
-              sx={{
-                flex: 1,
-                minHeight: { xs: 44, sm: 36 },
-                justifyContent: 'flex-end',
-                gap: 0.25,
-                px: 0.75,
-                fontFamily: 'inherit',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: sorted ? 'primary.dark' : 'text.secondary',
-                '&:hover': { color: 'primary.dark' },
-                '&.Mui-disabled': { color: 'text.secondary' },
-              }}
-            >
-              {sorted && <Arrow aria-hidden sx={{ fontSize: 14 }} />}
-              {column.label}
-            </ButtonBase>
-          </Box>
-        )
-      })}
-    </Box>
-  )
-}
-
 function StandingsRow({ group, row, columns, sortCode, view, filters }: { group: string; row: LeaderboardTableRow; columns: LeaderboardColumn[]; sortCode: string; view: { firstName: string; lastName: string; id: string }[]; filters: LeaderboardFilters }) {
-  const leader = row.rank === 1
   const unranked = row.rank === null || row.rank === undefined
   const person = { firstName: row.firstName, lastName: row.lastName, id: row.playerId }
-  const navigate = useNavigate()
   const to = statsLink(row.playerId, filters)
   return (
-    <Box
-      role="row"
-      // The whole row opens the player. The name inside is the real link (keyboard, screen readers, open in a new tab); a click
-      // elsewhere on the row follows it. (A stretched ::after link cannot span the row: the pinned cells are position: sticky.)
-      onClick={(event) => {
-        if (event.defaultPrevented || (event.target as HTMLElement).closest('a')) return
-        navigate(to)
-      }}
-      data-testid="standings-row"
-      data-rank={unranked ? 'none' : row.rank}
-      sx={[
-        gridSx(columns),
-        {
-          minHeight: { xs: 48, sm: 40 },
-          cursor: 'pointer',
-          color: 'text.primary',
-          bgcolor: 'background.paper',
-          '&:nth-of-type(odd)': { bgcolor: zebraTint },
-          '&:hover': { bgcolor: hoverTint },
-          '&:focus-within': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
-        },
-        leader && { boxShadow: (theme: Theme) => `inset 3px 0 0 ${theme.palette.primary.main}` },
-      ]}
-    >
-      <Box role="cell" sx={{ ...pinnedRank, fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unranked ? 'text.secondary' : 'primary.dark' }}>{rankText(row.rank)}</Box>
-      <Box role="rowheader" sx={pinnedPlayer}>
-        <Box sx={{ minWidth: 0, py: { xs: 0.75, sm: 0.5 } }}>
-          <Typography component="div" sx={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
-            <MuiLink component={RouterLink} to={to} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-              <PlayerName person={person} view={view} />
-            </MuiLink>
+    <RowShell columns={columns} widthOf={playerCellWidth} to={to} rank={row.rank}>
+      <RankCell text={rankText(row.rank)} unranked={unranked} />
+      <FirstCell>
+        <Typography component="div" sx={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
+          <MuiLink component={RouterLink} to={to} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+            <PlayerName person={person} view={view} />
+          </MuiLink>
+        </Typography>
+        {row.teamName && (
+          <Typography component="div" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.25 }}>
+            {row.teamName}
           </Typography>
-          {row.teamName && (
-            <Typography component="div" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.25 }}>
-              {row.teamName}
-            </Typography>
-          )}
-          {(!row.active || row.smallSample) && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-              {!row.active && <Chip size="small" label="Inactive" sx={{ ...badgeSx('muted'), height: 20, fontSize: '0.6875rem' }} />}
-              {row.smallSample && (
-                <Chip size="small" label="Small sample" sx={{ ...badgeSx('warning'), height: 20, fontSize: '0.6875rem' }} />
-              )}
-            </Box>
-          )}
-        </Box>
-      </Box>
+        )}
+        {(!row.active || row.smallSample) && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
+            {!row.active && <Chip size="small" label="Inactive" sx={{ ...badgeSx('muted'), height: 20, fontSize: '0.6875rem' }} />}
+            {row.smallSample && (
+              <Chip size="small" label="Small sample" sx={{ ...badgeSx('warning'), height: 20, fontSize: '0.6875rem' }} />
+            )}
+          </Box>
+        )}
+      </FirstCell>
       {columns.map((column) => {
         const text = cellText(group, column.code, row.values[column.code])
-        const sorted = column.code === sortCode
         return (
-          <Box
-            key={column.code}
-            role="cell"
-            data-testid={`cell-${column.code}`}
-            sx={{
-              alignSelf: 'stretch',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              px: 0.75,
-              fontSize: '0.875rem',
-              fontVariantNumeric: 'tabular-nums',
-              fontWeight: sorted ? 700 : 400,
-              color: row.values[column.code] && text !== '-' ? 'text.primary' : 'text.secondary',
-              bgcolor: sorted ? sortedTint : 'transparent',
-            }}
-          >
+          <FigureCell key={column.code} code={column.code} sorted={column.code === sortCode} muted={!(row.values[column.code] && text !== '-')}>
             {text}
-          </Box>
+          </FigureCell>
         )
       })}
-    </Box>
+    </RowShell>
   )
 }
 
@@ -272,7 +107,6 @@ export function StandingsTable({
 
   const view = useMemo(() => rows.map((row) => ({ firstName: row.firstName, lastName: row.lastName, id: row.playerId })), [rows])
   const firstUnranked = rows.findIndex((row) => row.rank === null || row.rank === undefined)
-  const [atEnd, setAtEnd] = useState(false)
 
   const showMinimum = first ? first.minimum.applies : hasMinimum
   const kind = first?.minimum.unit ?? sortColumn?.minimumKind ?? 'INNINGS'
@@ -295,13 +129,7 @@ export function StandingsTable({
       />
     )
   } else if (!first) {
-    body = (
-      <Box aria-busy="true" aria-label="Loading table" sx={{ px: 1.5, pb: 1.5 }}>
-        {[0, 1, 2, 3].map((index) => (
-          <Skeleton key={index} variant="rounded" height={52} sx={{ mb: 0.75 }} />
-        ))}
-      </Box>
-    )
+    body = <LoadingRows />
   } else if (rows.length === 0) {
     if (appliedMinimum !== null && showMinimum && belowMinimum > 0) {
       body = (
@@ -334,67 +162,19 @@ export function StandingsTable({
     }
   } else {
     body = (
-      <Box sx={{ position: 'relative' }}>
-        <Box
-          data-testid="standings-scroll"
-          role="table"
-          aria-label={`${title} leaderboard`}
-          aria-colcount={shownColumns.length + 2}
-          onScroll={(event) => {
-            const el = event.currentTarget
-            setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
-          }}
-          sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
-        >
-          <HeaderRow columns={shownColumns} sortCode={sortCode} direction={direction} onSortChange={onSortChange} />
-          <Box role="rowgroup" aria-busy={query.isFetching && !query.isFetchingNextPage} sx={{ opacity: query.isPlaceholderData ? 0.6 : 1 }}>
-            {rows.map((row, index) => (
-              <Fragment key={row.playerId}>
-                {index === firstUnranked && (
-                  <Box
-                    role="row"
-                    data-testid="unranked-divider"
-                    sx={{ width: '100%', minWidth: tableMinWidth(shownColumns), bgcolor: 'action.hover', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}
-                  >
-                    <Box
-                      role="cell"
-                      aria-colspan={shownColumns.length + 2}
-                      sx={{
-                        position: 'sticky',
-                        left: 0,
-                        width: 'fit-content',
-                        px: 1.5,
-                        py: 1,
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        letterSpacing: '0.04em',
-                        textTransform: 'uppercase',
-                        color: 'text.secondary',
-                      }}
-                    >
-                      {`Not ranked: ${unrankedReason(group, sortCode)}`}
-                    </Box>
-                  </Box>
-                )}
-                <StandingsRow group={group} row={row} columns={shownColumns} sortCode={sortCode} view={view} filters={filters} />
-              </Fragment>
-            ))}
-          </Box>
+      <ScrollableTable ariaLabel={`${title} leaderboard`} columnCount={shownColumns.length}>
+        <HeaderRow columns={shownColumns} widthOf={playerCellWidth} firstColumnLabel="Player" sortCode={sortCode} direction={direction} onSortChange={onSortChange} />
+        <Box role="rowgroup" aria-busy={query.isFetching && !query.isFetchingNextPage} sx={{ opacity: query.isPlaceholderData ? 0.6 : 1 }}>
+          {rows.map((row, index) => (
+            <Fragment key={row.playerId}>
+              {index === firstUnranked && (
+                <UnrankedDivider label={`Not ranked: ${unrankedReason(group, sortCode)}`} columns={shownColumns} widthOf={playerCellWidth} />
+              )}
+              <StandingsRow group={group} row={row} columns={shownColumns} sortCode={sortCode} view={view} filters={filters} />
+            </Fragment>
+          ))}
         </Box>
-        <Box
-          aria-hidden
-          sx={{
-            display: { xs: atEnd ? 'none' : 'block', sm: 'none' },
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            right: 0,
-            width: 36,
-            pointerEvents: 'none',
-            background: (theme) => `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0)}, ${theme.palette.background.paper})`,
-          }}
-        />
-      </Box>
+      </ScrollableTable>
     )
   }
 
@@ -439,20 +219,7 @@ export function StandingsTable({
 
       {body}
 
-      {(footerLines.length > 0 || query.hasNextPage) && (
-        <Box sx={{ px: { xs: 1.5, md: 2 }, py: 1.5, display: 'flex', flexDirection: 'column', gap: 1.25, borderTop: 1, borderColor: 'divider' }}>
-          {footerLines.length > 0 && (
-            <Typography data-testid="board-footer" sx={{ fontSize: '0.875rem', color: 'text.secondary', lineHeight: 1.45 }}>
-              {footerLines.join(' ')}
-            </Typography>
-          )}
-          {query.hasNextPage && (
-            <MuiButton variant="outlined" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} sx={{ minHeight: 44, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>
-              {query.isFetchingNextPage ? 'Loading...' : 'Show more'}
-            </MuiButton>
-          )}
-        </Box>
-      )}
+      <TableFooter lines={footerLines} hasNextPage={Boolean(query.hasNextPage)} fetchingNext={query.isFetchingNextPage} onShowMore={() => query.fetchNextPage()} />
     </LeagueEditPanel>
   )
 }

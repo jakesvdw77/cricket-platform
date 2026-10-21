@@ -10,6 +10,8 @@ export interface InfoCardField {
   value: string | null | undefined
   // docs/specs/103: a quiet line under the value (a coverage caption such as "from 9 of 14 innings")
   caption?: string
+  // The key figure of a card: its value is drawn larger (18px) in this tone's dark colour, on a faint tint. Omitted, a plain bold value.
+  emphasis?: 'primary' | 'success' | 'error'
 }
 
 export interface InfoCardChip {
@@ -38,7 +40,7 @@ export interface InfoCardProps {
   // docs/specs/104: 'warning' is the amber "look at this" card (an amber icon tile, tinted fill and border) for a notice that
   // is not an error, such as the import's "Check these names". Omitted, the card is unchanged.
   tone?: 'default' | 'warning'
-  // docs/specs/103: 'large' is the roomier field text of the statistics cards (14px labels, 18px values, 13px captions).
+  // docs/specs/103: 'large' is the roomier field text of the statistics cards (13px labels, 16px values, 12px captions; responsive 2/3/4 columns).
   // Omitted ('default'), every card is unchanged.
   fieldSize?: 'default' | 'large'
 }
@@ -46,8 +48,14 @@ export interface InfoCardProps {
 // docs/specs/088 section G (the Player page) and docs/specs/091 (the league Conditions tab): one section card. A solid-green icon tile and an uppercase heading, then
 // label-over-bold-value fields, optional chips, optional action buttons pinned to the bottom so the cards in a row
 // stay the same height.
-export function InfoCard({ title, icon, fields = [], columns = 2, chips, chipsFirst = false, note, headerAction, children, actions, testId, tone = 'default', fieldSize = 'default' }: InfoCardProps) {
+export function InfoCard({ title, icon, fields = [], columns, chips, chipsFirst = false, note, headerAction, children, actions, testId, tone = 'default', fieldSize = 'default' }: InfoCardProps) {
   const large = fieldSize === 'large'
+  // 'large' defaults to 2 columns on a phone, 3 from sm, and 4 from md when there are 6 or more fields; `columns` overrides it
+  const gridColumns = columns
+    ? `repeat(${columns}, minmax(0, 1fr))`
+    : large
+      ? { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', md: `repeat(${fields.length >= 6 ? 4 : 3}, minmax(0, 1fr))` }
+      : 'repeat(2, minmax(0, 1fr))'
   const chipsRow = chips && (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {chips.map((chip) => (
@@ -73,7 +81,7 @@ export function InfoCard({ title, icon, fields = [], columns = 2, chips, chipsFi
         { height: '100%' },
         tone === 'warning' && ((theme) => ({ borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06) })),
       ]}
-      contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }} data-testid={testId}>
+      contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: large ? 1.5 : 2, p: large ? 1.5 : { xs: 2, md: 2.5 }, '&:last-child': { pb: large ? 1.5 : { xs: 2, md: 2.5 } } }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
           <Box
@@ -120,21 +128,28 @@ export function InfoCard({ title, icon, fields = [], columns = 2, chips, chipsFi
       {chipsFirst && chipsRow}
 
       {fields.length > 0 && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, columnGap: { xs: 2, md: 2.5 }, rowGap: large ? { xs: 2, md: 2.5 } : { xs: 1.5, md: 1.75 } }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: gridColumns, columnGap: large ? 2 : { xs: 2, md: 2.5 }, rowGap: large ? 1.25 : { xs: 1.5, md: 1.75 } }}>
           {fields.map((field) => (
-            <Box key={field.label} data-testid="player-info-field" sx={{ display: 'flex', flexDirection: 'column', gap: large ? 0.5 : 0.25, minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary" sx={large ? { fontSize: '0.875rem', lineHeight: 1.3 } : undefined}>
+            <Box
+              key={field.label}
+              data-testid="player-info-field"
+              sx={[
+                { display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 },
+                large && field.emphasis && ((theme) => ({ bgcolor: alpha(theme.palette[field.emphasis!].main, 0.06), borderRadius: 1, px: 1, py: 0.5, mx: -1, my: -0.5 })),
+              ]}
+            >
+              <Typography variant="caption" color="text.secondary" sx={large ? { fontSize: '0.8125rem', lineHeight: 1.3, fontWeight: 400 } : undefined}>
                 {field.label}
               </Typography>
               <Typography
                 variant="body2"
-                color={field.value ? 'text.primary' : 'text.secondary'}
-                sx={{ fontWeight: field.value ? 600 : 400, overflowWrap: 'anywhere', fontSize: large ? { xs: '1.125rem', md: '1.1875rem' } : { md: '0.9375rem' }, lineHeight: large ? 1.3 : undefined }}
+                color={field.value ? (large && field.emphasis ? `${field.emphasis}.dark` : 'text.primary') : 'text.secondary'}
+                sx={{ fontWeight: field.value ? (large ? 700 : 600) : 400, overflowWrap: 'anywhere', fontSize: large ? (field.emphasis ? '1.125rem' : '1rem') : { md: '0.9375rem' }, lineHeight: large ? 1.3 : undefined }}
               >
                 {field.value || NOT_ON_FILE}
               </Typography>
               {field.caption && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: large ? '0.8125rem' : '0.6875rem', lineHeight: 1.3 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: large ? '0.75rem' : '0.6875rem', lineHeight: 1.3 }}>
                   {field.caption}
                 </Typography>
               )}

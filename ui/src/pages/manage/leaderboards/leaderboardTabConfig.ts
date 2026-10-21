@@ -3,6 +3,7 @@ export const LEADERBOARD_TABS = [
   { value: 'bowling', label: 'Bowling' },
   { value: 'fielding', label: 'Fielding' },
   { value: 'awards', label: 'Awards' },
+  { value: 'teams', label: 'Teams' },
 ] as const
 
 export type LeaderboardTab = (typeof LEADERBOARD_TABS)[number]['value']

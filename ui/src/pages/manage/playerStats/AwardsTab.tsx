@@ -19,8 +19,8 @@ export function AwardsTab({ stats }: { stats: PlayerStats }) {
       <StatTileStrip>
         <StatTile testId="tile-potm" icon={<StarOutlineIcon />} label="Player of the match" value={String(awards.playerOfTheMatch)} />
         <StatTile testId="tile-team-potm" icon={<GroupsOutlinedIcon />} label="Team player of the match" value={String(awards.teamPlayerOfTheMatch)} />
-        <StatTile testId="tile-won" icon={<CheckCircleOutlineIcon />} label="Won" value={String(record.won)} />
-        <StatTile testId="tile-lost" icon={<HighlightOffIcon />} label="Lost" value={String(record.lost)} />
+        <StatTile testId="tile-won" tone="success" icon={<CheckCircleOutlineIcon />} label="Won" value={String(record.won)} />
+        <StatTile testId="tile-lost" tone="error" icon={<HighlightOffIcon />} label="Lost" value={String(record.lost)} />
       </StatTileStrip>
 
       <CardGrid>

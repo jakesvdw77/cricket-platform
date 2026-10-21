@@ -14,8 +14,6 @@ final class PlayerStatsSql {
 
     private PlayerStatsSql() {}
 
-    private static final String PUBLISHED = "r.status = '" + ResultVisibility.PUBLISHED_STATUS + "'";
-
     /**
      * {@code ap}: one row per counted appearance (docs/specs/103, "What counts"): a published result of the club,
      * played (decision 17), one of our rows, linked to a profile, not a substitute, not an unconfirmed import guess,
@@ -33,20 +31,14 @@ final class PlayerStatsSql {
               left join team ht on ht.id = m.home_team_id
               left join team awt on awt.id = m.away_team_id
               where r.club_id = :clubId
-                and\s""" + PUBLISHED + """
+                and\s""" + StatsCountingSql.PUBLISHED + """
 
                 and rp.opposition = false
                 and rp.player_profile_id is not null
                 and rp.substitute = false
                 and rp.import_match is null
-                and (r.outcome_type in ('WON', 'TIE', 'DRAW')
-                     or (r.outcome_type in ('NO_RESULT', 'ABANDONED')
-                         and (exists (select 1 from match_innings pinn
-                                      where pinn.match_result_id = r.id and pinn.kind = 'REGULAR' and pinn.balls > 0)
-                              or exists (select 1 from bowling_entry pbw
-                                         join match_innings pbinn on pbinn.id = pbw.match_innings_id
-                                         where pbinn.match_result_id = r.id and pbinn.kind = 'REGULAR'
-                                           and pbw.balls > 0))))
+                and\s""" + StatsCountingSql.PLAYED_RESULT + """
+
                 and (cast(:playerId as uuid) is null or rp.player_profile_id = cast(:playerId as uuid))
                 and (cast(:seasonId as uuid) is null or m.season_id = cast(:seasonId as uuid))
                 and (cast(:leagueId as uuid) is null or m.league_id = cast(:leagueId as uuid))

@@ -113,6 +113,8 @@ export interface RecordCardFooterButton {
   onClick?: (event: MouseEvent<HTMLElement>) => void
   // docs/specs/092: a router link instead of a click handler (a real anchor, so it can open in a new tab). Teams' footer.
   to?: string
+  // Router state carried on the `to` link (e.g. a backTo for the destination's Back button).
+  linkState?: unknown
   disabled?: boolean
   // Tooltip text, defaulting to `ariaLabel ?? label`. When set on a `disabled` button it also
   // explains why: the button is wrapped in a span carrying the tooltip, because a disabled
@@ -230,7 +232,22 @@ function isOutlinedTone(tone: RecordCardBadgeTone) {
   return tone === 'neutral' || tone === 'noPoll'
 }
 
-export function badgeSx(tone: RecordCardBadgeTone) {
+// `strong` (positive and closed only) is the form-chip fill: a 22% tint of success / error with its dark text, a matching
+// border and bold letters (FormStrip, the team page form strip). Other tones ignore it.
+function strongBadgeSx(colour: 'success' | 'error') {
+  return {
+    bgcolor: (theme: Theme) => alpha(theme.palette[colour].main, 0.22),
+    color: `${colour}.dark`,
+    border: 1,
+    borderColor: (theme: Theme) => alpha(theme.palette[colour].main, 0.5),
+    fontWeight: 700,
+    '&:hover': { bgcolor: (theme: Theme) => alpha(theme.palette[colour].main, 0.3) },
+  }
+}
+
+export function badgeSx(tone: RecordCardBadgeTone, options: { strong?: boolean } = {}) {
+  if (options.strong && tone === 'positive') return strongBadgeSx('success')
+  if (options.strong && tone === 'closed') return strongBadgeSx('error')
   if (tone === 'positive') {
     return {
       bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),
@@ -591,7 +608,7 @@ export function RecordCard({
               title={tooltip}
               disabled={button.disabled}
               onClick={button.onClick}
-              {...(button.to ? { component: RouterLink, to: button.to } : {})}
+              {...(button.to ? { component: RouterLink, to: button.to, state: button.linkState } : {})}
               sx={{
                 display: 'flex',
                 flexDirection: 'column',

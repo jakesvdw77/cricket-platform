@@ -24,16 +24,12 @@ import { FieldingTab } from './FieldingTab'
 import { AwardsTab } from './AwardsTab'
 import { MatchesTab } from './MatchesTab'
 import { resultsPhrase } from './statsFormat'
+import { parseCompetition } from '../../../utils/statsCompetition'
 
 const COMPETITION_OPTIONS = [
   { value: 'LEAGUE', label: 'League' },
   { value: 'FRIENDLY', label: 'Friendlies' },
 ]
-
-// ?competition= from a link: only the two known values count, anything else means no filter.
-function parseCompetition(value: string | null): StatsCompetition | null {
-  return value === 'LEAGUE' || value === 'FRIENDLY' ? value : null
-}
 
 function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStatsTab>): string {
   const { matchesCounted, resultsWithBattingCard, resultsWithBowlingCard } = stats.basis
@@ -190,7 +186,7 @@ export default function PlayerStatsPage() {
   } else {
     body = (
       <>
-        <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.8125rem', lineHeight: 1.4 }}>
           {basisLine(stats, tab)}
         </Typography>
         {tab === 'batting' && <BattingTab stats={stats} />}
@@ -205,7 +201,7 @@ export default function PlayerStatsPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}

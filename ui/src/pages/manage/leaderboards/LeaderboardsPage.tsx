@@ -9,8 +9,9 @@ import { FilterBar } from '../../../components/FilterBar'
 import { Input } from '../../../components/Input'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { NameModeToggle } from '../../../components/NameModeToggle'
-import { DEFAULT_SORT, catalogueBoards, useLeaderboardCatalogue } from '../../../api/leaderboardApi'
-import type { LeaderboardColumn, SortDirection, StandingsGroup } from '../../../api/leaderboardApi'
+import { DEFAULT_SORT, STANDINGS_GROUPS, catalogueBoards, useLeaderboardCatalogue } from '../../../api/leaderboardApi'
+import type { LeaderboardColumn, SortDirection } from '../../../api/leaderboardApi'
+import type { TeamStatsCompetition } from '../../../api/teamStatsApi'
 import { useManagedClubProfile } from '../../../hooks/useManagedClubProfile'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
@@ -19,6 +20,7 @@ import { AwardsView } from './AwardsView'
 import { LeaderboardTabs } from './LeaderboardTabs'
 import { resolveLeaderboardTab } from './leaderboardTabConfig'
 import { StandingsTable } from './StandingsTable'
+import { TeamsTab } from './TeamsTab'
 import { useLeaderboardFilters } from './useLeaderboardFilters'
 
 // The sort column: ?sort= if the group's catalogue lists it as sortable, else the group's default (runs, wickets or total).
@@ -46,12 +48,20 @@ export default function LeaderboardsPage() {
   const tab = resolveLeaderboardTab(searchParams.get('tab'))
   useDocumentTitle('Leaderboards')
 
-  const filterState = useLeaderboardFilters(clubId)
-  const { filters, ready, hasFilters } = filterState
-  const catalogueQuery = useLeaderboardCatalogue(clubId)
+  const isTeamsTab = tab === 'teams'
+  const filterState = useLeaderboardFilters(clubId, isTeamsTab)
+  const { filters, ready } = filterState
+  // The Teams tab has its own filter options and table; the player catalogue is not needed there.
+  const catalogueQuery = useLeaderboardCatalogue(clubId, !isTeamsTab)
   const catalogue = catalogueBoards(catalogueQuery.data)
   const isAwardsTab = tab === 'awards'
-  const group = isAwardsTab ? undefined : (tab as StandingsGroup)
+  const group = STANDINGS_GROUPS.find((entry) => entry === tab)
+
+  // Competition (Teams tab only): per visit, never saved; only a competition that has counted results is offered.
+  const [competitionChoice, setCompetitionChoice] = useState<TeamStatsCompetition | null>(null)
+  const competitionOptions = filterState.competitions.filter((value): value is TeamStatsCompetition => value === 'LEAGUE' || value === 'FRIENDLY')
+  const competition = isTeamsTab && competitionChoice && competitionOptions.includes(competitionChoice) ? competitionChoice : null
+  const hasFilters = filterState.hasFilters || competition !== null
   const catalogueGroup = catalogueQuery.data?.groups.find((entry) => entry.code === group)
   const columns = catalogueGroup?.columns ?? []
   const sortCode = group ? resolveSort(columns, searchParams.get('sort'), catalogueGroup?.defaultSort ?? DEFAULT_SORT[group]) : ''
@@ -95,6 +105,7 @@ export default function LeaderboardsPage() {
   const headingSort = (code: string) => (code === sortCode ? reverseSort() : selectSort(code))
   const clearFilters = () => {
     filterState.clearAll()
+    setCompetitionChoice(null)
   }
   const showAwards = () => {
     const next = new URLSearchParams(searchParams)
@@ -116,13 +127,15 @@ export default function LeaderboardsPage() {
   })
 
   let content: ReactNode
-  if (!ready || catalogueQuery.isLoading) {
+  if (!ready || (!isTeamsTab && catalogueQuery.isLoading)) {
     content = (
       <Box aria-busy="true" aria-label="Loading leaderboards" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Skeleton variant="rounded" height={44} />
         <Skeleton variant="rounded" height={220} />
       </Box>
     )
+  } else if (isTeamsTab) {
+    content = <TeamsTab clubId={clubId} filters={filters} competition={competition} hasFilters={hasFilters} onClearFilters={clearFilters} enabled={ready} />
   } else if (catalogueQuery.isError || (!isAwardsTab && !catalogueGroup)) {
     content = (
       <EmptyState
@@ -199,7 +212,7 @@ export default function LeaderboardsPage() {
       <ManageScreenHeader
         title="Leaderboards"
         action={
-          !isAwardsTab ? (
+          !isAwardsTab && !isTeamsTab ? (
             <MuiButton variant="contained" startIcon={<EmojiEventsOutlinedIcon />} onClick={showAwards} sx={{ minHeight: 44 }}>
               Awards
             </MuiButton>
@@ -209,11 +222,14 @@ export default function LeaderboardsPage() {
 
       <LeaderboardTabs />
 
-      <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
-        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-          <NameModeToggle />
+      {/* No person is named on the Teams tab, so the name toggle is not offered there. */}
+      {!isTeamsTab && (
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+          <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <NameModeToggle />
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <FilterBar
         density="compact"
@@ -229,6 +245,20 @@ export default function LeaderboardsPage() {
         onLeagueChange={filterState.setLeague}
         onSectionChange={filterState.setSection}
         onTeamChange={filterState.setTeam}
+        extraSelects={
+          isTeamsTab && competitionOptions.length > 0
+            ? [
+                {
+                  key: 'competition',
+                  label: 'Competition',
+                  allLabel: 'All competitions',
+                  options: competitionOptions.map((value) => ({ value, label: value === 'LEAGUE' ? 'League' : 'Friendlies' })),
+                  value: competition ?? '',
+                  onChange: (value) => setCompetitionChoice((value || null) as TeamStatsCompetition | null),
+                },
+              ]
+            : []
+        }
         onClearAll={clearFilters}
       />
 

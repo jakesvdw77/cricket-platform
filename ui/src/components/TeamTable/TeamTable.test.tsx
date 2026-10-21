@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { TeamTable } from './TeamTable'
 import type { TeamTableRow } from './TeamTable'
@@ -32,6 +33,7 @@ function makeRow(overrides: Partial<TeamTableRow> = {}): TeamTableRow {
     captainName: 'Jane Smith',
     loaded: true,
     to: '/manage/sections/section-1/teams/team-1',
+    statsTo: '/manage/teams/team-1/stats',
     ...overrides,
   }
 }
@@ -45,6 +47,30 @@ function renderTable(rows: TeamTableRow[]) {
 }
 
 describe('TeamTable', () => {
+  it('gives each row a Stats link to the team statistics page', () => {
+    renderTable([makeRow()])
+
+    expect(within(screen.getByTestId('team-row')).getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
+  })
+
+  it('the Stats button opens the statistics page with the way back in router state, without opening the team', async () => {
+    function StateProbe() {
+      return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+    }
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<TeamTable rows={[makeRow({ statsState: { backTo: '/manage/teams', backLabel: 'Teams' } })]} />} />
+          <Route path="/manage/teams/team-1/stats" element={<StateProbe />} />
+          <Route path="/manage/sections/section-1/teams/team-1" element={<div>Team detail</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(screen.getByRole('link', { name: 'Stats' }))
+    expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams', backLabel: 'Teams' })
+    expect(screen.queryByText('Team detail')).not.toBeInTheDocument()
+  })
+
   it('renders the header and a row per team with section, players, matches, captain and status', () => {
     renderTable([makeRow(), makeRow({ team: makeTeam({ id: 'team-2', name: '2nd XI', active: false }), captainName: null })])
 

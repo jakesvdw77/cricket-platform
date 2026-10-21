@@ -1,7 +1,8 @@
-import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
+import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
@@ -18,6 +19,9 @@ export interface TeamTableRow {
   loaded: boolean
   // Where the whole row goes.
   to: string
+  // docs/specs/116 (decision 21): the Stats icon button; statsState is the router state the stats page's Back reads.
+  statsTo: string
+  statsState?: { backTo: string; backLabel: string }
 }
 
 export interface TeamTableProps {
@@ -26,10 +30,10 @@ export interface TeamTableProps {
 
 const NOT_ON_FILE = '–'
 
-// Desktop: Team, Section, Players, Matches, Captain, Status, chevron. A phone keeps Team, Players and the chevron.
+// Desktop: Team, Section, Players, Matches, Captain, Status, Stats button, chevron. A phone keeps Team, Players, the Stats button and the chevron.
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 64px 32px',
-  sm: 'minmax(220px, 2fr) minmax(120px, 1fr) 80px 80px minmax(160px, 1.2fr) 100px 32px',
+  xs: 'minmax(0, 1fr) 64px 44px 32px',
+  sm: 'minmax(220px, 2fr) minmax(120px, 1fr) 80px 80px minmax(160px, 1.2fr) 100px 44px 32px',
 }
 
 const gridSx = {
@@ -108,6 +112,19 @@ function TeamRow({ row }: { row: TeamTableRow }) {
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="team-row-status">
         <Chip size="small" label={team.active ? 'Active' : 'Inactive'} sx={{ ...badgeSx(team.active ? 'active' : 'muted'), height: 22, fontSize: '0.75rem' }} />
       </Box>
+      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
+        <IconButton
+          component={RouterLink}
+          to={row.statsTo}
+          state={row.statsState}
+          aria-label="Stats"
+          title="Stats"
+          size="small"
+          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
+        >
+          <EqualizerOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Box>
       <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
         <ChevronRightOutlinedIcon fontSize="small" />
       </Box>
@@ -117,7 +134,7 @@ function TeamRow({ row }: { row: TeamTableRow }) {
 
 // docs/specs/092-teams-gold-standard.md (A): the list view of the Teams page, built like LeagueTable, PlayerTable and
 // MatchTable: one bordered panel with a header row that sticks to the top of the scrolling page and zebra rows; the whole
-// row opens the team. A phone keeps Team, Players and the chevron.
+// row opens the team. A phone keeps Team, Players, the Stats button and the chevron.
 export function TeamTable({ rows }: TeamTableProps) {
   return (
     <Box
@@ -157,6 +174,7 @@ export function TeamTable({ rows }: TeamTableProps) {
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Matches</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Captain</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Status</Box>
+        <Box role="columnheader" aria-label="Stats" />
         <Box role="columnheader" aria-label="Open" />
       </Box>
       <Box role="rowgroup">

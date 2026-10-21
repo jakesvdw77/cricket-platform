@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Box, Link, Typography } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
@@ -52,6 +52,7 @@ const NOT_ON_FILE = '–'
 // teams are a small, bounded list (docs/specs/026-teams.md), fetched whole and filtered client-side.
 export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const sectionScopeId = scope.kind === 'section' ? scope.sectionId : undefined
   const [search, setSearch] = useState('')
   const [sortAsc, setSortAsc] = useState(true)
@@ -155,6 +156,12 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   }
   const editTo = (sectionId: string, teamId: string) =>
     `/manage/sections/${sectionId}/teams/${teamId}/edit${scope.kind === 'section' ? '?from=section' : ''}`
+
+  // docs/specs/116 (decision 21): the Stats shortcut opens the team's statistics page, whose Back returns to this list
+  // (with its query string).
+  // docs/specs/116: the chosen season travels to the team statistics page (empty = All seasons).
+  const statsTo = (teamId: string) => `/manage/teams/${teamId}/stats?seasonId=${encodeURIComponent(seasonId)}`
+  const statsState = { backTo: `${location.pathname}${location.search}`, backLabel: 'Teams' }
 
   const figure = (value: number) => (counters.loaded ? value : NOT_ON_FILE)
   const attention = (id: TeamFocus, value: number): PageCounterItem => ({
@@ -280,6 +287,8 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
               captainName: cardData[team.id]?.captainName ?? null,
               loaded: cardData[team.id]?.loaded ?? false,
               to: viewTo(team.sectionId, team.id),
+              statsTo: statsTo(team.id),
+              statsState,
             }),
           )}
         />
@@ -302,6 +311,8 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
                 sponsors={data?.sponsors ?? []}
                 viewTo={viewTo(team.sectionId, team.id)}
                 editTo={editTo(team.sectionId, team.id)}
+                statsTo={statsTo(team.id)}
+                statsState={statsState}
               />
             )
           })}

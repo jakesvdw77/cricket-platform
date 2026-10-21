@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamDetailPage from './TeamDetailPage'
 import type { Team } from '../../api/teamApi'
@@ -240,6 +240,16 @@ beforeEach(() => {
   listMatches.mockResolvedValue(makeMatchesPage([]))
 })
 
+function StatsPageProbe() {
+  const location = useLocation()
+  return (
+    <div>
+      <div>Team Statistics Page</div>
+      <div data-testid="stats-state">{JSON.stringify(location.state)}</div>
+    </div>
+  )
+}
+
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
@@ -252,6 +262,7 @@ function renderPage(initialPath: string, clubId?: string) {
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="teams" element={<div>Team Directory Page</div>} />
+            <Route path="teams/:teamId/stats" element={<StatsPageProbe />} />
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
@@ -365,6 +376,48 @@ describe('TeamDetailPage', () => {
     // Each card fills its grid cell, so the shorter one is as tall as the taller.
     expect(getComputedStyle(screen.getByTestId('team-contacts-card')).height).toBe('100%')
     expect(getComputedStyle(screen.getByTestId('team-sponsors-card')).height).toBe('100%')
+  })
+
+  it('draws a Statistics card with a real 44 px outlined link to the team statistics page', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    const card = await screen.findByTestId('team-statistics-card')
+    expect(within(card).getByRole('heading', { name: 'Statistics' })).toBeInTheDocument()
+    const link = within(card).getByRole('link', { name: 'View statistics' })
+    expect(link).toHaveAttribute('href', '/manage/teams/team-1/stats?seasonId=')
+    await userEvent.click(link)
+    expect(await screen.findByText('Team Statistics Page')).toBeInTheDocument()
+  })
+
+  it('the Statistics link carries the chosen season (empty when none)', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValueOnce([
+      makeSeason({ id: 'season-1', label: '2026' }),
+      makeSeason({ id: 'season-2', label: '2025', startDate: '2025-01-01', endDate: '2025-12-31', active: false }),
+    ])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    const card = await screen.findByTestId('team-statistics-card')
+    await waitFor(() => expect(within(card).getByRole('link', { name: 'View statistics' })).toHaveAttribute('href', '/manage/teams/team-1/stats?seasonId=season-2'))
+  })
+
+  it('the Statistics link is an outlined button and carries the team detail URL (with its query) as the way back, named for the team', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    const link = await within(await screen.findByTestId('team-statistics-card')).findByRole('link', { name: 'View statistics' })
+    expect(link.className).toMatch(/MuiButton-outlined/)
+    expect(getComputedStyle(link).minHeight).toBe('44px')
+    await userEvent.click(link)
+    await screen.findByText('Team Statistics Page')
+    expect(JSON.parse(screen.getByTestId('stats-state').textContent ?? '')).toEqual({
+      backTo: '/manage/sections/section-1/teams/team-1?seasonId=season-2',
+      backLabel: '1st XI',
+    })
   })
 
   it('renders an Inactive badge chip for a deactivated team', async () => {

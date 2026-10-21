@@ -31,3 +31,15 @@ export const Bowling: Story = {
     ],
   },
 }
+
+// Good scores are the strong fill (a 22% success tint, dark text, matching border, bold letters); ducks stay muted.
+export const StrongPositiveChips: Story = {
+  args: {
+    title: 'Batting, last 5 innings',
+    items: [
+      { key: '1', label: '56*', tone: 'positive' },
+      { key: '2', label: '0', tone: 'muted' },
+      { key: '3', label: '71', tone: 'positive' },
+    ],
+  },
+}

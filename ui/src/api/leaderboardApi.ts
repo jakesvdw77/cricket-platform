@@ -301,11 +301,11 @@ export async function getLeaderboardFilterOptions(clubId: string): Promise<Leade
   return data
 }
 
-export function useLeaderboardCatalogue(clubId: string | undefined) {
+export function useLeaderboardCatalogue(clubId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: leaderboardKeys.catalogue(clubId as string),
     queryFn: () => getLeaderboardCatalogue(clubId as string),
-    enabled: Boolean(clubId),
+    enabled: Boolean(clubId) && enabled,
     staleTime: 10 * 60 * 1000,
   })
 }
@@ -356,10 +356,10 @@ export function useAwardsView(
   })
 }
 
-export function useLeaderboardFilterOptions(clubId: string | undefined) {
+export function useLeaderboardFilterOptions(clubId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: leaderboardKeys.filterOptions(clubId as string),
     queryFn: () => getLeaderboardFilterOptions(clubId as string),
-    enabled: Boolean(clubId),
+    enabled: Boolean(clubId) && enabled,
   })
 }

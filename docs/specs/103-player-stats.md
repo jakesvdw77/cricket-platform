@@ -2,6 +2,7 @@
 
 **Depends on:** `100-match-results-core.md` (`match_result`, `match_innings`, the draft / publish gate, `ResultVisibility`, "Statistics decision": stats are computed by link from published rows, never copied), `101-match-results-our-side-scorecard.md` (`result_player`, `batting_entry`, `bowling_entry`, `fielding_entry`, `match_award`; "Guests and borrowed players", "The opposition: who counts for what", the appearance rule, the derby rule, stored versus derived credits), `102-match-results-opposition-scorecard.md` (merged into 101, history only), `104-match-results-import-adaptors.md` (`IMPORTED_NAME_UNCONFIRMED` blocks publish, so an imported guess never reaches a published result), `113-result-players-section-and-age.md` (`ResultPlayerEligibility`: the section-and-descendants rule reused for the Section filter), `001-tenancy-identity-model.md` (`Person`, `PlayerProfile`, `UNIQUE (person_id, club_id)`), `028-players.md` and `060-player-detail-redesign.md` (the Stats card placeholder), `088-players-polls-alignment.md` (Player page key figures), `029-league-management.md` (`Match`, `League`, `Season`), `035-section-scoped-access.md` (section-scoped managers), `114-share-result.md` (browser-side PDF and text, the First names as initials rule and junior lock), `docs/standards/*.md`.
 **Status:** built on `feature/103-player-stats`, in review (2026-10-20). Written 2026-10-18 from the owner's list of wanted statistics and the real schema (migrations `043` to `051`), revised with the owner's decisions of 2026-10-18 and 2026-10-20 (decisions 7 to 31), and reconciled with the as-built code on 2026-10-20. Mockups approved (decision 15). The body below keeps its original reasoning; where it disagrees with decisions 15 to 31, the decisions win. The Awards PDF and text output are not built (decision 10).
+**Team statistics (Part 2) are built in `116-team-stats.md`.**
 **Per-match list:** the list of a player's matches behind these totals (a fifth Matches tab) is built in `115-player-match-list.md`, on the same counting rules and `APPEARANCES` SQL; the sum of its rows equals the totals here.
 
 ## Decisions of 2026-10-18 (owner)
@@ -77,6 +78,8 @@ These supersede anything older in this file.
 - **Rewriting the Player page key figures strip** (`PlayerKeyFigures`, selection-based "Games this season / overall"). It stays; see open question 9.
 
 ## Part 2: Team statistics (named only, not designed)
+
+> **Built in `116-team-stats.md`** (team statistics: the Teams tab, the team page, `TeamStatsCalculator`). This section is kept as the owner's original list; where `116` differs, `116` wins.
 
 The owner's team list: Matches Played, Wins, Losses, Ties, No Results, Win Percentage (wins / decisive results x 100), Runs Scored, Wickets Lost, Team Batting Average, Average Runs per Innings, Highest and Lowest Team Total, Highest Successful Chase, Largest Victory by Runs and by Wickets, Team Run Rate, Team Net Run Rate (competition defined), Total Wickets Taken, Team Bowling Average, Team Economy Rate, Partnerships (runs by wicket), Extras Conceded, Average Extras per match.
 

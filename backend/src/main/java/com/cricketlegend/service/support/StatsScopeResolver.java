@@ -92,6 +92,22 @@ public class StatsScopeResolver {
         }
     }
 
+    /** An optional whole number of zero or more from request text (blank is none); anything else is a 400 naming the parameter. */
+    public static Integer parseMinimum(String text, String name) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            int value = Integer.parseInt(text.trim());
+            if (value < 0) {
+                throw new ValidationException(name + " must be a whole number of zero or more.");
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            throw new ValidationException(name + " must be a whole number of zero or more.");
+        }
+    }
+
     /** The {@code competition} query parameter: LEAGUE, FRIENDLY or null for no filter. */
     public static String competitionName(StatsScope scope) {
         return scope.competition() == null ? null : scope.competition().name();

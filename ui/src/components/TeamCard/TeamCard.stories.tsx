@@ -83,6 +83,7 @@ export const Full: Story = {
     sponsors: SPONSORS,
     viewTo: '/manage/sections/section-1/teams/team-1',
     editTo: '/manage/sections/section-1/teams/team-1/edit',
+    statsTo: '/manage/teams/team-1/stats',
   },
 }
 
@@ -105,6 +106,7 @@ export const EmptySquad: Story = {
     matchCount: 0,
     viewTo: '/manage/sections/section-1/teams/team-1',
     editTo: '/manage/sections/section-1/teams/team-1/edit',
+    statsTo: '/manage/teams/team-1/stats',
   },
 }
 

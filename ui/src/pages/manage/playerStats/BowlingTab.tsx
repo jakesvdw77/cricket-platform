@@ -15,8 +15,8 @@ import { bestBowlingText, bowlingFormItems, coverageCaption, decimals, dismissal
 
 function HaulCounter({ count, label, testId }: { count: number; label: string; testId: string }) {
   return (
-    <Box data-testid={testId} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, textAlign: 'center', bgcolor: 'background.default' }}>
-      <Typography component="div" sx={{ fontSize: '1.6rem', fontWeight: 700, lineHeight: 1.1, color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>
+    <Box data-testid={testId} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1, textAlign: 'center', bgcolor: 'background.default' }}>
+      <Typography component="div" sx={{ fontSize: '1.375rem', fontWeight: 700, lineHeight: 1.1, color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>
         {count}
       </Typography>
       <Typography variant="caption" color="text.secondary" fontWeight={600}>
@@ -54,7 +54,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
   return (
     <>
       <StatTileStrip>
-        <StatTile testId="tile-wickets" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={String(bowling.wickets)} />
+        <StatTile testId="tile-wickets" tone="success" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={String(bowling.wickets)} />
         <StatTile testId="tile-average" icon={<TrendingDownOutlinedIcon />} label="Bowling average" value={decimals(bowling.average, 2)} />
         <StatTile testId="tile-economy" icon={<SpeedOutlinedIcon />} label="Economy rate" value={decimals(bowling.economy, 2)} />
         <StatTile testId="tile-best" icon={<EmojiEventsOutlinedIcon />} label="Best bowling" value={bestBowlingText(bowling.best)} />
@@ -74,7 +74,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
             },
             { label: 'Balls bowled', value: String(bowling.ballsBowled) },
             { label: 'Runs conceded', value: String(bowling.runsConceded) },
-            { label: 'Wickets', value: String(bowling.wickets) },
+            { label: 'Wickets', value: String(bowling.wickets), emphasis: 'success' },
             { label: 'Average', value: decimals(bowling.average, 2) },
             { label: 'Economy', value: decimals(bowling.economy, 2) },
             { label: 'Strike rate', value: decimals(bowling.strikeRate, 1) },
@@ -85,7 +85,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Dot balls', value: dotsValue, caption: coverageCaption(cov.inningsWithDots, cov.inningsCounted) },
           ]}
         />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <InfoCard fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
               <HaulCounter testId="haul-3" count={bowling.threeWicketHauls} label="3 wickets" />
