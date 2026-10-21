@@ -103,4 +103,62 @@ describe('InfoCard', () => {
     expect(getComputedStyle(screen.getByText('Runs')).fontSize).toBe('0.8125rem')
     expect(getComputedStyle(screen.getByText('412')).lineHeight).toBe('1.3')
   })
+
+  // The responsive column rule lives in media queries, which jsdom does not evaluate: read the rules emotion injected for the grid.
+  describe('fieldSize large columns', () => {
+    const styleText = () => Array.from(document.querySelectorAll('style')).map((el) => el.textContent ?? '').join('\n')
+    const gridCss = () => {
+      const grid = screen.getAllByTestId('player-info-field')[0].parentElement as HTMLElement
+      const cls = grid.className.split(' ').find((name) => name.startsWith('css-')) as string
+      return styleText().split('}').filter((rule) => rule.includes(`.${cls}`)).join('}')
+    }
+    const fieldsOf = (count: number) => Array.from({ length: count }, (_, i) => ({ label: `F${i}`, value: `${i}` }))
+
+    it('is 2 columns on a phone, 3 from sm and 3 from md with fewer than six fields', () => {
+      render(<InfoCard title="Stats" icon={<span />} fieldSize="large" fields={fieldsOf(5)} />)
+      const css = gridCss()
+      expect(css).toContain('repeat(2, minmax(0, 1fr))')
+      expect(css).toContain('repeat(3, minmax(0, 1fr))')
+      expect(css).not.toContain('repeat(4, minmax(0, 1fr))')
+    })
+
+    it('is 4 columns from md with six or more fields', () => {
+      render(<InfoCard title="Stats" icon={<span />} fieldSize="large" fields={fieldsOf(6)} />)
+      expect(gridCss()).toContain('repeat(4, minmax(0, 1fr))')
+    })
+
+    it('lets columns override the responsive rule, and leaves the default size at 2 columns', () => {
+      const { unmount } = render(<InfoCard title="Stats" icon={<span />} fieldSize="large" columns={3} fields={fieldsOf(8)} />)
+      expect(screen.getAllByTestId('player-info-field')[0].parentElement).toHaveStyle({ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' })
+      expect(gridCss()).not.toContain('repeat(4, minmax(0, 1fr))')
+      unmount()
+      render(<InfoCard title="Stats" icon={<span />} fields={fieldsOf(8)} />)
+      expect(screen.getAllByTestId('player-info-field')[0].parentElement).toHaveStyle({ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' })
+    })
+  })
+
+  describe('field emphasis', () => {
+    const props = { title: 'Record', icon: <span />, fields: [{ label: 'Won', value: '9', emphasis: 'success' as const }, { label: 'Tied', value: '1' }] }
+
+    it('with fieldSize large, draws an emphasised value larger, in its tone, on a tinted field', () => {
+      render(<InfoCard {...props} fieldSize="large" />)
+      const [won, tied] = screen.getAllByTestId('player-info-field')
+      expect(getComputedStyle(screen.getByText('9')).fontSize).toBe('1.125rem')
+      expect(getComputedStyle(screen.getByText('1')).fontSize).toBe('1rem')
+      expect(getComputedStyle(screen.getByText('9')).color).not.toBe(getComputedStyle(screen.getByText('1')).color)
+      expect(getComputedStyle(won).backgroundColor).not.toBe(getComputedStyle(tied).backgroundColor)
+    })
+
+    it('does nothing with the default size', () => {
+      render(<InfoCard {...props} />)
+      const [won, tied] = screen.getAllByTestId('player-info-field')
+      expect(getComputedStyle(screen.getByText('9')).color).toBe(getComputedStyle(screen.getByText('1')).color)
+      expect(getComputedStyle(won).backgroundColor).toBe(getComputedStyle(tied).backgroundColor)
+    })
+
+    it('shows the dash for an empty emphasised value in the muted colour', () => {
+      render(<InfoCard title="Record" icon={<span />} fieldSize="large" fields={[{ label: 'Won', value: null, emphasis: 'success' }, { label: 'Lost', value: '2' }]} />)
+      expect(getComputedStyle(screen.getByText('–')).fontWeight).toBe('400')
+    })
+  })
 })

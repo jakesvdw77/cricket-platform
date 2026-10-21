@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TeamsPage } from './TeamsPage'
 import type { TeamsScope } from './TeamsPage'
@@ -204,6 +204,28 @@ describe('TeamsPage', () => {
 
       renderPage()
       expect(await screen.findByRole('table', { name: 'Teams' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Stats shortcut', () => {
+    it('opens the team statistics page directly, with this list (and its address) as the way back', async () => {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      function StateProbe() {
+        return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+      }
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/manage/teams?x=1']}>
+            <Routes>
+              <Route path="/manage/teams" element={<TeamsPage clubId="club-1" scope={{ kind: 'club' }} />} />
+              <Route path="/manage/teams/:teamId/stats" element={<StateProbe />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+      await screen.findByText('1st XI')
+      await userEvent.click(screen.getAllByRole('link', { name: 'Stats' })[0])
+      expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams?x=1', backLabel: 'Teams' })
     })
   })
 

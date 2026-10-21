@@ -56,4 +56,32 @@ describe('FormStrip', () => {
     expect(screen.getByText('56*')).toBeInTheDocument()
     expect(screen.getByLabelText('56 not out off 40 balls')).toHaveAttribute('data-tone', 'positive')
   })
+
+  it('draws every chip 32 px high with a 40 px minimum width and bold text', () => {
+    render(<FormStrip title="Batting" items={[{ key: 'a', label: '4' }, { key: 'b', label: '56*', tone: 'positive' }]} />)
+    for (const text of ['4', '56*']) {
+      const chip = screen.getByText(text).closest('[data-tone]') as HTMLElement
+      expect(getComputedStyle(chip).height).toBe('32px')
+      expect(getComputedStyle(chip).minWidth).toBe('40px')
+      expect(getComputedStyle(chip).fontWeight).toBe('700')
+    }
+  })
+
+  it('fills a positive chip with a stronger tint and border than a muted one, and leaves a neutral chip outlined with no fill', () => {
+    render(
+      <FormStrip
+        title="Batting"
+        items={[
+          { key: 'a', label: '34' },
+          { key: 'b', label: '0', tone: 'muted' },
+          { key: 'c', label: '56*', tone: 'positive' },
+        ]}
+      />,
+    )
+    const style = (text: string) => getComputedStyle(screen.getByText(text).closest('[data-tone]') as HTMLElement)
+    expect(style('56*').backgroundColor).not.toBe(style('0').backgroundColor)
+    expect(style('56*').borderTopColor).not.toBe(style('34').borderTopColor)
+    expect(style('56*').color).not.toBe(style('0').color)
+    expect(style('34').backgroundColor).not.toBe(style('56*').backgroundColor)
+  })
 })

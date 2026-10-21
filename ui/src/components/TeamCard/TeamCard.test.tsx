@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TeamCard } from './TeamCard'
@@ -175,6 +175,31 @@ describe('TeamCard', () => {
     renderCard()
 
     expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
+  })
+
+  it('the Stats link carries the router state the statistics page uses for Back, and sits among the footer buttons', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    function StateProbe() {
+      return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <TeamCard team={makeTeam()} sectionName="Men" playerCount={0} matchCount={0} viewTo="/v" editTo="/e" statsTo="/stats" statsState={{ backTo: '/manage/teams?x=1', backLabel: 'Teams' }} />
+              }
+            />
+            <Route path="/stats" element={<StateProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(['Squad', 'Matches', 'Edit', 'Stats'].map((name) => screen.getByRole('link', { name }).textContent)).toEqual(['Squad', 'Matches', 'Edit', 'Stats'])
+    await userEvent.click(screen.getByRole('link', { name: 'Stats' }))
+    expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams?x=1', backLabel: 'Teams' })
   })
 
   it('points Squad and Matches at squadTo and matchesTo when given', () => {
