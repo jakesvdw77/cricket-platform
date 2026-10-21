@@ -19,7 +19,7 @@ Nothing answers "how is each team doing?". This adds a Teams table (fifth tab on
 - **Filters:** Teams tab reuses `useLeaderboardFilters`' saved key (`leaderboards:filters:<clubId>`: Season, League, Section; ignores `teamId`), `useStatsFilterLookups` (pass `teamIds: []`, omit `teams` from `FilterBar`) and `FilterBar.extraSelects` for Competition (copy `PlayerStatsPage` ~252). Filter options come from `GET /team-stats/filter-options`.
 - **Routes:** Team detail is `sections/:sectionId/teams/:teamId` (`?from=section`, `?seasonId=`); the new `teams/:teamId/stats` does not clash with `teams`/`teams/new`. The Statistics card goes on `TeamDetailPage` (InfoCard `actions` with an outlined 44 px "View statistics" `RouterLink` button; link carries router state `{ backTo, backLabel }` pointing back to the team detail URL).
 - **Cache keys:** unpublish/delete refresh does not invalidate stats keys today; stats stay fresh because `new QueryClient()` has staleTime 0 (`App.tsx:90`). Team keys `['managed-club', clubId, 'team-stats', ...]` follow the same pattern; no behaviour change to the result pages.
-- Spec 116 needs no change before building. (If an owner answer changes later, the spec is updated first.)
+- Owner decisions 20 to 22 (2 decimals, the Stats shortcut, no rule label) arrived after this plan was written; the spec records them and the "As built" note at the end lists what changed. (If an owner answer changes later, the spec is updated first.)
 
 ## Backend (backend-builder). `backend/src/main/java/com/cricketlegend/`
 
@@ -36,7 +36,7 @@ Nothing answers "how is each team doing?". This adds a Teams table (fifth tab on
 ## Frontend (frontend-builder). `ui/src/`
 
 1. `api/teamStatsApi.ts`: types from the DTO files (conform once present), keys `['managed-club', clubId, 'team-stats', ...]`, `useTeamStatsTable` (`useInfiniteQuery`, page 25, `keepPreviousData`, `direction`/`minimum` only when set), `useTeamStats`, `useTeamStatsFilterOptions`.
-2. Teams tab: `leaderboardTabConfig` gains `{ value: 'teams', label: 'Teams' }` (fix the `tab as StandingsGroup` cast); `LeaderboardsPage` branches on `teams`; Team select hidden, Competition `extraSelects`, Section/Season/League persisted as today; `?sort=`/`?dir=` validated against the team columns (a carried player sort falls back to Wins). New `standingsLayout` extraction + `TeamStandingsTable` (Team name + section sub-line + Inactive chip, rank, the 15 columns from the response, sort by heading and reverse, unranked divider, Minimum matches field only on rate sorts, NRR dash with its reason, basis line with excluded results and forfeits, "Showing N of M" + Show more, empty/filtered/error states, "Partnerships are not captured yet" line); each row links to `/manage/teams/:teamId/stats` carrying Season, League and Competition; `teamStatsFormat.ts` (signed NRR 3 dp, win % 1 dp, highest total "212/6").
+2. Teams tab: `leaderboardTabConfig` gains `{ value: 'teams', label: 'Teams' }` (fix the `tab as StandingsGroup` cast); `LeaderboardsPage` branches on `teams`; Team select hidden, Competition `extraSelects`, Section/Season/League persisted as today; `?sort=`/`?dir=` validated against the team columns (a carried player sort falls back to Wins). New `standingsLayout` extraction + `TeamStandingsTable` (Team name + section sub-line + Inactive chip, rank, the 15 columns from the response, sort by heading and reverse, unranked divider, Minimum matches field only on rate sorts, NRR dash with its reason, basis line with excluded results and forfeits, "Showing N of M" + Show more, empty/filtered/error states, "Partnerships are not captured yet" line); each row links to `/manage/teams/:teamId/stats` carrying Season, League and Competition; `teamStatsFormat.ts` (signed NRR 2 dp (decision 20; first written as 3), win % 1 dp, highest total "212/6").
 3. `pages/manage/teamStats/TeamStatsPage.tsx` + parts + route `teams/:teamId/stats` in `App.tsx` (comment citing the spec): Back to Teams via router state with the `/manage/` guard (115 pattern), name + status chip, `FilterBar` (Season, League, Competition from the team's own options; Season/League persisted `teamStats:filters:<clubId>`), basis line, four `StatTile`s (Played, Won, Lost, Win %), page-part `TeamFormStrip` (W/L/T/D/NR text chips with `badgeSx`, "internal"/"forfeit" markers, each chip a link to `resultViewTo` with back-link state), `InfoCard fieldSize="large"` cards (Record, Batting, Results highlights with match links, Bowling, Extras with coverage captions, Net run rate in its three states), `NotCapturedPanel` (import from `playerStats/` or lift), empty states.
 4. `TeamDetailPage`: Statistics card (icon, real outlined 44 px "View statistics" button) between the key-figure tiles and the contacts/sponsors row; extend `TeamDetailPage.test.tsx`.
 5. Keep existing tests green (the leaderboard tests must pass unchanged after the layout extraction).
@@ -54,3 +54,17 @@ Nothing answers "how is each team doing?". This adds a Teams table (fifth tab on
 - Frontend: `source ~/.nvm/nvm.sh && nvm use 22.12.0`; `npm run lint`, `npm run build`, `npx vitest run` on touched folders only (full suite is flaky under load).
 - Manual (owner): Teams tab sort/reverse/filters, forfeit counted as win/loss with no scores, derby counted once per team, washed-out no-ball matches excluded and reported in the basis line, NRR only for one league-season, team page cards and form strip links, Back returns to the same filtered table, Statistics card on Team detail.
 - After approval: copy this plan verbatim to `docs/plans/116-team-stats.md` and commit.
+
+## As built (2026-10-21)
+
+What changed from this plan; the spec's decisions 20 to 31 hold the detail.
+
+- **Two decimals everywhere**, Net Run Rate included (the plan said 3 for NRR); Win Percentage stays 1.
+- **No rule label on screen:** the Net Run Rate card and column help no longer print "Full-quota rule"; the response still carries `rule: FULL_QUOTA`.
+- **Forfeits count** in the record (win for the receiver, loss for the conceder) and in `resultsCounted`; they feed no innings figure, and `matchesCounted` for Net Run Rate excludes them. The form entries carry a `forfeit` flag.
+- **Stats shortcut** on Teams cards and rows (decision 21), besides the Statistics card on Team detail and the Teams table rows.
+- **Compact stat cards:** the team page uses `KeyFigureTile compact` with `emphasis` (through `StatTile`) and `InfoCard fieldSize="large"` with field `emphasis`; the form strip chips are 32 px with strong tints.
+- **Team filter options via `teamId`:** the optional `teamId` on `team-stats/filter-options` gives the team page its own Season, League and Competition options; its Season default matches the table.
+- **No `RankingSupport`:** `TeamTableRanker` stands alone.
+- **Teams tab** also hides the name toggle and the Awards button; the table's partnerships line is static text (no `notCaptured` on the table DTO).
+- **Net Run Rate usability** needs exactly one regular innings each way and a league; a chase finishing exactly on the last ball is a complete innings for the lowest total.

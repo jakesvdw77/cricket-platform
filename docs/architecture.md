@@ -199,9 +199,11 @@ erDiagram
 - **`MATCH_AWARD`** — one official player of the match plus one team award per ours side; it keeps the name when the player's row is removed (045).
 - **Adaptors built:** `JSON` (104, the common format itself, with a copyable conversion prompt) and `CRICCLUBS_CSV` (107, a deterministic line reader for the CricClubs report export; `CricClubsScorecardMapper` holds the reusable dismissal, retirement and result rules) and `STUMPS_PDF` (108, a deterministic reader of the STUMPS match report PDF: `StumpsPdfText` is the one class that uses Apache PDFBox and turns the PDF into numbered lines, `StumpsReportParser` is a pure lines-in, common-document-out parser with page and line errors, the report's match id becomes the idempotency key; ball-by-ball pages are ignored). The Anthropic AI adaptor (106) is a draft awaiting legal advice.
 - **Import (104, built):** `Adaptor` (stateless, found by `AdaptorRegistry`) to the common `ImportedResultDto` to the Result Processor (location, team mapping, deterministic name matching, draft derivation) to `ResultService.saveImportedDraft`, which writes a `DRAFT` with `match_result.source = IMPORT:<provider>` and `external_id` (unique together, so a re-import finds the draft). Nothing is published and nothing is sent to an AI service. `result_player.import_match` flags a guessed name until a person confirms it (publishing is blocked meanwhile). `result_name_alias` (migration 048) remembers a confirmed spelling per club and is written inside the scorecard save.
-- **Player statistics and leaderboards (`103`, built, in review):** there is **no stats table**. A statistics read model is computed on read over `MATCH` (season, league, teams), `MATCH_RESULT` (published only), `RESULT_PLAYER` (ours, registered, non-substitute) and the batting, bowling, fielding and award entries. `PlayerStatsAggregateRepository` sums and counts stored columns into additive counters per player, `PlayerStatsFactsRepository` reads the few per-player fact rows (recent form, positions, bowler dismissal modes), and the pure `PlayerStatsCalculator` is the only place a figure is defined; the Player page, the three standings tables and the Awards view all read through it, so they cannot disagree. Unpublishing a result or linking a guest changes every figure on the next read. The one stored setting is `club_profile.leaderboard_award_categories` (migration 052). Team statistics (Part 2) are not built.
+- **Player statistics and leaderboards (`103`, built, in review):** there is **no stats table**. A statistics read model is computed on read over `MATCH` (season, league, teams), `MATCH_RESULT` (published only), `RESULT_PLAYER` (ours, registered, non-substitute) and the batting, bowling, fielding and award entries. `PlayerStatsAggregateRepository` sums and counts stored columns into additive counters per player, `PlayerStatsFactsRepository` reads the few per-player fact rows (recent form, positions, bowler dismissal modes), and the pure `PlayerStatsCalculator` is the only place a figure is defined; the Player page, the three standings tables and the Awards view all read through it, so they cannot disagree. Unpublishing a result or linking a guest changes every figure on the next read. The one stored setting is `club_profile.leaderboard_award_categories` (migration 052). Team statistics are built in `116` (below).
 
 The **match list (`115`, built, in review)** reads the same model one player at a time: `PlayerMatchListServiceImpl` resolves the filters through `StatsScopeResolver`, then `PlayerStatsFactsRepository` runs a fixed set of queries (count, page of matches, batting, bowling, fielding, awards) that all start from the shared `APPEARANCES` SQL, with the card-captured and valid-balls predicates shared constants in `PlayerStatsSql`. `PlayerMatchFactsReader` maps the raw rows to facts and `PlayerMatchRowBuilder` is the only place a row's statuses, result and sums are decided. The sum of the rows equals the `103` totals (parity test). No table or migration.
+
+**Team statistics (`116`, built, in review)** use the same model from the team side, with no new relationship, table or migration. They read `MATCH`, `MATCH_RESULT` (published only) and `MATCH_INNINGS` (regular innings, both sides of the result, so summary-level results count) and never the scorecard rows. `TeamStatsSql` builds one row per club team per counted result (two for a derby; a forfeit counts as a win or loss and its innings are never read), `TeamStatsAggregateRepository` sums and counts stored columns into additive counters per team, `TeamStatsFactsRepository` reads the form strip and the match references for the highs, and the pure `TeamStatsCalculator` is the only place a team figure is defined. `StatsCountingSql` holds the published and played predicates shared with `PlayerStatsSql`, so a change to what counts changes players and teams together. `TeamTableRanker` ranks the Teams tab; the table and the team page read the same counters, so they cannot disagree (parity test).
 
 ```mermaid
 flowchart LR
@@ -223,6 +225,17 @@ flowchart LR
     MS["PlayerMatchListServiceImpl"] --> MQ
     MB --> ML["Matches tab"]
     CP["CLUB_PROFILE.leaderboard_award_categories"] --> W
+    SC["StatsCountingSql<br/>published and played predicates"] --> A
+    SC --> TA
+    R --> MI["MATCH_INNINGS<br/>regular innings, both sides"]
+    M --> TA["TeamStatsAggregateRepository<br/>TeamStatsSql counters per team"]
+    R --> TA
+    MI --> TA
+    MI --> TF["TeamStatsFactsRepository<br/>form, match references"]
+    TA --> TC["TeamStatsCalculator<br/>every team figure defined here"]
+    TF --> TC
+    TC --> TP["Team page"]
+    TC --> TR["TeamTableRanker<br/>Teams tab"]
 ```
 
 **Decided order: `104` (import) was built before `103` (stats)**, so real scorecards proved the wizard rules first; see `docs/roadmap.md`.
