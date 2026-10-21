@@ -24,12 +24,14 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
                    cast(extract(epoch from ap.match_date) * 1000 as bigint) as "matchEpochMillis",
                    be.runs as "runs",
                    (be.how_out in ('NOT_OUT', 'RETIRED_NOT_OUT')) as "notOut",
-                   case when be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)
+                   case when\s""" + PlayerStatsSql.VALID_BALLS + """
+
                         then be.balls end as "balls"
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
             order by ap.match_date desc, i.sequence desc, be.id desc
             limit 5
             """, nativeQuery = true)
@@ -54,7 +56,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join bowling_entry bw on bw.result_player_id = ap.rpid
             join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
-            where bw.balls > 0 or bw.runs > 0
+            where\s""" + PlayerStatsSql.COUNTED_SPELL + """
+
             order by ap.match_date desc, i.sequence desc, bw.id desc
             limit 5
             """, nativeQuery = true)
@@ -77,7 +80,9 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT' and be.position is not null
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
+              and be.position is not null
             group by be.position
             order by be.position
             """, nativeQuery = true)
@@ -97,7 +102,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
             group by be.how_out
             """, nativeQuery = true)
     List<DismissalCountView> batterDismissals(
@@ -195,7 +201,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
                    cast(extract(epoch from ap.match_date) * 1000 as bigint) as "matchEpochMillis",
                    case when ap.side = 'HOME' then coalesce(oat.name, om.away_team_name)
                         else coalesce(hot.name, om.home_team_name) end as "opponent",
-                   case when be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)
+                   case when\s""" + PlayerStatsSql.VALID_BALLS + """
+
                         then be.balls end as "balls"
             from ap
             join match om on om.id = ap.match_id
@@ -203,7 +210,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             left join team oat on oat.id = om.away_team_id
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
               and ap.pid in (:playerIds)
             order by ap.pid,
                      (cast(be.runs as bigint) * 2 + case when be.how_out in ('NOT_OUT', 'RETIRED_NOT_OUT') then 1 else 0 end)
@@ -240,7 +248,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             left join team oat on oat.id = om.away_team_id
             join bowling_entry bw on bw.result_player_id = ap.rpid
             join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
-            where (bw.balls > 0 or bw.runs > 0)
+            where (\s""" + PlayerStatsSql.COUNTED_SPELL + """
+)
               and ap.pid in (:playerIds)
             order by ap.pid,
                      (cast(bw.wickets as bigint) * 10000000000
@@ -281,6 +290,270 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    /**
+     * docs/specs/115-player-match-list.md: the number of distinct counted matches of the player under the filters (the
+     * match list's {@code totalElements}). Same appearances as {@link #countResults}, named for the list.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select count(distinct ap.mrid) from ap
+            """, nativeQuery = true)
+    long matchCount(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    /**
+     * docs/specs/115: one page of the player's counted matches, one row per match (a derby player on both sides is one
+     * row, with both side flags set). Newest first, {@code match.id} descending as the tie-break; {@code ascending}
+     * reverses both. The opponent is the opposite side's team name, else its free-text name; the player's own side(s) are
+     * given by {@code onHome}/{@code onAway} with the home and away names and team ids (the builder picks).
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   ap.match_id as "matchId",
+                   cast(extract(epoch from ap.match_date) * 1000 as bigint) as "matchEpochMillis",
+                   ap.bpo as "ballsPerOver",
+                   ap.outcome as "outcome",
+                   ap.winning_side as "winningSide",
+                   ap.derby as "derby",
+                   bool_or(ap.side = 'HOME') as "onHome",
+                   bool_or(ap.side = 'AWAY') as "onAway",
+                   m.league_id as "leagueId",
+                   lg.name as "leagueName",
+                   m.home_team_id as "homeTeamId",
+                   coalesce(ht.name, m.home_team_name) as "homeTeamName",
+                   m.away_team_id as "awayTeamId",
+                   coalesce(awt.name, m.away_team_name) as "awayTeamName",
+                   case when bool_or(ap.side = 'HOME') then coalesce(awt.name, m.away_team_name)
+                        else coalesce(ht.name, m.home_team_name) end as "opponentName",
+                   bool_or(\s""" + PlayerStatsSql.HAS_BATTING_CARD + """
+) as "hasBattingCard",
+                   bool_or(\s""" + PlayerStatsSql.HAS_BOWLING_CARD + """
+) as "hasBowlingCard"
+            from ap
+            join match m on m.id = ap.match_id
+            left join team ht on ht.id = m.home_team_id
+            left join team awt on awt.id = m.away_team_id
+            left join league lg on lg.id = m.league_id
+            group by ap.mrid, ap.match_id, ap.match_date, ap.bpo, ap.outcome, ap.winning_side, ap.derby,
+                     m.league_id, lg.name, m.home_team_id, ht.name, m.home_team_name,
+                     m.away_team_id, awt.name, m.away_team_name
+            order by case when cast(:ascending as boolean) then ap.match_date end asc,
+                     case when cast(:ascending as boolean) then ap.match_id end asc,
+                     case when not cast(:ascending as boolean) then ap.match_date end desc,
+                     case when not cast(:ascending as boolean) then ap.match_id end desc
+            limit :limit offset :offset
+            """, nativeQuery = true)
+    List<MatchHeaderView> matchPage(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("ascending") boolean ascending,
+            @Param("limit") int limit,
+            @Param("offset") long offset);
+
+    /**
+     * docs/specs/115: the player's counted batting rows (a batting row with {@code how_out} set and not {@code
+     * DID_NOT_BAT}) for the listed matches, reached only through the counted appearance on {@code REGULAR} innings. {@code
+     * balls} is null when not recorded or a 0-ball innings that scored runs. Ordered by innings sequence.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   be.runs as "runs",
+                   case when\s""" + PlayerStatsSql.VALID_BALLS + """
+
+                        then be.balls end as "balls",
+                   be.fours as "fours",
+                   be.sixes as "sixes",
+                   be.how_out as "howOut"
+            from ap
+            join batting_entry be on be.result_player_id = ap.rpid
+            join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
+              and ap.mrid in (:resultIds)
+            order by ap.mrid, i.sequence, be.id
+            """, nativeQuery = true)
+    List<MatchBattingView> matchBatting(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds);
+
+    /** docs/specs/115: the player's bowling rows (every stored row; the builder decides which are spells) for the listed matches. */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   bw.balls as "balls",
+                   bw.maidens as "maidens",
+                   bw.runs as "runs",
+                   bw.wickets as "wickets",
+                   bw.dots as "dots",
+                   bw.wides as "wides",
+                   bw.no_balls as "noBalls"
+            from ap
+            join bowling_entry bw on bw.result_player_id = ap.rpid
+            join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
+            where ap.mrid in (:resultIds)
+            order by ap.mrid, i.sequence, bw.id
+            """, nativeQuery = true)
+    List<MatchBowlingView> matchBowling(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds);
+
+    /** docs/specs/115: the player's stored fielding credits, summed per match, for the listed matches. */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   coalesce(sum(fe.catches), 0) as "catches",
+                   coalesce(sum(fe.stumpings), 0) as "stumpings",
+                   coalesce(sum(fe.run_outs), 0) as "runOuts"
+            from ap
+            join fielding_entry fe on fe.result_player_id = ap.rpid
+            join match_innings i on i.id = fe.match_innings_id and i.kind = 'REGULAR'
+            where ap.mrid in (:resultIds)
+            group by ap.mrid
+            """, nativeQuery = true)
+    List<MatchFieldingView> matchFielding(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds);
+
+    /** docs/specs/115: the awards won by the player's counted appearances, counted per match, for the listed matches. */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   count(*) filter (where ma.award_type = 'PLAYER_OF_MATCH') as "playerOfMatch",
+                   count(*) filter (where ma.award_type = 'TEAM_PLAYER_OF_MATCH') as "teamPlayerOfMatch"
+            from ap
+            join match_award ma on ma.result_player_id = ap.rpid
+            where ap.mrid in (:resultIds)
+            group by ap.mrid
+            """, nativeQuery = true)
+    List<MatchAwardView> matchAwards(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds);
+
+    interface MatchHeaderView {
+        UUID getResultId();
+
+        UUID getMatchId();
+
+        Long getMatchEpochMillis();
+
+        Integer getBallsPerOver();
+
+        String getOutcome();
+
+        String getWinningSide();
+
+        Boolean getDerby();
+
+        Boolean getOnHome();
+
+        Boolean getOnAway();
+
+        UUID getLeagueId();
+
+        String getLeagueName();
+
+        UUID getHomeTeamId();
+
+        String getHomeTeamName();
+
+        UUID getAwayTeamId();
+
+        String getAwayTeamName();
+
+        String getOpponentName();
+
+        Boolean getHasBattingCard();
+
+        Boolean getHasBowlingCard();
+    }
+
+    interface MatchBattingView {
+        UUID getResultId();
+
+        Integer getRuns();
+
+        Integer getBalls();
+
+        Integer getFours();
+
+        Integer getSixes();
+
+        String getHowOut();
+    }
+
+    interface MatchBowlingView {
+        UUID getResultId();
+
+        Integer getBalls();
+
+        Integer getMaidens();
+
+        Integer getRuns();
+
+        Integer getWickets();
+
+        Integer getDots();
+
+        Integer getWides();
+
+        Integer getNoBalls();
+    }
+
+    interface MatchFieldingView {
+        UUID getResultId();
+
+        Long getCatches();
+
+        Long getStumpings();
+
+        Long getRunOuts();
+    }
+
+    interface MatchAwardView {
+        UUID getResultId();
+
+        Long getPlayerOfMatch();
+
+        Long getTeamPlayerOfMatch();
+    }
 
     interface PlayerTeamView {
         UUID getPlayerId();

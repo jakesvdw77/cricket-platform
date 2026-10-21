@@ -3,6 +3,7 @@ export const PLAYER_STATS_TABS = [
   { value: 'bowling', label: 'Bowling' },
   { value: 'fielding', label: 'Fielding' },
   { value: 'awards', label: 'Awards & record' },
+  { value: 'matches', label: 'Matches' },
 ] as const
 
 export type PlayerStatsTab = (typeof PLAYER_STATS_TABS)[number]['value']

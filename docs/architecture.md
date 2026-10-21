@@ -201,6 +201,8 @@ erDiagram
 - **Import (104, built):** `Adaptor` (stateless, found by `AdaptorRegistry`) to the common `ImportedResultDto` to the Result Processor (location, team mapping, deterministic name matching, draft derivation) to `ResultService.saveImportedDraft`, which writes a `DRAFT` with `match_result.source = IMPORT:<provider>` and `external_id` (unique together, so a re-import finds the draft). Nothing is published and nothing is sent to an AI service. `result_player.import_match` flags a guessed name until a person confirms it (publishing is blocked meanwhile). `result_name_alias` (migration 048) remembers a confirmed spelling per club and is written inside the scorecard save.
 - **Player statistics and leaderboards (`103`, built, in review):** there is **no stats table**. A statistics read model is computed on read over `MATCH` (season, league, teams), `MATCH_RESULT` (published only), `RESULT_PLAYER` (ours, registered, non-substitute) and the batting, bowling, fielding and award entries. `PlayerStatsAggregateRepository` sums and counts stored columns into additive counters per player, `PlayerStatsFactsRepository` reads the few per-player fact rows (recent form, positions, bowler dismissal modes), and the pure `PlayerStatsCalculator` is the only place a figure is defined; the Player page, the three standings tables and the Awards view all read through it, so they cannot disagree. Unpublishing a result or linking a guest changes every figure on the next read. The one stored setting is `club_profile.leaderboard_award_categories` (migration 052). Team statistics (Part 2) are not built.
 
+The **match list (`115`, built, in review)** reads the same model one player at a time: `PlayerMatchListServiceImpl` resolves the filters through `StatsScopeResolver`, then `PlayerStatsFactsRepository` runs a fixed set of queries (count, page of matches, batting, bowling, fielding, awards) that all start from the shared `APPEARANCES` SQL, with the card-captured and valid-balls predicates shared constants in `PlayerStatsSql`. `PlayerMatchFactsReader` maps the raw rows to facts and `PlayerMatchRowBuilder` is the only place a row's statuses, result and sums are decided. The sum of the rows equals the `103` totals (parity test). No table or migration.
+
 ```mermaid
 flowchart LR
     M["MATCH<br/>season, league, teams"] --> R
@@ -214,6 +216,12 @@ flowchart LR
     C --> P["Player page and breakdown"]
     C --> L["LeaderboardTableRanker<br/>standings tables"]
     C --> W["LeaderboardRanker<br/>Awards view"]
+    RP --> MQ["PlayerStatsFactsRepository<br/>match page and entry queries"]
+    E --> MQ
+    MQ --> MR["PlayerMatchFactsReader"]
+    MR --> MB["PlayerMatchRowBuilder<br/>row statuses, result, sums"]
+    MS["PlayerMatchListServiceImpl"] --> MQ
+    MB --> ML["Matches tab"]
     CP["CLUB_PROFILE.leaderboard_award_categories"] --> W
 ```
 

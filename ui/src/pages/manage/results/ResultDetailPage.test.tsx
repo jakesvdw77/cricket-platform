@@ -41,11 +41,11 @@ function Where() {
   return <div>At: {location.pathname}</div>
 }
 
-function renderPage() {
+function renderPage(state?: unknown) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/results/match-1']}>
+      <MemoryRouter initialEntries={[{ pathname: '/manage/results/match-1', state }]}>
         <Routes>
           <Route path="/manage" element={<Outlet context={{ clubId: 'club-1' }} />}>
             <Route path="results/:matchId" element={<ResultDetailPage />} />
@@ -56,6 +56,8 @@ function renderPage() {
     </QueryClientProvider>,
   )
 }
+
+const FROM_MATCHES = { backTo: '/manage/players/player-1/stats?tab=matches&seasonId=season-1&leagueId=', backLabel: 'Matches' }
 
 const notFound = () => new AxiosError('nope', '404', undefined, undefined, { status: 404 } as never)
 
@@ -214,5 +216,72 @@ describe('ResultDetailPage', () => {
     renderPage()
 
     expect(await screen.findByText("Couldn't load this result")).toBeInTheDocument()
+  })
+
+  // docs/specs/115-player-match-list.md: the back link follows router state { backTo, backLabel } from the player's Matches tab.
+  describe('back link', () => {
+    it('says "Back to Results" and goes to the Results page when it was not opened from a list', async () => {
+      renderPage()
+      const back = await screen.findByRole('link', { name: 'Back to Results' })
+      expect(back).toHaveAttribute('href', '/manage/results')
+    })
+
+    it('shows "Back to Matches" for valid router state, links to the stored address and goes there', async () => {
+      const user = userEvent.setup()
+      renderPage(FROM_MATCHES)
+      const back = await screen.findByRole('link', { name: 'Back to Matches' })
+      expect(back).toHaveAttribute('href', FROM_MATCHES.backTo)
+      expect(screen.queryByRole('link', { name: 'Back to Results' })).not.toBeInTheDocument()
+
+      await user.click(back)
+      expect(await screen.findByText('At: /manage/players/player-1/stats')).toBeInTheDocument()
+    })
+
+    it('ignores a backTo that does not start with /manage/', async () => {
+      for (const backTo of ['https://evil.example/manage/x', '//evil.example', '/elsewhere', 'manage/x']) {
+        const { unmount } = renderPage({ backTo, backLabel: 'Matches' })
+        expect(await screen.findByRole('link', { name: 'Back to Results' })).toHaveAttribute('href', '/manage/results')
+        expect(screen.queryByRole('link', { name: 'Back to Matches' })).not.toBeInTheDocument()
+        unmount()
+      }
+    })
+
+    it('ignores state that is not an address string', async () => {
+      renderPage({ backTo: 42, backLabel: 'Matches' })
+      expect(await screen.findByRole('link', { name: 'Back to Results' })).toBeInTheDocument()
+    })
+
+    it('reads "Back to previous page" when the state has an address but no usable label', async () => {
+      renderPage({ backTo: '/manage/players/player-1/stats?tab=matches', backLabel: '  ' })
+      expect(await screen.findByRole('link', { name: 'Back to previous page' })).toHaveAttribute('href', '/manage/players/player-1/stats?tab=matches')
+    })
+
+    it('uses the same back target in the not-found error state', async () => {
+      getMatch.mockRejectedValue(notFound())
+      renderPage(FROM_MATCHES)
+      expect(await screen.findByText('Match not found')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', FROM_MATCHES.backTo)
+    })
+
+    it('uses the same back target in the load-error state', async () => {
+      getMatchResult.mockRejectedValue(new Error('boom'))
+      renderPage(FROM_MATCHES)
+      expect(await screen.findByText("Couldn't load this result")).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', FROM_MATCHES.backTo)
+    })
+
+    it('uses the same back target when an inactive match has no result', async () => {
+      getMatchResult.mockRejectedValue(notFound())
+      getMatch.mockResolvedValue(makeMatch({ id: 'match-1', active: false }))
+      renderPage(FROM_MATCHES)
+      expect(await screen.findByText('No result for this match')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', FROM_MATCHES.backTo)
+    })
+
+    it('keeps "Back to Results" in the error states when not opened from a list', async () => {
+      getMatch.mockRejectedValue(notFound())
+      renderPage()
+      expect(await screen.findByRole('link', { name: 'Back to Results' })).toHaveAttribute('href', '/manage/results')
+    })
   })
 })

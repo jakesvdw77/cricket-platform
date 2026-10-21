@@ -9,9 +9,11 @@ import PlayerStatsPage from './PlayerStatsPage'
 // the server's, so these tests check what the page asks for and how it shows what comes back.
 const usePlayerStats = vi.fn()
 const usePlayerStatsFilterOptions = vi.fn()
+const usePlayerMatches = vi.fn()
 vi.mock('../../../api/playerStatsApi', () => ({
   usePlayerStats: (...args: unknown[]) => usePlayerStats(...args),
   usePlayerStatsFilterOptions: (...args: unknown[]) => usePlayerStatsFilterOptions(...args),
+  usePlayerMatches: (...args: unknown[]) => usePlayerMatches(...args),
 }))
 vi.mock('../../../api/playerApi', () => ({
   listPlayers: () =>
@@ -117,6 +119,8 @@ describe('PlayerStatsPage', () => {
     localStorage.clear()
     usePlayerStats.mockReset()
     usePlayerStatsFilterOptions.mockReset()
+    usePlayerMatches.mockReset()
+    usePlayerMatches.mockReturnValue({ rows: [], firstPage: undefined, lastPage: undefined, isError: false, isFetching: true, hasNextPage: false, refetch: vi.fn() })
     usePlayerStats.mockReturnValue({ data: makeStats(), isError: false, refetch: vi.fn() })
     usePlayerStatsFilterOptions.mockReturnValue({ data: OPTIONS })
   })

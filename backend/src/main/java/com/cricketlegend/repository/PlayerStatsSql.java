@@ -63,6 +63,42 @@ final class PlayerStatsSql {
             """;
 
     /**
+     * Whether the card was captured (docs/specs/103, "Card captured"): a batting entry exists in a {@code REGULAR} innings
+     * in which the appearance's side batted. Refers to {@code ap.mrid} and {@code ap.side}; shared by the aggregate and the
+     * match list so there is one definition.
+     */
+    static final String HAS_BATTING_CARD = """
+            exists (select 1 from match_innings ci
+                               join batting_entry cb on cb.match_innings_id = ci.id
+                               where ci.match_result_id = ap.mrid and ci.kind = 'REGULAR'
+                                 and ci.batting_side = ap.side)""";
+
+    /** As {@link #HAS_BATTING_CARD}, for a bowling entry in an innings in which the other side batted. */
+    static final String HAS_BOWLING_CARD = """
+            exists (select 1 from match_innings wi
+                               join bowling_entry wb on wb.match_innings_id = wi.id
+                               where wi.match_result_id = ap.mrid and wi.kind = 'REGULAR'
+                                 and wi.batting_side <> ap.side)""";
+
+    /**
+     * The "valid balls" rule (docs/specs/103): balls are usable unless not recorded or a 0-ball innings that scored runs.
+     * Refers to the batting entry alias {@code be}.
+     */
+    static final String VALID_BALLS = "be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)";
+
+    /**
+     * The counted batting row rule (docs/specs/103): a batting entry with {@code how_out} set and not {@code DID_NOT_BAT}.
+     * Refers to the batting entry alias {@code be}; used by the aggregate and every batting read, so it exists once.
+     */
+    static final String COUNTED_BATTING_ROW = "be.how_out is not null and be.how_out <> 'DID_NOT_BAT'";
+
+    /**
+     * The counted spell rule (docs/specs/103, "Innings Bowled"): a bowling entry that bowled a ball or conceded a run.
+     * Refers to the bowling entry alias {@code bw}.
+     */
+    static final String COUNTED_SPELL = "bw.balls > 0 or bw.runs > 0";
+
+    /**
      * Every counter of every player in the filtered scope, one row per player with at least one counted appearance
      * (docs/specs/103, "Shape of the read" point 1). Batting figures count only rows that batted ({@code how_out}
      * set and not {@code DID_NOT_BAT}); "valid balls" excludes a 0-ball innings that scored runs (balls not recorded).
@@ -75,14 +111,10 @@ final class PlayerStatsSql {
                      count(distinct x.mrid) filter (where x.has_bowl) as bowl_cards
               from (
                 select ap.pid, ap.mrid,
-                       exists (select 1 from match_innings ci
-                               join batting_entry cb on cb.match_innings_id = ci.id
-                               where ci.match_result_id = ap.mrid and ci.kind = 'REGULAR'
-                                 and ci.batting_side = ap.side) as has_bat,
-                       exists (select 1 from match_innings wi
-                               join bowling_entry wb on wb.match_innings_id = wi.id
-                               where wi.match_result_id = ap.mrid and wi.kind = 'REGULAR'
-                                 and wi.batting_side <> ap.side) as has_bowl
+                       """ + HAS_BATTING_CARD + """
+ as has_bat,
+                       """ + HAS_BOWLING_CARD + """
+ as has_bowl
                 from ap) x
               group by x.pid
             ),
@@ -90,11 +122,13 @@ final class PlayerStatsSql {
               select ap.pid as pid, be.runs as runs, be.balls as balls, be.fours as fours, be.sixes as sixes,
                      be.how_out as how_out,
                      (be.how_out in ('NOT_OUT', 'RETIRED_NOT_OUT')) as not_out,
-                     (be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)) as vb
+                     (""" + VALID_BALLS + """
+) as vb
               from ap
               join batting_entry be on be.result_player_id = ap.rpid
               join match_innings binn on binn.id = be.match_innings_id and binn.kind = 'REGULAR'
-              where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+              where\s""" + COUNTED_BATTING_ROW + """
+
             ),
             bat as (
               select pid,
@@ -131,7 +165,8 @@ final class PlayerStatsSql {
             bwi as (
               select ap.pid as pid, ap.bpo as bpo, bw.balls as balls, bw.runs as runs, bw.wickets as wickets,
                      bw.maidens as maidens, bw.wides as wides, bw.no_balls as no_balls, bw.dots as dots,
-                     (bw.balls > 0 or bw.runs > 0) as counted
+                     (""" + COUNTED_SPELL + """
+) as counted
               from ap
               join bowling_entry bw on bw.result_player_id = ap.rpid
               join match_innings bwinn on bwinn.id = bw.match_innings_id and bwinn.kind = 'REGULAR'

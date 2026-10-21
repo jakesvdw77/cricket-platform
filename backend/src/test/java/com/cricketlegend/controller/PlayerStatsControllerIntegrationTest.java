@@ -106,6 +106,7 @@ class PlayerStatsControllerIntegrationTest {
         List<String> paths = List.of(
                 playerStatsPath(seed.alice.getId()),
                 playerStatsPath(seed.alice.getId()) + "/filter-options",
+                playerStatsPath(seed.alice.getId()) + "/matches",
                 BASE + "/leaderboards",
                 BASE + "/leaderboards/batting",
                 BASE + "/leaderboards/bowling",

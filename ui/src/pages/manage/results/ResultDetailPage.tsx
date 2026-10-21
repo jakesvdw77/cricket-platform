@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -37,12 +37,24 @@ import { usePublishResult } from './usePublishResult'
 
 const RESULTS_PATH = '/manage/results'
 const MATCHES_PATH = '/manage/fixtures/matches'
+
+// docs/specs/115-player-match-list.md: a page that links here may pass router state { backTo, backLabel } so the back link returns to it
+// ("Back to Matches" on the player's Matches tab). Only an in-app /manage/ address is honoured; anything else is ignored.
+function backTarget(state: unknown): { to: string; label: string } {
+  const candidate = state as { backTo?: unknown; backLabel?: unknown } | null | undefined
+  if (candidate && typeof candidate.backTo === 'string' && candidate.backTo.startsWith('/manage/')) {
+    const label = typeof candidate.backLabel === 'string' && candidate.backLabel.trim() ? candidate.backLabel.trim() : 'previous page'
+    return { to: candidate.backTo, label }
+  }
+  return { to: RESULTS_PATH, label: 'Results' }
+}
 // docs/specs/100-match-results-core.md, Result page: the read page of one match's result, on PageHeaderBand like the
 // Match page. Draft: Edit (the wizard), Publish, Delete draft. Published: Unpublish, and Edit disabled until then.
 export default function ResultDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId?: string }>()
   const navigate = useNavigate()
+  const back = backTarget(useLocation().state)
   const queryClient = useQueryClient()
   useDocumentTitle('Result')
 
@@ -127,8 +139,8 @@ export default function ResultDetailPage() {
         title={notFound ? 'Match not found' : "Couldn't load this result"}
         description={notFound ? 'This match does not exist or is no longer available.' : 'Something went wrong loading this result. Please try again.'}
         action={
-          <MuiButton component={RouterLink} to={RESULTS_PATH} variant="outlined">
-            Back to Results
+          <MuiButton component={RouterLink} to={back.to} variant="outlined">
+            Back to {back.label}
           </MuiButton>
         }
       />
@@ -145,8 +157,8 @@ export default function ResultDetailPage() {
           title="No result for this match"
           description="This match is inactive, so a result can't be captured."
           action={
-            <MuiButton component={RouterLink} to={RESULTS_PATH} variant="outlined">
-              Back to Results
+            <MuiButton component={RouterLink} to={back.to} variant="outlined">
+              Back to {back.label}
             </MuiButton>
           }
         />
@@ -178,14 +190,14 @@ export default function ResultDetailPage() {
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
             <MuiButton
               component={RouterLink}
-              to={RESULTS_PATH}
+              to={back.to}
               variant="text"
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
               sx={{ ml: -1, color: 'text.secondary' }}
             >
-              Back to Results
+              Back to {back.label}
             </MuiButton>
             <MuiButton component={RouterLink} to={`${MATCHES_PATH}/${match.id}`} variant="text" size="small">
               View match

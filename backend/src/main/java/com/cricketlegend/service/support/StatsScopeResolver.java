@@ -1,6 +1,7 @@
 package com.cricketlegend.service.support;
 
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
@@ -77,6 +78,18 @@ public class StatsScopeResolver {
         return scope.sectionRestricted() && !scope.sectionTeamIds().isEmpty()
                 ? List.copyOf(scope.sectionTeamIds())
                 : List.of(NO_TEAM);
+    }
+
+    /** Reads the {@code competition} request filter: blank is no filter; anything but LEAGUE or FRIENDLY is a 400. */
+    public static StatsScope.Competition parseCompetition(String competition) {
+        if (competition == null || competition.isBlank()) {
+            return null;
+        }
+        try {
+            return StatsScope.Competition.valueOf(competition);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("competition must be LEAGUE or FRIENDLY.");
+        }
     }
 
     /** The {@code competition} query parameter: LEAGUE, FRIENDLY or null for no filter. */

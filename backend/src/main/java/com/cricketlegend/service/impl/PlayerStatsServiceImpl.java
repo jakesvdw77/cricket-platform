@@ -4,7 +4,6 @@ import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.dto.PlayerStatsDto;
 import com.cricketlegend.dto.PlayerStatsFilterOptionsDto;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerStatsAggregateRepository;
 import com.cricketlegend.repository.PlayerStatsAggregateRepository.PlayerStatsAggregateView;
@@ -67,7 +66,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
             UUID teamId,
             UUID sectionId,
             String competition) {
-        StatsScope.Competition competitionFilter = parseCompetition(competition);
+        StatsScope.Competition competitionFilter = StatsScopeResolver.parseCompetition(competition);
         playerProfileRepository
                 .findById(playerId)
                 .filter(player -> clubId.equals(player.getClubId()))
@@ -134,17 +133,6 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                 StatsScopeResolver.sectionTeamParameter(scope)));
         return new PlayerStatsFilterOptionsDto(
                 lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
-    }
-
-    private static StatsScope.Competition parseCompetition(String competition) {
-        if (competition == null || competition.isBlank()) {
-            return null;
-        }
-        try {
-            return StatsScope.Competition.valueOf(competition);
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException("competition must be LEAGUE or FRIENDLY.");
-        }
     }
 
     private PlayerStatsFacts readFacts(StatsScope scope, UUID playerId) {

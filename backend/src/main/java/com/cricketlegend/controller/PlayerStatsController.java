@@ -1,7 +1,9 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.PlayerMatchListDto;
 import com.cricketlegend.dto.PlayerStatsDto;
 import com.cricketlegend.dto.PlayerStatsFilterOptionsDto;
+import com.cricketlegend.service.PlayerMatchListService;
 import com.cricketlegend.service.PlayerStatsService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +23,12 @@ public class PlayerStatsController {
 
     private final PlayerStatsService playerStatsService;
 
-    public PlayerStatsController(PlayerStatsService playerStatsService) {
+    private final PlayerMatchListService playerMatchListService;
+
+    public PlayerStatsController(
+            PlayerStatsService playerStatsService, PlayerMatchListService playerMatchListService) {
         this.playerStatsService = playerStatsService;
+        this.playerMatchListService = playerMatchListService;
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -45,5 +51,34 @@ public class PlayerStatsController {
     public ResponseEntity<PlayerStatsFilterOptionsDto> getPlayerStatsFilterOptions(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerStatsService.filterOptions(authentication, clubId, playerId));
+    }
+
+    /** docs/specs/115-player-match-list.md: one page of the player's counted matches, newest first. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/matches")
+    public ResponseEntity<PlayerMatchListDto> getPlayerMatches(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID playerId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) String competition,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(playerMatchListService.list(
+                authentication,
+                clubId,
+                playerId,
+                seasonId,
+                leagueId,
+                teamId,
+                sectionId,
+                competition,
+                direction,
+                page,
+                size));
     }
 }
