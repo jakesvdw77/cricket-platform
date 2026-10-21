@@ -250,9 +250,10 @@ public class TeamStatsServiceImpl implements TeamStatsService {
 
     @Override
     @Transactional(readOnly = true)
-    public TeamStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId) {
+    public TeamStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId, UUID teamId) {
+        // With a team: 404 for an unknown or other-club team, 403 outside a section-scoped caller's reach.
         StatsScopeResolver.Resolved resolved =
-                scopeResolver.resolve(authentication, clubId, null, null, null, null, null);
+                scopeResolver.resolve(authentication, clubId, null, null, teamId, null, null);
         StatsFilterOptionLists lists = StatsFilterOptionLists.EMPTY;
         if (!resolved.nothingInReach()) {
             StatsScope scope = resolved.scope();
@@ -260,7 +261,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                     clubId,
                     null,
                     null,
-                    null,
+                    teamId,
                     null,
                     scope.sectionRestricted(),
                     StatsScopeResolver.sectionTeamParameter(scope)));

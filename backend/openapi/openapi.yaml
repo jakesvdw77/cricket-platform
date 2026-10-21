@@ -7457,10 +7457,17 @@ paths:
       tags:
       - team-stats-controller
       operationId: getTeamStatsFilterOptions
+      description: Club-wide by default; with teamId, narrowed to the counted results of that team (empty lists when it has none).
       parameters:
       - name: clubId
         in: path
         required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
         schema:
           type: string
           format: uuid
@@ -7471,6 +7478,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TeamStatsFilterOptionsDto"
+        "403":
+          description: A team outside a section-scoped caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown or other-club team
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/teams/{teamId}/stats:
     get:
       tags:

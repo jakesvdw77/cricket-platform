@@ -634,7 +634,7 @@ class TeamStatsIntegrationTest {
 
     @Test
     void filterOptionsOfferOnlyValuesWithCountedTeamResults() {
-        TeamStatsFilterOptionsDto o = service.filterOptions(admin, clubId);
+        TeamStatsFilterOptionsDto o = service.filterOptions(admin, clubId, null);
 
         assertThat(o.seasonIds()).containsExactlyInAnyOrder(seed.s1.getId(), seed.s2.getId());
         assertThat(o.leagueIds()).contains(seed.l1.getId(), seed.l2.getId());
@@ -644,13 +644,35 @@ class TeamStatsIntegrationTest {
         assertThat(o.leagueIds()).doesNotContain(seed.other.season().getId());
 
         // a section manager sees only values inside their sections
-        TeamStatsFilterOptionsDto juniors = service.filterOptions(sectionManager(seed.w.juniors()), clubId);
+        TeamStatsFilterOptionsDto juniors = service.filterOptions(sectionManager(seed.w.juniors()), clubId, null);
         assertThat(juniors.sectionIds()).containsOnly(seed.w.juniors().getId());
         assertThat(juniors.competitions()).containsExactly("LEAGUE");
         assertThat(juniors.seasonIds()).containsExactly(seed.s1.getId());
 
         // a league with no counted team result is not offered
         var unused = seed.fixtures.league(seed.w, 11);
-        assertThat(service.filterOptions(admin, clubId).leagueIds()).doesNotContain(unused.getId());
+        assertThat(service.filterOptions(admin, clubId, null).leagueIds()).doesNotContain(unused.getId());
+    }
+
+    @Test
+    void filterOptionsCanBeNarrowedToOneTeam() {
+        TeamStatsFilterOptionsDto swifts = service.filterOptions(admin, clubId, seed.tsSwifts.getId());
+        assertThat(swifts.sectionIds()).containsExactly(seed.w.juniors().getId());
+        assertThat(swifts.seasonIds()).containsExactly(seed.s1.getId());
+        assertThat(swifts.competitions()).containsExactly("LEAGUE");
+
+        TeamStatsFilterOptionsDto hawks = service.filterOptions(admin, clubId, seed.tsHawks.getId());
+        assertThat(hawks.sectionIds()).containsExactly(seed.seniorsA.getId());
+
+        TeamStatsFilterOptionsDto wrens = service.filterOptions(admin, clubId, seed.tsWrens.getId());
+        assertThat(wrens.seasonIds()).isEmpty();
+        assertThat(wrens.leagueIds()).isEmpty();
+        assertThat(wrens.sectionIds()).isEmpty();
+        assertThat(wrens.competitions()).isEmpty();
+
+        assertThatThrownBy(() -> service.filterOptions(admin, clubId, UUID.randomUUID()))
+                .isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.filterOptions(admin, clubId, seed.other.seniors1().getId()))
+                .isInstanceOf(NotFoundException.class);
     }
 }

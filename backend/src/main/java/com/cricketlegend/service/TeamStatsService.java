@@ -50,6 +50,10 @@ public interface TeamStatsService {
     TeamStatsDto team(
             Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, String competition);
 
-    /** The club-wide season, league, section and competition values that have counted team results. */
-    TeamStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId);
+    /**
+     * The season, league, section and competition values that have counted team results: club-wide when {@code teamId}
+     * is null, else narrowed to that team's counted results (a team with none is empty lists). An unknown or other-club
+     * team is a {@code NotFoundException}; a team outside a section-scoped caller's reach is refused with 403.
+     */
+    TeamStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId, UUID teamId);
 }

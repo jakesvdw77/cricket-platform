@@ -279,4 +279,27 @@ class TeamStatsControllerIntegrationTest {
         assertThat(page.has("record")).isTrue();
         assertThat(page.has("rows")).isFalse();
     }
+
+    @Test
+    void filterOptionsCanBeNarrowedToATeamWith404And403() throws Exception {
+        JsonNode swifts = json(getAs(admin, OPTIONS, "teamId", seed.tsSwifts.getId().toString())
+                .andExpect(status().isOk()));
+        assertThat(swifts.path("sectionIds")).hasSize(1);
+        assertThat(swifts.path("sectionIds").get(0).asText()).isEqualTo(seed.w.juniors().getId().toString());
+        assertThat(swifts.path("competitions")).hasSize(1);
+
+        JsonNode wrens = json(getAs(admin, OPTIONS, "teamId", seed.tsWrens.getId().toString())
+                .andExpect(status().isOk()));
+        assertThat(wrens.path("seasonIds")).isEmpty();
+        assertThat(wrens.path("leagueIds")).isEmpty();
+        assertThat(wrens.path("sectionIds")).isEmpty();
+        assertThat(wrens.path("competitions")).isEmpty();
+
+        getAs(admin, OPTIONS, "teamId", UUID.randomUUID().toString()).andExpect(status().isNotFound());
+        getAs(admin, OPTIONS, "teamId", seed.tsRivals.getId().toString()).andExpect(status().isNotFound());
+
+        JwtRequestPostProcessor juniors = seed.fixtures.sectionManager(seed.w.juniors());
+        getAs(juniors, OPTIONS, "teamId", seed.tsSwifts.getId().toString()).andExpect(status().isOk());
+        getAs(juniors, OPTIONS, "teamId", seed.tsHawks.getId().toString()).andExpect(status().isForbidden());
+    }
 }

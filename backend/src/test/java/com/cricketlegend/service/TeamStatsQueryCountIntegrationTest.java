@@ -87,8 +87,8 @@ class TeamStatsQueryCountIntegrationTest {
                 .as("filtered team page")
                 .isEqualTo(statements(() -> service.team(
                         admin, s, small.tsHawks.getId(), small.s1.getId(), small.l1.getId(), "LEAGUE")));
-        assertThat(statements(() -> service.filterOptions(admin, l)))
+        assertThat(statements(() -> service.filterOptions(admin, l, null)))
                 .as("filter options")
-                .isEqualTo(statements(() -> service.filterOptions(admin, s)));
+                .isEqualTo(statements(() -> service.filterOptions(admin, s, null)));
     }
 }

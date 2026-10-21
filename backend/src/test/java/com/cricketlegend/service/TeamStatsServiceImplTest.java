@@ -456,12 +456,46 @@ class TeamStatsServiceImplTest {
         when(scopeResolver.resolve(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new StatsScopeResolver.Resolved(new StatsScope(clubId, null, null, null, null, null), true));
 
-        var options = service.filterOptions(authentication, clubId);
+        var options = service.filterOptions(authentication, clubId, null);
 
         assertThat(options.seasonIds()).isEmpty();
         assertThat(options.leagueIds()).isEmpty();
         assertThat(options.sectionIds()).isEmpty();
         assertThat(options.competitions()).isEmpty();
+        verifyNoInteractions(factsRepository);
+    }
+
+    @Test
+    void aTeamNarrowsTheFilterOptionsQueryToThatTeam() {
+        inReach();
+        when(factsRepository.filterOptions(any(), any(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(List.of());
+
+        var options = service.filterOptions(authentication, clubId, teamId);
+
+        assertThat(options.seasonIds()).isEmpty();
+        assertThat(options.competitions()).isEmpty();
+        verify(scopeResolver).resolve(authentication, clubId, null, null, teamId, null, null);
+        verify(factsRepository).filterOptions(eq(clubId), eq(null), eq(null), eq(teamId), eq(null), anyBoolean(), any());
+    }
+
+    @Test
+    void aTeamOutsideTheReachIsRefusedForFilterOptionsAndNothingIsQueried() {
+        when(scopeResolver.resolve(any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new AccessDeniedException("outside your sections"));
+
+        assertThatThrownBy(() -> service.filterOptions(authentication, clubId, teamId))
+                .isInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(factsRepository);
+    }
+
+    @Test
+    void anUnknownTeamIsNotFoundForFilterOptions() {
+        when(scopeResolver.resolve(any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new NotFoundException("Team not found"));
+
+        assertThatThrownBy(() -> service.filterOptions(authentication, clubId, teamId))
+                .isInstanceOf(NotFoundException.class);
         verifyNoInteractions(factsRepository);
     }
 }

@@ -13,9 +13,9 @@ import java.util.UUID;
  * disagree. No Spring, no repository, no entity, no caller or access information.
  *
  * <p>Rounding is {@link RoundingMode#HALF_UP} applied once, at the division that produces the figure (the two rates of Net
- * Run Rate are held to 40 decimals before their difference is rounded to 2 decimals, owner decision 2026-10-21). A figure with no valid denominator is {@code null},
- * never 0, infinity or NaN. Innings that are not usable (runs, wickets or balls missing) are already left out of the
- * counters and only appear in the coverage.
+ * Run Rate are held to 40 decimals before their difference is rounded to 2 decimals, owner decision 2026-10-21). A figure
+ * with no valid denominator is {@code null}, never 0, infinity or NaN. Innings that are not usable (runs, wickets or balls
+ * missing) are already left out of the counters and only appear in the coverage.
  */
 public final class TeamStatsCalculator {
 
@@ -198,7 +198,7 @@ public final class TeamStatsCalculator {
             case "TIE" -> new FormLine(FormResult.TIED, false);
             case "DRAW" -> new FormLine(FormResult.DRAWN, false);
             case "NO_RESULT", "ABANDONED" -> new FormLine(FormResult.NO_RESULT, false);
-            default -> throw new IllegalArgumentException("Not a counted outcome: " + outcome);
+            default -> throw new IllegalArgumentException("A counted result has an outcome that no team rule covers.");
         };
     }
 
