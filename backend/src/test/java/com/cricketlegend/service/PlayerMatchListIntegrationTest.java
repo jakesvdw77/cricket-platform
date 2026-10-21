@@ -419,16 +419,15 @@ class PlayerMatchListIntegrationTest {
     }
 
     @Test
-    void aBowlingRowWithZeroBallsAndZeroRunsIsNotASpellEvenWhenItCarriesAWicket() {
-        // CURRENT BEHAVIOUR, SUSPECTED DEFECT (see PlayerMatchListParityIntegrationTest.theWicketOfAZeroBallZeroRunRow...):
-        // the builder pins DID_NOT_BOWL for it and returns no figures, so the stored wicket is not on any row.
+    void aBowlingRowWithZeroBallsAndZeroRunsButAWicketIsBowledWithNoSpell() {
+        // owner decision 2026-10-21: any non-zero stored figure is BOWLED; no spell, but the sums carry the wicket
         List<PlayerMatchRowDto> mona = rows(seed.mona); // M2, M1
 
         PlayerMatchRowDto m1 = mona.get(1);
         assertThat(m1.hasBowlingCard()).isTrue();
-        assertThat(m1.bowling().status()).isEqualTo(PlayerMatchBowlingStatus.DID_NOT_BOWL);
-        assertThat(m1.bowling().spells()).isNull();
-        assertThat(m1.bowling().wickets()).isNull();
+        assertThat(m1.bowling().status()).isEqualTo(PlayerMatchBowlingStatus.BOWLED);
+        assertThat(m1.bowling().spells()).isEmpty();
+        assertThat(m1.bowling().wickets()).isEqualTo(1);
         assertThat(m1.batting().runs()).isEqualTo(10);
 
         PlayerMatchRowDto m2 = mona.get(0); // a bowling-only card

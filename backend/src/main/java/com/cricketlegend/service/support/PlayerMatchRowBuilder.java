@@ -190,7 +190,10 @@ public final class PlayerMatchRowBuilder {
                 .map(f -> new PlayerMatchSpell(
                         f.balls(), f.maidens(), f.runs(), f.wickets(), f.dots(), f.wides(), f.noBalls()))
                 .toList();
-        if (spells.isEmpty()) {
+        // owner decision 2026-10-21: any stored row with a non-zero figure is BOWLED, even when it is not a spell
+        boolean bowled = facts.stream()
+                .anyMatch(f -> f.balls() > 0 || f.runs() > 0 || f.wickets() > 0 || f.maidens() > 0);
+        if (!bowled) {
             PlayerMatchBowlingStatus status =
                     header.hasBowlingCard() ? PlayerMatchBowlingStatus.DID_NOT_BOWL : PlayerMatchBowlingStatus.NO_CARD;
             return new PlayerMatchBowling(status, null, null, null, null, null, null);

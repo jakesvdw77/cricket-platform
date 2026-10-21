@@ -20,7 +20,6 @@ import java.util.UUID;
 import java.util.function.ToLongFunction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -91,10 +90,11 @@ class PlayerMatchListParityIntegrationTest {
                 new Filters("league games", null, null, null, null, "LEAGUE"));
     }
 
-    /** Everyone except Mona, whose 0-ball 0-run wicket row is the known gap (see the disabled test below). */
+    /** Every seeded player, including Mona, whose 0-ball 0-run wicket row is BOWLED with no spell (owner decision 2026-10-21). */
     private List<PlayerProfile> everyone() {
         return List.of(seed.alice, seed.bob, seed.cara, seed.dan, seed.erin, seed.eve, seed.fay, seed.grace,
-                seed.frank, seed.gina, seed.hank, seed.ivy, seed.jill, seed.kim, seed.leo, seed.nina, seed.pia);
+                seed.frank, seed.gina, seed.hank, seed.ivy, seed.jill, seed.kim, seed.leo, seed.mona, seed.nina,
+                seed.pia);
     }
 
     private PlayerStatsDto stats(PlayerProfile p, Filters f) {
@@ -203,7 +203,8 @@ class PlayerMatchListParityIntegrationTest {
                 if (r.bowling().status() == PlayerMatchBowlingStatus.BOWLED) {
                     bowled++;
                     assertThat(r.hasBowlingCard()).as(who).isTrue();
-                    assertThat(r.bowling().spells()).as(who).isNotEmpty();
+                    assertThat(r.bowling().spells()).as(who).isNotNull(); // may be empty: a wicket-only row has no spell
+                    assertThat(r.bowling().wickets()).as(who).isNotNull();
                 } else {
                     assertThat(r.bowling().spells()).as(who).isNull();
                     assertThat(r.bowling().wickets()).as(who).isNull();
@@ -218,16 +219,10 @@ class PlayerMatchListParityIntegrationTest {
     }
 
     /**
-     * SUSPECTED DEFECT / SPEC GAP (docs/specs/115 "Parity rule": "Σ wickets of bowling = the 103 bowling counters"). A
-     * bowling row with 0 balls, 0 runs and a stored wicket is not a "spell" ("Innings Bowled" rule), so the builder gives
-     * the block DID_NOT_BOWL with no figures, and the stored wicket is on no row, while the 103 aggregate sums every stored
-     * row's wickets (PlayerStatsSql {@code bowl.wickets}). The spec's own builder test ("a bowling row with balls = 0 and
-     * runs = 0 is not a spell (DID_NOT_BOWL) while its stored wickets still sum as 103 does") and its status table
-     * contradict each other, because a DID_NOT_BOWL block carries no wickets. Disabled so the build stays green until the
-     * owner decides (carry the wickets on a DID_NOT_BOWL block, or count them as a spell, or change the parity rule).
+     * Owner decision 2026-10-21 (spec 115): a stored bowling row with any non-zero figure is BOWLED, so the wicket of a
+     * 0-ball, 0-run row is on the row as it is in the 103 totals (the row has no spell, the sums carry the wicket).
      */
     @Test
-    @Disabled("Suspected defect: a 0-ball, 0-run bowling row with a wicket breaks wicket parity, see the Javadoc")
     void theWicketOfAZeroBallZeroRunBowlingRowIsOnTheRowsAsItIsInTheTotals() {
         PlayerStatsDto s = stats(seed.mona, filterSets().get(0));
         List<PlayerMatchRowDto> rows = page(seed.mona, filterSets().get(0), 0, 100).rows();

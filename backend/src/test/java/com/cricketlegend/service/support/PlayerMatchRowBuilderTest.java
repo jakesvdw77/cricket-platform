@@ -352,16 +352,32 @@ class PlayerMatchRowBuilderTest {
         assertThat(w.wickets()).isEqualTo(3L);
     }
 
-    /**
-     * PINS CURRENT BEHAVIOUR, suspected defect: a stored bowling row with 0 balls, 0 runs and wickets (e.g. a
-     * run-out credit style row) that is the player's only bowling row yields DID_NOT_BOWL with no wickets shown, while
-     * spec 103's aggregate sums those stored wickets. Parity with PlayerStatsDto would then differ.
-     */
+    /** Owner decision 2026-10-21: any non-zero stored figure makes the row BOWLED, with no spell but the sums kept. */
     @Test
-    void currentBehaviourOnlyZeroBallZeroRunRowWithWicketsIsDidNotBowlAndHidesTheWickets() {
+    void aZeroBallZeroRunRowWithWicketsIsBowledWithNoSpellAndCarriesTheWickets() {
         var r = row(home(ResultOutcomeType.WON, ResultSide.HOME), List.of(),
                 List.of(bowl(0, 0, 0, 2, null)), List.of(), List.of());
+        assertThat(r.bowling().status()).isEqualTo(PlayerMatchBowlingStatus.BOWLED);
+        assertThat(r.bowling().spells()).isEmpty();
+        assertThat(r.bowling().wickets()).isEqualTo(2L);
+        assertThat(r.bowling().balls()).isZero();
+        assertThat(r.bowling().runs()).isZero();
+    }
+
+    @Test
+    void aZeroBallZeroRunRowWithOnlyMaidensIsBowled() {
+        var r = row(home(ResultOutcomeType.WON, ResultSide.HOME), List.of(),
+                List.of(bowl(0, 1, 0, 0, null)), List.of(), List.of());
+        assertThat(r.bowling().status()).isEqualTo(PlayerMatchBowlingStatus.BOWLED);
+        assertThat(r.bowling().maidens()).isEqualTo(1L);
+    }
+
+    @Test
+    void anAllZeroBowlingRowStaysDidNotBowl() {
+        var r = row(home(ResultOutcomeType.WON, ResultSide.HOME), List.of(),
+                List.of(bowl(0, 0, 0, 0, null)), List.of(), List.of());
         assertThat(r.bowling().status()).isEqualTo(PlayerMatchBowlingStatus.DID_NOT_BOWL);
+        assertThat(r.bowling().spells()).isNull();
         assertThat(r.bowling().wickets()).isNull();
     }
 
