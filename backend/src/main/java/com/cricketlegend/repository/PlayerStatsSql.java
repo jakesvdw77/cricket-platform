@@ -87,6 +87,18 @@ final class PlayerStatsSql {
     static final String VALID_BALLS = "be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)";
 
     /**
+     * The counted batting row rule (docs/specs/103): a batting entry with {@code how_out} set and not {@code DID_NOT_BAT}.
+     * Refers to the batting entry alias {@code be}; used by the aggregate and every batting read, so it exists once.
+     */
+    static final String COUNTED_BATTING_ROW = "be.how_out is not null and be.how_out <> 'DID_NOT_BAT'";
+
+    /**
+     * The counted spell rule (docs/specs/103, "Innings Bowled"): a bowling entry that bowled a ball or conceded a run.
+     * Refers to the bowling entry alias {@code bw}.
+     */
+    static final String COUNTED_SPELL = "bw.balls > 0 or bw.runs > 0";
+
+    /**
      * Every counter of every player in the filtered scope, one row per player with at least one counted appearance
      * (docs/specs/103, "Shape of the read" point 1). Batting figures count only rows that batted ({@code how_out}
      * set and not {@code DID_NOT_BAT}); "valid balls" excludes a 0-ball innings that scored runs (balls not recorded).
@@ -115,7 +127,8 @@ final class PlayerStatsSql {
               from ap
               join batting_entry be on be.result_player_id = ap.rpid
               join match_innings binn on binn.id = be.match_innings_id and binn.kind = 'REGULAR'
-              where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+              where\s""" + COUNTED_BATTING_ROW + """
+
             ),
             bat as (
               select pid,
@@ -152,7 +165,8 @@ final class PlayerStatsSql {
             bwi as (
               select ap.pid as pid, ap.bpo as bpo, bw.balls as balls, bw.runs as runs, bw.wickets as wickets,
                      bw.maidens as maidens, bw.wides as wides, bw.no_balls as no_balls, bw.dots as dots,
-                     (bw.balls > 0 or bw.runs > 0) as counted
+                     (""" + COUNTED_SPELL + """
+) as counted
               from ap
               join bowling_entry bw on bw.result_player_id = ap.rpid
               join match_innings bwinn on bwinn.id = bw.match_innings_id and bwinn.kind = 'REGULAR'

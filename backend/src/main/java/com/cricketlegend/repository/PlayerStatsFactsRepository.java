@@ -30,7 +30,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
             order by ap.match_date desc, i.sequence desc, be.id desc
             limit 5
             """, nativeQuery = true)
@@ -55,7 +56,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join bowling_entry bw on bw.result_player_id = ap.rpid
             join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
-            where bw.balls > 0 or bw.runs > 0
+            where\s""" + PlayerStatsSql.COUNTED_SPELL + """
+
             order by ap.match_date desc, i.sequence desc, bw.id desc
             limit 5
             """, nativeQuery = true)
@@ -78,7 +80,9 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT' and be.position is not null
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
+              and be.position is not null
             group by be.position
             order by be.position
             """, nativeQuery = true)
@@ -98,7 +102,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
             group by be.how_out
             """, nativeQuery = true)
     List<DismissalCountView> batterDismissals(
@@ -205,7 +210,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             left join team oat on oat.id = om.away_team_id
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
               and ap.pid in (:playerIds)
             order by ap.pid,
                      (cast(be.runs as bigint) * 2 + case when be.how_out in ('NOT_OUT', 'RETIRED_NOT_OUT') then 1 else 0 end)
@@ -242,7 +248,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             left join team oat on oat.id = om.away_team_id
             join bowling_entry bw on bw.result_player_id = ap.rpid
             join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
-            where (bw.balls > 0 or bw.runs > 0)
+            where (\s""" + PlayerStatsSql.COUNTED_SPELL + """
+)
               and ap.pid in (:playerIds)
             order by ap.pid,
                      (cast(bw.wickets as bigint) * 10000000000
@@ -373,7 +380,8 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             from ap
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
-            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
               and ap.mrid in (:resultIds)
             order by ap.mrid, i.sequence, be.id
             """, nativeQuery = true)

@@ -38,6 +38,8 @@ class PlayerStatsSqlLiteralsTest {
         sql.add(PlayerStatsSql.HAS_BATTING_CARD);
         sql.add(PlayerStatsSql.HAS_BOWLING_CARD);
         sql.add(PlayerStatsSql.VALID_BALLS);
+        sql.add(PlayerStatsSql.COUNTED_BATTING_ROW);
+        sql.add(PlayerStatsSql.COUNTED_SPELL);
         for (Class<?> repository : List.of(PlayerStatsFactsRepository.class, PlayerStatsAggregateRepository.class)) {
             for (Method method : repository.getDeclaredMethods()) {
                 Query query = method.getAnnotation(Query.class);
