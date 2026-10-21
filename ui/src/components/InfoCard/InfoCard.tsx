@@ -135,7 +135,6 @@ export function InfoCard({ title, icon, fields = [], columns, chips, chipsFirst 
               data-testid="player-info-field"
               sx={[
                 { display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 },
-                large && field.emphasis && ((theme) => ({ bgcolor: alpha(theme.palette[field.emphasis!].main, 0.06), borderRadius: 1, px: 1, py: 0.5, mx: -1, my: -0.5 })),
               ]}
             >
               <Typography variant="caption" color="text.secondary" sx={large ? { fontSize: '0.8125rem', lineHeight: 1.3, fontWeight: 400 } : undefined}>

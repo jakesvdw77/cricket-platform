@@ -1,5 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Chip, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 import { badgeSx } from '../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../components/RecordCard'
 import type { TeamFormItem, TeamFormResult } from '../../../api/teamStatsApi'
@@ -22,7 +22,8 @@ export interface TeamFormStripProps {
   backTo: string
 }
 
-// docs/specs/116-team-stats.md ("Form strip"): the last five counted results, newest first, as W / L / T / D / NR chips. Each
+// docs/specs/116-team-stats.md ("Form strip"): the last five counted results, newest first, as W / L / T / D / NR round chips with the match date
+// under each. Each
 // chip opens that result (router state carries the way back), a derby is marked "internal" and a forfeit "forfeit". Only draws
 // what the server sent; page part (a second page needing it would lift it into a shared component).
 export function TeamFormStrip({ items, backTo }: TeamFormStripProps) {
@@ -31,49 +32,71 @@ export function TeamFormStrip({ items, backTo }: TeamFormStripProps) {
     <Box data-testid="team-form-strip" sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, px: 1.5, py: 1 }}>
       <Stack spacing={0.75}>
         <Typography variant="caption" component="p" sx={{ m: 0, fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Form, last {items.length === 1 ? 'result' : `${items.length} results`}, newest first
+          Recent form
         </Typography>
-        <Stack component="ul" direction="row" flexWrap="wrap" useFlexGap spacing={0.75} aria-label="Last results, newest first" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+        <Stack component="ul" direction="row" flexWrap="wrap" useFlexGap spacing={1.5} aria-label="Last results, newest first" sx={{ m: 0, p: 0, listStyle: 'none' }}>
           {items.map((item) => {
             const tone = FORM_TONE[item.result]
             const markers = [item.derby ? 'internal' : '', item.forfeit ? 'forfeit' : ''].filter(Boolean)
             const spoken = `${FORM_WORD[item.result]}${item.forfeit ? ' by forfeit' : ''} ${item.derby ? 'in an internal match' : 'against'} ${item.derby ? '' : item.opponentName || 'an unnamed opponent'}`.replace(/\s+/g, ' ').trim()
-            const date = formatInstantDate(item.matchDate, true)
+            const longDate = formatInstantDate(item.matchDate, true)
+            // "6 Sep": the short date without its year, the year is in the accessible name and title
+            const shortDate = formatInstantDate(item.matchDate).replace(/\s\d{4}$/, '')
             return (
-              <li key={item.resultId || item.matchId}>
-                <Chip
+              <Box component="li" key={item.resultId || item.matchId} sx={{ minWidth: 56 }}>
+                <Box
                   component={RouterLink}
                   to={resultViewTo(item.matchId)}
                   state={{ backTo, backLabel: 'Team' }}
-                  clickable
-                  aria-label={`${spoken}${date ? `, ${date}` : ''}, open result`}
+                  aria-label={`${spoken}${longDate ? `, ${longDate}` : ''}, open result`}
                   title={matchLineText(item)}
                   data-tone={tone}
-                  variant={tone === 'neutral' ? 'outlined' : 'filled'}
-                  label={
-                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                      <span>{FORM_LETTER[item.result]}</span>
-                      {markers.map((marker) => (
-                        <Box key={marker} component="span" sx={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.85 }}>
-                          {marker}
-                        </Box>
-                      ))}
-                    </Box>
-                  }
-                  sx={[
-                    {
-                      height: 32,
-                      minWidth: 40,
-                      fontSize: '0.875rem',
-                      fontWeight: 700,
-                      // a 44 px hit area on a phone without changing the chip's look: the link's box grows, the chip does not
-                      position: 'relative',
-                      '&::after': { content: '""', position: 'absolute', top: -6, bottom: -6, left: -2, right: -2, display: { xs: 'block', md: 'none' } },
-                    },
-                    badgeSx(tone, { strong: true }),
-                  ]}
-                />
-              </li>
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.25,
+                    color: 'text.secondary',
+                    textDecoration: 'none',
+                    '&:hover .form-circle': { filter: 'brightness(0.96)' },
+                  }}
+                >
+                  <Box
+                    component="span"
+                    className="form-circle"
+                    sx={[
+                      {
+                        // 44 px round: the look and the phone hit area in one
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        boxSizing: 'border-box',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.9375rem',
+                        fontWeight: 700,
+                        // an internal (derby) match: a thicker primary-blue ring
+                        ...(item.derby ? { border: '3px solid', borderColor: 'primary.main' } : {}),
+                        ...(tone === 'neutral' ? { border: item.derby ? '3px solid' : '1px solid', borderColor: item.derby ? 'primary.main' : 'divider', color: 'text.primary' } : {}),
+                      },
+                      badgeSx(tone, { strong: true }),
+                      // the ring wins over the tone's own border
+                      ...(item.derby ? [{ border: '3px solid', borderColor: 'primary.main' }] : []),
+                    ]}
+                  >
+                    {FORM_LETTER[item.result]}
+                  </Box>
+                  <Typography component="span" variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.3, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                    {shortDate}
+                  </Typography>
+                  {markers.map((marker) => (
+                    <Typography key={marker} component="span" variant="caption" sx={{ fontSize: '0.6875rem', lineHeight: 1.2, fontWeight: 700, color: 'primary.main' }}>
+                      {marker}
+                    </Typography>
+                  ))}
+                </Box>
+              </Box>
             )
           })}
         </Stack>

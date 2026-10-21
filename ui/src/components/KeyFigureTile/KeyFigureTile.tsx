@@ -69,7 +69,6 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         gap: compact ? 1.25 : { xs: 1.25, md: 1.75 },
         minWidth: 0,
         bgcolor: 'background.paper',
-        ...(compact && { backgroundImage: (theme: Theme) => `linear-gradient(${alpha(theme.palette[emphasis ?? 'primary'].main, 0.06)}, ${alpha(theme.palette[emphasis ?? 'primary'].main, 0.06)})` }),
         borderRadius: 1,
         boxShadow: 1,
         px: compact ? 1.5 : { xs: 1.5, md: 2 },
