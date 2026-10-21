@@ -62,6 +62,7 @@ function renderCard(props: Partial<Parameters<typeof TeamCard>[0]> = {}) {
           matchCount={0}
           viewTo="/manage/sections/section-1/teams/team-1"
           editTo="/manage/sections/section-1/teams/team-1/edit"
+          statsTo="/manage/teams/team-1/stats"
           {...props}
         />
       </MemoryRouter>
@@ -168,6 +169,12 @@ describe('TeamCard', () => {
       '/manage/sections/section-1/teams/team-1/edit',
     )
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+  })
+
+  it('has a footer Stats link to the team statistics page', () => {
+    renderCard()
+
+    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
   })
 
   it('points Squad and Matches at squadTo and matchesTo when given', () => {

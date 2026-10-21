@@ -32,6 +32,7 @@ function makeRow(overrides: Partial<TeamTableRow> = {}): TeamTableRow {
     captainName: 'Jane Smith',
     loaded: true,
     to: '/manage/sections/section-1/teams/team-1',
+    statsTo: '/manage/teams/team-1/stats',
     ...overrides,
   }
 }
@@ -45,6 +46,12 @@ function renderTable(rows: TeamTableRow[]) {
 }
 
 describe('TeamTable', () => {
+  it('gives each row a Stats link to the team statistics page', () => {
+    renderTable([makeRow()])
+
+    expect(within(screen.getByTestId('team-row')).getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
+  })
+
   it('renders the header and a row per team with section, players, matches, captain and status', () => {
     renderTable([makeRow(), makeRow({ team: makeTeam({ id: 'team-2', name: '2nd XI', active: false }), captainName: null })])
 

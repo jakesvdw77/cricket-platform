@@ -4,6 +4,7 @@ import { Avatar, Box, ButtonBase, Stack, Typography } from '@mui/material'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
@@ -35,6 +36,10 @@ export interface TeamCardProps {
   // has no team address to open on).
   squadTo?: string
   matchesTo?: string
+  // docs/specs/116 (decision 21): the fourth footer button, straight to the team's statistics page; statsState is the
+  // router state that page's Back button reads (the Teams list URL).
+  statsTo: string
+  statsState?: { backTo: string; backLabel: string }
 }
 
 const NOT_ON_FILE = '–'
@@ -50,7 +55,7 @@ function PersonRow({ icon, label, value }: { icon: ReactNode; label: string; val
 // docs/specs/092-teams-gold-standard.md (B), mockup board 2b: one RecordCard per team, built like the player, match and
 // league cards - the logo and name with the section and Active / Inactive chips beneath, the social icons in the corner,
 // Players and Matches figure tiles, zebra Captain / Manager / Coach rows ("–" muted when empty), a Sponsors row (each logo
-// opens the quick-view dialog) and an icon-over-caption footer (Squad, Matches, Edit). The whole card opens the team.
+// opens the quick-view dialog) and an icon-over-caption footer (Squad, Matches, Edit, Stats). The whole card opens the team.
 export function TeamCard({
   team,
   sectionName,
@@ -64,6 +69,8 @@ export function TeamCard({
   editTo,
   squadTo,
   matchesTo,
+  statsTo,
+  statsState,
 }: TeamCardProps) {
   const socialLinks = team.socialLinks ?? []
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
@@ -94,6 +101,7 @@ export function TeamCard({
           { label: 'Squad', icon: <GroupsOutlinedIcon fontSize="small" />, to: squadTo ?? viewTo },
           { label: 'Matches', icon: <EventOutlinedIcon fontSize="small" />, to: matchesTo ?? viewTo },
           { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+          { label: 'Stats', icon: <EqualizerOutlinedIcon fontSize="small" />, to: statsTo, linkState: statsState },
         ]}
       >
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>

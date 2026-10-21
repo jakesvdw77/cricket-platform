@@ -26,6 +26,8 @@ function row(id: string, name: string, overrides: Partial<TeamTableRow> = {}, te
     captainName: 'Jane Smith',
     loaded: true,
     to: `/manage/sections/section-1/teams/${id}`,
+    statsTo: `/manage/teams/${id}/stats`,
+    statsState: { backTo: '/manage/teams', backLabel: 'Teams' },
     ...overrides,
   }
 }

@@ -229,6 +229,7 @@ describe('TeamsPage', () => {
       expect(screen.getByRole('link', { name: /Back to Club Structure/ })).toHaveAttribute('href', '/manage/sections')
       expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', expect.stringContaining('?from=section'))
       expect(screen.getAllByRole('link', { name: 'Edit' })[0]).toHaveAttribute('href', '/manage/sections/section-1/teams/a/edit?from=section')
+      expect(screen.getAllByRole('link', { name: 'Stats' })[0]).toHaveAttribute('href', '/manage/teams/a/stats')
     })
   })
 
