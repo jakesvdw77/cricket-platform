@@ -168,7 +168,15 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
           <Typography data-testid="matches-footer" sx={{ fontSize: '0.875rem', color: 'text.secondary', textAlign: { xs: 'center', sm: 'left' } }}>
             Showing {rows.length} of {total} {total === 1 ? 'match' : 'matches'}
           </Typography>
-          {query.hasNextPage && (
+          {query.isError && (
+            <Box role="alert" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+              <Typography sx={{ fontSize: '0.875rem', color: 'error.main' }}>Couldn't load more matches</Typography>
+              <MuiButton variant="text" onClick={() => (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())} sx={{ minHeight: 44 }}>
+                Try again
+              </MuiButton>
+            </Box>
+          )}
+          {query.hasNextPage && !query.isError && (
             <MuiButton variant="outlined" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} sx={{ minHeight: 44 }}>
               {query.isFetchingNextPage ? 'Loading...' : 'Show more'}
             </MuiButton>

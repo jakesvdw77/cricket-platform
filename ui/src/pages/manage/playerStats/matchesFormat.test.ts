@@ -64,6 +64,11 @@ describe('bowling and fielding text', () => {
     expect(bowlingDetail({ ...bowling, balls: 22 }, 8)).toBe('2.6 ov · 1 mdn · 8 dots')
   })
 
+  it('writes a dash, not a zero, for a missing wickets or runs figure', () => {
+    expect(bowlingFigure({ status: 'BOWLED', balls: 24, maidens: 0, runs: null, wickets: 2, dots: null })).toBe('2/–')
+    expect(bowlingFigure({ status: 'BOWLED', balls: 24, maidens: 0, runs: 14, wickets: null, dots: null })).toBe('–/14')
+  })
+
   it('leaves the dots out when not recorded', () => {
     expect(bowlingDetail({ status: 'BOWLED', balls: 24, maidens: 0, runs: 14, wickets: 0, dots: null }, 6)).toBe('4.0 ov · 0 mdn')
   })

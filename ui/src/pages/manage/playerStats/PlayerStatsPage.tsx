@@ -30,6 +30,11 @@ const COMPETITION_OPTIONS = [
   { value: 'FRIENDLY', label: 'Friendlies' },
 ]
 
+// ?competition= from a link: only the two known values count, anything else means no filter.
+function parseCompetition(value: string | null): StatsCompetition | null {
+  return value === 'LEAGUE' || value === 'FRIENDLY' ? value : null
+}
+
 function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStatsTab>): string {
   const { matchesCounted, resultsWithBattingCard, resultsWithBowlingCard } = stats.basis
   const lead = `Based on ${resultsPhrase(matchesCounted)} with this player on the team list`
@@ -39,7 +44,7 @@ function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStats
 }
 
 // docs/specs/103-player-stats.md: the full breakdown of one player's published results (/manage/players/:playerId/stats).
-// Back, name and status, a Batting | Bowling | Fielding | Awards & record strip bound to ?tab=, a compact FilterBar (Season, League, Section,
+// Back, name and status, a Batting | Bowling | Fielding | Awards & record | Matches strip bound to ?tab=, a compact FilterBar (Season, League, Section,
 // Team and Competition; Season and League are saved per club, the rest are per visit), a basis line, and the active tab.
 // All filters are backend parameters; the page only displays what the server computed.
 export default function PlayerStatsPage() {
@@ -60,7 +65,7 @@ export default function PlayerStatsPage() {
     leagueId: searchParams.has('leagueId') ? searchParams.get('leagueId') || null : undefined,
     teamId: searchParams.get('teamId') || null,
     sectionId: searchParams.get('sectionId') || null,
-    competition: ((value) => (value === 'LEAGUE' || value === 'FRIENDLY' ? value : null))(searchParams.get('competition')) as StatsCompetition | null,
+    competition: parseCompetition(searchParams.get('competition')),
   }))
   const [seasonOverride, setSeasonOverride] = useState<string | null | undefined>(linked.seasonId)
   const [leagueOverride, setLeagueOverride] = useState<string | null | undefined>(linked.leagueId)

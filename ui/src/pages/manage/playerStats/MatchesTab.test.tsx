@@ -506,6 +506,29 @@ describe('Matches tab', () => {
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
     })
 
+    it('keeps the rows and offers Try again when the next page fails, then loads it', async () => {
+      server.rows = makeRows(45)
+      renderPage()
+      await screen.findAllByTestId('match-row', {}, wait)
+      const pages = server.matches
+      let failOnce = true
+      server.matches = (params) => {
+        if (params.page === 1 && failOnce) {
+          failOnce = false
+          return new Error('boom')
+        }
+        return pages(params)
+      }
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      expect(await screen.findByText("Couldn't load more matches")).toBeInTheDocument()
+      expect(rowsOnScreen()).toHaveLength(20)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
+      expect(screen.queryByText("Couldn't load more matches")).not.toBeInTheDocument()
+    })
+
     it('works the same on a phone', async () => {
       setViewport(false)
       server.rows = makeRows(25)

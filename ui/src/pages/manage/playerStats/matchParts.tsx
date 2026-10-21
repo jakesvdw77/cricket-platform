@@ -52,7 +52,7 @@ export function AwardMarkers({ awards, showText = false }: { awards: PlayerAward
   )
 }
 
-// A labelled line: Batting, Bowling or Fielding (and Awards on the Total card).
+// A labelled line on the phone card: Batting, Bowling or Fielding.
 export function CardLine({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: '72px 1fr', gap: 1, fontSize: '0.875rem', lineHeight: 1.4 }}>

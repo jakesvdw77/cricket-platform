@@ -60,7 +60,8 @@ export function ballsText(innings: PlayerMatchInnings[], ballsFaced: number | nu
 }
 
 export function bowlingFigure(bowling: PlayerMatchBowling): string {
-  return `${bowling.wickets ?? 0}/${bowling.runs ?? 0}`
+  // The server always sends both for a BOWLED row; a missing one reads as a dash, never a made-up zero.
+  return `${dash(bowling.wickets)}/${dash(bowling.runs)}`
 }
 
 // "4.0 ov · 1 mdn · 8 dots": dots only when recorded.
