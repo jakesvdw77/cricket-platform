@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useLeaderboardFilterOptions } from '../../../api/leaderboardApi'
+import { useTeamStatsFilterOptions } from '../../../api/teamStatsApi'
 import type { LeaderboardFilters } from '../../../api/leaderboardApi'
 import { useStatsFilterLookups } from '../../../hooks/useStatsFilterLookups'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
@@ -21,7 +22,10 @@ interface SavedFilters extends Record<string, unknown> {
 // offered falls back to the default (Season) or All (the rest). If the options read fails the lists are left unrestricted rather
 // than hiding the filters. `ready` is false until everything needed to choose the default has loaded, so the page never fetches a
 // board twice.
-export function useLeaderboardFilters(clubId: string | undefined) {
+//
+// docs/specs/116-team-stats.md: on the Teams tab (`forTeams`) the lists are narrowed by the TEAM filter options instead (the player
+// options and catalogue are not fetched), Team is not offered, and the saved teamId is ignored (and kept for the player tabs).
+export function useLeaderboardFilters(clubId: string | undefined, forTeams = false) {
   const [saved, updateSaved] = usePersistedListFilters<SavedFilters>(`leaderboards:filters:${clubId}`, {
     seasonId: null,
     leagueId: null,
@@ -29,8 +33,14 @@ export function useLeaderboardFilters(clubId: string | undefined) {
     teamId: null,
   })
 
-  const optionsQuery = useLeaderboardFilterOptions(clubId)
-  const lookups = useStatsFilterLookups(clubId, optionsQuery.data, optionsQuery.isError)
+  const playerOptions = useLeaderboardFilterOptions(clubId, !forTeams)
+  const teamOptionsQuery = useTeamStatsFilterOptions(clubId, forTeams)
+  const optionsQuery = forTeams ? teamOptionsQuery : playerOptions
+  const available = useMemo(
+    () => (forTeams ? (teamOptionsQuery.data ? { ...teamOptionsQuery.data, teamIds: [] } : undefined) : playerOptions.data),
+    [forTeams, teamOptionsQuery.data, playerOptions.data],
+  )
+  const lookups = useStatsFilterLookups(clubId, available, optionsQuery.isError)
   const { seasons: seasonOptions, leagues: leagueOptions, teams: teamOptions, sections: sectionOptions } = lookups
 
   const defaultSeasonId = useMemo(() => pickDefaultSeasonId(lookups.allSeasons ?? []), [lookups.allSeasons])
@@ -42,7 +52,7 @@ export function useLeaderboardFilters(clubId: string | undefined) {
       ? null
       : (offered(seasonOptions, saved.seasonId) ?? offered(seasonOptions, defaultSeasonId ?? null))
   const leagueId = offered(leagueOptions, saved.leagueId)
-  const teamId = offered(teamOptions, saved.teamId)
+  const teamId = forTeams ? null : offered(teamOptions, saved.teamId)
   const sectionId = offered(sectionOptions, saved.sectionId)
 
   const ready = !lookups.loading && !optionsQuery.isLoading
@@ -59,6 +69,8 @@ export function useLeaderboardFilters(clubId: string | undefined) {
     leagues: leagueOptions,
     sections: sectionOptions,
     teams: teamOptions,
+    // the competitions with counted team results (Teams tab only)
+    competitions: forTeams ? (teamOptionsQuery.data?.competitions ?? []) : [],
     allSections: lookups.allSections,
     setSeason: (id: string | null) => updateSaved({ seasonId: id ?? ALL_SEASONS }),
     setLeague: (id: string | null) => updateSaved({ leagueId: id }),

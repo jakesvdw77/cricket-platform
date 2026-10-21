@@ -12,6 +12,11 @@ export function LeaderboardTabs() {
   const searchFor = (value: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('tab', value)
+    // The player columns and the team columns differ: a sort never crosses into or out of the Teams tab.
+    if (value === 'teams' || active === 'teams') {
+      next.delete('sort')
+      next.delete('dir')
+    }
     return `?${next.toString()}`
   }
 
