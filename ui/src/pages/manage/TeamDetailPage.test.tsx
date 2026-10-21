@@ -252,6 +252,7 @@ function renderPage(initialPath: string, clubId?: string) {
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="teams" element={<div>Team Directory Page</div>} />
+            <Route path="teams/:teamId/stats" element={<div>Team Statistics Page</div>} />
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
@@ -365,6 +366,19 @@ describe('TeamDetailPage', () => {
     // Each card fills its grid cell, so the shorter one is as tall as the taller.
     expect(getComputedStyle(screen.getByTestId('team-contacts-card')).height).toBe('100%')
     expect(getComputedStyle(screen.getByTestId('team-sponsors-card')).height).toBe('100%')
+  })
+
+  it('draws a Statistics card with a real 44 px outlined link to the team statistics page', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    const card = await screen.findByTestId('team-statistics-card')
+    expect(within(card).getByRole('heading', { name: 'Statistics' })).toBeInTheDocument()
+    const link = within(card).getByRole('link', { name: 'View statistics' })
+    expect(link).toHaveAttribute('href', '/manage/teams/team-1/stats')
+    await userEvent.click(link)
+    expect(await screen.findByText('Team Statistics Page')).toBeInTheDocument()
   })
 
   it('renders an Inactive badge chip for a deactivated team', async () => {

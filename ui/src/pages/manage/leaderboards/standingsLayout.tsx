@@ -114,12 +114,15 @@ export function RowShell({
   columns,
   widthOf,
   to,
+  state,
   rank,
   children,
 }: {
   columns: LayoutColumn[]
   widthOf: WidthOf
   to: string
+  // router state carried with the row link (docs/specs/116: the team page's Back returns to this table)
+  state?: unknown
   rank: number | null | undefined
   children: ReactNode
 }) {
@@ -131,7 +134,7 @@ export function RowShell({
       role="row"
       onClick={(event) => {
         if (event.defaultPrevented || (event.target as HTMLElement).closest('a')) return
-        navigate(to)
+        navigate(to, { state })
       }}
       data-testid="standings-row"
       data-rank={unranked ? 'none' : rank}

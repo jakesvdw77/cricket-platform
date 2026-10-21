@@ -89,7 +89,8 @@ export function CountRows({ rows, empty }: { rows: CountRow[]; empty: string }) 
 
 // The single "Not captured yet" panel at the foot of a tab: names the statistics the scorecard cannot support, with the
 // reason in one line. Driven by the response's notCaptured list, so it shrinks by itself as capture arrives.
-export function NotCapturedPanel({ items }: { items: NotCapturedItem[] }) {
+// (spec 116: the team page passes its own list, which has no `tab`, so only the three fields drawn are required)
+export function NotCapturedPanel({ items }: { items: Pick<NotCapturedItem, 'code' | 'label' | 'reason'>[] }) {
   if (items.length === 0) return null
   return (
     <InfoCard fieldSize="large" title="Not captured yet" icon={<ReportGmailerrorredOutlinedIcon />} tone="warning" testId="not-captured-panel">

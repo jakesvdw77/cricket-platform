@@ -1,4 +1,5 @@
-import type { TeamStatsCell, TeamStatsTableBasis } from '../../../api/teamStatsApi'
+import type { TeamFormResult, TeamStatsCell, TeamStatsMatchRef, TeamStatsNetRunRate, TeamStatsPageData, TeamStatsTableBasis } from '../../../api/teamStatsApi'
+import { formatInstantDate } from '../../../utils/formatInstantDate'
 import { NOT_ON_FILE } from '../../../utils/playerFormat'
 
 // docs/specs/116-team-stats.md (Teams tab): display helpers only. Figures, ranks and statuses are decided by the server
@@ -106,4 +107,55 @@ export function teamStatsLink(teamId: string, filters: { seasonId?: string | nul
   params.set('leagueId', filters.leagueId ?? '')
   if (competition) params.set('competition', competition)
   return `/manage/teams/${teamId}/stats?${params.toString()}`
+}
+
+// ---- The team page (docs/specs/116-team-stats.md, "The team page") ----
+
+// "Based on 12 published results. 1 internal match is counted once for this team. 2 results with no ball bowled are not counted.
+// Forfeits received 1 and conceded 0 are counted as a win and a loss." Only the parts that are not zero.
+export function teamPageBasisLines(basis: TeamStatsPageData['basis']): string[] {
+  const lines = [`Based on ${plural(basis.resultsCounted, 'published result')}.`]
+  if (basis.internalResults > 0) {
+    lines.push(`${plural(basis.internalResults, 'internal match', 'internal matches')} ${basis.internalResults === 1 ? 'is' : 'are'} counted once for this team.`)
+  }
+  if (basis.resultsNoBallBowled > 0) {
+    lines.push(`${plural(basis.resultsNoBallBowled, 'result')} with no ball bowled ${basis.resultsNoBallBowled === 1 ? 'is' : 'are'} not counted.`)
+  }
+  const { received, conceded } = basis.forfeits
+  if (received > 0 || conceded > 0) {
+    const parts = [received > 0 ? `received ${received}` : '', conceded > 0 ? `conceded ${conceded}` : ''].filter(Boolean)
+    lines.push(`Forfeits ${parts.join(' and ')} ${received + conceded === 1 ? 'is' : 'are'} counted as ${received > 0 && conceded > 0 ? 'wins and losses' : received > 0 ? (received === 1 ? 'a win' : 'wins') : conceded === 1 ? 'a loss' : 'losses'}.`)
+  }
+  return lines
+}
+
+export const FORM_LETTER: Record<TeamFormResult, string> = { WON: 'W', LOST: 'L', TIED: 'T', DRAWN: 'D', NO_RESULT: 'NR' }
+export const FORM_WORD: Record<TeamFormResult, string> = { WON: 'Won', LOST: 'Lost', TIED: 'Tied', DRAWN: 'Drawn', NO_RESULT: 'No result' }
+
+// "v Riverside CC, 14 Mar 2026"; the opponent or the date is left out when not on file.
+export function matchLineText(ref: Pick<TeamStatsMatchRef, 'opponentName' | 'matchDate'>): string {
+  const date = formatInstantDate(ref.matchDate)
+  const opponent = ref.opponentName ? `v ${ref.opponentName}` : ''
+  return [opponent, date].filter(Boolean).join(', ')
+}
+
+// "from 9 of 14 innings that recorded it" - only when some innings did not.
+export function recordedCaption(recorded: number | null | undefined, counted: number | null | undefined, what = 'that recorded it'): string | undefined {
+  if (recorded === null || recorded === undefined || !counted || recorded >= counted) return undefined
+  return `from ${recorded} of ${counted} innings ${what}`
+}
+
+export const NRR_RULE_LABEL = 'Full-quota rule'
+
+// The Net run rate card: the value (or a dash), and the line under it.
+export function netRunRateCard(nrr: TeamStatsNetRunRate): { value: string; detail: string } {
+  if (nrr.status === 'SHOWN') {
+    const used = nrr.matchesUsed ?? 0
+    const counted = nrr.matchesCounted ?? used
+    return { value: netRunRateText(nrr.value), detail: `Based on ${used} of ${plural(counted, 'result')}, one league in one season.` }
+  }
+  if (nrr.status === 'NOT_ONE_COMPETITION') {
+    return { value: NOT_ON_FILE, detail: 'Not shown across more than one league or season. Choose one league and season to see Net Run Rate.' }
+  }
+  return { value: NOT_ON_FILE, detail: 'Net run rate needs won or tied results with both innings recorded.' }
 }

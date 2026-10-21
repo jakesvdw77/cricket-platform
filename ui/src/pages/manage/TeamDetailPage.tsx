@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
@@ -14,6 +14,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
+import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined'
 import { EmptyState } from '../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { InfoCard } from '../../components/InfoCard'
@@ -114,6 +115,7 @@ export default function TeamDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { sectionId, teamId } = useParams<{ sectionId?: string; teamId?: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   const fromSection = searchParams.get('from') === 'section'
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
@@ -357,6 +359,28 @@ export default function TeamDetailPage() {
           textValue
         />
       </Box>
+
+      {/* docs/specs/116-team-stats.md: the one link to the team statistics page. The router state lets its Back return here. */}
+      <InfoCard
+        testId="team-statistics-card"
+        title="Statistics"
+        icon={<QueryStatsOutlinedIcon />}
+        actions={
+          <MuiButton
+            component={RouterLink}
+            to={`/manage/teams/${team.id}/stats`}
+            state={{ backTo: `${location.pathname}${location.search}`, backLabel: team.name || 'Team' }}
+            variant="outlined"
+            sx={{ minHeight: 44 }}
+          >
+            View statistics
+          </MuiButton>
+        }
+      >
+        <Typography variant="body2" color="text.secondary">
+          Record, form, batting, bowling and net run rate from this team's published results.
+        </Typography>
+      </InfoCard>
 
       {/* Contacts + Sponsors: equal-height cards (InfoCard fills its grid cell), one column on a phone. */}
       <Box

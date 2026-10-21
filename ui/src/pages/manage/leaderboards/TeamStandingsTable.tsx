@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Chip, Link as MuiLink, Typography } from '@mui/material'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { IntegerField } from '../../../components/IntegerField'
 import { badgeSx } from '../../../components/RecordCard'
 import type { TeamStatsCell, TeamStatsColumn, TeamStatsTableRow, useTeamStatsTable } from '../../../api/teamStatsApi'
@@ -42,12 +42,15 @@ export interface TeamStandingsTableProps {
 
 function TeamRow({ row, columns, sortCode, to }: { row: TeamStatsTableRow; columns: TeamStatsColumn[]; sortCode: string; to: string }) {
   const unranked = row.rank === null || row.rank === undefined
+  // docs/specs/116: the team page's Back returns to this table with its filters, sort and tab
+  const location = useLocation()
+  const state = { backTo: `${location.pathname}${location.search}`, backLabel: 'Teams' }
   return (
-    <RowShell columns={columns} widthOf={teamCellWidth} to={to} rank={row.rank}>
+    <RowShell columns={columns} widthOf={teamCellWidth} to={to} state={state} rank={row.rank}>
       <RankCell text={rankText(row.rank)} unranked={unranked} />
       <FirstCell>
         <Typography component="div" sx={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
-          <MuiLink component={RouterLink} to={to} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+          <MuiLink component={RouterLink} to={to} state={state} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
             {row.teamName}
           </MuiLink>
         </Typography>
