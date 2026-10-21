@@ -147,6 +147,19 @@ public final class TeamStatsCalculator {
             UUID seasonId) {
     }
 
+    /** How one counted result reads for the team on the form strip. */
+    public enum FormResult {
+        WON,
+        LOST,
+        TIED,
+        DRAWN,
+        NO_RESULT
+    }
+
+    /** One result for the form strip; {@code forfeit} marks a win or loss by forfeit (no scores). */
+    public record FormLine(FormResult result, boolean forfeit) {
+    }
+
     private static final BigInteger TEN = BigInteger.TEN;
 
     private TeamStatsCalculator() {}
@@ -170,6 +183,23 @@ public final class TeamStatsCalculator {
                 extras(c),
                 netRunRate(c.netRunRate(), resultsWithInnings),
                 NOT_CAPTURED);
+    }
+
+    // ---- form ----
+
+    /**
+     * How a counted result reads for the team on {@code side} (the same rules as the record: a forfeit is a win for the
+     * side that received it, {@code winningSide}, and a loss for the other).
+     */
+    public static FormLine formLine(String outcome, String winningSide, String side) {
+        return switch (outcome) {
+            case "WON" -> new FormLine(side.equals(winningSide) ? FormResult.WON : FormResult.LOST, false);
+            case "FORFEIT" -> new FormLine(side.equals(winningSide) ? FormResult.WON : FormResult.LOST, true);
+            case "TIE" -> new FormLine(FormResult.TIED, false);
+            case "DRAW" -> new FormLine(FormResult.DRAWN, false);
+            case "NO_RESULT", "ABANDONED" -> new FormLine(FormResult.NO_RESULT, false);
+            default -> throw new IllegalArgumentException("Not a counted outcome: " + outcome);
+        };
     }
 
     // ---- record ----

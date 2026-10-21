@@ -62,6 +62,25 @@ final class TeamStatsSql {
             "rs.outcome in ('WON', 'TIE') and rs.decided_by <> 'DLS' and rs.league_id is not null"
                     + " and rs.n_inn = 2 and rs.n_own = 1 and rs.n_opp = 1 and rs.all_usable and rs.quota_known";
 
+    /** A regular win by runs (alias {@code tr}) with a stored margin: the largest victory by runs is taken over these. */
+    static final String VICTORY_BY_RUNS_RESULT =
+            "tr.outcome = 'WON' and tr.winning_side = tr.side and tr.decided_by = 'REGULAR'"
+                    + " and tr.margin_type = 'RUNS' and tr.margin_value is not null";
+
+    /** A regular win by wickets (alias {@code tr}) with a stored margin. */
+    static final String VICTORY_BY_WICKETS_RESULT =
+            "tr.outcome = 'WON' and tr.winning_side = tr.side and tr.decided_by = 'REGULAR'"
+                    + " and tr.margin_type = 'WICKETS' and tr.margin_value is not null";
+
+    /** The team's last (chasing) own innings of a win, for the balls remaining (alias {@code ti}, joined to {@code tr}). */
+    static final String VICTORY_BY_WICKETS_INNINGS_JOIN =
+            "left join ti on ti.team_id = tr.team_id and ti.mrid = tr.mrid and ti.side = tr.side"
+                    + " and ti.own and ti.sequence = ti.last_seq";
+
+    /** The opposition innings a chase is measured against (alias {@code pv}, joined to the chasing {@code ti}). */
+    static final String CHASED_INNINGS_JOIN =
+            "join ti pv on pv.team_id = ti.team_id and pv.mrid = ti.mrid and pv.side = ti.side";
+
     // ---- encoded keys ----
 
     private static final String EPOCH_TI = "trunc(cast(extract(epoch from ti.match_date) as numeric))";
@@ -99,6 +118,8 @@ final class TeamStatsSql {
                      r.balls_per_over as bpo, r.scheduled_balls as scheduled_balls,
                      m.league_id as league_id, m.season_id as season_id,
                      coalesce(ht.club_id = r.club_id and awt.club_id = r.club_id, false) as derby,
+                     case when s.side = 'HOME' then coalesce(awt.name, m.away_team_name)
+                          else coalesce(ht.name, m.home_team_name) end as opponent_name,
                      (\
             """ + StatsCountingSql.PLAYED_RESULT + """
              or r.outcome_type = 'FORFEIT') as counted
@@ -131,8 +152,8 @@ final class TeamStatsSql {
      */
     static final String TEAM_INNINGS = TEAM_RESULTS + """
             , ti as (
-              select tr.team_id as team_id, tr.mrid as mrid, tr.side as side, tr.match_date as match_date,
-                     tr.outcome as outcome, tr.winning_side as winning_side, tr.decided_by as decided_by,
+              select tr.team_id as team_id, tr.mrid as mrid, tr.match_id as match_id, tr.side as side,
+                     tr.match_date as match_date, tr.opponent_name as opponent_name, tr.outcome as outcome, tr.winning_side as winning_side, tr.decided_by as decided_by,
                      tr.margin_type as margin_type, tr.margin_value as margin_value, tr.bpo as bpo,
                      tr.scheduled_balls as scheduled_balls, tr.league_id as league_id, tr.season_id as season_id,
                      (i.batting_side = tr.side) as own, i.sequence as sequence, i.runs as runs, i.wickets as wickets,
@@ -224,7 +245,8 @@ final class TeamStatsSql {
               select ti.team_id as team_id, max(""" + CHASE_KEY + """
             ) as chase_key
               from ti
-              join ti pv on pv.team_id = ti.team_id and pv.mrid = ti.mrid and pv.side = ti.side
+              """ + CHASED_INNINGS_JOIN + """
+
               where\s""" + SUCCESSFUL_CHASE + """
 
               group by ti.team_id
@@ -233,18 +255,18 @@ final class TeamStatsSql {
               select tr.team_id as team_id, max(""" + VICTORY_RUNS_KEY + """
             ) as victory_runs_key
               from tr
-              where tr.outcome = 'WON' and tr.winning_side = tr.side and tr.decided_by = 'REGULAR'
-                and tr.margin_type = 'RUNS' and tr.margin_value is not null
+              where\s""" + VICTORY_BY_RUNS_RESULT + """
+
               group by tr.team_id
             ),
             vw as (
               select tr.team_id as team_id, max(""" + VICTORY_WICKETS_KEY + """
             ) as victory_wickets_key
               from tr
-              left join ti on ti.team_id = tr.team_id and ti.mrid = tr.mrid and ti.side = tr.side
-                          and ti.own and ti.sequence = ti.last_seq
-              where tr.outcome = 'WON' and tr.winning_side = tr.side and tr.decided_by = 'REGULAR'
-                and tr.margin_type = 'WICKETS' and tr.margin_value is not null
+              """ + VICTORY_BY_WICKETS_INNINGS_JOIN + """
+
+              where\s""" + VICTORY_BY_WICKETS_RESULT + """
+
               group by tr.team_id
             ),
             rs as (
@@ -379,5 +401,75 @@ final class TeamStatsSql {
                    tr.section_id as "sectionId",
                    case when tr.league_id is not null then 'LEAGUE' else 'FRIENDLY' end as "competition"
             from tr
+            """;
+
+    /**
+     * The last five counted results of one team (the query is called with a team id), newest first, forfeits included
+     * (they carry no scores). The opponent is the opposite side's team name, else its free-text name; in a derby that is
+     * the other club team (115's rule). The date is epoch milliseconds, as 115 reads it.
+     */
+    static final String TEAM_FORM = TEAM_RESULTS + """
+            select tr.mrid as "resultId",
+                   tr.match_id as "matchId",
+                   cast(extract(epoch from tr.match_date) * 1000 as bigint) as "matchEpochMillis",
+                   tr.opponent_name as "opponentName",
+                   tr.derby as "derby",
+                   tr.outcome as "outcome",
+                   tr.winning_side as "winningSide",
+                   tr.side as "side"
+            from tr
+            order by tr.match_date desc, tr.match_id desc, tr.mrid desc
+            limit 5
+            """;
+
+    /**
+     * Which match each encoded key of the one-team aggregate points to (the page shows the match line only; the values
+     * come from the keys). Parameters are the seven of {@link #TEAM_RESULTS} plus {@code highKey}, {@code lowKey},
+     * {@code chaseKey}, {@code victoryRunsKey}, {@code victoryWicketsKey} (each null when the aggregate had none). Each row
+     * is a {@code kind} (HIGH, LOW, CHASE, VICTORY_RUNS, VICTORY_WICKETS), the match and the opponent name; the predicates
+     * and keys are the aggregate's own constants. Ordered by kind then match id so an (improbable) tie is stable.
+     */
+    static final String MATCH_REFERENCES = TEAM_INNINGS + """
+            select 'HIGH' as "kind", ti.match_id as "matchId", ti.opponent_name as "opponentName"
+            from ti
+            where ti.own and ti.usable and\s""" + HIGH_LOW_RESULT + """
+
+              and\s""" + HIGH_TOTAL_KEY + """
+             = cast(:highKey as numeric)
+            union all
+            select 'LOW', ti.match_id, ti.opponent_name
+            from ti
+            where ti.own and ti.usable and\s""" + HIGH_LOW_RESULT + """
+
+              and\s""" + COMPLETE_INNINGS + """
+
+              and\s""" + LOW_TOTAL_KEY + """
+             = cast(:lowKey as numeric)
+            union all
+            select 'CHASE', ti.match_id, ti.opponent_name
+            from ti
+            \s""" + CHASED_INNINGS_JOIN + """
+
+            where\s""" + SUCCESSFUL_CHASE + """
+
+              and\s""" + CHASE_KEY + """
+             = cast(:chaseKey as numeric)
+            union all
+            select 'VICTORY_RUNS', tr.match_id, tr.opponent_name
+            from tr
+            where\s""" + VICTORY_BY_RUNS_RESULT + """
+
+              and\s""" + VICTORY_RUNS_KEY + """
+             = cast(:victoryRunsKey as numeric)
+            union all
+            select 'VICTORY_WICKETS', tr.match_id, tr.opponent_name
+            from tr
+            \s""" + VICTORY_BY_WICKETS_INNINGS_JOIN + """
+
+            where\s""" + VICTORY_BY_WICKETS_RESULT + """
+
+              and\s""" + VICTORY_WICKETS_KEY + """
+             = cast(:victoryWicketsKey as numeric)
+            order by 1, 2
             """;
 }

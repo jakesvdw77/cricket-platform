@@ -1,19 +1,24 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardPageInfo;
+import com.cricketlegend.dto.TeamStatsDto;
+import com.cricketlegend.dto.TeamStatsDto.TeamStatsPageScope;
 import com.cricketlegend.dto.TeamStatsFilterOptionsDto;
 import com.cricketlegend.dto.TeamStatsTableDto;
 import com.cricketlegend.dto.TeamStatsTableDto.TeamStatsBasis;
 import com.cricketlegend.dto.TeamStatsTableDto.TeamStatsMinimum;
 import com.cricketlegend.dto.TeamStatsTableDto.TeamStatsScope;
 import com.cricketlegend.dto.TeamStatsTableDto.TeamStatsSort;
+import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.TeamStatsMapper;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamStatsAggregateRepository;
 import com.cricketlegend.repository.TeamStatsAggregateRepository.TeamStatsAggregateView;
 import com.cricketlegend.repository.TeamStatsAggregateRepository.TeamStatsBasisView;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamStatsFactsRepository;
 import com.cricketlegend.service.TeamStatsService;
 import com.cricketlegend.service.support.LeaderboardBoard.Direction;
@@ -24,6 +29,8 @@ import com.cricketlegend.service.support.TeamStatsCalculator;
 import com.cricketlegend.service.support.TeamStatsColumn;
 import com.cricketlegend.service.support.TeamStatsCounters;
 import com.cricketlegend.service.support.TeamStatsCountersReader;
+import com.cricketlegend.service.support.TeamStatsFactsReader;
+import com.cricketlegend.service.support.TeamStatsFactsReader.MatchRef;
 import com.cricketlegend.service.support.TeamTableRanker;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +67,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
     private final TeamStatsAggregateRepository aggregateRepository;
     private final TeamStatsFactsRepository factsRepository;
     private final SectionRepository sectionRepository;
+    private final TeamRepository teamRepository;
     private final StatsScopeResolver scopeResolver;
     private final TeamStatsMapper mapper;
 
@@ -67,11 +75,13 @@ public class TeamStatsServiceImpl implements TeamStatsService {
             TeamStatsAggregateRepository aggregateRepository,
             TeamStatsFactsRepository factsRepository,
             SectionRepository sectionRepository,
+            TeamRepository teamRepository,
             StatsScopeResolver scopeResolver,
             TeamStatsMapper mapper) {
         this.aggregateRepository = aggregateRepository;
         this.factsRepository = factsRepository;
         this.sectionRepository = sectionRepository;
+        this.teamRepository = teamRepository;
         this.scopeResolver = scopeResolver;
         this.mapper = mapper;
     }
@@ -154,6 +164,88 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                         table.belowMinimum()),
                 new LeaderboardPageInfo(page, size, table.listed(), ((long) page + 1) * size < table.listed()),
                 table.page(page, size));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeamStatsDto team(
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, String competitionText) {
+        StatsScope.Competition competitionFilter = StatsScopeResolver.parseCompetition(competitionText);
+        // 404 for an unknown or other-club team, season or league; 403 for a team outside a section-scoped caller's reach.
+        StatsScopeResolver.Resolved resolved =
+                scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, null, competitionFilter);
+        StatsScope scope = resolved.scope();
+        Team team = teamRepository
+                .findById(teamId)
+                .filter(candidate -> clubId.equals(candidate.getClubId()))
+                .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
+        String competition = StatsScopeResolver.competitionName(scope);
+
+        // The resolver gives the team's whole section as sectionTeamIds even for an unrestricted admin; every query below
+        // also filters by teamId, so the section list never widens or narrows this team's own figures.
+        TeamStatsCounters counters = TeamStatsCounters.EMPTY;
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        if (!resolved.nothingInReach()) {
+            List<TeamStatsAggregateView> rows = aggregateRepository.aggregate(
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams);
+            counters = rows.isEmpty()
+                    ? TeamStatsCountersReader.empty(n(aggregateRepository
+                            .basis(clubId, scope.seasonId(), scope.leagueId(), teamId, competition,
+                                    scope.sectionRestricted(), sectionTeams)
+                            .getResultsNoBallBowled()))
+                    : TeamStatsCountersReader.toCounters(rows.get(0));
+        }
+        TeamStatsCalculator.Figures figures = TeamStatsCalculator.calculate(counters);
+
+        List<TeamStatsFactsReader.FormFact> form = List.of();
+        Map<String, MatchRef> refs = Map.of();
+        if (figures.basis().resultsCounted() > 0) {
+            form = TeamStatsFactsReader.form(factsRepository.form(
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams));
+            TeamStatsCounters.Keys keys = counters.keys();
+            if (keys.highTotal() != null
+                    || keys.lowTotal() != null
+                    || keys.chase() != null
+                    || keys.victoryByRuns() != null
+                    || keys.victoryByWickets() != null) {
+                refs = TeamStatsFactsReader.references(factsRepository.matchReferences(
+                        clubId,
+                        scope.seasonId(),
+                        scope.leagueId(),
+                        teamId,
+                        competition,
+                        scope.sectionRestricted(),
+                        sectionTeams,
+                        keys.highTotal(),
+                        keys.lowTotal(),
+                        keys.chase(),
+                        keys.victoryByRuns(),
+                        keys.victoryByWickets()));
+            }
+        }
+        log.debug("Team statistics page read for club {} team {}: {} counted results", clubId, teamId,
+                figures.basis().resultsCounted());
+
+        return new TeamStatsDto(
+                team.getId(),
+                team.getName(),
+                team.getSectionId(),
+                team.isActive(),
+                new TeamStatsPageScope(KIND, seasonId, leagueId, competition),
+                mapper.toPageBasis(figures.basis()),
+                mapper.toRecord(figures.record()),
+                mapper.toFormEntries(form),
+                mapper.toBatting(
+                        figures.batting(), refs.get(TeamStatsFactsReader.HIGH), refs.get(TeamStatsFactsReader.LOW)),
+                mapper.toChasing(
+                        figures.chasing(),
+                        refs.get(TeamStatsFactsReader.CHASE),
+                        refs.get(TeamStatsFactsReader.VICTORY_RUNS),
+                        refs.get(TeamStatsFactsReader.VICTORY_WICKETS)),
+                mapper.toBowling(figures.bowling()),
+                mapper.toExtras(figures.extras()),
+                mapper.toNetRunRate(figures.netRunRate()),
+                mapper.toNotCaptured(figures.notCaptured()));
     }
 
     @Override

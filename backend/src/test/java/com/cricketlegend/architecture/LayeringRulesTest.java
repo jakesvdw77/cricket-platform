@@ -134,7 +134,7 @@ class LayeringRulesTest {
      */
     private static final String STATS_SERVICES =
             "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl|TeamStatsServiceImpl)"
-                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader))(\\$.*)?";
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader|TeamStatsFactsReader))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
@@ -166,7 +166,8 @@ class LayeringRulesTest {
                         "com.cricketlegend.service.support.PlayerMatchFactsReader",
                         "com.cricketlegend.service.support.PlayerStatsCountersReader",
                         "com.cricketlegend.service.support.StatsFilterOptionLists",
-                        "com.cricketlegend.service.support.TeamStatsCountersReader");
+                        "com.cricketlegend.service.support.TeamStatsCountersReader",
+                        "com.cricketlegend.service.support.TeamStatsFactsReader");
     }
 
     /** The pure statistics classes: definitions and ranking that a player-facing route must be able to reuse. */
@@ -190,9 +191,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous: exactly the 16 named top-level classes plus their nested types (70 in all: 39 from specs 103 and 115, and 31 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers).
+        // proves the rule above is not vacuous: exactly the 16 named top-level classes plus their nested types (72 in all: 39 from specs 103 and 115, and 33 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers).
         // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(70);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(72);
     }
 }

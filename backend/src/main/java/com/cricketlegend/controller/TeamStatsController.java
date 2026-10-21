@@ -1,5 +1,6 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.TeamStatsDto;
 import com.cricketlegend.dto.TeamStatsFilterOptionsDto;
 import com.cricketlegend.dto.TeamStatsTableDto;
 import com.cricketlegend.service.TeamStatsService;
@@ -49,5 +50,17 @@ public class TeamStatsController {
     public ResponseEntity<TeamStatsFilterOptionsDto> getTeamStatsFilterOptions(
             Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(teamStatsService.filterOptions(authentication, clubId));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/stats")
+    public ResponseEntity<TeamStatsDto> getTeamStats(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) String competition) {
+        return ResponseEntity.ok(teamStatsService.team(authentication, clubId, teamId, seasonId, leagueId, competition));
     }
 }

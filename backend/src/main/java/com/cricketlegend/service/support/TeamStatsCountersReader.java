@@ -5,12 +5,25 @@ import java.math.BigDecimal;
 
 /**
  * docs/specs/116-team-stats.md: turns one row of the team aggregate query into {@link TeamStatsCounters}. Shared by the
- * table and (later) the team page so both feed {@link TeamStatsCalculator} identically (parity). It copies numbers and
+ * table and the team page so both feed {@link TeamStatsCalculator} identically (parity). It copies numbers and
  * decodes nothing; no figure is computed here.
  */
 public final class TeamStatsCountersReader {
 
     private TeamStatsCountersReader() {}
+
+    /** A team with no counted result: zero counters, but the results left out for want of a ball are still disclosed. */
+    public static TeamStatsCounters empty(long noBallBowled) {
+        TeamStatsCounters.Results none = new TeamStatsCounters.Results(0, 0, 0, 0, 0, 0, 0, 0, 0, noBallBowled);
+        return new TeamStatsCounters(
+                none,
+                TeamStatsCounters.EMPTY.own(),
+                TeamStatsCounters.EMPTY.opposition(),
+                TeamStatsCounters.EMPTY.extras(),
+                TeamStatsCounters.EMPTY.keys(),
+                TeamStatsCounters.EMPTY.netRunRate(),
+                0);
+    }
 
     public static TeamStatsCounters toCounters(TeamStatsAggregateView v) {
         return new TeamStatsCounters(

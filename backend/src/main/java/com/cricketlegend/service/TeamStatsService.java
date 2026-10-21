@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.dto.TeamStatsDto;
 import com.cricketlegend.dto.TeamStatsFilterOptionsDto;
 import com.cricketlegend.dto.TeamStatsTableDto;
 import java.util.UUID;
@@ -38,6 +39,16 @@ public interface TeamStatsService {
             String minimum,
             Integer page,
             Integer size);
+
+    /**
+     * One team's full statistics for the filters (no section filter: a team's figures never depend on one), with the same
+     * definitions as its table row (parity). An unknown or other-club team, season or league is a {@code
+     * NotFoundException}; a team outside a section-scoped caller's reach is refused with 403; a {@code competition} other
+     * than LEAGUE or FRIENDLY is a {@code ValidationException}. A team with no counted result is a normal read with zero
+     * counters.
+     */
+    TeamStatsDto team(
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, String competition);
 
     /** The club-wide season, league, section and competition values that have counted team results. */
     TeamStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId);
