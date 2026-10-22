@@ -13,6 +13,11 @@ import type { TeamStatsPageData } from '../../../api/teamStatsApi'
 let server: TeamStatsServer
 const apiGet = vi.fn()
 vi.mock('../../../api/axiosConfig', () => ({ default: { get: (...args: unknown[]) => apiGet(...args) } }))
+// docs/specs/117-stats-dashboard.md: the Dashboard read is mocked (the series are the server's; the page only decides when to ask).
+const useTeamDashboard = vi.fn()
+vi.mock('../../../api/teamDashboardApi', () => ({
+  useTeamDashboard: (...args: unknown[]) => useTeamDashboard(...args),
+}))
 vi.mock('../../../api/seasonApi', () => ({
   listSeasons: () =>
     Promise.resolve([
@@ -81,6 +86,8 @@ describe('TeamStatsPage', () => {
     server = defaultTeamStatsServer()
     apiGet.mockReset()
     apiGet.mockImplementation((url: string, config?: unknown) => teamStatsApi(server).get(url, config as never))
+    useTeamDashboard.mockReset()
+    useTeamDashboard.mockReturnValue({ data: undefined, isError: false, isPlaceholderData: false, refetch: vi.fn() })
   })
 
   it('shows Not authorized and asks for nothing without a club', () => {

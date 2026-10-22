@@ -68,10 +68,10 @@ describe('statsFormat', () => {
     expect(notCapturedFor(items, 'fielding')).toEqual([])
   })
 
-  it('an unknown ?tab= value is Batting; awards is a real tab', () => {
+  it('an unknown ?tab= value is Dashboard (spec 117); awards is a real tab', () => {
     expect(resolvePlayerStatsTab('awards')).toBe('awards')
     expect(resolvePlayerStatsTab('bowling')).toBe('bowling')
-    expect(resolvePlayerStatsTab('x')).toBe('batting')
-    expect(resolvePlayerStatsTab(null)).toBe('batting')
+    expect(resolvePlayerStatsTab('x')).toBe('dashboard')
+    expect(resolvePlayerStatsTab(null)).toBe('dashboard')
   })
 })

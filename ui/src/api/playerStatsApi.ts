@@ -195,7 +195,7 @@ export const playerStatsKeys = {
 }
 
 // Only the filters that are set are sent; none is career.
-function filterParams(filters: PlayerStatsFilters): Record<string, string> {
+export function filterParams(filters: PlayerStatsFilters): Record<string, string> {
   const params: Record<string, string> = {}
   if (filters.seasonId) params.seasonId = filters.seasonId
   if (filters.leagueId) params.leagueId = filters.leagueId

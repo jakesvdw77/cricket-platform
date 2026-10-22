@@ -4,17 +4,12 @@ import { useTheme } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
-import PanToolOutlinedIcon from '@mui/icons-material/PanToolOutlined'
-import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
 import { EmptyState } from '../../../components/EmptyState'
 import { usePlayerMatches } from '../../../api/playerStatsApi'
 import type { MatchDirection, PlayerStats, PlayerStatsFilters } from '../../../api/playerStatsApi'
-import { NOT_ON_FILE } from '../../../utils/playerFormat'
 import { MatchCard } from './MatchCard'
 import { MatchRow } from './MatchRow'
-import { StatTile, StatTileStrip } from './statsParts'
+import { PlayerHeadlineTiles } from './PlayerHeadlineTiles'
 import { MATCH_COLUMNS, matchGridSx, muted } from './matchLayout'
 
 export interface MatchesTabProps {
@@ -29,8 +24,6 @@ export interface MatchesTabProps {
 }
 
 const headerCellSx = { fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary', px: 0.75 } as const
-
-const tileValue = (value: number | null | undefined) => (value === null || value === undefined ? NOT_ON_FILE : String(value))
 
 function dateSortLabel(direction: MatchDirection): string {
   return `Date, sorted ${direction === 'asc' ? 'oldest first' : 'newest first'}; click to reverse`
@@ -151,14 +144,7 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} data-testid="matches-tab">
-      {total > 0 && (
-        <StatTileStrip>
-          <StatTile testId="tile-matches" icon={<SportsScoreOutlinedIcon />} label="Matches" value={tileValue(stats.basis.matchesCounted)} />
-          <StatTile testId="tile-runs" icon={<SportsCricketOutlinedIcon />} label="Runs" value={tileValue(stats.batting.runs)} />
-          <StatTile testId="tile-wickets" tone="success" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={tileValue(stats.bowling.wickets)} />
-          <StatTile testId="tile-catches" icon={<PanToolOutlinedIcon />} label="Catches" value={tileValue(stats.fielding.catches)} />
-        </StatTileStrip>
-      )}
+      {total > 0 && <PlayerHeadlineTiles stats={stats} />}
       {body}
       {firstPage && rows.length === 0 && (
         <Typography sx={{ ...muted, fontSize: '0.875rem' }}>No matches to show for these filters.</Typography>

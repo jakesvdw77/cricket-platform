@@ -4,6 +4,23 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@mui/x-charts", "@mui/x-charts/*"],
+            "message": "Only components/charts/** may import @mui/x-charts (docs/specs/117-stats-dashboard.md). Use a chart wrapper from components/charts."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/components/charts/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
 }

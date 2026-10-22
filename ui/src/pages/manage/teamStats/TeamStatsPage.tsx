@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -10,6 +10,7 @@ import { PageHeaderBand } from '../../../components/PageHeaderBand'
 import { badgeSx } from '../../../components/RecordCard'
 import { EmptyState } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
+import { useTeamDashboard } from '../../../api/teamDashboardApi'
 import { useTeamStats, useTeamStatsFilterOptions } from '../../../api/teamStatsApi'
 import type { TeamStatsCompetition } from '../../../api/teamStatsApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
@@ -21,6 +22,8 @@ import { parseCompetition } from '../../../utils/statsCompetition'
 import { CardGrid, NotCapturedPanel, StatTile, StatTileStrip } from '../playerStats/statsParts'
 import { countText, teamPageBasisLines, teamStatsLink, winPercentText } from '../leaderboards/teamStatsFormat'
 import { TeamFormStrip } from './TeamFormStrip'
+import { TeamDashboardBlock } from './dashboard/TeamDashboardBlock'
+import { loadTeamDashboardCharts } from './dashboard/teamDashboardChunk'
 import { BattingCard, BowlingCard, ExtrasCard, HighlightsCard, NetRunRateCard, RecordCard } from './TeamStatsCards'
 
 const COMPETITION_OPTIONS = [
@@ -35,8 +38,8 @@ const DEFAULT_BACK = { to: '/manage/leaderboards?tab=teams', label: 'Teams' }
 
 // docs/specs/116-team-stats.md: one team's statistics (/manage/teams/:teamId/stats). Back (to the Teams table or the Team detail
 // page it came from), the team name and status, a compact FilterBar (Season, League, Competition; Season and League are saved per
-// club, Competition is per visit), the basis line, four headline tiles, the form strip, the six cards and the Not captured yet
-// panel. All filters are backend parameters; the page only displays what the server computed.
+// club, Competition is per visit), the basis line, four headline tiles, the form strip, the Dashboard block (spec 117), the six cards and the
+// Not captured yet panel. All filters are backend parameters; the page only displays what the server computed.
 export default function TeamStatsPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { teamId } = useParams<{ teamId?: string }>()
@@ -92,6 +95,13 @@ export default function TeamStatsPage() {
   const hasFilters = Boolean(seasonId || leagueId || competition)
   const statsQuery = useTeamStats(clubId, teamId, filters, { keepPrevious: true, enabled: ready })
   const stats = statsQuery.data
+  // docs/specs/117-stats-dashboard.md: the Dashboard block is expanded by default (per visit). Its one series read goes out in parallel with
+  // the stats read, with the page's own filters, once the page is ready and only while the block is shown; the chart chunk with it.
+  const [dashboardShown, setDashboardShown] = useState(true)
+  const dashboardQuery = useTeamDashboard(clubId, teamId, filters, ready && dashboardShown)
+  useEffect(() => {
+    if (ready && dashboardShown) void loadTeamDashboardCharts()
+  }, [ready, dashboardShown])
   useDocumentTitle(stats ? `${stats.teamName} · Statistics` : 'Team statistics')
 
   // Where a result's Back returns: this page with the filters in force (an empty Season or League means All, so it is not
@@ -171,6 +181,7 @@ export default function TeamStatsPage() {
           <StatTile testId="tile-win-percent" icon={<PercentOutlinedIcon />} label="Win %" value={winPercentText(stats.record.winPercent)} />
         </StatTileStrip>
         <TeamFormStrip items={stats.form} backTo={pageUrl} />
+        <TeamDashboardBlock shown={dashboardShown} onToggle={() => setDashboardShown((value) => !value)} dashboard={dashboardQuery} backTo={pageUrl} />
         <CardGrid>
           <RecordCard stats={stats} />
           <BattingCard stats={stats} backTo={pageUrl} />
