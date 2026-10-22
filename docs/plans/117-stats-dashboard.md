@@ -1,6 +1,6 @@
 # Plan: 117 Statistics Dashboard (charts for Player and Team statistics)
 
-Spec: `docs/specs/117-stats-dashboard.md` (worktree `/private/tmp/claude-501/-Users-jaco-Development-cricket-platform-v2/e3330e84-b2d8-4c1b-b0d4-0baff10253e5/scratchpad/wt117`, branch `feature/117-stats-dashboard`, on master with 116 merged; mockups canvas https://claude.ai/artifact/2oinhHnKX5DyjZ17W8U7nB v10 approved; `@mui/x-charts` v7 approved 2026-10-22). Compute on read: **no migration, no table, no index**, manager-only. Owner accepted the recommended defaults for the open questions; build first, tests only after the owner reviews.
+Spec: `docs/specs/117-stats-dashboard.md` (branch `feature/117-stats-dashboard`, on master with 116 merged; mockups canvas https://claude.ai/artifact/2oinhHnKX5DyjZ17W8U7nB v10 approved; `@mui/x-charts` v7 approved 2026-10-22). Compute on read: **no migration, no table, no index**, manager-only. Owner accepted the recommended defaults for the open questions; build first, tests only after the owner reviews.
 
 ## Context
 
@@ -13,13 +13,13 @@ Add a Dashboard to the player statistics page (first tab) and the team page (Hid
 - **Reference lines equal the tab figures by construction:** overall economy and batting average come from the existing `PlayerStatsAggregateRepository.aggregate` counters via a new public `PlayerStatsCalculator.economy(runs, overs)` (the Bowling tab's `bowling()` is refactored to call it); team run rate / NRR use `numeric` overs in SQL and the calculator's existing 40-decimal arithmetic extracted into one method; NRR status comes from the existing team `aggregate`.
 - **Wicket types never use `how_out in (...)` in SQL** (`PlayerStatsSqlLiteralsTest` forbids it): the new query returns raw counts per (bowling innings, how_out); `DismissalType.isBowlerCredited()` decides in the calculator.
 - **Hoist the dashboard query to the page** (player enabled when `tab==='dashboard'`; team when shown and ready) so it runs in parallel with the page's own read; preload the chart chunk with `import()` in an effect and render it with `React.lazy` + `Suspense` skeleton (first `lazy` use in `ui/src`).
-- **`DashboardCard` is library-free** (takes children); only `components/charts/*` import `@mui/x-charts`.
+- **`DashboardCard` is library-free** (takes children); only `components/charts/**` import `@mui/x-charts`.
 - No MapStruct (builders return DTO records, as `PlayerMatchRowBuilder`). No `TeamStatsSeed` exists: tests extend `PlayerStatsSeed` with an opt-in `seedDashboard()`.
 - Named constants in one pure `DashboardLimits` (30 points, 300 history cap, trend span 5, minimum 3 per half, flat bands 0.25 economy / 0.5 dots).
 
 ## Owner items: plan's working answers (all changeable)
 
-1. `dependency-cruiser` is not installed: enforce "only `components/DashboardCard/**` and `components/charts/**` import `@mui/x-charts`" with an oxlint `no-restricted-imports` override (config only) plus a small Vitest structural test; no new dependency.
+1. `dependency-cruiser` is not installed: enforce "only `components/charts/**` imports `@mui/x-charts`" (`DashboardCard` is library-free) with an oxlint `no-restricted-imports` override (config only) plus a small Vitest structural test; no new dependency.
 2. Runs-per-innings average line = batting average (Σ runs ÷ dismissals, null with no dismissals).
 3. Dot-balls average/trend over the plotted matches that have dots; economy reference and trend over the full scope.
 4. Wickets-by-type parity with the Bowling tab's `dismissalModes` is asserted on fixtures without the c > w case.
@@ -44,10 +44,10 @@ Add a Dashboard to the player statistics page (first tab) and the team page (Hid
 
 1. **Dependency commit (first build commit):** `npm install @mui/x-charts@^7` (7.29.x, no MUI upgrade, no peer warnings) + the CLAUDE.md UI-library approved-addition sentence (wording from spec question 1).
 2. **API:** `api/playerDashboardApi.ts`, `api/teamDashboardApi.ts` (types conformed to the backend DTOs, `usePlayerDashboard`, `useTeamDashboard`, `placeholderData: keepPreviousData`, keys under the existing stats key prefixes so existing invalidations refresh them).
-3. **`components/DashboardCard/`** (four-file anatomy, library-free): title, subtitle (Batting/Bowling), coverage caption, 220/280 px chart area, 44 px "View as table" toggle with a real table, loading/empty/error states.
+3. **`components/DashboardCard/`** (four-file anatomy, library-free; also exports `DashboardGrid`): 13 px bold uppercase title, subtitle (Batting/Bowling), coverage caption, 150/180 px chart area, 44 px "View as table" toggle with a real table, loading/empty/error states.
 4. **`components/charts/{BarSeriesChart,StackedBarChart,LineSeriesChart,DonutChart,GroupedBarChart}/`**: the only `@mui/x-charts` importers; shared `chartTheme.ts` (theme-token colours, hatch patterns, reduced-motion), optional dashed reference line, no dual axis.
 5. **Extract the Matches tile strip** to `playerStats/PlayerHeadlineTiles.tsx` (same `tile-*` ids and formatting); `MatchesTab` renders it unchanged.
-6. **Player page:** `playerStatsTabConfig` gets `dashboard` first (fallback), page-level `usePlayerDashboard` + chunk preload; `playerStats/dashboard/` with `PlayerDashboardTab` (tile strip then lazy charts), the six cards in the spec's order (Runs per innings full width, How you were dismissed + Batting trend, Wickets per match full width, Wickets by type + Economy rate), `dashboardFormat.ts`.
+6. **Player page:** `playerStatsTabConfig` gets `dashboard` first (fallback), page-level `usePlayerDashboard` + chunk preload; `playerStats/dashboard/` with `PlayerDashboardTab` (tile strip then lazy charts), the six cards in the spec's order, in two collapsible groups (Batting open, Bowling closed; the user-facing label is "Overview", spec decision 22) (Runs per innings full width, How you were dismissed + Batting trend, Wickets per match full width, Wickets by type + Economy rate), `dashboardFormat.ts`.
 7. **Team page:** `TeamStatsPage` hoisted `useTeamDashboard` (enabled when ready and shown), `TeamDashboardBlock` (Hide/Show, `aria-expanded`, per-visit state) directly after `TeamFormStrip`, five cards in `teamStats/dashboard/` (results donut, runs scored v conceded, run rate trend, extras conceded stacked, dot balls).
 8. **Stories:** `DashboardCard` variants and one small story per chart wrapper.
 9. **Docs in the build PR:** `frontend.md`, `backend.md`, `design-system.md`, `roadmap.md` (Active row + "Deferred by 117"), one-line pointers in specs 103/115/116; copy this plan to `docs/plans/117-stats-dashboard.md`.
@@ -68,3 +68,7 @@ Add a Dashboard to the player statistics page (first tab) and the team page (Hid
 ## Risks
 
 x-charts v7 pattern fills and custom bar slots unproven here (spike first; fallback outlines plus direct labels); `DASHBOARD_RESULTS` size (budget 200 ms p95; fallback fetch after first paint); parity holds only for untruncated scopes (captions say so).
+
+## As built (2026-10-22)
+
+Decision 22 of the spec (owner, same day) changed the UI after this plan: the user-facing word is **Overview** (code, route and API keep "dashboard"); sizing is compact (chart areas 150 px, 180 px from `md`, 13 px bold uppercase titles, 11 px axis text, 104 px donut); the grid is one column on a phone, two from `md`, three from `lg` (`DashboardGrid`, with `fullWidth` and `wide` cards); the player cards are two groups, Batting (open) and Bowling (closed, not rendered while collapsed), and the team block stays one block, both using a shared `CollapsibleSection` (44 px Hide / Show, `aria-expanded`, `aria-controls`). Only `components/charts/**` imports `@mui/x-charts`, with the shared chart internals beneath it and a fixed type-to-style map (no purple). The calculators gained the pooled, running and trend helpers; the builders only call them. The spec is committed with the implementation, and the tests were written after the owner's browser check, as planned.
