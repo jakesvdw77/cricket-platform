@@ -36,6 +36,12 @@ export interface TeamDashboardResultsSummary {
   tied: number
   drawn: number
   noResult: number
+  // Share of played, 1 decimal, null when nothing was played (server-computed).
+  wonPercent: number | null
+  lostPercent: number | null
+  tiedPercent: number | null
+  drawnPercent: number | null
+  noResultPercent: number | null
   forfeits: number
   totalPoints: number
   shown: number

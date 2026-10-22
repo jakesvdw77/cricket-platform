@@ -62,7 +62,8 @@ public record TeamDashboardDto(
     /**
      * The Results donut (every counted result in the covered history; a forfeit is a win or a loss, as the record counts
      * it): {@code played} = won + lost + tied + drawn + noResult. {@code totalPoints} results exist in the history, {@code
-     * shown} are in {@code results}, {@code withRuns} of those have usable runs on both sides.
+     * shown} are in {@code results}, {@code withRuns} of those have usable runs on both sides. Each {@code *Percent} is
+     * that count over {@code played}, one decimal HALF_UP, null when nothing was played.
      */
     public record TeamDashboardResultsSummary(
             long played,
@@ -74,7 +75,12 @@ public record TeamDashboardDto(
             long forfeits,
             long totalPoints,
             long shown,
-            long withRuns) {
+            long withRuns,
+            BigDecimal wonPercent,
+            BigDecimal lostPercent,
+            BigDecimal tiedPercent,
+            BigDecimal drawnPercent,
+            BigDecimal noResultPercent) {
     }
 
     /**

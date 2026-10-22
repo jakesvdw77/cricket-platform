@@ -13999,6 +13999,16 @@ components:
         withRuns:
           type: integer
           format: int64
+        wonPercent:
+          type: number
+        lostPercent:
+          type: number
+        tiedPercent:
+          type: number
+        drawnPercent:
+          type: number
+        noResultPercent:
+          type: number
     TeamDashboardRunRatePoint:
       type: object
       description: "Running team and opposition run rates after one result."

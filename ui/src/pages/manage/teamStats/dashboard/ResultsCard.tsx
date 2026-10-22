@@ -14,14 +14,16 @@ const STYLES: Record<'won' | 'lost' | 'tied' | 'drawn' | 'noResult', CategorySty
 
 // docs/specs/117-stats-dashboard.md (chart 7): Results, a donut of the team's results with the total played in the centre. Counts are the
 // server's (equal to the Played, Won, Lost tiles); a forfeit is a win or a loss as the record counts it.
+const percentText = (value: number | null) => (value === null || value === undefined ? null : `${value.toFixed(1)}%`)
+
 export function ResultsCard({ data, dimmed }: Pick<TeamCardProps, 'data' | 'dimmed'>) {
   const summary = data.resultsSummary
   const rows = [
-    { key: 'won', label: 'Won', value: summary.won },
-    { key: 'lost', label: 'Lost', value: summary.lost },
-    { key: 'tied', label: 'Tied', value: summary.tied },
-    { key: 'drawn', label: 'Drawn', value: summary.drawn },
-    { key: 'noResult', label: 'No result', value: summary.noResult },
+    { key: 'won', label: 'Won', value: summary.won, percent: summary.wonPercent },
+    { key: 'lost', label: 'Lost', value: summary.lost, percent: summary.lostPercent },
+    { key: 'tied', label: 'Tied', value: summary.tied, percent: summary.tiedPercent },
+    { key: 'drawn', label: 'Drawn', value: summary.drawn, percent: summary.drawnPercent },
+    { key: 'noResult', label: 'No result', value: summary.noResult, percent: summary.noResultPercent },
   ] as const
 
   return (
@@ -38,11 +40,12 @@ export function ResultsCard({ data, dimmed }: Pick<TeamCardProps, 'data' | 'dimm
         columns: [
           { key: 'outcome', label: 'Outcome' },
           { key: 'count', label: 'Results', align: 'right' },
+          { key: 'share', label: 'Share', align: 'right' },
         ],
-        rows: [...rows.map((row) => ({ key: row.key, cells: [row.label, String(row.value)] })), { key: 'total', total: true, cells: ['Played', String(summary.played)] }],
+        rows: [...rows.map((row) => ({ key: row.key, cells: [row.label, String(row.value), percentText(row.percent) ?? '–'] })), { key: 'total', total: true, cells: ['Played', String(summary.played), ''] }],
       }}
     >
-      <DonutChart slices={rows.map((row) => ({ key: row.key, label: row.label, value: row.value, style: STYLES[row.key] }))} centerValue={String(summary.played)} centerLabel="played" />
+      <DonutChart slices={rows.map((row) => ({ key: row.key, label: row.label, value: row.value, percentText: percentText(row.percent), style: STYLES[row.key] }))} centerValue={String(summary.played)} centerLabel="played" />
     </DashboardCard>
   )
 }

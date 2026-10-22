@@ -163,7 +163,12 @@ public final class TeamDashboardSeriesBuilder {
         }
         long withRuns = shown.stream().filter(r -> r.ownRuns() != null && r.oppRuns() != null).count();
         return new TeamDashboardResultsSummary(
-                all.size(), won, lost, tied, drawn, noResult, forfeits, all.size(), shown.size(), withRuns);
+                all.size(), won, lost, tied, drawn, noResult, forfeits, all.size(), shown.size(), withRuns,
+                PlayerStatsCalculator.percent(won, all.size()),
+                PlayerStatsCalculator.percent(lost, all.size()),
+                PlayerStatsCalculator.percent(tied, all.size()),
+                PlayerStatsCalculator.percent(drawn, all.size()),
+                PlayerStatsCalculator.percent(noResult, all.size()));
     }
 
     // ---- run rates ----
