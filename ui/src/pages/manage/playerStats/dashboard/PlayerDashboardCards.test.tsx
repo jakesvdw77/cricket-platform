@@ -191,11 +191,11 @@ describe('WicketsByTypeCard', () => {
     draw(<WicketsByTypeCard data={makePlayerDashboard()} dimmed={false} />)
     expect(screen.getByRole('img', { name: 'Wickets by type, Bowling' })).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-card-wickets-by-type')).toHaveAttribute('data-width', 'half')
-    expect(screen.getByTestId('donut-legend')).toHaveTextContent('Not itemised1 · 20%')
+    expect(screen.getByTestId('donut-legend')).toHaveTextContent('Not itemised1 · 20.0%')
     await openTable('wickets-by-type')
     expect(headers()).toEqual(['Dismissal type', 'Wickets', 'Share'])
     // a type with 0 wickets is left out; Not itemised is always a row
-    expect(rows('wickets-by-type')).toEqual([['Bowled', '2', '40%'], ['LBW', '2', '40%'], ['Not itemised', '1', '20%']])
+    expect(rows('wickets-by-type')).toEqual([['Bowled', '2', '40.0%'], ['LBW', '2', '40.0%'], ['Not itemised', '1', '20.0%']])
     expect(within(screen.getByTestId('wickets-by-type-total')).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Total', '5', ''])
   })
 
@@ -217,7 +217,7 @@ describe('WicketsByTypeCard', () => {
     draw(<WicketsByTypeCard data={data} dimmed={false} />)
     expect(screen.getByTestId('wickets-by-type-footer')).toHaveTextContent('do not name the bowler')
     expect(screen.getByTestId('wickets-by-type-coverage')).toHaveTextContent('0 of 3 wickets itemised.')
-    expect(screen.getByTestId('donut-legend')).toHaveTextContent('Not itemised3 · 100%')
+    expect(screen.getByTestId('donut-legend')).toHaveTextContent('Not itemised3 · 100.0%')
   })
 
   it('says "No wickets taken" for a bowler without wickets and "No bowling cards captured" without any card', () => {

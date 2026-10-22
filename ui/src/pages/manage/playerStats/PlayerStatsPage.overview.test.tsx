@@ -97,7 +97,8 @@ function renderPage(path: string) {
   )
 }
 
-const cardTitles = () => screen.queryAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+// section headings are h2, card titles h3 (docs/standards: one heading hierarchy)
+const cardTitles = () => screen.queryAllByRole('heading', { name: (_, element) => element.tagName === 'H2' || element.tagName === 'H3' }).map((heading) => heading.textContent)
 const rows = (testId: string) => screen.getAllByTestId(`${testId}-row`).map((row) => within(row).getAllByRole('cell').map((cell) => cell.textContent))
 
 describe('Player Overview tab', () => {

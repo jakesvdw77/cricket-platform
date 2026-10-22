@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NOT_RECORDED, figureOrNotRecorded, matchTitle, opponentText, percentText, shortDate, sinceCaption, trendSentence, windowCaption } from './dashboardFormat'
-import { dismissalLabel } from './dismissalLabel'
+import { NOT_RECORDED, figureOrNotRecorded, figureOrNull, labelledFigure, matchTitle, opponentText, percentOrNotRecorded, percentText, shortDate, sinceCaption, trendSentence, windowCaption } from './dashboardFormat'
 
 // docs/specs/117-stats-dashboard.md: display helpers only. They choose decimals and words for figures the server sent; none computes one.
 describe('dashboardFormat', () => {
@@ -24,12 +23,26 @@ describe('dashboardFormat', () => {
     expect(matchTitle('2026-03-06T12:00:00Z', null, false)).toBe('6 Mar')
   })
 
-  it('percentText shows a whole number plainly, otherwise one decimal, and a dash for null', () => {
-    expect(percentText(36)).toBe('36%')
+  it('percentText always shows one decimal, and a dash for null', () => {
+    expect(percentText(36)).toBe('36.0%')
     expect(percentText(28.6)).toBe('28.6%')
-    expect(percentText(0)).toBe('0%')
+    expect(percentText(0)).toBe('0.0%')
     expect(percentText(null)).toBe('–')
     expect(percentText(undefined)).toBe('–')
+  })
+
+  it('percentOrNotRecorded is one decimal, and "Not recorded" for null', () => {
+    expect(percentOrNotRecorded(40)).toBe('40.0%')
+    expect(percentOrNotRecorded(null)).toBe(NOT_RECORDED)
+  })
+
+  it('figureOrNull and labelledFigure give nothing for a missing value and keep a recorded 0', () => {
+    expect(figureOrNull(5.1, 2)).toBe('5.10')
+    expect(figureOrNull(0)).toBe('0')
+    expect(figureOrNull(null)).toBeNull()
+    expect(labelledFigure('Average', 37.5)).toBe('Average 37.50')
+    expect(labelledFigure('Average', 36.7, 1)).toBe('Average 36.7')
+    expect(labelledFigure('Average', null)).toBeUndefined()
   })
 
   it('figureOrNotRecorded formats to the places asked, and null is "Not recorded", never 0', () => {
@@ -73,13 +86,5 @@ describe('dashboardFormat', () => {
     expect(sinceCaption(true, '2024-03-03', '3 Mar 2024')).toBe('Since 3 Mar 2024.')
     expect(sinceCaption(false, '2024-03-03', '3 Mar 2024')).toBeNull()
     expect(sinceCaption(true, null, '')).toBeNull()
-  })
-})
-
-describe('dismissalLabel', () => {
-  it('turns a stored type into its words, passes an unknown one through, and a dash for none', () => {
-    expect(dismissalLabel('CAUGHT')).toBe('Caught')
-    expect(dismissalLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW')
-    expect(dismissalLabel(null)).toBe('–')
   })
 })

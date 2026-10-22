@@ -1,12 +1,12 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { DonutChart } from './DonutChart'
-import { CATEGORY_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
+import { DISMISSAL_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
 
 const slices = [
   { key: 'won', label: 'Won', value: 9, percentText: '64.3%', style: { tone: 'success' as const, pattern: 'solid' as const } },
   { key: 'lost', label: 'Lost', value: 4, percentText: '28.6%', style: { tone: 'error' as const, pattern: 'diagonal' as const } },
-  { key: 'tied', label: 'Tied', value: 0, percentText: '0%', style: CATEGORY_STYLES[3] },
+  { key: 'tied', label: 'Tied', value: 0, percentText: '0%', style: DISMISSAL_STYLES.STUMPED },
   { key: 'rest', label: 'Not itemised', value: 1, percentText: null, style: NOT_ITEMISED_STYLE },
 ]
 

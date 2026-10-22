@@ -1,12 +1,10 @@
-import { Suspense, lazy, useId, useState } from 'react'
-import { Box, Button as MuiButton, Typography } from '@mui/material'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { DashboardCard } from '../../../../components/DashboardCard'
+import { Suspense, lazy, useState } from 'react'
+import { Box, Typography } from '@mui/material'
+import { DashboardCard, DashboardSkeleton } from '../../../../components/DashboardCard'
+import { CollapsibleSection } from '../../../../components/CollapsibleSection'
 import type { PlayerStats } from '../../../../api/playerStatsApi'
 import type { PlayerDashboard } from '../../../../api/playerDashboardApi'
 import { PlayerHeadlineTiles } from '../PlayerHeadlineTiles'
-import { DashboardSkeleton } from './DashboardSkeleton'
 import { loadPlayerDashboardCharts } from './playerDashboardChunk'
 import type { PlayerDashboardGroupKey } from './PlayerDashboardCharts'
 
@@ -48,46 +46,22 @@ interface GroupProps {
   backTo: string
 }
 
-// A collapsible group: a header row (title, a 44 px Hide / Show button with aria-expanded and aria-controls),
-// then its three cards. Collapsed, nothing below the header is rendered, so the chart chunk is not needed. State is per visit.
+// A collapsible group: the shared CollapsibleSection (title, 44 px Hide / Show button), then its three cards. Collapsed, nothing below the
+// header is rendered, so the chart chunk is not needed. State is per visit.
 function DashboardGroup({ group, dashboard, backTo }: GroupProps) {
   const [open, setOpen] = useState(group.defaultOpen)
-  const contentId = useId()
   const { data, isPlaceholderData } = dashboard
-  const label = group.title.toLowerCase()
   const skeleton = <DashboardSkeleton cards={group.cards} label="Loading the overview" />
   return (
-    <Box component="section" aria-label={group.title} data-testid={`dashboard-group-${group.key}`} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, borderBottom: 1, borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0, flexWrap: 'wrap' }}>
-          <Typography component="h2" sx={{ fontSize: '1rem', fontWeight: 700 }}>
-            {group.title}
-          </Typography>
-        </Box>
-        <MuiButton
-          variant="text"
-          size="small"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls={contentId}
-          data-testid={`dashboard-group-${group.key}-toggle`}
-          startIcon={open ? <ExpandLessIcon aria-hidden /> : <ExpandMoreIcon aria-hidden />}
-          sx={{ minHeight: 44, flex: 'none' }}
-        >
-          {open ? `Hide ${label}` : `Show ${label}`}
-        </MuiButton>
-      </Box>
-      <Box id={contentId} hidden={!open}>
-        {open &&
-          (data ? (
-            <Suspense fallback={skeleton}>
-              <PlayerDashboardCharts data={data} backTo={backTo} group={group.key} dimmed={isPlaceholderData} />
-            </Suspense>
-          ) : (
-            skeleton
-          ))}
-      </Box>
-    </Box>
+    <CollapsibleSection title={group.title} testId={`dashboard-group-${group.key}`} open={open} onToggle={() => setOpen((value) => !value)}>
+      {data ? (
+        <Suspense fallback={skeleton}>
+          <PlayerDashboardCharts data={data} backTo={backTo} group={group.key} dimmed={isPlaceholderData} />
+        </Suspense>
+      ) : (
+        skeleton
+      )}
+    </CollapsibleSection>
   )
 }
 
@@ -102,11 +76,11 @@ export function PlayerDashboardTab({ stats, dashboard, backTo }: PlayerDashboard
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} data-testid="dashboard-tab">
       <PlayerHeadlineTiles stats={stats} />
       {isError && !data ? (
-        <DashboardCard testId="dashboard" title="Overview" fullWidth error={{ onRetry: () => void refetch() }} />
+        <DashboardCard testId="dashboard" title="Overview" headingLevel="h2" fullWidth error={{ onRetry: () => void refetch() }} />
       ) : (
         GROUPS.map((group) => <DashboardGroup key={group.key} group={group} dashboard={dashboard} backTo={backTo} />)
       )}
-      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Ball-by-ball and partnership charts are not available: that data is not captured yet.</Typography>
+      <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>Ball-by-ball and partnership charts are not available: that data is not captured yet.</Typography>
     </Box>
   )
 }

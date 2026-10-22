@@ -1,6 +1,8 @@
+// Internal to the chart wrappers (docs/standards/frontend.md four-file rule): not imported outside components/charts, and covered by the
+// wrappers' own tests (BarSeriesChart, GroupedBarChart, StackedBarChart, LineSeriesChart) and chartUtils.test.tsx.
 import { Box, Typography } from '@mui/material'
-import { PatternSwatch } from './chartPatterns'
-import type { PointTooltip } from './chartUtils'
+import { PatternSwatch } from '../chartPatterns'
+import type { PointTooltip } from '../chartUtils'
 
 // The body of a chart tooltip: the point's title and one row per figure, assembled by the page from response fields.
 export function ChartTooltipBody({ data }: { data: PointTooltip }) {

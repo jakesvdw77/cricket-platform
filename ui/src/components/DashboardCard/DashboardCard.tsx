@@ -51,6 +51,8 @@ export interface DashboardCardProps {
   fullWidth?: boolean
   // from lg (three columns) the card spans two columns; ignored when fullWidth
   wide?: boolean
+  // the title's heading level: h3 under a section's h2 (the default); h2 for a card that stands alone under the page heading
+  headingLevel?: 'h2' | 'h3'
   // 'auto' lets the content (a donut and its legend) set its own height
   chartArea?: 'fixed' | 'auto'
 }
@@ -89,6 +91,7 @@ export function DashboardCard({
   dimmed = false,
   fullWidth = false,
   wide = false,
+  headingLevel = 'h3',
   chartArea = 'fixed',
 }: DashboardCardProps) {
   const [showTable, setShowTable] = useState(false)
@@ -200,7 +203,7 @@ export function DashboardCard({
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography component="h2" id={titleId} sx={headingSx}>
+          <Typography component={headingLevel} id={titleId} sx={headingSx}>
             {title}
           </Typography>
           {subtitle && (

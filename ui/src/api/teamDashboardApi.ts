@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
+import { statsFilterParams } from './statsFilterParams'
 import { teamStatsKey } from './teamStatsApi'
 import type { TeamNetRunRateStatus, TeamStatsNotCapturedItem, TeamStatsPageData, TeamStatsPageFilters } from './teamStatsApi'
 import type { DashboardTrendDirection, DashboardWindow } from './playerDashboardApi'
@@ -150,11 +151,7 @@ export const teamDashboardKey = (clubId: string, teamId: string, filters: TeamSt
   [...teamStatsKey(clubId), 'dashboard', teamId, { seasonId: filters.seasonId ?? null, leagueId: filters.leagueId ?? null, competition: filters.competition ?? null }] as const
 
 export async function getTeamDashboard(clubId: string, teamId: string, filters: TeamStatsPageFilters): Promise<TeamDashboard> {
-  const query: Record<string, string> = {}
-  if (filters.seasonId) query.seasonId = filters.seasonId
-  if (filters.leagueId) query.leagueId = filters.leagueId
-  if (filters.competition) query.competition = filters.competition
-  const { data } = await api.get<TeamDashboard>(`/manage/clubs/${clubId}/teams/${teamId}/stats/dashboard`, { params: query })
+  const { data } = await api.get<TeamDashboard>(`/manage/clubs/${clubId}/teams/${teamId}/stats/dashboard`, { params: statsFilterParams({ ...filters }) })
   return data
 }
 

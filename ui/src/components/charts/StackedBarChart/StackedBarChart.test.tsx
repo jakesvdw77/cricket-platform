@@ -1,12 +1,12 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { StackedBarChart } from './StackedBarChart'
-import { CATEGORY_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
+import { EXTRAS_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
 
 const SIZE = { width: 400, height: 200 }
 const categories = [
-  { key: 'wides', label: 'Wides', style: CATEGORY_STYLES[1] },
-  { key: 'byes', label: 'Byes', style: CATEGORY_STYLES[3] },
+  { key: 'wides', label: 'Wides', style: EXTRAS_STYLES.wides },
+  { key: 'byes', label: 'Byes', style: EXTRAS_STYLES.byes },
   { key: 'notItemised', label: 'Not itemised', style: NOT_ITEMISED_STYLE },
 ]
 

@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Link } from '@mui/material'
-import { resultViewTo } from '../../results/resultListHelpers'
+import { resultViewTo } from './resultListHelpers'
 
 // A table row's date: a link to the result page, router state carrying the way back (spec 115: ResultDetailPage honours `backTo`
 // only when it starts with /manage/). Shared by the player and the team Dashboard tables.

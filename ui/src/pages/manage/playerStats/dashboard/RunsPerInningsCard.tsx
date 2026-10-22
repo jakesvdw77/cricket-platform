@@ -7,8 +7,8 @@ import { ChartLegend } from '../../../../components/charts/ChartLegend'
 import { formatInstantDate } from '../../../../utils/formatInstantDate'
 import { NOT_ON_FILE } from '../../../../utils/playerFormat'
 import type { PlayerDashboard } from '../../../../api/playerDashboardApi'
-import { DashboardResultLink } from './DashboardResultLink'
-import { NOT_RECORDED, matchTitle, opponentText, shortDate, windowCaption } from './dashboardFormat'
+import { DashboardResultLink } from '../../results/DashboardResultLink'
+import { NOT_RECORDED, labelledFigure, matchTitle, opponentText, shortDate, windowCaption } from '../../../../utils/dashboardFormat'
 import { dismissalLabel } from './dismissalLabel'
 
 export interface PlayerCardProps {
@@ -84,7 +84,7 @@ export function RunsPerInningsCard({ data, backTo, dimmed }: PlayerCardProps) {
             items={[
               { key: 'out', label: 'Out', style: { tone: 'primary', pattern: 'solid' } },
               { key: 'notOut', label: 'Not out (*)', style: { tone: 'primary', pattern: 'diagonal' } },
-              ...(showAverage && average !== null ? [{ key: 'average', label: `Average ${average.toFixed(2)}`, line: { tone: 'grey' as const, dashed: true } }] : []),
+              ...(showAverage && average !== null ? [{ key: 'average', label: labelledFigure('Average', average) ?? '', line: { tone: 'grey' as const, dashed: true } }] : []),
             ]}
           />
           {average !== null && <CompactSwitch checked={showAverage} onChange={setShowAverage} label="Show average" />}
@@ -97,7 +97,7 @@ export function RunsPerInningsCard({ data, backTo, dimmed }: PlayerCardProps) {
         hatched={innings.map((entry) => entry.notOut)}
         valueTexts={innings.map((entry, index) => (entry.runs === null ? null : `${entry.runs}${star(index)}`))}
         referenceValue={showAverage ? average : null}
-        referenceLabel={average === null ? undefined : `Avg ${average.toFixed(2)}`}
+        referenceLabel={labelledFigure('Avg', average)}
         tooltip={(index) => {
           const entry = innings[index]
           if (!entry) return null

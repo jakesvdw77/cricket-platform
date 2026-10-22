@@ -1,4 +1,4 @@
-import { DashboardCard, DashboardGrid } from '../../../../components/DashboardCard'
+import { DashboardCard, DashboardGrid } from './DashboardCard'
 
 // Reserves the Dashboard's height while the data or the chart chunk loads, so the content below does not jump.
 // `cards` lists the card testIds with their widths, in DOM order.

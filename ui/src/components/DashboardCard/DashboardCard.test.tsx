@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { DashboardCard } from './DashboardCard'
+import { DashboardCard, DashboardGrid } from './DashboardCard'
+import { DashboardSkeleton } from './DashboardSkeleton'
 import type { DashboardCardProps } from './DashboardCard'
 
 // docs/specs/117-stats-dashboard.md ("The shared component: DashboardCard", Test Plan "Frontend component"): the card is presentational,
@@ -146,5 +147,44 @@ describe('DashboardCard', () => {
     expect(screen.getByTestId('dashboard-card-demo')).toHaveAttribute('data-width', 'full')
     rerender(<DashboardCard testId="demo" title="Runs per innings" />)
     expect(screen.getByTestId('dashboard-card-demo')).toHaveAttribute('data-width', 'half')
+  })
+
+  it('the title is an h3 under a section\'s h2, or an h2 when asked', () => {
+    const { unmount } = renderCard()
+    expect(screen.getByRole('heading', { level: 3, name: 'Runs per innings' })).toBeInTheDocument()
+    unmount()
+    renderCard({ headingLevel: 'h2' })
+    expect(screen.getByRole('heading', { level: 2, name: 'Runs per innings' })).toBeInTheDocument()
+  })
+})
+
+describe('DashboardSkeleton', () => {
+  it('draws one loading card per entry, in order, inside a busy labelled region', () => {
+    render(
+      <DashboardSkeleton
+        label="Loading the overview"
+        cards={[
+          { testId: 'a', title: 'Alpha' },
+          { testId: 'b', title: 'Beta', fullWidth: true },
+        ]}
+      />,
+    )
+    const region = screen.getByTestId('dashboard-loading')
+    expect(region).toHaveAttribute('aria-busy', 'true')
+    expect(region).toHaveAttribute('aria-label', 'Loading the overview')
+    expect(screen.getAllByRole('region').map((card) => card.getAttribute('data-testid'))).toEqual(['dashboard-card-a', 'dashboard-card-b'])
+    expect(screen.getByTestId('b-loading')).toBeInTheDocument()
+  })
+})
+
+describe('DashboardGrid', () => {
+  it('lays its children out in a grid', () => {
+    const { container } = render(
+      <DashboardGrid>
+        <div>one</div>
+        <div>two</div>
+      </DashboardGrid>,
+    )
+    expect(getComputedStyle(container.firstElementChild as Element).display).toBe('grid')
   })
 })

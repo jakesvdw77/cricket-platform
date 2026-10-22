@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useMediaQuery } from '@mui/material'
 import type { ChartsAxisContentProps, ResponsiveChartContainerProps } from '@mui/x-charts'
-import { ChartTooltipBody } from './ChartTooltipBody'
+import { ChartTooltipBody } from './internal/ChartTooltipBody'
 import type { CategoryStyle } from './chartStyles'
 
 // docs/specs/117-stats-dashboard.md: non-component helpers shared by the chart wrappers (see chartCommon for the components).

@@ -1,18 +1,18 @@
 import { DashboardCard } from '../../../../components/DashboardCard'
 import { StackedBarChart } from '../../../../components/charts/StackedBarChart'
 import { ChartLegend } from '../../../../components/charts/ChartLegend'
-import { CATEGORY_STYLES, NOT_ITEMISED_STYLE } from '../../../../components/charts/chartStyles'
+import { EXTRAS_STYLES, NOT_ITEMISED_STYLE } from '../../../../components/charts/chartStyles'
 import { formatInstantDate } from '../../../../utils/formatInstantDate'
-import { DashboardResultLink } from '../../playerStats/dashboard/DashboardResultLink'
-import { NOT_RECORDED, matchTitle, opponentText, shortDate, windowCaption } from '../../playerStats/dashboard/dashboardFormat'
+import { DashboardResultLink } from '../../results/DashboardResultLink'
+import { figureOrNotRecorded, matchTitle, opponentText, shortDate, windowCaption } from '../../../../utils/dashboardFormat'
 import type { TeamCardProps } from './teamDashboardParts'
 
 const CATEGORIES = [
-  { key: 'wides', label: 'Wides', style: CATEGORY_STYLES[1] },
-  { key: 'noBalls', label: 'No-balls', style: CATEGORY_STYLES[2] },
-  { key: 'byes', label: 'Byes', style: CATEGORY_STYLES[3] },
-  { key: 'legByes', label: 'Leg-byes', style: CATEGORY_STYLES[4] },
-  { key: 'penaltyRuns', label: 'Penalty', style: CATEGORY_STYLES[5] },
+  { key: 'wides', label: 'Wides', style: EXTRAS_STYLES.wides },
+  { key: 'noBalls', label: 'No-balls', style: EXTRAS_STYLES.noBalls },
+  { key: 'byes', label: 'Byes', style: EXTRAS_STYLES.byes },
+  { key: 'legByes', label: 'Leg-byes', style: EXTRAS_STYLES.legByes },
+  { key: 'penaltyRuns', label: 'Penalty', style: EXTRAS_STYLES.penaltyRuns },
   { key: 'notItemised', label: 'Not itemised', style: NOT_ITEMISED_STYLE },
 ] as const
 
@@ -25,7 +25,6 @@ export function ExtrasConcededCard({ data, backTo, dimmed }: TeamCardProps) {
   const recordedCaption = complete
     ? null
     : `Extras recorded for ${summary.matchesWithExtras} of ${summary.matchesCounted} matches${summary.matchesItemised !== summary.matchesWithExtras ? `, itemised for ${summary.matchesItemised}` : ''}.`
-  const cell = (value: number | null) => (value === null ? NOT_RECORDED : String(value))
 
   return (
     <DashboardCard
@@ -54,12 +53,12 @@ export function ExtrasConcededCard({ data, backTo, dimmed }: TeamCardProps) {
           cells: [
             <DashboardResultLink key="d" matchId={point.matchId} label={formatInstantDate(point.matchDate)} backTo={backTo} backLabel="Team" />,
             opponentText(point.opponentName, point.derby),
-            cell(point.wides),
-            cell(point.noBalls),
-            cell(point.byes),
-            cell(point.legByes),
-            cell(point.penaltyRuns),
-            point.total === null ? NOT_RECORDED : point.notItemised !== null ? `${point.total} (Not itemised)` : String(point.total),
+            figureOrNotRecorded(point.wides),
+            figureOrNotRecorded(point.noBalls),
+            figureOrNotRecorded(point.byes),
+            figureOrNotRecorded(point.legByes),
+            figureOrNotRecorded(point.penaltyRuns),
+            point.total !== null && point.notItemised !== null ? `${point.total} (Not itemised)` : figureOrNotRecorded(point.total),
           ],
         })),
       }}
@@ -75,7 +74,7 @@ export function ExtrasConcededCard({ data, backTo, dimmed }: TeamCardProps) {
           return {
             title: matchTitle(point.matchDate, point.opponentName, point.derby),
             rows: [
-              { label: 'Total extras', value: cell(point.total) },
+              { label: 'Total extras', value: figureOrNotRecorded(point.total) },
               ...CATEGORIES.flatMap((category) => (point[category.key] === null ? [] : [{ label: category.label, value: String(point[category.key]), style: category.style }])),
             ],
           }

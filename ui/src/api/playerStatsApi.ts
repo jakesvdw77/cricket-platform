@@ -1,5 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
+import { statsFilterParams } from './statsFilterParams'
 import type { DismissalType } from './matchResultApi'
 
 // docs/specs/103-player-stats.md: one player's statistics from published results (GET .../players/{playerId}/stats).
@@ -196,13 +197,7 @@ export const playerStatsKeys = {
 
 // Only the filters that are set are sent; none is career.
 export function filterParams(filters: PlayerStatsFilters): Record<string, string> {
-  const params: Record<string, string> = {}
-  if (filters.seasonId) params.seasonId = filters.seasonId
-  if (filters.leagueId) params.leagueId = filters.leagueId
-  if (filters.teamId) params.teamId = filters.teamId
-  if (filters.sectionId) params.sectionId = filters.sectionId
-  if (filters.competition) params.competition = filters.competition
-  return params
+  return statsFilterParams({ ...filters })
 }
 
 export async function getPlayerStats(clubId: string, playerId: string, filters: PlayerStatsFilters = {}): Promise<PlayerStats> {

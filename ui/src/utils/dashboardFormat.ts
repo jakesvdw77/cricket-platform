@@ -1,5 +1,5 @@
-import type { DashboardTrendDirection } from '../../../../api/playerDashboardApi'
-import { NOT_ON_FILE } from '../../../../utils/playerFormat'
+import type { DashboardTrendDirection } from '../api/playerDashboardApi'
+import { NOT_ON_FILE } from './playerFormat'
 
 // docs/specs/117-stats-dashboard.md: display helpers only, shared by the player and the team Dashboard. Every figure, share, average,
 // reference value and trend hint is the server's; these functions choose decimals, build a sentence from fields the response
@@ -28,15 +28,30 @@ export function matchTitle(date: string | null | undefined, opponentName: string
   return [when, who].filter(Boolean).join(' ')
 }
 
-// A share as the server sent it: "36%" for a whole number, otherwise one decimal ("28.6%"); a dash for null.
+// A share as the server sent it (it rounds to 1 decimal): always one decimal ("36.0%", "28.6%"); a dash for null.
 export function percentText(value: number | null | undefined): string {
   if (value === null || value === undefined) return NOT_ON_FILE
-  return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`
+  return `${value.toFixed(1)}%`
+}
+
+// The same share where a missing value reads "Not recorded" (a table cell or tooltip row), never 0.
+export function percentOrNotRecorded(value: number | null | undefined): string {
+  return value === null || value === undefined ? NOT_RECORDED : `${value.toFixed(1)}%`
 }
 
 // A figure to a fixed number of decimals, or "Not recorded" for null (never 0).
 export function figureOrNotRecorded(value: number | null | undefined, places = 0): string {
   return value === null || value === undefined ? NOT_RECORDED : value.toFixed(places)
+}
+
+// A figure to a fixed number of decimals, or null for a missing value: a chart's value label, which then draws nothing.
+export function figureOrNull(value: number | null | undefined, places = 0): string | null {
+  return value === null || value === undefined ? null : value.toFixed(places)
+}
+
+// "Average 37.50", or undefined for a missing value: a chart's reference-line label.
+export function labelledFigure(prefix: string, value: number | null | undefined, places = 2): string | undefined {
+  return value === null || value === undefined ? undefined : `${prefix} ${value.toFixed(places)}`
 }
 
 const DIRECTION_PHRASE: Record<DashboardTrendDirection, string> = { UP: 'up from', DOWN: 'down from', FLAT: 'level with' }

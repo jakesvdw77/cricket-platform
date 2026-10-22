@@ -4,8 +4,8 @@ import { ChartLegend } from '../../../../components/charts/ChartLegend'
 import { formatInstantDate } from '../../../../utils/formatInstantDate'
 import { ballsToOvers } from '../../../../utils/oversFormat'
 import type { PlayerCardProps } from './RunsPerInningsCard'
-import { DashboardResultLink } from './DashboardResultLink'
-import { NOT_RECORDED, matchTitle, opponentText, shortDate, trendSentence } from './dashboardFormat'
+import { DashboardResultLink } from '../../results/DashboardResultLink'
+import { figureOrNotRecorded, figureOrNull, labelledFigure, matchTitle, opponentText, shortDate, trendSentence } from '../../../../utils/dashboardFormat'
 
 // docs/specs/117-stats-dashboard.md (chart 6, decision 20): Economy rate, Bowling, half width, the bowling counterpart of Batting trend.
 // One line per match (last 30 in which the player bowled) with a dashed reference at the overall economy (equal to the Bowling tab's
@@ -36,7 +36,7 @@ export function EconomyRateCard({ data, backTo, dimmed }: PlayerCardProps) {
       dimmed={dimmed}
       empty={empty}
       note="Lower is better · runs per over"
-      description={overall === null ? undefined : `Overall economy ${overall.toFixed(2)} runs per over over ${summary.totalPoints} ${summary.totalPoints === 1 ? 'match' : 'matches'}.`}
+      description={labelledFigure('Overall economy', overall) && `${labelledFigure('Overall economy', overall)} runs per over over ${summary.totalPoints} ${summary.totalPoints === 1 ? 'match' : 'matches'}.`}
       footer={trend}
       coverage={summary.matchesWithEconomy < summary.matchesCounted ? `Economy shown for ${summary.matchesWithEconomy} of ${summary.matchesCounted} matches.` : null}
       legend={
@@ -44,7 +44,7 @@ export function EconomyRateCard({ data, backTo, dimmed }: PlayerCardProps) {
           label="Economy rate"
           items={[
             { key: 'economy', label: 'Economy per match', line: { tone: 'info', marker: 'circle' } },
-            ...(overall === null ? [] : [{ key: 'overall', label: `Overall ${overall.toFixed(2)}`, line: { tone: 'grey' as const, dashed: true } }]),
+            ...(overall === null ? [] : [{ key: 'overall', label: labelledFigure('Overall', overall) ?? '', line: { tone: 'grey' as const, dashed: true } }]),
           ]}
         />
       }
@@ -66,23 +66,23 @@ export function EconomyRateCard({ data, backTo, dimmed }: PlayerCardProps) {
             ballsToOvers(match.balls, match.ballsPerOver),
             String(match.runs),
             String(match.wickets),
-            match.economy === null ? NOT_RECORDED : match.economy.toFixed(2),
+            figureOrNotRecorded(match.economy, 2),
           ],
         })),
       }}
     >
       <LineSeriesChart
         labels={matches.map((match) => shortDate(match.matchDate))}
-        series={[{ key: 'economy', label: 'Economy', tone: 'info', marker: 'circle', values, pointTexts: matches.length <= 12 ? values.map((value) => (value === null ? null : value.toFixed(2))) : undefined }]}
+        series={[{ key: 'economy', label: 'Economy', tone: 'info', marker: 'circle', values, pointTexts: matches.length <= 12 ? values.map((value) => figureOrNull(value, 2)) : undefined }]}
         referenceValue={overall}
-        referenceLabel={overall === null ? undefined : `Average ${overall.toFixed(2)}`}
+        referenceLabel={labelledFigure('Average', overall)}
         tooltip={(index) => {
           const match = matches[index]
           if (!match) return null
           return {
             title: matchTitle(match.matchDate, match.opponentName, match.derby),
             rows: [
-              { label: 'Economy', value: match.economy === null ? NOT_RECORDED : match.economy.toFixed(2) },
+              { label: 'Economy', value: figureOrNotRecorded(match.economy, 2) },
               { label: 'Overs', value: ballsToOvers(match.balls, match.ballsPerOver) },
               { label: 'Runs', value: String(match.runs) },
               { label: 'Wickets', value: String(match.wickets) },

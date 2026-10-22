@@ -6,8 +6,8 @@ import { LineSeriesChart } from '../../../../components/charts/LineSeriesChart'
 import { ChartLegend } from '../../../../components/charts/ChartLegend'
 import { formatInstantDate } from '../../../../utils/formatInstantDate'
 import type { PlayerCardProps } from './RunsPerInningsCard'
-import { DashboardResultLink } from './DashboardResultLink'
-import { NOT_RECORDED, matchTitle, opponentText } from './dashboardFormat'
+import { DashboardResultLink } from '../../results/DashboardResultLink'
+import { figureOrNotRecorded, figureOrNull, labelledFigure, matchTitle, opponentText } from '../../../../utils/dashboardFormat'
 
 type Mode = 'average' | 'runs'
 
@@ -30,7 +30,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
   const labels = points.map((_, index) => String(index + 1))
   const values = points.map((point) => (mode === 'average' ? point.average : point.cumulativeRuns))
   const fewPoints = points.length <= 12
-  const text = (value: number | null) => (value === null ? null : mode === 'average' ? value.toFixed(2) : String(value))
+  const text = (value: number | null) => (value === null ? null : mode === 'average' ? figureOrNull(value, 2) : String(value))
   const average = summary.averageRuns
 
   return (
@@ -41,7 +41,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
       subtitle="Batting"
       dimmed={dimmed}
       empty={empty}
-      description={last ? `After ${points.length} innings: ${last.average === null ? 'no average yet' : `average ${last.average.toFixed(2)}`}, ${last.cumulativeRuns} runs.` : undefined}
+      description={last ? `After ${points.length} innings: ${last.average === null ? 'no average yet' : labelledFigure('average', last.average)}, ${last.cumulativeRuns} runs.` : undefined}
       coverage={data.truncated && data.truncatedSince ? `Since ${formatInstantDate(data.truncatedSince)}.` : null}
       table={{
         caption: 'Running average and runs after each innings, oldest first',
@@ -59,7 +59,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
             String(index + 1),
             <DashboardResultLink key="d" matchId={point.matchId} label={formatInstantDate(point.matchDate)} backTo={backTo} backLabel="Overview" />,
             opponentText(point.opponentName, point.derby),
-            point.average === null ? NOT_RECORDED : point.average.toFixed(2),
+            figureOrNotRecorded(point.average, 2),
             String(point.cumulativeRuns),
             String(point.cumulativeDismissals),
           ],
@@ -82,7 +82,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
             label="Batting trend"
             items={[
               { key: 'series', label: mode === 'average' ? 'Running average' : 'Cumulative runs', line: { tone: 'primary', marker: 'circle' } },
-              ...(mode === 'average' && average !== null ? [{ key: 'average', label: `Overall average ${average.toFixed(2)}`, line: { tone: 'grey' as const, dashed: true } }] : []),
+              ...(mode === 'average' && average !== null ? [{ key: 'average', label: labelledFigure('Overall average', average) ?? '', line: { tone: 'grey' as const, dashed: true } }] : []),
             ]}
           />
         </Box>
@@ -93,14 +93,14 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
         markGaps={false}
         series={[{ key: mode, label: mode === 'average' ? 'Running average' : 'Cumulative runs', tone: 'primary', marker: 'circle', values, pointTexts: fewPoints ? values.map(text) : undefined }]}
         referenceValue={mode === 'average' ? average : null}
-        referenceLabel={average === null ? undefined : `Average ${average.toFixed(2)}`}
+        referenceLabel={labelledFigure('Average', average)}
         tooltip={(index) => {
           const point = points[index]
           if (!point) return null
           return {
             title: `Innings ${index + 1} · ${matchTitle(point.matchDate, point.opponentName, point.derby)}`,
             rows: [
-              { label: 'Average', value: point.average === null ? NOT_RECORDED : point.average.toFixed(2) },
+              { label: 'Average', value: figureOrNotRecorded(point.average, 2) },
               { label: 'Runs', value: String(point.cumulativeRuns) },
               { label: 'Dismissals', value: String(point.cumulativeDismissals) },
             ],

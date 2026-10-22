@@ -3,8 +3,8 @@ import { BarSeriesChart } from '../../../../components/charts/BarSeriesChart'
 import { formatInstantDate } from '../../../../utils/formatInstantDate'
 import { ballsToOvers } from '../../../../utils/oversFormat'
 import type { PlayerCardProps } from './RunsPerInningsCard'
-import { DashboardResultLink } from './DashboardResultLink'
-import { matchTitle, opponentText, shortDate, windowCaption } from './dashboardFormat'
+import { DashboardResultLink } from '../../results/DashboardResultLink'
+import { matchTitle, opponentText, shortDate, windowCaption } from '../../../../utils/dashboardFormat'
 
 // docs/specs/117-stats-dashboard.md (chart 4): Wickets per match, Bowling, full width, the bowling counterpart of Runs per innings. Bars
 // for the last 30 matches in which the player bowled with the wickets labelled; economy has its own card. Values are the server's.

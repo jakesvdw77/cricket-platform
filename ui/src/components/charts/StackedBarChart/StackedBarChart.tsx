@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { BarPlot, ChartsAxisHighlight, ChartsGrid, ChartsTooltip, ChartsXAxis, ChartsYAxis } from '@mui/x-charts'
-import { BarValueLabels, ChartFrame, GapMarkers } from '../chartCommon'
+import { BarValueLabels, ChartFrame, GapMarkers } from '../internal/chartCommon'
 import { AXIS_FONT, bandAxis, useReducedMotion, useTooltipContent } from '../chartUtils'
 import type { ChartSize, PointTooltip } from '../chartUtils'
 import { ChartPatternDef } from '../chartPatterns'

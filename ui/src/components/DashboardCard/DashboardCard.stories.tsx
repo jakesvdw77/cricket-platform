@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { DashboardCard } from './DashboardCard'
+import { userEvent, within } from 'storybook/test'
+import { DashboardCard, DashboardGrid } from './DashboardCard'
 import { BarSeriesChart } from '../charts/BarSeriesChart'
 
 const labels = ['6 Sep', '13 Sep', '20 Sep', '27 Sep', '4 Oct', '11 Oct', '18 Oct', '25 Oct']
@@ -64,3 +65,35 @@ export const Loading: Story = { args: { loading: true } }
 export const ErrorState: Story = { args: { error: { onRetry: () => {} } } }
 
 export const Dimmed: Story = { args: { dimmed: true } }
+
+export const ViewAsTable: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'View as table' }))
+  },
+}
+
+export const FullWidth: Story = {
+  args: { fullWidth: true },
+  decorators: [(Story) => <DashboardGrid><Story /></DashboardGrid>],
+}
+
+export const Wide: Story = {
+  args: { wide: true },
+  decorators: [(Story) => <DashboardGrid><Story /></DashboardGrid>],
+}
+
+// The Overview grid: one column on a phone, two from md, three from lg; a full-width card, a half-width card and a wide card.
+export const Grid: Story = {
+  render: () => (
+    <DashboardGrid>
+      <DashboardCard testId="runs-per-innings" title="Runs per innings" subtitle="Batting" fullWidth table={table}>
+        {chart}
+      </DashboardCard>
+      <DashboardCard testId="dismissals" title="How you were dismissed" subtitle="Batting" empty={{ title: 'No batting cards captured' }} />
+      <DashboardCard testId="batting-trend" title="Batting trend" subtitle="Batting" wide>
+        {chart}
+      </DashboardCard>
+      <DashboardCard testId="economy-rate" title="Economy rate" subtitle="Bowling" loading />
+    </DashboardGrid>
+  ),
+}

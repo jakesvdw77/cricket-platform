@@ -1,12 +1,8 @@
 import { DashboardCard } from '../../../../components/DashboardCard'
 import { DonutChart } from '../../../../components/charts/DonutChart'
-import { CATEGORY_STYLES } from '../../../../components/charts/chartStyles'
-import type { CategoryStyle } from '../../../../components/charts/chartStyles'
+import { dismissalStyle } from '../../../../components/charts/chartStyles'
 import type { PlayerCardProps } from './RunsPerInningsCard'
-import { percentText } from './dashboardFormat'
-
-// A not-out innings carries the same hatch as the not-out bars of Runs per innings; every other type takes the next pattern in order.
-const NOT_OUT_STYLE: CategoryStyle = { tone: 'primary', pattern: 'diagonal' }
+import { percentText } from '../../../../utils/dashboardFormat'
 
 // docs/specs/117-stats-dashboard.md (chart 2, decision 19): How you were dismissed, Batting, half width. A donut of the player's own
 // batting dismissals plus not out, total innings in the centre; the table column is "Dismissals". Counts and shares are the server's.
@@ -22,11 +18,8 @@ export function DismissalsCard({ data, dimmed }: Pick<PlayerCardProps, 'data' | 
         : { title: 'No innings to show', description: 'This player did not bat in these matches.' }
   }
 
-  let order = 0
-  const slices = dismissals.map((entry) => {
-    const style = entry.type === 'NOT_OUT' ? NOT_OUT_STYLE : CATEGORY_STYLES[1 + (order++ % (CATEGORY_STYLES.length - 1))]
-    return { key: entry.type, label: entry.label, value: entry.count, percentText: percentText(entry.percent), style }
-  })
+  // each type keeps one look wherever it is drawn; Not out carries the same hatch as the not-out bars of Runs per innings
+  const slices = dismissals.map((entry) => ({ key: entry.type, label: entry.label, value: entry.count, percentText: percentText(entry.percent), style: dismissalStyle(entry.type) }))
 
   return (
     <DashboardCard

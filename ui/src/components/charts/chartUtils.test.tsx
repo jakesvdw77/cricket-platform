@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createTheme } from '@mui/material/styles'
+import { createTheme, getContrastRatio } from '@mui/material/styles'
 import { render, renderHook, screen } from '@testing-library/react'
 import { bandAxis, labelStride, useReducedMotion, useTooltipContent } from './chartUtils'
-import { CATEGORY_STYLES, chartPalette, fillFor, NOT_ITEMISED_STYLE, patternId, safeSvgId } from './chartStyles'
-import { ChartTooltipBody } from './ChartTooltipBody'
+import { DISMISSAL_STYLES, EXTRAS_STYLES, chartPalette, dismissalStyle, fillFor, NOT_ITEMISED_STYLE, patternId, safeSvgId } from './chartStyles'
+import { ChartTooltipBody } from './internal/ChartTooltipBody'
 
 describe('labelStride', () => {
   it('shows every label up to 8 points, every second to 16, every fourth beyond', () => {
@@ -47,10 +47,28 @@ describe('chart colours and patterns', () => {
     expect(dark.tones.error).toBe(createTheme().palette.error.main)
   })
 
-  it('gives the categorical styles distinct tone and pattern pairs, and the grey Not itemised one a flat fill', () => {
-    const keys = CATEGORY_STYLES.map((style) => `${style.tone}/${style.pattern}`)
-    expect(new Set(keys).size).toBe(keys.length)
+  it('gives every dismissal and extras type its own tone and pattern pair, none of them grey, and the grey Not itemised one a flat fill', () => {
+    const all = [...Object.values(DISMISSAL_STYLES), ...Object.values(EXTRAS_STYLES)]
+    const dismissalKeys = Object.values(DISMISSAL_STYLES).map((style) => `${style.tone}/${style.pattern}`)
+    const extrasKeys = Object.values(EXTRAS_STYLES).map((style) => `${style.tone}/${style.pattern}`)
+    expect(new Set(dismissalKeys).size).toBe(dismissalKeys.length)
+    expect(new Set(extrasKeys).size).toBe(extrasKeys.length)
+    expect(all.some((style) => style.tone === 'grey')).toBe(false)
     expect(NOT_ITEMISED_STYLE).toEqual({ tone: 'grey', pattern: 'solid' })
+  })
+
+  it('looks a dismissal type up by its name, the same every time, and gives an unknown one a stable look of its own', () => {
+    expect(dismissalStyle('CAUGHT')).toBe(DISMISSAL_STYLES.CAUGHT)
+    expect(dismissalStyle('CAUGHT')).toEqual(dismissalStyle('CAUGHT'))
+    const unknown = dismissalStyle('SOMETHING_NEW')
+    expect(unknown).toEqual(dismissalStyle('SOMETHING_NEW'))
+    expect(Object.values(DISMISSAL_STYLES)).not.toContainEqual(unknown)
+  })
+
+  it('draws the grey tone dark enough for 3:1 on the card, and has no purple tone', () => {
+    const palette = chartPalette(createTheme())
+    expect(getContrastRatio(palette.tones.grey, palette.paper)).toBeGreaterThanOrEqual(3)
+    expect(Object.keys(palette.tones)).not.toContain('purple')
   })
 
   it('fills solid categories with the tone and the rest with a url(#pattern) reference that has a safe id', () => {
@@ -66,7 +84,7 @@ describe('ChartTooltipBody', () => {
   it('shows the title and one row per figure, with a pattern swatch where a style is given', () => {
     render(
       <ChartTooltipBody
-        data={{ title: '6 Sep v Riverside', rows: [{ label: 'Wides', value: '4', style: CATEGORY_STYLES[2] }, { label: 'Total', value: '10' }] }}
+        data={{ title: '6 Sep v Riverside', rows: [{ label: 'Wides', value: '4', style: EXTRAS_STYLES.noBalls }, { label: 'Total', value: '10' }] }}
       />,
     )
     const body = screen.getByTestId('chart-tooltip')

@@ -1,9 +1,11 @@
+// Internal to the chart wrappers (docs/standards/frontend.md four-file rule): not imported outside components/charts, and covered by the
+// wrappers' own tests (BarSeriesChart, GroupedBarChart, StackedBarChart, LineSeriesChart) and chartUtils.test.tsx.
 import type { ReactNode } from 'react'
 import { ResponsiveChartContainer, useDrawingArea, useXScale, useYScale } from '@mui/x-charts'
 import type { ResponsiveChartContainerProps } from '@mui/x-charts'
-import { useChartPalette } from './chartStyles'
-import type { ChartSize } from './chartUtils'
-import { AXIS_FONT } from './chartUtils'
+import { useChartPalette } from '../chartStyles'
+import type { ChartSize } from '../chartUtils'
+import { AXIS_FONT } from '../chartUtils'
 
 // docs/specs/117-stats-dashboard.md: components shared by the chart wrappers. Together with the wrappers this is the only code that
 // imports @mui/x-charts (an oxlint override and a structural test keep it that way).

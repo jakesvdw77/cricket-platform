@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { StackedBarChart } from './StackedBarChart'
-import { CATEGORY_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
+import { EXTRAS_STYLES, NOT_ITEMISED_STYLE } from '../chartStyles'
 import { ChartLegend } from '../ChartLegend'
 
 const categories = [
-  { key: 'wides', label: 'Wides', style: CATEGORY_STYLES[1] },
-  { key: 'noBalls', label: 'No-balls', style: CATEGORY_STYLES[2] },
-  { key: 'byes', label: 'Byes', style: CATEGORY_STYLES[3] },
-  { key: 'legByes', label: 'Leg-byes', style: CATEGORY_STYLES[4] },
-  { key: 'penalty', label: 'Penalty', style: CATEGORY_STYLES[5] },
+  { key: 'wides', label: 'Wides', style: EXTRAS_STYLES.wides },
+  { key: 'noBalls', label: 'No-balls', style: EXTRAS_STYLES.noBalls },
+  { key: 'byes', label: 'Byes', style: EXTRAS_STYLES.byes },
+  { key: 'legByes', label: 'Leg-byes', style: EXTRAS_STYLES.legByes },
+  { key: 'penalty', label: 'Penalty', style: EXTRAS_STYLES.penaltyRuns },
   { key: 'notItemised', label: 'Not itemised', style: NOT_ITEMISED_STYLE },
 ]
 

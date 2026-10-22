@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import { ChartsAxisHighlight, ChartsGrid, ChartsReferenceLine, ChartsTooltip, ChartsXAxis, ChartsYAxis, LinePlot, MarkPlot } from '@mui/x-charts'
 import type { MarkElementProps } from '@mui/x-charts'
-import { ChartFrame, GapMarkers } from '../chartCommon'
+import { ChartFrame, GapMarkers } from '../internal/chartCommon'
 import { AXIS_FONT, bandAxis, useReducedMotion, useTooltipContent } from '../chartUtils'
 import type { ChartSize, PointTooltip } from '../chartUtils'
 import { MarkerShape } from '../ChartLegend'
