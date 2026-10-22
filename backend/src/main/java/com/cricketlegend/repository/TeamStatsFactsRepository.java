@@ -67,6 +67,21 @@ public interface TeamStatsFactsRepository extends Repository<MatchResult, UUID> 
             @Param("victoryRunsKey") BigDecimal victoryRunsKey,
             @Param("victoryWicketsKey") BigDecimal victoryWicketsKey);
 
+    /**
+     * docs/specs/117: the newest {@code limit} counted team results of the one team in {@code teamId}, forfeits included,
+     * with the counters of the team Dashboard's series. See {@link TeamStatsSql#DASHBOARD_RESULTS}.
+     */
+    @Query(value = TeamStatsSql.DASHBOARD_RESULTS, nativeQuery = true)
+    List<TeamDashboardResultView> dashboardResults(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("limit") int limit);
+
     /** One recent counted result; the getter names are the quoted aliases of {@link TeamStatsSql#TEAM_FORM}. */
     interface TeamFormView {
         UUID getResultId();
@@ -93,5 +108,82 @@ public interface TeamStatsFactsRepository extends Repository<MatchResult, UUID> 
         UUID getMatchId();
 
         String getOpponentName();
+    }
+
+    /** One counted team result of {@link TeamStatsSql#DASHBOARD_RESULTS}; the getter names are its quoted aliases. */
+    interface TeamDashboardResultView {
+        UUID getResultId();
+
+        UUID getMatchId();
+
+        Long getMatchEpochMillis();
+
+        String getOpponentName();
+
+        Boolean getDerby();
+
+        String getOutcome();
+
+        String getWinningSide();
+
+        String getSide();
+
+        Long getOwnInnings();
+
+        Long getOppInnings();
+
+        Long getOwnUsable();
+
+        Long getOppUsable();
+
+        Long getOwnRuns();
+
+        Long getOwnWickets();
+
+        Long getOwnBalls();
+
+        Long getOwnRunsWithBalls();
+
+        BigDecimal getOwnOvers();
+
+        Long getOppRuns();
+
+        Long getOppWickets();
+
+        Long getOppBalls();
+
+        Long getOppRunsWithBalls();
+
+        BigDecimal getOppOvers();
+
+        Long getExtras();
+
+        Long getWides();
+
+        Long getNoBalls();
+
+        Long getByes();
+
+        Long getLegByes();
+
+        Long getPenaltyRuns();
+
+        Long getBowlBalls();
+
+        Long getBowlDots();
+
+        Long getBowlRows();
+
+        Long getBowlDotsRows();
+
+        Boolean getNrrUsable();
+
+        Long getNrrOwnRuns();
+
+        Long getNrrOppRuns();
+
+        BigDecimal getNrrOwnOvers();
+
+        BigDecimal getNrrOppOvers();
     }
 }

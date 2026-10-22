@@ -55,6 +55,8 @@ class PlayerStatsSqlLiteralsTest {
         sql.add(TeamStatsSql.CLASSIFIABLE_INNINGS);
         sql.add(TeamStatsSql.SUCCESSFUL_CHASE);
         sql.add(TeamStatsSql.NRR_RESULT);
+        sql.add(TeamStatsSql.RESULT_SUMMARY);
+        sql.add(TeamStatsSql.DASHBOARD_RESULTS);
         for (Class<?> repository : List.of(
                 PlayerStatsFactsRepository.class,
                 PlayerStatsAggregateRepository.class,

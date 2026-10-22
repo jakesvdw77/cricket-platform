@@ -133,8 +133,8 @@ class LayeringRulesTest {
      * use the stats repositories.
      */
     private static final String STATS_SERVICES =
-            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl|TeamStatsServiceImpl)"
-                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader|TeamStatsFactsReader))(\\$.*)?";
+            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl|TeamStatsServiceImpl|PlayerDashboardServiceImpl|TeamDashboardServiceImpl)"
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader|TeamStatsFactsReader|TeamDashboardFactsReader))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
@@ -163,6 +163,9 @@ class LayeringRulesTest {
                         "com.cricketlegend.service.impl.LeaderboardServiceImpl",
                         "com.cricketlegend.service.impl.PlayerMatchListServiceImpl",
                         "com.cricketlegend.service.impl.TeamStatsServiceImpl",
+                        "com.cricketlegend.service.impl.PlayerDashboardServiceImpl",
+                        "com.cricketlegend.service.impl.TeamDashboardServiceImpl",
+                        "com.cricketlegend.service.support.TeamDashboardFactsReader",
                         "com.cricketlegend.service.support.PlayerMatchFactsReader",
                         "com.cricketlegend.service.support.PlayerStatsCountersReader",
                         "com.cricketlegend.service.support.StatsFilterOptionLists",
@@ -175,7 +178,8 @@ class LayeringRulesTest {
             "com\\.cricketlegend\\.service\\.support\\."
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
                     + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers|PlayerMatchRowBuilder"
-                    + "|TeamStatsCalculator|TeamStatsCounters|TeamStatsColumn|TeamTableRanker)(\\$.*)?";
+                    + "|TeamStatsCalculator|TeamStatsCounters|TeamStatsColumn|TeamTableRanker"
+                    + "|PlayerDashboardSeriesBuilder|TeamDashboardSeriesBuilder|StatsTrend|DashboardLimits)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
@@ -191,9 +195,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous: exactly the 16 named top-level classes plus their nested types (72 in all: 39 from specs 103 and 115, and 33 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers).
+        // proves the rule above is not vacuous: exactly the 20 named top-level classes plus their nested types (87 in all: 39 from specs 103 and 115, 33 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers, and 15 for spec 117's two series builders, trend and limits with the calculators' new records).
         // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(72);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(87);
     }
 }

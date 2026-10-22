@@ -7137,6 +7137,82 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/stats/dashboard:
+    get:
+      tags:
+      - player-stats-controller
+      operationId: getPlayerDashboard
+      description: "All series of the player Dashboard (docs/specs/117) in one response, for the same filters, counting rules and access as the stats route. A player with nothing counted is a 200 with empty series."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDashboardDto"
+        "400":
+          description: Unknown competition
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown or other-club player, team, season, league or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/leaderboards:
     get:
       tags:
@@ -7551,6 +7627,70 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: Unknown or other-club team, season or league
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/teams/{teamId}/stats/dashboard:
+    get:
+      tags:
+      - team-stats-controller
+      operationId: getTeamDashboard
+      description: "All series of the team Dashboard (docs/specs/117) in one response, for the same filters, counting rules and access as the team stats route. A team with no counted result is a 200 with empty series."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamDashboardDto"
+        "400":
+          description: Unknown competition
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A team outside a section-scoped caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown or other-club player, team, season, league or section
           content:
             application/problem+json:
               schema:
@@ -13483,6 +13623,550 @@ components:
           type: string
           format: uuid
         competition:
+          type: string
+    DashboardWindowDto:
+      type: object
+      description: "The two limits behind every Dashboard series (docs/specs/117): per-match charts return the most recent pointLimit points; running trends and donuts cover up to historyCap counted matches."
+      properties:
+        pointLimit:
+          type: integer
+          format: int32
+        historyCap:
+          type: integer
+          format: int32
+    PlayerDashboardDto:
+      type: object
+      description: "Every series of the player Dashboard (docs/specs/117), chronological, for the filters echoed in scope. A missing or unrecorded figure is null, never 0. truncated: the scope held more than window.historyCap counted matches; truncatedSince is the oldest match covered."
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        scope:
+          $ref: "#/components/schemas/PlayerStatsScope"
+        basis:
+          $ref: "#/components/schemas/PlayerStatsBasis"
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        truncated:
+          type: boolean
+        truncatedSince:
+          type: string
+          format: date-time
+        battingInnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerDashboardBattingInnings"
+        battingSummary:
+          $ref: "#/components/schemas/PlayerDashboardBattingSummary"
+        dismissals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerDashboardDismissal"
+        battingTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerDashboardTrendPoint"
+        bowlingMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerDashboardBowlingMatch"
+        wicketTypes:
+          $ref: "#/components/schemas/PlayerDashboardWicketTypes"
+        economySummary:
+          $ref: "#/components/schemas/PlayerDashboardEconomySummary"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerNotCaptured"
+    PlayerDashboardBattingInnings:
+      type: object
+      description: "One batted innings (the last window.pointLimit). opponentName is null in a derby."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        howOut:
+          type: string
+    PlayerDashboardBattingSummary:
+      type: object
+      description: "inningsTotal: every batted innings covered; averageRuns: the batting average over the whole filtered scope."
+      properties:
+        inningsTotal:
+          type: integer
+          format: int64
+        shown:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        averageRuns:
+          type: number
+    PlayerDashboardDismissal:
+      type: object
+      description: "One slice of How you were dismissed; NOT_OUT stands for both not-out kinds."
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+    PlayerDashboardTrendPoint:
+      type: object
+      description: "Running totals after one batted innings; average is null until the first dismissal."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        cumulativeRuns:
+          type: integer
+          format: int64
+        cumulativeDismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+    PlayerDashboardBowlingMatch:
+      type: object
+      description: "One counted match in which the player bowled (the last window.pointLimit). economy is null at zero balls."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+    PlayerDashboardWicketType:
+      type: object
+      description: "One bowler-credited dismissal type of Wickets by type."
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+    PlayerDashboardNotItemised:
+      type: object
+      description: "Wickets whose type the scorecards do not record."
+      properties:
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+    PlayerDashboardWicketCoverage:
+      type: object
+      properties:
+        wicketsItemised:
+          type: integer
+          format: int64
+        wicketsTotal:
+          type: integer
+          format: int64
+        inningsItemised:
+          type: integer
+          format: int64
+        inningsWithWickets:
+          type: integer
+          format: int64
+    PlayerDashboardWicketTypes:
+      type: object
+      description: "The six bowler-credited types plus notItemised always add up to total (the Wickets tile)."
+      properties:
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerDashboardWicketType"
+        notItemised:
+          $ref: "#/components/schemas/PlayerDashboardNotItemised"
+        total:
+          type: integer
+          format: int64
+        itemised:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/PlayerDashboardWicketCoverage"
+    PlayerDashboardEconomySummary:
+      type: object
+      description: "overallEconomy equals the Bowling tab Econ. The trend fields are null unless each half of the comparison holds at least three matches; direction is UP, DOWN or FLAT (within 0.25)."
+      properties:
+        overallEconomy:
+          type: number
+        matchesCounted:
+          type: integer
+          format: int64
+        matchesWithEconomy:
+          type: integer
+          format: int64
+        totalPoints:
+          type: integer
+          format: int64
+        shown:
+          type: integer
+          format: int64
+        recentEconomy:
+          type: number
+        earlierEconomy:
+          type: number
+        direction:
+          type: string
+    TeamDashboardDto:
+      type: object
+      description: "Every series of the team Dashboard (docs/specs/117), chronological, for the filters echoed in scope. A missing or unusable figure is null, never 0."
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        scope:
+          $ref: "#/components/schemas/TeamStatsPageScope"
+        basis:
+          $ref: "#/components/schemas/TeamStatsPageBasis"
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        truncated:
+          type: boolean
+        truncatedSince:
+          type: string
+          format: date-time
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDashboardResult"
+        resultsSummary:
+          $ref: "#/components/schemas/TeamDashboardResultsSummary"
+        runRateTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDashboardRunRatePoint"
+        netRunRateTrend:
+          $ref: "#/components/schemas/TeamDashboardNetRunRateTrend"
+        extrasConceded:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDashboardExtrasPoint"
+        extrasSummary:
+          $ref: "#/components/schemas/TeamDashboardExtrasSummary"
+        dotBalls:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDashboardDotBallsPoint"
+        dotBallsSummary:
+          $ref: "#/components/schemas/TeamDashboardDotBallsSummary"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStatsNotCaptured"
+    TeamDashboardResult:
+      type: object
+      description: "One counted team result (the last window.pointLimit). result is WON, LOST, TIED, DRAWN or NO_RESULT. A forfeit has no innings: its figures are null."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        forfeit:
+          type: boolean
+        result:
+          type: string
+        ownRuns:
+          type: integer
+          format: int64
+        ownWickets:
+          type: integer
+          format: int64
+        ownBalls:
+          type: integer
+          format: int64
+        oppRuns:
+          type: integer
+          format: int64
+        oppWickets:
+          type: integer
+          format: int64
+        oppBalls:
+          type: integer
+          format: int64
+        ownRunRate:
+          type: number
+        oppRunRate:
+          type: number
+    TeamDashboardResultsSummary:
+      type: object
+      description: "The Results donut over every covered result; forfeits are wins or losses as the record counts them."
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        noResult:
+          type: integer
+          format: int64
+        forfeits:
+          type: integer
+          format: int64
+        totalPoints:
+          type: integer
+          format: int64
+        shown:
+          type: integer
+          format: int64
+        withRuns:
+          type: integer
+          format: int64
+    TeamDashboardRunRatePoint:
+      type: object
+      description: "Running team and opposition run rates after one result."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        teamRunRate:
+          type: number
+        oppositionRunRate:
+          type: number
+    TeamDashboardNetRunRatePoint:
+      type: object
+      description: "The running net run rate after one net-run-rate-usable result."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        value:
+          type: number
+    TeamDashboardNetRunRateTrend:
+      type: object
+      description: "status is SHOWN, NOT_ONE_COMPETITION or NO_USABLE_RESULTS; points only when SHOWN."
+      properties:
+        status:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDashboardNetRunRatePoint"
+    TeamDashboardExtrasPoint:
+      type: object
+      description: "Extras conceded in one result. Components are null when not recorded; notItemised is the total of a total-only innings; total is null when no extras were recorded."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        itemised:
+          type: boolean
+        notItemised:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+    TeamDashboardExtrasSummary:
+      type: object
+      description: "Coverage of the Extras conceded card over the windowed results."
+      properties:
+        matchesCounted:
+          type: integer
+          format: int64
+        matchesWithExtras:
+          type: integer
+          format: int64
+        matchesItemised:
+          type: integer
+          format: int64
+        totalPoints:
+          type: integer
+          format: int64
+        shown:
+          type: integer
+          format: int64
+        widesRecorded:
+          type: integer
+          format: int64
+        noBallsRecorded:
+          type: integer
+          format: int64
+        byesRecorded:
+          type: integer
+          format: int64
+        legByesRecorded:
+          type: integer
+          format: int64
+        penaltyRunsRecorded:
+          type: integer
+          format: int64
+    TeamDashboardDotBallsPoint:
+      type: object
+      description: "Dot balls in one result. dots and dotPercent are null unless every bowler row that bowled a ball recorded dots."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        ballsBowled:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+        dotPercent:
+          type: number
+    TeamDashboardDotBallsSummary:
+      type: object
+      description: "Coverage, pooled average and trend of the Dot balls card over the windowed results; direction is UP, DOWN or FLAT (within 0.5)."
+      properties:
+        matchesCounted:
+          type: integer
+          format: int64
+        matchesWithDots:
+          type: integer
+          format: int64
+        totalPoints:
+          type: integer
+          format: int64
+        shown:
+          type: integer
+          format: int64
+        averageDotPercent:
+          type: number
+        recentAverage:
+          type: number
+        earlierAverage:
+          type: number
+        direction:
           type: string
     PlayerMatchListDto:
       type: object

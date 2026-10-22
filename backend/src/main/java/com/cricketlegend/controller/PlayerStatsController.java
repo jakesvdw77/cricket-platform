@@ -1,8 +1,10 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.PlayerDashboardDto;
 import com.cricketlegend.dto.PlayerMatchListDto;
 import com.cricketlegend.dto.PlayerStatsDto;
 import com.cricketlegend.dto.PlayerStatsFilterOptionsDto;
+import com.cricketlegend.service.PlayerDashboardService;
 import com.cricketlegend.service.PlayerMatchListService;
 import com.cricketlegend.service.PlayerStatsService;
 import java.util.UUID;
@@ -25,10 +27,15 @@ public class PlayerStatsController {
 
     private final PlayerMatchListService playerMatchListService;
 
+    private final PlayerDashboardService playerDashboardService;
+
     public PlayerStatsController(
-            PlayerStatsService playerStatsService, PlayerMatchListService playerMatchListService) {
+            PlayerStatsService playerStatsService,
+            PlayerMatchListService playerMatchListService,
+            PlayerDashboardService playerDashboardService) {
         this.playerStatsService = playerStatsService;
         this.playerMatchListService = playerMatchListService;
+        this.playerDashboardService = playerDashboardService;
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -80,5 +87,21 @@ public class PlayerStatsController {
                 direction,
                 page,
                 size));
+    }
+
+    /** docs/specs/117-stats-dashboard.md: every series of the player Dashboard, for the filters the page holds. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/dashboard")
+    public ResponseEntity<PlayerDashboardDto> getPlayerDashboard(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID playerId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) String competition) {
+        return ResponseEntity.ok(playerDashboardService.get(
+                authentication, clubId, playerId, seasonId, leagueId, teamId, sectionId, competition));
     }
 }

@@ -3,6 +3,7 @@ package com.cricketlegend.service.support;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.BowlingCreditView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchAwardView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchBattingView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchBowlingView;
@@ -61,6 +62,15 @@ public final class PlayerMatchFactsReader {
                 v.getDots(),
                 v.getWides(),
                 v.getNoBalls());
+    }
+
+    /** docs/specs/117: a bowling row with the dismissals of its innings that name the bowler. */
+    public static PlayerStatsCalculator.BowlingCredit toCredit(BowlingCreditView v) {
+        return new PlayerStatsCalculator.BowlingCredit(
+                v.getBowlingEntryId(),
+                n(v.getWickets()),
+                v.getHowOut() == null ? null : DismissalType.valueOf(v.getHowOut()),
+                n(v.getCredited()));
     }
 
     public static PlayerMatchRowBuilder.FieldingFact toFielding(MatchFieldingView v) {

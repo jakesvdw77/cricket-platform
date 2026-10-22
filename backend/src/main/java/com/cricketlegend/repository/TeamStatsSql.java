@@ -170,6 +170,32 @@ final class TeamStatsSql {
             """;
 
     /**
+     * {@code rs}: one row per (counted non-forfeit team result, side) with the innings counts and the quota-based overs the
+     * Net Run Rate needs (spec 116). Shared by {@link #AGGREGATE} and {@link #DASHBOARD_RESULTS} (spec 117) so the Net Run
+     * Rate result rule is read from one text. Needs {@code ti} ({@link #TEAM_INNINGS}) in the same statement.
+     */
+    static final String RESULT_SUMMARY = """
+            rs as (
+              select ti.team_id as team_id, ti.mrid as mrid, ti.side as side, ti.outcome as outcome,
+                     ti.decided_by as decided_by, ti.league_id as league_id, ti.season_id as season_id,
+                     count(*) as n_inn,
+                     count(*) filter (where ti.own) as n_own,
+                     count(*) filter (where not ti.own) as n_opp,
+                     count(*) filter (where ti.own and ti.usable) as own_usable,
+                     count(*) filter (where not ti.own and ti.usable) as opp_usable,
+                     bool_and(ti.usable) as all_usable,
+                     bool_and(not ti.all_out or ti.scheduled_balls is not null) as quota_known,
+                     coalesce(sum(ti.runs) filter (where ti.own), 0) as own_runs,
+                     coalesce(sum(ti.runs) filter (where not ti.own), 0) as opp_runs,
+                     sum(cast(case when ti.all_out then ti.scheduled_balls else ti.balls end as numeric) / ti.bpo)
+                         filter (where ti.own) as own_overs,
+                     sum(cast(case when ti.all_out then ti.scheduled_balls else ti.balls end as numeric) / ti.bpo)
+                         filter (where not ti.own) as opp_overs
+              from ti
+              group by ti.team_id, ti.mrid, ti.side, ti.outcome, ti.decided_by, ti.league_id, ti.season_id
+            )""";
+
+    /**
      * Every additive counter of every team with a counted result in the filtered scope, one row per team
      * (docs/specs/116, "SQL approach" point 3). Separate CTEs over {@code tr} and {@code ti}, joined by team id at the end.
      */
@@ -269,25 +295,8 @@ final class TeamStatsSql {
 
               group by tr.team_id
             ),
-            rs as (
-              select ti.team_id as team_id, ti.mrid as mrid, ti.side as side, ti.outcome as outcome,
-                     ti.decided_by as decided_by, ti.league_id as league_id, ti.season_id as season_id,
-                     count(*) as n_inn,
-                     count(*) filter (where ti.own) as n_own,
-                     count(*) filter (where not ti.own) as n_opp,
-                     count(*) filter (where ti.own and ti.usable) as own_usable,
-                     count(*) filter (where not ti.own and ti.usable) as opp_usable,
-                     bool_and(ti.usable) as all_usable,
-                     bool_and(not ti.all_out or ti.scheduled_balls is not null) as quota_known,
-                     coalesce(sum(ti.runs) filter (where ti.own), 0) as own_runs,
-                     coalesce(sum(ti.runs) filter (where not ti.own), 0) as opp_runs,
-                     sum(cast(case when ti.all_out then ti.scheduled_balls else ti.balls end as numeric) / ti.bpo)
-                         filter (where ti.own) as own_overs,
-                     sum(cast(case when ti.all_out then ti.scheduled_balls else ti.balls end as numeric) / ti.bpo)
-                         filter (where not ti.own) as opp_overs
-              from ti
-              group by ti.team_id, ti.mrid, ti.side, ti.outcome, ti.decided_by, ti.league_id, ti.season_id
-            ),
+            """ + RESULT_SUMMARY + """
+            ,
             rsa as (
               select rs.team_id as team_id,
                      count(*) filter (where rs.own_usable > 0 and rs.opp_usable > 0) as both_innings,
@@ -471,5 +480,106 @@ final class TeamStatsSql {
               and\s""" + VICTORY_WICKETS_KEY + """
              = cast(:victoryWicketsKey as numeric)
             order by 1, 2
+            """;
+
+    /**
+     * docs/specs/117-stats-dashboard.md: one row per counted team result (forfeits included), newest first, at most {@code
+     * :limit} rows, with the additive counters the team Dashboard's series need: the side's and the opposition's usable
+     * runs, wickets, balls and run-rate inputs (the same usable-innings rule as {@link #AGGREGATE}); the opposition innings'
+     * extras components (null when no innings recorded the component); our bowler rows' balls and dots with the two counts
+     * the "every bowler row recorded dots" rule needs; and the Net Run Rate inputs of {@link #RESULT_SUMMARY} with {@link
+     * #NRR_RESULT} as {@code nrrUsable}. A forfeit has no innings row (it is excluded by its outcome in {@link
+     * #TEAM_INNINGS}, so its columns are null or 0); a forfeit's stray innings are never read. Only sums and counts of stored
+     * columns; every figure is defined by {@code TeamStatsCalculator}. The seven parameters of {@link #TEAM_RESULTS} plus
+     * {@code limit}.
+     */
+    static final String DASHBOARD_RESULTS = TEAM_INNINGS + """
+            , """ + RESULT_SUMMARY + """
+            ,
+            oi as (
+              select ti.team_id as team_id, ti.mrid as mrid, ti.side as side,
+                     count(*) filter (where ti.own) as n_own,
+                     count(*) filter (where not ti.own) as n_opp,
+                     count(*) filter (where ti.own and ti.usable) as own_usable,
+                     count(*) filter (where not ti.own and ti.usable) as opp_usable,
+                     sum(ti.runs) filter (where ti.own and ti.usable) as own_runs,
+                     sum(ti.wickets) filter (where ti.own and ti.usable) as own_wickets,
+                     sum(ti.balls) filter (where ti.own and ti.usable) as own_balls,
+                     sum(ti.runs) filter (where ti.own and ti.usable and ti.balls > 0) as own_runs_with_balls,
+                     sum(cast(ti.balls as numeric) / ti.bpo) filter (where ti.own and ti.usable and ti.balls > 0)
+                         as own_overs,
+                     sum(ti.runs) filter (where not ti.own and ti.usable) as opp_runs,
+                     sum(ti.wickets) filter (where not ti.own and ti.usable) as opp_wickets,
+                     sum(ti.balls) filter (where not ti.own and ti.usable) as opp_balls,
+                     sum(ti.runs) filter (where not ti.own and ti.usable and ti.balls > 0) as opp_runs_with_balls,
+                     sum(cast(ti.balls as numeric) / ti.bpo) filter (where not ti.own and ti.usable and ti.balls > 0)
+                         as opp_overs,
+                     sum(ti.extras) filter (where not ti.own) as extras,
+                     sum(ti.wides) filter (where not ti.own) as wides,
+                     sum(ti.no_balls) filter (where not ti.own) as no_balls,
+                     sum(ti.byes) filter (where not ti.own) as byes,
+                     sum(ti.leg_byes) filter (where not ti.own) as leg_byes,
+                     sum(ti.penalty_runs) filter (where not ti.own) as penalty_runs
+              from ti
+              group by ti.team_id, ti.mrid, ti.side
+            ),
+            bwr as (
+              select tr.team_id as team_id, tr.mrid as mrid, tr.side as side,
+                     sum(bw.balls) as balls,
+                     sum(bw.dots) as dots,
+                     count(*) filter (where bw.balls > 0) as bowled_rows,
+                     count(bw.dots) filter (where bw.balls > 0) as dots_rows
+              from tr
+              join match_innings bi on bi.match_result_id = tr.mrid and bi.kind = 'REGULAR'
+                                   and bi.batting_side <> tr.side
+              join bowling_entry bw on bw.match_innings_id = bi.id
+              join result_player rp on rp.id = bw.result_player_id and rp.opposition = false and rp.side = tr.side
+              where tr.outcome <> 'FORFEIT'
+              group by tr.team_id, tr.mrid, tr.side
+            )
+            select tr.mrid as "resultId",
+                   tr.match_id as "matchId",
+                   cast(extract(epoch from tr.match_date) * 1000 as bigint) as "matchEpochMillis",
+                   tr.opponent_name as "opponentName",
+                   tr.derby as "derby",
+                   tr.outcome as "outcome",
+                   tr.winning_side as "winningSide",
+                   tr.side as "side",
+                   coalesce(oi.n_own, 0) as "ownInnings",
+                   coalesce(oi.n_opp, 0) as "oppInnings",
+                   coalesce(oi.own_usable, 0) as "ownUsable",
+                   coalesce(oi.opp_usable, 0) as "oppUsable",
+                   oi.own_runs as "ownRuns",
+                   oi.own_wickets as "ownWickets",
+                   oi.own_balls as "ownBalls",
+                   oi.own_runs_with_balls as "ownRunsWithBalls",
+                   oi.own_overs as "ownOvers",
+                   oi.opp_runs as "oppRuns",
+                   oi.opp_wickets as "oppWickets",
+                   oi.opp_balls as "oppBalls",
+                   oi.opp_runs_with_balls as "oppRunsWithBalls",
+                   oi.opp_overs as "oppOvers",
+                   oi.extras as "extras",
+                   oi.wides as "wides",
+                   oi.no_balls as "noBalls",
+                   oi.byes as "byes",
+                   oi.leg_byes as "legByes",
+                   oi.penalty_runs as "penaltyRuns",
+                   bwr.balls as "bowlBalls",
+                   bwr.dots as "bowlDots",
+                   coalesce(bwr.bowled_rows, 0) as "bowlRows",
+                   coalesce(bwr.dots_rows, 0) as "bowlDotsRows",
+                   coalesce(""" + NRR_RESULT + """
+            , false) as "nrrUsable",
+                   rs.own_runs as "nrrOwnRuns",
+                   rs.opp_runs as "nrrOppRuns",
+                   rs.own_overs as "nrrOwnOvers",
+                   rs.opp_overs as "nrrOppOvers"
+            from tr
+            left join oi on oi.team_id = tr.team_id and oi.mrid = tr.mrid and oi.side = tr.side
+            left join bwr on bwr.team_id = tr.team_id and bwr.mrid = tr.mrid and bwr.side = tr.side
+            left join rs on rs.team_id = tr.team_id and rs.mrid = tr.mrid and rs.side = tr.side
+            order by tr.match_date desc, tr.match_id desc, tr.mrid desc
+            limit :limit
             """;
 }
