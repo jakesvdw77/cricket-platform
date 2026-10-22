@@ -81,7 +81,7 @@ export function LineSeriesChart({ labels, series, referenceValue, referenceLabel
       <ChartFrame
         size={size}
         sx={lineSx}
-        margin={{ top: 22, right: 14, bottom: 28, left: 34 }}
+        margin={{ top: 18, right: 14, bottom: 28, left: 34 }}
         series={series.map((entry) => ({
           type: 'line' as const,
           id: entry.key,

@@ -19,7 +19,7 @@ export interface PointTooltip {
   rows: { label: string; value: string; style?: CategoryStyle }[]
 }
 
-export const AXIS_FONT = 10
+export const AXIS_FONT = 11
 
 // Animation off under prefers-reduced-motion (spec "Reduced motion").
 export function useReducedMotion(): boolean {

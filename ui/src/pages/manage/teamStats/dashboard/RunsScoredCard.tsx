@@ -18,6 +18,7 @@ export function RunsScoredCard({ data, backTo, dimmed }: TeamCardProps) {
   return (
     <DashboardCard
       testId="runs-scored"
+      wide
       title="Runs scored v conceded"
       dimmed={dimmed}
       empty={results.length === 0 ? { title: 'No results to show', description: 'No counted results in these matches.' } : summary.withRuns === 0 ? { title: 'No runs to show', description: 'Runs need results with both innings recorded.' } : null}

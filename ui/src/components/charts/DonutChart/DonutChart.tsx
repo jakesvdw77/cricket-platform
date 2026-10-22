@@ -22,7 +22,7 @@ export interface DonutChartProps {
   centerLabel: string
 }
 
-const DIAMETER = 132
+const DIAMETER = 104
 
 function Center({ value, label }: { value: string; label: string }) {
   const { left, top, width, height } = useDrawingArea()
@@ -31,10 +31,10 @@ function Center({ value, label }: { value: string; label: string }) {
   const cy = top + height / 2
   return (
     <g aria-hidden>
-      <text fontFamily={palette.fontFamily} x={cx} y={cy - 2} textAnchor="middle" fontSize={20} fontWeight={700} fill={palette.text}>
+      <text fontFamily={palette.fontFamily} x={cx} y={cy - 1} textAnchor="middle" fontSize={16} fontWeight={700} fill={palette.text}>
         {value}
       </text>
-      <text fontFamily={palette.fontFamily} x={cx} y={cy + 14} textAnchor="middle" fontSize={11} fill={palette.axisText}>
+      <text fontFamily={palette.fontFamily} x={cx} y={cy + 11} textAnchor="middle" fontSize={10} fill={palette.axisText}>
         {label}
       </text>
     </g>
@@ -42,7 +42,7 @@ function Center({ value, label }: { value: string; label: string }) {
 }
 
 // docs/specs/117-stats-dashboard.md (donuts): the slices as a ring with the total in the centre and a text legend carrying the
-// count and the server's percentage, so no slice is told apart by colour alone (each also has a pattern). A fixed 132 px square.
+// count and the server's percentage, so no slice is told apart by colour alone (each also has a pattern). A fixed 104 px square.
 export function DonutChart({ slices, centerValue, centerLabel }: DonutChartProps) {
   const palette = useChartPalette()
   const scope = useId()
@@ -50,7 +50,7 @@ export function DonutChart({ slices, centerValue, centerLabel }: DonutChartProps
   // A slice of 0 draws nothing but stays in the legend.
   const drawn = slices.filter((slice) => slice.value > 0)
   return (
-    <Box data-testid="donut-chart" sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: { xs: 'nowrap', sm: 'nowrap' } }}>
+    <Box data-testid="donut-chart" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'nowrap', sm: 'nowrap' } }}>
       <Box sx={{ flex: 'none', width: DIAMETER, height: DIAMETER }}>
         <ChartContainer
           width={DIAMETER}
@@ -60,7 +60,7 @@ export function DonutChart({ slices, centerValue, centerLabel }: DonutChartProps
             {
               type: 'pie',
               id: 'donut',
-              innerRadius: 40,
+              innerRadius: 32,
               outerRadius: DIAMETER / 2 - 2,
               paddingAngle: drawn.length > 1 ? 1.5 : 0,
               data: drawn.map((slice) => ({ id: slice.key, value: slice.value, label: slice.label, color: fillFor(scope, slice.key, slice.style, palette) })),
@@ -76,9 +76,9 @@ export function DonutChart({ slices, centerValue, centerLabel }: DonutChartProps
           <Center value={centerValue} label={centerLabel} />
         </ChartContainer>
       </Box>
-      <Box component="ul" aria-label="Legend" data-testid="donut-legend" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 0.625, flex: 1, minWidth: 0 }}>
+      <Box component="ul" aria-label="Legend" data-testid="donut-legend" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, minWidth: 0 }}>
         {slices.map((slice) => (
-          <Box component="li" key={slice.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, fontSize: '0.8125rem' }}>
+          <Box component="li" key={slice.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, fontSize: '0.75rem' }}>
             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
               <PatternSwatch style={slice.style} />
               <Typography component="span" sx={{ fontSize: 'inherit' }}>

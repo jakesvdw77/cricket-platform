@@ -36,6 +36,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
   return (
     <DashboardCard
       testId="batting-trend"
+      wide
       title="Batting trend"
       subtitle="Batting"
       dimmed={dimmed}
@@ -56,7 +57,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
           key: `${point.resultId}-${index}`,
           cells: [
             String(index + 1),
-            <DashboardResultLink key="d" matchId={point.matchId} label={formatInstantDate(point.matchDate)} backTo={backTo} backLabel="Dashboard" />,
+            <DashboardResultLink key="d" matchId={point.matchId} label={formatInstantDate(point.matchDate)} backTo={backTo} backLabel="Overview" />,
             opponentText(point.opponentName, point.derby),
             point.average === null ? NOT_RECORDED : point.average.toFixed(2),
             String(point.cumulativeRuns),

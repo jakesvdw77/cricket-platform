@@ -124,7 +124,7 @@ describe('Matches tab', () => {
     it('is the sixth and last tab (after Dashboard), and ?tab=matches selects it', async () => {
       renderPage()
       const tabs = await screen.findAllByRole('tab', {}, wait)
-      expect(tabs.map((tab) => tab.textContent)).toEqual(['Dashboard', 'Batting', 'Bowling', 'Fielding', 'Awards & record', 'Matches'])
+      expect(tabs.map((tab) => tab.textContent)).toEqual(['Overview', 'Batting', 'Bowling', 'Fielding', 'Awards & record', 'Matches'])
       expect(screen.getByRole('tab', { name: 'Matches' })).toHaveAttribute('aria-selected', 'true')
       await screen.findAllByTestId('match-row', {}, wait)
     })

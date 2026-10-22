@@ -39,7 +39,7 @@ export function GroupedBarChart({ labels, series, gapTexts, tooltip, size }: Gro
   return (
     <ChartFrame
       size={size}
-      margin={{ top: 22, right: 10, bottom: 28, left: 38 }}
+      margin={{ top: 18, right: 10, bottom: 28, left: 38 }}
       series={series.map((entry) => ({
         type: 'bar' as const,
         id: entry.key,

@@ -55,7 +55,7 @@ export function RunsPerInningsCard({ data, backTo, dimmed }: PlayerCardProps) {
       ...innings.map((entry, index) => ({
         key: `${entry.resultId}-${index}`,
         cells: [
-          <DashboardResultLink key="d" matchId={entry.matchId} label={formatInstantDate(entry.matchDate)} backTo={backTo} backLabel="Dashboard" />,
+          <DashboardResultLink key="d" matchId={entry.matchId} label={formatInstantDate(entry.matchDate)} backTo={backTo} backLabel="Overview" />,
           opponentText(entry.opponentName, entry.derby),
           entry.runs === null ? NOT_RECORDED : `${entry.runs}${star(index)}`,
           entry.balls === null ? NOT_ON_FILE : String(entry.balls),

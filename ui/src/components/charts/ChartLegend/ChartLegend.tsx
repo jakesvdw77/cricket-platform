@@ -44,7 +44,7 @@ export interface ChartLegendProps {
 // Library-free and decorative for the chart, the table alternative carries the values.
 export function ChartLegend({ items, label }: ChartLegendProps) {
   return (
-    <Box component="ul" aria-label={label} data-testid="chart-legend" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '0.75rem', color: 'text.secondary' }}>
+    <Box component="ul" aria-label={label} data-testid="chart-legend" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: '0.6875rem', color: 'text.secondary' }}>
       {items.map((item) => (
         <Box component="li" key={item.key} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.625 }}>
           {item.style && <PatternSwatch style={item.style} />}

@@ -17,6 +17,7 @@ export function DotBallsCard({ data, backTo, dimmed }: TeamCardProps) {
   return (
     <DashboardCard
       testId="dot-balls"
+      wide
       title="Dot balls"
       dimmed={dimmed}
       empty={summary.matchesWithDots === 0 ? { title: 'No dot balls have been recorded for these matches.', description: 'Dot balls are optional on the bowling card; enter them on a result to see this chart.' } : null}

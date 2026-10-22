@@ -49,7 +49,7 @@ export function BarSeriesChart({ labels, values, hatched, valueTexts, gapText = 
   return (
     <ChartFrame
       size={size}
-      margin={{ top: 22, right: 10, bottom: 28, left: 34 }}
+      margin={{ top: 18, right: 10, bottom: 28, left: 34 }}
       series={[
         { type: 'bar', id: 'solid', data: solidData, stack: 'bars', color: fillFor(scope, 'solid', SOLID, palette) },
         { type: 'bar', id: 'hatched', data: hatchedData, stack: 'bars', color: fillFor(scope, 'hatched', HATCHED, palette) },

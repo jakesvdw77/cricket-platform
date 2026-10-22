@@ -30,6 +30,7 @@ export function EconomyRateCard({ data, backTo, dimmed }: PlayerCardProps) {
   return (
     <DashboardCard
       testId="economy-rate"
+      wide
       title="Economy rate"
       subtitle="Bowling"
       dimmed={dimmed}
@@ -60,7 +61,7 @@ export function EconomyRateCard({ data, backTo, dimmed }: PlayerCardProps) {
         rows: matches.map((match, index) => ({
           key: `${match.resultId}-${index}`,
           cells: [
-            <DashboardResultLink key="d" matchId={match.matchId} label={formatInstantDate(match.matchDate)} backTo={backTo} backLabel="Dashboard" />,
+            <DashboardResultLink key="d" matchId={match.matchId} label={formatInstantDate(match.matchDate)} backTo={backTo} backLabel="Overview" />,
             opponentText(match.opponentName, match.derby),
             ballsToOvers(match.balls, match.ballsPerOver),
             String(match.runs),

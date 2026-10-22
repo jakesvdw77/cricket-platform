@@ -11,10 +11,10 @@ const TeamDashboardCharts = lazy(loadTeamDashboardCharts)
 
 const SKELETON_CARDS = [
   { testId: 'results', title: 'Results' },
-  { testId: 'runs-scored', title: 'Runs scored v conceded' },
+  { testId: 'runs-scored', title: 'Runs scored v conceded', wide: true },
   { testId: 'run-rate-trend', title: 'Run rate trend', fullWidth: true },
   { testId: 'extras-conceded', title: 'Extras conceded' },
-  { testId: 'dot-balls', title: 'Dot balls' },
+  { testId: 'dot-balls', title: 'Dot balls', wide: true },
 ]
 
 export interface TeamDashboardBlockProps {
@@ -34,25 +34,25 @@ export function TeamDashboardBlock({ shown, onToggle, dashboard, backTo }: TeamD
 
   let content
   if (isError && !data) {
-    content = <DashboardCard testId="dashboard" title="Dashboard" fullWidth error={{ onRetry: () => void refetch() }} />
+    content = <DashboardCard testId="dashboard" title="Overview" fullWidth error={{ onRetry: () => void refetch() }} />
   } else if (!data) {
-    content = <DashboardSkeleton cards={SKELETON_CARDS} label="Loading the dashboard" />
+    content = <DashboardSkeleton cards={SKELETON_CARDS} label="Loading the overview" />
   } else {
     content = (
-      <Suspense fallback={<DashboardSkeleton cards={SKELETON_CARDS} label="Loading the dashboard" />}>
+      <Suspense fallback={<DashboardSkeleton cards={SKELETON_CARDS} label="Loading the overview" />}>
         <TeamDashboardCharts data={data} backTo={backTo} dimmed={isPlaceholderData} />
       </Suspense>
     )
   }
 
   return (
-    <Box component="section" aria-label="Dashboard" data-testid="team-dashboard" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box component="section" aria-label="Overview" data-testid="team-dashboard" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, borderBottom: 1, borderColor: 'divider', pb: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, minWidth: 0, flexWrap: 'wrap' }}>
           <Typography component="h2" sx={{ fontSize: '1rem', fontWeight: 700 }}>
-            Dashboard
+            Overview
           </Typography>
-          <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>{shown ? 'Same filters as above · 5 charts' : 'Results, runs, run rate, extras and dot balls'}</Typography>
+          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{shown ? 'Same filters as above · 5 charts' : 'Results, runs, run rate, extras and dot balls'}</Typography>
         </Box>
         <MuiButton
           variant="outlined"
@@ -64,10 +64,10 @@ export function TeamDashboardBlock({ shown, onToggle, dashboard, backTo }: TeamD
           startIcon={shown ? <ExpandLessIcon aria-hidden /> : <ExpandMoreIcon aria-hidden />}
           sx={{ minHeight: 44, flex: 'none' }}
         >
-          {shown ? 'Hide' : 'Show'}
+          {shown ? 'Hide overview' : 'Show overview'}
         </MuiButton>
       </Box>
-      <Box id={contentId} hidden={!shown} sx={{ display: shown ? 'flex' : 'none', flexDirection: 'column', gap: 1.5 }}>
+      <Box id={contentId} hidden={!shown} sx={{ display: shown ? 'flex' : 'none', flexDirection: 'column', gap: 1 }}>
         {shown && content}
         {shown && <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>Ball-by-ball and partnership charts are not available: that data is not captured yet.</Typography>}
       </Box>

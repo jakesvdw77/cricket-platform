@@ -44,7 +44,7 @@ export function WicketsPerMatchCard({ data, backTo, dimmed }: PlayerCardProps) {
           ...matches.map((match, index) => ({
             key: `${match.resultId}-${index}`,
             cells: [
-              <DashboardResultLink key="d" matchId={match.matchId} label={formatInstantDate(match.matchDate)} backTo={backTo} backLabel="Dashboard" />,
+              <DashboardResultLink key="d" matchId={match.matchId} label={formatInstantDate(match.matchDate)} backTo={backTo} backLabel="Overview" />,
               opponentText(match.opponentName, match.derby),
               ballsToOvers(match.balls, match.ballsPerOver),
               String(match.maidens),

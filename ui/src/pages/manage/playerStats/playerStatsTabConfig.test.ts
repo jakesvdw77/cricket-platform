@@ -6,7 +6,7 @@ import { PLAYER_STATS_TABS, resolvePlayerStatsTab } from './playerStatsTabConfig
 describe('playerStatsTabConfig', () => {
   it('lists Dashboard first and Matches last, bound to "dashboard" and "matches"', () => {
     expect(PLAYER_STATS_TABS).toHaveLength(6)
-    expect(PLAYER_STATS_TABS[0]).toEqual({ value: 'dashboard', label: 'Dashboard' })
+    expect(PLAYER_STATS_TABS[0]).toEqual({ value: 'dashboard', label: 'Overview' })
     expect(PLAYER_STATS_TABS[5]).toEqual({ value: 'matches', label: 'Matches' })
   })
 

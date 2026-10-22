@@ -1,5 +1,5 @@
 export const PLAYER_STATS_TABS = [
-  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'dashboard', label: 'Overview' },
   { value: 'batting', label: 'Batting' },
   { value: 'bowling', label: 'Bowling' },
   { value: 'fielding', label: 'Fielding' },

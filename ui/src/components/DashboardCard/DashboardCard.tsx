@@ -30,7 +30,7 @@ export interface DashboardCardProps {
   subtitle?: string
   // one sentence summarising the chart, assembled by the page from response fields; the chart's aria-describedby
   description?: string
-  // the chart itself (a wrapper from components/charts), drawn in a 220 px (280 px from md) area
+  // the chart itself (a wrapper from components/charts), drawn in a 150 px (180 px from md) area
   children?: ReactNode
   // a short direction label above the chart ("Lower is better")
   note?: string
@@ -47,14 +47,26 @@ export interface DashboardCardProps {
   error?: { onRetry: () => void } | null
   // the previous figures kept visible while a filter change loads
   dimmed?: boolean
-  // a card spanning both columns from md; the default is half width
+  // a card spanning every column from md; the default is one column
   fullWidth?: boolean
+  // from lg (three columns) the card spans two columns; ignored when fullWidth
+  wide?: boolean
   // 'auto' lets the content (a donut and its legend) set its own height
   chartArea?: 'fixed' | 'auto'
 }
 
-const headingSx = { fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1.3 } as const
-const captionSx = { fontSize: '0.8125rem', color: 'text.secondary', lineHeight: 1.4 } as const
+const headingSx = { fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1.3 } as const
+const captionSx = { fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.4 } as const
+const CHART_HEIGHT = { xs: 150, md: 180 }
+
+// The grid every Overview card sits in: one column on a phone, two from md, three from lg; gaps of 8 px (12 px from md).
+export function DashboardGrid({ children }: { children: ReactNode }) {
+  return (
+    <Box sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+      {children}
+    </Box>
+  )
+}
 
 // docs/specs/117-stats-dashboard.md ("The shared component: DashboardCard"): the card every Dashboard chart sits in. Library-free: the
 // chart is `children`. A title with an optional Batting / Bowling subtitle, a 44 px View as table toggle that swaps the chart for a
@@ -76,6 +88,7 @@ export function DashboardCard({
   error = null,
   dimmed = false,
   fullWidth = false,
+  wide = false,
   chartArea = 'fixed',
 }: DashboardCardProps) {
   const [showTable, setShowTable] = useState(false)
@@ -88,11 +101,11 @@ export function DashboardCard({
 
   let body: ReactNode
   if (loading) {
-    body = <Skeleton variant="rounded" data-testid={`${testId}-loading`} sx={{ height: { xs: 220, md: 280 } }} />
+    body = <Skeleton variant="rounded" data-testid={`${testId}-loading`} sx={{ height: CHART_HEIGHT }} />
   } else if (error) {
     body = (
-      <Box role="alert" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 2, textAlign: 'center' }}>
-        <Typography sx={{ fontSize: '0.875rem', fontWeight: 600 }}>Couldn't load the dashboard</Typography>
+      <Box role="alert" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1, textAlign: 'center' }}>
+        <Typography sx={{ fontSize: '0.875rem', fontWeight: 600 }}>Couldn't load the overview</Typography>
         <Typography sx={captionSx}>The rest of the page still works.</Typography>
         <MuiButton variant="outlined" onClick={error.onRetry} sx={{ minHeight: 44 }}>
           Try again
@@ -101,7 +114,7 @@ export function DashboardCard({
     )
   } else if (empty) {
     body = (
-      <Box data-testid={`${testId}-empty`} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, py: 2, textAlign: 'center' }}>
+      <Box data-testid={`${testId}-empty`} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, py: 1, textAlign: 'center' }}>
         <Typography sx={{ fontSize: '0.875rem', fontWeight: 600 }}>{empty.title}</Typography>
         {empty.description && <Typography sx={captionSx}>{empty.description}</Typography>}
       </Box>
@@ -109,7 +122,7 @@ export function DashboardCard({
   } else if (showTable && table) {
     body = (
       <Box sx={{ overflowX: 'auto' }} id={tableId}>
-        <Box component="table" data-testid={`${testId}-table`} sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
+        <Box component="table" data-testid={`${testId}-table`} sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>
           <Box component="caption" sx={{ ...captionSx, textAlign: 'left', pb: 0.5 }}>
             {table.caption}
           </Box>
@@ -154,7 +167,7 @@ export function DashboardCard({
           aria-label={name}
           aria-describedby={description ? descriptionId : undefined}
           data-testid={`${testId}-chart`}
-          sx={chartArea === 'fixed' ? { height: { xs: 220, md: 280 }, width: '100%', maxWidth: '100%', overflow: 'hidden' } : { width: '100%', maxWidth: '100%' }}
+          sx={chartArea === 'fixed' ? { height: CHART_HEIGHT, width: '100%', maxWidth: '100%', overflow: 'hidden' } : { width: '100%', maxWidth: '100%' }}
         >
           {children}
         </Box>
@@ -171,14 +184,13 @@ export function DashboardCard({
       data-testid={`dashboard-card-${testId}`}
       data-width={fullWidth ? 'full' : 'half'}
       sx={{
-        gridColumn: fullWidth ? { xs: 'auto', md: '1 / -1' } : 'auto',
+        gridColumn: fullWidth ? { xs: 'auto', md: '1 / -1' } : wide ? { xs: 'auto', lg: 'span 2' } : 'auto',
         minWidth: 0,
         bgcolor: 'background.paper',
         border: 1,
         borderColor: 'divider',
         borderRadius: 2,
-        px: 1.75,
-        py: 1.5,
+        p: 1.5,
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
@@ -218,7 +230,7 @@ export function DashboardCard({
         </Typography>
       )}
       {hasData && footer && (
-        <Typography component="div" data-testid={`${testId}-footer`} sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.4 }}>
+        <Typography component="div" data-testid={`${testId}-footer`} sx={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.4 }}>
           {footer}
         </Typography>
       )}

@@ -155,7 +155,7 @@ describe('PlayerStatsPage', () => {
     // docs/specs/117-stats-dashboard.md (decision 13): Dashboard is the first tab and the landing tab.
     it('a missing or unknown ?tab= value falls back to Dashboard, whose body starts with the same tile strip', async () => {
       renderPage(`${BASE}?tab=nonsense`)
-      expect(await screen.findByRole('tab', { name: 'Dashboard' }, wait)).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('tab', { name: 'Overview' }, wait)).toHaveAttribute('aria-selected', 'true')
       expect(await screen.findByTestId('tile-runs-value')).toHaveTextContent('412')
     })
 

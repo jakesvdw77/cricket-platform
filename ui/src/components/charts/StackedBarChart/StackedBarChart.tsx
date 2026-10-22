@@ -38,7 +38,7 @@ export function StackedBarChart({ labels, categories, values, totals, gapText = 
   return (
     <ChartFrame
       size={size}
-      margin={{ top: 22, right: 10, bottom: 28, left: 34 }}
+      margin={{ top: 18, right: 10, bottom: 28, left: 34 }}
       series={categories.map((category, index) => ({
         type: 'bar' as const,
         id: category.key,
