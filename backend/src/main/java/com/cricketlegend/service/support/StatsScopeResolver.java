@@ -22,6 +22,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class StatsScopeResolver {
 
+    /** The only statistics kind there is so far, echoed in every scope DTO. */
+    public static final String KIND_CLUB_VERIFIED = "CLUB_VERIFIED";
+
+
     /** Native {@code IN} lists may not be empty; this id matches no team. */
     private static final UUID NO_TEAM = new UUID(0L, 0L);
 

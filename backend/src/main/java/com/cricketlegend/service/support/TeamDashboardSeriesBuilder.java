@@ -175,10 +175,8 @@ public final class TeamDashboardSeriesBuilder {
 
     private static List<TeamDashboardRunRatePoint> runRateTrend(List<ResultFact> facts) {
         List<TeamDashboardRunRatePoint> points = new ArrayList<>();
-        long ownRuns = 0;
-        long oppRuns = 0;
-        BigDecimal ownOvers = BigDecimal.ZERO;
-        BigDecimal oppOvers = BigDecimal.ZERO;
+        TeamStatsCalculator.RunningRate own = new TeamStatsCalculator.RunningRate();
+        TeamStatsCalculator.RunningRate opposition = new TeamStatsCalculator.RunningRate();
         for (ResultFact fact : facts) {
             boolean ownBalls = fact.ownOvers() != null && fact.ownOvers().signum() > 0;
             boolean oppBalls = fact.oppOvers() != null && fact.oppOvers().signum() > 0;
@@ -186,20 +184,18 @@ public final class TeamDashboardSeriesBuilder {
                 continue;
             }
             if (ownBalls) {
-                ownRuns += runsWithBalls(fact.ownRunsWithBalls());
-                ownOvers = ownOvers.add(fact.ownOvers());
+                own.add(fact.ownRunsWithBalls(), fact.ownOvers());
             }
             if (oppBalls) {
-                oppRuns += runsWithBalls(fact.oppRunsWithBalls());
-                oppOvers = oppOvers.add(fact.oppOvers());
+                opposition.add(fact.oppRunsWithBalls(), fact.oppOvers());
             }
             points.add(new TeamDashboardRunRatePoint(
                     fact.matchId(),
                     fact.resultId(),
                     fact.matchDate(),
                     fact.opponentName(),
-                    TeamStatsCalculator.rate(ownRuns, ownOvers),
-                    TeamStatsCalculator.rate(oppRuns, oppOvers)));
+                    own.rate(),
+                    opposition.rate()));
         }
         return points;
     }
@@ -208,19 +204,15 @@ public final class TeamDashboardSeriesBuilder {
             TeamStatsCalculator.NrrStatus status, List<ResultFact> facts) {
         List<TeamDashboardNetRunRatePoint> points = new ArrayList<>();
         if (status == TeamStatsCalculator.NrrStatus.SHOWN) {
-            long ownRuns = 0;
-            long oppRuns = 0;
-            BigDecimal ownOvers = BigDecimal.ZERO;
-            BigDecimal oppOvers = BigDecimal.ZERO;
+            TeamStatsCalculator.RunningRate own = new TeamStatsCalculator.RunningRate();
+            TeamStatsCalculator.RunningRate opposition = new TeamStatsCalculator.RunningRate();
             for (ResultFact fact : facts) {
                 if (!fact.nrrUsable()) {
                     continue;
                 }
-                ownRuns += fact.nrrOwnRuns();
-                oppRuns += fact.nrrOppRuns();
-                ownOvers = ownOvers.add(zero(fact.nrrOwnOvers()));
-                oppOvers = oppOvers.add(zero(fact.nrrOppOvers()));
-                BigDecimal value = TeamStatsCalculator.nrrValue(ownRuns, ownOvers, oppRuns, oppOvers);
+                own.add(fact.nrrOwnRuns(), fact.nrrOwnOvers());
+                opposition.add(fact.nrrOppRuns(), fact.nrrOppOvers());
+                BigDecimal value = TeamStatsCalculator.runningNrr(own, opposition);
                 if (value != null) {
                     points.add(new TeamDashboardNetRunRatePoint(
                             fact.matchId(), fact.resultId(), fact.matchDate(), fact.opponentName(), value));
@@ -288,30 +280,15 @@ public final class TeamDashboardSeriesBuilder {
 
     private static TeamDashboardDotBallsSummary dotsSummary(List<ResultFact> withOpposition) {
         List<ResultFact> shown = tail(withOpposition);
-        long charted = 0;
-        long dotsSum = 0;
-        long ballsSum = 0;
-        List<StatsTrend.Weighted> weighted = new ArrayList<>();
-        for (ResultFact fact : shown) {
-            TeamStatsCalculator.DotsPoint dots = dots(fact);
-            if (dots.percent() == null) {
-                continue;
-            }
-            charted++;
-            dotsSum += dots.dots();
-            ballsSum += dots.ballsBowled();
-            // percentage points: pooled as (Σ dots x 100) / Σ balls, so the 0.5 flat band is in points
-            weighted.add(new StatsTrend.Weighted(
-                    BigDecimal.valueOf(dots.dots()).multiply(BigDecimal.valueOf(100)),
-                    BigDecimal.valueOf(dots.ballsBowled())));
-        }
-        StatsTrend.Hint hint = StatsTrend.of(weighted, 1, DashboardLimits.DOT_PERCENT_FLAT_BAND);
+        TeamStatsCalculator.DotsPool pool = new TeamStatsCalculator.DotsPool();
+        shown.forEach(fact -> pool.add(dots(fact)));
+        StatsTrend.Hint hint = StatsTrend.of(pool.weighted(), 1, DashboardLimits.DOT_PERCENT_FLAT_BAND);
         return new TeamDashboardDotBallsSummary(
                 shown.size(),
-                charted,
+                pool.charted(),
                 withOpposition.size(),
                 shown.size(),
-                TeamStatsCalculator.dotPercent(dotsSum, ballsSum),
+                pool.percent(),
                 hint == null ? null : hint.recent(),
                 hint == null ? null : hint.earlier(),
                 hint == null ? null : hint.direction().name());
@@ -326,10 +303,6 @@ public final class TeamDashboardSeriesBuilder {
 
     private static long runsWithBalls(Long value) {
         return value == null ? 0L : value;
-    }
-
-    private static BigDecimal zero(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value;
     }
 
     private static Integer toInt(Long value) {

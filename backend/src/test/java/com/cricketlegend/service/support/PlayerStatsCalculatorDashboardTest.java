@@ -404,4 +404,12 @@ class PlayerStatsCalculatorDashboardTest {
         assertThat(split.types().get(DismissalType.BOWLED)).isEqualTo(tab.dismissalModes().get("BOWLED"));
         assertThat(split.types().get(DismissalType.CAUGHT)).isEqualTo(tab.dismissalModes().get("CAUGHT"));
     }
+
+    @Test
+    void economyWeightIsRunsOverThatMatchesOvers() {
+        StatsTrend.Weighted weight = PlayerStatsCalculator.economyWeight(30, 24, 6);
+
+        assertThat(weight.numerator()).isEqualByComparingTo("30");
+        assertThat(weight.denominator()).isEqualByComparingTo(PlayerStatsCalculator.matchOvers(24, 6));
+    }
 }

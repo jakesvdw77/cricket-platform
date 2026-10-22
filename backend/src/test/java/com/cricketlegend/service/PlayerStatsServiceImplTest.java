@@ -16,6 +16,7 @@ import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerStatsAggregateRepository;
 import com.cricketlegend.repository.PlayerStatsFactsRepository;
 import com.cricketlegend.service.impl.PlayerStatsServiceImpl;
+import com.cricketlegend.service.support.ClubPlayerLookup;
 import com.cricketlegend.service.support.StatsScope;
 import com.cricketlegend.service.support.StatsScopeResolver;
 import java.util.List;
@@ -57,7 +58,8 @@ class PlayerStatsServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new PlayerStatsServiceImpl(aggregateRepository, factsRepository, playerProfileRepository, scopeResolver);
+        service = new PlayerStatsServiceImpl(
+                aggregateRepository, factsRepository, new ClubPlayerLookup(playerProfileRepository), scopeResolver);
     }
 
     private PlayerStatsDto get(String competition) {

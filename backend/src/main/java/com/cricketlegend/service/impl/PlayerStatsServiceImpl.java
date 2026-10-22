@@ -3,8 +3,6 @@ package com.cricketlegend.service.impl;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.dto.PlayerStatsDto;
 import com.cricketlegend.dto.PlayerStatsFilterOptionsDto;
-import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerStatsAggregateRepository;
 import com.cricketlegend.repository.PlayerStatsAggregateRepository.PlayerStatsAggregateView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository;
@@ -16,6 +14,7 @@ import com.cricketlegend.service.support.PlayerStatsCounters;
 import com.cricketlegend.service.support.PlayerStatsFacts;
 import com.cricketlegend.service.support.StatsFilterOptionLists;
 import com.cricketlegend.service.support.StatsScope;
+import com.cricketlegend.service.support.ClubPlayerLookup;
 import com.cricketlegend.service.support.StatsScopeResolver;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,17 +40,17 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
 
     private final PlayerStatsAggregateRepository aggregateRepository;
     private final PlayerStatsFactsRepository factsRepository;
-    private final PlayerProfileRepository playerProfileRepository;
+    private final ClubPlayerLookup playerLookup;
     private final StatsScopeResolver scopeResolver;
 
     public PlayerStatsServiceImpl(
             PlayerStatsAggregateRepository aggregateRepository,
             PlayerStatsFactsRepository factsRepository,
-            PlayerProfileRepository playerProfileRepository,
+            ClubPlayerLookup playerLookup,
             StatsScopeResolver scopeResolver) {
         this.aggregateRepository = aggregateRepository;
         this.factsRepository = factsRepository;
-        this.playerProfileRepository = playerProfileRepository;
+        this.playerLookup = playerLookup;
         this.scopeResolver = scopeResolver;
     }
 
@@ -67,10 +66,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
             UUID sectionId,
             String competition) {
         StatsScope.Competition competitionFilter = StatsScopeResolver.parseCompetition(competition);
-        playerProfileRepository
-                .findById(playerId)
-                .filter(player -> clubId.equals(player.getClubId()))
-                .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
+        playerLookup.require(clubId, playerId);
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
         StatsScope scope = resolved.scope();
@@ -98,7 +94,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         return new PlayerStatsDto(
                 playerId,
                 new PlayerStatsDto.PlayerStatsScope(
-                        "CLUB_VERIFIED", seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope)),
+                        StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope)),
                 figures.basis(),
                 figures.batting(),
                 figures.bowling(),
@@ -112,10 +108,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
     @Override
     @Transactional(readOnly = true)
     public PlayerStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId, UUID playerId) {
-        playerProfileRepository
-                .findById(playerId)
-                .filter(player -> clubId.equals(player.getClubId()))
-                .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
+        playerLookup.require(clubId, playerId);
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, null, null, null, null, null);
         if (resolved.nothingInReach()) {

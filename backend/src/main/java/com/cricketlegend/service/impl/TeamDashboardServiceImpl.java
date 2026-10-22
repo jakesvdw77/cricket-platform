@@ -39,7 +39,7 @@ public class TeamDashboardServiceImpl implements TeamDashboardService {
 
     private static final Logger log = LoggerFactory.getLogger(TeamDashboardServiceImpl.class);
 
-    private static final String KIND = "CLUB_VERIFIED";
+    private static final String KIND = StatsScopeResolver.KIND_CLUB_VERIFIED;
 
     private final TeamStatsAggregateRepository aggregateRepository;
     private final TeamStatsFactsRepository factsRepository;

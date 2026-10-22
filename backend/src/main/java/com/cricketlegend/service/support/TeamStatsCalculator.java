@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -348,6 +349,75 @@ public final class TeamStatsCalculator {
     /** A run rate (116): runs per over to 2 decimals, HALF_UP once; null when there are no overs. */
     public static BigDecimal rate(long runs, BigDecimal overs) {
         return ratio(runs, overs, 2);
+    }
+
+    /**
+     * A running runs / overs total across matches (spec 117 decision 3: running values live in the calculators). A null
+     * runs or overs figure counts as zero.
+     */
+    public static final class RunningRate {
+        private long runs;
+        private BigDecimal overs = BigDecimal.ZERO;
+
+        public RunningRate add(Long matchRuns, BigDecimal matchOvers) {
+            runs += matchRuns == null ? 0L : matchRuns;
+            overs = overs.add(matchOvers == null ? BigDecimal.ZERO : matchOvers);
+            return this;
+        }
+
+        public long runs() {
+            return runs;
+        }
+
+        public BigDecimal overs() {
+            return overs;
+        }
+
+        /** The running run rate (2 decimals), null while there are no overs. */
+        public BigDecimal rate() {
+            return TeamStatsCalculator.rate(runs, overs);
+        }
+    }
+
+    /** The running net run rate of two running totals (own minus conceded), null when either has no overs. */
+    public static BigDecimal runningNrr(RunningRate own, RunningRate opposition) {
+        return nrrValue(own.runs(), own.overs(), opposition.runs(), opposition.overs());
+    }
+
+    /**
+     * The dot-ball figures pooled over the charted matches (spec 117): totals, the pooled percentage and the percentage-point
+     * weights the trend hint uses ({@code dots x 100 / balls}, so the flat band is in points).
+     */
+    public static final class DotsPool {
+        private long charted;
+        private long dots;
+        private long balls;
+        private final List<StatsTrend.Weighted> weighted = new ArrayList<>();
+
+        /** Adds one match; a match without a percentage (no dots figure or no balls) is skipped. */
+        public void add(DotsPoint point) {
+            if (point.percent() == null) {
+                return;
+            }
+            charted++;
+            dots += point.dots();
+            balls += point.ballsBowled();
+            weighted.add(new StatsTrend.Weighted(
+                    BigDecimal.valueOf(point.dots()).multiply(BigDecimal.valueOf(100)),
+                    BigDecimal.valueOf(point.ballsBowled())));
+        }
+
+        public long charted() {
+            return charted;
+        }
+
+        public BigDecimal percent() {
+            return dotPercent(dots, balls);
+        }
+
+        public List<StatsTrend.Weighted> weighted() {
+            return weighted;
+        }
     }
 
     /** A dot-ball percentage (103): {@code dots / balls x 100} to 1 decimal, HALF_UP once; null without balls. */

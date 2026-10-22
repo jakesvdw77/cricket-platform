@@ -201,9 +201,7 @@ public final class PlayerDashboardSeriesBuilder {
         List<StatsTrend.Weighted> weighted = new ArrayList<>();
         for (PlayerDashboardBowlingMatch match : bowled) {
             if (match.economy() != null) {
-                weighted.add(new StatsTrend.Weighted(
-                        BigDecimal.valueOf(match.runs()),
-                        PlayerStatsCalculator.matchOvers(match.balls(), match.ballsPerOver())));
+                weighted.add(PlayerStatsCalculator.economyWeight(match.runs(), match.balls(), match.ballsPerOver()));
             }
         }
         StatsTrend.Hint hint = StatsTrend.of(weighted, 2, DashboardLimits.ECONOMY_FLAT_BAND);

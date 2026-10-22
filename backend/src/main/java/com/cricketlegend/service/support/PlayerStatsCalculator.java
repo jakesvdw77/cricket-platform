@@ -225,6 +225,11 @@ public final class PlayerStatsCalculator {
         return economy(runs, matchOvers(balls, ballsPerOver));
     }
 
+    /** One match's weight in the economy trend (spec 117): its runs over its overs, pooled by the trend hint. */
+    public static StatsTrend.Weighted economyWeight(long runs, long balls, int ballsPerOver) {
+        return new StatsTrend.Weighted(BigDecimal.valueOf(runs), matchOvers(balls, ballsPerOver));
+    }
+
     /** Batting Average (spec 103): runs per dismissal, 2 decimals, null with no dismissal. */
     public static BigDecimal battingAverage(long runs, long dismissals) {
         return divide(runs, dismissals, 2);

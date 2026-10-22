@@ -61,7 +61,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
     static final int MAX_TEAMS = 1_000;
     static final int DEFAULT_PAGE_SIZE = 25;
     static final int MAX_PAGE_SIZE = 100;
-    private static final String KIND = "CLUB_VERIFIED";
+    private static final String KIND = StatsScopeResolver.KIND_CLUB_VERIFIED;
     private static final String MINIMUM_UNIT = "MATCHES";
 
     private final TeamStatsAggregateRepository aggregateRepository;

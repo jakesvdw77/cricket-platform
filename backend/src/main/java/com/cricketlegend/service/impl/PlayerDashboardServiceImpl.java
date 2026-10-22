@@ -71,7 +71,7 @@ public class PlayerDashboardServiceImpl implements PlayerDashboardService {
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
         StatsScope scope = resolved.scope();
         PlayerStatsScope echoed = new PlayerStatsScope(
-                "CLUB_VERIFIED", seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope));
+                StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope));
 
         PlayerStatsCounters counters = PlayerStatsCounters.EMPTY;
         List<PlayerMatchRowBuilder.MatchHeader> headers = List.of();

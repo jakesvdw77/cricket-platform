@@ -175,4 +175,43 @@ class TeamStatsCalculatorDashboardTest {
         assertThat(point.total()).isEqualTo(5);
         assertThat(point.notItemised()).isNull();
     }
+
+    @Test
+    void runningRateAccumulatesRunsAndOversAndTreatsNullAsZero() {
+        TeamStatsCalculator.RunningRate running = new TeamStatsCalculator.RunningRate();
+
+        assertThat(running.rate()).isNull();
+        running.add(100L, new BigDecimal("20"));
+        running.add(null, null);
+        running.add(50L, new BigDecimal("10"));
+
+        assertThat(running.runs()).isEqualTo(150);
+        assertThat(running.overs()).isEqualByComparingTo("30");
+        assertThat(running.rate()).isEqualByComparingTo("5.00");
+    }
+
+    @Test
+    void runningNrrIsOwnRateMinusConcededRateAndNullWithoutOvers() {
+        TeamStatsCalculator.RunningRate own = new TeamStatsCalculator.RunningRate().add(150L, new BigDecimal("30"));
+        TeamStatsCalculator.RunningRate opposition = new TeamStatsCalculator.RunningRate();
+
+        assertThat(TeamStatsCalculator.runningNrr(own, opposition)).isNull();
+        opposition.add(120L, new BigDecimal("30"));
+        assertThat(TeamStatsCalculator.runningNrr(own, opposition)).isEqualByComparingTo("1.00");
+    }
+
+    @Test
+    void dotsPoolSkipsMatchesWithoutAPercentageAndPoolsTheRest() {
+        TeamStatsCalculator.DotsPool pool = new TeamStatsCalculator.DotsPool();
+
+        pool.add(new DotsPoint(120, 60, new BigDecimal("50.0")));
+        pool.add(new DotsPoint(60, null, null));
+        pool.add(new DotsPoint(60, 15, new BigDecimal("25.0")));
+
+        assertThat(pool.charted()).isEqualTo(2);
+        assertThat(pool.percent()).isEqualByComparingTo("41.7");
+        assertThat(pool.weighted()).hasSize(2);
+        assertThat(pool.weighted().get(0).numerator()).isEqualByComparingTo("6000");
+        assertThat(pool.weighted().get(0).denominator()).isEqualByComparingTo("120");
+    }
 }
