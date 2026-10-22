@@ -300,7 +300,10 @@ public final class TeamDashboardSeriesBuilder {
             charted++;
             dotsSum += dots.dots();
             ballsSum += dots.ballsBowled();
-            weighted.add(new StatsTrend.Weighted(BigDecimal.valueOf(dots.dots()), BigDecimal.valueOf(dots.ballsBowled())));
+            // percentage points: pooled as (Σ dots x 100) / Σ balls, so the 0.5 flat band is in points
+            weighted.add(new StatsTrend.Weighted(
+                    BigDecimal.valueOf(dots.dots()).multiply(BigDecimal.valueOf(100)),
+                    BigDecimal.valueOf(dots.ballsBowled())));
         }
         StatsTrend.Hint hint = StatsTrend.of(weighted, 1, DashboardLimits.DOT_PERCENT_FLAT_BAND);
         return new TeamDashboardDotBallsSummary(

@@ -112,6 +112,41 @@ public final class PlayerStatsSeed {
     /** The matches of {@link #seedTeamStats()} by their scenario key (H1, D1, X2...). */
     public final Map<String, Match> tsMatches = new java.util.LinkedHashMap<>();
 
+    // ---- docs/specs/117 dashboard scenarios: created only by seedDashboard(), so the 103/115/116 tests' club is unchanged ----
+
+    /** The Dashboard team: {@code n + 6} counted results, derby home side, two forfeits and more than 30 matches. In Seniors A. */
+    public Team dbEagles;
+    /** The derby opponent of {@link #dbEagles}, in the grandchild section Seniors A1. */
+    public Team dbRooks;
+    /** The Dashboard subject: batting, bowling and credited dismissals in every Eagles match, see {@link #seedDashboard(int)}. */
+    public PlayerProfile dash;
+    /** A second bowler on the Eagles side in a few matches (dots recorded, not recorded, a zero-ball row). */
+    public PlayerProfile mate;
+    /** One derby (Eagles v Rooks) with the player on both sides. */
+    public PlayerProfile dee;
+    /** A player whose MANUAL wickets are lower than the dismissals credited to them (c &gt; w). */
+    public PlayerProfile over;
+    /** Dashboard scenario matches by key: {@code M001..} the generated ones, {@code OVER1}, {@code OVER2}, {@code DERBY}, ... */
+    public final Map<String, Match> dbMatches = new java.util.LinkedHashMap<>();
+    /** What {@link #dash} was seeded with, one entry per generated Eagles match (oldest first) and the two Seniors 1 matches. */
+    public final List<DashMatch> dashMatches = new java.util.ArrayList<>();
+    /** The DRAFT result (dash, 200 runs) that must never count. */
+    public Match dashDraftMatch;
+    /** The last generated Eagles match, the one the unpublish tests take out. */
+    public Match dashUnpublishMatch;
+    /** The number of generated Eagles matches of {@link #seedDashboard(int)}. */
+    public int dashN;
+
+    /**
+     * What the Dashboard seed stored for {@link #dash} in one match (independent of the code under test).
+     * {@code runs}: null when the player has no batting card or did not bat; {@code types}/{@code notItemised}: the wicket
+     * split the spec's rule gives for the match; {@code onEagles}: false for the two Seniors 1 matches.
+     */
+    public record DashMatch(int index, Match match, String seasonKey, String leagueKey, boolean onEagles, Integer runs,
+            Integer balls, String howOut, boolean bowled, int bowlBalls, int bowlRuns, int wickets, int ballsPerOver,
+            Map<String, Long> types, long notItemised) {
+    }
+
     private final JdbcTemplate jdbc;
     private final List<UUID> clubIds;
     private int day;
@@ -624,6 +659,204 @@ public final class PlayerStatsSeed {
         }
     }
 
+
+    // ---- docs/specs/117 Dashboard scenarios (opt-in) ----
+
+    private static final String[] DASH_HOW = {"BOWLED", "CAUGHT", "LBW", "NOT_OUT", "RUN_OUT", "STUMPED"};
+
+    /** {@link #seedDashboard(int)} with 36 generated Eagles matches (more than the 30-point window). */
+    public void seedDashboard() {
+        seedDashboard(36);
+    }
+
+    /**
+     * Adds the spec 117 team, players and results to the club. NOT called by the constructor, so the 103, 115 and 116
+     * expectations stay as they are. Everything is deterministic in the match index {@code i} (1..n) of {@link #dash};
+     * expectations are in the Dashboard tests and in {@link #dashMatches}.
+     *
+     * <pre>
+     * Eagles (Seniors A), home side, one match per index i, phase (i-1)%12: 0-7 s1/l1, 8-9 s1/l2, 10-11 s2 friendly
+     *   outcome i%7: 0 WON, 1 WON, 2 LOST, 3 TIE, 4 WON, 5 DRAW, 6 NO_RESULT (with play); i = 20 has 8 balls an over
+     *   opposition extras by i%4: 0 none recorded, 1 itemised 12 (5,2,3,2,0), 2 partly itemised 6 (4,-,2,-,-), 3 total only 9
+     *   i = 8 is against free-text "Late Visitors", the rest "Occasionals"
+     * dash   bats in every match except: i = 7 and 19 have no batting card, i = 4 did not bat, runs 5 + 7i % 40,
+     *        balls = runs + 2 (i = 15: 0 balls, so the balls are not valid); how out by i%6 (BOWLED, CAUGHT, LBW, NOT_OUT,
+     *        RUN_OUT, STUMPED) except i = 21 retired not out and i = 22 handled the ball
+     *        bowls when i%8 != 0: 12 balls (18 when i%5 = 0, 16 in the 8-ball match), runs 8 + 3(i%9), i%4 wickets, dots
+     *        3 + i%4 for even i, i = 14 a row with 0 balls and 2 runs
+     *        the opposition card names dash for each bowler-credited dismissal: w1 BOWLED; w2 CAUGHT, LBW; w3 STUMPED,
+     *        CAUGHT_AND_BOWLED and a RUN_OUT that names dash but is never credited; i = 11 has no opposition card, i = 13
+     *        leaves the bowler blank; i = 5 also has a super-over innings that must not count
+     * mate   also bowls for Eagles: i 20-24 6 balls dots 2, i 26-27 6 balls dots not recorded, i = 30 a 0-ball row
+     * over   OVER1 MANUAL 2 wickets with 3 credited dismissals (BOWLED, BOWLED, CAUGHT); OVER2 1 wicket, BOWLED
+     * dee    DERBY Eagles (home) v Rooks, s1/l1: bats 30 home and 8 away, bowls 12 balls 14 runs 1 wicket home and 6 balls 9 away
+     * team   FORFEIT_RECEIVED and FORFEIT_CONCEDED (stray innings, dash scores 99 in the first, ignored), NO_BALL (no ball
+     *        bowled, ignored), NO_OPP (own innings only), DRAFT (dash 200, ignored); two Seniors 1 matches of dash (20*, 30)
+     * </pre>
+     */
+    public void seedDashboard(int n) {
+        dashN = n;
+        dbEagles = fixtures.team(w.club(), seniorsA, "DB Eagles");
+        dbRooks = fixtures.team(w.club(), seniorsA1, "DB Rooks");
+        dash = fixtures.player(w, "Dash", true);
+        mate = fixtures.player(w, "Mate", true);
+        dee = fixtures.player(w, "Dee", true);
+        over = fixtures.player(w, "Ova", true);
+        for (int i = 1; i <= n; i++) {
+            seedDashMatch(i);
+        }
+        dashUnpublishMatch = dashMatches.get(n - 1).match();
+
+        Res o1 = db("OVER1", dbEagles, null, s1, l1, "WON", "HOME");
+        UUID ov1 = o1.ours("HOME", over);
+        o1.bat(ov1, 1, "BOWLED", 11, 10, 1, 0);
+        o1.bowl(ov1, 12, 0, 10, 2, null, null, null);
+        credit(o1, ov1, 1, "BOWLED", true);
+        credit(o1, ov1, 2, "BOWLED", true);
+        credit(o1, ov1, 3, "CAUGHT", true);
+        Res o2 = db("OVER2", dbEagles, null, s1, l1, "WON", "HOME");
+        UUID ov2 = o2.ours("HOME", over);
+        o2.bowl(ov2, 6, 0, 5, 1, null, null, null);
+        credit(o2, ov2, 1, "BOWLED", true);
+
+        Res derby = db("DERBY", dbEagles, dbRooks, s1, l1, "WON", "HOME");
+        derby.set(2, "AWAY", 130, 9, 120, false);
+        derby.decide("REGULAR", "RUNS", 20, 120, 6);
+        derby.extras(2, 7, 4, 1, 1, 1, 0);
+        derby.extras(1, 3, 3, null, null, null, null);
+        UUID deeHome = derby.ours("HOME", dee);
+        UUID deeAway = derby.ours("AWAY", dee);
+        derby.bat(deeHome, 1, "BOWLED", 30, 20, 3, 0);
+        derby.bat(deeAway, 1, "CAUGHT", 8, 9, 1, 0);
+        derby.bowl(deeHome, 12, 0, 14, 1, null, null, 4);
+        derby.bowl(deeAway, 6, 0, 9, 0, null, null, 2);
+
+        Res forfeit = db("FORFEIT_RECEIVED", dbEagles, null, s1, l1, "FORFEIT", "HOME");
+        forfeit.bat(forfeit.ours("HOME", dash), 1, "NOT_OUT", 99, 50, 0, 0);
+        db("FORFEIT_CONCEDED", dbEagles, null, s1, l1, "FORFEIT", "AWAY");
+        db("NO_BALL", dbEagles, null, s1, l1, "NO_RESULT", null).inningsBalls(0, 0);
+        Res noOpp = db("NO_OPP", dbEagles, null, s1, l1, "WON", "HOME");
+        noOpp.set(1, "HOME", 130, 4, 120, false);
+        noOpp.dropSecond();
+        noOpp.decide("REGULAR", "RUNS", 30, 120, 6);
+
+        dashDraftMatch = match(dbEagles, null, s1, l1, true);
+        Res draft = result(dashDraftMatch, "DRAFT", "WON", "HOME");
+        draft.bat(draft.ours("HOME", dash), 1, "BOWLED", 200, 100, 0, 0);
+
+        for (int k = 0; k < 2; k++) {
+            Match m = match(w.seniors1(), null, s1, l1, true);
+            Res r = published(m, "WON", "HOME");
+            int runs = 20 + 10 * k;
+            r.bat(r.ours("HOME", dash), 1, k == 0 ? "NOT_OUT" : "BOWLED", runs, runs, 2, 0);
+            dashMatches.add(new DashMatch(n + 1 + k, m, "s1", "l1", false, runs, runs, k == 0 ? "NOT_OUT" : "BOWLED",
+                    false, 0, 0, 0, 6, Map.of(), 0));
+        }
+    }
+
+    private Res db(String key, Team home, Team away, Season season, League league, String outcome, String winningSide) {
+        Match m = match(home, away, season, league, true);
+        dbMatches.put(key, m);
+        return published(m, outcome, winningSide);
+    }
+
+    /** A batter of the opposition dismissed {@code how}; the bowler is {@code bowler} when {@code named}, else blank. */
+    private void credit(Res r, UUID bowler, int position, String how, boolean named) {
+        UUID o = r.opposition("AWAY", "Opp " + position);
+        r.batBy(o, position, how, 10 + position, 8 + position, named ? bowler : null);
+    }
+
+    private void seedDashMatch(int i) {
+        int phase = (i - 1) % 12;
+        Season season = phase >= 10 ? s2 : s1;
+        League league = phase < 8 ? l1 : phase < 10 ? l2 : null;
+        String seasonKey = phase >= 10 ? "s2" : "s1";
+        String leagueKey = phase < 8 ? "l1" : phase < 10 ? "l2" : null;
+        int bpo = i == 20 ? 8 : 6;
+        int scheduled = bpo == 8 ? 160 : 120;
+        String[] outcome = switch (i % 7) {
+            case 0, 1, 4 -> new String[] {"WON", "HOME", "RUNS", "20"};
+            case 2 -> new String[] {"WON", "AWAY", "WICKETS", "4"};
+            case 3 -> new String[] {"TIE", null, null, null};
+            case 5 -> new String[] {"DRAW", null, null, null};
+            default -> new String[] {"NO_RESULT", null, null, null};
+        };
+        Match m = match(dbEagles, null, season, league, true);
+        dbMatches.put(String.format("M%03d", i), m);
+        if (i == 8) {
+            jdbc.update("update match set away_team_name = 'Late Visitors' where id = ?", m.getId());
+        }
+        Res r = published(m, outcome[0], outcome[1]);
+        r.set(1, "HOME", 120 + i % 30, i % 10, scheduled, false);
+        r.set(2, "AWAY", 100 + (i * 3) % 50, i % 9, scheduled - i % 7, false);
+        r.decide("REGULAR", outcome[2], outcome[3] == null ? null : Integer.valueOf(outcome[3]), scheduled, bpo);
+        switch (i % 4) {
+            case 1 -> r.extras(2, 12, 5, 2, 3, 2, 0);
+            case 2 -> r.extras(2, 6, 4, null, 2, null, null);
+            case 3 -> r.extras(2, 9, null, null, null, null, null);
+            default -> { }
+        }
+
+        UUID rp = r.ours("HOME", dash);
+        Integer runs = null;
+        Integer balls = null;
+        String how = null;
+        if (i == 4) {
+            r.bat(rp, null, "DID_NOT_BAT", null, null, null, null);
+        } else if (i != 7 && i != 19) {
+            runs = 5 + (i * 7) % 40;
+            balls = i == 15 ? 0 : runs + 2;
+            how = i == 21 ? "RETIRED_NOT_OUT" : i == 22 ? "HANDLED_BALL" : DASH_HOW[i % 6];
+            r.bat(rp, 1, how, runs, balls, runs / 8, 0);
+        }
+        boolean bowled = i % 8 != 0;
+        int bowlBalls = 0;
+        int bowlRuns = 0;
+        int wickets = 0;
+        Map<String, Long> types = new java.util.TreeMap<>();
+        long notItemised = 0;
+        if (bowled) {
+            bowlBalls = i == 14 ? 0 : bpo == 8 ? 16 : i % 5 == 0 ? 18 : 12;
+            bowlRuns = i == 14 ? 2 : 8 + (i % 9) * 3;
+            wickets = i == 14 ? 0 : i % 4;
+            Integer dots = i % 2 == 0 && i != 14 ? 3 + i % 4 : null;
+            r.bowl(rp, bowlBalls, i % 6 == 0 ? 1 : 0, bowlRuns, wickets, null, null, dots);
+            if (i == 13) {
+                credit(r, rp, 1, "BOWLED", false);
+                notItemised = wickets;
+            } else if (i == 11) {
+                notItemised = wickets;
+            } else if (wickets == 1) {
+                credit(r, rp, 1, "BOWLED", true);
+                types.put("BOWLED", 1L);
+            } else if (wickets == 2) {
+                credit(r, rp, 1, "CAUGHT", true);
+                credit(r, rp, 2, "LBW", true);
+                types.put("CAUGHT", 1L);
+                types.put("LBW", 1L);
+            } else if (wickets == 3) {
+                credit(r, rp, 1, "STUMPED", true);
+                credit(r, rp, 2, "CAUGHT_AND_BOWLED", true);
+                credit(r, rp, 3, "RUN_OUT", true);
+                types.put("STUMPED", 1L);
+                types.put("CAUGHT_AND_BOWLED", 1L);
+                notItemised = 1;
+            }
+        }
+        if (i >= 20 && i <= 24 || i == 26 || i == 27 || i == 30) {
+            UUID mrp = r.ours("HOME", mate);
+            r.bowl(mrp, i == 30 ? 0 : 6, 0, i == 30 ? 0 : 7, 0, null, null, i <= 24 ? 2 : null);
+        }
+        if (i == 5) {
+            UUID so1 = r.innings(3, "SUPER_OVER", "HOME", 8, 1, 6);
+            UUID so2 = r.innings(4, "SUPER_OVER", "AWAY", 7, 2, 6);
+            r.batIn(so1, rp, 2, "NOT_OUT", 6, 3, 1, 0);
+            r.bowlIn(so2, rp, 6, 0, 7, 2, null, null, null);
+        }
+        dashMatches.add(new DashMatch(i, m, seasonKey, leagueKey, true, runs, balls, how, bowled, bowlBalls, bowlRuns,
+                wickets, bpo, types, notItemised));
+    }
+
     // ---- scaling (query-count guard) ----
 
     /** {@code n} more published results of the world's club, each with three new players batting and bowling. */
@@ -786,6 +1019,14 @@ public final class PlayerStatsSeed {
             jdbc.update("insert into bowling_entry (id, match_innings_id, result_player_id, balls, maidens, runs,"
                             + " wickets, wides, no_balls, dots) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), innings, rp, balls, maidens, runs, wickets, wides, noBalls, dots);
+        }
+
+        /** A batting row of the opposition in the innings its side batted, with the bowler credited ({@code bowler} may be null). */
+        public void batBy(UUID rp, int position, String howOut, int runs, int balls, UUID bowler) {
+            jdbc.update("insert into batting_entry (id, match_innings_id, result_player_id, position, how_out, runs,"
+                            + " balls, fours, sixes, bowler_result_player_id) values (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)",
+                    UUID.randomUUID(), "HOME".equals(sides.get(rp)) ? inn1 : inn2, rp, position, howOut, runs, balls,
+                    bowler);
         }
 
         public void field(UUID rp, int catches, int stumpings, int runOuts) {
