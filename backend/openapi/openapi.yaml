@@ -1059,6 +1059,56 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/date-time:
+    patch:
+      tags:
+      - match-controller
+      description: "Changes only the match's date and time (docs/specs/118), with the same access rule as match edit and the same league season dates check (docs/specs/111). Allowed whether or not the match has a result."
+      operationId: updateDateTime
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchDateTimeRequest"
+        required: true
+      responses:
+        "400":
+          description: "Validation failed (matchDate missing). A date outside the match's league season dates is a ProblemDetail whose property code is MATCH_OUTSIDE_LEAGUE_DATES (docs/specs/111)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: The caller may not administer this match (club admin or a manager of the match's section)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown match, or a match of another club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}:
     put:
       tags:
@@ -9158,6 +9208,15 @@ components:
           format: uuid
         name:
           type: string
+    UpdateMatchDateTimeRequest:
+      type: object
+      description: "The match's new date and time (docs/specs/118); nothing else about the match is changed."
+      properties:
+        matchDate:
+          type: string
+          format: date-time
+      required:
+      - matchDate
     UpdateMatchRequest:
       type: object
       properties:
@@ -12092,6 +12151,10 @@ components:
           - INFO
         message:
           type: string
+        playerProfileId:
+          type: string
+          format: uuid
+          description: "The player the issue is about (docs/specs/118); set on PLAYER_NOT_IN_SQUAD, absent/null on every other issue."
     ResultPlayerDto:
       type: object
       description: "Who played for a side (docs/specs/101): one of our sides, or the opposition as typed names. On write send id for a player already on the scorecard, or a new clientKey that entries refer to; firstName, lastName, guest, linkedBy and linkedAt are read-only. A guest has no playerProfileId and a displayName."

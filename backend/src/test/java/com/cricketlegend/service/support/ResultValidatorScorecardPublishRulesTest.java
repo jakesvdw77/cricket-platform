@@ -527,29 +527,10 @@ class ResultValidatorScorecardPublishRulesTest {
     }
 
     @Test
-    void theLineUpIsTooLargeOnlyForOurPlayersWhoTookPart() {
-        ResultValidationDto twelve = validate(twelveTookPart(ScorecardCard.oppositionBats(), A));
-        assertIssue(twelve, WarningCode.LINEUP_TOO_LARGE, ResultWizardStep.TEAMS, A, ResultIssueSeverity.WARNING);
+    void aSideWithTwelvePlayersWhoTookPartRaisesNoLineUpWarning() {
+        ScorecardCard x = twelveTookPart(ScorecardCard.oppositionBats(), A);
 
-        // a substitute who fielded is not one of the eleven
-        ScorecardCard withSub = twelveTookPart(ScorecardCard.oppositionBats(), A).player("w12", p -> substitute(p));
-        assertNoIssue(validate(withSub), WarningCode.LINEUP_TOO_LARGE);
-
-        // listed, but did not bat or bowl or field: not counted (eleven listed, only five took part)
-        assertNoIssue(validate(ScorecardCard.oppositionBats()), WarningCode.LINEUP_TOO_LARGE);
-
-        // a twelfth who is only marked did-not-bat did not take part either
-        ScorecardCard dnb = ScorecardCard.oursBat();
-        dnb.players.add(registered(H, "b12"));
-        dnb.batting.add(bat(H, "b12", DismissalType.DID_NOT_BAT, null, null, null));
-        assertNoIssue(validate(dnb), WarningCode.LINEUP_TOO_LARGE);
-    }
-
-    @Test
-    void theOppositionsLineUpIsNeverTooLarge() {
-        ScorecardCard x = twelveTookPart(ScorecardCard.oursBat(), A);
-
-        assertNoIssue(validate(x), WarningCode.LINEUP_TOO_LARGE);
+        assertThat(validate(x).issues()).extracting(ResultIssueDto::code).doesNotContain("LINEUP_TOO_LARGE");
     }
 
     @Test
@@ -561,7 +542,8 @@ class ResultValidatorScorecardPublishRulesTest {
 
         ResultValidationDto dto = validate(x);
 
-        assertThat(withCode(dto, WarningCode.PLAYER_NOT_IN_SQUAD)).hasSize(1);
+        assertThat(withCode(dto, WarningCode.PLAYER_NOT_IN_SQUAD)).hasSize(1)
+                .allSatisfy(i -> assertThat(i.playerProfileId()).isNotNull());
         assertIssue(dto, WarningCode.PLAYER_NOT_IN_SQUAD, ResultWizardStep.TEAMS, H, ResultIssueSeverity.WARNING);
 
         // no squad known for the side: nothing to check; opposition rows are never checked

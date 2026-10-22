@@ -19,6 +19,7 @@ import com.cricketlegend.dto.SelectionLimitsDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.MatchesSummaryDto;
+import com.cricketlegend.dto.UpdateMatchDateTimeRequest;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchNotEmptyException;
@@ -637,6 +638,18 @@ public class MatchServiceImpl implements MatchService {
         match.setScoringUrl(scoringUrl);
         match.setStreamingUrl(streamingUrl);
 
+        return toDto(matchRepository.save(match));
+    }
+
+    @Override
+    @Transactional
+    public MatchDto updateDateTime(
+            Authentication authentication, UUID clubId, UUID matchId, UpdateMatchDateTimeRequest request) {
+        Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        // docs/specs/111 and 118: the same league-season dates check as update, over the match's own league and season.
+        leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), request.matchDate());
+        match.setMatchDate(request.matchDate());
         return toDto(matchRepository.save(match));
     }
 

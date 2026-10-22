@@ -233,7 +233,6 @@ public class ResultValidator {
         WIDES_MISMATCH,
         NO_BALLS_MISMATCH,
         BOWLER_OVERS_EXCEED_LIMIT,
-        LINEUP_TOO_LARGE,
         PLAYER_NOT_IN_SQUAD,
         GUEST_NAME_MATCHES_PLAYER,
         PLAYER_ON_BOTH_SIDES,
