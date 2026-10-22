@@ -22,6 +22,7 @@ import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerStatsFactsRepository;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchHeaderView;
 import com.cricketlegend.service.impl.PlayerMatchListServiceImpl;
+import com.cricketlegend.service.support.ClubPlayerLookup;
 import com.cricketlegend.service.support.StatsScope;
 import com.cricketlegend.service.support.StatsScopeResolver;
 import java.util.ArrayList;
@@ -60,7 +61,8 @@ class PlayerMatchListServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new PlayerMatchListServiceImpl(factsRepository, playerProfileRepository, scopeResolver);
+        service = new PlayerMatchListServiceImpl(
+                factsRepository, new ClubPlayerLookup(playerProfileRepository), scopeResolver);
     }
 
     private PlayerMatchListDto list(String competition, String direction, Integer page, Integer size) {

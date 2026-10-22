@@ -1,8 +1,10 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.TeamDashboardDto;
 import com.cricketlegend.dto.TeamStatsDto;
 import com.cricketlegend.dto.TeamStatsFilterOptionsDto;
 import com.cricketlegend.dto.TeamStatsTableDto;
+import com.cricketlegend.service.TeamDashboardService;
 import com.cricketlegend.service.TeamStatsService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +25,11 @@ public class TeamStatsController {
 
     private final TeamStatsService teamStatsService;
 
-    public TeamStatsController(TeamStatsService teamStatsService) {
+    private final TeamDashboardService teamDashboardService;
+
+    public TeamStatsController(TeamStatsService teamStatsService, TeamDashboardService teamDashboardService) {
         this.teamStatsService = teamStatsService;
+        this.teamDashboardService = teamDashboardService;
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -62,5 +67,18 @@ public class TeamStatsController {
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) String competition) {
         return ResponseEntity.ok(teamStatsService.team(authentication, clubId, teamId, seasonId, leagueId, competition));
+    }
+
+    /** docs/specs/117-stats-dashboard.md: every series of the team Dashboard, for the filters the page holds. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/stats/dashboard")
+    public ResponseEntity<TeamDashboardDto> getTeamDashboard(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) String competition) {
+        return ResponseEntity.ok(teamDashboardService.get(authentication, clubId, teamId, seasonId, leagueId, competition));
     }
 }

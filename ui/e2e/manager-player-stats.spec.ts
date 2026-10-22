@@ -120,6 +120,9 @@ test.describe('Player statistics and leaderboards golden paths (103-player-stats
     await expect(breakdown).toHaveAttribute('href', `/manage/players/${playerId}/stats`);
     await breakdown.click();
     await expect(page).toHaveURL(new RegExp(`/manage/players/${playerId}/stats`));
+    // docs/specs/117-stats-dashboard.md: a link without ?tab= lands on Overview, the first tab; Batting is one click away.
+    await expect(page.getByRole('tab', { name: 'Overview', selected: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Batting' }).click();
     await expect(page.getByRole('tab', { name: 'Batting', selected: true })).toBeVisible();
     const basis = page.getByTestId('stats-basis');
     await expect(basis).toContainText(/Based on \d+ published results? with this player on the team list: \d+ with a batting card\./);

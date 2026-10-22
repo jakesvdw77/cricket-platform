@@ -68,7 +68,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     static final int MAX_PLAYERS = 5_000;
     static final int DEFAULT_PAGE_SIZE = 10;
     static final int MAX_PAGE_SIZE = 100;
-    private static final String KIND = "CLUB_VERIFIED";
+    private static final String KIND = StatsScopeResolver.KIND_CLUB_VERIFIED;
 
     private final PlayerStatsAggregateRepository aggregateRepository;
     private final PlayerStatsFactsRepository factsRepository;

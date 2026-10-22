@@ -15,6 +15,11 @@ vi.mock('../../../api/playerStatsApi', () => ({
   usePlayerStatsFilterOptions: (...args: unknown[]) => usePlayerStatsFilterOptions(...args),
   usePlayerMatches: (...args: unknown[]) => usePlayerMatches(...args),
 }))
+// docs/specs/117-stats-dashboard.md: the Dashboard read is mocked like the others (the series are the server's; the page only passes the filters on).
+const usePlayerDashboard = vi.fn()
+vi.mock('../../../api/playerDashboardApi', () => ({
+  usePlayerDashboard: (...args: unknown[]) => usePlayerDashboard(...args),
+}))
 vi.mock('../../../api/playerApi', () => ({
   listPlayers: () =>
     Promise.resolve([{ id: 'player-1', firstName: 'Sam', lastName: 'Visser', active: true, verificationStatus: 'VERIFIED', sectionIds: [] }]),
@@ -120,14 +125,16 @@ describe('PlayerStatsPage', () => {
     usePlayerStats.mockReset()
     usePlayerStatsFilterOptions.mockReset()
     usePlayerMatches.mockReset()
+    usePlayerDashboard.mockReset()
+    usePlayerDashboard.mockReturnValue({ data: undefined, isError: false, isPlaceholderData: false, refetch: vi.fn() })
     usePlayerMatches.mockReturnValue({ rows: [], firstPage: undefined, lastPage: undefined, isError: false, isFetching: true, hasNextPage: false, refetch: vi.fn() })
     usePlayerStats.mockReturnValue({ data: makeStats(), isError: false, refetch: vi.fn() })
     usePlayerStatsFilterOptions.mockReturnValue({ data: OPTIONS })
   })
 
   describe('tabs', () => {
-    it('opens on Batting with the basis line, and only the batting item in Not captured yet', async () => {
-      renderPage(BASE)
+    it('?tab=batting opens Batting with the basis line, and only the batting item in Not captured yet', async () => {
+      renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByRole('heading', { name: 'Sam Visser' }, wait)).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Batting' })).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByTestId('tile-highest-value')).toHaveTextContent('94*')
@@ -145,9 +152,10 @@ describe('PlayerStatsPage', () => {
       expect(screen.getByRole('tab', { name: 'Batting' })).toHaveAttribute('aria-selected', 'false')
     })
 
-    it('an unknown ?tab= value falls back to Batting', async () => {
+    // docs/specs/117-stats-dashboard.md (decision 13): Dashboard is the first tab and the landing tab.
+    it('a missing or unknown ?tab= value falls back to Dashboard, whose body starts with the same tile strip', async () => {
       renderPage(`${BASE}?tab=nonsense`)
-      expect(await screen.findByRole('tab', { name: 'Batting' }, wait)).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('tab', { name: 'Overview' }, wait)).toHaveAttribute('aria-selected', 'true')
       expect(await screen.findByTestId('tile-runs-value')).toHaveTextContent('412')
     })
 
@@ -278,7 +286,7 @@ describe('PlayerStatsPage', () => {
 
   describe('basis and coverage', () => {
     it('states the basis per tab', async () => {
-      renderPage(BASE)
+      renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByTestId('stats-basis', {}, wait)).toHaveTextContent('Based on 18 published results with this player on the team list: 14 with a batting card.')
       await userEvent.click(screen.getByRole('tab', { name: 'Bowling' }))
       expect(screen.getByTestId('stats-basis')).toHaveTextContent('Based on 18 published results with this player on the team list: 12 with a bowling card.')
@@ -293,7 +301,7 @@ describe('PlayerStatsPage', () => {
     })
 
     it('captions only the optional figures that part of the innings recorded', async () => {
-      renderPage(BASE)
+      renderPage(`${BASE}?tab=batting`)
       await screen.findByTestId('stats-basis', {}, wait)
       // balls recorded in 9 of 14, boundaries in all 14
       expect(fieldValue('Balls faced')).toHaveTextContent('from 9 of 14 innings that recorded balls')
@@ -315,7 +323,7 @@ describe('PlayerStatsPage', () => {
 
   describe('Batting tab', () => {
     it('lists how dismissed in scorecard order and ends with Not out', async () => {
-      renderPage(BASE)
+      renderPage(`${BASE}?tab=batting`)
       const card = cardAround(await screen.findByText('How dismissed', {}, wait))
       const rows = within(card).getAllByRole('listitem').map((li) => li.textContent)
       expect(rows).toEqual(['Bowled4', 'Caught5', 'Not out3'])
@@ -327,7 +335,7 @@ describe('PlayerStatsPage', () => {
         isError: false,
         refetch: vi.fn(),
       })
-      renderPage(BASE)
+      renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByText('56*', {}, wait)).toBeInTheDocument()
     })
   })
@@ -413,7 +421,7 @@ describe('PlayerStatsPage', () => {
         isError: false,
         refetch: vi.fn(),
       })
-      renderPage(BASE)
+      renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByText('No batting card has been captured for these results.', {}, wait)).toBeInTheDocument()
       expect(screen.getByTestId('tile-matches-value')).toHaveTextContent('3')
       expect(screen.queryByTestId('tile-runs')).not.toBeInTheDocument()

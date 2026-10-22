@@ -1,7 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 

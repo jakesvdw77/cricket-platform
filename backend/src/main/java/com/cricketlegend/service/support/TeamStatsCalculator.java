@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -320,16 +321,144 @@ public final class TeamStatsCalculator {
         if (n.leagues() > 1 || n.seasons() > 1) {
             return new NetRunRate(NrrStatus.NOT_ONE_COMPETITION, null, NRR_RULE, n.matches(), matchesCounted, null, null);
         }
-        BigDecimal scored = BigDecimal.valueOf(n.ownRuns()).divide(n.ownOvers(), 40, RoundingMode.HALF_UP);
-        BigDecimal conceded = BigDecimal.valueOf(n.oppRuns()).divide(n.oppOvers(), 40, RoundingMode.HALF_UP);
         return new NetRunRate(
                 NrrStatus.SHOWN,
-                scored.subtract(conceded).setScale(2, RoundingMode.HALF_UP),
+                nrrValue(n.ownRuns(), n.ownOvers(), n.oppRuns(), n.oppOvers()),
                 NRR_RULE,
                 n.matches(),
                 matchesCounted,
                 n.leagueId(),
                 n.seasonId());
+    }
+
+    /**
+     * Net Run Rate (116): the two run rates held to 40 decimals before their difference is rounded to 2 decimals, HALF_UP
+     * once; null when either side has no overs. The page's Net run rate and the Dashboard's running values come from here.
+     */
+    public static BigDecimal nrrValue(long ownRuns, BigDecimal ownOvers, long oppRuns, BigDecimal oppOvers) {
+        if (ownOvers == null || ownOvers.signum() <= 0 || oppOvers == null || oppOvers.signum() <= 0) {
+            return null;
+        }
+        BigDecimal scored = BigDecimal.valueOf(ownRuns).divide(ownOvers, 40, RoundingMode.HALF_UP);
+        BigDecimal conceded = BigDecimal.valueOf(oppRuns).divide(oppOvers, 40, RoundingMode.HALF_UP);
+        return scored.subtract(conceded).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    // ---- docs/specs/117-stats-dashboard.md: single-result definitions the Dashboard series call ----
+
+    /** A run rate (116): runs per over to 2 decimals, HALF_UP once; null when there are no overs. */
+    public static BigDecimal rate(long runs, BigDecimal overs) {
+        return ratio(runs, overs, 2);
+    }
+
+    /**
+     * A running runs / overs total across matches (spec 117 decision 3: running values live in the calculators). A null
+     * runs or overs figure counts as zero.
+     */
+    public static final class RunningRate {
+        private long runs;
+        private BigDecimal overs = BigDecimal.ZERO;
+
+        public RunningRate add(Long matchRuns, BigDecimal matchOvers) {
+            runs += matchRuns == null ? 0L : matchRuns;
+            overs = overs.add(matchOvers == null ? BigDecimal.ZERO : matchOvers);
+            return this;
+        }
+
+        public long runs() {
+            return runs;
+        }
+
+        public BigDecimal overs() {
+            return overs;
+        }
+
+        /** The running run rate (2 decimals), null while there are no overs. */
+        public BigDecimal rate() {
+            return TeamStatsCalculator.rate(runs, overs);
+        }
+    }
+
+    /** The running net run rate of two running totals (own minus conceded), null when either has no overs. */
+    public static BigDecimal runningNrr(RunningRate own, RunningRate opposition) {
+        return nrrValue(own.runs(), own.overs(), opposition.runs(), opposition.overs());
+    }
+
+    /**
+     * The dot-ball figures pooled over the charted matches (spec 117): totals, the pooled percentage and the percentage-point
+     * weights the trend hint uses ({@code dots x 100 / balls}, so the flat band is in points).
+     */
+    public static final class DotsPool {
+        private long charted;
+        private long dots;
+        private long balls;
+        private final List<StatsTrend.Weighted> weighted = new ArrayList<>();
+
+        /** Adds one match; a match without a percentage (no dots figure or no balls) is skipped. */
+        public void add(DotsPoint point) {
+            if (point.percent() == null) {
+                return;
+            }
+            charted++;
+            dots += point.dots();
+            balls += point.ballsBowled();
+            weighted.add(new StatsTrend.Weighted(
+                    BigDecimal.valueOf(point.dots()).multiply(BigDecimal.valueOf(100)),
+                    BigDecimal.valueOf(point.ballsBowled())));
+        }
+
+        public long charted() {
+            return charted;
+        }
+
+        public BigDecimal percent() {
+            return dotPercent(dots, balls);
+        }
+
+        public List<StatsTrend.Weighted> weighted() {
+            return weighted;
+        }
+    }
+
+    /** A dot-ball percentage (103): {@code dots / balls x 100} to 1 decimal, HALF_UP once; null without balls. */
+    public static BigDecimal dotPercent(long dots, long balls) {
+        return ratio(dots * 100, balls, 1);
+    }
+
+    /**
+     * One innings' dot balls (spec 117): {@code ballsBowled} is the sum of our bowler rows' balls (null without bowler rows);
+     * {@code dots} is their sum only when every bowler row that bowled a ball recorded dots ({@code rowsDotted} of {@code
+     * rowsBowled}), else null (never a partial sum); {@code percent} is null when {@code dots} is null or no ball was bowled.
+     */
+    public record DotsPoint(Integer ballsBowled, Integer dots, BigDecimal percent) {
+    }
+
+    public static DotsPoint dotsForMatch(Long balls, Long dots, long rowsBowled, long rowsDotted) {
+        Integer ballsBowled = balls == null ? null : Math.toIntExact(balls);
+        boolean complete = dots != null && rowsDotted == rowsBowled;
+        Integer recorded = complete ? Math.toIntExact(dots) : null;
+        BigDecimal percent = complete && balls != null ? dotPercent(dots, balls) : null;
+        return new DotsPoint(ballsBowled, recorded, percent);
+    }
+
+    /**
+     * One innings' extras (spec 117): {@code itemised} when any component is recorded; {@code notItemised} is the stored
+     * total of an innings that recorded a total but no component; {@code total} is the stored total (null: none recorded).
+     */
+    public record ExtrasPoint(boolean itemised, Long notItemised, Long total) {
+    }
+
+    public static ExtrasPoint extrasForMatch(Long total, Long wides, Long noBalls, Long byes, Long legByes, Long penaltyRuns) {
+        boolean itemised = wides != null || noBalls != null || byes != null || legByes != null || penaltyRuns != null;
+        // 101: with any component recorded the total is the sum of the recorded components
+        Long effective = total;
+        if (effective == null && itemised) {
+            effective = 0L;
+            for (Long component : new Long[] {wides, noBalls, byes, legByes, penaltyRuns}) {
+                effective += component == null ? 0L : component;
+            }
+        }
+        return new ExtrasPoint(itemised, !itemised && effective != null ? effective : null, effective);
     }
 
     // ---- division ----

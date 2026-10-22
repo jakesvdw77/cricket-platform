@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
@@ -9,6 +9,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
 import { usePlayerStats, usePlayerStatsFilterOptions } from '../../../api/playerStatsApi'
 import type { MatchDirection, PlayerStats, StatsCompetition } from '../../../api/playerStatsApi'
+import { usePlayerDashboard } from '../../../api/playerDashboardApi'
 import { listPlayers } from '../../../api/playerApi'
 import { useAvailabilitySeason } from '../../../hooks/useAvailabilitySeason'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
@@ -23,6 +24,8 @@ import { BowlingTab } from './BowlingTab'
 import { FieldingTab } from './FieldingTab'
 import { AwardsTab } from './AwardsTab'
 import { MatchesTab } from './MatchesTab'
+import { PlayerDashboardTab } from './dashboard/PlayerDashboardTab'
+import { loadPlayerDashboardCharts } from './dashboard/playerDashboardChunk'
 import { resultsPhrase } from './statsFormat'
 import { parseCompetition } from '../../../utils/statsCompetition'
 
@@ -40,7 +43,7 @@ function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStats
 }
 
 // docs/specs/103-player-stats.md: the full breakdown of one player's published results (/manage/players/:playerId/stats).
-// Back, name and status, a Batting | Bowling | Fielding | Awards & record | Matches strip bound to ?tab=, a compact FilterBar (Season, League, Section,
+// Back, name and status, a Dashboard | Batting | Bowling | Fielding | Awards & record | Matches strip bound to ?tab=, a compact FilterBar (Season, League, Section,
 // Team and Competition; Season and League are saved per club, the rest are per visit), a basis line, and the active tab.
 // All filters are backend parameters; the page only displays what the server computed.
 export default function PlayerStatsPage() {
@@ -98,6 +101,12 @@ export default function PlayerStatsPage() {
   const hasFilters = Boolean(seasonId || leagueId || teamId || sectionId || competition)
   const statsQuery = usePlayerStats(clubId, playerId, filters, { keepPrevious: true })
   const stats = statsQuery.data
+  // docs/specs/117-stats-dashboard.md: the Dashboard's one series read goes out in parallel with the stats read, with exactly the
+  // FilterBar's filters, while the Dashboard tab is active; the chart chunk is requested alongside it.
+  const dashboardQuery = usePlayerDashboard(clubId, playerId, filters, tab === 'dashboard')
+  useEffect(() => {
+    if (tab === 'dashboard') void loadPlayerDashboardCharts()
+  }, [tab])
 
   // docs/specs/115: the Matches tab is newest first; ?dir=asc reverses it (the Date heading toggles it, replacing the history entry).
   const direction: MatchDirection = searchParams.get('dir') === 'asc' ? 'asc' : 'desc'
@@ -111,14 +120,17 @@ export default function PlayerStatsPage() {
       },
       { replace: true },
     )
-  // Where the result page's "Back to Matches" returns: this tab with the filters in force. Season and League are always written
+  // Where the result page's Back returns: the tab it was opened from with the filters in force. Season and League are always written
   // (an empty value means All, so it is not replaced by the saved choice on return).
-  const backParams = new URLSearchParams({ tab: 'matches', seasonId: seasonId ?? '', leagueId: leagueId ?? '' })
-  if (teamId) backParams.set('teamId', teamId)
-  if (sectionId) backParams.set('sectionId', sectionId)
-  if (competition) backParams.set('competition', competition)
-  if (direction === 'asc') backParams.set('dir', 'asc')
-  const backTo = `/manage/players/${playerId}/stats?${backParams.toString()}`
+  const backToFor = (backTab: 'matches' | 'dashboard') => {
+    const backParams = new URLSearchParams({ tab: backTab, seasonId: seasonId ?? '', leagueId: leagueId ?? '' })
+    if (teamId) backParams.set('teamId', teamId)
+    if (sectionId) backParams.set('sectionId', sectionId)
+    if (competition) backParams.set('competition', competition)
+    if (backTab === 'matches' && direction === 'asc') backParams.set('dir', 'asc')
+    return `/manage/players/${playerId}/stats?${backParams.toString()}`
+  }
+  const backTo = backToFor('matches')
 
   const clearFilters = () => {
     updateSaved({ seasonId: null, leagueId: null })
@@ -189,6 +201,7 @@ export default function PlayerStatsPage() {
         <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.8125rem', lineHeight: 1.4 }}>
           {basisLine(stats, tab)}
         </Typography>
+        {tab === 'dashboard' && <PlayerDashboardTab stats={stats} dashboard={dashboardQuery} backTo={backToFor('dashboard')} />}
         {tab === 'batting' && <BattingTab stats={stats} />}
         {tab === 'bowling' && <BowlingTab stats={stats} />}
         {tab === 'fielding' && <FieldingTab stats={stats} />}

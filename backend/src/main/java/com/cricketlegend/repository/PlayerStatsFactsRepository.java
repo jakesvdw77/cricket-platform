@@ -467,6 +467,39 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("resultIds") Collection<UUID> resultIds);
 
+    /**
+     * docs/specs/117: for the listed matches, every stored bowling row of the player left-joined to the batting entries of
+     * the same innings that name the player as the bowler, one row per (bowling row, how the batter was out). {@code
+     * credited} is how many such entries there are ({@code howOut} is null and {@code credited} 0 when none). Which types a
+     * bowler is credited with is decided by {@code DismissalType.isBowlerCredited()} in {@code PlayerStatsCalculator}, never
+     * in SQL.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   bw.id as "bowlingEntryId",
+                   bw.wickets as "wickets",
+                   be.how_out as "howOut",
+                   count(be.id) as "credited"
+            from ap
+            join bowling_entry bw on bw.result_player_id = ap.rpid
+            join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
+            left join batting_entry be on be.match_innings_id = i.id and be.bowler_result_player_id = ap.rpid
+                                      and be.how_out is not null
+            where ap.mrid in (:resultIds)
+            group by ap.mrid, bw.id, bw.wickets, be.how_out
+            order by ap.mrid, bw.id
+            """, nativeQuery = true)
+    List<BowlingCreditView> bowlingCredits(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds);
+
     interface MatchHeaderView {
         UUID getResultId();
 
@@ -535,6 +568,18 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
         Integer getWides();
 
         Integer getNoBalls();
+    }
+
+    interface BowlingCreditView {
+        UUID getResultId();
+
+        UUID getBowlingEntryId();
+
+        Integer getWickets();
+
+        String getHowOut();
+
+        Long getCredited();
     }
 
     interface MatchFieldingView {

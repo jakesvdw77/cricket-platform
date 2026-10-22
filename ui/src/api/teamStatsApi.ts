@@ -1,5 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
+import { statsFilterParams } from './statsFilterParams'
 import type { LeaderboardPageInfo, SortDirection } from './leaderboardApi'
 
 // docs/specs/116-team-stats.md ("API Contract", "The table (TeamStatsTableDto)"): the Teams table and its filter options. Every
@@ -278,11 +279,7 @@ export function useTeamStatsFilterOptions(clubId: string | undefined, enabled = 
 }
 
 export async function getTeamStats(clubId: string, teamId: string, filters: TeamStatsPageFilters): Promise<TeamStatsPageData> {
-  const query: Record<string, string> = {}
-  if (filters.seasonId) query.seasonId = filters.seasonId
-  if (filters.leagueId) query.leagueId = filters.leagueId
-  if (filters.competition) query.competition = filters.competition
-  const { data } = await api.get<TeamStatsPageData>(`/manage/clubs/${clubId}/teams/${teamId}/stats`, { params: query })
+  const { data } = await api.get<TeamStatsPageData>(`/manage/clubs/${clubId}/teams/${teamId}/stats`, { params: statsFilterParams({ ...filters }) })
   return data
 }
 

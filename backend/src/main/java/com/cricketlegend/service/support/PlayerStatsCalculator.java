@@ -5,10 +5,13 @@ import com.cricketlegend.dto.PlayerStatsDto;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * docs/specs/103-player-stats.md, "Precise definitions": the one place a player statistic is defined. Pure: it turns
@@ -145,10 +148,7 @@ public final class PlayerStatsCalculator {
         }
         Map<String, Long> modes = modes(facts.bowlerDismissals(), true);
         long recorded = modes.values().stream().mapToLong(Long::longValue).sum();
-        BigDecimal economy = null;
-        if (w.balls() > 0 && w.overs() != null && w.overs().signum() > 0) {
-            economy = BigDecimal.valueOf(w.runs()).divide(w.overs(), 2, RoundingMode.HALF_UP);
-        }
+        BigDecimal economy = w.balls() > 0 ? economy(w.runs(), w.overs()) : null;
         return new PlayerStatsDto.PlayerBowling(
                 w.inningsBowled(),
                 w.balls(),
@@ -194,6 +194,129 @@ public final class PlayerStatsCalculator {
                     s.matchId(), s.matchDate(), s.wickets(), s.runs(), s.balls(), s.ballsPerOver()));
         }
         return new PlayerStatsDto.PlayerForm(batting, bowling);
+    }
+
+    // ---- docs/specs/117-stats-dashboard.md: the single-match and split definitions the Dashboard series call ----
+
+    /** Scale of an over count derived from balls and a match's balls per over (spec 103: ten or more decimal places). */
+    private static final int OVERS_SCALE = 20;
+
+    /**
+     * Economy Rate (spec 103): runs per over to 2 decimals, HALF_UP once; null when there are no overs. The Bowling tab's Econ
+     * figure and every Dashboard economy value come from this one method.
+     */
+    public static BigDecimal economy(long runs, BigDecimal overs) {
+        if (overs == null || overs.signum() <= 0) {
+            return null;
+        }
+        return BigDecimal.valueOf(runs).divide(overs, 2, RoundingMode.HALF_UP);
+    }
+
+    /** One match's overs: {@code balls} divided by that match's balls per over (null when either is not positive). */
+    public static BigDecimal matchOvers(long balls, int ballsPerOver) {
+        if (balls <= 0 || ballsPerOver <= 0) {
+            return null;
+        }
+        return BigDecimal.valueOf(balls).divide(BigDecimal.valueOf(ballsPerOver), OVERS_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** One match's economy: runs per over of that match's balls (spec 117), null at zero balls. */
+    public static BigDecimal matchEconomy(long runs, long balls, int ballsPerOver) {
+        return economy(runs, matchOvers(balls, ballsPerOver));
+    }
+
+    /** One match's weight in the economy trend (spec 117): its runs over its overs, pooled by the trend hint. */
+    public static StatsTrend.Weighted economyWeight(long runs, long balls, int ballsPerOver) {
+        return new StatsTrend.Weighted(BigDecimal.valueOf(runs), matchOvers(balls, ballsPerOver));
+    }
+
+    /** Batting Average (spec 103): runs per dismissal, 2 decimals, null with no dismissal. */
+    public static BigDecimal battingAverage(long runs, long dismissals) {
+        return divide(runs, dismissals, 2);
+    }
+
+    /** A share as a percentage to 1 decimal, HALF_UP once; null when the total is not positive. */
+    public static BigDecimal percent(long part, long total) {
+        return divide(part * 100, total, 1);
+    }
+
+    /**
+     * Counts of a player's own batting innings by how they ended, for "How you were dismissed": both not-out kinds are one
+     * {@code NOT_OUT} entry (first), then the other types in enum order; {@code DID_NOT_BAT} is not an innings. Only types
+     * with a count are returned.
+     */
+    public static Map<DismissalType, Long> dismissalCounts(Collection<DismissalType> howOuts) {
+        Map<DismissalType, Long> counts = new EnumMap<>(DismissalType.class);
+        for (DismissalType howOut : howOuts) {
+            if (howOut == null || !howOut.batted()) {
+                continue;
+            }
+            DismissalType key = howOut == DismissalType.RETIRED_NOT_OUT ? DismissalType.NOT_OUT : howOut;
+            counts.merge(key, 1L, Long::sum);
+        }
+        return counts;
+    }
+
+    /**
+     * One stored bowling row and the batting entries of its innings that name the bowler: {@code howOut} is how those
+     * batters were out and {@code credited} how many (a row with no such entry has a null {@code howOut} and 0). Several
+     * rows share a {@code bowlingEntryId} when different dismissal types were credited.
+     */
+    public record BowlingCredit(UUID bowlingEntryId, int wickets, DismissalType howOut, long credited) {
+    }
+
+    /**
+     * The wickets split by type (spec 117, "Wickets by type"): per bowling row, {@code c} = the batting entries naming the
+     * bowler with a bowler-credited type; {@code w} = the stored wickets. When {@code c <= w} each type gets its count and
+     * {@code w - c} is not itemised; when {@code c > w} the stored wickets are authoritative and all {@code w} are not
+     * itemised. So {@code Σ types + notItemised = total = Σ w} always. Run-outs and the other non-bowler wickets are never
+     * credited to a bowler. {@code inningsItemised} counts rows with wickets whose split was used with {@code c > 0}.
+     */
+    public record WicketSplit(
+            Map<DismissalType, Long> types,
+            long notItemised,
+            long total,
+            long itemised,
+            long inningsItemised,
+            long inningsWithWickets) {
+    }
+
+    public static WicketSplit splitWickets(Collection<BowlingCredit> credits) {
+        Map<UUID, List<BowlingCredit>> byRow = new LinkedHashMap<>();
+        for (BowlingCredit credit : credits) {
+            byRow.computeIfAbsent(credit.bowlingEntryId(), id -> new ArrayList<>()).add(credit);
+        }
+        Map<DismissalType, Long> types = new EnumMap<>(DismissalType.class);
+        long notItemised = 0;
+        long total = 0;
+        long itemised = 0;
+        long inningsItemised = 0;
+        long inningsWithWickets = 0;
+        for (List<BowlingCredit> row : byRow.values()) {
+            long wickets = row.get(0).wickets();
+            if (wickets <= 0) {
+                continue;
+            }
+            total += wickets;
+            inningsWithWickets++;
+            Map<DismissalType, Long> credited = new HashMap<>();
+            long creditedTotal = 0;
+            for (BowlingCredit credit : row) {
+                if (credit.howOut() != null && credit.howOut().isBowlerCredited() && credit.credited() > 0) {
+                    credited.merge(credit.howOut(), credit.credited(), Long::sum);
+                    creditedTotal += credit.credited();
+                }
+            }
+            if (creditedTotal > 0 && creditedTotal <= wickets) {
+                credited.forEach((type, count) -> types.merge(type, count, Long::sum));
+                itemised += creditedTotal;
+                notItemised += wickets - creditedTotal;
+                inningsItemised++;
+            } else {
+                notItemised += wickets;
+            }
+        }
+        return new WicketSplit(types, notItemised, total, itemised, inningsItemised, inningsWithWickets);
     }
 
     // ---- helpers ----

@@ -4,14 +4,13 @@ import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardPageInfo;
 import com.cricketlegend.dto.PlayerMatchListDto;
 import com.cricketlegend.dto.PlayerMatchRowDto;
 import com.cricketlegend.dto.PlayerStatsDto.PlayerStatsScope;
-import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
-import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerStatsFactsRepository;
 import com.cricketlegend.service.PlayerMatchListService;
 import com.cricketlegend.service.support.PlayerMatchFactsReader;
 import com.cricketlegend.service.support.PlayerMatchRowBuilder;
 import com.cricketlegend.service.support.StatsScope;
+import com.cricketlegend.service.support.ClubPlayerLookup;
 import com.cricketlegend.service.support.StatsScopeResolver;
 import java.util.List;
 import java.util.Locale;
@@ -37,15 +36,15 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
     private static final Logger log = LoggerFactory.getLogger(PlayerMatchListServiceImpl.class);
 
     private final PlayerStatsFactsRepository factsRepository;
-    private final PlayerProfileRepository playerProfileRepository;
+    private final ClubPlayerLookup playerLookup;
     private final StatsScopeResolver scopeResolver;
 
     public PlayerMatchListServiceImpl(
             PlayerStatsFactsRepository factsRepository,
-            PlayerProfileRepository playerProfileRepository,
+            ClubPlayerLookup playerLookup,
             StatsScopeResolver scopeResolver) {
         this.factsRepository = factsRepository;
-        this.playerProfileRepository = playerProfileRepository;
+        this.playerLookup = playerLookup;
         this.scopeResolver = scopeResolver;
     }
 
@@ -73,15 +72,12 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException("size must be from 1 to " + MAX_PAGE_SIZE + ".");
         }
-        playerProfileRepository
-                .findById(playerId)
-                .filter(player -> clubId.equals(player.getClubId()))
-                .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
+        playerLookup.require(clubId, playerId);
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
         StatsScope scope = resolved.scope();
         PlayerStatsScope echoed = new PlayerStatsScope(
-                "CLUB_VERIFIED", seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope));
+                StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope));
         if (resolved.nothingInReach()) {
             return empty(playerId, echoed, page, size);
         }
