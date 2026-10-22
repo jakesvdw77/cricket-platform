@@ -6,6 +6,7 @@ import type { PickedPlayer, PickerSuggestion } from '../../../../components/Play
 import { useTeamSectionLookup } from '../../../../hooks/useTeamSectionId'
 import { splitName } from '../../../../utils/playerDisplayName'
 import { playerRowKey } from '../../../../utils/scorecardPrefill'
+import { useAutoAddToSquad } from './squadAdd'
 import { guessLevelOf, noteFor, reasonPhrase } from '../import/guessSummary'
 import type { GuessInfo } from '../import/guessSummary'
 import { useImportReview } from '../import/importReviewContext'
@@ -20,6 +21,8 @@ export interface GuessActionsOptions {
   prefill: ScorecardPrefill | null
   scorecard: Scorecard
   onScorecard: (next: Scorecard) => void
+  // docs/specs/118: Teams step - a player chosen for a row of our side joins the team's squad for the season.
+  autoAddToSquad?: boolean
 }
 
 const fullNameOf = (player: ResultPlayer) => [player.firstName, player.lastName].filter(Boolean).join(' ').trim()
@@ -36,7 +39,8 @@ const asPicked = (suggestion: { playerProfileId: string; displayName: string }):
 // picker, rendered once per step. Works on the row's own side, so a fielder of the other side is changed as readily as a
 // batter. Every write goes through the step's `onScorecard`, so the normal save persists it (and the server writes the
 // remembered name).
-export function useGuessActions({ clubId, seasonId, leagueId, oursSides, prefill, scorecard, onScorecard }: GuessActionsOptions) {
+export function useGuessActions({ clubId, seasonId, leagueId, oursSides, prefill, scorecard, onScorecard, autoAddToSquad }: GuessActionsOptions) {
+  const autoAdd = useAutoAddToSquad(clubId, seasonId)
   const review = useImportReview()
   const [pickerKey, setPickerKey] = useState<string | null>(null)
 
@@ -95,6 +99,7 @@ export function useGuessActions({ clubId, seasonId, leagueId, oursSides, prefill
       matchSquad={row ? matchSquadFor(scorecard, row.side, prefillSide, false) : undefined}
       onPickPlayer={(picked) => {
         if (pickerKey) onScorecard(resolveImportedRow(scorecard, pickerKey, { playerProfileId: picked.playerProfileId, firstName: picked.firstName, lastName: picked.lastName }))
+        if (autoAddToSquad) void autoAdd(ours?.teamId ?? null, picked.playerProfileId)
         setPickerKey(null)
       }}
       onPickGuest={(displayName) => {

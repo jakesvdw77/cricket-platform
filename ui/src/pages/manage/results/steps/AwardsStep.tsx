@@ -150,13 +150,13 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
         key={key}
         sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 44, px: 1, borderRadius: 1, '&:nth-of-type(even)': { bgcolor: 'action.hover' } }}
       >
-        <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 80, flex: 1, overflowWrap: 'anywhere' }}>
           <PlayerName person={personOf(key)} view={view} />
           {player && !player.playerProfileId && !player.opposition && (
             <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem', ml: 0.75 }} />
           )}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', flex: '0 1 auto' }}>
           {figure}
         </Typography>
         {toggle}
@@ -207,7 +207,19 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
   const incomplete = Object.fromEntries(sides.map((candidate) => [candidate.side, playersOfSide(scorecard, candidate.side).length === 0]))
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+    <Box
+      data-testid="awards-column"
+      // docs/specs/118: the cards size to their content. InfoCard's root is height: 100% (so cards in a row match); in this column that
+      // resolved against the stretched step and squeezed or overflowed the cards, so here the root and its content are height: auto.
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        minWidth: 0,
+        '& > .MuiCard-root': { height: 'auto', flexShrink: 0, overflow: 'visible' },
+        '& > .MuiCard-root > .MuiCardContent-root': { height: 'auto' },
+      }}
+    >
       <InfoCard title="Player of the match" icon={<EmojiEventsOutlinedIcon />} testId="awards-official">
         <Typography variant="body2" color="text.secondary">
           The official player of the match, from either team.
@@ -334,7 +346,7 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
       {onGoToStep && (
         <Typography variant="body2" color="text.secondary">
           Not listed?{' '}
-          <Button variant="ghost" size="sm" onClick={() => onGoToStep('teams', side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
+          <Button variant="ghost" size="compact" onClick={() => onGoToStep('teams', side)}>
             Add them on Teams
           </Button>
         </Typography>

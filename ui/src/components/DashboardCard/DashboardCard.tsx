@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Skeleton, Typography } from '@mui/material'
+import { compactButtonSx } from '../Button'
 
 export interface DashboardTableColumn {
   key: string
@@ -110,7 +111,7 @@ export function DashboardCard({
       <Box role="alert" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1, textAlign: 'center' }}>
         <Typography sx={{ fontSize: '0.875rem', fontWeight: 600 }}>Couldn't load the overview</Typography>
         <Typography sx={captionSx}>The rest of the page still works.</Typography>
-        <MuiButton variant="outlined" onClick={error.onRetry} sx={{ minHeight: 44 }}>
+        <MuiButton variant="outlined" onClick={error.onRetry} size="small" sx={compactButtonSx}>
           Try again
         </MuiButton>
       </Box>
@@ -220,7 +221,7 @@ export function DashboardCard({
             aria-controls={showTable ? tableId : undefined}
             onClick={() => setShowTable((value) => !value)}
             data-testid={`${testId}-view-table`}
-            sx={{ minHeight: 44, flex: 'none', fontSize: '0.75rem', letterSpacing: '0.04em' }}
+            sx={{ ...compactButtonSx, flex: 'none' }}
           >
             View as table
           </MuiButton>

@@ -16,7 +16,7 @@ describe('stepIdForIssue', () => {
   it('sends who-played codes to Teams whichever step the server filed them under', () => {
     expect(stepIdForIssue('BATTING', 'PLAYER_ON_BOTH_SIDES')).toBe('teams')
     expect(stepIdForIssue('AWARDS', 'GUEST_ON_BOTH_SIDES')).toBe('teams')
-    expect(stepIdForIssue('BOWLING', 'LINEUP_TOO_LARGE')).toBe('teams')
+    expect(stepIdForIssue('BOWLING', 'PLAYER_NOT_IN_SQUAD')).toBe('teams')
     expect(stepIdForIssue('BATTING', 'IMPORTED_NAME_UNCONFIRMED')).toBe('teams')
     expect(stepIdForIssue('BATTING', 'BATTER_RUNS_MISSING')).toBe('batting')
   })

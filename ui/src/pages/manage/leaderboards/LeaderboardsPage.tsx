@@ -22,6 +22,7 @@ import { resolveLeaderboardTab } from './leaderboardTabConfig'
 import { StandingsTable } from './StandingsTable'
 import { TeamsTab } from './TeamsTab'
 import { useLeaderboardFilters } from './useLeaderboardFilters'
+import { compactButtonSx } from '../../../components/Button'
 
 // The sort column: ?sort= if the group's catalogue lists it as sortable, else the group's default (runs, wickets or total).
 function resolveSort(columns: LeaderboardColumn[], param: string | null, fallback: string): string {
@@ -142,7 +143,7 @@ export default function LeaderboardsPage() {
         title="Could not load the leaderboards"
         description="Check your connection and try again."
         action={
-          <MuiButton variant="outlined" onClick={() => catalogueQuery.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => catalogueQuery.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }

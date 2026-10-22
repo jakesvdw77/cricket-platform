@@ -7,6 +7,7 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ResultSide } from '../../../../api/matchResultApi'
 import type { ImportedResult, ImportExactness, TeamMapping } from '../../../../api/resultImportApi'
+import { WizardFooter } from '../../../../components/WizardFooter'
 import { Button } from '../../../../components/Button'
 import { Input } from '../../../../components/Input'
 import { badgeSx } from '../../../../components/RecordCard'
@@ -236,22 +237,11 @@ export function TeamsMappingStep(context: ImportStepContext) {
       )}
 
       {!resolved && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'row', md: 'row' }, alignItems: 'center', gap: { xs: 1.25, md: 1.5 }, flexWrap: { md: 'wrap' } }}>
-            <Button variant="secondary" onClick={onBack} disabled={creating} sx={{ flex: { xs: 1, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
-              Back
-            </Button>
-            <Button onClick={onCreate} disabled={!canCreate} sx={{ flex: { xs: 2, md: 'none' }, minHeight: 44 }}>
-              {creating ? 'Creating the draft…' : 'Create draft and review'}
-            </Button>
-            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-              Nothing is published. The draft is only visible to managers.
-            </Typography>
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: { md: 'none' } }}>
-            Nothing is published. The draft is only visible to managers.
-          </Typography>
-        </Box>
+        <WizardFooter
+          back={{ label: 'Back', onClick: onBack, disabled: creating }}
+          primary={{ label: creating ? 'Creating the draft…' : 'Create draft and review', onClick: onCreate, disabled: !canCreate }}
+          note="Nothing is published. The draft is only visible to managers."
+        />
       )}
     </Box>
   )

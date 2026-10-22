@@ -16,7 +16,7 @@ import { badgeSx } from '../../../../components/RecordCard'
 import { ReconcileStrip } from '../../../../components/ReconcileStrip'
 import { GridNumberInput, ScorecardGrid } from '../../../../components/ScorecardGrid'
 import type { ScorecardGridColumn } from '../../../../components/ScorecardGrid'
-import { StandoutToggle } from '../../../../components/StandoutToggle'
+import { StandoutHeader, StandoutToggle } from '../../../../components/StandoutToggle'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { bowlingRowProblem, wicketsFullyAttributed } from '../../../../utils/scorecardRowChecks'
@@ -77,33 +77,43 @@ import {
 import type { ScorecardStepProps } from './stepTypes'
 
 const FIELDING_FIELDS = [
-  { field: 'catches', label: 'Catches' },
-  { field: 'stumpings', label: 'Stumpings' },
-  { field: 'runOuts', label: 'Run-outs' },
+  { field: 'catches', label: 'Catches', short: 'Ct' },
+  { field: 'stumpings', label: 'Stumpings', short: 'St' },
+  { field: 'runOuts', label: 'Run-outs', short: 'RO' },
 ] as const
 
 const n = (value: number | null | undefined) => value ?? 0
 
-// docs/specs/101 mockup: the label above in small capitals, then one bordered pill holding "– 2 +" (green minus and plus, the
-// value centred). 44 px high on a phone, compact from sm.
-function Counter({ label, title, value, onChange, disabled }: { label: string; title: string; value: number; onChange: (delta: 1 | -1) => void; disabled?: boolean }) {
-  const button = { width: { xs: 44, sm: 28 }, height: { xs: 44, sm: 30 }, color: 'primary.main' }
+// docs/specs/118 (owner item 7): the fielding list is compact. One bordered pill "- 2 +" per counter, with no label of its own (the
+// labels are shown once in the list's header row); the group keeps its full accessible name. The look is 30 px high, the touch
+// target is 44 px (transparent ::after areas), and the value has a fixed width so the columns line up.
+const COUNTER_COLUMN = { xs: 62, sm: 92 }
+const FIELDING_GRID = { xs: 'minmax(0, 1fr) repeat(3, 62px) 30px', sm: 'minmax(0, 1fr) repeat(3, 92px) 72px' }
+
+function Counter({ label, value, onChange, disabled }: { label: string; value: number; onChange: (delta: 1 | -1) => void; disabled?: boolean }) {
+  const button = {
+    width: { xs: 20, sm: 28 },
+    height: 30,
+    p: 0,
+    color: 'primary.main',
+    position: 'relative',
+    '&::after': { content: '""', position: 'absolute', top: -7, bottom: -7, left: { xs: -2, sm: -4 }, right: { xs: -2, sm: -4 } },
+  } as const
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.125 }} role="group" aria-label={label}>
-      <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>
-        {title}
+    <Box
+      role="group"
+      aria-label={label}
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 1, borderColor: 'divider', borderRadius: '8px', height: 30, width: COUNTER_COLUMN, bgcolor: 'background.paper', justifySelf: 'center' }}
+    >
+      <IconButton aria-label={`Decrease ${label}`} size="small" disabled={disabled || value <= 0} onClick={() => onChange(-1)} sx={button}>
+        <RemoveIcon sx={{ fontSize: 16 }} />
+      </IconButton>
+      <Typography component="span" aria-live="polite" sx={{ minWidth: 18, textAlign: 'center', fontWeight: 700, fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', border: 1, borderColor: 'divider', borderRadius: '8px', height: { xs: 46, sm: 32 }, bgcolor: 'background.paper', px: 0.25 }}>
-        <IconButton aria-label={`Decrease ${label}`} size="small" disabled={disabled || value <= 0} onClick={() => onChange(-1)} sx={button}>
-          <RemoveIcon fontSize="small" />
-        </IconButton>
-        <Typography component="span" aria-live="polite" sx={{ minWidth: 22, textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-          {value}
-        </Typography>
-        <IconButton aria-label={`Increase ${label}`} size="small" disabled={disabled} onClick={() => onChange(1)} sx={button}>
-          <AddIcon fontSize="small" />
-        </IconButton>
-      </Box>
+      <IconButton aria-label={`Increase ${label}`} size="small" disabled={disabled} onClick={() => onChange(1)} sx={button}>
+        <AddIcon sx={{ fontSize: 16 }} />
+      </IconButton>
     </Box>
   )
 }
@@ -433,7 +443,7 @@ export function BowlingStep({
       .map(([count, word]) => `${count} ${word}`)
       .join(', ')
     return (
-      <Button variant="ghost" size="sm" onClick={() => commit(followDismissals(scorecard, batted, key, 'fielding'))} disabled={disabled} aria-label={`Use the dismissals, fielding of ${name}`} title={`The dismissals say ${parts}`}>
+      <Button variant="ghost" size="compact" onClick={() => commit(followDismissals(scorecard, batted, key, 'fielding'))} disabled={disabled} aria-label={`Use the dismissals, fielding of ${name}`} title={`The dismissals say ${parts}`}>
         Use dismissals
       </Button>
     )
@@ -504,7 +514,7 @@ export function BowlingStep({
               severity="info"
               data-testid="typed-differs-banner"
               action={
-                <Button variant="secondary" size="sm" onClick={() => setBulkOpen(true)} disabled={disabled}>
+                <Button variant="secondary" size="compact" onClick={() => setBulkOpen(true)} disabled={disabled}>
                   Use the dismissals for all
                 </Button>
               }
@@ -587,6 +597,7 @@ export function BowlingStep({
             columns={columns}
             renderPlayer={playerCell}
             renderTrailing={star}
+            trailingHeader={<StandoutHeader />}
             reorder={reorder}
             reorderDisabled={disabled}
             emptyMessage=""
@@ -676,6 +687,23 @@ export function BowlingStep({
             No catches, stumpings or run-outs yet. Credits appear when you name a fielder on the batting card; add anyone missed.
           </Typography>
         )}
+        {fielders.length > 0 && (
+          <Box
+            data-testid="fielding-header"
+            sx={{ display: 'grid', gridTemplateColumns: FIELDING_GRID, alignItems: 'center', columnGap: 0.5, px: 1, py: 0.5, borderBottom: 1, borderColor: 'divider', position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.paper' }}
+          >
+            <Box />
+            {FIELDING_FIELDS.map(({ field, label: title, short }) => (
+              <Typography key={field} component="span" aria-hidden title={title} sx={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{title}</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{short}</Box>
+              </Typography>
+            ))}
+            <Typography component="span" sx={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <StandoutHeader />
+            </Typography>
+          </Box>
+        )}
         {fielders.map((player, index) => {
           const key = playerRowKey(player)
           const entry = fieldingByKey.get(key)
@@ -685,17 +713,18 @@ export function BowlingStep({
               key={key}
               role="listitem"
               sx={{
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: FIELDING_GRID,
                 alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 1.5,
-                px: 1.5,
-                py: 1,
+                columnGap: 0.5,
+                minHeight: 44,
+                px: 1,
+                py: 0.25,
                 bgcolor: (theme) => (index % 2 === 1 ? theme.palette.action.hover : 'transparent'),
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75, minWidth: { xs: '100%', sm: 200 }, flex: { sm: 1 } }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, pr: 0.5 }}>
+                <Typography variant="body2" noWrap sx={{ fontWeight: 600, minWidth: 0, flex: '0 1 auto' }}>
                   <PlayerName person={scorecardPersonName(player)} view={view} />
                 </Typography>
                 {(() => {
@@ -723,12 +752,10 @@ export function BowlingStep({
                   <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
                 )}
               </Box>
-              <Box sx={{ display: 'flex', gap: 1, ml: { sm: 'auto' } }}>
-                {FIELDING_FIELDS.map(({ field, label: title }) => (
-                  <Counter key={field} label={`${title}, ${name}`} title={title} value={n(entry?.[field])} disabled={disabled} onChange={(delta) => commit(bumpFielding(scorecard, side, player, field, delta))} />
-                ))}
-              </Box>
-              <Box sx={{ width: 44, display: 'flex', justifyContent: 'center' }}>
+              {FIELDING_FIELDS.map(({ field, label: title }) => (
+                <Counter key={field} label={`${title}, ${name}`} value={n(entry?.[field])} disabled={disabled} onChange={(delta) => commit(bumpFielding(scorecard, side, player, field, delta))} />
+              ))}
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 {ours && entry && canFeatureFielder(entry) && (
                   <StandoutToggle
                     suggested={Boolean(entry.suggested)}
@@ -738,7 +765,7 @@ export function BowlingStep({
                   />
                 )}
               </Box>
-              {fieldingMarker(player, entry, name) && <Box sx={{ flexBasis: '100%' }}>{fieldingMarker(player, entry, name)}</Box>}
+              {fieldingMarker(player, entry, name) && <Box sx={{ gridColumn: '1 / -1' }}>{fieldingMarker(player, entry, name)}</Box>}
             </Box>
           )
         })}
@@ -764,7 +791,7 @@ export function BowlingStep({
       {onGoToStep && (
         <Typography variant="body2" color="text.secondary">
           Not listed?{' '}
-          <Button variant="ghost" size="sm" onClick={() => onGoToStep('teams', side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
+          <Button variant="ghost" size="compact" onClick={() => onGoToStep('teams', side)}>
             Add them on Teams
           </Button>
         </Typography>

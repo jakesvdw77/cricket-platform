@@ -8,7 +8,9 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ImportMatchReason, MatchCandidate } from '../../../../api/resultImportApi'
-import { Button } from '../../../../components/Button'
+import { WizardFooter } from '../../../../components/WizardFooter'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import { MatchDateTimeDialog } from '../../../../components/MatchDateTimeDialog'
 import { MatchFormDialog } from '../../../../components/MatchFormDialog'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
@@ -116,8 +118,9 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchDeleted, onMatchFound, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchDeleted, onMatchFound, onMatchDateChanged, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
   const [adding, setAdding] = useState(false)
+  const [editingDate, setEditingDate] = useState(false)
   const deleteFlow = useDeleteMatchDialog(clubId, onMatchDeleted)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
@@ -240,6 +243,35 @@ export function MatchStep(context: ImportStepContext) {
         </Box>
       )}
 
+      {chosen && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }} data-testid="import-match-date">
+          <Typography variant="body2">
+            <Typography component="span" variant="body2" color="text.secondary">
+              This match is on{' '}
+            </Typography>
+            <strong>{formatMatchDateTime(chosen.matchDate)}</strong>
+          </Typography>
+          <MuiButton
+            variant="text"
+            startIcon={<EditOutlinedIcon fontSize="small" />}
+            aria-label="Edit date and time"
+            onClick={() => setEditingDate(true)}
+            disabled={matchPending}
+            sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}
+          >
+            Edit date and time
+          </MuiButton>
+          <MatchDateTimeDialog
+            open={editingDate}
+            onClose={() => setEditingDate(false)}
+            clubId={clubId}
+            matchId={chosen.matchId}
+            matchDate={chosen.matchDate}
+            onSaved={onMatchDateChanged}
+          />
+        </Box>
+      )}
+
       {mismatch && <WarningNote>The file&apos;s teams do not look like the sides of the match you chose.</WarningNote>}
 
       {dateGap && (
@@ -251,14 +283,10 @@ export function MatchStep(context: ImportStepContext) {
         </>
       )}
 
-      <Box sx={{ display: 'flex', gap: 1.25, flexDirection: 'row' }}>
-        <Button variant="secondary" onClick={onBack} disabled={matchPending} sx={{ flex: { xs: 1, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
-          Back
-        </Button>
-        <Button onClick={onMatchNext} disabled={!chosen || matchPending || (dateGap !== null && !dateAck)} sx={{ flex: { xs: 2, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
-          {matchPending ? 'Checking…' : 'Next'}
-        </Button>
-      </Box>
+      <WizardFooter
+        back={{ label: 'Back', onClick: onBack, disabled: matchPending }}
+        primary={{ label: matchPending ? 'Checking…' : 'Next', onClick: onMatchNext, disabled: !chosen || matchPending || (dateGap !== null && !dateAck) }}
+      />
     </Box>
   )
 }

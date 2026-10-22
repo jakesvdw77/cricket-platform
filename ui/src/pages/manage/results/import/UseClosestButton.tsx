@@ -10,7 +10,7 @@ export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo
   return (
     <Button
       variant="secondary"
-      size="sm"
+      size="compact"
       disabled={disabled}
       onClick={guess.onUseClosest}
       aria-label={`Change to ${name} for ${guess.importedName}`}

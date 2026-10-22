@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Chip, MenuItem, ListItemIcon, Typography } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined'
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined'
@@ -22,7 +21,6 @@ import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { LINEUP_SIZE, playerRowKey, resetToSelection } from '../../../../utils/scorecardPrefill'
 import { newRowFill } from '../../../../utils/wicketFill'
-import { selectTeamPath } from '../../teamSelection/selectionLinks'
 import { regularInningsOf } from '../resultDraftHelpers'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { OppositionTeamList } from '../scorecard/OppositionTeamList'
@@ -103,7 +101,7 @@ export function TeamsStep(props: ScorecardStepProps) {
       )}
       {onGoToStep && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="ghost" size="sm" onClick={skip} disabled={disabled}>
+          <Button variant="ghost" size="compact" onClick={skip} disabled={disabled}>
             Don&apos;t capture the team
           </Button>
         </Box>
@@ -139,7 +137,6 @@ function OurSideTeam({
   disabled,
   prefill,
   prefillState,
-  onSaveAndNavigate,
   oursSides,
   ours,
 }: ScorecardStepProps & { ours: OurSide }) {
@@ -152,7 +149,6 @@ function OurSideTeam({
   const batting = battingOf(scorecard, side)
   const duplicates = duplicatePlayerKeys(scorecard, side)
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
   const [resetOpen, setResetOpen] = useState(false)
   const [populating, setPopulating] = useState(false)
   const [fromSquad, setFromSquad] = useState(false)
@@ -176,12 +172,6 @@ function OurSideTeam({
     if (built) commit(built)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [side, prefillState, players.length])
-
-  const selectTeam = () => {
-    const to = selectTeamPath(match.id, null, side === 'HOME')
-    if (onSaveAndNavigate) onSaveAndNavigate(to)
-    else navigate(to)
-  }
 
   const populate = async () => {
     setPopulateFailed(false)
@@ -232,7 +222,7 @@ function OurSideTeam({
   const label = usePlayerLabeler(view)
   // docs/specs/104: the Guess chips of an imported draft (nothing for any other result).
   const importReview = useImportReview()
-  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, leagueId: match.leagueId, oursSides, prefill, scorecard, onScorecard: commit })
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, leagueId: match.leagueId, oursSides, prefill, scorecard, onScorecard: commit, autoAddToSquad: true })
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
   const onReorder = (nextIds: string[]) => {
@@ -260,6 +250,7 @@ function OurSideTeam({
     ours,
     scorecard,
     onScorecard: commit,
+    autoAddToSquad: true,
     ids,
     positionLabel: 'Batting position',
     view,
@@ -362,7 +353,7 @@ function OurSideTeam({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      {notice && <NotSelectedBanner notice={notice} onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectTeam={selectTeam} disabled={disabled} />}
+      {notice && <NotSelectedBanner notice={notice} onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectPlayers={actions.openAdd} disabled={disabled} />}
 
       {!empty && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
@@ -370,7 +361,7 @@ function OurSideTeam({
             {countLine}
           </Typography>
           {prefillSide && prefillSide.players.length > 0 && (
-            <Button variant="ghost" size="sm" startIcon={<RestartAltIcon />} onClick={() => setResetOpen(true)} disabled={disabled}>
+            <Button variant="ghost" size="compact" startIcon={<RestartAltIcon />} onClick={() => setResetOpen(true)} disabled={disabled}>
               Reset to selection
             </Button>
           )}
@@ -425,7 +416,7 @@ function OurSideTeam({
       />
 
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={actions.openAdd} disabled={disabled}>
+        <Button variant="secondary" size="compact" startIcon={<AddIcon />} onClick={actions.openAdd} disabled={disabled}>
           Add player
         </Button>
       </Box>

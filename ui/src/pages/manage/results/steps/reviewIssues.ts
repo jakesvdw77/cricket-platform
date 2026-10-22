@@ -14,7 +14,6 @@ const STEP_IDS: Record<ResultWizardStep, string> = {
 
 // Issues about who played (the lineup, guests and duplicates, squads) are fixed on Teams whichever step the server filed them under.
 const TEAM_CODES = new Set([
-  'LINEUP_TOO_LARGE',
   'PLAYER_NOT_IN_SQUAD',
   'GUEST_NAME_MATCHES_PLAYER',
   'PLAYER_ON_BOTH_SIDES',

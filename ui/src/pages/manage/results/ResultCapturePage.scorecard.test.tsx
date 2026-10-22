@@ -393,14 +393,14 @@ describe('Review step', () => {
   it('blocks Publish on an error issue and sends its Fix to the owning step', async () => {
     validateResult.mockResolvedValue({
       canPublish: false, errors: ['x'], warnings: [],
-      issues: [issue('LINEUP_TOO_LARGE', 'BATTING', 'HOME', 'ERROR', 'More than eleven players took part')],
+      issues: [issue('GUEST_ON_BOTH_SIDES', 'BATTING', 'HOME', 'ERROR', 'A guest is listed on both sides')],
     })
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Edit result' }, { timeout: 10000 })
     await user.click(step('Review'))
 
-    expect(await screen.findByText('More than eleven players took part')).toBeInTheDocument()
+    expect(await screen.findByText('A guest is listed on both sides')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Fix' }))
     expect(await screen.findByText('Who is playing?')).toBeInTheDocument()

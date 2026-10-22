@@ -27,6 +27,7 @@ export const Sizes: Story = {
     <Stack direction="row" spacing={2} alignItems="center">
       <Button size="sm">Small</Button>
       <Button size="md">Medium</Button>
+      <Button size="compact" variant="secondary">Compact (in-card action)</Button>
     </Stack>
   ),
 }

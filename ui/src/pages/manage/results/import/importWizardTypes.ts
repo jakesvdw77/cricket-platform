@@ -38,6 +38,8 @@ export interface ImportStepContext {
   onMatchDeleted: (matchId: string) => void
   // A match found by search was chosen: handled like an added one (preview again for it, add it to the candidates, choose it).
   onMatchFound: (match: Match) => void
+  // docs/specs/118: the chosen match's date and time was changed from the Match step; the candidate takes the new date, so the date check is recomputed.
+  onMatchDateChanged: (match: Match) => void
   matchPending: boolean
   matchProblem: ImportProblem | null
   onMatchNext: () => void

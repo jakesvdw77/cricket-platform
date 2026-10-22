@@ -272,7 +272,7 @@ export function OppositionTeamList({ clubId, matchId, seasonId, side, teamName, 
             disabled={disabled}
             helperText={`Up to ${MAX_PASTED_NAMES} at a time. List numbers and bullets are removed.`}
           />
-          <Button variant="secondary" size="sm" onClick={() => addPasted(pasteText, () => setPasteText(''))} disabled={disabled || pasteText.trim() === ''}>
+          <Button variant="secondary" size="compact" onClick={() => addPasted(pasteText, () => setPasteText(''))} disabled={disabled || pasteText.trim() === ''}>
             Add names
           </Button>
         </Box>

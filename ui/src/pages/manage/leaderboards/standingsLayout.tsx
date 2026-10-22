@@ -10,6 +10,7 @@ import { zebraTint } from '../../../utils/zebraTint'
 import { hoverTint } from '../leagueEdit/leagueEditRowStyles'
 import { gridSx, pinnedFirst, pinnedRank, sortedTint, tableMinWidth } from './standingsGrid'
 import type { LayoutColumn, WidthOf } from './standingsGrid'
+import { compactButtonSx } from '../../../components/Button'
 
 // The layout pieces shared by the standings tables (docs/specs/103 player standings, docs/specs/116 team standings): the grid
 // with a pinned rank and first column, the sortable header, the unranked divider, the notices and the footer. Row content stays
@@ -273,7 +274,7 @@ export function TableFooter({ lines, hasNextPage, fetchingNext, onShowMore }: { 
         </Typography>
       )}
       {hasNextPage && (
-        <MuiButton variant="outlined" onClick={onShowMore} disabled={fetchingNext} sx={{ minHeight: 44, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>
+        <MuiButton variant="outlined" onClick={onShowMore} disabled={fetchingNext} size="small" sx={{ ...compactButtonSx, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>
           {fetchingNext ? 'Loading...' : 'Show more'}
         </MuiButton>
       )}

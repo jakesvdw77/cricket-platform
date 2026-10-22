@@ -19,4 +19,11 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
+
+  it('keeps its sx on the compact size and still clicks', async () => {
+    const onClick = vi.fn()
+    render(<Button size="compact" sx={{ mt: 1 }} onClick={onClick}>Add</Button>)
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(onClick).toHaveBeenCalledOnce()
+  })
 })

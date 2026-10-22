@@ -7,7 +7,7 @@ describe('NotSelectedBanner', () => {
   it('says there is no selection and offers Populate, which is only a notice', async () => {
     const onPopulate = vi.fn()
     render(<NotSelectedBanner notice={{ kind: 'none' }} onPopulate={onPopulate} />)
-    expect(screen.getByText(/not selected for this match/i)).toBeInTheDocument()
+    expect(screen.getByText(/no team is selected for this match/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Populate from the team' }))
     expect(onPopulate).toHaveBeenCalledOnce()
   })

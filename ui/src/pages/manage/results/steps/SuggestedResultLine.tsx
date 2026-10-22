@@ -38,7 +38,7 @@ export function SuggestedResultLine({ check, names, onUse, canUse = true, disabl
         </Typography>
       </Box>
       {!agrees && canUse && (
-        <Button variant="secondary" size="sm" onClick={onUse} disabled={disabled}>
+        <Button variant="secondary" size="compact" onClick={onUse} disabled={disabled}>
           Use this
         </Button>
       )}

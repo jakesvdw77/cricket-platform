@@ -12,6 +12,7 @@ import { LeagueEditPanel } from '../leagueEdit/LeagueEditPanel'
 import { cellText, minimumLabel, rankText, statsLink, unrankedReason } from './leaderboardFormat'
 import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, TableFooter, UnrankedDivider } from './standingsLayout'
 import { playerCellWidth } from './standingsGrid'
+import { compactButtonSx } from '../../../components/Button'
 
 export interface StandingsTableProps {
   clubId: string
@@ -122,7 +123,7 @@ export function StandingsTable({
         title="Could not load this table"
         description="Check your connection and try again."
         action={
-          <MuiButton variant="outlined" onClick={() => query.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => query.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }
@@ -137,7 +138,7 @@ export function StandingsTable({
           title={`No player has reached ${appliedMinimum} ${unit}`}
           description="Lower or clear the minimum to see the table."
           action={
-            <MuiButton variant="outlined" onClick={() => onMinimumChange(null)} sx={{ minHeight: 44 }}>
+            <MuiButton variant="outlined" onClick={() => onMinimumChange(null)} size="small" sx={compactButtonSx}>
               Clear minimum
             </MuiButton>
           }
@@ -150,7 +151,7 @@ export function StandingsTable({
           description="Publish a result, or widen the filters."
           action={
             hasFilters ? (
-              <MuiButton variant="outlined" onClick={onClearFilters} sx={{ minHeight: 44 }}>
+              <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
                 Clear filters
               </MuiButton>
             ) : undefined
@@ -210,7 +211,7 @@ export function StandingsTable({
             />
           </Box>
           {minimum !== null && (
-            <MuiButton variant="text" onClick={() => onMinimumChange(null)} sx={{ minHeight: 44 }}>
+            <MuiButton variant="text" onClick={() => onMinimumChange(null)} size="small" sx={compactButtonSx}>
               Clear
             </MuiButton>
           )}

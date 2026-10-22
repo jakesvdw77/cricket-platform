@@ -28,6 +28,7 @@ import { PlayerDashboardTab } from './dashboard/PlayerDashboardTab'
 import { loadPlayerDashboardCharts } from './dashboard/playerDashboardChunk'
 import { resultsPhrase } from './statsFormat'
 import { parseCompetition } from '../../../utils/statsCompetition'
+import { compactButtonSx } from '../../../components/Button'
 
 const COMPETITION_OPTIONS = [
   { value: 'LEAGUE', label: 'League' },
@@ -160,7 +161,7 @@ export default function PlayerStatsPage() {
         title="Couldn't load the statistics"
         description="Something went wrong loading this player's statistics."
         action={
-          <MuiButton variant="outlined" onClick={() => statsQuery.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => statsQuery.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }
@@ -179,7 +180,7 @@ export default function PlayerStatsPage() {
         title="No published results match these filters"
         description="Try a different season or team."
         action={
-          <MuiButton variant="outlined" onClick={clearFilters} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={clearFilters} size="small" sx={compactButtonSx}>
             Clear filters
           </MuiButton>
         }
@@ -189,7 +190,7 @@ export default function PlayerStatsPage() {
         title="No published results yet"
         description="Statistics appear here once a published result has this player on its team list."
         action={
-          <MuiButton component={RouterLink} to="/manage/results" variant="outlined" sx={{ minHeight: 44 }}>
+          <MuiButton component={RouterLink} to="/manage/results" variant="outlined" size="small" sx={compactButtonSx}>
             Go to Results
           </MuiButton>
         }

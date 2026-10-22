@@ -262,6 +262,8 @@ export interface ResultIssue {
   side: ResultSide | null
   severity: ResultIssueSeverity
   message: string
+  // docs/specs/118: the player a PLAYER_NOT_IN_SQUAD issue is about (null on every other issue).
+  playerProfileId?: string | null
 }
 
 // The canonical shape of a result being captured, and the PUT body. Partial values are allowed on a draft.

@@ -1,7 +1,6 @@
-import { Alert, Box, ToggleButton, Typography } from '@mui/material'
+import { Alert, Box, Link, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { CountField } from '../../../../components/IntegerField'
@@ -110,14 +109,11 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled, score
           sx={{ p: 1.5, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
         >
           <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
-            Want to record who batted, bowled and fielded? It is optional.
+            Batting and bowling scorecards are optional. Skip them if you only have the final scores.{' '}
+            <Link component="button" type="button" underline="always" onClick={() => onGoToStep('scores')} disabled={disabled} sx={{ verticalAlign: 'baseline', minHeight: 24 }}>
+              Skip batting and bowling
+            </Link>
           </Typography>
-          <Button variant="secondary" size="sm" onClick={() => onGoToStep('batting')} disabled={disabled}>
-            Add the batting and bowling
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onGoToStep('scores')} disabled={disabled}>
-            Skip to scores
-          </Button>
         </Box>
       )}
     </Box>
