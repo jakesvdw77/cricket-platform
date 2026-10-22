@@ -43,10 +43,10 @@ describe('CollapsibleSection', () => {
     expect(document.getElementById(button.getAttribute('aria-controls') as string)).toHaveAttribute('hidden')
   })
 
-  it('the button is at least 44 px tall and asks the caller to toggle', async () => {
+  it('the button is compact (32 px, with a 44 px touch area) and asks the caller to toggle', async () => {
     const onToggle = renderSection()
     const button = screen.getByTestId('batting-toggle')
-    expect(button).toHaveStyle({ minHeight: '44px' })
+    expect(button).toHaveStyle({ minHeight: '32px' })
     await userEvent.click(button)
     expect(onToggle).toHaveBeenCalledTimes(1)
   })

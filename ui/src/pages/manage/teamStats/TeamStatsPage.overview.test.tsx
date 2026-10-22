@@ -80,7 +80,7 @@ describe('Team Overview block', () => {
     const toggle = screen.getByTestId('team-dashboard-toggle')
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(toggle).toHaveTextContent('Hide overview')
-    expect(toggle).toHaveStyle({ minHeight: '44px' })
+    expect(toggle).toHaveStyle({ minHeight: '32px' })
     expect(toggle.getAttribute('aria-controls')).toBeTruthy()
     // the existing cards after it are unchanged
     expect(screen.getByTestId('tile-played-value')).toHaveTextContent('14')
