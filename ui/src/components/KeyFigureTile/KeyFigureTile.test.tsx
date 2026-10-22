@@ -104,8 +104,9 @@ describe('KeyFigureTile', () => {
       expect(success.value).not.toBe(primary.value)
       expect(error.value).not.toBe(primary.value)
       expect(error.value).not.toBe(success.value)
-      expect(success.bg).toContain('linear-gradient')
-      expect(success.bg).not.toBe(error.bg)
+      // no tinted card background, only the coloured value
+      expect(success.bg).not.toContain('linear-gradient')
+      expect(error.bg).not.toContain('linear-gradient')
 
       render(<KeyFigureTile emphasis="error" testId="plain" icon={<span />} value="12" label="Games" />)
       expect(getComputedStyle(screen.getByTestId('plain')).backgroundImage).not.toContain('linear-gradient')

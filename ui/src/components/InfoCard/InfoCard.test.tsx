@@ -140,13 +140,13 @@ describe('InfoCard', () => {
   describe('field emphasis', () => {
     const props = { title: 'Record', icon: <span />, fields: [{ label: 'Won', value: '9', emphasis: 'success' as const }, { label: 'Tied', value: '1' }] }
 
-    it('with fieldSize large, draws an emphasised value larger, in its tone, on a tinted field', () => {
+    it('with fieldSize large, draws an emphasised value larger, in its tone, with no tinted background', () => {
       render(<InfoCard {...props} fieldSize="large" />)
       const [won, tied] = screen.getAllByTestId('player-info-field')
       expect(getComputedStyle(screen.getByText('9')).fontSize).toBe('1.125rem')
       expect(getComputedStyle(screen.getByText('1')).fontSize).toBe('1rem')
       expect(getComputedStyle(screen.getByText('9')).color).not.toBe(getComputedStyle(screen.getByText('1')).color)
-      expect(getComputedStyle(won).backgroundColor).not.toBe(getComputedStyle(tied).backgroundColor)
+      expect(getComputedStyle(won).backgroundColor).toBe(getComputedStyle(tied).backgroundColor)
     })
 
     it('does nothing with the default size', () => {

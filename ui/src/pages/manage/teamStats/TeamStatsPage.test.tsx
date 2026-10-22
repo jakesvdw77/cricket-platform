@@ -291,8 +291,8 @@ describe('TeamStatsPage', () => {
         await loaded()
         const list = screen.getByRole('list', { name: 'Last results, newest first' })
         const chips = within(list).getAllByRole('link')
-        expect(chips.map((chip) => chip.textContent)).toEqual(['W', 'L', 'T', 'D', 'NR'])
-        expect(screen.getByTestId('team-form-strip')).toHaveTextContent('Form, last 5 results, newest first')
+        expect(chips.map((chip) => chip.querySelector('.form-circle')?.textContent)).toEqual(['W', 'L', 'T', 'D', 'NR'])
+        expect(screen.getByTestId('team-form-strip')).toHaveTextContent('Recent form')
         expect(chips[0]).toHaveAttribute('data-tone', 'positive')
         expect(chips[1]).toHaveAttribute('data-tone', 'closed')
         expect(chips[4]).toHaveAttribute('data-tone', 'muted')
@@ -317,6 +317,12 @@ describe('TeamStatsPage', () => {
         expect(within(won).queryByText('internal')).not.toBeInTheDocument()
         expect(within(won).queryByText('forfeit')).not.toBeInTheDocument()
         expect(derby).toHaveAttribute('title', 'v Villagers 2, 14 Mar 2026')
+        // the date sits under the circle, the marker word under the date, neither inside the circle
+        expect(within(won).getByText('14 Mar')).toBeInTheDocument()
+        expect(won.querySelector('.form-circle')).toHaveTextContent(/^W$/)
+        expect(derby.querySelector('.form-circle')).toHaveTextContent(/^T$/)
+        expect(derby.textContent).toBe('T14 Marinternal')
+        expect(forfeit.textContent).toBe('L14 Marforfeit')
       })
 
       it('shows a derby that is also a forfeit with both markers', async () => {
@@ -326,7 +332,7 @@ describe('TeamStatsPage', () => {
         const chip = within(screen.getByTestId('team-form-strip')).getByRole('link')
         expect(within(chip).getByText('internal')).toBeInTheDocument()
         expect(within(chip).getByText('forfeit')).toBeInTheDocument()
-        expect(screen.getByTestId('team-form-strip')).toHaveTextContent('Form, last result, newest first')
+        expect(screen.getByTestId('team-form-strip')).toHaveTextContent('Recent form')
       })
 
       it('opens the result with the team page (and its filters) as the way back, labelled Team', async () => {
