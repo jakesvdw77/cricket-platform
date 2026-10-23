@@ -101,6 +101,7 @@ export default function MyPlayersPage() {
   return (
     <HubFrame
       title="My Players"
+      panel="clear"
       maxWidth={1320}
       testId="my-players-page"
       footer={clubHome ? <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton> : undefined}

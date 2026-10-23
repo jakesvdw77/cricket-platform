@@ -17,9 +17,12 @@ export interface HubFrameProps {
   testId?: string
   // Below md the title bar is slim by default; 'hidden' removes it (the hub shows its own headers there).
   phoneTitle?: 'slim' | 'hidden'
+  // 'solid' (default) puts a mostly opaque dark ground behind the content so text is not fought by the page backdrop;
+  // 'clear' lets the backdrop show through (sparse screens such as the player picker).
+  panel?: 'solid' | 'clear'
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim' }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid' }: HubFrameProps) {
   return (
     <AccountShell bare maxWidth={maxWidth} testId={testId}>
       <Box
@@ -34,16 +37,16 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           gridTemplateRows: 'auto 1fr auto',
         }}
       >
-        <Box sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 1.75 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', md: 'flex' }, justifyContent: 'flex-end' }}>
+        <Box sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', md: 'flex' }, justifyContent: 'flex-end' }}>
           <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 22, md: 'clamp(24px, 3vw, 32px)' }, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, textAlign: 'right' }}>
             {title}
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }, minHeight: { md: 480 }, minWidth: 0 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }, minHeight: { md: 'max(560px, calc(100vh - 450px))' }, minWidth: 0 }}>
           {menu}
-          <Box component="section" aria-live="polite" sx={{ position: 'relative', overflow: 'hidden', p: { xs: '16px 16px', md: '26px 28px' }, minWidth: 0 }}>
-            <Box sx={{ position: 'relative', display: 'grid', gap: 2.25 }}>{children}</Box>
+          <Box component="section" aria-live="polite" sx={{ position: 'relative', overflow: 'hidden', bgcolor: panel === 'solid' ? 'rgba(5, 30, 22, 0.88)' : 'transparent', p: { xs: '16px 16px', md: '36px 40px' }, minWidth: 0 }}>
+            <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
           </Box>
         </Box>
 
