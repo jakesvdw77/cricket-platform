@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
-import { Alert, Box, Button, Card, CardContent, Checkbox, Container, FormControlLabel, Tooltip, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
+import { alpha } from '@mui/material/styles'
+import { Alert, Avatar, Box, Button, Checkbox, Skeleton, Tooltip, Typography } from '@mui/material'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
+import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 import { useConfirmLinks, usePlayerMatches, useRegisterAccount } from '../../api/meApi'
 import type { PlayerMatch } from '../../api/meApi'
@@ -13,13 +18,54 @@ function errorCode(error: unknown): string | undefined {
   return isAxiosError(error) ? (error.response?.data as { code?: string } | undefined)?.code : undefined
 }
 
-function SignOut() {
+const detail = (p: PlayerMatch) => [p.clubName, p.groupLabel, p.birthYear ? `Born ${p.birthYear}` : null].filter(Boolean).join(' · ')
+
+function PlayerAvatar({ p }: { p: PlayerMatch }) {
   return (
-    <Box sx={{ mt: 3 }}>
-      <Button variant="outlined" size="small" sx={{ minHeight: 32 }} onClick={() => keycloak.logout()}>
-        Sign out
-      </Button>
-    </Box>
+    <Avatar
+      sx={(t) => ({ width: 40, height: 40, fontSize: 15, fontWeight: 600, bgcolor: alpha(t.palette.primary.main, 0.14), color: 'primary.dark' })}
+    >
+      {`${p.firstName[0] ?? ''}${p.surnameInitial[0] ?? ''}`.toUpperCase()}
+    </Avatar>
+  )
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <PageBackdrop>
+      <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box component="img" src="/favicon.svg" alt="" width={28} height={28} />
+          <Typography fontWeight={700} fontSize={16}>
+            Cricket Legend
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          sx={{ minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: 'rgba(247,243,232,0.12)' } }}
+          onClick={() => keycloak.logout()}
+        >
+          Sign out
+        </Button>
+      </Box>
+      <Box sx={{ width: '100%', maxWidth: 592, mx: 'auto', px: 2, py: { xs: 2, sm: 4 }, boxSizing: 'border-box' }}>
+        <Box
+          data-testid="welcome-page"
+          sx={{ bgcolor: 'background.paper', color: 'text.primary', borderRadius: 2, boxShadow: 1, p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
+          {children}
+        </Box>
+      </Box>
+    </PageBackdrop>
+  )
+}
+
+function Heading({ children }: { children: ReactNode }) {
+  return (
+    <Typography variant="h5" component="h1" fontWeight={700} fontSize={22} lineHeight={1.25}>
+      {children}
+    </Typography>
   )
 }
 
@@ -31,6 +77,7 @@ export default function FindYourPlayersPage() {
   const confirm = useConfirmLinks()
   const [unticked, setUnticked] = useState<Set<string>>(new Set())
   const [linkedNames, setLinkedNames] = useState<string[] | null>(null)
+  const email = (keycloak.tokenParsed as { email?: string } | undefined)?.email
 
   useEffect(() => {
     registerMutate()
@@ -43,10 +90,9 @@ export default function FindYourPlayersPage() {
   if (linkedNames) {
     body = (
       <>
-        <Typography variant="h5" component="h1" gutterBottom>
-          You now manage {linkedNames.join(', ')}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <CheckCircleOutlineIcon color="primary" sx={{ fontSize: 40 }} />
+        <Heading>You now manage {linkedNames.join(', ')}</Heading>
+        <Typography variant="body2" color="text.secondary">
           My players is coming soon, where you will see and answer availability for them.
         </Typography>
       </>
@@ -54,9 +100,7 @@ export default function FindYourPlayersPage() {
   } else if (failure) {
     body = (
       <>
-        <Typography variant="h5" component="h1" gutterBottom>
-          Find your players
-        </Typography>
+        <Heading>Find your players</Heading>
         <Alert severity={notVerified ? 'warning' : 'error'}>
           {notVerified
             ? 'Please verify your email address first. Check your inbox for the verification email, then sign in again.'
@@ -66,124 +110,146 @@ export default function FindYourPlayersPage() {
     )
   } else if (!matches.data) {
     body = (
-      <Typography variant="body1" color="text.secondary">
-        Looking for your players…
-      </Typography>
+      <Box aria-busy="true" aria-label="Looking for your players" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Skeleton variant="text" width="60%" height={32} />
+        <Skeleton variant="rounded" height={64} />
+        <Skeleton variant="rounded" height={64} />
+      </Box>
     )
   } else {
     const { withoutMainAgent: free, withMainAgent: taken } = matches.data
     const all = [...free, ...taken]
     const single = all.length === 1 ? all[0] : null
-    const title = free.length + taken.length === 0 ? 'No player found' : single?.adult ? 'Is this you?' : 'Are these your players?'
+    const title = all.length === 0 ? 'No player found' : free.length === 0 ? 'Contact the main agent' : single?.adult ? 'Is this you?' : 'Are these your players?'
     const selected = free.filter((p) => !unticked.has(p.ref))
     body = (
       <>
-        <Typography variant="h5" component="h1" gutterBottom>
-          {title}
-        </Typography>
-        {all.length === 0 && (
+        {all.length === 0 && <SearchOffOutlinedIcon color="primary" sx={{ fontSize: 40 }} />}
+        <Heading>{title}</Heading>
+        {all.length === 0 ? (
           <>
-            <Typography variant="body1" color="text.secondary">
-              We could not find a player with your email address at any club. Your club may have a different email on file for you.
+            <Typography variant="body2" color="text.secondary">
+              We could not find a player with {email ?? 'your email address'} at any club. Your club may have a different email on file for you.
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
               Requesting a link will be available soon.
             </Typography>
           </>
+        ) : (
+          free.length > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              We found these on record for {email ?? 'your email address'}. Untick any that are not yours.
+            </Typography>
+          )
         )}
         {free.length > 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1 }} role="group" aria-label="Players to link">
-            {free.map((p) => (
-              <FormControlLabel
-                key={p.ref}
-                sx={{ minHeight: 44, alignItems: 'center' }}
-                control={
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} role="group" aria-label="Players to link">
+            {free.map((p) => {
+              const on = !unticked.has(p.ref)
+              return (
+                <Box
+                  key={p.ref}
+                  component="label"
+                  sx={(t) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    minHeight: 64,
+                    px: 1.5,
+                    py: 1,
+                    cursor: 'pointer',
+                    border: 1,
+                    borderColor: on ? 'primary.main' : 'divider',
+                    boxShadow: on ? `inset 0 0 0 1px ${t.palette.primary.main}` : 'none',
+                    borderRadius: 2,
+                    bgcolor: on ? alpha(t.palette.primary.main, 0.05) : 'background.paper',
+                  })}
+                >
+                  <PlayerAvatar p={p} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={700} fontSize={15}>
+                      {describe(p)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {detail(p)}
+                    </Typography>
+                  </Box>
                   <Checkbox
-                    checked={!unticked.has(p.ref)}
-                    onChange={(_, on) =>
+                    checked={on}
+                    inputProps={{ 'aria-label': describe(p) }}
+                    onChange={(_, v) =>
                       setUnticked((prev) => {
                         const next = new Set(prev)
-                        if (on) next.delete(p.ref)
+                        if (v) next.delete(p.ref)
                         else next.add(p.ref)
                         return next
                       })
                     }
                   />
+                </Box>
+              )
+            })}
+            {confirm.isError && <Alert severity="error">We could not link those players. Please try again.</Alert>}
+            <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' }, mt: 1 }}>
+              <Button
+                variant="contained"
+                sx={{ minHeight: { xs: 44, sm: 40 }, width: { xs: '100%', sm: 'auto' } }}
+                disabled={selected.length === 0 || confirm.isPending}
+                onClick={() =>
+                  confirm.mutate(
+                    selected.map((p) => p.ref),
+                    { onSuccess: () => setLinkedNames(selected.map(describe)) },
+                  )
                 }
-                label={
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {describe(p)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {[p.clubName, p.groupLabel, p.birthYear ? `Born ${p.birthYear}` : null].filter(Boolean).join(' · ')}
-                    </Typography>
-                  </Box>
-                }
-              />
-            ))}
-            {confirm.isError && (
-              <Alert severity="error" sx={{ mt: 1 }}>
-                We could not link those players. Please try again.
-              </Alert>
-            )}
-            <Button
-              variant="contained"
-              sx={{ mt: 2, minHeight: 44, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
-              disabled={selected.length === 0 || confirm.isPending}
-              onClick={() =>
-                confirm.mutate(
-                  selected.map((p) => p.ref),
-                  { onSuccess: () => setLinkedNames(selected.map(describe)) },
-                )
-              }
-            >
-              Confirm
-            </Button>
+              >
+                Confirm
+              </Button>
+            </Box>
           </Box>
         )}
         {taken.length > 0 && (
-          <Box sx={{ mt: 3 }} data-testid="main-agent-block">
-            <Typography variant="subtitle1" component="h2" fontWeight={600}>
-              Contact the main agent
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              These players already have a main agent. Ask them to add you.
+          <Box
+            data-testid="main-agent-block"
+            sx={(t) => ({ bgcolor: alpha(t.palette.primary.main, 0.04), border: 1, borderColor: 'divider', borderRadius: 2, p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 })}
+          >
+            {free.length > 0 && (
+              <Typography variant="subtitle1" component="h2" fontWeight={700}>
+                Contact the main agent
+              </Typography>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              These players already have a main agent. Ask them to add you from their My players screen. We never show the full address.
             </Typography>
             {taken.map((p) => (
-              <Box key={p.ref} sx={{ py: 1 }}>
-                <Typography variant="body2" fontWeight={600}>
-                  {describe(p)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  {[p.clubName, p.groupLabel, p.birthYear ? `Born ${p.birthYear}` : null].filter(Boolean).join(' · ')}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  Main agent: {p.maskedMainAgentEmail}
-                </Typography>
+              <Box key={p.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <PlayerAvatar p={p} />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" fontWeight={700} fontSize={15}>
+                    {describe(p)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {detail(p)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Main agent: {p.maskedMainAgentEmail}
+                  </Typography>
+                </Box>
               </Box>
             ))}
-            <Tooltip title="Available soon">
-              <span>
-                <Button variant="outlined" size="small" sx={{ minHeight: 32 }} disabled>
-                  Ask the club to help
-                </Button>
-              </span>
-            </Tooltip>
+            <Box>
+              <Tooltip title="Available soon">
+                <span>
+                  <Button variant="outlined" size="small" sx={{ minHeight: 32 }} disabled>
+                    Ask the club to help
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
           </Box>
         )}
       </>
     )
   }
 
-  return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Card variant="outlined" data-testid="welcome-page">
-        <CardContent>
-          {body}
-          <SignOut />
-        </CardContent>
-      </Card>
-    </Container>
-  )
+  return <Shell>{body}</Shell>
 }
