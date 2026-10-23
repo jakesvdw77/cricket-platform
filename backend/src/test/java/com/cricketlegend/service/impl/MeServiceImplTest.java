@@ -264,4 +264,127 @@ class MeServiceImplTest {
 
         assertThat(result.platformAdmin()).isFalse();
     }
+
+    // ---- docs/specs/119: register, suspended refusal, Decision 16 (under-18 binding) ----
+
+    private Jwt jwtWithName(String subject, String email, boolean verified, String given, String family) {
+        return Jwt.withTokenValue("token").header("alg", "none").issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60)).claim("sub", subject).claim("email", email)
+                .claim("email_verified", verified).claim("given_name", given).claim("family_name", family).build();
+    }
+
+    @Test
+    void registerCreatesASelfRegisteredActivePersonFromTheVerifiedTokenWithNoRoleOrLink() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000001";
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.empty());
+        when(personRepository.findByEmailIgnoreCase("new.parent@example.com")).thenReturn(Optional.empty());
+        when(personRepository.save(any(Person.class))).thenAnswer(i -> {
+            Person p = i.getArgument(0);
+            p.setId(UUID.randomUUID());
+            return p;
+        });
+
+        MeAccessDto result = meService.register(authentication,
+                jwtWithName(subject, "new.parent@example.com", true, "New", "Parent"));
+
+        org.mockito.ArgumentCaptor<Person> saved = org.mockito.ArgumentCaptor.forClass(Person.class);
+        verify(personRepository).save(saved.capture());
+        assertThat(saved.getValue().getFirstName()).isEqualTo("New");
+        assertThat(saved.getValue().getLastName()).isEqualTo("Parent");
+        assertThat(saved.getValue().getEmail()).isEqualTo("new.parent@example.com");
+        assertThat(saved.getValue().getKeycloakUserId()).isEqualTo(subject);
+        assertThat(saved.getValue().getStatus()).isEqualTo(PersonStatus.ACTIVE);
+        assertThat(saved.getValue().getOrigin()).isEqualTo(com.cricketlegend.domain.PersonOrigin.SELF_REGISTERED);
+        assertThat(result.personId()).isNotNull();
+        assertThat(result.clubAdminClubIds()).isEmpty();
+        verify(roleAssignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void registerRefusesAnUnverifiedEmailAndWritesNothing() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000002";
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.register(authentication,
+                        jwtWithName(subject, "x@example.com", false, "X", "Y")))
+                .isInstanceOf(com.cricketlegend.exception.EmailNotVerifiedException.class);
+        verify(personRepository, never()).save(any());
+    }
+
+    @Test
+    void registerForAnExistingLoginCreatesNoSecondPerson() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000003";
+        Person existing = person(UUID.randomUUID(), PersonStatus.ACTIVE);
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.of(existing));
+        when(roleAssignmentRepository.findByPersonId(existing.getId())).thenReturn(List.of());
+
+        MeAccessDto result = meService.register(authentication, jwtWithName(subject, "jane.doe@example.com", true, "J", "D"));
+
+        assertThat(result.personId()).isEqualTo(existing.getId());
+        verify(personRepository, never()).save(any());
+    }
+
+    @Test
+    void aSuspendedPersonIsRefusedOnActivateRegisterAndProfiles() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000004";
+        Person suspended = person(UUID.randomUUID(), PersonStatus.SUSPENDED);
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        Jwt jwt = jwtWithName(subject, "jane.doe@example.com", true, "J", "D");
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.of(suspended));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.activateAndResolveAccess(authentication, jwt))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.register(authentication, jwt))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.profiles(authentication, jwt))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+    }
+
+    @Test
+    void bridgeByEmailSkipsAPersonUnder18SoAParentsLoginIsNeverBoundToAPlayersRecord() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000005";
+        String email = "parent.and.child@example.com";
+        Person child = person(UUID.randomUUID(), PersonStatus.PENDING);
+        child.setEmail(email);
+        child.setDateOfBirth(java.time.LocalDate.now().minusYears(12));
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.empty());
+        when(personRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(child));
+
+        MeAccessDto result = meService.activateAndResolveAccess(authentication, jwtWithEmail(subject, email));
+
+        assertThat(result.personId()).isNull();
+        assertThat(child.getKeycloakUserId()).isNull();
+        assertThat(child.getStatus()).isEqualTo(PersonStatus.PENDING);
+        verify(personRepository, never()).save(any());
+    }
+
+    @Test
+    void bridgeByEmailStillBindsAnAdultAndAPersonWithNoDateOfBirth() {
+        String email = "adult@example.com";
+        for (java.time.LocalDate dob : new java.time.LocalDate[] {
+            java.time.LocalDate.now().minusYears(18), java.time.LocalDate.of(1980, 1, 1), null}) {
+            String subject = UUID.randomUUID().toString();
+            Person adult = person(UUID.randomUUID(), PersonStatus.PENDING);
+            adult.setEmail(email);
+            adult.setDateOfBirth(dob);
+            var authentication = new TestingAuthenticationToken(subject, null, List.of());
+            when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+            when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.empty());
+            when(personRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(adult));
+            when(personRepository.save(adult)).thenReturn(adult);
+            when(roleAssignmentRepository.findByPersonId(adult.getId())).thenReturn(List.of());
+
+            MeAccessDto result = meService.activateAndResolveAccess(authentication, jwtWithEmail(subject, email));
+
+            assertThat(result.personId()).as("dob " + dob).isEqualTo(adult.getId());
+            assertThat(adult.getKeycloakUserId()).isEqualTo(subject);
+        }
+    }
 }

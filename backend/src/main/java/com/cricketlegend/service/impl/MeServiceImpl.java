@@ -160,6 +160,13 @@ public class MeServiceImpl implements MeService {
         if (person == null) {
             return null; // authenticated, but no Person record exists for this email at all
         }
+        // docs/specs/119, Decision 16: never bind a login to a Person under 18 (a player's record that carries a parent's
+        // email); that login falls through to the match step. A missing date of birth counts as adult.
+        if (person.getDateOfBirth() != null
+                && java.time.Period.between(person.getDateOfBirth(), java.time.LocalDate.now()).getYears() < 18) {
+            log.info("Email bridge skipped: personId={} reason=under-18", person.getId());
+            return null;
+        }
         person.setKeycloakUserId(keycloakUserId);
         if (person.getStatus() == PersonStatus.PENDING) {
             person.setStatus(PersonStatus.ACTIVE);

@@ -710,6 +710,39 @@ describe('RecordCard', () => {
     expect(input.closest('p')).toBeNull()
   })
 
+  describe('footerActions (docs/specs/119)', () => {
+    it('renders the given actions in place of the default Edit footer', async () => {
+      const user = userEvent.setup()
+      const onApprove = vi.fn()
+      render(
+        <RecordCard title="Request" editLabel="Edit" onEdit={vi.fn()} footerActions={<button onClick={onApprove}>Approve</button>} />,
+      )
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Approve' }))
+      expect(onApprove).toHaveBeenCalledTimes(1)
+    })
+
+    it('null gives a read-only card with no footer at all', () => {
+      const { container } = render(<RecordCard title="Read only" editLabel="Edit" onEdit={vi.fn()} footerActions={null} />)
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(container.querySelector('.MuiCardActions-root')).toBeNull()
+    })
+
+    it('undefined leaves the default Edit footer unchanged', () => {
+      const { container } = render(<RecordCard title="Default" editLabel="Edit" onEdit={vi.fn()} footerActions={undefined} />)
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(container.querySelector('.MuiCardActions-root')).not.toBeNull()
+    })
+
+    it('footerButtons still wins when both are set', () => {
+      render(
+        <RecordCard title="Both" footerActions={<button>Custom</button>} footerButtons={[{ label: 'Close', icon: <span>c</span>, onClick: vi.fn() }]} />,
+      )
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Custom' })).not.toBeInTheDocument()
+    })
+  })
+
   describe('children and footerButtons (docs/specs/066)', () => {
     const buttons = () => [
       { label: 'Close', icon: <span>c</span>, onClick: vi.fn() },

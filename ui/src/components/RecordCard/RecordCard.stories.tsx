@@ -8,6 +8,7 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { Box, Typography } from '@mui/material'
 import { RecordCard } from './RecordCard'
 import { BrandIcon } from '../BrandIcon'
+import { Button } from '../Button'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
 // globally; adding a second nested <MemoryRouter> throws ("You cannot render a <Router> inside
@@ -353,6 +354,27 @@ export const WithCornerAction: Story = {
     ...Active.args,
     cornerAction: { label: 'Delete', pendingLabel: 'Deleting…', pending: false, onClick: () => {}, icon: <DeleteOutlineIcon fontSize="small" /> },
   },
+}
+
+// docs/specs/119: custom footer actions (Approve, Decline) replace the default Edit; null gives no footer at all.
+export const WithFooterActions: Story = {
+  args: {
+    ...Active.args,
+    footerActions: (
+      <>
+        <Button variant="ghost" size="sm">
+          Decline
+        </Button>
+        <Button variant="primary" size="sm">
+          Approve
+        </Button>
+      </>
+    ),
+  },
+}
+
+export const WithoutFooter: Story = {
+  args: { ...Active.args, footerActions: null },
 }
 
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280.

@@ -4,18 +4,36 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useOutletContext } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ManagerHome from './ManagerHome'
-import type { MeAccess } from '../../api/meApi'
+import type { MeAccess, Profile } from '../../api/meApi'
 import type { ClubProfile } from '../../api/clubApi'
 
 const activateSession = vi.fn()
 const getManagedClubProfile = vi.fn()
+const useMyProfiles = vi.fn()
+const useMyPlayers = vi.fn()
 
 // Per docs/specs/020-club-manager-access.md, ManagerHome calls activateSession (not
 // adminApi.getAdminIdentity, unlike AdminHome.test.tsx) — mirrors PostLoginRedirect.test.tsx's
 // mocking approach exactly, including its meAccess(overrides) factory.
 vi.mock('../../api/meApi', () => ({
   activateSession: () => activateSession(),
+  useMyProfiles: () => useMyProfiles(),
 }))
+
+vi.mock('../../api/myPlayersApi', () => ({
+  useMyPlayers: (enabled: boolean) => useMyPlayers(enabled),
+}))
+
+const managerProfile = (clubId: string, clubName: string): Profile => ({
+  kind: 'MANAGER',
+  title: `Manager of ${clubName}`,
+  clubId,
+  clubName,
+  clubSlug: clubId,
+  landing: '/manage',
+  pendingCount: 0,
+})
+const playersProfile: Profile = { kind: 'MY_PLAYERS', title: 'My players', landing: '/account', pendingCount: 0 }
 
 vi.mock('../../api/clubApi', () => ({
   getManagedClubProfile: (id: string) => getManagedClubProfile(id),
@@ -97,6 +115,9 @@ describe('ManagerHome', () => {
     // mockResolvedValueOnce calls resolves to something rather than undefined — same convention
     // TeamFormPage.test.tsx already uses for this same call.
     getManagedClubProfile.mockResolvedValue(clubProfile())
+    useMyProfiles.mockReturnValue({ data: undefined })
+    useMyPlayers.mockReturnValue({ data: undefined })
+    window.localStorage.clear()
     keycloakMock.authenticated = true
     keycloakMock.initPromise = Promise.resolve()
   })
@@ -190,5 +211,61 @@ describe('ManagerHome', () => {
 
     expect(await screen.findByText('Riverside Cricket Club')).toBeInTheDocument()
     expect(screen.getByText('RC')).toBeInTheDocument()
+  })
+
+  describe('profiles and My players (docs/specs/119)', () => {
+    it('loads the club of the first manager profile card when the response carries profiles', async () => {
+      activateSession.mockResolvedValueOnce(
+        meAccess({ clubAdminClubIds: ['club-1'], profiles: [managerProfile('club-2', 'Hillcrest CC'), managerProfile('club-1', 'Riverside CC')] }),
+      )
+
+      renderManagerHome()
+
+      expect(await screen.findByText('Club context: club-2')).toBeInTheDocument()
+    })
+
+    it('prefers the last chosen manager card over the first', async () => {
+      window.localStorage.setItem('profile:activeClub', 'club-1')
+      activateSession.mockResolvedValueOnce(
+        meAccess({ clubAdminClubIds: ['club-1'], profiles: [managerProfile('club-2', 'Hillcrest CC'), managerProfile('club-1', 'Riverside CC')] }),
+      )
+
+      renderManagerHome()
+
+      expect(await screen.findByText('Club context: club-1')).toBeInTheDocument()
+    })
+
+    it('adds a My players menu item for a manager who also has players, and nothing otherwise', async () => {
+      const user = userEvent.setup()
+      useMyPlayers.mockReturnValue({ data: [{ key: 'k' }] })
+      activateSession.mockResolvedValue(meAccess({ clubAdminClubIds: ['club-1'] }))
+
+      const first = renderManagerHome()
+      await screen.findByText('Club context: club-1')
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      expect(screen.getByRole('menuitem', { name: 'My players' })).toHaveAttribute('href', '/account')
+      first.unmount()
+
+      useMyPlayers.mockReturnValue({ data: [] })
+      renderManagerHome()
+      await screen.findByText('Club context: club-1')
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      expect(screen.queryByRole('menuitem', { name: 'My players' })).not.toBeInTheDocument()
+    })
+
+    it('shows Switch profile instead of My players when there is more than one profile card', async () => {
+      const user = userEvent.setup()
+      const cards = [managerProfile('club-1', 'Riverside CC'), playersProfile]
+      useMyProfiles.mockReturnValue({ data: cards })
+      useMyPlayers.mockReturnValue({ data: [{ key: 'k' }] })
+      activateSession.mockResolvedValue(meAccess({ clubAdminClubIds: ['club-1'], profiles: cards }))
+
+      renderManagerHome()
+      await screen.findByText('Club context: club-1')
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+
+      expect(screen.getByRole('menuitem', { name: 'Switch profile' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'My players' })).not.toBeInTheDocument()
+    })
   })
 })

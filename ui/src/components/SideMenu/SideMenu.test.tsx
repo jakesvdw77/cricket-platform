@@ -42,7 +42,7 @@ describe('SideMenu', () => {
       'Club profile',
       'Fields',
       'Gallery',
-      'Managers',
+      'Access',
     ])
     expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Fields' })).toHaveAttribute('href', '/manage/fixtures/fields')

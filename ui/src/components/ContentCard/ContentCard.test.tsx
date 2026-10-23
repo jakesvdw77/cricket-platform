@@ -61,9 +61,9 @@ describe('ContentCard', () => {
     )
 
     const card = screen.getByText('Content').parentElement as HTMLElement
-    // borderRadius: 1 => theme.shape.borderRadius (8) x 1 = 8px; p: 3 => theme.spacing(3) = 24px.
+    // borderRadius: 1 => theme.shape.borderRadius (6, spec 120) x 1 = 6px; p: 3 => theme.spacing(3) = 24px.
     expect(card).toHaveStyle({
-      borderRadius: '8px',
+      borderRadius: '6px',
       paddingTop: '24px',
       paddingRight: '24px',
       paddingBottom: '24px',
@@ -88,7 +88,7 @@ describe('ContentCard', () => {
     // not a wholesale replacement of the defaults.
     expect(card).toHaveStyle({
       backgroundColor: 'rgb(255, 255, 255)',
-      borderRadius: '8px',
+      borderRadius: '6px',
       paddingTop: '24px',
       paddingRight: '24px',
       paddingLeft: '24px',
