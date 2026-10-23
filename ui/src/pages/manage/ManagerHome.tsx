@@ -8,6 +8,8 @@ import { ManagerShell } from '../../components/ManagerShell'
 import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
+import { useProfileSwitch } from '../../hooks/useProfileSwitch'
+import { resolveManagerClubId } from '../../utils/activeProfile'
 
 export default function ManagerHome() {
   const keycloakSettled = useKeycloakSettled()
@@ -19,7 +21,9 @@ export default function ManagerHome() {
     queryFn: activateSession,
   })
 
-  const clubId = data?.clubAdminClubIds[0]
+  // docs/specs/119 slice 4: the club comes from the loaded profile card (address, last choice, first card), not a guess.
+  const clubId = resolveManagerClubId(data?.profiles, data?.clubAdminClubIds)
+  const profileItems = useProfileSwitch()
 
   // Same query key ManageClubProfilePage.tsx/TeamFormPage.tsx already use for this club's
   // profile — a manager who later opens Club Profile reuses this cached result rather than
@@ -67,7 +71,8 @@ export default function ManagerHome() {
       onLogout={() => keycloak.logout()}
       profileTo="/manage/profile"
       homeTo="/manage"
-      myPlayersTo={(myPlayers?.length ?? 0) > 0 ? '/account' : undefined}
+      myPlayersTo={(myPlayers?.length ?? 0) > 0 && !profileItems ? '/account' : undefined}
+      profileItems={profileItems}
     >
       <Outlet context={{ clubId }} />
     </ManagerShell>

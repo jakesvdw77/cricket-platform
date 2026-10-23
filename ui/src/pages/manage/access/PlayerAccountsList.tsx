@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Box, Skeleton, Typography } from '@mui/material'
+import { Box, Dialog, DialogContent, DialogTitle, Skeleton, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
+import { Button } from '../../../components/Button'
+import { PlayerAgentActions } from '../../../components/PlayerAgentActions'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { ContentControlsLine } from '../../../components/ContentControlsLine'
 import { EmptyState } from '../../../components/EmptyState'
@@ -15,11 +17,11 @@ import { cardGridSx } from '../../../utils/cardGrid'
 import { initialsFromName } from '../../../utils/initials'
 import { countText } from './linkRequestFormat'
 
-// docs/specs/119 Part 3: "Players and their main agent". Read-only in slice 3B (Invite, Reassign and Remove link are
-// slice 4). Section and No main agent are saved per club; the search is per visit. Every filter is a backend parameter.
+// docs/specs/119 Part 3: "Players and their main agent". Manage agents opens the shared PlayerAgentActions (slice 4). Section and No main agent are saved per club; the search is per visit. Every filter is a backend parameter.
 export function PlayerAccountsList({ clubId }: { clubId: string }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [managing, setManaging] = useState<{ playerId: string; name: string } | null>(null)
   const [{ sectionId, noMainAgent }, setFilters] = usePersistedListFilters(`playerAccounts:filters:${clubId}`, {
     sectionId: null as string | null,
     noMainAgent: false,
@@ -94,7 +96,11 @@ export function PlayerAccountsList({ clubId }: { clubId: string }) {
                     { label: 'Main agent', value: account.mainAgentName ? `${account.mainAgentName}${account.mainAgentMaskedEmail ? ` (${account.mainAgentMaskedEmail})` : ''}` : '–' },
                     { label: 'Other agents', value: String(account.otherAgentCount) },
                   ]}
-                  footerActions={null}
+                  footerActions={
+                    <Button variant="secondary" size="compact" onClick={() => setManaging({ playerId: account.playerId, name: fullName })}>
+                      Manage agents
+                    </Button>
+                  }
                 />
               )
             })}
@@ -102,6 +108,10 @@ export function PlayerAccountsList({ clubId }: { clubId: string }) {
           <PageNav page={data.number} totalPages={data.totalPages} onPageChange={setPage} />
         </>
       )}
+      <Dialog open={Boolean(managing)} onClose={() => setManaging(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{managing ? `Agents for ${managing.name}` : ''}</DialogTitle>
+        <DialogContent>{managing && <PlayerAgentActions clubId={clubId} playerId={managing.playerId} playerName={managing.name} />}</DialogContent>
+      </Dialog>
     </Box>
   )
 }

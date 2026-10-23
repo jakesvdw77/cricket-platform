@@ -4,6 +4,8 @@ import { Avatar, Box, Divider, IconButton, Menu, MenuItem, Typography } from '@m
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { avatarSx } from '../RecordCard'
+import { ProfileSwitcher } from '../ProfileSwitcher'
+import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { initialsFromName } from '../../utils/initials'
 
 export interface AvatarMenuProps {
@@ -16,10 +18,13 @@ export interface AvatarMenuProps {
   onBrand?: boolean
   // docs/specs/119 3C: additive item for a person who also has players (their own record or linked ones). Undefined renders nothing.
   myPlayersTo?: string
+  // docs/specs/119 slice 4: more than one profile card adds "Switch profile". Undefined or a single card renders nothing.
+  profileItems?: ProfileSwitchItem[]
 }
 
-export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBrand, myPlayersTo }: AvatarMenuProps) {
+export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBrand, myPlayersTo, profileItems }: AvatarMenuProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  const [switchAnchor, setSwitchAnchor] = useState<HTMLElement | null>(null)
 
   const handleOpen = (event: MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
   const handleClose = () => setAnchorEl(null)
@@ -55,6 +60,16 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
             My players
           </MenuItem>
         )}
+        {profileItems && profileItems.length > 1 && (
+          <MenuItem
+            onClick={() => {
+              setSwitchAnchor(anchorEl)
+              handleClose()
+            }}
+          >
+            Switch profile
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             handleClose()
@@ -65,6 +80,7 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
           Log out
         </MenuItem>
       </Menu>
+      {profileItems && profileItems.length > 1 && <ProfileSwitcher items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
     </>
   )
 }

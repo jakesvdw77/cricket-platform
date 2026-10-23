@@ -2,11 +2,13 @@ import { Alert, Avatar, Box, ButtonBase, Skeleton, Typography, useMediaQuery, us
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { MyLinkRequests } from './MyLinkRequests'
+import { useMyInvitations } from '../../api/meApi'
 import { useMyPlayer, useMyPlayerPolls, useMyPlayers } from '../../api/myPlayersApi'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
+import { AgentChangeView, RemoveLinkView } from './myPlayers/AgentViews'
 import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
 import { HubProfile } from './myPlayers/HubProfile'
 import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
@@ -63,6 +65,7 @@ const barSx = {
 export default function MyPlayerPage() {
   const { key, section: rawSection, sub } = useParams<{ key: string; section?: string; sub?: string }>()
   const navigate = useNavigate()
+  const [search] = useSearchParams()
   const playerQuery = useMyPlayer(key)
   const player = playerQuery.data
   const polls = useMyPlayerPolls(key)
@@ -71,11 +74,15 @@ export default function MyPlayerPage() {
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
   const section: Section = (SECTIONS as readonly string[]).includes(rawSection ?? '') ? (rawSection as Section) : 'availability'
   const open = polls.data?.length ?? 0
+  const invitationCount = useMyInvitations().data?.length ?? 0
   // /profile/edit replaces the right panel with the dark edit form; on a phone the menu collapses away meanwhile.
   const editing = section === 'profile' && sub === 'edit'
+  // Sub-views of Profile replace the whole console body (no menu, card or footer), each with its own Back.
+  const SUBS: Record<string, string> = { edit: 'Edit Profile', 'hand-over': 'Hand Over', 'add-agent': 'Add Agent', leave: 'Leave', 'cancel-invite': 'Cancel Invitation' }
+  const subView = section === 'profile' && sub !== undefined && sub in SUBS
   // Phone: /account/players/:key is the main menu screen and each section is its own full screen. Desktop: that URL means Availability.
   const phoneMenu = phone && !rawSection
-  const phoneSection = phone && Boolean(rawSection) && !editing
+  const phoneSection = phone && Boolean(rawSection) && !subView
   const go = (next: Section) => navigate(`/account/players/${key}/${next}`)
 
   if (!phone && !rawSection && key) return <Navigate to={`/account/players/${key}/availability`} replace />
@@ -90,6 +97,20 @@ export default function MyPlayerPage() {
         {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
       </Box>
     )
+  } else if (subView && sub !== 'edit') {
+    panel =
+      player &&
+      (sub === 'hand-over' || sub === 'add-agent' ? (
+        <AgentChangeView player={player} mode={sub === 'hand-over' ? 'HANDOVER' : 'ADD'} onBack={() => go('profile')} />
+      ) : (
+        <RemoveLinkView
+          player={player}
+          kind={sub === 'leave' ? 'leave' : 'cancel'}
+          linkId={sub === 'leave' ? player.myLinkId : search.get('link')}
+          onBack={() => go('profile')}
+          onDone={() => (sub === 'leave' ? navigate('/account') : go('profile'))}
+        />
+      ))
   } else if (editing) {
     panel = player && (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
@@ -129,6 +150,13 @@ export default function MyPlayerPage() {
     )
   }
 
+  const invitationsBar = invitationCount > 0 && (
+    <ButtonBase key="invitations" onClick={() => navigate('/account/invitations')} sx={{ ...barSx, ...(phoneMenu && { minHeight: 64, flex: 1, borderRadius: 0 }) }}>
+      Invitations
+      <Pill>{`${invitationCount}`}</Pill>
+    </ButtonBase>
+  )
+
   const bars = SECTIONS.map((item, index) => {
     const selected = item === section && !phoneMenu
     const locked = item === 'schedule' || item === 'stats'
@@ -151,9 +179,10 @@ export default function MyPlayerPage() {
       </ButtonBase>
     )
   })
+  if (invitationsBar) bars.push(invitationsBar)
 
   const menu =
-    editing || phone ? undefined : (
+    subView || phone ? undefined : (
       <Box
         component="nav"
         aria-label="Player sections"
@@ -163,7 +192,7 @@ export default function MyPlayerPage() {
       </Box>
     )
 
-  const footer = editing || phoneSection ? undefined : many ? (
+  const footer = subView || phoneSection ? undefined : many ? (
     <HubFooterButton onClick={() => navigate('/account')}>Back to players</HubFooterButton>
   ) : (
     <HubFooterButton onClick={() => navigate('/welcome')} icon={<PersonSearchOutlinedIcon sx={{ fontSize: 20 }} />}>
@@ -172,7 +201,7 @@ export default function MyPlayerPage() {
   )
 
   return (
-    <HubFrame title={editing ? 'Edit Profile' : 'My Player'} phoneTitle="hidden" menu={menu} footer={footer} testId="my-player-page">
+    <HubFrame title={subView && sub ? SUBS[sub] : 'My Player'} phoneTitle="hidden" menu={menu} footer={footer} testId="my-player-page">
       {playerQuery.isError && <Alert severity="error">We could not load this player. Please try again.</Alert>}
       {!player && !playerQuery.isError && <Skeleton variant="rounded" height={112} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />}
       {phoneSection && player && (
@@ -190,7 +219,7 @@ export default function MyPlayerPage() {
           <Typography sx={{ ml: 'auto', color: HUB.muted, fontSize: 14, textAlign: 'right' }}>{player.firstName}</Typography>
         </Box>
       )}
-      {player && !editing && !phoneSection && (
+      {player && !subView && !phoneSection && (
         <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flexWrap: 'wrap' }}>
           <Avatar
             src={player.photoUrl ?? undefined}

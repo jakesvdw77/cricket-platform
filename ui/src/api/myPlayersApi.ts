@@ -19,9 +19,11 @@ export interface MyPlayerSummary {
 }
 
 export interface MyPlayerAgent {
+  linkId: string
   name: string
   maskedEmail: string
   main: boolean
+  status: 'ACTIVE' | 'INVITED'
 }
 
 export interface MyPlayer extends MyPlayerSummary {
@@ -29,6 +31,9 @@ export interface MyPlayer extends MyPlayerSummary {
   teamNames: string[]
   jerseyNumber: number | null
   canEditMedical: boolean
+  // yyyy-MM-dd; editable by the main agent or the adult player only.
+  dateOfBirth: string | null
+  canEditDateOfBirth: boolean
   phone: string | null
   email: string | null
   altContactName: string | null
@@ -40,12 +45,18 @@ export interface MyPlayer extends MyPlayerSummary {
   medicalAidProvider: string | null
   medicalAidMemberNumber: string | null
   agentCount: number
+  // Only the main agent may hand over, add agents or cancel invitations.
+  canManageAgents: boolean
+  // The caller's own link id, needed to leave. Not in the agreed contract yet; Leave is hidden while it is absent.
+  myLinkId?: string | null
   // Only filled for the main agent.
   agents: MyPlayerAgent[]
 }
 
 export interface UpdateMyPlayerRequest {
   photoUrl: string | null
+  // Echo the stored value when not editing or not allowed.
+  dateOfBirth: string | null
   phone: string | null
   email: string | null
   altContactName: string | null
@@ -128,5 +139,17 @@ export function useSaveMyPlayerPollAnswers(key: string) {
   return useMutation({
     mutationFn: ({ pollId, answers }: { pollId: string; answers: PublicAnswer[] }) => saveMyPlayerPollAnswers(key, pollId, answers),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key, 'polls'] }),
+  })
+}
+
+export async function inviteMyPlayerAgent(key: string, body: { email: string; mode: 'HANDOVER' | 'ADD' }): Promise<void> {
+  await api.post(`/me/players/${key}/agents`, body)
+}
+
+export function useInviteAgent(key: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { email: string; mode: 'HANDOVER' | 'ADD' }) => inviteMyPlayerAgent(key, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key] }),
   })
 }

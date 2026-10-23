@@ -44,11 +44,15 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
   const [isWicketKeeper, setIsWicketKeeper] = useState(player.isWicketKeeper)
   const [medicalAidProvider, setMedicalAidProvider] = useState(player.medicalAidProvider ?? '')
   const [medicalAidMemberNumber, setMedicalAidMemberNumber] = useState(player.medicalAidMemberNumber ?? '')
+  const [dateOfBirth, setDateOfBirth] = useState(player.dateOfBirth ?? '')
+  const [understood, setUnderstood] = useState(false)
+  const [dobError, setDobError] = useState<string | undefined>()
   const [emailError, setEmailError] = useState<string | undefined>()
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  const snapshot = JSON.stringify([photoUrl, phone, email, altContactName, altContactPhone, battingStance, bowlingArm, bowlingType, isWicketKeeper, medicalAidProvider, medicalAidMemberNumber])
+  const snapshot = JSON.stringify([dateOfBirth, photoUrl, phone, email, altContactName, altContactPhone, battingStance, bowlingArm, bowlingType, isWicketKeeper, medicalAidProvider, medicalAidMemberNumber])
   const [initialSnapshot] = useState(snapshot)
   const dirty = snapshot !== initialSnapshot
+  const dobChanged = player.canEditDateOfBirth && dateOfBirth !== (player.dateOfBirth ?? '')
   const back = () => {
     if (dirty) setConfirmingDiscard(true)
     else onBack?.()
@@ -60,9 +64,15 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
       setEmailError('Enter a valid email address')
       return
     }
+    if (dobChanged && dateOfBirth > new Date().toISOString().slice(0, 10)) {
+      setDobError('The date of birth cannot be in the future')
+      return
+    }
+    setDobError(undefined)
     setEmailError(undefined)
     const body: UpdateMyPlayerRequest = {
       photoUrl,
+      dateOfBirth: player.canEditDateOfBirth ? (dateOfBirth || null) : player.dateOfBirth,
       phone: blankToNull(phone),
       // Not editable for another agent: echo the stored value back unchanged.
       email: canEditEmail ? blankToNull(email) : player.email,
@@ -106,6 +116,31 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
         </Box>
       )}
       <MediaUpload label="Photo" value={photoUrl} onUploaded={setPhotoUrl} variant="logo" namespace="manage" />
+
+      <Typography variant="subtitle2" component="h2" fontWeight={700}>
+        Personal
+      </Typography>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+        <Input
+          label="Date of birth"
+          type="date"
+          value={player.canEditDateOfBirth ? dateOfBirth : (player.dateOfBirth ?? '')}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          disabled={!player.canEditDateOfBirth}
+          error={Boolean(dobError)}
+          helperText={dobError ?? (player.canEditDateOfBirth ? undefined : 'Only the main agent or the adult player can change this')}
+          inputProps={{ max: new Date().toISOString().slice(0, 10) }}
+          InputLabelProps={{ shrink: true }}
+        />
+      </Box>
+      {dobChanged && (
+        <Box role="alert" data-testid="dob-warning" sx={dark ? { border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 0.5, bgcolor: 'rgba(0,0,0,.3)' } : undefined}>
+          <Alert severity="warning" sx={dark ? { bgcolor: 'transparent', color: HUB.cream, p: 0, '& .MuiAlert-icon': { color: HUB.gold } } : undefined}>
+            Changing the date of birth can change which age group and sections {player.firstName} is eligible for, and it is used to confirm identity on availability links. It applies at every club {player.firstName} plays for.
+          </Alert>
+          <FormControlLabel control={<Checkbox checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />} label="I understand" />
+        </Box>
+      )}
 
       <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Contact
@@ -177,7 +212,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={update.isPending} sx={{ minHeight: { xs: 44, sm: 40 }, ...(dark ? hubGoldButton : {}) }}>
+        <Button type="submit" disabled={update.isPending || (dobChanged && !understood)} sx={{ minHeight: { xs: 44, sm: 40 }, ...(dark ? hubGoldButton : {}) }}>
           {update.isPending ? 'Saving…' : 'Save changes'}
         </Button>
       </Box>

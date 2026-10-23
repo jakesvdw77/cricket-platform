@@ -4,7 +4,7 @@ import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { useMyPlayers } from '../../api/myPlayersApi'
-import { useMyLinkRequests } from '../../api/meApi'
+import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { MyLinkRequests } from './MyLinkRequests'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
@@ -20,11 +20,14 @@ export default function MyPlayersPage() {
   const players = useMyPlayers()
   const requests = useMyLinkRequests()
   const clubHome = useClubHome()
+  const invitations = useMyInvitations()
+  const invitationCount = invitations.data?.length ?? 0
   const list = players.data ?? []
 
   const legacy = params.get('player')
   if (legacy && list.some((p) => p.key === legacy)) return <Navigate to={playerPath(legacy)} replace />
-  if (list.length === 1) return <Navigate to={playerPath(list[0].key)} replace />
+  // A single player skips the picker, unless an invitation is waiting (it is only reachable from here and the hub menu).
+  if (list.length === 1 && !invitations.isLoading && invitationCount === 0) return <Navigate to={playerPath(list[0].key)} replace />
 
   const open = (requests.data ?? []).some((r) => r.status === 'PENDING' || r.status === 'DECLINED')
   const grid = { display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }
@@ -102,6 +105,16 @@ export default function MyPlayersPage() {
       testId="my-players-page"
       footer={clubHome ? <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton> : undefined}
     >
+      {invitationCount > 0 && (
+        <ButtonBase
+          onClick={() => navigate('/account/invitations')}
+          data-testid="invitations-banner"
+          sx={{ width: '100%', minHeight: 56, px: 2, border: 1, borderColor: HUB.gold, borderRadius: '4px', bgcolor: alpha(HUB.gold, 0.12), color: HUB.cream, justifyContent: 'space-between', gap: 1, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+        >
+          <Typography fontWeight={600}>{invitationCount === 1 ? '1 invitation waiting for you' : `${invitationCount} invitations waiting for you`}</Typography>
+          <Typography sx={{ fontFamily: HUB.display, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: HUB.gold }}>View</Typography>
+        </ButtonBase>
+      )}
       {body}
       {!players.isLoading && !players.isError && (
         <Box>

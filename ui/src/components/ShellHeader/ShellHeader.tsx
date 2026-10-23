@@ -3,6 +3,7 @@ import { Avatar, Box, IconButton, Tooltip, Typography } from '@mui/material'
 import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { AvatarMenu } from '../AvatarMenu'
+import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { avatarSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 
@@ -38,13 +39,14 @@ export interface ShellHeaderProps {
   notificationsTo?: string
   // Passed to AvatarMenu: shows a "My players" item when set.
   myPlayersTo?: string
+  profileItems?: ProfileSwitchItem[]
 }
 
 // The header row (brand + AvatarMenu) shared by every post-login shell — see
 // docs/specs/006-post-login-home-shells.md. Pulled out once AppShell, ManagerShell, and
 // BottomTabShell all turned out to render the same row, differing only in what nav they wrap
 // it with (sidebar drawer, nothing, or a bottom tab bar).
-export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo, myPlayersTo }: ShellHeaderProps) {
+export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo, myPlayersTo, profileItems }: ShellHeaderProps) {
   const hasLogoSlot = logoUrl !== undefined
   const onBrand = tone === 'brand'
 
@@ -103,7 +105,7 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
             </IconButton>
           </Tooltip>
         )}
-        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} myPlayersTo={myPlayersTo} />
+        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} myPlayersTo={myPlayersTo} profileItems={profileItems} />
       </Box>
     </Box>
   )

@@ -54,6 +54,7 @@ export interface PlayerLink {
   agentName: string
   maskedEmail: string
   main: boolean
+  status?: 'ACTIVE' | 'INVITED'
   grantedVia: string
   since: string
 }
@@ -164,4 +165,29 @@ export function useDeclineLinkRequest(clubId: string) {
     mutationFn: ({ id, note }: { id: string; note?: string }) => declineLinkRequest(clubId, id, note),
     onSuccess: refresh,
   })
+}
+
+// Slice 4: the manager can always reassign. Every change is server-confirmed and refreshes the lists and the player's links.
+export function useAgentLinkActions(clubId: string, playerId: string) {
+  const refresh = useRefreshAfterDecision(clubId)
+  const links = `${base(clubId)}/players/${playerId}/links`
+  const removeLink = useMutation({
+    mutationFn: async (linkId: string) => {
+      await api.delete(`${links}/${linkId}`, { params: { confirm: true } })
+    },
+    onSuccess: refresh,
+  })
+  const makeMain = useMutation({
+    mutationFn: async (linkId: string) => {
+      await api.post(`${links}/${linkId}/make-main`, { confirm: true })
+    },
+    onSuccess: refresh,
+  })
+  const inviteMain = useMutation({
+    mutationFn: async (email: string) => {
+      await api.post(links, { email, confirm: true })
+    },
+    onSuccess: refresh,
+  })
+  return { removeLink, makeMain, inviteMain }
 }

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Avatar, Box, Button, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useClubHome } from './myPlayers/useClubHome'
+import { ProfileSwitcher } from '../../components/ProfileSwitcher'
+import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 
@@ -15,6 +17,8 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const [switchAnchor, setSwitchAnchor] = useState<HTMLElement | null>(null)
+  const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
   const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: 'rgba(247,243,232,0.12)' } }
@@ -48,6 +52,16 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
                   Back to club
                 </MenuItem>
               )}
+              {profileItems && (
+                <MenuItem
+                  onClick={() => {
+                    setSwitchAnchor(anchor)
+                    setAnchor(null)
+                  }}
+                >
+                  Switch profile
+                </MenuItem>
+              )}
               <MenuItem
                 onClick={() => {
                   setAnchor(null)
@@ -65,11 +79,17 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
               Back to club
             </Button>
           )}
+          {profileItems && (
+            <Button variant="outlined" size="small" sx={outline} onClick={(event) => setSwitchAnchor(event.currentTarget)}>
+              Switch profile
+            </Button>
+          )}
           <Button variant="outlined" size="small" sx={outline} onClick={() => keycloak.logout()}>
             Sign out
           </Button>
         </Box>
         )}
+        {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
       </Box>
       <Box sx={{ width: '100%', maxWidth, mx: 'auto', px: 2, py: { xs: 2, sm: 4 }, boxSizing: 'border-box' }}>
         <Box

@@ -7,6 +7,8 @@ import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import FindYourPlayersPage from './pages/view/FindYourPlayersPage'
+import ProfileChooserPage from './pages/view/ProfileChooserPage'
+import MyInvitationsPage from './pages/view/MyInvitationsPage'
 import MyPlayersPage from './pages/view/MyPlayersPage'
 import MyPlayerPage, { LegacyDetailsRedirect } from './pages/view/MyPlayerPage'
 import AccessPage from './pages/manage/access/AccessPage'
@@ -116,7 +118,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
             <Route path="/welcome" element={<FindYourPlayersPage />} />
+            <Route path="/choose-profile" element={<ProfileChooserPage />} />
             <Route path="/account" element={<MyPlayersPage />} />
+            <Route path="/account/invitations" element={<MyInvitationsPage />} />
             <Route path="/account/players/:key" element={<MyPlayerPage />} />
             <Route path="/account/players/:key/details" element={<LegacyDetailsRedirect />} />
             <Route path="/account/players/:key/:section" element={<MyPlayerPage />} />

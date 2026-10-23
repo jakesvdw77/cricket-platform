@@ -278,7 +278,7 @@ export default function PlayerDetailPage() {
 
         {/* docs/specs/119 shortcut (b): read-only Account card (main agent and other agents). */}
         <Box sx={{ gridColumn: { md: '1 / -1' } }}>
-          <PlayerAccountSection clubId={clubId} playerId={player.id} />
+          <PlayerAccountSection clubId={clubId} playerId={player.id} playerName={`${player.firstName} ${player.lastName}`} />
         </Box>
       </Box>
 

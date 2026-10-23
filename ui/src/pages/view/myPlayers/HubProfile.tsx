@@ -1,18 +1,28 @@
 import { useNavigate } from 'react-router-dom'
-import { Box, Typography } from '@mui/material'
+import { Box, Chip, Typography } from '@mui/material'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../../components/Button'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { MyPlayer } from '../../../api/myPlayersApi'
-import { HUB, hubGoldButton, hubHeading } from './hubStyle'
+import { HUB, hubGoldButton, hubHeading, hubOutlineButton } from './hubStyle'
 
 // docs/specs/119 3C: the Profile section of the player hub. Fields with no value are hidden; a mostly empty profile gets a
 // "Complete this profile" prompt. Edit goes to /profile/edit, which replaces this panel with the dark edit form (nothing opens over the console).
-// Never shows a date of birth. The main agent sees other agents by name and masked email; other agents only a count.
+// The main agent sees other agents by name and masked email; other agents only a count.
 const STANCE: Record<string, string> = { RIGHT_HANDED: 'Right-handed', LEFT_HANDED: 'Left-handed' }
 const ARM: Record<string, string> = { RIGHT_ARM: 'Right-arm', LEFT_ARM: 'Left-arm' }
 type FieldValue = string | number | null | undefined
 const has = (value: FieldValue) => value !== null && value !== undefined && value !== ''
+
+function dobText(iso: string | null): string | null {
+  if (!iso) return null
+  const date = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - date.getFullYear()
+  if (now.getMonth() < date.getMonth() || (now.getMonth() === date.getMonth() && now.getDate() < date.getDate())) age -= 1
+  return `${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (age ${age})`
+}
 
 function Facts({ title, fields }: { title: string; fields: Array<[string, FieldValue]> }) {
   const shown = fields.filter(([, value]) => has(value))
@@ -63,26 +73,37 @@ export function HubProfile({ player }: { player: MyPlayer }) {
           Add contact and cricket details with Edit profile.
         </Box>
       )}
+      <Facts title="Personal" fields={[['Date of birth', dobText(player.dateOfBirth)]]} />
       <Facts title="Club" fields={[['Sections', sections], ['Teams', teams], ['Jersey number', player.jerseyNumber]]} />
       <Facts title="Contact" fields={[['Phone', player.phone], ['Email', player.email], ['Alternative contact', alt]]} />
       <Facts title="Cricket" fields={[['Batting', batting], ['Bowling', bowling], ['Wicketkeeper', player.isWicketKeeper ? 'Yes' : null]]} />
       <Facts title="Medical aid" fields={[['Provider', player.medicalAidProvider], ['Member number', player.medicalAidMemberNumber]]} />
 
-      {!player.self && (
+      {(!player.self || player.canManageAgents) && (
         <Box sx={{ display: 'grid', gap: 0.75 }} data-testid="my-player-agents">
           <Typography component="h3" sx={{ ...hubHeading, fontSize: 16, color: HUB.muted }}>
             Agents
           </Typography>
           {player.main && player.agents.length > 0 ? (
             player.agents.map((agent) => (
-              <Box key={`${agent.name}-${agent.maskedEmail}`} sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+              <Box key={agent.linkId} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minHeight: 36 }}>
                 <Typography fontWeight={600} fontSize={15}>
                   {agent.name}
                 </Typography>
                 <Typography fontSize={13} sx={{ color: HUB.muted }}>
                   {agent.maskedEmail}
-                  {agent.main ? ' · Main agent' : ''}
                 </Typography>
+                {agent.main && <Chip size="small" label="Main" sx={{ bgcolor: HUB.gold, color: HUB.ink, fontWeight: 700, height: 20 }} />}
+                {agent.status === 'INVITED' && (
+                  <>
+                    <Chip size="small" variant="outlined" label="Pending" sx={{ color: HUB.sand, borderColor: HUB.sand, borderStyle: 'dashed', height: 20 }} />
+                    {player.canManageAgents && (
+                      <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => navigate(`/account/players/${player.key}/profile/cancel-invite?link=${agent.linkId}`)}>
+                        Cancel invitation
+                      </Button>
+                    )}
+                  </>
+                )}
               </Box>
             ))
           ) : (
@@ -90,6 +111,24 @@ export function HubProfile({ player }: { player: MyPlayer }) {
               {agentLine}
             </Typography>
           )}
+        </Box>
+      )}
+
+      {player.canManageAgents && (
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => navigate(`/account/players/${player.key}/profile/hand-over`)}>
+            Hand over
+          </Button>
+          <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => navigate(`/account/players/${player.key}/profile/add-agent`)}>
+            Add another agent
+          </Button>
+        </Box>
+      )}
+      {!player.canManageAgents && !player.self && player.myLinkId && (
+        <Box>
+          <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => navigate(`/account/players/${player.key}/profile/leave`)}>
+            Leave
+          </Button>
         </Box>
       )}
 
