@@ -1,0 +1,31 @@
+# Local Keycloak for developing and checking the Cricket Legend login theme (spec 119, slice 1).
+#
+#   docker compose -f docker-compose.keycloak.yml up -d
+#
+# Same image and port as the legacy hand-started container (cricketlegend-keycloak-dev,
+# quay.io/keycloak/keycloak:24.0.3, 8180:8080), so the app's issuer-uri and keycloak.ts work
+# unchanged, but with a NAMED VOLUME for the realm data (the old container had none: its realm
+# lived inside the container and was lost on recreate) and the theme folder bind-mounted
+# read-only. start-dev already serves themes uncached, so editing a CSS file and refreshing the
+# browser is enough.
+#
+# Do NOT bring this up while cricketlegend-keycloak-dev is running (both want port 8180), and do
+# NOT recreate the old container before exporting its realm: see keycloak/README.md and
+# docs/deployment.md ("Known local-only caveat").
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: cricketlegend-keycloak
+    command: start-dev
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:8080"
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./keycloak/themes/cricketlegend:/opt/keycloak/themes/cricketlegend:ro
+    restart: unless-stopped
+
+volumes:
+  keycloak-data:

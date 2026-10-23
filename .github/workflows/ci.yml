@@ -38,6 +38,22 @@ jobs:
       - run: npm run test
       - run: npm run build
 
+  # keycloak-theme: builds the Cricket Legend Keycloak login theme artifacts (docs/specs/119,
+  # slice 1). The theme is plain CSS/FreeMarker with no build step; this job only checks it
+  # packages and keeps the result for a deploy ("drop the artifact in, restart or let the cache
+  # expire").
+  keycloak-theme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build theme artifacts
+        run: bash keycloak/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cricketlegend-login-theme
+          path: keycloak/dist/
+          retention-days: 30
+
   # e2e-smoke: docs/specs/004-landing-page.md's two golden paths (lead-capture submission,
   # find-your-club login redirect), against real backend + frontend dev servers — Testcontainers
   # doesn't help here since Playwright needs an actual running HTTP server to drive a browser
