@@ -68,7 +68,8 @@ describe('managerNav', () => {
     ['/manage/fixtures/seasons/new', 'seasons'],
     ['/manage/fixtures/seasons/s1', 'seasons'],
     ['/manage/fixtures/seasons/s1/edit', 'seasons'],
-    ['/manage/permissions', 'managers'],
+    ['/manage/permissions', 'access'],
+    ['/manage/permissions/player-accounts', 'access'],
   ])('%s highlights %s', (path, id) => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
