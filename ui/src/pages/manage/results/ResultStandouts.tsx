@@ -15,6 +15,7 @@ import { featuredOf } from './ResultScorecard'
 import { fieldingCredits } from './scorecardView'
 
 const DASH = '–'
+const CHIP_FONT_SIZE = '0.8125rem'
 const num = (value: number | null | undefined) => (value === null || value === undefined ? DASH : value)
 
 // The last block of the Details card: our sides' standouts (star chips) and the team's player of the match. Reads the
@@ -89,7 +90,7 @@ export function ResultStandouts({
             {chips.length > 0 && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }} data-testid="scorecard-standouts">
                 {chips.map((node, index) => (
-                  <Chip key={index} size="small" icon={<StarIcon />} label={node} sx={{ height: 24, fontSize: '0.8125rem', '& .MuiChip-icon': { color: 'warning.main', fontSize: 16 } }} />
+                  <Chip key={index} size="small" icon={<StarIcon />} label={node} sx={{ height: 24, fontSize: CHIP_FONT_SIZE, '& .MuiChip-icon': { color: 'warning.main', fontSize: 16 } }} />
                 ))}
               </Box>
             )}
@@ -100,7 +101,7 @@ export function ResultStandouts({
                 color="primary"
                 variant="outlined"
                 data-testid="scorecard-team-award"
-                sx={{ height: 24, fontSize: '0.8125rem', '& .MuiChip-icon': { fontSize: 16 } }}
+                sx={{ height: 24, fontSize: CHIP_FONT_SIZE, '& .MuiChip-icon': { fontSize: 16 } }}
                 label={<>Team player of the match{both ? ` (${names[side === 'HOME' ? 'home' : 'away']})` : ''}: {awardLabel}</>}
               />
             )}

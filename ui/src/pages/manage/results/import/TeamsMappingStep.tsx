@@ -8,7 +8,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import type { ResultSide } from '../../../../api/matchResultApi'
 import type { ImportedResult, ImportExactness, TeamMapping } from '../../../../api/resultImportApi'
 import { WizardFooter } from '../../../../components/WizardFooter'
-import { Button } from '../../../../components/Button'
+import { Button, compactButtonSx } from '../../../../components/Button'
 import { Input } from '../../../../components/Input'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
@@ -100,9 +100,9 @@ function TeamCard({
           <Typography variant="caption" color="text.secondary">
             Closest side by name: {closest.name}
           </Typography>
-          <MuiButton variant="text" onClick={() => onChange(closest.side)} disabled={disabled} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
+          <Button variant="ghost" size="compact" onClick={() => onChange(closest.side)} disabled={disabled} sx={{ color: 'info.main' }}>
             Use {closest.name}
-          </MuiButton>
+          </Button>
         </Box>
       )}
     </Box>
@@ -152,7 +152,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
           />
         )}
         <Box sx={{ display: 'flex', justifyContent: 'center', flex: 'none' }}>
-          <Button variant="secondary" onClick={onSwap} disabled={locked || teams.length !== 2} startIcon={<SwapVertIcon sx={{ transform: { md: 'rotate(90deg)' } }} />} sx={{ minHeight: 44, borderRadius: 6, textTransform: 'none', fontWeight: 600, bgcolor: 'background.paper' }}>
+          <Button variant="secondary" size="compact" onClick={onSwap} disabled={locked || teams.length !== 2} startIcon={<SwapVertIcon sx={{ transform: { md: 'rotate(90deg)' } }} />} sx={{ borderRadius: 6, bgcolor: 'background.paper' }}>
             Swap sides
           </Button>
         </Box>
@@ -179,7 +179,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
           <Typography variant="body2">
             Nobody on the scorecard can be linked to your players. Open the match, choose your own team as home or away, then come back. Your file is kept.
           </Typography>
-          <MuiButton component={RouterLink} to={`/manage/fixtures/matches/${candidate.matchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none' }}>
+          <MuiButton component={RouterLink} size="small" to={`/manage/fixtures/matches/${candidate.matchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ ...compactButtonSx, alignSelf: 'flex-start' }}>
             Open the match
           </MuiButton>
         </Box>
@@ -200,7 +200,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <ImportProblemAlert problem={createProblem} input="file" onRetry={onCreate} retrying={creating} />
           {createProblem.otherMatchId && (
-            <MuiButton component={RouterLink} to={`/manage/fixtures/matches/${createProblem.otherMatchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none' }}>
+            <MuiButton component={RouterLink} size="small" to={`/manage/fixtures/matches/${createProblem.otherMatchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ ...compactButtonSx, alignSelf: 'flex-start' }}>
               View the match that has it
             </MuiButton>
           )}

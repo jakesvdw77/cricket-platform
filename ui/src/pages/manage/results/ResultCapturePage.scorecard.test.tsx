@@ -460,7 +460,8 @@ describe('Bowling and fielding step: fielding card and Standout headers', () => 
     }
     // Short labels for a phone, hidden from assistive technology: each stepper keeps its own accessible name.
     for (const label of ['Ct', 'St', 'RO']) expect(within(header).getByText(label)).toBeInTheDocument()
-    expect(within(header).getAllByText(/^(Catches|Stumpings|Run-outs|Ct|St|RO)$/).every((node) => node.closest('[aria-hidden="true"]') !== null)).toBe(true)
+    expect(within(header).getAllByText(/^(Ct|St|RO)$/).every((node) => node.closest('[aria-hidden="true"]') !== null)).toBe(true)
+    expect(within(header).getAllByText(/^(Catches|Stumpings|Run-outs)$/).every((node) => node.closest('[aria-hidden="true"]') === null)).toBe(true)
     expect(within(header).getByTestId('standout-header')).toBeInTheDocument()
   })
 

@@ -694,9 +694,9 @@ export function BowlingStep({
           >
             <Box />
             {FIELDING_FIELDS.map(({ field, label: title, short }) => (
-              <Typography key={field} component="span" aria-hidden title={title} sx={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Typography key={field} component="span" title={title} sx={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{title}</Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{short}</Box>
+                <Box component="span" aria-hidden sx={{ display: { xs: 'inline', sm: 'none' } }}>{short}</Box>
               </Typography>
             ))}
             <Typography component="span" sx={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Alert, Box, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { updateMatchDateTime } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
-import { getLeagueSeasonDates, leagueSeasonDatesKey } from '../../api/leagueSeasonDatesApi'
+import { useLeagueDatesHint } from '../../hooks/useLeagueDatesHint'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
-import { formatReferenceDate } from '../../utils/ageCutoff'
 import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { Button } from '../Button'
 import { DateTimeField } from '../DateTimeField'
+
+const TITLE_ID = 'match-date-time-title'
 
 export interface MatchDateTimeDialogProps {
   open: boolean
@@ -41,17 +42,7 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
     }
   }
 
-  const hasScope = Boolean(leagueId && seasonId)
-  const datesQuery = useQuery({
-    queryKey: leagueSeasonDatesKey(clubId, leagueId ?? '', seasonId ?? ''),
-    queryFn: () => getLeagueSeasonDates(clubId, leagueId ?? '', seasonId ?? ''),
-    enabled: open && hasScope,
-    retry: false,
-  })
-  const range = hasScope ? (datesQuery.data ?? null) : null
-  const day = value.slice(0, 10)
-  const outside = Boolean(range && day && (day < range.startDate || day > range.endDate))
-  const rangeMessage = outside && range ? `This league runs from ${formatReferenceDate(range.startDate)} to ${formatReferenceDate(range.endDate)}.` : undefined
+  const { range, outside, message: rangeMessage } = useLeagueDatesHint(clubId, leagueId, seasonId, value, open)
 
   const mutation = useMutation({
     mutationFn: () => updateMatchDateTime(clubId, matchId, fromDatetimeLocal(value)),
@@ -68,8 +59,8 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
 
   const message = rangeMessage ?? dateError ?? undefined
   return (
-    <Dialog open={open} onClose={mutation.isPending ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Edit date and time</DialogTitle>
+    <Dialog open={open} onClose={mutation.isPending ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby={TITLE_ID}>
+      <DialogTitle id={TITLE_ID}>Edit date and time</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <DateTimeField

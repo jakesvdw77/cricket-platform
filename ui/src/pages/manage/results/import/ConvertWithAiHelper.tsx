@@ -48,7 +48,7 @@ export function ConvertWithAiHelper({ prompt }: { prompt: string }) {
         Have a file in another format? Copy this prompt into your own AI chat with your scorecard attached, then paste the JSON it gives you in the Paste tab.
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Button variant="secondary" startIcon={<ContentCopyIcon />} onClick={() => void copy()} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+        <Button variant="secondary" size="compact" startIcon={<ContentCopyIcon />} onClick={() => void copy()}>
           Copy prompt
         </Button>
         <Typography variant="caption" color="text.secondary" role="status" aria-live="polite">

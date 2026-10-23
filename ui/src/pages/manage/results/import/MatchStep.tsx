@@ -1,4 +1,5 @@
 import { Box, Button as MuiButton, Chip, Typography } from '@mui/material'
+import { Button, compactButtonSx } from '../../../../components/Button'
 import { alpha } from '@mui/material/styles'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
@@ -152,9 +153,9 @@ export function MatchStep(context: ImportStepContext) {
               <Typography variant="body2" color="text.secondary">
                 Add the match here, then import the result onto it. What you gave is kept.
               </Typography>
-              <MuiButton onClick={() => setAdding(true)} variant="outlined" sx={{ minHeight: 44 }}>
+              <Button onClick={() => setAdding(true)} variant="secondary" size="compact">
                 Add match
-              </MuiButton>
+              </Button>
               <FindMatchSearch clubId={clubId} listedIds={[]} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} defaultOpen />
             </Box>
           ) : (
@@ -178,10 +179,11 @@ export function MatchStep(context: ImportStepContext) {
                       <MuiButton
                         color="error"
                         variant="text"
+                        size="small"
                         aria-label={`Delete match ${candidate.homeName} v ${candidate.awayName}`}
                         disabled={matchPending}
                         onClick={() => deleteFlow.request({ id: candidate.matchId, name: `${candidate.homeName} v ${candidate.awayName}` })}
-                        sx={{ minHeight: 44, minWidth: 44, px: 1, py: 0, fontSize: '0.8125rem', fontWeight: 600, textTransform: 'none' }}
+                        sx={compactButtonSx}
                       >
                         Delete
                       </MuiButton>
@@ -216,9 +218,9 @@ export function MatchStep(context: ImportStepContext) {
                   }
                 })}
               />
-              <MuiButton onClick={() => setAdding(true)} variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
+              <Button onClick={() => setAdding(true)} variant="ghost" size="compact" sx={{ alignSelf: 'flex-start', color: 'info.main' }}>
                 Match not listed? Add the match first
-              </MuiButton>
+              </Button>
               <FindMatchSearch clubId={clubId} listedIds={candidates.map((candidate) => candidate.matchId)} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} />
             </>
           )}
@@ -253,11 +255,12 @@ export function MatchStep(context: ImportStepContext) {
           </Typography>
           <MuiButton
             variant="text"
+            size="small"
             startIcon={<EditOutlinedIcon fontSize="small" />}
             aria-label="Edit date and time"
             onClick={() => setEditingDate(true)}
             disabled={matchPending}
-            sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}
+            sx={{ ...compactButtonSx, alignSelf: 'flex-start' }}
           >
             Edit date and time
           </MuiButton>

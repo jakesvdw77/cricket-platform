@@ -435,11 +435,14 @@ function CaptureWizard({
               variant="ghost"
               size="compact"
               startIcon={<EditOutlinedIcon fontSize="small" />}
-              aria-label="Edit date and time"
               onClick={() => setDateTimeOpen(true)}
               disabled={busy}
             >
               Edit
+              <Box component="span" sx={dateTimeLabelSx}>
+                {' '}
+                date and time
+              </Box>
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" aria-live="polite">
@@ -498,6 +501,15 @@ function CaptureWizard({
 
 // docs/specs/100-match-results-core.md: the capture wizard at /manage/results/:matchId/capture. Loads the match and any
 // stored draft, then hands them to CaptureWizard, which owns the one ResultDraft form state.
+// "Edit" on a phone with the rest of the name kept for assistive technology; the whole "Edit date and time" from md.
+const dateTimeLabelSx = {
+  position: { xs: 'absolute', md: 'static' },
+  width: { xs: 1, md: 'auto' },
+  height: { xs: 1, md: 'auto' },
+  overflow: { xs: 'hidden', md: 'visible' },
+  clip: { xs: 'rect(0 0 0 0)', md: 'auto' },
+} as const
+
 export default function ResultCapturePage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId: string }>()
