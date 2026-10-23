@@ -11,6 +11,7 @@ export const BACKDROP_COLOURS = {
   green900: '#0B3D26',
   green800: '#0F5132',
   green700: '#14633F',
+  ink: '#06241A',
   gold: '#E8B83D',
   sand: '#E2D5B0',
   cream: '#F7F3E8',

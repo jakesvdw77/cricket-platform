@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Box } from '@mui/material'
 import { Navigate, Outlet } from 'react-router-dom'
 import { activateSession } from '../../api/meApi'
+import { useMyPlayers } from '../../api/myPlayersApi'
 import { getManagedClubProfile } from '../../api/clubApi'
 import { ManagerShell } from '../../components/ManagerShell'
 import { EmptyState } from '../../components/EmptyState'
@@ -31,6 +32,9 @@ export default function ManagerHome() {
     queryFn: () => getManagedClubProfile(clubId as string),
     enabled: Boolean(clubId),
   })
+
+  // docs/specs/119 3C: a cheap check that never blocks the shell; a failure just hides the menu item.
+  const { data: myPlayers } = useMyPlayers(Boolean(data))
 
   // Wait for Keycloak init so there is no blank flash; an expired or ended session (or a manual
   // logout) lands here unauthenticated and goes to the landing page to log in again, rather than
@@ -63,6 +67,7 @@ export default function ManagerHome() {
       onLogout={() => keycloak.logout()}
       profileTo="/manage/profile"
       homeTo="/manage"
+      myPlayersTo={(myPlayers?.length ?? 0) > 0 ? '/account' : undefined}
     >
       <Outlet context={{ clubId }} />
     </ManagerShell>

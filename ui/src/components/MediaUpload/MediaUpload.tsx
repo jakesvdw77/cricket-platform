@@ -41,6 +41,8 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo', namesp
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A stored URL whose file is missing would show a broken image; fall back to the placeholder instead.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
   const dimensions = DIMENSIONS[variant]
   const upload = namespace === 'manage' ? uploadManagedMedia : uploadMedia
@@ -70,7 +72,7 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo', namesp
     }
   }
 
-  const showPreview = Boolean(value) && !uploading && !error
+  const showPreview = Boolean(value) && value !== failedUrl && !uploading && !error
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -102,6 +104,7 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo', namesp
             component="img"
             src={value ?? undefined}
             alt={`${label} preview`}
+            onError={() => setFailedUrl(value)}
             sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (

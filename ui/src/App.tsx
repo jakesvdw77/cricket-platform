@@ -8,6 +8,8 @@ import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import FindYourPlayersPage from './pages/view/FindYourPlayersPage'
+import MyPlayersPage from './pages/view/MyPlayersPage'
+import MyPlayerPage, { LegacyDetailsRedirect } from './pages/view/MyPlayerPage'
 import AccessPage from './pages/manage/access/AccessPage'
 import PlayerAccountsTab from './pages/manage/access/PlayerAccountsTab'
 import AdminHome from './pages/admin/AdminHome'
@@ -113,6 +115,11 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
             <Route path="/welcome" element={<FindYourPlayersPage />} />
+            <Route path="/account" element={<MyPlayersPage />} />
+            <Route path="/account/players/:key" element={<MyPlayerPage />} />
+            <Route path="/account/players/:key/details" element={<LegacyDetailsRedirect />} />
+            <Route path="/account/players/:key/:section" element={<MyPlayerPage />} />
+            <Route path="/account/players/:key/:section/:sub" element={<MyPlayerPage />} />
 
             {/* docs/specs/032-match-availability-polls.md: the poll's own public, no-login
                 response page — top-level and unguarded, outside both the /manage and /player

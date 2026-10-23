@@ -14,9 +14,11 @@ export interface AvatarMenuProps {
   // docs/specs/079: for a club-colour (tone="brand") header, where the default primary avatar would
   // vanish into its own background; renders a translucent contrast-text disc instead.
   onBrand?: boolean
+  // docs/specs/119 3C: additive item for a person who also has players (their own record or linked ones). Undefined renders nothing.
+  myPlayersTo?: string
 }
 
-export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBrand }: AvatarMenuProps) {
+export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBrand, myPlayersTo }: AvatarMenuProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
   const handleOpen = (event: MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
@@ -48,6 +50,11 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
         <MenuItem component={RouterLink} to={profileTo} onClick={handleClose}>
           Profile
         </MenuItem>
+        {myPlayersTo && (
+          <MenuItem component={RouterLink} to={myPlayersTo} onClick={handleClose}>
+            My players
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             handleClose()

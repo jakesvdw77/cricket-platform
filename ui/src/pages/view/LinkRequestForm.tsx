@@ -5,6 +5,7 @@ import { Alert, Box, MenuItem, Skeleton, Typography } from '@mui/material'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { useCreateLinkRequest, useMyClubs } from '../../api/meApi'
+import { HUB, darkFieldSx, darkMenuProps, hubGoldButton } from './myPlayers/hubStyle'
 
 export interface LinkRequestPrefill {
   firstName?: string
@@ -21,13 +22,15 @@ export interface LinkRequestFormProps {
   onSent: () => void
   // Shown (as a filled Back button) when the form was opened from somewhere to return to.
   onBack?: () => void
+  // The hub's dark field look (inside the console panel).
+  dark?: boolean
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
 // docs/specs/119 Part 3: "No player found" and "Ask the club to help". It always ends in the same confirmation whether
 // or not the club has such a player (the server answers identically), so the form never reveals who is on file.
-export function LinkRequestForm({ prefill, onSent, onBack }: LinkRequestFormProps) {
+export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkRequestFormProps) {
   const clubs = useMyClubs()
   const create = useCreateLinkRequest()
   const [firstName, setFirstName] = useState(prefill?.firstName ?? '')
@@ -69,7 +72,7 @@ export function LinkRequestForm({ prefill, onSent, onBack }: LinkRequestFormProp
 
   const tooMany = isAxiosError(create.error) && create.error.response?.status === 429
   return (
-    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...(dark ? darkFieldSx : {}) }}>
       <Input
         label="First name"
         value={firstName}
@@ -111,6 +114,7 @@ export function LinkRequestForm({ prefill, onSent, onBack }: LinkRequestFormProp
       ) : (
         <Input
           select
+          SelectProps={dark ? { MenuProps: darkMenuProps } : undefined}
           label="Club"
           value={clubId}
           onChange={(event) => setClubId(event.target.value)}
@@ -133,7 +137,7 @@ export function LinkRequestForm({ prefill, onSent, onBack }: LinkRequestFormProp
         inputProps={{ maxLength: 500 }}
         placeholder="Anything that helps the club, for example the team or coach"
       />
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color={dark ? undefined : 'text.secondary'} sx={dark ? { color: HUB.muted } : undefined}>
         The club checks every request before anyone is linked.
       </Typography>
       {create.isError && (
@@ -145,7 +149,7 @@ export function LinkRequestForm({ prefill, onSent, onBack }: LinkRequestFormProp
             Back
           </Button>
         )}
-        <Button type="submit" disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 } }}>
+        <Button type="submit" disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 }, ...(dark ? hubGoldButton : {}) }}>
           {create.isPending ? 'Sending…' : 'Send request'}
         </Button>
       </Box>

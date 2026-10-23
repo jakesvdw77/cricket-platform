@@ -19,6 +19,8 @@ export interface ManagerShellProps {
   logoUrl?: string | null
   // Count badge per nav item id (e.g. open polls); wired to data in a later slice.
   badges?: Record<string, number>
+  // Set when the manager also has players: adds "My players" to the profile menu (docs/specs/119 3C).
+  myPlayersTo?: string
   children: ReactNode
 }
 
@@ -26,7 +28,7 @@ export interface ManagerShellProps {
 // persistent side menu from md (icons-only rail from md to lg, full from lg), and on a phone a
 // bottom tab bar whose Menu button opens a sheet. Replaces GridNavShell (top bar only), which only
 // ManagerHome used. Only the layout that fits the viewport is rendered, so there is one nav landmark.
-export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl, badges, children }: ManagerShellProps) {
+export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl, badges, myPlayersTo, children }: ManagerShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const theme = useTheme()
   const showSide = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -43,6 +45,7 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
         homeTo={homeTo}
         notificationsTo="/manage/notifications"
         logoUrl={logoUrl}
+        myPlayersTo={myPlayersTo}
       />
 
       <Box sx={{ flex: 1, display: 'flex', minWidth: 0 }}>

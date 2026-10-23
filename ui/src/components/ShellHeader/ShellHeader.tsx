@@ -36,13 +36,15 @@ export interface ShellHeaderProps {
   // icon. Undefined renders no bell, so only the shell that passes it (the manager shell) has one.
   // For now it opens the sending page; receiving notifications is a later feature.
   notificationsTo?: string
+  // Passed to AvatarMenu: shows a "My players" item when set.
+  myPlayersTo?: string
 }
 
 // The header row (brand + AvatarMenu) shared by every post-login shell — see
 // docs/specs/006-post-login-home-shells.md. Pulled out once AppShell, ManagerShell, and
 // BottomTabShell all turned out to render the same row, differing only in what nav they wrap
 // it with (sidebar drawer, nothing, or a bottom tab bar).
-export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo }: ShellHeaderProps) {
+export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo, myPlayersTo }: ShellHeaderProps) {
   const hasLogoSlot = logoUrl !== undefined
   const onBrand = tone === 'brand'
 
@@ -101,7 +103,7 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
             </IconButton>
           </Tooltip>
         )}
-        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} />
+        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} myPlayersTo={myPlayersTo} />
       </Box>
     </Box>
   )
