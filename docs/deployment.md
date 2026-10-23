@@ -160,8 +160,8 @@ Version-specific wording is for Keycloak 24.0.3.
 
 | Setting (Admin console path) | Value | Why | Local | Staging | Production |
 |---|---|---|---|---|---|
-| Authentication, Required actions: **Verify Email** | **Enabled** (and set as default action if every new user must verify) | `email_verified` is what the backend trusts; every agent and invited manager verifies before login completes. **Owner is checking.** | [ ] | [ ] | [ ] |
-| Realm settings, Login: **Verify email** | **On** | the same requirement as a realm login setting. **Owner is checking.** | [ ] | [ ] | [ ] |
+| Authentication, Required actions: **Verify Email** | **Enabled** (default action stays off: the realm Verify email switch and the app invite cover it) | `email_verified` is what the backend trusts; every agent and invited manager verifies before login completes. **Owner is checking.** | [x] | [ ] | [ ] |
+| Realm settings, Login: **Verify email** | **On** | the same requirement as a realm login setting. Local confirmed on 2026-10-23: **On**. | [x] | [ ] | [ ] |
 | Identity providers, Google: **Trust Email** | **On**, and a Google login arrives with `email_verified: true` (slice 2). **Owner is checking.** | satisfies spec 119 Decision 3 for Google users | [ ] | [ ] | [ ] |
 | Realm settings, Themes: **Login theme** | `cricketlegend` | uses the theme | [ ] | [ ] | [ ] |
 | Realm settings, General: **Display name** | `Cricket Legend` | tab titles and emails; the theme's wordmark does not depend on it | [ ] | [ ] | [ ] |
@@ -170,7 +170,7 @@ Version-specific wording is for Keycloak 24.0.3.
 | Login: **Login with email** | On | "Username or email" | [ ] | [ ] | [ ] |
 | Login: **Email as username** | On | the registration page has no username field | [ ] | [ ] | [ ] |
 | Login: **Edit username** | Off | email is the identity | [ ] | [ ] | [ ] |
-| Login: **Duplicate emails** | **Off** | one Keycloak user per email; the foundation of bridge-by-email | [ ] | [ ] | [ ] |
+| Login: **Duplicate emails** | **Off** | one Keycloak user per email; the foundation of bridge-by-email | [x] | [ ] | [ ] |
 | Login: **User registration** | **Off in slices 1 and 2, On in slice 3** | shows "New here? Create an account" | [ ] | [ ] | [ ] |
 | Authentication, Policies, Password policy | at least 10 characters, with a number (`length(10) and digits(1)`) | the wording the registration page promises | [ ] | [ ] | [ ] |
 | Realm settings, Tokens: **Default user-initiated action lifespan** | the lifetime you want the reset link to have (default is 5 minutes, which is short for an email) | the reset and verify pages say how long the link works | [ ] | [ ] | [ ] |
