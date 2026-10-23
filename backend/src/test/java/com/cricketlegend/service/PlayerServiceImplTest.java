@@ -57,6 +57,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 class PlayerServiceImplTest {
 
     @Mock
+    private com.cricketlegend.service.support.PlayerGamesReader playerGamesReader;
+
+    @Mock
     private ClubRepository clubRepository;
 
     @Mock
@@ -96,6 +99,7 @@ class PlayerServiceImplTest {
                 playerSectionRepository,
                 teamSquadMemberRepository,
                 matchSidePlayerRepository,
+                playerGamesReader,
                 playerMapper,
                 accessService);
     }
@@ -678,20 +682,6 @@ class PlayerServiceImplTest {
         verify(matchSidePlayerRepository, never()).findDistinctSelectedPlayerProfileIds(any(), any());
     }
 
-    private com.cricketlegend.repository.PlayerGamesView games(UUID playerId, long games) {
-        return new com.cricketlegend.repository.PlayerGamesView() {
-            @Override
-            public UUID getPlayerProfileId() {
-                return playerId;
-            }
-
-            @Override
-            public long getGames() {
-                return games;
-            }
-        };
-    }
-
     @Test
     void listCarriesGamesThisSeasonAndOverallPerPlayerAndZeroForAPlayerWhoHasNotPlayed() {
         UUID clubId = UUID.randomUUID();
@@ -701,9 +691,8 @@ class PlayerServiceImplTest {
         stubClubRoster(clubId, regular, benched);
         when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
                 .stream().map(id -> person(id, id)).toList());
-        when(matchSidePlayerRepository.findGamesPlayed(eq(clubId), any())).thenReturn(List.of(games(regular.getId(), 48)));
-        when(matchSidePlayerRepository.findGamesPlayedInSeason(eq(clubId), eq(seasonId), any()))
-                .thenReturn(List.of(games(regular.getId(), 12)));
+        when(playerGamesReader.games(eq(clubId), eq(null), any())).thenReturn(java.util.Map.of(regular.getId(), 48L));
+        when(playerGamesReader.games(eq(clubId), eq(seasonId), any())).thenReturn(java.util.Map.of(regular.getId(), 12L));
 
         var players = playerService.list(authentication, clubId, null, false, true, null, seasonId);
 
@@ -721,13 +710,13 @@ class PlayerServiceImplTest {
         stubClubRoster(clubId, regular);
         when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
                 .stream().map(id -> person(id, id)).toList());
-        when(matchSidePlayerRepository.findGamesPlayed(eq(clubId), any())).thenReturn(List.of(games(regular.getId(), 7)));
+        when(playerGamesReader.games(eq(clubId), eq(null), any())).thenReturn(java.util.Map.of(regular.getId(), 7L));
 
         var players = playerService.list(authentication, clubId, null, false, true, null, null);
 
         assertThat(players.get(0).gamesThisSeason()).isZero();
         assertThat(players.get(0).gamesOverall()).isEqualTo(7);
-        verify(matchSidePlayerRepository, never()).findGamesPlayedInSeason(any(), any(), any());
+        verify(playerGamesReader, never()).games(any(), org.mockito.ArgumentMatchers.isNotNull(), any());
     }
 
     private void stubSingleProfile(PlayerProfile profile) {

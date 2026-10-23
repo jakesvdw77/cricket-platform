@@ -107,8 +107,8 @@ class PlayerCounterQueriesIntegrationTest {
                 .isEmpty();
     }
 
-    private Map<UUID, Long> asMap(java.util.List<PlayerGamesView> views) {
-        return views.stream().collect(Collectors.toMap(PlayerGamesView::getPlayerProfileId, PlayerGamesView::getGames));
+    private Map<UUID, Long> asMap(java.util.List<PlayerMatchView> views) {
+        return views.stream().collect(Collectors.groupingBy(PlayerMatchView::getPlayerProfileId, Collectors.counting()));
     }
 
     // docs/specs/088-players-polls-alignment.md: games played = distinct active matches that have started
@@ -138,13 +138,13 @@ class PlayerCounterQueriesIntegrationTest {
         fixtures.side(fixtures.match(other, other.seniors1(), null, now.minus(Duration.ofDays(3))), other.seniors1(), false, otherClub);
 
         // overall: first, second, in progress, other season; not the upcoming or the deactivated one
-        Map<UUID, Long> overall = asMap(matchSidePlayerRepository.findGamesPlayed(w.club().getId(), now));
+        Map<UUID, Long> overall = asMap(matchSidePlayerRepository.findSelectionsForStartedMatches(w.club().getId(), now));
         assertThat(overall).containsEntry(player.getId(), 4L).doesNotContainKeys(benched.getId(), otherClub.getId());
 
         // this season: the same without the other season's match
-        Map<UUID, Long> season = asMap(matchSidePlayerRepository.findGamesPlayedInSeason(w.club().getId(), w.season().getId(), now));
+        Map<UUID, Long> season = asMap(matchSidePlayerRepository.findSelectionsForStartedMatchesInSeason(w.club().getId(), w.season().getId(), now));
         assertThat(season).containsEntry(player.getId(), 3L).doesNotContainKeys(benched.getId(), otherClub.getId());
-        assertThat(asMap(matchSidePlayerRepository.findGamesPlayedInSeason(w.club().getId(), next.getId(), now)))
+        assertThat(asMap(matchSidePlayerRepository.findSelectionsForStartedMatchesInSeason(w.club().getId(), next.getId(), now)))
                 .containsEntry(player.getId(), 1L);
     }
 }

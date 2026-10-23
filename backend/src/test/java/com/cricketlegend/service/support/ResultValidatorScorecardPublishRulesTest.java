@@ -533,6 +533,40 @@ class ResultValidatorScorecardPublishRulesTest {
         assertThat(validate(x).issues()).extracting(ResultIssueDto::code).doesNotContain("LINEUP_TOO_LARGE");
     }
 
+    // docs/specs/118: the lineup-too-large rule is gone with its code
+    @Test
+    void theLineUpTooLargeWarningNoLongerExistsAndTheLineUpSizeConstantStays() {
+        assertThat(Stream.of(WarningCode.values()).map(Enum::name)).doesNotContain("LINEUP_TOO_LARGE");
+        assertThat(Stream.of(ErrorCode.values()).map(Enum::name)).doesNotContain("LINEUP_TOO_LARGE");
+        assertThat(ScorecardRules.LINEUP_SIZE).isEqualTo(11);
+    }
+
+    // docs/specs/118: only PLAYER_NOT_IN_SQUAD names a player; the field is an explicit null in the JSON otherwise
+    @Test
+    void onlyThePlayerNotInSquadIssueCarriesThePlayerAndEveryOtherIssueSerialisesAnExplicitNull() throws Exception {
+        ScorecardCard x = ScorecardCard.oursBat();
+        ResultPlayerDto outside = x.players.stream()
+                .filter(p -> p.side() == H && "b1".equals(p.clientKey())).findFirst().orElseThrow();
+        Set<UUID> squad = x.players.stream().filter(p -> p.side() == H && !"b1".equals(p.clientKey()))
+                .map(ResultPlayerDto::playerProfileId).collect(Collectors.toSet());
+        x.context(new ScorecardContext(null, Map.of(H, squad), Map.of(), Map.of(), Map.of()));
+
+        ResultValidationDto dto = validate(x);
+
+        assertThat(withCode(dto, WarningCode.PLAYER_NOT_IN_SQUAD))
+                .singleElement()
+                .satisfies(i -> assertThat(i.playerProfileId()).isEqualTo(outside.playerProfileId()));
+        assertThat(dto.issues())
+                .filteredOn(i -> !WarningCode.PLAYER_NOT_IN_SQUAD.name().equals(i.code()))
+                .allSatisfy(i -> assertThat(i.playerProfileId()).isNull());
+
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        ResultIssueDto other = new ResultIssueDto(
+                WarningCode.NOT_OUT_COUNT.name(), ResultWizardStep.BATTING, H, ResultIssueSeverity.WARNING, "m");
+        assertThat(mapper.readTree(mapper.writeValueAsString(other)).get("playerProfileId").isNull()).isTrue();
+        assertThat(mapper.writeValueAsString(other)).contains("\"playerProfileId\":null");
+    }
+
     @Test
     void aPlayerOutsideTheSquadIsWarnedAboutForOurSideOnlyAndOnlyWhereASquadIsKnown() {
         ScorecardCard x = ScorecardCard.oursBat();

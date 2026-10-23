@@ -2295,4 +2295,137 @@ class MatchServiceImplTest {
         assertThat(noRow.isActive()).isTrue();
         assertThat(friendly.isActive()).isTrue();
     }
+
+    // --- docs/specs/118: PATCH date-time changes only matchDate ---
+
+    private com.cricketlegend.dto.UpdateMatchDateTimeRequest dateTime(Instant when) {
+        return new com.cricketlegend.dto.UpdateMatchDateTimeRequest(when);
+    }
+
+    @Test
+    void updateDateTimeChangesOnlyTheMatchDateAndLeavesEveryOtherFieldAlone() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = existingMatch(matchId, clubId, true);
+        UUID awayLeagueTeam = UUID.randomUUID();
+        match.setHomeTeamName(null);
+        match.setAwayTeamName(null);
+        match.setAwayTeamId(null);
+        match.setAwayLeagueTeamId(awayLeagueTeam);
+        match.setHomeTeamLogoUrl("https://logo/home.png");
+        match.setAwayTeamLogoUrl("https://logo/away.png");
+        match.setLeagueId(ids[0]);
+        match.setSeasonId(ids[1]);
+        match.setVenue("Newlands");
+        match.setMatchDate(at(2026, 10, 1));
+        UUID homeTeamId = match.getHomeTeamId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        stubSave();
+
+        matchService.updateDateTime(authentication, clubId, matchId, dateTime(at(2026, 11, 7)));
+
+        ArgumentCaptor<Match> saved = ArgumentCaptor.forClass(Match.class);
+        verify(matchRepository).save(saved.capture());
+        Match after = saved.getValue();
+        assertThat(after.getMatchDate()).isEqualTo(at(2026, 11, 7));
+        assertThat(after.getHomeTeamId()).isEqualTo(homeTeamId);
+        assertThat(after.getAwayLeagueTeamId()).isEqualTo(awayLeagueTeam);
+        assertThat(after.getAwayTeamName()).isNull();
+        assertThat(after.getHomeTeamLogoUrl()).isEqualTo("https://logo/home.png");
+        assertThat(after.getAwayTeamLogoUrl()).isEqualTo("https://logo/away.png");
+        assertThat(after.getLeagueId()).isEqualTo(ids[0]);
+        assertThat(after.getSeasonId()).isEqualTo(ids[1]);
+        assertThat(after.getVenue()).isEqualTo("Newlands");
+        assertThat(after.isActive()).isTrue();
+        assertThat(after.getClubId()).isEqualTo(clubId);
+    }
+
+    @Test
+    void updateDateTimeOutsideTheLeagueSeasonDatesIsRefusedWithTheSameMessageAndNothingIsSaved() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = existingMatch(matchId, clubId, true);
+        match.setLeagueId(ids[0]);
+        match.setSeasonId(ids[1]);
+        match.setMatchDate(at(2026, 10, 1));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.updateDateTime(authentication, clubId, matchId, dateTime(at(2027, 8, 1))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+        assertThatThrownBy(() -> matchService.updateDateTime(authentication, clubId, matchId, dateTime(at(2026, 8, 31))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class);
+
+        assertThat(match.getMatchDate()).isEqualTo(at(2026, 10, 1));
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void updateDateTimeAcceptsTheBoundaryDaysAndAnyDateForAFriendlyOrALeagueWithNoDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        UUID boundaryId = UUID.randomUUID();
+        Match boundary = existingMatch(boundaryId, clubId, true);
+        boundary.setLeagueId(ids[0]);
+        boundary.setSeasonId(ids[1]);
+        when(matchRepository.findById(boundaryId)).thenReturn(Optional.of(boundary));
+        UUID friendlyId = UUID.randomUUID();
+        Match friendly = existingMatch(friendlyId, clubId, true);
+        when(matchRepository.findById(friendlyId)).thenReturn(Optional.of(friendly));
+        UUID[] undated = leagueSeasonFixture(clubId, false, false);
+        UUID undatedId = UUID.randomUUID();
+        Match noDates = existingMatch(undatedId, clubId, true);
+        noDates.setLeagueId(undated[0]);
+        noDates.setSeasonId(undated[1]);
+        when(matchRepository.findById(undatedId)).thenReturn(Optional.of(noDates));
+        stubSave();
+
+        matchService.updateDateTime(authentication, clubId, boundaryId, dateTime(at(2026, 9, 1)));
+        matchService.updateDateTime(authentication, clubId, boundaryId, dateTime(at(2027, 7, 31)));
+        matchService.updateDateTime(authentication, clubId, friendlyId, dateTime(at(2020, 1, 1)));
+        matchService.updateDateTime(authentication, clubId, undatedId, dateTime(at(2040, 1, 1)));
+
+        assertThat(boundary.getMatchDate()).isEqualTo(at(2027, 7, 31));
+        assertThat(friendly.getMatchDate()).isEqualTo(at(2020, 1, 1));
+        assertThat(noDates.getMatchDate()).isEqualTo(at(2040, 1, 1));
+    }
+
+    @Test
+    void updateDateTimeUsesTheSameAccessRuleAsEditAndChangesNothingWhenDenied() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        Instant before = existing.getMatchDate();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        java.util.Set<UUID> resolvedSections = java.util.Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, existing.getHomeTeamId(), existing.getAwayTeamId()))
+                .thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> matchService.updateDateTime(authentication, clubId, matchId, dateTime(at(2030, 1, 1))))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+
+        assertThat(existing.getMatchDate()).isEqualTo(before);
+        verify(matchRepository, never()).save(any());
+        verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
+    }
+
+    @Test
+    void updateDateTimeOfAnotherClubsOrUnknownMatchIsNotFound() {
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId))
+                .thenReturn(Optional.of(existingMatch(matchId, UUID.randomUUID(), true)));
+
+        assertThatThrownBy(() -> matchService.updateDateTime(
+                        authentication, UUID.randomUUID(), matchId, dateTime(at(2030, 1, 1))))
+                .isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> matchService.updateDateTime(
+                        authentication, UUID.randomUUID(), UUID.randomUUID(), dateTime(at(2030, 1, 1))))
+                .isInstanceOf(NotFoundException.class);
+        verify(matchRepository, never()).save(any());
+    }
 }
