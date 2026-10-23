@@ -208,11 +208,6 @@ describe('Player Overview tab', () => {
       expect(screen.queryByTestId('dashboard-card-runs-per-innings')).not.toBeInTheDocument()
       expect(screen.getByTestId('tile-runs')).toBeInTheDocument()
     })
-
-    it('shows the closing note that ball-by-ball charts are not available', async () => {
-      renderPage(BASE)
-      expect(await screen.findByText(/Ball-by-ball and partnership charts are not available/, {}, wait)).toBeInTheDocument()
-    })
   })
 
   describe('the table alternative reads the same figures as the tiles', () => {

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { DashboardCard, DashboardSkeleton } from '../../../../components/DashboardCard'
 import { CollapsibleSection } from '../../../../components/CollapsibleSection'
 import type { PlayerStats } from '../../../../api/playerStatsApi'
@@ -80,7 +80,6 @@ export function PlayerDashboardTab({ stats, dashboard, backTo }: PlayerDashboard
       ) : (
         GROUPS.map((group) => <DashboardGroup key={group.key} group={group} dashboard={dashboard} backTo={backTo} />)
       )}
-      <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>Ball-by-ball and partnership charts are not available: that data is not captured yet.</Typography>
     </Box>
   )
 }
