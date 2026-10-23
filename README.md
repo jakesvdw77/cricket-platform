@@ -7,10 +7,10 @@ See `CLAUDE.md` for the full governance model, and `docs/specs/` for the archite
 ## Local development
 
 ```bash
-# Backend — port 8082, expects Postgres on localhost:5432 (db cricketlegend_platform)
+# Backend — port 9082, expects Postgres on localhost:5432 (db cricketlegend_platform)
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
-# Frontend — Vite on :5173, proxies /api to :8082
+# Frontend — Vite on :5173, proxies /api to :9082
 cd ui && npm install && npm run dev
 ```
 

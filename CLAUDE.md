@@ -65,8 +65,8 @@ project-root/
 
 ## Local development
 
-- **Backend**: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` — runs on port `8082` (the legacy app uses `8081`, deliberately different so both can run at once). Expects Postgres on `localhost:5432` (db `cricketlegend_platform`, same Docker instance as the legacy app — `docker exec <postgres-container> psql -U cricket -d postgres -c "CREATE DATABASE cricketlegend_platform OWNER cricket;"` to create it, credentials match the legacy app's) and, once Part 3 of the spec is implemented, Keycloak on `auth.localhost:8180`.
-- **Frontend**: `cd ui && npm run dev` — Vite on port 5173, proxies `/api` to `http://localhost:8082`. Requires Node ≥20 (this repo's `package.json` was scaffolded and verified against Node 22.11).
+- **Backend**: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` — runs on port `9082` (the legacy app uses `8081`, deliberately different so both can run at once). Expects Postgres on `localhost:5432` (db `cricketlegend_platform`, same Docker instance as the legacy app — `docker exec <postgres-container> psql -U cricket -d postgres -c "CREATE DATABASE cricketlegend_platform OWNER cricket;"` to create it, credentials match the legacy app's) and, once Part 3 of the spec is implemented, Keycloak on `auth.localhost:8180`.
+- **Frontend**: `cd ui && npm run dev` — Vite on port 5173, proxies `/api` to `http://localhost:9082`. Requires Node ≥20 (this repo's `package.json` was scaffolded and verified against Node 22.11).
 - **Subdomain testing**: `*.localhost` resolves to `127.0.0.1` in every modern browser — no `/etc/hosts` editing needed, e.g. `riverside.localhost:5173`.
 
 ## Commit convention

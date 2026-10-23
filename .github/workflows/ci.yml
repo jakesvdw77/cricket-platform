@@ -79,9 +79,9 @@ jobs:
         working-directory: backend
         run: |
           nohup ./mvnw -B spring-boot:run -Dspring-boot.run.profiles=dev > backend.log 2>&1 &
-          echo "Waiting for backend on :8082..."
+          echo "Waiting for backend on :9082..."
           for i in $(seq 1 60); do
-            if curl -sf "http://localhost:8082/api/v1/public/clubs?query=a" > /dev/null; then
+            if curl -sf "http://localhost:9082/api/v1/public/clubs?query=a" > /dev/null; then
               echo "Backend is up."
               exit 0
             fi

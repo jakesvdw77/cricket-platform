@@ -35,7 +35,7 @@ import { addFieldInline } from './helpers/addFieldInline';
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-teams.spec.ts / manager-players.spec.ts:
- *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 8082)
+ *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 9082)
  *   - frontend: `cd ui && npm run dev` (port 5173)
  *   - Keycloak: `auth.localhost:8180`, realm `cricketlegend`, client `cricketlegend`
  *     (docs/specs/005-admin-login.md's Implementation-time addendum)
