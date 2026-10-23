@@ -13,6 +13,7 @@ import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
 import { HubProfile } from './myPlayers/HubProfile'
 import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
 import { HUB, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
+import { creamAlpha, blackAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 3C: the player hub (/account/players/:key/:section). A console style menu (right-aligned condensed bars,
 // gold when selected) beside a player card and the chosen section. Schedule and Stats are selectable but locked until the
@@ -52,7 +53,7 @@ const barSx = {
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
   color: HUB.cream,
-  bgcolor: 'rgba(0,0,0,.22)',
+  bgcolor: blackAlpha(.22),
   borderTop: `1px solid ${HUB.line}`,
   px: { xs: 2.25, md: 2.75 },
   py: { xs: 1.75, md: 2.5 },
@@ -140,7 +141,7 @@ export default function MyPlayerPage() {
         <Typography component="h2" sx={hubHeading}>
           {LABEL[section]}
         </Typography>
-        <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.75, color: HUB.muted, bgcolor: 'rgba(0,0,0,.22)' }}>
+        <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.75, color: HUB.muted, bgcolor: blackAlpha(.22) }}>
           <Box component="b" sx={{ display: 'block', color: HUB.cream, fontFamily: HUB.display, fontSize: 24, letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, mb: 0.5 }}>
             Coming soon
           </Box>
@@ -186,7 +187,7 @@ export default function MyPlayerPage() {
       <Box
         component="nav"
         aria-label="Player sections"
-        sx={{ borderRight: `1px solid ${HUB.line}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: 'linear-gradient(180deg, transparent, rgba(0,0,0,.18))' }}
+        sx={{ borderRight: `1px solid ${HUB.line}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})` }}
       >
         {bars}
       </Box>
@@ -203,7 +204,7 @@ export default function MyPlayerPage() {
   return (
     <HubFrame title={subView && sub ? SUBS[sub] : 'My Player'} phoneTitle="hidden" menu={menu} footer={footer} testId="my-player-page">
       {playerQuery.isError && <Alert severity="error">We could not load this player. Please try again.</Alert>}
-      {!player && !playerQuery.isError && <Skeleton variant="rounded" height={112} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />}
+      {!player && !playerQuery.isError && <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(.12) }} />}
       {phoneSection && player && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44 }}>
           <ButtonBase
@@ -224,7 +225,7 @@ export default function MyPlayerPage() {
           <Avatar
             src={player.photoUrl ?? undefined}
             alt=""
-            sx={{ width: { xs: 60, md: 112 }, height: { xs: 60, md: 112 }, border: `3px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 24, md: 44 }, letterSpacing: '.04em', color: HUB.ink, background: `radial-gradient(circle at 30% 25%, #f4d676, ${HUB.gold})` }}
+            sx={{ width: { xs: 60, md: 112 }, height: { xs: 60, md: 112 }, border: `3px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 24, md: 44 }, letterSpacing: '.04em', color: HUB.ink, background: GOLD_DISC_GRADIENT }}
           >
             {`${player.firstName[0] ?? ''}${player.lastName[0] ?? ''}`.toUpperCase()}
           </Avatar>
@@ -237,7 +238,7 @@ export default function MyPlayerPage() {
             </Typography>
           </Box>
           {player.jerseyNumber !== null && (
-            <Box sx={{ ml: { md: 'auto' }, textAlign: 'center', fontFamily: HUB.display, fontWeight: 700, border: `1px solid ${HUB.line}`, borderRadius: '4px', px: 2.25, pt: 0.75, pb: 0.5, bgcolor: 'rgba(0,0,0,.25)' }}>
+            <Box sx={{ ml: { md: 'auto' }, textAlign: 'center', fontFamily: HUB.display, fontWeight: 700, border: `1px solid ${HUB.line}`, borderRadius: '4px', px: 2.25, pt: 0.75, pb: 0.5, bgcolor: blackAlpha(.25) }}>
               <Box component="small" sx={{ display: 'block', fontSize: 12, letterSpacing: '.14em', color: HUB.muted, fontWeight: 500 }}>
                 JERSEY
               </Box>

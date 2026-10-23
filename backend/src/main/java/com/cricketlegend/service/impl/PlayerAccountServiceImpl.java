@@ -20,11 +20,13 @@ import com.cricketlegend.service.PlayerAccountService;
 import com.cricketlegend.service.support.LinkInvitations;
 import com.cricketlegend.service.support.PlayerSectionNames;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -109,7 +112,7 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
         Page<PlayerProfile> profiles = playerProfileRepository.searchForAccounts(
                 clubId, restrict, sectionIds, noMainAgent, pattern, PageRequest.of(page, size));
         if (profiles.isEmpty()) {
-            return profiles.map(p -> null);
+            return new PageImpl<>(List.of(), profiles.getPageable(), profiles.getTotalElements());
         }
         Set<UUID> personIds = profiles.stream().map(PlayerProfile::getPersonId).collect(Collectors.toSet());
         Map<UUID, Person> persons = personRepository.findAllById(personIds).stream()
@@ -147,7 +150,7 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
         Set<UUID> sections = new HashSet<>(playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of()));
         accessService.assertCanAdministerAnySection(authentication, clubId, sections);
 
-        List<PersonLink> links = new java.util.ArrayList<>(
+        List<PersonLink> links = new ArrayList<>(
                 personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), clubId));
         links.addAll(personLinkRepository.findOpenInvitationsBySubjectAndClub(profile.getPersonId(), clubId, Instant.now()));
         Map<UUID, Person> agents = agentsOf(links);
@@ -251,7 +254,7 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
     private Map<UUID, Person> agentsOf(List<PersonLink> links) {
         Set<UUID> ids = links.stream()
                 .map(PersonLink::getAccountPersonId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, Person> result = new HashMap<>();
         personRepository.findAllById(ids).forEach(p -> result.put(p.getId(), p));

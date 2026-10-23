@@ -8,6 +8,8 @@ import { ProfileSwitcher } from '../../components/ProfileSwitcher'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
+import { creamAlpha, DARK_MENU_BG } from '../../brandTokens'
+import { forgetProfileChoices } from '../../utils/activeProfile'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
 // and My players. The cricket backdrop, a slim header with Sign out and one white card column.
@@ -21,7 +23,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
   const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
-  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: 'rgba(247,243,232,0.12)' } }
+  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12) } }
   return (
     <PageBackdrop>
       <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
@@ -34,13 +36,13 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
         {phone ? (
           <>
             <IconButton aria-label="Account menu" onClick={(event) => setAnchor(event.currentTarget)} sx={{ p: 0.5 }}>
-              <Avatar sx={{ width: 32, height: 32, fontSize: 13, fontWeight: 700, bgcolor: 'rgba(247,243,232,0.2)', color: BACKDROP_COLOURS.cream }}>{initials}</Avatar>
+              <Avatar sx={{ width: 32, height: 32, fontSize: 13, fontWeight: 700, bgcolor: creamAlpha(0.2), color: BACKDROP_COLOURS.cream }}>{initials}</Avatar>
             </IconButton>
             <Menu
               anchorEl={anchor}
               open={Boolean(anchor)}
               onClose={() => setAnchor(null)}
-              PaperProps={{ sx: { bgcolor: '#0a3322', color: BACKDROP_COLOURS.cream, border: '1px solid rgba(247,243,232,0.28)' } }}
+              PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
             >
               {backTo && (
                 <MenuItem
@@ -65,6 +67,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
               <MenuItem
                 onClick={() => {
                   setAnchor(null)
+                  forgetProfileChoices()
                   keycloak.logout()
                 }}
               >
@@ -84,7 +87,10 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
               Switch profile
             </Button>
           )}
-          <Button variant="outlined" size="small" sx={outline} onClick={() => keycloak.logout()}>
+          <Button variant="outlined" size="small" sx={outline} onClick={() => {
+            forgetProfileChoices()
+            keycloak.logout()
+          }}>
             Sign out
           </Button>
         </Box>

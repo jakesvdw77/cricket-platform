@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Profile } from '../api/meApi'
-import { activeProfileKey, getRememberedProfileKey, openProfile, profileKey, resolveManagerClubId, setRememberedProfileKey } from './activeProfile'
+import { activeProfileKey, forgetProfileChoices, getRememberedProfileKey, openProfile, profileKey, resolveManagerClubId, setRememberedProfileKey } from './activeProfile'
 
 // docs/specs/119 slice 4 (Decisions 7, 25, 29). The test address is localhost, the root domain, so there is no club slug here;
 // the club-address cases are in activeProfile.subdomain.test.ts.
@@ -13,6 +13,19 @@ describe('profileKey', () => {
   it('is the kind plus the club id, blank for a profile with no club', () => {
     expect(profileKey({ kind: 'MY_PLAYERS' })).toBe('MY_PLAYERS:')
     expect(profileKey({ kind: 'MANAGER', clubId: 'c1' })).toBe('MANAGER:c1')
+  })
+})
+
+describe('forgetProfileChoices (sign out)', () => {
+  it('clears the remembered profile and the last manager club', () => {
+    openProfile(manager('c1'), () => undefined, true)
+    expect(getRememberedProfileKey()).toBe('MANAGER:c1')
+    expect(localStorage.getItem('profile:activeClub')).toBe('c1')
+
+    forgetProfileChoices()
+
+    expect(getRememberedProfileKey()).toBeNull()
+    expect(localStorage.getItem('profile:activeClub')).toBeNull()
   })
 })
 

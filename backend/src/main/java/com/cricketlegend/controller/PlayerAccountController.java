@@ -61,7 +61,7 @@ public class PlayerAccountController {
             @PathVariable UUID clubId,
             @PathVariable UUID playerId,
             @PathVariable UUID linkId,
-            @RequestParam(defaultValue = "false") boolean confirm) {
+            @RequestParam boolean confirm) {
         playerAccountService.revokeLink(authentication, clubId, playerId, linkId, confirm);
         return ResponseEntity.noContent().build();
     }
@@ -73,7 +73,7 @@ public class PlayerAccountController {
             @PathVariable UUID clubId,
             @PathVariable UUID playerId,
             @PathVariable UUID linkId,
-            @RequestBody ConfirmActionRequest request) {
+            @Valid @RequestBody ConfirmActionRequest request) {
         playerAccountService.makeMain(authentication, clubId, playerId, linkId, request.confirm());
         return ResponseEntity.noContent().build();
     }

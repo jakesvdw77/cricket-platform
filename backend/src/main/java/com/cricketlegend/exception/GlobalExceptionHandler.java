@@ -5,6 +5,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -151,6 +152,13 @@ public class GlobalExceptionHandler {
             problem.setProperty("supported", unsupported.getSupported());
         }
         return problem;
+    }
+
+    /** A required query parameter that is missing (for example {@code confirm}) is the same 400 problem body. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ProblemDetail handleMissingParameter(MissingServletRequestParameterException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, ex.getParameterName() + ": is required");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

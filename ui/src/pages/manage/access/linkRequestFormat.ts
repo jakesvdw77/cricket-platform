@@ -3,7 +3,7 @@ import { formatDateOfBirth } from '../../../utils/playerFormat'
 // docs/specs/119 Part 3: wording helpers for the link request cards.
 export function waitingText(createdAt: string, now: Date = new Date()): string {
   const created = new Date(createdAt)
-  if (Number.isNaN(created.getTime())) return '–'
+  if (Number.isNaN(created.getTime())) return 'Not recorded'
   const minutes = Math.max(0, Math.floor((now.getTime() - created.getTime()) / 60000))
   if (minutes < 60) return 'Less than an hour'
   const hours = Math.floor(minutes / 60)

@@ -59,8 +59,7 @@ public class LinkAttemptLimiter {
 
     private void countDaily(UUID accountPersonId, LinkAttemptKind kind, int limit) {
         Instant now = Instant.now();
-        LinkAttempt attempt = repository.findByAccountPersonIdAndKind(accountPersonId, kind)
-                .orElseGet(() -> fresh(accountPersonId, kind, now));
+        LinkAttempt attempt = lockedRow(accountPersonId, kind, now);
         if (!attempt.getWindowStartedAt().plus(REQUEST_WINDOW).isAfter(now)) {
             attempt.setCount(0);
             attempt.setWindowStartedAt(now);
@@ -76,8 +75,7 @@ public class LinkAttemptLimiter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailedConfirm(UUID accountPersonId) {
         Instant now = Instant.now();
-        LinkAttempt attempt = repository.findByAccountPersonIdAndKind(accountPersonId, LinkAttemptKind.CONFIRM)
-                .orElseGet(() -> fresh(accountPersonId, LinkAttemptKind.CONFIRM, now));
+        LinkAttempt attempt = lockedRow(accountPersonId, LinkAttemptKind.CONFIRM, now);
         if (!attempt.getWindowStartedAt().plus(CONFIRM_WINDOW).isAfter(now)) {
             attempt.setCount(0);
             attempt.setWindowStartedAt(now);
@@ -90,13 +88,14 @@ public class LinkAttemptLimiter {
         repository.save(attempt);
     }
 
-    private static LinkAttempt fresh(UUID accountPersonId, LinkAttemptKind kind, Instant now) {
-        return LinkAttempt.builder()
-                .accountPersonId(accountPersonId)
-                .kind(kind)
-                .count(0)
-                .windowStartedAt(now)
-                .build();
+    /**
+     * The counter row, created when missing (an insert that ignores a concurrent insert of the same key, so two first
+     * requests never hit the unique index) and locked until the transaction ends, so concurrent counters take turns.
+     */
+    private LinkAttempt lockedRow(UUID accountPersonId, LinkAttemptKind kind, Instant now) {
+        repository.insertIfAbsent(accountPersonId, kind.name(), now);
+        return repository.findForUpdate(accountPersonId, kind)
+                .orElseThrow(() -> new IllegalStateException("link_attempt row missing after insert"));
     }
 
     private static long secondsUntil(Instant end, Instant now) {

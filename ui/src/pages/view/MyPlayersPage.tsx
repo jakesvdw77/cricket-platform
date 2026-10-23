@@ -9,6 +9,7 @@ import { MyLinkRequests } from './MyLinkRequests'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
 import { useClubHome } from './myPlayers/useClubHome'
+import { creamAlpha, blackAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 3C: /account is the picker, in the same dark console as the player hub. One tile per player (own record
 // first); choosing one opens that player's hub. A person with exactly one player skips the picker.
@@ -36,15 +37,15 @@ export default function MyPlayersPage() {
   if (players.isLoading) {
     body = (
       <Box aria-busy="true" aria-label="Loading your players" sx={grid}>
-        <Skeleton variant="rounded" height={104} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
-        <Skeleton variant="rounded" height={104} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
+        <Skeleton variant="rounded" height={104} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={104} sx={{ bgcolor: creamAlpha(.12) }} />
       </Box>
     )
   } else if (players.isError) {
     body = <Alert severity="error">Something went wrong loading your players. Please try again later.</Alert>
   } else if (list.length === 0) {
     body = (
-      <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.75, bgcolor: 'rgba(0,0,0,.22)', color: HUB.muted }}>
+      <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.75, bgcolor: blackAlpha(.22), color: HUB.muted }}>
         <Box component="b" sx={{ display: 'block', color: HUB.cream, fontFamily: HUB.display, fontSize: 24, letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, mb: 0.5 }}>
           No players yet
         </Box>
@@ -68,7 +69,7 @@ export default function MyPlayersPage() {
                 gap: 2,
                 p: 2,
                 textAlign: 'left',
-                bgcolor: 'rgba(0,0,0,.30)',
+                bgcolor: blackAlpha(.30),
                 border: 1,
                 borderColor: HUB.line,
                 borderRadius: '4px',
@@ -81,7 +82,7 @@ export default function MyPlayersPage() {
               <Avatar
                 src={p.photoUrl ?? undefined}
                 alt=""
-                sx={{ width: 72, height: 72, border: `2px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: 28, color: HUB.ink, background: `radial-gradient(circle at 30% 25%, #f4d676, ${HUB.gold})` }}
+                sx={{ width: 72, height: 72, border: `2px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: 28, color: HUB.ink, background: GOLD_DISC_GRADIENT }}
               >
                 {`${p.firstName[0] ?? ''}${p.lastName[0] ?? ''}`.toUpperCase()}
               </Avatar>

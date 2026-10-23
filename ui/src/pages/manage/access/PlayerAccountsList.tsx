@@ -93,7 +93,7 @@ export function PlayerAccountsList({ clubId }: { clubId: string }) {
                   badge={account.mainAgentName ? undefined : { label: 'No main agent', tone: 'warning' }}
                   description={account.sectionName ?? 'No section'}
                   fields={[
-                    { label: 'Main agent', value: account.mainAgentName ? `${account.mainAgentName}${account.mainAgentMaskedEmail ? ` (${account.mainAgentMaskedEmail})` : ''}` : '–' },
+                    { label: 'Main agent', value: account.mainAgentName ? `${account.mainAgentName}${account.mainAgentMaskedEmail ? ` (${account.mainAgentMaskedEmail})` : ''}` : 'Not recorded' },
                     { label: 'Other agents', value: String(account.otherAgentCount) },
                   ]}
                   footerActions={

@@ -135,6 +135,8 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         }
         LinkRequest request = requireDecidable(authentication, clubId, requestId);
         UUID actorId = accessService.resolveCurrentPersonId(authentication);
+        Instant now = Instant.now();
+        claim(request, LinkRequestStatus.APPROVED, now, actorId, null);
 
         UUID subjectPersonId = body.playerId() != null
                 ? existingPlayerPerson(authentication, clubId, body.playerId())
@@ -144,7 +146,6 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
             throw new ValidationException("The requester's own player record cannot be linked to themselves.");
         }
 
-        Instant now = Instant.now();
         boolean main = grantLink(requesterId, subjectPersonId, clubId, body.mainAgentMode(), actorId, now);
 
         request.setStatus(LinkRequestStatus.APPROVED);
@@ -164,15 +165,28 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         LinkRequest request = requireDecidable(authentication, clubId, requestId);
         UUID actorId = accessService.resolveCurrentPersonId(authentication);
         String note = body == null || body.note() == null || body.note().isBlank() ? null : body.note().trim();
+        Instant now = Instant.now();
+        claim(request, LinkRequestStatus.DECLINED, now, actorId, note);
 
         request.setStatus(LinkRequestStatus.DECLINED);
         request.setDecidedByPersonId(actorId);
-        request.setDecidedAt(Instant.now());
+        request.setDecidedAt(now);
         request.setDecisionNote(note);
         linkRequestRepository.save(request);
         log.info("Link request decided: actor={} request={} account={} club={} outcome=DECLINED withNote={}",
                 actor(authentication, actorId), request.getId(), request.getAccountPersonId(), clubId, note != null);
         outcomeEmailService.sendAfterCommit(request.getId());
+    }
+
+    /**
+     * The atomic step that makes a decision happen once: the conditional update on {@code status = PENDING}. The loser of a
+     * double decision (two managers, a double click) gets 409 here, before any link or player is written and before any
+     * email is requested, and its transaction rolls back.
+     */
+    private void claim(LinkRequest request, LinkRequestStatus outcome, Instant now, UUID actorId, String note) {
+        if (linkRequestRepository.claim(request.getId(), outcome, now, actorId, note) != 1) {
+            throw new InvalidStatusTransitionException("This request has already been decided or cancelled.");
+        }
     }
 
     /** The PENDING request of this club the caller may decide: 404 if unknown, 409 if decided, 403 if outside their sections. */

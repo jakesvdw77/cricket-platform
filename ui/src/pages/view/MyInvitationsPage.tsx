@@ -7,6 +7,7 @@ import type { MyInvitation } from '../../api/meApi'
 import { formatDateTime } from '../../utils/publicAvailabilityFormat'
 import { HubBackButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubGoldButton, hubOutlineButton } from './myPlayers/hubStyle'
+import { creamAlpha, blackAlpha } from '../../brandTokens'
 
 // docs/specs/119 slice 4: invitations to manage a player, in the dark console. Accepting an invitation that makes you the
 // main agent asks for a confirm first, inside the tile (nothing opens over the console).
@@ -71,10 +72,10 @@ export default function MyInvitationsPage() {
   return (
     <HubFrame title="Invitations" maxWidth={720} testId="my-invitations-page">
       <HubBackButton onClick={() => navigate('/account')}>Back to players</HubBackButton>
-      {invitations.isLoading && <Skeleton variant="rounded" height={120} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />}
+      {invitations.isLoading && <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(.12) }} />}
       {invitations.isError && <Alert severity="error">We could not load your invitations. Please try again later.</Alert>}
       {invitations.data && list.length === 0 && (
-        <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.5, bgcolor: 'rgba(0,0,0,.22)', color: HUB.muted }}>No invitations waiting.</Box>
+        <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.5, bgcolor: blackAlpha(.22), color: HUB.muted }}>No invitations waiting.</Box>
       )}
       <Box sx={{ display: 'grid', gap: 1.5 }}>
         {list.map((invitation) => (

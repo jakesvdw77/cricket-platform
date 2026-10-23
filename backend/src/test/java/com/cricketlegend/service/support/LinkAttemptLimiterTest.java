@@ -41,7 +41,17 @@ class LinkAttemptLimiterTest {
     void setUp() {
         limiter = new LinkAttemptLimiter(repository);
         stored = null;
-        when(repository.findByAccountPersonIdAndKind(any(), any())).thenAnswer(i -> Optional.ofNullable(stored));
+        org.mockito.Mockito.lenient().when(repository.findByAccountPersonIdAndKind(any(), any())).thenAnswer(i -> Optional.ofNullable(stored));
+        // the counting methods create the row with an insert that ignores a concurrent insert, then lock and read it
+        org.mockito.Mockito.lenient().when(repository.insertIfAbsent(any(), any(), any())).thenAnswer(i -> {
+            if (stored == null) {
+                stored = LinkAttempt.builder().accountPersonId(i.getArgument(0))
+                        .kind(LinkAttemptKind.valueOf(i.getArgument(1))).count(0).windowStartedAt(i.getArgument(2)).build();
+                return 1;
+            }
+            return 0;
+        });
+        org.mockito.Mockito.lenient().when(repository.findForUpdate(any(), any())).thenAnswer(i -> Optional.ofNullable(stored));
         org.mockito.Mockito.lenient().when(repository.save(any(LinkAttempt.class))).thenAnswer(i -> {
             stored = i.getArgument(0);
             return stored;

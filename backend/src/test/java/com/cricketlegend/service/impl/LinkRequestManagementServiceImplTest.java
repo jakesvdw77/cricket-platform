@@ -104,6 +104,7 @@ class LinkRequestManagementServiceImplTest {
         when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.empty());
         when(linkRequestRepository.findByIdAndClubId(request.getId(), clubId)).thenReturn(Optional.of(request));
         when(linkRequestRepository.findByClubIdAndStatusOrderByCreatedAtAsc(any(), any())).thenReturn(List.of(request));
+        when(linkRequestRepository.claim(any(), any(), any(), any(), any())).thenReturn(1);
         when(playerSectionNames.sectionIds(any())).thenReturn(Map.of());
         when(suggester.suggest(any(), any(), any())).thenReturn(Map.of());
         when(personLinkRepository.findActiveBySubjectAndClub(any(), any())).thenReturn(List.of());
@@ -330,6 +331,21 @@ class LinkRequestManagementServiceImplTest {
         InOrder order = inOrder(linkRequestRepository, outcomeEmailService);
         order.verify(linkRequestRepository).save(request);
         order.verify(outcomeEmailService).sendAfterCommit(request.getId());
+    }
+
+    @Test
+    void theLoserOfADoubleDecisionGetsA409AndNoLinkNoSaveAndNoEmail() {
+        Person kid = person("Sam", "Smith");
+        PlayerProfile profile = existingPlayer(kid);
+        when(linkRequestRepository.claim(any(), any(), any(), any(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.approve(auth, clubId, request.getId(), approveExisting(profile, MainAgentMode.ADD, true)))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+        assertThatThrownBy(() -> service.decline(auth, clubId, request.getId(), new DeclineLinkRequestRequest("no")))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+
+        verify(linkRequestRepository, never()).save(any());
+        verifyNoInteractions(personLinkRepository, outcomeEmailService, playerService);
     }
 
     // ---- decline ----

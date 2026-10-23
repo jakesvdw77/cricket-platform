@@ -4,6 +4,7 @@ import type { MatchSide } from '../api/matchSideApi'
 import type { Team } from '../api/teamApi'
 import type { Player } from '../api/playerApi'
 import type { SquadMember } from '../api/teamSquadApi'
+import { PLATFORM_PRIMARY_RGB } from '../brandTokens'
 
 // docs/specs/030-team-sheet-communication.md — the single home for all jsPDF usage in this
 // feature (per the spec's Rollout Notes), ported from the legacy Cricket Legend app's
@@ -11,7 +12,7 @@ import type { SquadMember } from '../api/teamSquadApi'
 // MatchSide/Team/Player shapes rather than legacy's own types. Colours below are this theme's own
 // tokens (ui/src/theme.ts) converted to RGB tuples, not legacy's hard-coded palette.
 const DARK: [number, number, number] = [20, 35, 28] // theme.palette.text.primary (#14231c)
-const MID: [number, number, number] = [47, 110, 79] // theme.palette.primary.main (#2f6e4f)
+const MID: [number, number, number] = PLATFORM_PRIMARY_RGB // the platform default primary (brandTokens, docs/specs/120)
 const WHITE: [number, number, number] = [255, 255, 255]
 const GRAY: [number, number, number] = [82, 101, 92] // theme.palette.text.secondary (#52655c)
 const LGRAY: [number, number, number] = [150, 165, 158]

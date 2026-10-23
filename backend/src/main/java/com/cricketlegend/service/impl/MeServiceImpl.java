@@ -2,6 +2,7 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
 import com.cricketlegend.service.support.ProfileResolver;
@@ -81,6 +82,13 @@ public class MeServiceImpl implements MeService {
             person = bridgeByEmail(keycloakUserId, email, true);
         }
         if (person == null) {
+            // bridgeByEmail skips a Person under 18, but that Person still holds the email (ux_person_email_lower): a
+            // plain insert would be a 500, so say what to do instead
+            if (personRepository.findByEmailIgnoreCase(email).isPresent()) {
+                log.warn("Registration refused: email already held by another person");
+                throw new ConflictException("This email address is already on record for someone else at your club. "
+                        + "Ask your club to correct the email, then try again.");
+            }
             String firstName = claim(jwt, "given_name");
             String lastName = claim(jwt, "family_name");
             if (firstName.isEmpty() && lastName.isEmpty()) {

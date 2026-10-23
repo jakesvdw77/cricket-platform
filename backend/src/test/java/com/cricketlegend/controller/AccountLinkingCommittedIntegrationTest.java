@@ -55,6 +55,7 @@ class AccountLinkingCommittedIntegrationTest extends AbstractLinkIntegrationTest
 
     @Autowired private MockMvc mockMvc;
     @Autowired private LinkRequestRepository linkRequestRepository;
+    @Autowired private com.cricketlegend.service.support.LinkAttemptLimiter limiter;
     @MockitoBean private EmailService emailService;
 
     @BeforeEach
@@ -189,5 +190,93 @@ class AccountLinkingCommittedIntegrationTest extends AbstractLinkIntegrationTest
 
         verify(emailService, never()).send(any(), any(), any(), any());
         assertThat(linkRequestRepository.findById(request.getId()).orElseThrow().getStatus()).isEqualTo(LinkRequestStatus.PENDING);
+    }
+
+    // ---- atomic decisions and counters ----
+
+    @Test
+    void twoManagersDecidingTheSameRequestAtOnceGetOne204AndOne409AndExactlyOneEmail() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 3; round++) {
+                reset(emailService);
+                Club club = club("Hillcrest");
+                Person adminA = clubAdmin(club);
+                Person adminB = clubAdmin(club);
+                Person parent = account("Pat", "Parent");
+                PlayerProfile profile = profile(club, playerPerson("Sam", "Smith", CHILD_DOB), null);
+                LinkRequest request = pending(parent, club);
+
+                CountDownLatch go = new CountDownLatch(1);
+                List<Future<Integer>> outcomes = new ArrayList<>();
+                for (Person admin : List.of(adminA, adminB)) {
+                    outcomes.add(pool.submit(() -> {
+                        go.await();
+                        return mockMvc.perform(post("/api/v1/manage/clubs/{c}/link-requests/{r}/approve", club.getId(),
+                                                request.getId())
+                                        .with(as(admin)).contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"playerId\":\"" + profile.getId()
+                                                + "\",\"mainAgentMode\":\"ADD\",\"confirm\":true}"))
+                                .andReturn().getResponse().getStatus();
+                    }));
+                }
+                go.countDown();
+                List<Integer> statuses = new ArrayList<>();
+                for (Future<Integer> f : outcomes) {
+                    statuses.add(f.get(60, TimeUnit.SECONDS));
+                }
+
+                assertThat(statuses).as("round " + round).containsExactlyInAnyOrder(204, 409);
+                verify(emailService, org.mockito.Mockito.times(1)).send(eq(parent.getEmail()), anyString(), anyString(), anyString());
+                assertThat(personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), club.getId())).hasSize(1);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentFirstLinkRequestsNeverFailAndTheDailyLimitIsNeverOvershot() throws Exception {
+        Person parent = account("Pat", "Parent");
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        try {
+            CountDownLatch go = new CountDownLatch(1);
+            List<Future<Integer>> outcomes = new ArrayList<>();
+            for (int i = 0; i < 15; i++) {
+                outcomes.add(pool.submit(() -> {
+                    go.await();
+                    try {
+                        limiter.countRequest(parent.getId());
+                        return 200;
+                    } catch (com.cricketlegend.exception.LinkRateLimitedException e) {
+                        return 429;
+                    }
+                }));
+            }
+            go.countDown();
+            List<Integer> statuses = new ArrayList<>();
+            for (Future<Integer> f : outcomes) {
+                statuses.add(f.get(60, TimeUnit.SECONDS)); // any other exception (a unique violation, a 500) fails here
+            }
+
+            assertThat(statuses.stream().filter(s -> s == 200).count()).isEqualTo(10);
+            assertThat(statuses.stream().filter(s -> s == 429).count()).isEqualTo(5);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void aMissingConfirmOnRevokeIsA400ProblemBody() throws Exception {
+        Club club = club("Hillcrest");
+        Person admin = clubAdmin(club);
+
+        String body = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/manage/clubs/{c}/players/{p}/links/{l}", club.getId(), UUID.randomUUID(), UUID.randomUUID())
+                        .with(as(admin)))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(JsonPath.<String>read(body, "$.detail")).contains("confirm");
     }
 }

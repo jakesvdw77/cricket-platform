@@ -1,25 +1,25 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.InviteAgentRequest;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.MyPollDto;
 import com.cricketlegend.dto.PublicAnswersDto;
 import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
-import com.cricketlegend.dto.InviteAgentRequest;
 import com.cricketlegend.service.AgentInvitationService;
 import com.cricketlegend.service.MyPlayerPollService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PostMapping;
 import com.cricketlegend.service.MyPlayerService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,6 +46,7 @@ class MePlayersController {
         this.agentInvitationService = agentInvitationService;
     }
 
+    // Write endpoints below: MyPlayerAccess (inside the services) is the only authorisation gate, from the caller's own rows.
     @PostMapping("/{playerKey}/agents")
     ResponseEntity<Void> inviteAgent(
             Authentication authentication,

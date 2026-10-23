@@ -17,6 +17,7 @@ import { MyLinkRequests } from './MyLinkRequests'
 import { HubBackButton, HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubGoldButton, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
 import { useClubHome } from './myPlayers/useClubHome'
+import { creamAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 Part 3: "Find your players", in the dark console frame. Register is idempotent; matches are minimised
 // (first name + surname initial, birth year only, masked email for players that have a main agent). Every sub-state has a
@@ -31,7 +32,7 @@ const detail = (p: PlayerMatch) => [p.clubName, p.groupLabel, p.birthYear ? `Bor
 
 function PlayerAvatar({ p }: { p: PlayerMatch }) {
   return (
-    <Avatar sx={{ width: 40, height: 40, fontFamily: HUB.display, fontSize: 18, fontWeight: 700, color: HUB.ink, background: `radial-gradient(circle at 30% 25%, #f4d676, ${HUB.gold})` }}>
+    <Avatar sx={{ width: 40, height: 40, fontFamily: HUB.display, fontSize: 18, fontWeight: 700, color: HUB.ink, background: GOLD_DISC_GRADIENT }}>
       {`${p.firstName[0] ?? ''}${p.surnameInitial[0] ?? ''}`.toUpperCase()}
     </Avatar>
   )
@@ -119,9 +120,9 @@ export default function FindYourPlayersPage() {
   } else if (!matches.data) {
     body = (
       <Box aria-busy="true" aria-label="Looking for your players" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Skeleton variant="text" width="60%" height={32} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
-        <Skeleton variant="rounded" height={64} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
-        <Skeleton variant="rounded" height={64} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
+        <Skeleton variant="text" width="60%" height={32} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={64} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={64} sx={{ bgcolor: creamAlpha(.12) }} />
       </Box>
     )
   } else if (view === 'form') {

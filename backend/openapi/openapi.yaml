@@ -7521,10 +7521,9 @@ paths:
           format: uuid
       - name: confirm
         in: query
-        required: false
+        required: true
         schema:
           type: boolean
-          default: false
       responses:
         "204":
           description: No Content
@@ -11284,6 +11283,7 @@ components:
           type: boolean
       required:
       - mainAgentMode
+      - confirm
     DeclineLinkRequestRequest:
       type: object
       properties:
@@ -11429,6 +11429,8 @@ components:
       properties:
         confirm:
           type: boolean
+      required:
+      - confirm
     ManagerInviteRequest:
       type: object
       properties:
@@ -11439,6 +11441,7 @@ components:
           type: boolean
       required:
       - email
+      - confirm
     CreateSponsorRequest:
       type: object
       properties:

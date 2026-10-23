@@ -7,6 +7,7 @@ import type { Profile } from '../../api/meApi'
 import { openProfile } from '../../utils/activeProfile'
 import { HubFrame } from './myPlayers/HubFrame'
 import { HUB } from './myPlayers/hubStyle'
+import { creamAlpha, blackAlpha } from '../../brandTokens'
 
 // docs/specs/119 slice 4: /choose-profile, shown only to a person with more than one card: one "My players" card, one
 // "Manager of <club>" card per club and, for a platform admin, "Platform admin". "Remember my choice" is off by default
@@ -26,7 +27,7 @@ function ProfileCard({ profile, onChoose }: { profile: Profile; onChoose: () => 
         gap: 0.5,
         p: 2.5,
         textAlign: 'left',
-        bgcolor: 'rgba(0,0,0,.30)',
+        bgcolor: blackAlpha(.30),
         border: 1,
         borderColor: HUB.line,
         borderRadius: '4px',
@@ -69,8 +70,8 @@ export default function ProfileChooserPage() {
     <HubFrame title="Choose Profile" maxWidth={720} testId="profile-chooser">
       {profiles.isLoading && (
         <Box aria-busy="true" aria-label="Loading your profiles" sx={{ display: 'grid', gap: 1.5 }}>
-          <Skeleton variant="rounded" height={112} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
-          <Skeleton variant="rounded" height={112} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
+          <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(.12) }} />
+          <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(.12) }} />
         </Box>
       )}
       {profiles.isError && <Alert severity="error">We could not load your profiles. Please try again later.</Alert>}

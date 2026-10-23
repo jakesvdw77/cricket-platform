@@ -9,6 +9,7 @@ import type { MyPlayer } from '../../../api/myPlayersApi'
 import { useRemoveMyLink } from '../../../api/meApi'
 import { HubBackButton } from './HubFrame'
 import { HUB, darkFieldSx, hubGoldButton, hubHeading, hubOutlineButton } from './hubStyle'
+import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 slice 4, "Changing agents": the main agent hands over or adds another agent, cancels a pending invitation,
 // or any other agent leaves. Each is a sub-view that replaces the console body, with an explicit confirm step and Back.
@@ -16,7 +17,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function Confirm({ children }: { children: string }) {
   return (
-    <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, bgcolor: 'rgba(0,0,0,.3)' }}>
+    <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(.3) }}>
       <Typography fontSize={15}>{children}</Typography>
     </Box>
   )

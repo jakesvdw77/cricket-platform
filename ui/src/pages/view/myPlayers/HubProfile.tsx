@@ -5,6 +5,7 @@ import { Button } from '../../../components/Button'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { MyPlayer } from '../../../api/myPlayersApi'
 import { HUB, hubGoldButton, hubHeading, hubOutlineButton } from './hubStyle'
+import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the Profile section of the player hub. Fields with no value are hidden; a mostly empty profile gets a
 // "Complete this profile" prompt. Edit goes to /profile/edit, which replaces this panel with the dark edit form (nothing opens over the console).
@@ -34,7 +35,7 @@ function Facts({ title, fields }: { title: string; fields: Array<[string, FieldV
       </Typography>
       <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
         {shown.map(([label, value]) => (
-          <Box key={label} sx={{ border: 1, borderColor: HUB.lineSoft, bgcolor: 'rgba(0,0,0,.28)', borderRadius: '4px', px: 1.5, py: 1.25, minWidth: 0 }}>
+          <Box key={label} sx={{ border: 1, borderColor: HUB.lineSoft, bgcolor: blackAlpha(.28), borderRadius: '4px', px: 1.5, py: 1.25, minWidth: 0 }}>
             <Typography component="small" sx={{ display: 'block', color: HUB.muted, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase' }}>
               {label}
             </Typography>
@@ -66,7 +67,7 @@ export function HubProfile({ player }: { player: MyPlayer }) {
         Profile
       </Typography>
       {mostlyEmpty && (
-        <Box data-testid="complete-profile" sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2, bgcolor: 'rgba(0,0,0,.22)', color: HUB.muted }}>
+        <Box data-testid="complete-profile" sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2, bgcolor: blackAlpha(.22), color: HUB.muted }}>
           <Box component="b" sx={{ color: HUB.cream, display: 'block' }}>
             Complete this profile
           </Box>

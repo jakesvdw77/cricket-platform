@@ -10,4 +10,4 @@ import java.util.UUID;
  * must be {@code true}, enforced by the server (docs/specs/119).
  */
 public record ApproveLinkRequestRequest(
-        UUID playerId, @Valid NewLinkedPlayerRequest newPlayer, @NotNull MainAgentMode mainAgentMode, Boolean confirm) {}
+        UUID playerId, @Valid NewLinkedPlayerRequest newPlayer, @NotNull MainAgentMode mainAgentMode, @NotNull Boolean confirm) {}

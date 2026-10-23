@@ -28,6 +28,13 @@ function write(key: string, value: string | null) {
 export const getRememberedProfileKey = () => read(REMEMBER_KEY)
 export const setRememberedProfileKey = (key: string | null) => write(REMEMBER_KEY, key)
 
+// Called on every sign out: the remembered profile and the last manager club belong to the person who just left this
+// device, so neither survives into the next sign in.
+export function forgetProfileChoices() {
+  write(REMEMBER_KEY, null)
+  write(ACTIVE_CLUB_KEY, null)
+}
+
 // The club slug in the current address, or null on the root domain.
 export function currentClubSlug(): string | null {
   const root = ROOT_DOMAIN.split(':')[0]

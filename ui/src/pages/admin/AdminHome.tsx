@@ -6,6 +6,7 @@ import { AppShell } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
+import { forgetProfileChoices } from '../../utils/activeProfile'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/admin' },
@@ -50,7 +51,10 @@ export default function AdminHome() {
       brand="Cricket Legend Platform"
       navItems={NAV_ITEMS}
       user={{ name: data.username, email: data.email }}
-      onLogout={() => keycloak.logout()}
+      onLogout={() => {
+        forgetProfileChoices()
+        keycloak.logout()
+      }}
       profileTo="/admin/profile"
     >
       <Outlet context={data} />

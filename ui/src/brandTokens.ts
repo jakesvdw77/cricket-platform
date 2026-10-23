@@ -65,3 +65,19 @@ export const darkMenuProps = {
     },
   },
 }
+
+// A hex colour as an [r, g, b] triple (for jsPDF, which takes numbers).
+export function hexToRgb(hex: string): [number, number, number] {
+  const value = hex.replace('#', '')
+  return [0, 2, 4].map((index) => parseInt(value.slice(index, index + 2), 16)) as [number, number, number]
+}
+
+// The platform default primary as RGB, for the generated PDFs (which do not read the theme).
+export const PLATFORM_PRIMARY_RGB = hexToRgb(BRAND.green700)
+
+// Translucent cream and black, for the dark console surfaces (skeletons, panels, hovers).
+export const creamAlpha = (opacity: number) => alpha(BRAND.cream, opacity)
+export const blackAlpha = (opacity: number) => alpha('#000000', opacity)
+
+// The gold avatar disc: a radial from the light to the solid gold (avatarSx and the console avatars share it).
+export const GOLD_DISC_GRADIENT = `radial-gradient(circle at 30% 25%, ${BRAND.goldLight}, ${BRAND.gold})`

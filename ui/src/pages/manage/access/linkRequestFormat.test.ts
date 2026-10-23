@@ -16,7 +16,7 @@ describe('waitingText', () => {
 
   it('never goes negative for a clock-skewed future date, and shows a dash for a bad one', () => {
     expect(waitingText('2026-10-24T12:00:00Z', NOW)).toBe('Less than an hour')
-    expect(waitingText('not a date', NOW)).toBe('–')
+    expect(waitingText('not a date', NOW)).toBe('Not recorded')
   })
 })
 

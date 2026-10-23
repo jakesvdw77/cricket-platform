@@ -4,6 +4,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, hubOutlineButton } from './hubStyle'
+import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
@@ -51,7 +52,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         </Box>
 
         {footer && (
-          <Box component="footer" sx={{ borderTop: `1px solid ${HUB.line}`, px: { xs: 2, md: 2.5 }, py: 1, bgcolor: 'rgba(0,0,0,.35)', display: 'flex' }}>
+          <Box component="footer" sx={{ borderTop: `1px solid ${HUB.line}`, px: { xs: 2, md: 2.5 }, py: 1, bgcolor: blackAlpha(.35), display: 'flex' }}>
             {footer}
           </Box>
         )}
@@ -74,7 +75,7 @@ export function HubFooterButton({ onClick, children, icon }: { onClick: () => vo
 }
 
 // Outlined Back at the top left of the panel.
-export function HubBackButton({ onClick, children = 'Back' }: { onClick: () => void; children?: string }) {
+export function HubBackButton({ onClick, children = 'Back' }: { onClick: () => void; children?: ReactNode }) {
   return (
     <Box>
       <Button variant="secondary" size="compact" startIcon={<ArrowBackIcon />} onClick={onClick} sx={hubOutlineButton}>

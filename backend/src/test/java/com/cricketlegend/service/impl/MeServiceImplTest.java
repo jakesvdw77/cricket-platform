@@ -329,6 +329,24 @@ class MeServiceImplTest {
     }
 
     @Test
+    void registerWhereAnUnderEighteenPersonHoldsTheEmailIsA409NotAUniqueIndexFailure() {
+        String subject = "aaaaaaaa-0000-0000-0000-000000000099";
+        Person child = person(UUID.randomUUID(), PersonStatus.ACTIVE);
+        child.setEmail("shared@example.com");
+        child.setDateOfBirth(java.time.LocalDate.now().minusYears(12));
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.empty());
+        when(personRepository.findByEmailIgnoreCase("shared@example.com")).thenReturn(Optional.of(child));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.register(authentication,
+                        jwtWithName(subject, "shared@example.com", true, "Parent", "Of")))
+                .isInstanceOf(com.cricketlegend.exception.ConflictException.class)
+                .hasMessageContaining("Ask your club to correct the email");
+        verify(personRepository, never()).save(any());
+    }
+
+    @Test
     void aSuspendedPersonIsRefusedOnActivateRegisterAndProfiles() {
         String subject = "aaaaaaaa-0000-0000-0000-000000000004";
         Person suspended = person(UUID.randomUUID(), PersonStatus.SUSPENDED);

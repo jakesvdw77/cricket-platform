@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
-import { resolveManagerClubId } from '../../utils/activeProfile'
+import { forgetProfileChoices, resolveManagerClubId } from '../../utils/activeProfile'
 
 export default function ManagerHome() {
   const keycloakSettled = useKeycloakSettled()
@@ -68,7 +68,10 @@ export default function ManagerHome() {
       brand={clubProfile?.name ?? 'Cricket Legend Platform'}
       logoUrl={clubProfile ? clubProfile.logoUrl : undefined}
       user={{ name: keycloak.tokenParsed?.name ?? '', email: keycloak.tokenParsed?.email }}
-      onLogout={() => keycloak.logout()}
+      onLogout={() => {
+        forgetProfileChoices()
+        keycloak.logout()
+      }}
       profileTo="/manage/profile"
       homeTo="/manage"
       myPlayersTo={(myPlayers?.length ?? 0) > 0 && !profileItems ? '/account' : undefined}

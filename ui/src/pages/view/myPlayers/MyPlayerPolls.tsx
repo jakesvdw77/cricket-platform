@@ -4,6 +4,7 @@ import { Alert, Box, Skeleton, Typography } from '@mui/material'
 import { useMyPlayerPolls, useSaveMyPlayerPollAnswers } from '../../../api/myPlayersApi'
 import { LinkedPollCard } from './LinkedPollCard'
 import { HUB } from './hubStyle'
+import { creamAlpha, blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the open availability polls of one player, each a LinkedPollCard.
 export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; playerName: string }) {
@@ -11,12 +12,12 @@ export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; pl
   const save = useSaveMyPlayerPollAnswers(playerKey)
   const [failed, setFailed] = useState<Record<string, 'closed' | 'failed'>>({})
 
-  if (polls.isLoading) return <Skeleton variant="rounded" height={120} sx={{ bgcolor: 'rgba(247,243,232,.12)' }} />
+  if (polls.isLoading) return <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(.12) }} />
   if (polls.isError) return <Alert severity="error">We could not load the availability polls.</Alert>
   const items = polls.data ?? []
   if (items.length === 0) {
     return (
-      <Box sx={{ border: 1, borderColor: HUB.line, borderStyle: 'dashed', borderRadius: '4px', p: 2.5, bgcolor: 'rgba(0,0,0,.22)' }}>
+      <Box sx={{ border: 1, borderColor: HUB.line, borderStyle: 'dashed', borderRadius: '4px', p: 2.5, bgcolor: blackAlpha(.22) }}>
         <Typography variant="body2" sx={{ color: HUB.muted }}>
           No open availability polls for {playerName} right now.
         </Typography>

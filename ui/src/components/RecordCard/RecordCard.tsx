@@ -17,7 +17,7 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { BRAND } from '../../brandTokens'
+import { BRAND, GOLD_DISC_GRADIENT } from '../../brandTokens'
 import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
 import { Button } from '../Button'
 
@@ -230,7 +230,7 @@ export function avatarSx(size: number, fontSize?: string) {
     fontWeight: 700,
     letterSpacing: '0.04em',
     bgcolor: BRAND.gold,
-    backgroundImage: `radial-gradient(circle at 30% 25%, ${BRAND.goldLight}, ${BRAND.gold})`,
+    backgroundImage: GOLD_DISC_GRADIENT,
     color: BRAND.green900,
   }
 }

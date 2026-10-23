@@ -40,7 +40,7 @@ declare module '@mui/material/styles/createTypography' {
   }
 }
 
-// Structural design tokens — docs/standards/design-system.md. Same values as
+// Structural design tokens: docs/standards/design-system.md. Same values as
 // the old cricketlegend app's ui/src/theme.ts pattern (createTheme, MUI v5),
 // carried forward for this project rather than reinvented. Colours and font stacks come from brandTokens.ts.
 export const baseTheme: Theme = createTheme({
@@ -107,7 +107,7 @@ export function readablePrimary(theme: Theme, kind: 'text' | 'edge' = 'text'): s
   return candidate
 }
 
-// The one runtime override — see docs/specs/001-tenancy-identity-model.md's
+// The one runtime override, see docs/specs/001-tenancy-identity-model.md's
 // White-Labelling section. MUI's createTheme(base, overrides) deep-merges,
 // so every component styled via theme.palette.primary picks this up for free.
 export function withClubBranding(primaryColor: string): Theme {
@@ -122,7 +122,7 @@ export function withClubBranding(primaryColor: string): Theme {
   })
 }
 
-// The page ground every post-login shell (AppShell, ManagerShell, BottomTabShell) applies to its <main> only — never the
+// The page ground every post-login shell (AppShell, ManagerShell, BottomTabShell) applies to its <main> only, never the
 // header/footer, which stay solid chrome. docs/specs/120 Decision 10: a fixed cream gradient for every club (it used to be
 // tinted by primary); a club's colour shows on buttons, links, counters and chips. The signature is kept so the shells need no change.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

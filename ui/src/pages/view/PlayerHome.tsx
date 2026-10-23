@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { BottomTabShell } from '../../components/BottomTabShell'
 import { keycloak } from '../../auth/keycloak'
 import { MOCK_PLAYER } from './mockPlayer'
+import { forgetProfileChoices } from '../../utils/activeProfile'
 
 const NAV_ITEMS = [
   { label: 'Fixtures', to: '/player' },
@@ -16,7 +17,10 @@ export default function PlayerHome() {
       brand="Cricket Legend Platform"
       navItems={NAV_ITEMS}
       user={MOCK_PLAYER}
-      onLogout={() => keycloak.logout()}
+      onLogout={() => {
+        forgetProfileChoices()
+        keycloak.logout()
+      }}
       profileTo="/player/profile"
     >
       <Outlet />

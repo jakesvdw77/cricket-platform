@@ -13,6 +13,7 @@ import type { BattingStance, BowlingArm, BowlingType } from '../../../api/player
 import { HUB, darkFieldSx as darkSx, darkMenuProps, hubGoldButton, hubOutlineButton } from './hubStyle'
 import { useUpdateMyPlayer } from '../../../api/myPlayersApi'
 import type { MyPlayer, UpdateMyPlayerRequest } from '../../../api/myPlayersApi'
+import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the whitelist an agent may change for a player (never name, date of birth, gender, sections,
 // jersey number or status). Contact and cricket fields are a full replace, so a blank clears. Medical aid is only
@@ -101,7 +102,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
             </Button>
           </Box>
           {confirmingDiscard && (
-            <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: 'rgba(0,0,0,.3)' }}>
+            <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: blackAlpha(.3) }}>
               <Typography fontSize={14}>Discard your changes?</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Button variant="secondary" size="compact" onClick={() => onBack()} sx={hubOutlineButton}>
@@ -134,7 +135,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
         />
       </Box>
       {dobChanged && (
-        <Box role="alert" data-testid="dob-warning" sx={dark ? { border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 0.5, bgcolor: 'rgba(0,0,0,.3)' } : undefined}>
+        <Box role="alert" data-testid="dob-warning" sx={dark ? { border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 0.5, bgcolor: blackAlpha(.3) } : undefined}>
           <Alert severity="warning" sx={dark ? { bgcolor: 'transparent', color: HUB.cream, p: 0, '& .MuiAlert-icon': { color: HUB.gold } } : undefined}>
             Changing the date of birth can change which age group and sections {player.firstName} is eligible for, and it is used to confirm identity on availability links. It applies at every club {player.firstName} plays for.
           </Alert>

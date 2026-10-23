@@ -6,6 +6,7 @@ import type { RecordCardBadgeTone } from '../../components/RecordCard'
 import { HUB, hubOutlineButton } from './myPlayers/hubStyle'
 import { useCancelLinkRequest, useMyLinkRequests } from '../../api/meApi'
 import type { MyLinkRequest, MyLinkRequestStatus } from '../../api/meApi'
+import { creamAlpha } from '../../brandTokens'
 
 const STATUS: Record<MyLinkRequestStatus, { label: (clubName: string) => string; tone: RecordCardBadgeTone }> = {
   PENDING: { label: (club) => `Waiting for ${club}`, tone: 'warning' },
@@ -61,7 +62,7 @@ function Row({ request, onCancel, cancelling, dark }: { request: MyLinkRequest; 
 export function MyLinkRequests({ statuses, dark }: { statuses?: MyLinkRequestStatus[]; dark?: boolean } = {}) {
   const requests = useMyLinkRequests()
   const cancel = useCancelLinkRequest()
-  if (requests.isPending) return <Skeleton variant="rounded" height={72} sx={dark ? { bgcolor: 'rgba(247,243,232,.12)' } : undefined} />
+  if (requests.isPending) return <Skeleton variant="rounded" height={72} sx={dark ? { bgcolor: creamAlpha(.12) } : undefined} />
   if (requests.isError) return <Alert severity="error">We could not load your requests. Please try again later.</Alert>
   const shown = statuses ? requests.data.filter((r) => statuses.includes(r.status)) : requests.data
   if (shown.length === 0) {

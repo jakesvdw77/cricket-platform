@@ -49,7 +49,22 @@ describe('brandTokens single source', () => {
 
 describe('shared Barlow font files', () => {
   const read = (path: string) => readFileSync(join(root, path))
-  it.each(['barlow-condensed-latin-600-normal.woff2', 'barlow-condensed-latin-700-normal.woff2'])('%s is byte-identical in the app and the Keycloak theme', (file) => {
+  it('the Keycloak CSS uses Barlow for the body and references no Inter file', () => {
+    expect(KEYCLOAK_CSS).toMatch(/--cl-font-body:\s*Barlow/)
+    expect(KEYCLOAK_CSS).not.toMatch(/Inter/)
+  })
+  it.each([
+    'barlow-condensed-latin-600-normal.woff2',
+    'barlow-condensed-latin-700-normal.woff2',
+    'barlow-condensed-latin-ext-600-normal.woff2',
+    'barlow-condensed-latin-ext-700-normal.woff2',
+    'barlow-latin-400-normal.woff2',
+    'barlow-latin-500-normal.woff2',
+    'barlow-latin-600-normal.woff2',
+    'barlow-latin-ext-400-normal.woff2',
+    'barlow-latin-ext-500-normal.woff2',
+    'barlow-latin-ext-600-normal.woff2',
+  ])('%s is byte-identical in the app and the Keycloak theme', (file) => {
     const app = read(`ui/public/fonts/${file}`)
     const keycloak = read(`keycloak/themes/cricketlegend/login/resources/fonts/${file}`)
     expect(app.length).toBeGreaterThan(0)
