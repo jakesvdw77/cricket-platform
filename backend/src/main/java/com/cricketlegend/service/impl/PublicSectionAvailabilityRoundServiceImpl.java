@@ -17,8 +17,6 @@ import com.cricketlegend.dto.PublicRoundWindowDto;
 import com.cricketlegend.dto.PublicVerifyRequest;
 import com.cricketlegend.dto.PublicVerifyResponseDto;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
-import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
@@ -33,6 +31,7 @@ import com.cricketlegend.service.support.PublicAudienceMember;
 import com.cricketlegend.service.support.PublicAvailabilityToken;
 import com.cricketlegend.service.support.PublicAvailabilityVerifier;
 import com.cricketlegend.service.support.PublicPollKind;
+import com.cricketlegend.service.support.RoundAnswerWriter;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -69,6 +68,7 @@ public class PublicSectionAvailabilityRoundServiceImpl implements PublicSectionA
     private final SectionAvailabilityAudienceResolver audienceResolver;
     private final PublicAvailabilityVerifier verifier;
     private final PublicAvailabilityToken tokens;
+    private final RoundAnswerWriter answerWriter;
 
     public PublicSectionAvailabilityRoundServiceImpl(
             SectionAvailabilityRoundRepository roundRepository,
@@ -91,6 +91,8 @@ public class PublicSectionAvailabilityRoundServiceImpl implements PublicSectionA
         this.audienceResolver = audienceResolver;
         this.verifier = verifier;
         this.tokens = tokens;
+        // the shared writer (docs/specs/119) built over the same repositories, so this constructor stays as it was
+        this.answerWriter = new RoundAnswerWriter(windowRepository, responseRepository);
     }
 
     @Override
@@ -178,47 +180,7 @@ public class PublicSectionAvailabilityRoundServiceImpl implements PublicSectionA
     public PublicAnswersDto saveAnswers(UUID roundId, UUID playerId, String token, PublicAnswersRequest request) {
         SectionAvailabilityRound round = findRoundOrThrow(roundId);
         authorise(round, playerId, token);
-        List<PublicAnswerDto> answers = request.answers();
-        if (answers.isEmpty()) {
-            throw new ValidationException("At least one answer is required");
-        }
-        if (answers.stream().anyMatch(answer -> answer.windowId() == null)) {
-            throw new ValidationException("Every answer needs a windowId");
-        }
-        Set<UUID> submitted = answers.stream().map(PublicAnswerDto::windowId).collect(Collectors.toSet());
-        if (submitted.size() != answers.size()) {
-            throw new ValidationException("Each window may be answered only once");
-        }
-        Map<UUID, SectionAvailabilityWindow> windows = windowRepository.findByRoundId(roundId).stream()
-                .collect(Collectors.toMap(SectionAvailabilityWindow::getId, Function.identity()));
-        for (UUID windowId : submitted) {
-            if (!windows.containsKey(windowId)) {
-                throw new NotFoundException("Window " + windowId + " does not belong to round " + roundId);
-            }
-        }
-        for (UUID windowId : submitted) {
-            if (!windows.get(windowId).isOpen()) {
-                throw new SectionAvailabilityWindowClosedException(
-                        "Section availability round is closed: " + roundId);
-            }
-        }
-        Map<UUID, SectionAvailabilityResponse> existing =
-                responseRepository.findByPlayerProfileIdAndWindowIdIn(playerId, submitted).stream()
-                        .collect(Collectors.toMap(SectionAvailabilityResponse::getWindowId, Function.identity()));
-        List<SectionAvailabilityResponse> toSave = answers.stream()
-                .map(answer -> {
-                    SectionAvailabilityResponse response = existing.getOrDefault(
-                            answer.windowId(),
-                            SectionAvailabilityResponse.builder()
-                                    .windowId(answer.windowId())
-                                    .playerProfileId(playerId)
-                                    .build());
-                    response.setStatus(answer.status());
-                    response.setSource(AnswerSource.PUBLIC_LINK);
-                    return response;
-                })
-                .toList();
-        return toAnswers(responseRepository.saveAll(toSave));
+        return toAnswers(answerWriter.save(round, playerId, request.answers(), AnswerSource.PUBLIC_LINK));
     }
 
     private PublicAnswersDto toAnswers(List<SectionAvailabilityResponse> responses) {

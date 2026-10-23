@@ -2125,6 +2125,120 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/players:
+    get:
+      tags:
+      - me-players-controller
+      description: "The players the caller may act for (docs/specs/119): their own verified record first, then linked players by name. A suspended caller is 403."
+      operationId: listMyPlayers
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyPlayerSummaryDto"
+  /api/v1/me/players/{playerKey}:
+    get:
+      tags:
+      - me-players-controller
+      description: "One player's read and maintainable fields. No date of birth. 404 for a key the caller does not hold, or a suspended or rejected player."
+      operationId: getMyPlayer
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyPlayerDto"
+    put:
+      tags:
+      - me-players-controller
+      description: "Whitelist update only; sets the player's updatedBy to the caller. 403 when a non-main agent changes the medical aid fields."
+      operationId: updateMyPlayer
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyPlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyPlayerDto"
+  /api/v1/me/players/{playerKey}/polls:
+    get:
+      tags:
+      - me-players-controller
+      description: "Open squad polls and group rounds the player belongs to (the 077 rule), with their current answers."
+      operationId: listMyPlayerPolls
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyPollDto"
+  /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
+    put:
+      tags:
+      - me-players-controller
+      description: "Saves answers through the shared 077 writers with source LINKED_ACCOUNT and no date of birth challenge. pollId is a squad poll id or a group round id. 404 when it does not exist or the player does not belong to it, 409 when closed."
+      operationId: saveMyPlayerPollAnswers
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicAnswersRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAnswersDto"
   /api/v1/manage/media:
     post:
       tags:
@@ -16315,3 +16429,204 @@ components:
           type: array
           items:
             type: string
+    MyPlayerSummaryDto:
+      type: object
+      description: "One chip of the My players selector. key is the person link id or self:<profileId>."
+      properties:
+        key:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        photoUrl:
+          type: [string, 'null']
+        clubId:
+          type: string
+          format: uuid
+        clubName:
+          type: [string, 'null']
+        groupLabel:
+          type: [string, 'null']
+        self:
+          type: boolean
+        main:
+          type: boolean
+    MyPlayerAgentDto:
+      type: object
+      properties:
+        name:
+          type: string
+        maskedEmail:
+          type: [string, 'null']
+        main:
+          type: boolean
+    MyPlayerDto:
+      type: object
+      description: "No date of birth. agents is filled for the main agent only; agentCount counts every active agent including the caller."
+      properties:
+        key:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        photoUrl:
+          type: [string, 'null']
+        clubId:
+          type: string
+          format: uuid
+        clubName:
+          type: [string, 'null']
+        groupLabel:
+          type: [string, 'null']
+        sectionNames:
+          type: array
+          items:
+            type: string
+        teamNames:
+          type: array
+          items:
+            type: string
+        jerseyNumber:
+          type: [integer, 'null']
+          format: int32
+        self:
+          type: boolean
+        main:
+          type: boolean
+        canEditMedical:
+          type: boolean
+        phone:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        altContactName:
+          type: [string, 'null']
+        altContactPhone:
+          type: [string, 'null']
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+        medicalAidProvider:
+          type: [string, 'null']
+        medicalAidMemberNumber:
+          type: [string, 'null']
+        agentCount:
+          type: integer
+          format: int32
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyPlayerAgentDto"
+    UpdateMyPlayerRequest:
+      type: object
+      description: "The whitelist and nothing else. A blank text clears the field. For a non-main non-self agent a medical aid or email value that differs from the stored one is 403 and null leaves it untouched."
+      properties:
+        photoUrl:
+          type: [string, 'null']
+          maxLength: 500
+        phone:
+          type: [string, 'null']
+          maxLength: 50
+        email:
+          type: [string, 'null']
+          format: email
+          maxLength: 255
+        altContactName:
+          type: [string, 'null']
+          maxLength: 200
+        altContactPhone:
+          type: [string, 'null']
+          maxLength: 50
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+        medicalAidProvider:
+          type: [string, 'null']
+          maxLength: 200
+        medicalAidMemberNumber:
+          type: [string, 'null']
+          maxLength: 100
+      required:
+      - isWicketKeeper
+    MyPollDto:
+      type: object
+      description: "An open poll the player belongs to. pollId is the squad poll id or the round id. SQUAD sets teamName, homeName, awayName, matchDate and venue; GROUP sets sectionName and windows."
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        title:
+          type: string
+        teamName:
+          type: [string, 'null']
+        sectionName:
+          type: [string, 'null']
+        homeName:
+          type: [string, 'null']
+        awayName:
+          type: [string, 'null']
+        matchDate:
+          type: [string, 'null']
+          format: date-time
+        venue:
+          type: [string, 'null']
+        scheduledCloseAt:
+          type: [string, 'null']
+          format: date-time
+        windows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicRoundWindowDto"
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAnswerDto"

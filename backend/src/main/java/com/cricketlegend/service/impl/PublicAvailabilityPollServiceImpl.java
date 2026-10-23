@@ -15,7 +15,6 @@ import com.cricketlegend.dto.PublicPollHeaderDto;
 import com.cricketlegend.dto.PublicVerifyRequest;
 import com.cricketlegend.dto.PublicVerifyResponseDto;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.PollClosedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
@@ -30,6 +29,7 @@ import com.cricketlegend.service.support.PublicAudienceMember;
 import com.cricketlegend.service.support.PublicAvailabilityToken;
 import com.cricketlegend.service.support.PublicAvailabilityVerifier;
 import com.cricketlegend.service.support.PublicPollKind;
+import com.cricketlegend.service.support.SquadPollAnswerWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +61,7 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
     private final AvailabilityPollSquadResolver squadResolver;
     private final PublicAvailabilityVerifier verifier;
     private final PublicAvailabilityToken tokens;
+    private final SquadPollAnswerWriter answerWriter;
 
     public PublicAvailabilityPollServiceImpl(
             MatchAvailabilityPollRepository matchAvailabilityPollRepository,
@@ -81,6 +82,8 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
         this.squadResolver = squadResolver;
         this.verifier = verifier;
         this.tokens = tokens;
+        // the shared writer (docs/specs/119) built over the same repository, so this constructor stays as it was
+        this.answerWriter = new SquadPollAnswerWriter(playerAvailabilityRepository);
     }
 
     @Override
@@ -138,15 +141,8 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
         if (request.answers().size() != 1) {
             throw new ValidationException("A squad poll takes exactly one answer");
         }
-        if (!poll.isOpen()) {
-            throw new PollClosedException("Poll is closed: " + pollId);
-        }
-        PlayerAvailability availability = playerAvailabilityRepository
-                .findByPollIdAndPlayerProfileId(pollId, playerId)
-                .orElseGet(() -> PlayerAvailability.builder().pollId(pollId).playerProfileId(playerId).build());
-        availability.setStatus(request.answers().get(0).status());
-        availability.setSource(AnswerSource.PUBLIC_LINK);
-        PlayerAvailability saved = playerAvailabilityRepository.save(availability);
+        PlayerAvailability saved =
+                answerWriter.save(poll, playerId, request.answers().get(0).status(), AnswerSource.PUBLIC_LINK);
         return new PublicAnswersDto(List.of(new PublicAnswerDto(null, saved.getStatus())));
     }
 

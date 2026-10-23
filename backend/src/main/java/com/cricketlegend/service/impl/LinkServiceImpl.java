@@ -7,8 +7,6 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonLink;
 import com.cricketlegend.domain.PersonLinkStatus;
 import com.cricketlegend.domain.PlayerProfile;
-import com.cricketlegend.domain.PlayerSection;
-import com.cricketlegend.domain.Section;
 import com.cricketlegend.dto.ConfirmLinksRequest;
 import com.cricketlegend.dto.ConfirmLinksResultDto;
 import com.cricketlegend.dto.PlayerMatchesDto;
@@ -19,12 +17,9 @@ import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonLinkRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
-import com.cricketlegend.repository.PlayerSectionRepository;
-import com.cricketlegend.repository.PlayerTeamNameView;
-import com.cricketlegend.repository.SectionRepository;
-import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.LinkService;
 import com.cricketlegend.service.support.MatchCandidate;
+import com.cricketlegend.service.support.PlayerGroupLabels;
 import com.cricketlegend.service.support.LinkAttemptLimiter;
 import com.cricketlegend.service.support.MatchedPlayer;
 import com.cricketlegend.service.support.OwnMatch;
@@ -32,9 +27,7 @@ import com.cricketlegend.service.support.VerifiedEmail;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,31 +58,25 @@ public class LinkServiceImpl implements LinkService {
     private final PlayerProfileRepository playerProfileRepository;
     private final PersonLinkRepository personLinkRepository;
     private final ClubRepository clubRepository;
-    private final PlayerSectionRepository playerSectionRepository;
-    private final SectionRepository sectionRepository;
-    private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final LinkMapper linkMapper;
     private final LinkAttemptLimiter limiter;
+    private final PlayerGroupLabels groupLabels;
 
     public LinkServiceImpl(
             PersonRepository personRepository,
             PlayerProfileRepository playerProfileRepository,
             PersonLinkRepository personLinkRepository,
             ClubRepository clubRepository,
-            PlayerSectionRepository playerSectionRepository,
-            SectionRepository sectionRepository,
-            TeamSquadMemberRepository teamSquadMemberRepository,
             LinkMapper linkMapper,
-            LinkAttemptLimiter limiter) {
+            LinkAttemptLimiter limiter,
+            PlayerGroupLabels groupLabels) {
         this.personRepository = personRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.personLinkRepository = personLinkRepository;
         this.clubRepository = clubRepository;
-        this.playerSectionRepository = playerSectionRepository;
-        this.sectionRepository = sectionRepository;
-        this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.linkMapper = linkMapper;
         this.limiter = limiter;
+        this.groupLabels = groupLabels;
     }
 
     @Override
@@ -201,7 +188,7 @@ public class LinkServiceImpl implements LinkService {
                 .findAllById(shown.stream().map(PlayerProfile::getClubId).collect(Collectors.toSet()))
                 .stream()
                 .collect(Collectors.toMap(Club::getId, Club::getName));
-        Map<UUID, String> groups = groupLabels(shown);
+        Map<UUID, String> groups = groupLabels.groupLabels(shown);
 
         LocalDate today = LocalDate.now();
         return shown.stream()
@@ -230,30 +217,6 @@ public class LinkServiceImpl implements LinkService {
                 .sorted(Comparator.comparing((MatchCandidate c) -> String.valueOf(c.view().clubName()))
                         .thenComparing(c -> c.view().firstName()))
                 .toList();
-    }
-
-    /** First section name (alphabetical), else the team name in an active season's squad; absent when neither. */
-    private Map<UUID, String> groupLabels(Collection<PlayerProfile> profiles) {
-        Set<UUID> ids = profiles.stream().map(PlayerProfile::getId).collect(Collectors.toSet());
-        Map<UUID, String> labels = new HashMap<>();
-        if (ids.isEmpty()) {
-            return labels;
-        }
-        List<PlayerSection> memberships = playerSectionRepository.findByPlayerProfileIdIn(ids);
-        Map<UUID, String> sectionNames = sectionRepository
-                .findAllById(memberships.stream().map(PlayerSection::getSectionId).collect(Collectors.toSet()))
-                .stream()
-                .collect(Collectors.toMap(Section::getId, Section::getName));
-        for (PlayerSection ps : memberships) {
-            String name = sectionNames.get(ps.getSectionId());
-            if (name != null) {
-                labels.merge(ps.getPlayerProfileId(), name, (a, b) -> a.compareToIgnoreCase(b) <= 0 ? a : b);
-            }
-        }
-        for (PlayerTeamNameView view : teamSquadMemberRepository.findActiveSeasonTeamNames(ids)) {
-            labels.putIfAbsent(view.getPlayerProfileId(), view.getTeamName());
-        }
-        return labels;
     }
 
     private static String key(UUID subjectPersonId, UUID clubId) {

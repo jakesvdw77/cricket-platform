@@ -121,4 +121,7 @@ public interface PlayerProfileRepository extends JpaRepository<PlayerProfile, UU
             @Param("noMainAgent") boolean noMainAgent,
             @Param("pattern") String pattern,
             org.springframework.data.domain.Pageable pageable);
+
+    /** The profiles of the given people at any club, in one query (docs/specs/119 My players: own record and links). */
+    List<PlayerProfile> findByPersonIdIn(java.util.Collection<UUID> personIds);
 }

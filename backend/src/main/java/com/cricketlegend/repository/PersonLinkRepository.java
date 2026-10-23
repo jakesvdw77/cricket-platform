@@ -53,4 +53,7 @@ public interface PersonLinkRepository extends JpaRepository<PersonLink, UUID> {
     /** The account's INVITED or ACTIVE link to this player at this club, if any (the open-link unique index). */
     Optional<PersonLink> findFirstByAccountPersonIdAndSubjectPersonIdAndClubIdAndStatusIn(
             UUID accountPersonId, UUID subjectPersonId, UUID clubId, Collection<PersonLinkStatus> statuses);
+
+    /** The account's links in one status (docs/specs/119 My players: the ACTIVE ones). */
+    List<PersonLink> findByAccountPersonIdAndStatus(UUID accountPersonId, PersonLinkStatus status);
 }
