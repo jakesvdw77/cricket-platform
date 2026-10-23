@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
  *   2. Search for a known ACTIVE club and be redirected to its subdomain's /login route.
  *
  * Runs against a real running dev server (not Testcontainers) — start both before running:
- *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 8082)
+ *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 9082)
  *   - frontend: `cd ui && npm run dev` (port 5173)
  *
  * PREREQUISITE for path 2 ("find your club" redirect): at least one Club row with
