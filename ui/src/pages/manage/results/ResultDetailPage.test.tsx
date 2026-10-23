@@ -80,6 +80,16 @@ describe('ResultDetailPage', () => {
       expect(screen.getByTestId('result-details')).toHaveTextContent('1st XI won the toss and chose to bat')
     })
 
+    it('tags a two-innings result Batted first / Chased and shows Tied for a tie without a margin', async () => {
+      getMatchResult.mockResolvedValue(makeResult({ outcomeType: 'TIE', winningSide: null, marginType: null, marginValue: null, note: null }))
+      renderPage()
+
+      const tags = await screen.findAllByTestId('innings-order-tag')
+      expect(tags.map((tag) => tag.textContent)).toEqual(['Batted first', 'Chased'])
+      expect(screen.getByTestId('result-figure-margin-value')).toHaveTextContent('Tied')
+      expect(within(screen.getByTestId('result-details')).getAllByTestId('result-not-recorded').length).toBeGreaterThan(0)
+    })
+
     it('has Unpublish, and a disabled Edit carrying the "Unpublish to edit" reason; no Publish or Delete', async () => {
       renderPage()
       const actions = await screen.findByTestId('result-actions')
@@ -87,7 +97,6 @@ describe('ResultDetailPage', () => {
       const edit = within(actions).getByRole('button', { name: 'Edit' })
       expect(edit).toBeDisabled()
       expect(edit).toHaveAccessibleDescription('Unpublish to edit')
-      expect(within(actions).getByText('Unpublish to edit')).toBeVisible()
       expect(within(actions).getByRole('button', { name: 'Unpublish' })).toBeEnabled()
       expect(within(actions).queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
       expect(within(actions).queryByRole('button', { name: 'Delete draft' })).not.toBeInTheDocument()

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Chip, Typography } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
@@ -14,6 +14,8 @@ import { ballsToOvers } from '../../../utils/oversFormat'
 import { inningsFor } from '../../../utils/resultLine'
 import { ownSidesOf, resultSides, tossLine } from './resultListHelpers'
 import { ResultScorecard } from './ResultScorecard'
+import { MissingIcon, NotRecordedValue } from './NotRecorded'
+import { ResultStandouts } from './ResultStandouts'
 import { ResultSection } from './ResultSection'
 
 const NOT_RECORDED = 'Not recorded'
@@ -57,6 +59,12 @@ export function ResultBody({
     <>
       <KeyFigures result={result} names={names} toss={toss} />
 
+      <ResultSection title="Details">
+        <Details result={result} toss={toss} field={field}>
+          {result.hasScorecard && <ResultStandouts clubId={clubId} match={match} ours={ownSidesOf(match, teamsById)} names={names} />}
+        </Details>
+      </ResultSection>
+
       <ResultSection title="Innings">
         <InningsTable result={result} names={names} />
       </ResultSection>
@@ -68,9 +76,6 @@ export function ResultBody({
         />
       )}
 
-      <ResultSection title="Details">
-        <Details result={result} toss={toss} field={field} />
-      </ResultSection>
     </>
   )
 }
@@ -84,15 +89,18 @@ function KeyFigures({ result, names, toss }: { result: MatchResult; names: Names
   const scoreFor = (side: 'HOME' | 'AWAY') => (
     <ResultScoreLine innings={inningsFor(result.innings, side)} ballsPerOver={result.ballsPerOver} />
   )
+  // The server's margin fields only: a tie has none, so say so instead of a dash.
+  const noMargin =
+    result.outcomeType === 'TIE' ? 'Tied' : result.outcomeType === 'NO_RESULT' || result.outcomeType === 'ABANDONED' || result.outcomeType === 'DRAW' ? 'No margin' : '–'
   const margin =
     result.marginValue === null || !result.marginType
-      ? '–'
+      ? noMargin
       : `${result.marginValue} ${result.marginType === 'RUNS' ? 'runs' : 'wickets'}`
   const oversText = result.scheduledBalls ? ballsToOvers(result.scheduledBalls, result.ballsPerOver) : '–'
   return (
     <Box
       data-testid="result-key-figures"
-      sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
+      sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
     >
       <KeyFigureTile
         testId="result-figure-home"
@@ -100,6 +108,7 @@ function KeyFigures({ result, names, toss }: { result: MatchResult; names: Names
         value={scoreFor('HOME')}
         label={names.home}
         textValue
+        compact
       />
       <KeyFigureTile
         testId="result-figure-away"
@@ -107,14 +116,16 @@ function KeyFigures({ result, names, toss }: { result: MatchResult; names: Names
         value={scoreFor('AWAY')}
         label={names.away}
         textValue
+        compact
       />
-      <KeyFigureTile testId="result-figure-margin" icon={<EmojiEventsOutlinedIcon />} value={margin} label="Margin" textValue />
+      <KeyFigureTile testId="result-figure-margin" icon={<EmojiEventsOutlinedIcon />} value={margin} label="Margin" textValue compact />
       <KeyFigureTile
         testId="result-figure-toss"
         icon={<SportsCricketOutlinedIcon />}
         value={toss ?? '–'}
         label={`Toss · ${oversText === '–' ? 'overs not set' : `${oversText} overs`}`}
         textValue
+        compact
       />
     </Box>
   )
@@ -140,6 +151,8 @@ function InningsTable({ result, names }: { result: MatchResult; names: Names }) 
   }
   let regular = 0
   let superOvers = 0
+  // The batting order is only stated for a two-innings match, from the server's innings number: no guessing.
+  const twoInnings = ordered.filter((item) => item.kind !== 'SUPER_OVER').length === 2
   const rowSx = {
     display: 'grid',
     gridTemplateColumns: TABLE_COLUMNS,
@@ -181,8 +194,11 @@ function InningsTable({ result, names }: { result: MatchResult; names: Names }) 
               <Typography variant="body2" fontWeight={600} noWrap>
                 {batting}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" component="div" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                 {inningsLabel(innings, regular, superOvers)}
+                {twoInnings && innings.kind !== 'SUPER_OVER' && innings.sequence != null && innings.battingSide && (
+                  <Chip size="small" variant="outlined" label={regular === 1 ? 'Batted first' : 'Chased'} data-testid="innings-order-tag" sx={{ height: 20, fontSize: '0.6875rem' }} />
+                )}
               </Typography>
             </Box>
             <Box role="cell">{dash(innings.runs)}</Box>
@@ -201,17 +217,17 @@ function DetailRow({ label, value, icon }: { label: string; value: ReactNode; ic
   return (
     <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
       <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 'none' }}>
-        {icon}
+        {empty && icon ? <MissingIcon>{icon}</MissingIcon> : icon}
         {label}
       </Typography>
-      <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'right', overflowWrap: 'anywhere', color: empty ? 'text.secondary' : 'text.primary' }}>
-        {value}
+      <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'right', overflowWrap: 'anywhere', color: 'text.primary' }}>
+        {empty ? <NotRecordedValue testId="result-not-recorded" /> : value}
       </Typography>
     </Box>
   )
 }
 
-function Details({ result, toss, field }: { result: MatchResult; toss: string | null; field: string | null | undefined }) {
+function Details({ result, toss, field, children }: { result: MatchResult; toss: string | null; field: string | null | undefined; children?: ReactNode }) {
   const dls = result.decidedBy === 'DLS'
   return (
     <Box data-testid="result-details" sx={{ display: 'grid', columnGap: 3, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
@@ -232,6 +248,7 @@ function Details({ result, toss, field }: { result: MatchResult; toss: string | 
         icon={<EventOutlinedIcon fontSize="small" />}
       />
       <DetailRow label="Note" value={result.note?.trim() ? result.note : NOT_RECORDED} />
+      {children}
     </Box>
   )
 }

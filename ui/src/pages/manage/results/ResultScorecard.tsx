@@ -3,13 +3,11 @@ import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Box, Chip, Typography, useMediaQuery, useTheme } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import StarIcon from '@mui/icons-material/Star'
 import type { Match } from '../../../api/matchApi'
 import { getScorecard, linkResultPlayer, resultKeys, resultsKey } from '../../../api/matchResultApi'
 import type {
   BattingEntry,
   BowlingEntry,
-  FieldingEntry,
   Innings,
   MatchAward,
   MatchResult,
@@ -38,7 +36,7 @@ const DASH = '–'
 const other = (side: ResultSide): ResultSide => (side === 'HOME' ? 'AWAY' : 'HOME')
 const num = (value: number | null | undefined) => (value === null || value === undefined ? DASH : value)
 const isGuest = (player: ResultPlayer) => !player.opposition && (player.guest ?? !player.playerProfileId)
-const featuredOf = (entry: { featured?: boolean | null; suggested?: boolean | null; featuredOverride: 'FEATURE' | 'HIDE' | null }) =>
+export const featuredOf = (entry: { featured?: boolean | null; suggested?: boolean | null; featuredOverride: 'FEATURE' | 'HIDE' | null }) =>
   entry.featured ?? effectiveFeatured(entry.suggested, entry.featuredOverride)
 
 interface Column<T> {
@@ -106,7 +104,7 @@ export interface ResultScorecardProps {
 
 // docs/specs/101-match-results-our-side-scorecard.md (Review step and result page): the scorecard of both sides on the
 // result page, a section per side (the team's name as the heading) with its batting, bowling and fielding as zebra tables,
-// the extras and total lines, and for our sides the standouts and the team's player of the match. Names go through
+// the extras and total lines, (the standouts and the team's player of the match are in the Details card, `ResultStandouts`). Names go through
 // PlayerName (Full name | First name at the top). A guest row of our side offers Link to player, on a draft and on a
 // published result alike.
 export function ResultScorecard({ clubId, match, result, names, ours, toss, readOnly = false, sectionIds }: ResultScorecardProps) {
@@ -189,7 +187,6 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
     const extras = innings ? extrasLine(scoreInnings, innings.extras) : null
     const total = innings ? totalLine(innings, result.ballsPerOver) : null
     const target = targetLine(result, regular[0], regular.length > 1 && regular[1]?.battingSide === side)
-    const teamAward = scorecard.awards.find((award) => award.awardType === 'TEAM_PLAYER_OF_MATCH' && award.side === side)
     const showDots = bowling.some((entry) => entry.dots !== null && entry.dots !== undefined)
     const fielders = fielding.filter((entry) => fieldingCredits(entry) !== '')
 
@@ -262,26 +259,6 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
       { key: 'wides', header: 'Wides', width: '52px', numeric: true, render: (entry) => num(entry.wides) },
       { key: 'nb', header: 'No-balls', width: '68px', numeric: true, render: (entry) => num(entry.noBalls) },
     ]
-
-    const standouts: ReactNode[] = isOurs
-      ? [
-          ...batted.filter(featuredOf).map((entry) => (
-            <span key={`b${entry.id ?? entry.position}`}>
-              <PlayerName person={scorecardPersonName(playerOf(entry) as ResultPlayer)} view={view} /> {num(entry.runs)} ({num(entry.balls)})
-            </span>
-          )),
-          ...bowling.filter(featuredOf).map((entry) => (
-            <span key={`w${entry.id ?? entry.bowlingOrder}`}>
-              <PlayerName person={scorecardPersonName(playerOf(entry) as ResultPlayer)} view={view} /> {num(entry.wickets)}/{num(entry.runs)}
-            </span>
-          )),
-          ...fielding.filter(featuredOf).map((entry: FieldingEntry) => (
-            <span key={`f${entry.id ?? entry.resultPlayerId}`}>
-              <PlayerName person={scorecardPersonName(playerOf(entry) as ResultPlayer)} view={view} /> {fieldingCredits(entry)}
-            </span>
-          )),
-        ]
-      : []
 
     const inningsNumber = regular.findIndex((candidate) => candidate.battingSide === side) + 1
     return (
@@ -356,21 +333,6 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
           </>
         )}
 
-        {isOurs && standouts.length > 0 && (
-          <>
-            <Heading>Standouts</Heading>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }} data-testid="scorecard-standouts">
-              {standouts.map((node, index) => (
-                <Chip key={index} size="small" icon={<StarIcon />} label={node} sx={{ '& .MuiChip-icon': { color: 'warning.main' } }} />
-              ))}
-            </Box>
-          </>
-        )}
-        {isOurs && teamAward && (
-          <Box sx={{ mt: 1.5 }}>
-            <Chip icon={<EmojiEventsOutlinedIcon />} color="primary" variant="outlined" data-testid="scorecard-team-award" label={<>Team player of the match: {awardName(teamAward)}</>} />
-          </Box>
-        )}
       </ResultSection>
     )
   }

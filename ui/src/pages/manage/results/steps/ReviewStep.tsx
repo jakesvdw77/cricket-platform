@@ -31,6 +31,7 @@ import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { PlayingConditionsDialog } from './PlayingConditionsDialog'
 import { ResultPreviewDialog } from './ResultPreviewDialog'
 import { tossLine } from '../resultListHelpers'
+import { MissingIcon, NotRecordedValue } from '../NotRecorded'
 import { toPayload } from '../resultDraftHelpers'
 import { dedupeWarnings } from './dedupeWarnings'
 import { isScorecardStep, issuesOf, stepIdForIssue } from './reviewIssues'
@@ -198,23 +199,15 @@ export function ReviewStep({
   const teamAwards = oursSides.map((ours) => ({ ours, value: awardValue(teamAward(scorecard, ours.side)) }))
   // docs/specs/118: a value that was not specified is shown as a warning-coloured "Not recorded" with a jump to the step that sets it.
   // A visual hint only: it never blocks publishing.
-  const missingIcon = (icon: ReactNode) => (
-    <Box component="span" sx={{ display: 'inline-flex', color: 'warning.main' }}>
-      {icon}
-    </Box>
-  )
+  const missingIcon = (icon: ReactNode) => <MissingIcon>{icon}</MissingIcon>
   const missingValue = (stepId: string, side?: ResultSide) => (
-    <Box component="span" data-testid="review-not-recorded" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-      <WarningAmberOutlinedIcon fontSize="inherit" sx={{ color: 'warning.main' }} aria-hidden />
-      <Box component="span" sx={{ color: 'warning.dark', fontWeight: 600 }}>
-        Not recorded
-      </Box>
+    <NotRecordedValue>
       {onGoToStep && stepId && (
         <Button variant="ghost" size="compact" onClick={() => onGoToStep(stepId, side)}>
           Add
         </Button>
       )}
-    </Box>
+    </NotRecordedValue>
   )
 
   return (
