@@ -22,6 +22,16 @@ public record HeldPlayer(String key, Person caller, Person subject, PlayerProfil
         return link != null && link.isMain();
     }
 
+    /** Owner decision (slice 4): the same people who may change the medical aid details may change the date of birth. */
+    public boolean canEditDateOfBirth() {
+        return canEditMedical();
+    }
+
+    /** Whether this account may invite, hand over, or cancel invitations: the main agent or the adult player. */
+    public boolean canManageAgents() {
+        return canEditMedical();
+    }
+
     /** Decision 20: the main agent and the adult player themselves (a missing date of birth counts as adult). */
     public boolean canEditMedical() {
         if (link != null) {

@@ -4,6 +4,7 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
+import com.cricketlegend.service.support.ProfileResolver;
 import com.cricketlegend.service.support.VerifiedEmail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.dto.MeAccessDto;
+import com.cricketlegend.dto.ProfileDto;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.service.MeService;
@@ -38,11 +40,14 @@ public class MeServiceImpl implements MeService {
     private final PersonRepository personRepository;
     private final RoleAssignmentRepository roleAssignmentRepository;
     private final AccessService accessService;
+    private final ProfileResolver profileResolver;
 
     public MeServiceImpl(
             PersonRepository personRepository,
             RoleAssignmentRepository roleAssignmentRepository,
-            AccessService accessService) {
+            AccessService accessService,
+            ProfileResolver profileResolver) {
+        this.profileResolver = profileResolver;
         this.personRepository = personRepository;
         this.roleAssignmentRepository = roleAssignmentRepository;
         this.accessService = accessService;
@@ -61,7 +66,7 @@ public class MeServiceImpl implements MeService {
         }
         refuseSuspended(person);
 
-        return toAccessDto(person, platformAdmin);
+        return toAccessDto(authentication, jwt, person, platformAdmin);
     }
 
     @Override
@@ -97,7 +102,7 @@ public class MeServiceImpl implements MeService {
             log.info("Self-registered person created: personId={}", person.getId());
         }
         refuseSuspended(person);
-        return toAccessDto(person, platformAdmin);
+        return toAccessDto(authentication, jwt, person, platformAdmin);
     }
 
     /** docs/specs/119, scenario 12: a SUSPENDED person is refused with 403 (the rollback also undoes a just-made email bridge). */
@@ -108,12 +113,20 @@ public class MeServiceImpl implements MeService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileDto> profiles(Authentication authentication, Jwt jwt) {
+        Person person = personRepository.findByKeycloakUserId(authentication.getName()).orElse(null);
+        refuseSuspended(person);
+        return profileResolver.resolve(authentication, jwt, person);
+    }
+
     private static String claim(Jwt jwt, String name) {
         String value = jwt.getClaimAsString(name);
         return value == null ? "" : value.trim();
     }
 
-    private MeAccessDto toAccessDto(Person person, boolean platformAdmin) {
+    private MeAccessDto toAccessDto(Authentication authentication, Jwt jwt, Person person, boolean platformAdmin) {
         List<UUID> clubAdminClubIds = person == null
                 ? List.of()
                 : roleAssignmentRepository.findByPersonId(person.getId()).stream()
@@ -126,7 +139,8 @@ public class MeServiceImpl implements MeService {
                 person == null ? null : person.getId(),
                 person == null ? null : person.getStatus(),
                 platformAdmin,
-                clubAdminClubIds);
+                clubAdminClubIds,
+                profileResolver.resolve(authentication, jwt, person));
     }
 
     // Requires email_verified on the JWT before binding keycloakUserId to a Person by email —

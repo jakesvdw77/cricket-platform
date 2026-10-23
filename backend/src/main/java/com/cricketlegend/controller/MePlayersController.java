@@ -6,7 +6,13 @@ import com.cricketlegend.dto.MyPollDto;
 import com.cricketlegend.dto.PublicAnswersDto;
 import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
+import com.cricketlegend.dto.InviteAgentRequest;
+import com.cricketlegend.service.AgentInvitationService;
 import com.cricketlegend.service.MyPlayerPollService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PostMapping;
 import com.cricketlegend.service.MyPlayerService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -29,10 +35,25 @@ class MePlayersController {
 
     private final MyPlayerService myPlayerService;
     private final MyPlayerPollService myPlayerPollService;
+    private final AgentInvitationService agentInvitationService;
 
-    MePlayersController(MyPlayerService myPlayerService, MyPlayerPollService myPlayerPollService) {
+    MePlayersController(
+            MyPlayerService myPlayerService,
+            MyPlayerPollService myPlayerPollService,
+            AgentInvitationService agentInvitationService) {
         this.myPlayerService = myPlayerService;
         this.myPlayerPollService = myPlayerPollService;
+        this.agentInvitationService = agentInvitationService;
+    }
+
+    @PostMapping("/{playerKey}/agents")
+    ResponseEntity<Void> inviteAgent(
+            Authentication authentication,
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String playerKey,
+            @Valid @RequestBody InviteAgentRequest request) {
+        agentInvitationService.invite(authentication, jwt, playerKey, request);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

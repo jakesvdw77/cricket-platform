@@ -56,4 +56,37 @@ public interface PersonLinkRepository extends JpaRepository<PersonLink, UUID> {
 
     /** The account's links in one status (docs/specs/119 My players: the ACTIVE ones). */
     List<PersonLink> findByAccountPersonIdAndStatus(UUID accountPersonId, PersonLinkStatus status);
+
+    /** Invitations (INVITED, not expired) waiting for this verified email, oldest first (docs/specs/119, slice 4). */
+    @Query("""
+            select l from PersonLink l
+            where l.status = com.cricketlegend.domain.PersonLinkStatus.INVITED
+              and lower(l.invitedEmail) = lower(:email)
+              and (l.expiresAt is null or l.expiresAt > :now)
+            order by l.createdAt
+            """)
+    List<PersonLink> findOpenInvitationsForEmail(
+            @Param("email") String email, @Param("now") java.time.Instant now);
+
+    /** Invitations (INVITED, not expired) already sent for one player at one club. */
+    @Query("""
+            select l from PersonLink l
+            where l.subjectPersonId = :subjectPersonId and l.clubId = :clubId
+              and l.status = com.cricketlegend.domain.PersonLinkStatus.INVITED
+              and (l.expiresAt is null or l.expiresAt > :now)
+            order by l.createdAt
+            """)
+    List<PersonLink> findOpenInvitationsBySubjectAndClub(
+            @Param("subjectPersonId") UUID subjectPersonId,
+            @Param("clubId") UUID clubId,
+            @Param("now") java.time.Instant now);
+
+    /** Invitations (INVITED, not expired) waiting for this email, counted for the chooser card. */
+    @Query("""
+            select count(l) from PersonLink l
+            where l.status = com.cricketlegend.domain.PersonLinkStatus.INVITED
+              and lower(l.invitedEmail) = lower(:email)
+              and (l.expiresAt is null or l.expiresAt > :now)
+            """)
+    long countOpenInvitationsForEmail(@Param("email") String email, @Param("now") java.time.Instant now);
 }

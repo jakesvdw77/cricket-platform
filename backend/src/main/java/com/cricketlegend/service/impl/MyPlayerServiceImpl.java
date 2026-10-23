@@ -8,6 +8,7 @@ import com.cricketlegend.dto.MyPlayerAgentDto;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MyPlayerMapper;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonLinkRepository;
@@ -17,6 +18,8 @@ import com.cricketlegend.service.MyPlayerService;
 import com.cricketlegend.service.support.HeldPlayer;
 import com.cricketlegend.service.support.MyPlayerAccess;
 import com.cricketlegend.service.support.PlayerGroupLabels;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -41,6 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MyPlayerServiceImpl implements MyPlayerService {
 
     private static final Logger log = LoggerFactory.getLogger(MyPlayerServiceImpl.class);
+    private static final LocalDate EARLIEST_DATE_OF_BIRTH = LocalDate.of(1900, 1, 1);
+    private static final int MAX_AGE_YEARS = 100;
 
     private final MyPlayerAccess access;
     private final ClubRepository clubRepository;
@@ -107,6 +112,8 @@ public class MyPlayerServiceImpl implements MyPlayerService {
             throw new AccessDeniedException("Only the main agent or the adult player can change medical aid details.");
         }
 
+        applyDateOfBirth(held, request.dateOfBirth(), changed);
+
         set(changed, "photoUrl", profile.getPhotoUrl(), blankToNull(request.photoUrl()), profile::setPhotoUrl);
         set(changed, "phone", profile.getPhone(), blankToNull(request.phone()), profile::setPhone);
         // the contact email also drives the email match, so only the main agent or the player may change it
@@ -132,6 +139,29 @@ public class MyPlayerServiceImpl implements MyPlayerService {
         return toDto(held);
     }
 
+    /**
+     * Owner decision (slice 4): the main agent or the adult player may change the date of birth. It lives on the shared
+     * Person (every club the person plays at sees it), and every age-based label, the adult flag and the public identity
+     * check read it afresh on the next request. Null leaves it; a different value is refused for any other agent.
+     */
+    private void applyDateOfBirth(HeldPlayer held, LocalDate sent, List<String> changed) {
+        Person subject = held.subject();
+        if (sent == null || sent.equals(subject.getDateOfBirth())) {
+            return;
+        }
+        if (!held.canEditDateOfBirth()) {
+            log.warn("My player date of birth edit refused: account={} club={}", held.caller().getId(), held.profile().getClubId());
+            throw new AccessDeniedException("Only the main agent or the adult player can change the date of birth.");
+        }
+        LocalDate today = LocalDate.now();
+        if (sent.isAfter(today) || sent.isBefore(EARLIEST_DATE_OF_BIRTH) || sent.isBefore(today.minusYears(MAX_AGE_YEARS))) {
+            throw new ValidationException("Enter the player's real date of birth.");
+        }
+        subject.setDateOfBirth(sent);
+        personRepository.save(subject);
+        changed.add("dateOfBirth");
+    }
+
     private MyPlayerDto toDto(HeldPlayer held) {
         PlayerProfile profile = held.profile();
         Set<UUID> ids = Set.of(profile.getId());
@@ -141,8 +171,8 @@ public class MyPlayerServiceImpl implements MyPlayerService {
         String clubName = clubRepository.findById(profile.getClubId()).map(Club::getName).orElse(null);
 
         List<PersonLink> links = personLinkRepository.findActiveBySubjectAndClub(held.subject().getId(), profile.getClubId());
-        List<MyPlayerAgentDto> agents = List.of();
-        if (held.main()) {
+        List<MyPlayerAgentDto> agents = new ArrayList<>();
+        if (held.canManageAgents()) {
             // the main agent sees the other agents by name and masked email, never anything more
             Map<UUID, Person> accounts = personRepository
                     .findAllById(links.stream()
@@ -151,11 +181,17 @@ public class MyPlayerServiceImpl implements MyPlayerService {
                             .collect(Collectors.toSet()))
                     .stream()
                     .collect(Collectors.toMap(Person::getId, p -> p));
-            agents = links.stream()
-                    .filter(l -> !l.getId().equals(held.link().getId()) && accounts.containsKey(l.getAccountPersonId()))
+            List<MyPlayerAgentDto> shown = links.stream()
+                    .filter(l -> (held.link() == null || !l.getId().equals(held.link().getId()))
+                            && accounts.containsKey(l.getAccountPersonId()))
                     .sorted(Comparator.comparing(PersonLink::getCreatedAt).thenComparing(PersonLink::getId))
-                    .map(l -> mapper.toAgent(accounts.get(l.getAccountPersonId()), l.isMain()))
-                    .toList();
+                    .map(l -> mapper.toAgent(l.getId(), accounts.get(l.getAccountPersonId()), l.isMain()))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            // invitations this player has sent and that are still open, by masked invited email
+            personLinkRepository
+                    .findOpenInvitationsBySubjectAndClub(held.subject().getId(), profile.getClubId(), Instant.now())
+                    .forEach(l -> shown.add(mapper.toInvited(l.getId(), l.getInvitedEmail())));
+            agents = shown;
         }
         return mapper.toDto(held, clubName, label, sections, teams, links.size(), agents);
     }

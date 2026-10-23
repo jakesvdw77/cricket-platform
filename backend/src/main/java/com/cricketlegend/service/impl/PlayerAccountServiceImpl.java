@@ -1,19 +1,25 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.LinkGrantedVia;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonLinkStatus;
 import com.cricketlegend.domain.PersonLink;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.dto.PlayerAccountDto;
 import com.cricketlegend.dto.PlayerLinkDto;
+import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LinkRequestMapper;
 import com.cricketlegend.repository.PersonLinkRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
+import com.cricketlegend.service.AgentInvitationEmailService;
 import com.cricketlegend.service.PlayerAccountService;
+import com.cricketlegend.service.support.LinkInvitations;
 import com.cricketlegend.service.support.PlayerSectionNames;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +30,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -33,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PlayerAccountServiceImpl implements PlayerAccountService {
 
+    private static final Logger log = LoggerFactory.getLogger(PlayerAccountServiceImpl.class);
     private static final int MAX_PAGE_SIZE = 100;
     private static final UUID NO_SECTION = new UUID(0L, 0L);
 
@@ -42,6 +52,8 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
     private final PlayerSectionNames playerSectionNames;
     private final LinkRequestMapper mapper;
     private final AccessService accessService;
+    private final LinkInvitations linkInvitations;
+    private final AgentInvitationEmailService agentInvitationEmailService;
 
     public PlayerAccountServiceImpl(
             PlayerProfileRepository playerProfileRepository,
@@ -49,7 +61,11 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
             PersonLinkRepository personLinkRepository,
             PlayerSectionNames playerSectionNames,
             LinkRequestMapper mapper,
-            AccessService accessService) {
+            AccessService accessService,
+            LinkInvitations linkInvitations,
+            AgentInvitationEmailService agentInvitationEmailService) {
+        this.linkInvitations = linkInvitations;
+        this.agentInvitationEmailService = agentInvitationEmailService;
         this.playerProfileRepository = playerProfileRepository;
         this.personRepository = personRepository;
         this.personLinkRepository = personLinkRepository;
@@ -131,12 +147,105 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
         Set<UUID> sections = new HashSet<>(playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of()));
         accessService.assertCanAdministerAnySection(authentication, clubId, sections);
 
-        List<PersonLink> links = personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), clubId);
+        List<PersonLink> links = new java.util.ArrayList<>(
+                personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), clubId));
+        links.addAll(personLinkRepository.findOpenInvitationsBySubjectAndClub(profile.getPersonId(), clubId, Instant.now()));
         Map<UUID, Person> agents = agentsOf(links);
         return links.stream()
                 .sorted(Comparator.comparing(PersonLink::isMain).reversed().thenComparing(PersonLink::getCreatedAt))
                 .map(l -> mapper.toLinkDto(l, l.getAccountPersonId() == null ? null : agents.get(l.getAccountPersonId())))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void revokeLink(Authentication authentication, UUID clubId, UUID playerId, UUID linkId, boolean confirm) {
+        requireConfirm(confirm);
+        PlayerProfile profile = administrablePlayer(authentication, clubId, playerId);
+        PersonLink link = linkOf(profile, linkId);
+        if (link.getStatus() != PersonLinkStatus.ACTIVE && link.getStatus() != PersonLinkStatus.INVITED) {
+            throw new NotFoundException("Link not found: " + linkId);
+        }
+        UUID actorId = accessService.resolveCurrentPersonId(authentication);
+        boolean wasMain = link.isMain();
+        PersonLinkStatus was = link.getStatus();
+        link.setStatus(PersonLinkStatus.REVOKED);
+        link.setMain(false);
+        link.setRevokedAt(Instant.now());
+        link.setRevokedByPersonId(actorId);
+        personLinkRepository.save(link);
+        log.info("Link revoked by club: actor={} link={} subject={} club={} was={} wasMain={}",
+                actor(authentication, actorId), link.getId(), profile.getPersonId(), clubId, was, wasMain);
+    }
+
+    @Override
+    @Transactional
+    public void makeMain(Authentication authentication, UUID clubId, UUID playerId, UUID linkId, Boolean confirm) {
+        requireConfirm(Boolean.TRUE.equals(confirm));
+        PlayerProfile profile = administrablePlayer(authentication, clubId, playerId);
+        PersonLink link = linkOf(profile, linkId);
+        if (link.getStatus() != PersonLinkStatus.ACTIVE) {
+            throw new NotFoundException("Link not found: " + linkId);
+        }
+        if (link.isMain()) {
+            throw new ConflictException("This agent is already the main agent.");
+        }
+        try {
+            // the old main steps down first so the one-main partial unique index is never violated
+            for (PersonLink other : personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), clubId)) {
+                if (other.isMain()) {
+                    other.setMain(false);
+                    personLinkRepository.saveAndFlush(other);
+                }
+            }
+            link.setMain(true);
+            personLinkRepository.saveAndFlush(link);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("The main agent changed meanwhile. Reload and try again.");
+        }
+        UUID actorId = accessService.resolveCurrentPersonId(authentication);
+        log.info("Main agent changed by club: actor={} link={} subject={} club={}",
+                actor(authentication, actorId), link.getId(), profile.getPersonId(), clubId);
+    }
+
+    @Override
+    @Transactional
+    public void inviteMain(Authentication authentication, UUID clubId, UUID playerId, String email, Boolean confirm) {
+        requireConfirm(Boolean.TRUE.equals(confirm));
+        PlayerProfile profile = administrablePlayer(authentication, clubId, playerId);
+        UUID actorId = accessService.resolveCurrentPersonId(authentication);
+        PersonLink link = linkInvitations.create(
+                profile.getPersonId(), clubId, email, true, LinkGrantedVia.CLUB_MANAGER, actorId, null);
+        log.info("Main agent invited by club: actor={} link={} subject={} club={}",
+                actor(authentication, actorId), link.getId(), profile.getPersonId(), clubId);
+        agentInvitationEmailService.sendAfterCommit(link.getId());
+    }
+
+    private PlayerProfile administrablePlayer(Authentication authentication, UUID clubId, UUID playerId) {
+        PlayerProfile profile = playerProfileRepository
+                .findById(playerId)
+                .filter(p -> p.getClubId().equals(clubId))
+                .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
+        Set<UUID> sections = new HashSet<>(playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of()));
+        accessService.assertCanAdministerAnySection(authentication, clubId, sections);
+        return profile;
+    }
+
+    private PersonLink linkOf(PlayerProfile profile, UUID linkId) {
+        return personLinkRepository
+                .findById(linkId)
+                .filter(l -> l.getSubjectPersonId().equals(profile.getPersonId()) && l.getClubId().equals(profile.getClubId()))
+                .orElseThrow(() -> new NotFoundException("Link not found: " + linkId));
+    }
+
+    private static void requireConfirm(boolean confirm) {
+        if (!confirm) {
+            throw new ValidationException("Confirm the change before continuing.");
+        }
+    }
+
+    private static String actor(Authentication authentication, UUID actorId) {
+        return actorId != null ? actorId.toString() : "sub:" + authentication.getName();
     }
 
     private Map<UUID, Person> agentsOf(List<PersonLink> links) {

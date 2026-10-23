@@ -2239,6 +2239,104 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PublicAnswersDto"
+  /api/v1/me/profiles:
+    get:
+      tags:
+      - me-controller
+      description: "The chooser cards (docs/specs/119): at most one MY_PLAYERS, one MANAGER per club, PLATFORM_ADMIN when it applies. No activation side effect."
+      operationId: profiles
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfileDto"
+  /api/v1/me/invitations:
+    get:
+      tags:
+      - me-links-controller
+      description: "Open invitations for the caller's verified email (403 EMAIL_NOT_VERIFIED otherwise); expired ones are left out."
+      operationId: invitations
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvitationDto"
+  /api/v1/me/links/{linkId}/accept:
+    post:
+      tags:
+      - me-links-controller
+      description: "Binds the invitation to the caller. A hand-over (or an ADD to a player with no main agent) makes the caller main and steps the previous main down in the same transaction; 409 on a main-agent clash; 404 if not the caller's, expired or closed."
+      operationId: acceptInvitation
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/me/links/{linkId}/decline:
+    post:
+      tags:
+      - me-links-controller
+      operationId: declineInvitation
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/me/links/{linkId}:
+    delete:
+      tags:
+      - me-links-controller
+      description: "The sender cancels an INVITED link, or an agent removes their own ACTIVE link (leave). 409 if they are the main agent and others exist (hand over first); anything else 404."
+      operationId: removeLink
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/me/players/{playerKey}/agents:
+    post:
+      tags:
+      - me-players-controller
+      description: "Main agent (or the adult player on their own record) invites an email for 14 days. 403 for another agent, 400 for the caller's own email, 409 already an agent or invited, 429 after 5 invitations a day."
+      operationId: inviteAgent
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteAgentRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
   /api/v1/manage/media:
     post:
       tags:
@@ -7369,6 +7467,101 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PlayerLinkDto"
+    post:
+      tags:
+      - player-account-controller
+      description: "Invites an email as MAIN agent (INVITED, 14 days, CLUB_MANAGER). confirm must be true (400)."
+      operationId: invitePlayerMainAgent
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManagerInviteRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}:
+    delete:
+      tags:
+      - player-account-controller
+      description: "confirm must be true (400). Revokes an ACTIVE link or cancels an INVITED one at once; if it was main nobody is promoted."
+      operationId: revokePlayerLink
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: confirm
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}/make-main:
+    post:
+      tags:
+      - player-account-controller
+      description: "confirm must be true (400). The old main stays an ordinary agent; 409 if already main."
+      operationId: makePlayerLinkMain
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmActionRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
   /api/v1/manage/clubs/{clubId}/players/{playerId}/stats:
     get:
       tags:
@@ -10849,6 +11042,10 @@ components:
           items:
             type: string
             format: uuid
+        profiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileDto"
     ConfirmLinksRequest:
       type: object
       properties:
@@ -11134,6 +11331,11 @@ components:
         since:
           type: string
           format: date-time
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - INVITED
     PagePlayerAccountDto:
       type: object
       properties:
@@ -11166,6 +11368,77 @@ components:
           type: boolean
         empty:
           type: boolean
+    ProfileDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - MY_PLAYERS
+          - MANAGER
+          - PLATFORM_ADMIN
+        title:
+          type: string
+        subtitle:
+          type: string
+        clubId:
+          type: string
+          format: uuid
+        clubName:
+          type: string
+        clubSlug:
+          type: string
+        landing:
+          type: string
+        pendingCount:
+          type: integer
+          format: int32
+    InviteAgentRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 255
+        mode:
+          type: string
+          enum:
+          - HANDOVER
+          - ADD
+      required:
+      - email
+      - mode
+    InvitationDto:
+      type: object
+      properties:
+        linkId:
+          type: string
+          format: uuid
+        playerName:
+          type: string
+        clubName:
+          type: string
+        invitedByName:
+          type: string
+        makeMain:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+    ConfirmActionRequest:
+      type: object
+      properties:
+        confirm:
+          type: boolean
+    ManagerInviteRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 255
+        confirm:
+          type: boolean
+      required:
+      - email
     CreateSponsorRequest:
       type: object
       properties:
@@ -16455,6 +16728,14 @@ components:
     MyPlayerAgentDto:
       type: object
       properties:
+        linkId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - INVITED
         name:
           type: string
         maskedEmail:
@@ -16463,10 +16744,20 @@ components:
           type: boolean
     MyPlayerDto:
       type: object
-      description: "No date of birth. agents is filled for the main agent only; agentCount counts every active agent including the caller."
+      description: "The date of birth is shown to a linked account here only (owner decision). agents (active agents and open invitations, by masked email) is filled when canManageAgents; agentCount counts every active agent including the caller. myLinkId is the caller's own link id (null on the adult player's own record)."
       properties:
         key:
           type: string
+        myLinkId:
+          type: [string, 'null']
+          format: uuid
+        dateOfBirth:
+          type: [string, 'null']
+          format: date
+        canEditDateOfBirth:
+          type: boolean
+        canManageAgents:
+          type: boolean
         firstName:
           type: string
         lastName:
@@ -16590,6 +16881,10 @@ components:
         medicalAidMemberNumber:
           type: [string, 'null']
           maxLength: 100
+        dateOfBirth:
+          type: [string, 'null']
+          format: date
+          description: "Null leaves it unchanged; a different value is 403 unless canEditDateOfBirth; 400 for a future date, before 1900 or over 100 years ago. Stored on the shared Person."
       required:
       - isWicketKeeper
     MyPollDto:

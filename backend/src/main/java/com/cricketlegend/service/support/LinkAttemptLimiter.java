@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LinkAttemptLimiter {
 
     public static final int REQUESTS_PER_DAY = 10;
+    public static final int INVITES_PER_DAY = 5;
     public static final int CONFIRM_FAILURES_PER_HOUR = 5;
     private static final Duration REQUEST_WINDOW = Duration.ofDays(1);
     private static final Duration CONFIRM_WINDOW = Duration.ofHours(1);
@@ -47,14 +48,24 @@ public class LinkAttemptLimiter {
     /** Counts one link request, or refuses (429) when the account has used its daily allowance. Joins the caller's transaction. */
     @Transactional
     public void countRequest(UUID accountPersonId) {
+        countDaily(accountPersonId, LinkAttemptKind.REQUEST, REQUESTS_PER_DAY);
+    }
+
+    /** Counts one agent invitation (5 per account per day, 429 beyond). Joins the caller's transaction. */
+    @Transactional
+    public void countInvite(UUID accountPersonId) {
+        countDaily(accountPersonId, LinkAttemptKind.INVITE, INVITES_PER_DAY);
+    }
+
+    private void countDaily(UUID accountPersonId, LinkAttemptKind kind, int limit) {
         Instant now = Instant.now();
-        LinkAttempt attempt = repository.findByAccountPersonIdAndKind(accountPersonId, LinkAttemptKind.REQUEST)
-                .orElseGet(() -> fresh(accountPersonId, LinkAttemptKind.REQUEST, now));
+        LinkAttempt attempt = repository.findByAccountPersonIdAndKind(accountPersonId, kind)
+                .orElseGet(() -> fresh(accountPersonId, kind, now));
         if (!attempt.getWindowStartedAt().plus(REQUEST_WINDOW).isAfter(now)) {
             attempt.setCount(0);
             attempt.setWindowStartedAt(now);
         }
-        if (attempt.getCount() >= REQUESTS_PER_DAY) {
+        if (attempt.getCount() >= limit) {
             throw new LinkRateLimitedException(secondsUntil(attempt.getWindowStartedAt().plus(REQUEST_WINDOW), now));
         }
         attempt.setCount(attempt.getCount() + 1);

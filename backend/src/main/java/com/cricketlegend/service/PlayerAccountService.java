@@ -24,6 +24,24 @@ public interface PlayerAccountService {
             int page,
             int size);
 
-    /** The ACTIVE agents of one player, main first; the caller must administer at least one of the player's sections. */
+    /** The ACTIVE agents and open (unexpired) invitations of one player, main first; the caller must administer at least one of the player's sections. */
     List<PlayerLinkDto> links(Authentication authentication, UUID clubId, UUID playerId);
+
+    /**
+     * Revokes an ACTIVE agent link or cancels an INVITED one at once (docs/specs/119, slice 4); {@code confirm} must be true
+     * (400). If it was the main agent nobody is promoted automatically. 404 for a link that is not this player's.
+     */
+    void revokeLink(Authentication authentication, UUID clubId, UUID playerId, UUID linkId, boolean confirm);
+
+    /**
+     * Makes an existing ACTIVE agent the main agent; the old main stays an ordinary agent, in one transaction. {@code
+     * confirm} must be true (400); 409 when the link is already main or the main changed meanwhile.
+     */
+    void makeMain(Authentication authentication, UUID clubId, UUID playerId, UUID linkId, Boolean confirm);
+
+    /**
+     * Invites an email as MAIN agent ({@code INVITED}, make_main, granted via CLUB_MANAGER, 14 days) and sends the invitation
+     * email after the commit. {@code confirm} must be true (400). The previous main steps down when the invitee accepts.
+     */
+    void inviteMain(Authentication authentication, UUID clubId, UUID playerId, String email, Boolean confirm);
 }

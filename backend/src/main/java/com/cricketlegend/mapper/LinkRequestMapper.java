@@ -79,13 +79,15 @@ public class LinkRequestMapper {
     }
 
     public PlayerLinkDto toLinkDto(PersonLink link, Person agent) {
+        String masked = MaskedEmail.mask(agent == null ? link.getInvitedEmail() : agent.getEmail());
         return new PlayerLinkDto(
                 link.getId(),
-                fullName(agent),
-                MaskedEmail.mask(agent == null ? link.getInvitedEmail() : agent.getEmail()),
+                agent == null ? masked : fullName(agent),
+                masked,
                 link.isMain(),
                 link.getGrantedVia(),
-                link.getDecidedAt() != null ? link.getDecidedAt() : link.getCreatedAt());
+                link.getDecidedAt() != null ? link.getDecidedAt() : link.getCreatedAt(),
+                link.getStatus());
     }
 
     public static String fullName(Person person) {

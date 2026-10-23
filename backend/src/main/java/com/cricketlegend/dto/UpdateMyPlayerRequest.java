@@ -6,13 +6,16 @@ import com.cricketlegend.domain.BowlingType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 
 /**
- * PUT /api/v1/me/players/{key} body (docs/specs/119): the whitelist and nothing else. Name, date of birth, gender,
+ * PUT /api/v1/me/players/{key} body (docs/specs/119): the whitelist and nothing else. Name, gender,
  * sections, jersey number, active, verification status and the membership number are not here, so they cannot be set.
  * A full replace of the contact and cricket fields (a blank text clears it). The two medical aid fields are applied
  * only for the main agent or the adult player; for any other agent a value that differs from the stored one is
- * refused with 403 and a null leaves the stored value untouched.
+ * refused with 403 and a null leaves the stored value untouched. {@code dateOfBirth} (owner decision, slice 4) works
+ * the same way for the main agent or the adult player: null leaves it, a different value is 403 for any other agent, and
+ * a value in the future, before 1900 or making the player over 100 is a 400. It is stored on the shared {@code Person}.
  */
 public record UpdateMyPlayerRequest(
         @Size(max = 500) String photoUrl,
@@ -25,5 +28,6 @@ public record UpdateMyPlayerRequest(
         BowlingType bowlingType,
         @NotNull Boolean isWicketKeeper,
         @Size(max = 200) String medicalAidProvider,
-        @Size(max = 100) String medicalAidMemberNumber) {
+        @Size(max = 100) String medicalAidMemberNumber,
+        LocalDate dateOfBirth) {
 }

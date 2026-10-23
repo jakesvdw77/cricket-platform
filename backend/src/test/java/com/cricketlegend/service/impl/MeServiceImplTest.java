@@ -45,11 +45,14 @@ class MeServiceImplTest {
     @Mock
     private AccessService accessService;
 
+    @Mock
+    private com.cricketlegend.service.support.ProfileResolver profileResolver;
+
     private MeServiceImpl meService;
 
     @BeforeEach
     void setUp() {
-        meService = new MeServiceImpl(personRepository, roleAssignmentRepository, accessService);
+        meService = new MeServiceImpl(personRepository, roleAssignmentRepository, accessService, profileResolver);
     }
 
     // Defaults email_verified to true — every existing test here exercises the legitimate,
