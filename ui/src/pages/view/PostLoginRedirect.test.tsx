@@ -30,6 +30,7 @@ function renderPage() {
           <Route path="/post-login" element={<PostLoginRedirect />} />
           <Route path="/admin" element={<div>Admin Home Page</div>} />
           <Route path="/manage" element={<div>Manager Home Page</div>} />
+          <Route path="/welcome" element={<div>Welcome Page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -63,8 +64,16 @@ describe('PostLoginRedirect', () => {
     expect(await screen.findByText('Manager Home Page')).toBeInTheDocument()
   })
 
-  it('navigates to /admin when neither platform admin nor any CLUB_ADMIN grant is present', async () => {
-    activateSession.mockResolvedValueOnce(meAccess({ platformAdmin: false, clubAdminClubIds: [] }))
+  it('navigates to /welcome when there is no Person and no grant', async () => {
+    activateSession.mockResolvedValueOnce(meAccess())
+
+    renderPage()
+
+    expect(await screen.findByText('Welcome Page')).toBeInTheDocument()
+  })
+
+  it('navigates to /admin when a Person exists but has no platform admin or CLUB_ADMIN grant', async () => {
+    activateSession.mockResolvedValueOnce(meAccess({ personId: 'p-1', personStatus: 'ACTIVE' }))
 
     renderPage()
 

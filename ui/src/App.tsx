@@ -7,6 +7,7 @@ import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
+import WelcomePage from './pages/view/WelcomePage'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
@@ -109,6 +110,7 @@ function App() {
                 as every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
+            <Route path="/welcome" element={<WelcomePage />} />
 
             {/* docs/specs/032-match-availability-polls.md: the poll's own public, no-login
                 response page — top-level and unguarded, outside both the /manage and /player
