@@ -54,4 +54,18 @@ public interface PlayerProfileRepository extends JpaRepository<PlayerProfile, UU
             where pe.id = p.personId and p.clubId = :clubId and p.active = true
             """)
     List<PlayerNameView> findActiveNamesByClubId(@Param("clubId") UUID clubId);
+
+    /**
+     * Active, verified players of any club whose contact email equals {@code email}, case-insensitively and except the
+     * caller's own record (docs/specs/119 step 1): the only cross-club read of player data, backed by the {@code
+     * lower(email)} index.
+     */
+    @Query("""
+            select p from PlayerProfile p
+            where p.active = true
+              and p.verificationStatus = com.cricketlegend.domain.PlayerVerificationStatus.VERIFIED
+              and lower(p.email) = lower(:email) and p.personId <> :excludePersonId
+            """)
+    List<PlayerProfile> findMatchesByEmail(
+            @Param("email") String email, @Param("excludePersonId") UUID excludePersonId);
 }

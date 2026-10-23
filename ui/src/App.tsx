@@ -7,7 +7,9 @@ import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
-import WelcomePage from './pages/view/WelcomePage'
+import FindYourPlayersPage from './pages/view/FindYourPlayersPage'
+import AccessPage from './pages/manage/access/AccessPage'
+import PlayerAccountsTab from './pages/manage/access/PlayerAccountsTab'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
@@ -110,7 +112,7 @@ function App() {
                 as every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
-            <Route path="/welcome" element={<WelcomePage />} />
+            <Route path="/welcome" element={<FindYourPlayersPage />} />
 
             {/* docs/specs/032-match-availability-polls.md: the poll's own public, no-login
                 response page — top-level and unguarded, outside both the /manage and /player
@@ -262,10 +264,11 @@ function App() {
               <Route path="results/:matchId/capture" element={<ResultCapturePage />} />
               {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
               <Route path="leaderboards" element={<LeaderboardsPage />} />
-              <Route
-                path="permissions"
-                element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}
-              />
+              {/* docs/specs/119 Part 3: Access - Managers tab (placeholder) and Player accounts tab. */}
+              <Route path="permissions" element={<AccessPage />}>
+                <Route index element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />} />
+                <Route path="player-accounts" element={<PlayerAccountsTab />} />
+              </Route>
               {/* docs/specs/056-club-profile-overview.md: two new dashboard placeholders, same
                   "Coming soon" EmptyState precedent as results/permissions above. */}
               <Route path="gallery" element={<EmptyState title="Gallery" description="Coming soon." />} />

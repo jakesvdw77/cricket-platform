@@ -57,5 +57,6 @@
     <include file="db/changelog/v1/050-league-season-dates.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/051-club-share-initials-only.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/052-club-leaderboard-award-categories.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/053-person-links.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

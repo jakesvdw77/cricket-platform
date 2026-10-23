@@ -2019,6 +2019,48 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MeAccessDto"
+  /api/v1/me/register:
+    post:
+      tags:
+      - me-controller
+      operationId: register
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeAccessDto"
+  /api/v1/me/links:
+    post:
+      tags:
+      - me-links-controller
+      operationId: confirmLinks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmLinksRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfirmLinksResultDto"
+  /api/v1/me/player-matches:
+    get:
+      tags:
+      - me-links-controller
+      operationId: playerMatches
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerMatchesDto"
   /api/v1/manage/media:
     post:
       tags:
@@ -10453,6 +10495,75 @@ components:
           items:
             type: string
             format: uuid
+    ConfirmLinksRequest:
+      type: object
+      properties:
+        playerRefs:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+          minItems: 1
+        confirm:
+          type: boolean
+      required:
+      - playerRefs
+    ConfirmLinksResultDto:
+      type: object
+      properties:
+        linked:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerMatchDto"
+    PlayerMatchDto:
+      type: object
+      properties:
+        ref:
+          type: string
+        firstName:
+          type: string
+        surnameInitial:
+          type: string
+        clubName:
+          type: string
+        groupLabel:
+          type: string
+        birthYear:
+          type: integer
+          format: int32
+        adult:
+          type: boolean
+    PlayerMatchWithMainAgentDto:
+      type: object
+      properties:
+        ref:
+          type: string
+        firstName:
+          type: string
+        surnameInitial:
+          type: string
+        clubName:
+          type: string
+        groupLabel:
+          type: string
+        birthYear:
+          type: integer
+          format: int32
+        adult:
+          type: boolean
+        maskedMainAgentEmail:
+          type: string
+    PlayerMatchesDto:
+      type: object
+      properties:
+        withoutMainAgent:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerMatchDto"
+        withMainAgent:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerMatchWithMainAgentDto"
     CreateSponsorRequest:
       type: object
       properties:

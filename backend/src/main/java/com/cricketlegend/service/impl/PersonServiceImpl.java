@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
 import com.cricketlegend.dto.PersonDto;
 import com.cricketlegend.mapper.PersonMapper;
@@ -40,6 +41,7 @@ public class PersonServiceImpl implements PersonService {
                         .status(PersonStatus.PENDING) // was ACTIVE as of 015 — see
                                                        // 016-keycloak-account-provisioning.md
                                                        // judgment call #4
+                        .origin(PersonOrigin.INVITED) // docs/specs/119: created by a manager's provisioning
                         .build()));
     }
 

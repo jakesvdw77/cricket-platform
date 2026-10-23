@@ -60,4 +60,15 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
             + "and a.leagueId in :leagueIds)")
     long countDistinctPlayersInLeagues(
             @Param("seasonId") UUID seasonId, @Param("leagueIds") Collection<UUID> leagueIds);
+
+    /** The team name of each player among {@code ids} in an ACTIVE season's squads, one joined query (docs/specs/119). */
+    @org.springframework.data.jpa.repository.Query("""
+            select m.playerProfileId as playerProfileId, t.name as teamName
+            from TeamSquadMember m, Team t, Season s
+            where t.id = m.teamId and s.id = m.seasonId and s.active = true
+              and m.playerProfileId in :ids
+            order by t.name
+            """)
+    List<PlayerTeamNameView> findActiveSeasonTeamNames(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids);
 }
