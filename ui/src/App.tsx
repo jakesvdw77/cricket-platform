@@ -3,7 +3,6 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { baseTheme } from './theme'
-import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
@@ -107,7 +106,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={isRootDomain ? <LandingPage /> : <UpcomingMatches />} />
+            {/* A club address has no public home page yet (the old UpcomingMatches placeholder never loaded for a signed-out
+                visitor), so it goes to sign-in; a signed-in person is carried on by /post-login. */}
+            <Route path="/" element={isRootDomain ? <LandingPage /> : <Navigate to="/login" replace />} />
             {/* /login, /post-login, and /admin are club-agnostic — a platform admin's (and,
                 as of docs/specs/016, a CLUB_ADMIN's) RoleAssignment has no club scope resolved
                 from the URL (docs/specs/001), so these run on the root domain directly as well
