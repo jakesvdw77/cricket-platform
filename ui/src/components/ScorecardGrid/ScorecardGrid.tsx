@@ -47,6 +47,8 @@ export interface ScorecardGridProps<R> {
   renderPosition?: (row: R, index: number) => ReactNode
   // The cells after the columns (the star toggle, a row menu button).
   renderTrailing?: (row: R, index: number) => ReactNode
+  // The header over the trailing cells (the star column's Standout).
+  trailingHeader?: ReactNode
   // The row as a phone card (below sm). Required: the grid is a table from sm and a stack of these below it.
   renderCard: (row: R, index: number) => ReactNode
   // Drag and drop with a handle (desktop): pass the useReorderableRows result for the listed rows. Omitted, no handle.
@@ -126,6 +128,7 @@ export function ScorecardGrid<R>({
   playerHeader = 'Player',
   renderPosition,
   renderTrailing,
+  trailingHeader,
   renderCard,
   reorder,
   reorderDisabled = false,
@@ -276,7 +279,11 @@ export function ScorecardGrid<R>({
                   {column.header}
                 </TableCell>
               ))}
-              {renderTrailing && <TableCell sx={{ ...HEAD_CELL, borderBottom: 1, borderColor: 'divider' }} />}
+              {renderTrailing && (
+                <TableCell align="right" component="th" scope="col" sx={{ ...HEAD_CELL, borderBottom: 1, borderColor: 'divider' }}>
+                  {trailingHeader}
+                </TableCell>
+              )}
               {rowProblem && <TableCell sx={{ ...HEAD_CELL, borderBottom: 1, borderColor: 'divider', width: 32 }} />}
             </TableRow>
           </TableHead>

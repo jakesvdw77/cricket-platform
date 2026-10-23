@@ -6,6 +6,7 @@ import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchesSummaryDto;
+import com.cricketlegend.dto.UpdateMatchDateTimeRequest;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.service.MatchService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -128,6 +130,17 @@ public class MatchController {
             @PathVariable UUID matchId,
             @Valid @RequestBody UpdateMatchRequest request) {
         return ResponseEntity.ok(matchService.update(authentication, clubId, matchId, request));
+    }
+
+    /** docs/specs/118: changes only the match's date and time (allowed while a result is published). */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PatchMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/date-time")
+    public ResponseEntity<MatchDto> updateDateTime(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID matchId,
+            @Valid @RequestBody UpdateMatchDateTimeRequest request) {
+        return ResponseEntity.ok(matchService.updateDateTime(authentication, clubId, matchId, request));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

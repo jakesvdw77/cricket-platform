@@ -112,6 +112,8 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 - **Ways in (spec 116, decision 21).** The Stats shortcut is the fourth footer button on a team card and a Stats icon button on a team row of `TeamsPage`, both opening the team page directly (the card or row still opens Team detail); `TeamDetailPage` has a Statistics card with a real outlined 44 px **View statistics** button. Each passes `{ backTo, backLabel }`.
 - **No figure is computed in the client.** `teamStatsFormat` only formats what the server sent (signed Net Run Rate, Win % to 1 decimal, "212/6", a dash for `null`, the match line); the table, the cards, the form strip and the basis line draw `TeamStatsTableDto` and `TeamStatsDto` as received. Hooks are in `api/teamStatsApi.ts`, keyed under `['managed-club', clubId, 'team-stats', ...]`.
 
+Buttons inside cards and forms use the compact size (`Button size="compact"`; see `design-system.md`, Buttons); only primary page-level and wizard or form footer buttons are normal size.
+
 ## Folder structure
 
 ```

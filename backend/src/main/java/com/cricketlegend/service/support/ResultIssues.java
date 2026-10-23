@@ -20,6 +20,14 @@ final class ResultIssues {
         issues.add(new ResultIssueDto(code.name(), step, side, ResultIssueSeverity.WARNING, message));
     }
 
+    /** docs/specs/118: a warning about one registered player, so the client can act on that player. */
+    void warning(
+            ResultValidator.WarningCode code, ResultWizardStep step, ResultSide side, String message,
+            java.util.UUID playerProfileId) {
+        issues.add(new ResultIssueDto(
+                code.name(), step, side, ResultIssueSeverity.WARNING, message, playerProfileId));
+    }
+
     void info(ResultValidator.WarningCode code, ResultWizardStep step, ResultSide side, String message) {
         issues.add(new ResultIssueDto(code.name(), step, side, ResultIssueSeverity.INFO, message));
     }

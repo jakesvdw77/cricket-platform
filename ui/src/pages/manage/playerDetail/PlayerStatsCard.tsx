@@ -7,6 +7,7 @@ import type { InfoCardChip } from '../../../components/InfoCard'
 import { FormStrip } from '../../../components/FormStrip'
 import { usePlayerStats } from '../../../api/playerStatsApi'
 import { battingFormItems, bowlingFormItems, decimals, resultsPhrase } from '../playerStats/statsFormat'
+import { compactButtonSx } from '../../../components/Button'
 
 export interface PlayerStatsCardProps {
   clubId: string
@@ -29,7 +30,8 @@ export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProp
       to={`/manage/players/${playerId}/stats`}
       variant="outlined"
       startIcon={<EqualizerOutlinedIcon fontSize="small" />}
-      sx={{ minHeight: 44, width: { xs: '100%', md: 'auto' } }}
+      size="small"
+      sx={{ ...compactButtonSx, width: { xs: '100%', md: 'auto' } }}
     >
       View full breakdown
     </MuiButton>
@@ -74,7 +76,7 @@ export function PlayerStatsCard({ clubId, playerId, chips }: PlayerStatsCardProp
         <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0, fontSize: '0.8125rem', lineHeight: 1.4 }}>
           {basis}{' '}
           {!stats && (
-            <MuiButton variant="text" size="small" onClick={() => statsQuery.refetch()} sx={{ minHeight: 44, minWidth: 44, px: 1, verticalAlign: 'middle', textTransform: 'none' }}>
+            <MuiButton variant="text" size="small" onClick={() => statsQuery.refetch()} sx={{ ...compactButtonSx, px: 1, verticalAlign: 'middle', textTransform: 'none' }}>
               Try again
             </MuiButton>
           )}

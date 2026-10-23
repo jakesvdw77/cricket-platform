@@ -64,11 +64,11 @@ describe('DashboardCard', () => {
   })
 
   describe('View as table', () => {
-    it('is a 44 px toggle with aria-pressed that swaps the chart for a real table with the same rows in order, and back', async () => {
+    it('is a compact toggle with aria-pressed that swaps the chart for a real table with the same rows in order, and back', async () => {
       renderCard()
       const toggle = screen.getByRole('button', { name: 'View as table' })
       expect(toggle).toHaveAttribute('aria-pressed', 'false')
-      expect(toggle).toHaveStyle({ minHeight: '44px' })
+      expect(toggle).toHaveStyle({ minHeight: '32px' })
       expect(screen.queryByRole('table')).not.toBeInTheDocument()
 
       await userEvent.click(toggle)
@@ -117,13 +117,13 @@ describe('DashboardCard', () => {
       expect(screen.getByRole('heading', { name: 'Runs per innings' })).toBeInTheDocument()
     })
 
-    it('error is an alert with a 44 px Try again that calls onRetry', async () => {
+    it('error is an alert with a compact Try again that calls onRetry', async () => {
       const onRetry = vi.fn()
       renderCard({ error: { onRetry } })
       const alert = screen.getByRole('alert')
       expect(alert).toHaveTextContent("Couldn't load the overview")
       const retry = within(alert).getByRole('button', { name: 'Try again' })
-      expect(retry).toHaveStyle({ minHeight: '44px' })
+      expect(retry).toHaveStyle({ minHeight: '32px' })
       expect(screen.queryByTestId('the-chart')).not.toBeInTheDocument()
       await userEvent.click(retry)
       expect(onRetry).toHaveBeenCalledTimes(1)

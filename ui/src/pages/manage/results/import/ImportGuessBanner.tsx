@@ -55,11 +55,11 @@ export function ImportGuessBanner({ players, scorecardSide, onScorecardSideChang
       <InfoCard tone="warning" title="Check these names" icon={<ReportProblemOutlinedIcon />} testId="import-guess-banner">
         <Typography variant="body2">{bannerSentence(review.provider, summary)}</Typography>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1 }}>
-          <Button onClick={next} disabled={disabled} sx={{ minHeight: 44 }}>
+          <Button onClick={next} disabled={disabled} size="compact">
             Next one to check
           </Button>
           {summary.ruleBased > 0 && (
-            <Button variant="secondary" onClick={() => setConfirmOpen(true)} disabled={disabled} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+            <Button variant="secondary" size="compact" onClick={() => setConfirmOpen(true)} disabled={disabled}>
               Confirm all {summary.ruleBased} rule-based {summary.ruleBased === 1 ? 'guess' : 'guesses'}
             </Button>
           )}

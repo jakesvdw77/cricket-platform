@@ -85,7 +85,7 @@ Import rules (spec 104):
 
 ## League season dates (spec 111)
 
-- **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create, update and reactivate, and a future bulk or schedule-import path must call it per fixture; it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
+- **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create, update, `updateDateTime` (spec 118) and reactivate, and a future bulk or schedule-import path must call it per fixture; it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
 
 ## Registered players on a result (spec 113)
 
@@ -97,6 +97,7 @@ Import rules (spec 104):
 
 ## Statistics (spec 103)
 
+- **The Players list games columns are decided only by `PlayerGamesReader` / `PlayerGamesCounter`.** A match counts once per player from a published result's team list (spec 103 counting rules, deactivated matches included per decision 21) or, with no published result, from a selection for a started active match.
 - **Statistics are computed on read, never stored.** There is no stats table and no cache; an unpublish, a guest link or a deleted result is correct on the next read. A materialised table needs a measured problem first (spec 103, "Architecture proposal").
 - **`PlayerStatsCalculator` (`service.support`) is the only place a figure is defined.** The aggregate SQL (`PlayerStatsSql`, `PlayerStatsAggregateRepository`) only sums and counts stored columns into additive counters (the one logic beyond that is the encoded `max` keys for highest score and best bowling); averages, rates, percentages, haul bands, coverage and the `notCaptured` catalogue all come from the calculator. Never compute a figure in SQL, a mapper, a ranker or the client.
 - **The stats repositories are the second permitted reader of the result tables.** `PlayerStatsAggregateRepository` and `PlayerStatsFactsRepository` may read `match_result` and its children, gated by the fixed predicate built from the shared constant `ResultVisibility.PUBLISHED_STATUS` (never a re-typed string); they are touched only by the statistics services (ArchUnit, `LayeringRulesTest`). A draft or unpublished result is never read, counted or detected.

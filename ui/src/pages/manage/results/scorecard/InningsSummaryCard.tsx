@@ -71,7 +71,7 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
         ) : null}
         <Button
           variant="ghost"
-          size="sm"
+          size="compact"
           aria-expanded={open}
           aria-label={open ? `Done editing the ${teamName} innings` : `Edit the ${teamName} innings`}
           onClick={() => setOpen((value) => !value)}

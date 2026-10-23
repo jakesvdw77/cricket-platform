@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Typography } from '@mui/material'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { compactButtonSx } from '../Button'
 
 export interface CollapsibleSectionProps {
   // the section heading (an h2): "Batting", "Overview"
@@ -56,7 +57,7 @@ export function CollapsibleSection({ title, description, open, onToggle, label, 
           aria-controls={contentId}
           data-testid={`${testId}-toggle`}
           startIcon={open ? <ExpandLessIcon aria-hidden /> : <ExpandMoreIcon aria-hidden />}
-          sx={{ minHeight: 44, flex: 'none' }}
+          sx={{ ...compactButtonSx, flex: 'none' }}
         >
           {open ? `Hide ${noun}` : `Show ${noun}`}
         </MuiButton>

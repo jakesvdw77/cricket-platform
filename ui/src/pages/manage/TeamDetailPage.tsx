@@ -39,6 +39,7 @@ import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { badgeFor } from './TeamDirectory'
+import { compactButtonSx } from '../../components/Button'
 
 const NOT_ON_FILE = '–'
 
@@ -371,7 +372,8 @@ export default function TeamDetailPage() {
             to={`/manage/teams/${team.id}/stats?seasonId=${encodeURIComponent(selectedSeasonId)}`}
             state={{ backTo: `${location.pathname}${location.search}`, backLabel: team.name || 'Team' }}
             variant="outlined"
-            sx={{ minHeight: 44 }}
+            size="small"
+            sx={compactButtonSx}
           >
             View statistics
           </MuiButton>

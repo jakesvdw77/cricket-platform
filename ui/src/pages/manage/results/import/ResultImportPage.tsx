@@ -211,6 +211,15 @@ export default function ResultImportPage() {
     if ((basisMatchId ?? preview.matchCandidates[0]?.matchId) === deletedId) setBasisMatchId('')
   }
 
+  const onMatchDateChanged = (match: Match) => {
+    void queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+    setPreview((current) =>
+      current
+        ? { ...current, matchCandidates: current.matchCandidates.map((item) => (item.matchId === match.id ? { ...item, matchDate: match.matchDate } : item)) }
+        : current,
+    )
+  }
+
   const onCreate = () => {
     if (!preview || !matchId) return
     const teams = preview.document.teams ?? []
@@ -257,6 +266,7 @@ export default function ResultImportPage() {
     onMatchCreated,
     onMatchDeleted,
     onMatchFound: onMatchCreated,
+    onMatchDateChanged,
     matchPending: previewMutation.isPending && stepId === 'match',
     matchProblem,
     onMatchNext,

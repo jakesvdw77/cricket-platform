@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, Navigate, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
+import { alpha, Box, Button as MuiButton, Chip, Stack, Tooltip, Typography } from '@mui/material'
+import type { Theme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import UnpublishedOutlinedIcon from '@mui/icons-material/UnpublishedOutlined'
+import { compactButtonSx } from '../../../components/Button'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { EmptyState } from '../../../components/EmptyState'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
@@ -25,7 +27,6 @@ import { resultLine, resultPerspective } from '../../../utils/resultLine'
 import { TeamLogo } from '../matches/TeamLogo'
 import {
   ownSidesOf,
-  PERSPECTIVE_COLOR,
   resultCaptureTo,
   resultEditTo,
   resultSides,
@@ -38,6 +39,22 @@ import { backTarget } from '../../../utils/backTarget'
 
 const RESULTS_PATH = '/manage/results'
 const MATCHES_PATH = '/manage/fixtures/matches'
+
+// The result label and the status chip are the same pill: same height, type size and radius.
+const pillSx = { height: 32, borderRadius: 16, px: 1.5, fontSize: '0.9375rem', display: 'inline-flex', alignItems: 'center', lineHeight: 1.2 } as const
+
+type ResultTone = 'success' | 'error' | 'primary' | 'neutral'
+
+// Tinted by outcome with theme tokens: won green and lost red from the club team's point of view; a decided result
+// with no club side (or one that is not the club's) primary; a tie, draw or no result neutral.
+function resultPillSx(tone: ResultTone) {
+  if (tone === 'neutral') {
+    return { bgcolor: (theme: Theme) => alpha(theme.palette.text.secondary, 0.12), color: 'text.primary' }
+  }
+  return { bgcolor: (theme: Theme) => alpha(theme.palette[tone].main, 0.14), color: `${tone}.dark` }
+}
+
+const visuallyHidden = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 const DEFAULT_BACK = { to: RESULTS_PATH, label: 'Results' }
 
@@ -168,10 +185,12 @@ export default function ResultDetailPage() {
   const line = result.outcomeType ? resultLine(result, names) : 'Result not entered yet'
   const field = result.playingAreaName ?? match.playingAreaName ?? match.venue
   const leagueName = match.leagueId ? (leaguesQuery.data?.find((league) => league.id === match.leagueId)?.name ?? null) : null
+  const resultTone: ResultTone =
+    perspective === 'won' ? 'success' : perspective === 'lost' ? 'error' : result.outcomeType === 'WON' ? 'primary' : 'neutral'
   const statusLabel = draft ? 'Draft' : 'Published'
   // docs/specs/114: Share is a filled primary button like Edit, offered on a published result only (as Publish is on a draft).
   const sharePair = draft ? null : (
-    <MuiButton variant="contained" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+    <MuiButton variant="contained" size="small" sx={compactButtonSx} startIcon={<ShareOutlinedIcon />} onClick={() => setShareOpen(true)}>
       Share
     </MuiButton>
   )
@@ -192,47 +211,132 @@ export default function ResultDetailPage() {
             >
               Back to {back.label}
             </MuiButton>
-            <MuiButton component={RouterLink} to={`${MATCHES_PATH}/${match.id}`} variant="text" size="small">
-              View match
-            </MuiButton>
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-            {[home, away].map((side) => (
-              <TeamLogo key={side.side} logo={side.logo} testId={`result-logo-${side.side.toLowerCase()}`} />
-            ))}
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                aria-label={title}
-                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-              >
-                {title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {[formatMatchDateTime(match.matchDate), leagueName, field].filter(Boolean).join(' · ')}
-              </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+              <MuiButton component={RouterLink} to={`${MATCHES_PATH}/${match.id}`} variant="text" size="small">
+                View match
+              </MuiButton>
+              <ImportedChip source={result.source} />
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography
-              variant="h6"
-              component="p"
-              data-testid="result-line"
-              data-perspective={perspective}
-              sx={{ fontWeight: 700, color: PERSPECTIVE_COLOR[perspective], mr: 0.5 }}
+              variant="h4"
+              component="h1"
+              aria-label={title}
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                columnGap: 1,
+                rowGap: 0.75,
+                fontWeight: 700,
+                lineHeight: 1.2,
+                fontSize: { xs: '1.4rem', md: '1.75rem' },
+              }}
             >
-              {line}
+              {[home, away].map((side, index) => (
+                <Box key={side.side} component="span" sx={{ display: 'contents' }} aria-hidden>
+                  {index === 1 && <Box component="span">vs</Box>}
+                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <TeamLogo logo={side.logo} testId={`result-logo-${side.side.toLowerCase()}`} />
+                    <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                      {side.name}
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
             </Typography>
-            <Chip
-              size="small"
-              label={statusLabel}
-              sx={badgeSx(draft ? 'warning' : 'active')}
-              data-testid="result-status-chip"
-            />
-            <ImportedChip source={result.source} />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {[formatMatchDateTime(match.matchDate), leagueName, field].filter(Boolean).join(' · ')}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              <Box
+                component="p"
+                data-testid="result-line"
+                data-perspective={perspective}
+                sx={[pillSx, resultPillSx(resultTone), { m: 0, fontWeight: 700 }]}
+              >
+                {line}
+              </Box>
+              <Chip
+                label={statusLabel}
+                sx={[badgeSx(draft ? 'warning' : 'active'), pillSx]}
+                data-testid="result-status-chip"
+              />
+            </Box>
+            <Box
+              data-testid="result-actions"
+              sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { sm: 'flex-end' } }}
+            >
+              {draft ? (
+                <>
+                  <MuiButton component={RouterLink} to={resultEditTo(match.id)} variant="contained" size="small" sx={compactButtonSx} startIcon={<EditOutlinedIcon />}>
+                    Edit
+                  </MuiButton>
+                  <MuiButton
+                    variant="outlined"
+                    size="small"
+                    sx={compactButtonSx}
+                    startIcon={<CloudUploadOutlinedIcon />}
+                    onClick={() => {
+                      setFailed(false)
+                      publish(match.id)
+                    }}
+                  >
+                    Publish
+                  </MuiButton>
+                  <MuiButton
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    sx={compactButtonSx}
+                    startIcon={<DeleteOutlineIcon />}
+                    onClick={() => setConfirm('delete')}
+                  >
+                    Delete draft
+                  </MuiButton>
+                  {sharePair}
+                </>
+              ) : (
+                <>
+                  {/* A disabled button takes no hover, so the tooltip sits on a wrapper; the reason is also its description. */}
+                  <Tooltip title={UNPUBLISH_TO_EDIT_REASON}>
+                    <Box component="span" sx={{ display: 'flex' }}>
+                      <MuiButton
+                        variant="contained"
+                        size="small"
+                        disabled
+                        aria-describedby="unpublish-to-edit-reason"
+                        sx={[compactButtonSx, { flex: 1 }]}
+                        startIcon={<EditOutlinedIcon />}
+                      >
+                        Edit
+                      </MuiButton>
+                    </Box>
+                  </Tooltip>
+                  <Box component="span" id="unpublish-to-edit-reason" sx={visuallyHidden}>
+                    {UNPUBLISH_TO_EDIT_REASON}
+                  </Box>
+                  <MuiButton
+                    variant="outlined"
+                    size="small"
+                    sx={compactButtonSx}
+                    startIcon={<UnpublishedOutlinedIcon />}
+                    onClick={() => {
+                      setFailed(false)
+                      setConfirm('unpublish')
+                    }}
+                  >
+                    Unpublish
+                  </MuiButton>
+                  {sharePair}
+                </>
+              )}
+            </Box>
           </Box>
 
           {failed && (
@@ -240,64 +344,6 @@ export default function ResultDetailPage() {
               That didn&apos;t work. Please try again.
             </Typography>
           )}
-
-          <Box
-            data-testid="result-actions"
-            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(4, auto)' }, justifyContent: { sm: 'start' }, alignItems: 'start' }}
-          >
-            {draft ? (
-              <>
-                <MuiButton component={RouterLink} to={resultEditTo(match.id)} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>
-                  Edit
-                </MuiButton>
-                <MuiButton
-                  variant="outlined"
-                  startIcon={<CloudUploadOutlinedIcon fontSize="small" />}
-                  onClick={() => {
-                    setFailed(false)
-                    publish(match.id)
-                  }}
-                >
-                  Publish
-                </MuiButton>
-                <MuiButton
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteOutlineIcon fontSize="small" />}
-                  onClick={() => setConfirm('delete')}
-                >
-                  Delete draft
-                </MuiButton>
-                {sharePair}
-              </>
-            ) : (
-              <>
-                <MuiButton
-                  variant="contained"
-                  disabled
-                  aria-describedby="unpublish-to-edit-reason"
-                  startIcon={<EditOutlinedIcon fontSize="small" />}
-                >
-                  Edit
-                </MuiButton>
-                <MuiButton
-                  variant="outlined"
-                  startIcon={<UnpublishedOutlinedIcon fontSize="small" />}
-                  onClick={() => {
-                    setFailed(false)
-                    setConfirm('unpublish')
-                  }}
-                >
-                  Unpublish
-                </MuiButton>
-                {sharePair}
-                {/* One line under the buttons, so none is stretched to hold it. */}
-                <Typography id="unpublish-to-edit-reason" variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
-                  {UNPUBLISH_TO_EDIT_REASON}
-                </Typography>
-              </>
-            )}
-          </Box>
         </Stack>
       </PageHeaderBand>
 

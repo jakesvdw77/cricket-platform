@@ -11,6 +11,7 @@ import { useAwardsView } from '../../../api/leaderboardApi'
 import type { AwardsCategory, AwardsOmission, LeaderboardBoardInfo, LeaderboardFilters } from '../../../api/leaderboardApi'
 import { CategoryChooser } from './CategoryChooser'
 import { awardLine, figureText } from './leaderboardFormat'
+import { compactButtonSx } from '../../../components/Button'
 
 export interface AwardsViewProps {
   clubId: string
@@ -61,7 +62,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
         title="Could not load the awards"
         description="Check your connection and try again."
         action={
-          <MuiButton variant="outlined" onClick={() => query.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => query.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }
@@ -80,7 +81,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
         description="Publish a result, or widen the filters."
         action={
           hasFilters ? (
-            <MuiButton variant="outlined" onClick={onClearFilters} sx={{ minHeight: 44 }}>
+            <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
               Clear filters
             </MuiButton>
           ) : undefined
@@ -144,7 +145,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
           <Box sx={{ width: { xs: 'calc(50% - 6px)', sm: 180 } }}>
             <IntegerField label="Minimum overs" ariaLabel="Minimum overs" value={shownOvers} onChange={setOvers} max={999} maxLength={3} />
           </Box>
-          <MuiButton variant="text" disabled={!customised} onClick={() => { setInnings(null); setOvers(null) }} sx={{ minHeight: 44 }}>
+          <MuiButton variant="text" disabled={!customised} onClick={() => { setInnings(null); setOvers(null) }} size="small" sx={compactButtonSx}>
             Reset to default
           </MuiButton>
         </Box>

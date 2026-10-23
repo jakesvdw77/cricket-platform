@@ -6,6 +6,7 @@ import TuneIcon from '@mui/icons-material/Tune'
 import { BottomSheet } from '../../../components/BottomSheet'
 import type { LeaderboardBoardInfo } from '../../../api/leaderboardApi'
 import { useLeaderboardSettings, useSaveLeaderboardSettings } from '../../../api/leaderboardSettingsApi'
+import { compactButtonSx } from '../../../components/Button'
 
 const humanise = (code: string) => code.toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 
@@ -60,7 +61,7 @@ function ChooserForm({ clubId, catalogue, onDone }: ChooserFormProps) {
       {settingsQuery.isError ? (
         <Typography role="alert" sx={{ color: 'error.main', fontSize: '0.9375rem' }}>
           Could not load the categories.{' '}
-          <MuiButton variant="text" onClick={() => settingsQuery.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="text" onClick={() => settingsQuery.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         </Typography>

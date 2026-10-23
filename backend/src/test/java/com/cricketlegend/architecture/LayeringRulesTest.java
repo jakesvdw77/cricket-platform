@@ -134,7 +134,7 @@ class LayeringRulesTest {
      */
     private static final String STATS_SERVICES =
             "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl|PlayerMatchListServiceImpl|TeamStatsServiceImpl|PlayerDashboardServiceImpl|TeamDashboardServiceImpl)"
-                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader|TeamStatsFactsReader|TeamDashboardFactsReader))(\\$.*)?";
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists|PlayerMatchFactsReader|TeamStatsCountersReader|TeamStatsFactsReader|TeamDashboardFactsReader|PlayerGamesReader))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
@@ -167,6 +167,7 @@ class LayeringRulesTest {
                         "com.cricketlegend.service.impl.TeamDashboardServiceImpl",
                         "com.cricketlegend.service.support.TeamDashboardFactsReader",
                         "com.cricketlegend.service.support.PlayerMatchFactsReader",
+                        "com.cricketlegend.service.support.PlayerGamesReader",
                         "com.cricketlegend.service.support.PlayerStatsCountersReader",
                         "com.cricketlegend.service.support.StatsFilterOptionLists",
                         "com.cricketlegend.service.support.TeamStatsCountersReader",

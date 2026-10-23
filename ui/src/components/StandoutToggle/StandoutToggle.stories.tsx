@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Stack, Typography } from '@mui/material'
 import { StandoutToggle } from './StandoutToggle'
+import { StandoutHeader } from './StandoutHeader'
 import type { FeaturedOverride } from '../../api/matchResultApi'
 
 const meta: Meta<typeof StandoutToggle> = {
@@ -40,3 +41,5 @@ export const ReadOnly: Story = {
     </Stack>
   ),
 }
+
+export const ColumnHeader: StoryObj<typeof StandoutHeader> = { render: () => <StandoutHeader /> }

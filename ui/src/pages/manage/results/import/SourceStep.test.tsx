@@ -102,6 +102,14 @@ describe('Source step', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
   })
 
+  it('has only a filled Continue in the shared wizard footer (no Back on the first step), with the nothing-is-saved note', async () => {
+    renderImportPage()
+    const footer = await screen.findByTestId('wizard-footer')
+    expect(within(footer).getAllByRole('button')).toHaveLength(1)
+    expect(within(footer).getByRole('button', { name: 'Continue' }).className).toContain('MuiButton-contained')
+    expect(within(footer).getByText('Nothing is saved at this step.')).toBeInTheDocument()
+  })
+
   it('disables Continue while nothing is provided and enables it for pasted text or a chosen file', async () => {
     const user = userEvent.setup()
     renderImportPage()

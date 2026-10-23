@@ -138,7 +138,7 @@ export function ImportProblemAlert({ problem, sourceName, input = 'paste', onRet
       </Typography>
       {retryable && onRetry && (
         <Box sx={{ mt: 0.5 }}>
-          <Button variant="secondary" size="sm" onClick={onRetry} disabled={retrying} sx={{ minHeight: 44 }}>
+          <Button variant="secondary" size="compact" onClick={onRetry} disabled={retrying}>
             {retrying ? 'Trying again…' : 'Try again'}
           </Button>
         </Box>

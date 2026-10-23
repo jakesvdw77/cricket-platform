@@ -411,7 +411,7 @@ describe('TeamDetailPage', () => {
 
     const link = await within(await screen.findByTestId('team-statistics-card')).findByRole('link', { name: 'View statistics' })
     expect(link.className).toMatch(/MuiButton-outlined/)
-    expect(getComputedStyle(link).minHeight).toBe('44px')
+    expect(getComputedStyle(link).minHeight).toBe('32px')
     await userEvent.click(link)
     await screen.findByText('Team Statistics Page')
     expect(JSON.parse(screen.getByTestId('stats-state').textContent ?? '')).toEqual({

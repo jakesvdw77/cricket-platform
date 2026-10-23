@@ -7,6 +7,7 @@ import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchesSummaryDto;
+import com.cricketlegend.dto.UpdateMatchDateTimeRequest;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import java.util.List;
 import java.util.UUID;
@@ -216,6 +217,12 @@ public interface MatchService {
 
     /** Same validation as {@link #create}. */
     MatchDto update(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchRequest request);
+
+    /**
+     * docs/specs/118: changes only {@code matchDate}, with the same access rule and league-season date check as {@link
+     * #update}; allowed whether or not the match has a result.
+     */
+    MatchDto updateDateTime(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchDateTimeRequest request);
 
     /** Throws {@link com.cricketlegend.exception.InvalidStatusTransitionException} if already inactive. */
     MatchDto deactivate(Authentication authentication, UUID clubId, UUID matchId);

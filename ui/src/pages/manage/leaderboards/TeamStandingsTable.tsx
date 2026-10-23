@@ -12,6 +12,7 @@ import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShe
 import type { WidthOf } from './standingsGrid'
 import { rankText } from './leaderboardFormat'
 import { netRunRateReason, teamBasisLines, teamCellText, teamStatsLink, teamUnrankedReason } from './teamStatsFormat'
+import { compactButtonSx } from '../../../components/Button'
 
 // 15 figure columns: a little tighter than the player tables on desktop so the table fits about 1100 px; phones scroll.
 const TEAM_CELL_W = { xs: 76, sm: 56 }
@@ -101,7 +102,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
         title="Couldn't load team statistics"
         description="The tab strip and filters still work."
         action={
-          <MuiButton variant="outlined" onClick={() => query.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => query.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }
@@ -116,7 +117,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
           title={`No team has reached ${appliedMinimum} ${appliedMinimum === 1 ? 'match' : 'matches'}`}
           description="Lower or clear the minimum to see the table."
           action={
-            <MuiButton variant="outlined" onClick={() => onMinimumChange(null)} sx={{ minHeight: 44 }}>
+            <MuiButton variant="outlined" onClick={() => onMinimumChange(null)} size="small" sx={compactButtonSx}>
               Clear minimum
             </MuiButton>
           }
@@ -128,7 +129,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
           title="No published results yet"
           description="Team statistics appear here once a published result includes one of your teams."
           action={
-            <MuiButton component={RouterLink} to="/manage/results" variant="outlined" sx={{ minHeight: 44 }}>
+            <MuiButton component={RouterLink} to="/manage/results" variant="outlined" size="small" sx={compactButtonSx}>
               Go to Results
             </MuiButton>
           }
@@ -140,7 +141,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
           title="No published results match these filters"
           description="Try a different season or competition."
           action={
-            <MuiButton variant="outlined" onClick={onClearFilters} sx={{ minHeight: 44 }}>
+            <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
               Clear filters
             </MuiButton>
           }
@@ -192,7 +193,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
               />
             </Box>
             {minimum !== null && (
-              <MuiButton variant="text" onClick={() => onMinimumChange(null)} sx={{ minHeight: 44 }}>
+              <MuiButton variant="text" onClick={() => onMinimumChange(null)} size="small" sx={compactButtonSx}>
                 Clear
               </MuiButton>
             )}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Alert, Box, MenuItem, Typography } from '@mui/material'
-import { useQuery } from '@tanstack/react-query'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
@@ -19,9 +18,7 @@ import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
-import { getLeagueSeasonDates, leagueSeasonDatesKey } from '../../api/leagueSeasonDatesApi'
-import type { LeagueSeasonDates } from '../../api/leagueSeasonDatesApi'
-import { formatReferenceDate } from '../../utils/ageCutoff'
+import { useLeagueDatesHint } from '../../hooks/useLeagueDatesHint'
 import { currentSeasonId } from '../../utils/currentSeason'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
@@ -155,17 +152,6 @@ export function validateMatchLink(value: string): string | null {
   return null
 }
 
-// docs/specs/111: "This league runs from 1 Sep 2026 to 31 Jul 2027." (the same wording the server uses).
-function leagueDatesMessage(range: LeagueSeasonDates): string {
-  return `This league runs from ${formatReferenceDate(range.startDate)} to ${formatReferenceDate(range.endDate)}.`
-}
-
-// The entered local date is outside the range (yyyy-MM-dd compares as text); a blank date is not "outside".
-function isOutsideRange(matchDate: string, range: LeagueSeasonDates | null): boolean {
-  const day = matchDate.slice(0, 10)
-  return Boolean(range && day && (day < range.startDate || day > range.endDate))
-}
-
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {}
 
@@ -249,20 +235,8 @@ export function MatchForm({
   const legacyVenue = initialField ? '' : (initialValues?.venue ?? '').trim()
 
   const hasScope = Boolean(values.leagueId && values.seasonId)
-
-  // docs/specs/111: the league's dates in the chosen season, looked up only once both are chosen. No dates, or a failed
-  // lookup, leaves the date field unrestricted (the server still checks).
-  const datesQuery = useQuery({
-    queryKey: leagueSeasonDatesKey(clubId, values.leagueId, values.seasonId),
-    queryFn: () => getLeagueSeasonDates(clubId, values.leagueId, values.seasonId),
-    enabled: hasScope,
-    retry: false,
-  })
-  const leagueDates = hasScope ? (datesQuery.data ?? null) : null
-
-  // Shown as soon as the chosen date is outside the range, and it blocks the submit.
-  const dateOutsideLeague = leagueDates !== null && isOutsideRange(values.matchDate, leagueDates)
-  const leagueRangeMessage = dateOutsideLeague && leagueDates ? leagueDatesMessage(leagueDates) : undefined
+  // docs/specs/111: shown as soon as the chosen date is outside the league's dates, and it blocks the submit.
+  const { range: leagueDates, outside: dateOutsideLeague, message: leagueRangeMessage } = useLeagueDatesHint(clubId, values.leagueId, values.seasonId, values.matchDate)
 
   // A refusal from the server stays under the date until the date is edited; a fresh submit (which clears the prop) re-arms it.
   const [dismissedServerError, setDismissedServerError] = useState<string | null>(null)

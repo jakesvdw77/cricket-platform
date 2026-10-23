@@ -178,6 +178,41 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
 
     /**
+     * Docs/specs/088: the distinct (player, match) pairs of the club's counted appearances (the same {@link
+     * PlayerStatsSql#APPEARANCES} rules as the statistics page) for the Players list's games columns. A deactivated
+     * match with a published result counts, exactly as on the statistics page (docs/specs/103 decision 21); only the
+     * selection fallback requires an active match. Pass a null {@code seasonId} for all seasons. One statement for every player.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select distinct ap.pid as "playerProfileId", ap.match_id as "matchId"
+            from ap
+            """, nativeQuery = true)
+    List<PlayerMatchView> countedPlayerMatches(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    /**
+     * Docs/specs/088: the matches of the club that have a published result, whatever its outcome (the result is then
+     * the truth about who played, so a selection for such a match is ignored). Null {@code seasonId} for all seasons.
+     */
+    @Query(value = """
+            select distinct r.match_id
+            from match_result r
+            join match pm on pm.id = r.match_id
+            where r.club_id = :clubId
+              and\s""" + StatsCountingSql.PUBLISHED + """
+
+              and (cast(:seasonId as uuid) is null or pm.season_id = cast(:seasonId as uuid))
+            """, nativeQuery = true)
+    List<UUID> publishedResultMatchIds(@Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
+
+    /**
      * Every player profile of the club with the name and status the leaderboards show (one bounded roster read; the
      * aggregate rows are matched to it by id).
      */

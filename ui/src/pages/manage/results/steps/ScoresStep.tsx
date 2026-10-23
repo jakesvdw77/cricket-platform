@@ -209,7 +209,7 @@ export function ScoresStep({ draft, onChange, onReplace, sides, disabled, onGoTo
             {toss}
           </Typography>
           {onGoToStep && (
-            <Button variant="ghost" size="sm" onClick={() => onGoToStep('toss')} disabled={disabled}>
+            <Button variant="ghost" size="compact" onClick={() => onGoToStep('toss')} disabled={disabled}>
               Change toss
             </Button>
           )}
@@ -230,7 +230,7 @@ export function ScoresStep({ draft, onChange, onReplace, sides, disabled, onGoTo
             disabled={disabled}
           />
           {onGoToStep && (
-            <Button variant="ghost" size="sm" onClick={() => onGoToStep('toss')} disabled={disabled} sx={{ mt: 0.5 }}>
+            <Button variant="ghost" size="compact" onClick={() => onGoToStep('toss')} disabled={disabled} sx={{ mt: 0.5 }}>
               Record the toss instead
             </Button>
           )}
@@ -307,11 +307,11 @@ export function ScoresStep({ draft, onChange, onReplace, sides, disabled, onGoTo
 
       {showSuperOvers && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-          <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={() => onReplace(addSuperOver(draft))} disabled={disabled}>
+          <Button variant="secondary" size="compact" startIcon={<AddIcon />} onClick={() => onReplace(addSuperOver(draft))} disabled={disabled}>
             Add super over
           </Button>
           {pairs.length > 1 && (
-            <Button variant="ghost" size="sm" onClick={() => onReplace(removeLastSuperOver(draft))} disabled={disabled}>
+            <Button variant="ghost" size="compact" onClick={() => onReplace(removeLastSuperOver(draft))} disabled={disabled}>
               Remove super over {pairs.length}
             </Button>
           )}

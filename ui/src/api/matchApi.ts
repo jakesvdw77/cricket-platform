@@ -306,6 +306,12 @@ export async function updateMatch(clubId: string, matchId: string, payload: Matc
   return data
 }
 
+// docs/specs/118-result-review-fixes.md: changes the match's date and time and nothing else (same access and league-dates rule as update).
+export async function updateMatchDateTime(clubId: string, matchId: string, matchDate: string): Promise<Match> {
+  const { data } = await api.patch<Match>(`${matchesPath(clubId)}/${matchId}/date-time`, { matchDate })
+  return data
+}
+
 export async function deactivateMatch(clubId: string, matchId: string): Promise<Match> {
   const { data } = await api.post<Match>(`${matchesPath(clubId)}/${matchId}/deactivate`)
   return data

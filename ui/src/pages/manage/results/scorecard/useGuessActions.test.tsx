@@ -1,11 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook } from '@testing-library/react'
+import { render, renderHook, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ResultPlayer, Scorecard } from '../../../../api/matchResultApi'
 import type { ImportNote } from '../../../../api/resultImportApi'
 import { ImportReviewContext } from '../import/importReviewContext'
 import { useGuessActions } from './useGuessActions'
+
+const addToSquad = vi.fn()
+vi.mock('../../../../api/teamSquadApi', () => ({ addToSquad: (...args: unknown[]) => addToSquad(...args), listSquad: () => Promise.resolve([]) }))
+vi.mock('../../../../hooks/useTeamSectionId', () => ({ useTeamSectionLookup: () => ({ sectionId: null, pending: false }) }))
+vi.mock('../../../../components/PlayerSlotPicker', () => ({
+  PlayerSlotPicker: ({ open, onPickPlayer }: { open: boolean; onPickPlayer: (p: { playerProfileId: string; firstName: string; lastName: string }) => void }) =>
+    open ? <button onClick={() => onPickPlayer({ playerProfileId: 'p-zoe', firstName: 'Zoe', lastName: 'Zane' })}>Pick Zoe Zane</button> : null,
+}))
+
+beforeEach(() => addToSquad.mockReset())
 
 const ours = (key: string, extra: Partial<ResultPlayer> = {}): ResultPlayer => ({
   id: `id-${key}`,
@@ -88,5 +99,40 @@ describe('useGuessActions', () => {
     const info = result.current.guessOf(guest)
     expect(info?.closest?.displayName).toBe('Hank Brow')
     expect(info?.onUseClosest).toBeUndefined()
+  })
+})
+
+// docs/specs/118: choosing a player in the import's Change picker on the Teams step also joins the team's squad.
+describe('useGuessActions auto-add to the squad', () => {
+  const guest = ours('guest', { playerProfileId: null, displayName: 'Dino V', firstName: null, lastName: null, guest: true })
+
+  function Harness({ autoAddToSquad }: { autoAddToSquad?: boolean }) {
+    const { guessOf, host } = useGuessActions({
+      clubId: 'club-1', seasonId: 's-1', oursSides: [{ side: 'HOME', teamId: 'team-1', teamName: '1st XI' }] as never, prefill: null,
+      scorecard: scorecardOf([guest]), onScorecard: () => {}, autoAddToSquad,
+    })
+    return <><button onClick={() => guessOf(guest)?.onChange()}>change</button>{host}</>
+  }
+  const renderHarness = (autoAddToSquad?: boolean) =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ImportReviewContext.Provider value={{ provider: 'ACMESCORE', notes }}><Harness autoAddToSquad={autoAddToSquad} /></ImportReviewContext.Provider>
+      </QueryClientProvider>,
+    )
+
+  it('adds the chosen player to the side\'s squad for the season on the Teams step', async () => {
+    addToSquad.mockResolvedValue({})
+    renderHarness(true)
+    await userEvent.click(screen.getByRole('button', { name: 'change' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Pick Zoe Zane' }))
+    await waitFor(() => expect(addToSquad).toHaveBeenCalledWith('club-1', 'team-1', 's-1', 'p-zoe'))
+  })
+
+  it('does not add on the other steps', async () => {
+    renderHarness(false)
+    await userEvent.click(screen.getByRole('button', { name: 'change' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Pick Zoe Zane' }))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(addToSquad).not.toHaveBeenCalled()
   })
 })

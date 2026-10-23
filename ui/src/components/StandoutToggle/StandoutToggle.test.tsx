@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { StandoutToggle } from './StandoutToggle'
+import { StandoutHeader } from './StandoutHeader'
 
 describe('StandoutToggle', () => {
   it('is pressed for a suggested row and a tap writes HIDE', async () => {
@@ -33,5 +34,13 @@ describe('StandoutToggle', () => {
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Featured, A. Smith: yes' })).toBeInTheDocument()
+  })
+})
+
+describe('StandoutHeader', () => {
+  it('names the star column and carries the help text', () => {
+    render(<StandoutHeader />)
+    expect(screen.getByTestId('standout-header')).toHaveAttribute('title', expect.stringContaining('Tap a star to remove or add one'))
+    expect(screen.getByLabelText('Standout')).toBeInTheDocument()
   })
 })

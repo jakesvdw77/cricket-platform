@@ -27,6 +27,9 @@ import { getPlayingConditions } from '../../../api/leaguePlayingConditionsApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import { WizardFooter } from '../../../components/WizardFooter'
+import { MatchDateTimeDialog } from '../../../components/MatchDateTimeDialog'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { checkMargin } from '../../../utils/marginCheck'
 import { errorIssues, errorList, errorStatus, isNotFound } from '../../../utils/errorDetail'
@@ -59,6 +62,7 @@ interface StepContext extends StepProps, ScorecardStepProps {
   check: MarginCheck
   needsAck: boolean
   onFix: () => void
+  onRevalidate: () => void
   validation: ResultValidation | null
   validating: boolean
   validationFailed: boolean
@@ -205,6 +209,7 @@ function CaptureWizard({
   const [validationFailed, setValidationFailed] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [dateTimeOpen, setDateTimeOpen] = useState(false)
   const [importedNoticeOpen, setImportedNoticeOpen] = useState(justImported)
   // docs/specs/104: an imported draft's provider (from its source) and what the import said about each name; a manual result
   // gets the empty default and shows no chips. The notes were left by the import page for this match (sessionStorage).
@@ -363,6 +368,7 @@ function CaptureWizard({
       setDraft(fixed)
       runValidation(fixed)
     },
+        onRevalidate: () => runValidation(draft),
     warningsAcknowledged: acknowledged,
     onAcknowledgeChange: setAcknowledged,
     // docs/specs/104: the Review step's Preview result reads the saved draft, so it saves the current one first.
@@ -384,27 +390,17 @@ function CaptureWizard({
       backTo={RESULTS_PATH}
       backLabel="Back to Results"
       actions={
-        <>
-          <Button variant="secondary" onClick={() => void onSaveDraft()} disabled={busy}>
-            {saveMutation.isPending ? 'Saving…' : 'Save draft'}
-          </Button>
-          {previous && (
-            <Button variant="ghost" onClick={() => void goTo(previous.id)} disabled={busy}>
-              Back
-            </Button>
-          )}
-          {onReview ? (
-            <Button onClick={() => setConfirmOpen(true)} disabled={!canPublish}>
-              Publish
-            </Button>
-          ) : (
-            following && (
-              <Button onClick={() => void goTo(following.id)} disabled={busy}>
-                Next: {following.label}
-              </Button>
-            )
-          )}
-        </>
+        <WizardFooter
+          back={previous ? { label: 'Back', onClick: () => void goTo(previous.id), disabled: busy } : undefined}
+          secondary={{ label: saveMutation.isPending ? 'Saving…' : 'Save draft', onClick: () => void onSaveDraft(), disabled: busy }}
+          primary={
+            onReview
+              ? { label: 'Publish', onClick: () => setConfirmOpen(true), disabled: !canPublish }
+              : following
+                ? { label: `Next: ${following.label}`, onClick: () => void goTo(following.id), disabled: busy }
+                : undefined
+          }
+        />
       }
     >
       <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -431,9 +427,24 @@ function CaptureWizard({
           </Alert>
         )}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
-            {subtitle}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+              {subtitle}
+            </Typography>
+            <Button
+              variant="ghost"
+              size="compact"
+              startIcon={<EditOutlinedIcon fontSize="small" />}
+              onClick={() => setDateTimeOpen(true)}
+              disabled={busy}
+            >
+              Edit
+              <Box component="span" sx={dateTimeLabelSx}>
+                {' '}
+                date and time
+              </Box>
+            </Button>
+          </Box>
           <Typography variant="caption" color="text.secondary" aria-live="polite">
             {savedAt ? `Draft saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not saved yet'}
           </Typography>
@@ -463,6 +474,16 @@ function CaptureWizard({
         {current.render(context)}
       </Box>
 
+      <MatchDateTimeDialog
+        open={dateTimeOpen}
+        onClose={() => setDateTimeOpen(false)}
+        clubId={clubId}
+        matchId={matchId}
+        matchDate={match.matchDate}
+        leagueId={match.leagueId}
+        seasonId={match.seasonId}
+        onSaved={refresh}
+      />
       <ConfirmDialog
         open={confirmOpen}
         title="Publish this result?"
@@ -480,6 +501,15 @@ function CaptureWizard({
 
 // docs/specs/100-match-results-core.md: the capture wizard at /manage/results/:matchId/capture. Loads the match and any
 // stored draft, then hands them to CaptureWizard, which owns the one ResultDraft form state.
+// "Edit" on a phone with the rest of the name kept for assistive technology; the whole "Edit date and time" from md.
+const dateTimeLabelSx = {
+  position: { xs: 'absolute', md: 'static' },
+  width: { xs: 1, md: 'auto' },
+  height: { xs: 1, md: 'auto' },
+  overflow: { xs: 'hidden', md: 'visible' },
+  clip: { xs: 'rect(0 0 0 0)', md: 'auto' },
+} as const
+
 export default function ResultCapturePage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId: string }>()

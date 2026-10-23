@@ -7,6 +7,8 @@ import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-d
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { baseTheme } from '../../../theme'
 import ResultCapturePage from './ResultCapturePage'
+import { fireEvent } from '@testing-library/react'
+import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { innings, makeMatch, makeResult } from './resultTestUtils'
 
 const getMatch = vi.fn()
@@ -17,10 +19,15 @@ const publishResult = vi.fn()
 const getPlayingConditions = vi.fn()
 const getScorecard = vi.fn()
 const getScorecardPrefill = vi.fn()
+const updateMatchDateTime = vi.fn()
 
 vi.mock('../../../api/matchApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../api/matchApi')>()
-  return { ...actual, getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId) }
+  return {
+    ...actual,
+    getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
+    updateMatchDateTime: (clubId: string, matchId: string, matchDate: string) => updateMatchDateTime(clubId, matchId, matchDate),
+  }
 })
 vi.mock('../../../api/matchResultApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../api/matchResultApi')>()
@@ -395,7 +402,7 @@ describe('ResultCapturePage', () => {
           { id: 'a', side: 'HOME', playerProfileId: 'p-a', displayName: null, plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, firstName: 'Ann', lastName: 'Ash', guest: false },
           { id: 'x', side: 'AWAY', playerProfileId: null, displayName: 'Sam Jones', plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, opposition: true },
         ],
-        batting: [{ battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: 'a', position: 1, howOut: 'NOT_OUT', runs: 50, balls: 40, fours: 5, sixes: 1, featuredOverride: null }],
+        batting: [{ battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: 'a', position: 1, howOut: 'NOT_OUT', runs: 50, balls: 40, fours: 5, sixes: 1, featuredOverride: 'FEATURE' }],
         bowling: [],
         fielding: [],
         awards: [],
@@ -414,6 +421,10 @@ describe('ResultCapturePage', () => {
       expect(within(dialog).getByRole('table', { name: 'Innings' })).toBeInTheDocument()
       expect(await within(dialog).findAllByText('Ann Ash')).not.toHaveLength(0)
       expect(within(dialog).getByTestId('result-details')).toBeInTheDocument()
+      // docs/specs/118: the Standouts are the last block of the Details card in the preview as on the result page.
+      const standouts = await within(dialog).findByTestId('result-standouts')
+      expect(within(dialog).getByTestId('result-details').lastElementChild).toBe(standouts)
+      expect(standouts).toHaveTextContent('Ann Ash 50 (40)')
       expect(within(dialog).queryByRole('button', { name: /^(Edit|Publish|Unpublish|Delete draft)$|link to player/i })).not.toBeInTheDocument()
     })
 
@@ -593,5 +604,158 @@ describe('ResultCapturePage', () => {
     expect(screen.getByText('Cy Cox')).toBeInTheDocument()
     expect(screen.getByText('2 players + 12th man')).toBeInTheDocument()
     expect(screen.getByText(/12th man/, { selector: 'span' })).toBeInTheDocument()
+  })
+})
+
+
+// docs/specs/118-result-review-fixes.md (UI requirements 6 and owner items 4 and 6): Edit date and time in the top panel, the shared
+// wizard footer, the optional-scorecard notice and the Scheduled overs / Note row.
+describe('spec 118 wizard layout', () => {
+  const NEW_DATE = '2026-10-10T12:30:00.000Z'
+
+  describe('Edit date and time in the top panel', () => {
+    const panelLine = () => screen.getByText(new RegExp(`${HOME} v ${AWAY}`))
+
+    it('opens the dialog from the top panel, saves only the date and shows the new time without a reload', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch({ id: 'match-1' })).mockResolvedValue(makeMatch({ id: 'match-1', matchDate: NEW_DATE }))
+      updateMatchDateTime.mockResolvedValue(makeMatch({ id: 'match-1', matchDate: NEW_DATE }))
+      renderPage()
+      await screen.findByRole('heading', { name: 'Capture result' })
+      expect(panelLine()).toHaveTextContent(formatMatchDateTime('2026-10-03T10:00:00Z'))
+
+      await user.click(screen.getByRole('button', { name: 'Edit date and time' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Edit date and time' })
+      fireEvent.change(within(dialog).getByLabelText('Match date & time (date)'), { target: { value: '2026-10-10' } })
+      fireEvent.change(within(dialog).getByLabelText('Match date & time (time)'), { target: { value: '14:30' } })
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(updateMatchDateTime).toHaveBeenCalledWith('club-1', 'match-1', new Date('2026-10-10T14:30').toISOString()))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit date and time' })).not.toBeInTheDocument())
+      // The match query is refreshed, so the panel line shows the new time. The draft itself is not re-saved by this action.
+      await waitFor(() => expect(panelLine()).toHaveTextContent(formatMatchDateTime(NEW_DATE)))
+      expect(saveResultDraft).not.toHaveBeenCalled()
+    })
+
+    it('shows the league-dates refusal in the dialog, keeps it open and leaves the panel line unchanged', async () => {
+      const user = userEvent.setup()
+      updateMatchDateTime.mockRejectedValue(
+        new AxiosError('bad', '400', undefined, undefined, { status: 400, data: { code: 'MATCH_OUTSIDE_LEAGUE_DATES', detail: 'This league runs from 1 Sep to 31 Jul.' } } as never),
+      )
+      renderPage()
+      await screen.findByRole('heading', { name: 'Capture result' })
+
+      await user.click(screen.getByRole('button', { name: 'Edit date and time' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Edit date and time' })
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      expect(await within(dialog).findByText('This league runs from 1 Sep to 31 Jul.')).toBeInTheDocument()
+      expect(panelLine()).toHaveTextContent(formatMatchDateTime('2026-10-03T10:00:00Z'))
+    })
+
+    it('sends nothing on Cancel', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByRole('heading', { name: 'Capture result' })
+      await user.click(screen.getByRole('button', { name: 'Edit date and time' }))
+      await user.click(within(await screen.findByRole('dialog', { name: 'Edit date and time' })).getByRole('button', { name: 'Cancel' }))
+      expect(updateMatchDateTime).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('wizard footer', () => {
+    const isFilled = (button: HTMLElement) => button.className.includes('MuiButton-contained')
+    const isOutlined = (button: HTMLElement) => button.className.includes('MuiButton-outlined')
+
+    it('has Back filled, Save draft outlined and Next filled on a middle step; no Back on the first step', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await toResult(user)
+
+      const footer = screen.getByTestId('wizard-footer')
+      expect(isFilled(within(footer).getByRole('button', { name: 'Back' }))).toBe(true)
+      expect(isOutlined(within(footer).getByRole('button', { name: 'Save draft' }))).toBe(true)
+      expect(isFilled(within(footer).getByRole('button', { name: 'Next: Batting' }))).toBe(true)
+      // Save draft is the only outlined button of the footer.
+      expect(within(footer).getAllByRole('button').filter(isOutlined)).toHaveLength(1)
+
+      await user.click(step('Teams'))
+      await screen.findByText('Who is playing?')
+      expect(within(screen.getByTestId('wizard-footer')).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
+    })
+
+    it('ends on Publish (filled) instead of Next on the last step', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(makeResult({ status: 'DRAFT', publishedAt: null }))
+      renderPage()
+      await screen.findByRole('heading', { name: 'Edit result' })
+      await user.click(step('Review'))
+      await screen.findByText('This is how the result will look')
+
+      const footer = screen.getByTestId('wizard-footer')
+      expect(isFilled(within(footer).getByRole('button', { name: 'Publish' }))).toBe(true)
+      expect(within(footer).queryByRole('button', { name: /^Next:/ })).not.toBeInTheDocument()
+      expect(isFilled(within(footer).getByRole('button', { name: 'Back' }))).toBe(true)
+    })
+  })
+
+  describe('optional batting and bowling notice (Result step)', () => {
+    it('has only the "Skip batting and bowling" link, which goes to Scores and margin', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await toResult(user)
+
+      expect(screen.queryByRole('button', { name: 'Add the batting and bowling' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Skip to scores' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Skip batting and bowling' }))
+      expect(step('Scores and margin')).toHaveAttribute('aria-current', 'step')
+    })
+  })
+
+  describe('Scheduled overs and Note row (Toss and field)', () => {
+    const toToss = async (user: ReturnType<typeof userEvent.setup>) => {
+      await screen.findByRole('heading', { name: 'Capture result' })
+      await user.click(step('Toss and field'))
+      await screen.findByText('Who won the toss?')
+    }
+    // The grid that holds both fields (jsdom ignores media queries on computed style, so the rules are read from the stylesheet).
+    const rowRules = (row: HTMLElement) => {
+      const cls = Array.from(row.classList).find((name) => name.startsWith('css-')) as string
+      return Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules).map((rule) => rule.cssText)).filter((text) => text.includes(`.${cls}`)).join('\n')
+    }
+
+    it('puts both fields in one aligned grid row, the Note one line high, stacking to one column on a phone', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await toToss(user)
+
+      const overs = screen.getByLabelText('Scheduled overs')
+      const note = screen.getByLabelText('Note (optional)')
+      const row = overs.closest('div[class*="MuiBox-root"]') as HTMLElement
+      expect(row).toContainElement(note)
+      const rules = rowRules(row)
+      expect(rules).toMatch(/align-items:\s*start/)
+      expect(rules).toMatch(/grid-template-columns:\s*1fr/)
+      expect(rules).toMatch(/240px 1fr/)
+      // One line high: the Note textarea is a single row until the manager types more.
+      expect(note.tagName).toBe('TEXTAREA')
+      expect(note.getAttribute('rows') ?? '1').toBe('1')
+    })
+
+    it('shows the league helper as a caption under the row, not as helper text of one field', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ id: 'match-1', leagueId: 'league-1' }))
+      getPlayingConditions.mockResolvedValue({ maxOversPerInnings: 40 })
+      renderPage()
+      await toToss(user)
+
+      const caption = await screen.findByText('From league playing conditions')
+      const overs = screen.getByLabelText('Scheduled overs')
+      expect(caption.closest('.MuiFormControl-root')).toBeNull()
+      expect(overs).not.toHaveAccessibleDescription('From league playing conditions')
+      const row = overs.closest('div[class*="MuiBox-root"]') as HTMLElement
+      expect(row).toContainElement(caption)
+      expect(rowRules(caption)).toMatch(/grid-column:\s*1\s*\/\s*-1/)
+    })
   })
 })

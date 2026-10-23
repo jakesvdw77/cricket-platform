@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Box, Button as MuiButton, Chip, Collapse, TextField, Typography } from '@mui/material'
+import { compactButtonSx } from '../../../../components/Button'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
@@ -94,8 +95,9 @@ export function FindMatchSearch({ clubId, listedIds, onFound, onDelete, disabled
         aria-expanded={open}
         aria-controls="find-another-match"
         variant="text"
+        size="small"
         endIcon={<ExpandMoreIcon sx={{ transform: open ? 'rotate(180deg)' : 'none' }} />}
-        sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}
+        sx={{ ...compactButtonSx, alignSelf: 'flex-start', color: 'info.main' }}
       >
         Find another match
       </MuiButton>
@@ -139,10 +141,11 @@ export function FindMatchSearch({ clubId, listedIds, onFound, onDelete, disabled
                     <MuiButton
                       color="error"
                       variant="text"
+                      size="small"
                       aria-label={`Delete match ${match.homeTeamName} v ${match.awayTeamName}`}
                       disabled={disabled}
                       onClick={() => onDelete({ id: match.id, name: `${match.homeTeamName} v ${match.awayTeamName}` })}
-                      sx={{ minHeight: 44, minWidth: 44, px: 1, py: 0, fontSize: '0.8125rem', fontWeight: 600, textTransform: 'none' }}
+                      sx={compactButtonSx}
                     >
                       Delete
                     </MuiButton>

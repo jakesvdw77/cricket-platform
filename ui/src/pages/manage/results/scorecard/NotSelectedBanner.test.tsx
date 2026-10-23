@@ -7,7 +7,7 @@ describe('NotSelectedBanner', () => {
   it('says there is no selection and offers Populate, which is only a notice', async () => {
     const onPopulate = vi.fn()
     render(<NotSelectedBanner notice={{ kind: 'none' }} onPopulate={onPopulate} />)
-    expect(screen.getByText(/not selected for this match/i)).toBeInTheDocument()
+    expect(screen.getByText(/no team is selected for this match/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Populate from the team' }))
     expect(onPopulate).toHaveBeenCalledOnce()
   })
@@ -26,5 +26,20 @@ describe('NotSelectedBanner', () => {
     expect(onOpenTeams).toHaveBeenCalledOnce()
     await userEvent.click(screen.getByRole('button', { name: /close/i }))
     expect(screen.queryByTestId('not-selected-banner')).not.toBeInTheDocument()
+  })
+
+  it('offers Select players, which calls back in the page and leaves no link to another page', async () => {
+    const onSelectPlayers = vi.fn()
+    render(<NotSelectedBanner notice={{ kind: 'none' }} onSelectPlayers={onSelectPlayers} />)
+    expect(screen.queryByRole('button', { name: 'Select the team' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Select players' }))
+    expect(onSelectPlayers).toHaveBeenCalledOnce()
+  })
+
+  it('disables its actions while the step is disabled', () => {
+    render(<NotSelectedBanner notice={{ kind: 'none' }} onSelectPlayers={vi.fn()} onPopulate={vi.fn()} disabled />)
+    expect(screen.getByRole('button', { name: 'Select players' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Populate from the team' })).toBeDisabled()
   })
 })

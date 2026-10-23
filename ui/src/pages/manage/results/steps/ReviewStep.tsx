@@ -20,6 +20,8 @@ import { badgeSx } from '../../../../components/RecordCard'
 import { NameModeToggle } from '../../../../components/NameModeToggle'
 import { PlayerName } from '../../../../components/PlayerName'
 import type { ResultIssue, ResultSide, ResultValidation } from '../../../../api/matchResultApi'
+import { addPlayerToSquad } from '../scorecard/squadAdd'
+import { errorDetail } from '../../../../utils/errorDetail'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { entryPlayerKey } from '../../../../utils/scorecardPrefill'
@@ -29,6 +31,7 @@ import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { PlayingConditionsDialog } from './PlayingConditionsDialog'
 import { ResultPreviewDialog } from './ResultPreviewDialog'
 import { tossLine } from '../resultListHelpers'
+import { MissingIcon, NotRecordedValue } from '../NotRecorded'
 import { toPayload } from '../resultDraftHelpers'
 import { dedupeWarnings } from './dedupeWarnings'
 import { isScorecardStep, issuesOf, stepIdForIssue } from './reviewIssues'
@@ -47,9 +50,11 @@ export interface ReviewStepProps extends ScorecardStepProps {
   fieldName: string | null
   // Saves the draft and says whether the server took it (the page shows the problem itself when it did not).
   onSaveForPreview: () => Promise<boolean>
+  // Runs the checks again (after Add to squad).
+  onRevalidate?: () => void
 }
 
-function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode; chip?: string | null }) {
+function CheckRow({ tone, text, action, chip, problem }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode; chip?: string | null; problem?: string | null }) {
   const icon =
     tone === 'ok' ? <CheckCircleOutlineIcon color="success" fontSize="small" />
     : tone === 'error' ? <ErrorOutlineIcon color="error" fontSize="small" />
@@ -61,6 +66,11 @@ function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'erro
       <Typography variant="body2" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
         {chip && <Chip size="small" label={chip} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem', mr: 0.75, verticalAlign: 'text-bottom' }} />}
         {text}
+        {problem && (
+          <Typography component="span" variant="caption" color="error" role="alert" sx={{ display: 'block' }}>
+            {problem}
+          </Typography>
+        )}
       </Typography>
       {action}
     </Box>
@@ -89,6 +99,7 @@ export function ReviewStep({
   onAcknowledgeChange,
   fieldName,
   onSaveForPreview,
+  onRevalidate,
 }: ReviewStepProps) {
   const payload = toPayload(draft)
   const names = { home: sides[0].name, away: sides[1].name }
@@ -133,11 +144,38 @@ export function ReviewStep({
   const infos = issues.filter((issue) => issue.severity === 'INFO')
   const issueText = (issue: ResultIssue) => issue.message
   const issueChip = (issue: ResultIssue) => (issue.side && isScorecardStep(issue.step) ? teamNameOf(issue.side) : null)
+  // docs/specs/118: a player the side lists who is not in the team's squad for the season - one tap adds them, then the checks run again.
+  const [squadBusy, setSquadBusy] = useState(false)
+  const [squadProblems, setSquadProblems] = useState<Record<string, string>>({})
+  const squadTeamOf = (issue: ResultIssue) => (issue.side ? (oursSides.find((ours) => ours.side === issue.side)?.teamId ?? null) : null)
+  const isSquadIssue = (issue: ResultIssue) =>
+    issue.code === 'PLAYER_NOT_IN_SQUAD' && Boolean(issue.playerProfileId) && Boolean(match.seasonId) && squadTeamOf(issue) !== null
+  const addToSquadFor = async (list: ResultIssue[]) => {
+    setSquadBusy(true)
+    const problems: Record<string, string> = {}
+    for (const issue of list) {
+      try {
+        await addPlayerToSquad(clubId, squadTeamOf(issue) as string, match.seasonId, issue.playerProfileId as string)
+      } catch (error) {
+        problems[issue.playerProfileId as string] = errorDetail(error, 'The player could not be added to the squad.')
+      }
+    }
+    setSquadProblems(problems)
+    setSquadBusy(false)
+    onRevalidate?.()
+  }
   const issueFix = (issue: ResultIssue) => {
+    if (isSquadIssue(issue)) {
+      return (
+        <Button variant="secondary" size="compact" disabled={squadBusy} onClick={() => void addToSquadFor([issue])}>
+          Add to squad
+        </Button>
+      )
+    }
     const id = stepIdForIssue(issue.step, issue.code)
     if (!id || !onGoToStep) return undefined
     return (
-      <Button variant="secondary" size="sm" onClick={() => onGoToStep(id, issue.side ?? undefined)}>
+      <Button variant="secondary" size="compact" onClick={() => onGoToStep(id, issue.side ?? undefined)}>
         Fix
       </Button>
     )
@@ -158,24 +196,31 @@ export function ReviewStep({
     return person ? <PlayerName person={person} view={view} /> : (award.displayName ?? null)
   }
   const officialValue = awardValue(official)
-  const teamAwards = oursSides.map((ours) => ({ ours, value: awardValue(teamAward(scorecard, ours.side)) })).filter((item) => item.value)
+  const teamAwards = oursSides.map((ours) => ({ ours, value: awardValue(teamAward(scorecard, ours.side)) }))
+  // docs/specs/118: a value that was not specified is shown as a warning-coloured "Not recorded" with a jump to the step that sets it.
+  // A visual hint only: it never blocks publishing.
+  const missingIcon = (icon: ReactNode) => <MissingIcon>{icon}</MissingIcon>
+  const missingValue = (stepId: string, side?: ResultSide) => (
+    <NotRecordedValue>
+      {onGoToStep && stepId && (
+        <Button variant="ghost" size="compact" onClick={() => onGoToStep(stepId, side)}>
+          Add
+        </Button>
+      )}
+    </NotRecordedValue>
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-        <Button
-          variant="secondary"
-          size="sm"
-          startIcon={<VisibilityOutlinedIcon fontSize="small" />}
-          disabled={previewSaving}
-          onClick={() => void openPreview()}
-          sx={{ minHeight: 44 }}
-        >
-          {previewSaving ? 'Saving the draft…' : 'Preview result'}
-        </Button>
-        <NameModeToggle />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+        <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="This is how the result will look" />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap', ml: 'auto' }}>
+          <NameModeToggle inline />
+          <Button variant="secondary" size="compact" startIcon={<VisibilityOutlinedIcon fontSize="small" />} disabled={previewSaving} onClick={() => void openPreview()}>
+            {previewSaving ? 'Saving the draft…' : 'Preview result'}
+          </Button>
+        </Box>
       </Box>
-      <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="This is how the result will look" />
       <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.75, display: 'flex', flexDirection: 'column', gap: 1, bgcolor: 'background.paper' }} data-testid="result-preview">
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Chip size="small" label="Draft" sx={{ ...badgeSx('warning'), height: 22, fontSize: '0.75rem' }} />
@@ -190,16 +235,20 @@ export function ReviewStep({
           ballsPerOver={ballsPerOver}
           resultLine={line}
         >
-          <DetailLine icon={<SportsCricketOutlinedIcon fontSize="small" />} label="Toss" value={toss ?? 'Not recorded'} muted={!toss} />
-          <DetailLine icon={<EventOutlinedIcon fontSize="small" />} label="Played" value={formatMatchDateTime(match.matchDate)} />
-          <DetailLine icon={<PlaceOutlinedIcon fontSize="small" />} label="Field" value={fieldName ?? 'Not recorded'} muted={!fieldName} />
+          <DetailLine icon={toss ? <SportsCricketOutlinedIcon fontSize="small" /> : missingIcon(<SportsCricketOutlinedIcon fontSize="small" />)} label="Toss" value={toss ?? missingValue('toss')} />
+          <DetailLine
+            icon={match.matchDate ? <EventOutlinedIcon fontSize="small" /> : missingIcon(<EventOutlinedIcon fontSize="small" />)}
+            label="Played"
+            value={match.matchDate ? formatMatchDateTime(match.matchDate) : missingValue('')}
+          />
+          <DetailLine icon={fieldName ? <PlaceOutlinedIcon fontSize="small" /> : missingIcon(<PlaceOutlinedIcon fontSize="small" />)} label="Field" value={fieldName ?? missingValue('toss')} />
           {officialValue && <DetailLine icon={<EmojiEventsOutlinedIcon fontSize="small" />} label="Player of the match" value={officialValue} labelWidth={110} />}
-          {teamAwards.map(({ ours, value }) => (
+          {(scorecardAvailable ? teamAwards : teamAwards.filter((item) => item.value)).map(({ ours, value }) => (
             <DetailLine
               key={ours.side}
-              icon={<EmojiEventsOutlinedIcon fontSize="small" />}
+              icon={value ? <EmojiEventsOutlinedIcon fontSize="small" /> : missingIcon(<EmojiEventsOutlinedIcon fontSize="small" />)}
               label={derby ? `${ours.teamName} player` : 'Team player'}
-              value={value}
+              value={value ?? missingValue('awards', ours.side)}
               labelWidth={110}
             />
           ))}
@@ -225,7 +274,7 @@ export function ReviewStep({
                   text={text}
                   action={
                     status !== 'COMPLETE' && onGoToStep ? (
-                      <Button variant="secondary" size="sm" onClick={() => onGoToStep(status === 'NONE' ? 'teams' : 'batting', info.side)}>
+                      <Button variant="secondary" size="compact" onClick={() => onGoToStep(status === 'NONE' ? 'teams' : 'batting', info.side)}>
                         {status === 'NONE' ? 'Add' : 'Complete'}
                       </Button>
                     ) : undefined
@@ -241,7 +290,7 @@ export function ReviewStep({
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
           <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
           {leagueRules && (
-            <Button variant="secondary" size="sm" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)} sx={{ minHeight: 44 }}>
+            <Button variant="secondary" size="compact" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)}>
               Playing conditions
             </Button>
           )}
@@ -255,7 +304,7 @@ export function ReviewStep({
         {validation && (
           <Box component="ul" aria-label="Checks" sx={{ m: 0, p: 0 }}>
             {errors.map((issue, index) => (
-              <CheckRow key={`e-${index}-${issue.message}`} tone="error" text={issueText(issue)} chip={issueChip(issue)} action={issueFix(issue)} />
+              <CheckRow key={`e-${index}-${issue.message}`} tone="error" text={issueText(issue)} chip={issueChip(issue)} action={issueFix(issue)} problem={issue.playerProfileId ? squadProblems[issue.playerProfileId] : null} />
             ))}
             {check.status === 'mismatch' && (
               <CheckRow
@@ -263,7 +312,7 @@ export function ReviewStep({
                 text={check.reason}
                 action={
                   check.suggestion ? (
-                    <Button variant="secondary" size="sm" onClick={onFix}>
+                    <Button variant="secondary" size="compact" onClick={onFix}>
                       Fix
                     </Button>
                   ) : undefined
@@ -273,8 +322,26 @@ export function ReviewStep({
             {check.status === 'match' && <CheckRow tone="ok" text={check.reason} />}
             {check.status === 'cannot-check' && <CheckRow tone="info" text={check.reason} />}
             {warnings.map((issue, index) => (
-              <CheckRow key={`w-${index}-${issue.message}`} tone="warning" text={issueText(issue)} chip={issueChip(issue)} action={issueFix(issue)} />
+              <CheckRow
+                key={`w-${index}-${issue.message}`}
+                tone="warning"
+                text={issueText(issue)}
+                chip={issueChip(issue)}
+                action={issueFix(issue)}
+                problem={issue.playerProfileId ? squadProblems[issue.playerProfileId] : null}
+              />
             ))}
+            {oursSides.map((ours) => {
+              const several = warnings.filter((issue) => isSquadIssue(issue) && issue.side === ours.side)
+              if (several.length < 2) return null
+              return (
+                <Box component="li" key={`squad-all-${ours.side}`} sx={{ listStyle: 'none', py: 0.5, pl: 4 }}>
+                  <Button variant="secondary" size="compact" disabled={squadBusy} onClick={() => void addToSquadFor(several)}>
+                    {`Add all ${several.length} to the ${derby ? `${ours.teamName} ` : ''}squad`}
+                  </Button>
+                </Box>
+              )
+            })}
             {infos.map((issue, index) => (
               <CheckRow key={`i-${index}-${issue.message}`} tone="info" text={issueText(issue)} chip={issueChip(issue)} />
             ))}

@@ -15,6 +15,7 @@ import type { PersonName } from '../../../../utils/playerDisplayName'
 import { playerRowKey } from '../../../../utils/scorecardPrefill'
 import { useTeamSectionLookup } from '../../../../hooks/useTeamSectionId'
 import { linkGuest, swapPlayer } from '../scorecardDraft'
+import { useAutoAddToSquad } from './squadAdd'
 import type { PlayerIdentity } from '../scorecardDraft'
 
 // What the name popup offers for taking a player off the list: remove them, set them to Did not bat (they came from the
@@ -66,6 +67,8 @@ export interface PlayerActionsOptions {
     onPick: (key: string) => void
     onNotListed: () => void
   }
+  // docs/specs/118: Teams step of an ours side - a player linked or added (not swapped) joins the team's squad for the season.
+  autoAddToSquad?: boolean
   disabled?: boolean
 }
 
@@ -83,6 +86,7 @@ const identityOfPicked = (player: PickedPlayer): PlayerIdentity => ({
 export function usePlayerActions(options: PlayerActionsOptions) {
   const { clubId, seasonId, ours, scorecard, onScorecard, ids, positionLabel, view, hints = {}, onReorder } = options
   const label = usePlayerLabeler(view)
+  const autoAdd = useAutoAddToSquad(clubId, seasonId)
   const [menu, setMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null)
   const [picker, setPicker] = useState<{ mode: 'swap' | 'link' | 'add'; key: string } | null>(null)
   // The side's section: the Club tab lists only its players, and a player created from Link is tagged to it.
@@ -227,6 +231,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
           if (picker?.mode === 'swap') onScorecard(swapPlayer(scorecard, pickerKey, identity))
           else if (picker?.mode === 'link') onScorecard(linkGuest(scorecard, pickerKey, identity))
           else options.onAdd?.(identity)
+          if (options.autoAddToSquad && picker?.mode !== 'swap') void autoAdd(ours.teamId, identity.playerProfileId)
           closePicker()
         }}
         onPickGuest={(displayName) => {

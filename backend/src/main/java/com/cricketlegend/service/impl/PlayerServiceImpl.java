@@ -20,11 +20,11 @@ import com.cricketlegend.repository.ClubMembershipRepository;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.PersonRepository;
-import com.cricketlegend.repository.PlayerGamesView;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.PlayerService;
+import com.cricketlegend.service.support.PlayerGamesReader;
 import com.cricketlegend.service.support.PlayerRoster;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,6 +69,7 @@ public class PlayerServiceImpl implements PlayerService {
     private final PlayerSectionRepository playerSectionRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
+    private final PlayerGamesReader playerGamesReader;
     private final PlayerMapper playerMapper;
     private final AccessService accessService;
 
@@ -80,6 +81,7 @@ public class PlayerServiceImpl implements PlayerService {
             PlayerSectionRepository playerSectionRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
+            PlayerGamesReader playerGamesReader,
             PlayerMapper playerMapper,
             AccessService accessService) {
         this.clubRepository = clubRepository;
@@ -89,6 +91,7 @@ public class PlayerServiceImpl implements PlayerService {
         this.playerSectionRepository = playerSectionRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
+        this.playerGamesReader = playerGamesReader;
         this.playerMapper = playerMapper;
         this.accessService = accessService;
     }
@@ -117,13 +120,11 @@ public class PlayerServiceImpl implements PlayerService {
                 .findAllById(visible.stream().map(PlayerProfile::getPersonId).toList())
                 .forEach(person -> personsById.put(person.getId(), person));
 
-        // docs/specs/088: games played, in two grouped statements for the whole list (the second only when a season is
-        // given), never one per player. A player who has played none is simply absent from the maps.
+        // docs/specs/088: games played, one match counted once per player from a published result or, for a match with
+        // no published result, a selection; a fixed number of statements for the whole list, never one per player.
         Instant now = Instant.now();
-        Map<UUID, Long> gamesOverall = gamesByPlayer(matchSidePlayerRepository.findGamesPlayed(clubId, now));
-        Map<UUID, Long> gamesThisSeason = seasonId == null
-                ? Map.of()
-                : gamesByPlayer(matchSidePlayerRepository.findGamesPlayedInSeason(clubId, seasonId, now));
+        Map<UUID, Long> gamesOverall = playerGamesReader.games(clubId, null, now);
+        Map<UUID, Long> gamesThisSeason = seasonId == null ? Map.of() : playerGamesReader.games(clubId, seasonId, now);
 
         return visible.stream()
                 .map(profile -> {
@@ -231,12 +232,6 @@ public class PlayerServiceImpl implements PlayerService {
         return focus == PlayerListFocus.IN_SQUAD
                 ? keepIn(players, squadPlayerIds(seasonId))
                 : keepIn(players, selectedPlayerIds(clubId, seasonId));
-    }
-
-    private static Map<UUID, Long> gamesByPlayer(List<PlayerGamesView> views) {
-        Map<UUID, Long> games = new HashMap<>();
-        views.forEach(view -> games.put(view.getPlayerProfileId(), view.getGames()));
-        return games;
     }
 
     private Set<UUID> squadPlayerIds(UUID seasonId) {

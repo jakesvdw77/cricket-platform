@@ -11,6 +11,7 @@ import { MatchCard } from './MatchCard'
 import { MatchRow } from './MatchRow'
 import { PlayerHeadlineTiles } from './PlayerHeadlineTiles'
 import { MATCH_COLUMNS, matchGridSx, muted } from './matchLayout'
+import { compactButtonSx } from '../../../components/Button'
 
 export interface MatchesTabProps {
   clubId: string
@@ -95,7 +96,7 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
         title="Couldn't load the matches"
         description="Something went wrong loading this player's matches."
         action={
-          <MuiButton variant="outlined" onClick={() => query.refetch()} sx={{ minHeight: 44 }}>
+          <MuiButton variant="outlined" onClick={() => query.refetch()} size="small" sx={compactButtonSx}>
             Try again
           </MuiButton>
         }
@@ -157,13 +158,13 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
           {query.isError && (
             <Box role="alert" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
               <Typography sx={{ fontSize: '0.875rem', color: 'error.main' }}>Couldn't load more matches</Typography>
-              <MuiButton variant="text" onClick={() => (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())} sx={{ minHeight: 44 }}>
+              <MuiButton variant="text" onClick={() => (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())} size="small" sx={compactButtonSx}>
                 Try again
               </MuiButton>
             </Box>
           )}
           {query.hasNextPage && !query.isError && (
-            <MuiButton variant="outlined" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} sx={{ minHeight: 44 }}>
+            <MuiButton variant="outlined" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} size="small" sx={compactButtonSx}>
               {query.isFetchingNextPage ? 'Loading...' : 'Show more'}
             </MuiButton>
           )}

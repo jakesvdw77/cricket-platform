@@ -260,3 +260,15 @@ Pushed to the "Cricket Legend Platform" design-system project for visual browsin
 | `CollapsibleSection` (`ui/src/components/CollapsibleSection`) | A header row (title plus a 44 px Hide / Show button with `aria-expanded` and `aria-controls`) over a body that is not rendered while collapsed. Used by the player Overview's Batting (open by default) and Bowling (closed by default) groups and by the team Overview block; the state is per visit. |
 | `BarSeriesChart`, `StackedBarChart`, `LineSeriesChart`, `DonutChart`, `GroupedBarChart` (`ui/src/components/charts/<Name>`) | Thin single-axis wrappers around `@mui/x-charts`, the only files that import it (shared internals live beneath `components/charts`). Each takes already-computed values (a null is a labelled gap, never 0), an optional `tooltip(index)` and an optional fixed `size` (jsdom, stories); in the app the chart fills the card's 150 px (180 px from `md`) area. `BarSeriesChart`: `labels`, `values`, `hatched?` (not out), `referenceValue?` / `referenceLabel?`, `max?`. `StackedBarChart`: `categories`, `values`, `totals`. `LineSeriesChart`: `series` (tone, marker, `dashed?`), optional dashed reference line. `DonutChart`: `slices`, `centerValue`, `centerLabel` (104 px). `GroupedBarChart`: `series`, `gapTexts?` (scored versus conceded). |
 | `ChartLegend` (`ui/src/components/charts/ChartLegend`) | A text legend with a patterned or line swatch per entry, so a legend never relies on colour alone. Props: `items`, `label?`. Library-free. |
+
+## Wizard footer (`docs/specs/118-result-review-fixes.md`)
+
+Every multi-step wizard (the result wizard, the results import wizard) ends each step with `components/WizardFooter`, never ad-hoc buttons. Back (filled, styled like Next) on the left; Save draft (the only outlined button) then Next: <step> / Publish / Continue (filled) on the right. On a phone it stacks full width in the order Next, Back, Save draft. All targets 44 px.
+
+## Buttons: sizes and when to use each (`docs/specs/118-result-review-fixes.md`)
+
+A standing rule for the whole app.
+- **Normal size** (`Button`, default `size="md"`): primary page-level actions and the footer buttons of a form or wizard (Save, Cancel, Back, Next, Publish).
+- **Compact** (`Button size="compact"`, or `sx={compactButtonSx}` on a `MuiButton` that needs `component={RouterLink}`): every button inside a card, a form section or a toolbar (Fix, Add player, Edit, Show more, Clear filters, Try again, Hide / Show, View as table, View statistics). About 32 px high, 6px/12px padding, 13px sentence-case text, a 16 px icon.
+- **Phone hit area:** below `md` a transparent `::after` extends the touch target to 44 px without enlarging the look (the technique is built into the compact size, as in `TeamFormStrip`). Never give a compact button `minHeight: 44`.
+- `size="sm"` is the older small size and is being replaced by `compact` as screens are swept.

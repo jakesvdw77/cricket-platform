@@ -3,6 +3,7 @@ import { alpha } from '@mui/material/styles'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { Button } from '../../../../components/Button'
+import { WizardFooter } from '../../../../components/WizardFooter'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { DocumentUpload } from '../../../../components/DocumentUpload'
 import { JsonEditor } from '../../../../components/JsonEditor'
@@ -156,7 +157,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
               )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5, gap: 1 }}>
                 {hasExample ? (
-                  <Button variant="ghost" size="sm" disabled={previewing} onClick={() => onSourceChange({ paste: adaptor.example ?? '' })} sx={{ minHeight: 44, color: 'info.main', fontWeight: 600, textTransform: 'none' }}>
+                  <Button variant="ghost" size="compact" disabled={previewing} onClick={() => onSourceChange({ paste: adaptor.example ?? '' })} sx={{ color: 'info.main', fontWeight: 600, textTransform: 'none' }}>
                     Insert example
                   </Button>
                 ) : (
@@ -190,14 +191,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
       )}
 
       {tab !== 'other' && (
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: { xs: 1, md: 2 }, mt: { xs: 1, md: 2 } }}>
-        <Button onClick={onContinue} disabled={!canContinue || previewing} sx={{ minHeight: 44, minWidth: { md: 140 } }}>
-          {previewing ? 'Reading…' : 'Continue'}
-        </Button>
-        <Typography variant="caption" color="text.secondary" sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-          Nothing is saved at this step.
-        </Typography>
-      </Box>
+      <WizardFooter primary={{ label: previewing ? 'Reading…' : 'Continue', onClick: onContinue, disabled: !canContinue || previewing }} note="Nothing is saved at this step." />
       )}
     </Box>
   )

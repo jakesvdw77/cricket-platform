@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MatchCandidate } from '../../../../api/resultImportApi'
+import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { jsonAdaptor, makeCandidate, makeCatalogue, makePreview, renderImportPage } from './importTestUtils'
 
 const getImportCatalogue = vi.fn()
@@ -10,6 +11,7 @@ const createMatch = vi.fn()
 const deleteMatch = vi.fn()
 const listMatches = vi.fn()
 const listSections = vi.fn()
+const updateMatchDateTime = vi.fn()
 
 vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../api/resultImportApi')>()
@@ -24,6 +26,7 @@ vi.mock('../../../../api/matchApi', () => ({
   createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
   deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+  updateMatchDateTime: (clubId: string, matchId: string, matchDate: string) => updateMatchDateTime(clubId, matchId, matchDate),
 }))
 vi.mock('../../../../api/sectionApi', () => ({ listSections: () => listSections() }))
 vi.mock('../../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([{ id: 'team-1', name: 'Strollers A', sectionId: 'sec-1' }]) }))
@@ -235,6 +238,109 @@ describe('Match step', () => {
       expect(screen.getByRole('checkbox', { name: 'I have checked this is the right match' })).not.toBeChecked()
       expect(next()).toBeDisabled()
     })
+  })
+
+  // docs/specs/118 UI requirement 7: the chosen match's date and time, editable before the manager confirms.
+  describe('Edit date and time (118)', () => {
+    const editDialog = () => screen.findByRole('dialog', { name: 'Edit date and time' })
+    // Sets the dialog's date and time (local) and saves; the server answers with the match at that date.
+    async function changeTo(user: Awaited<ReturnType<typeof toMatchStep>>, matchId: string, date: string, time: string) {
+      updateMatchDateTime.mockResolvedValue({ id: matchId, matchDate: new Date(`${date}T${time}`).toISOString() })
+      await user.click(screen.getByRole('button', { name: 'Edit date and time' }))
+      const dialog = await editDialog()
+      fireEvent.change(within(dialog).getByLabelText('Match date & time (date)'), { target: { value: date } })
+      fireEvent.change(within(dialog).getByLabelText('Match date & time (time)'), { target: { value: time } })
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit date and time' })).not.toBeInTheDocument())
+    }
+
+    it('shows the chosen match\'s date and time beside what the file says, with an Edit date and time button', async () => {
+      await toMatchStep()
+      const line = screen.getByTestId('import-match-date')
+      expect(line).toHaveTextContent('This match is on')
+      expect(line).toHaveTextContent(formatMatchDateTime(new Date(2026, 9, 11, 13, 0).toISOString()))
+      expect(within(line).getByRole('button', { name: 'Edit date and time' })).toBeEnabled()
+    })
+
+    it('shows nothing to edit until a match is chosen', async () => {
+      previewImport.mockResolvedValue(makePreview({ matchCandidates: [makeCandidate(), second({ matchDate: new Date(2026, 9, 11, 15, 0).toISOString() })] }))
+      await toMatchStep()
+      expect(screen.queryByTestId('import-match-date')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit date and time' })).not.toBeInTheDocument()
+    })
+
+    it('saves only the date and time of the chosen match, and the line shows the new time', async () => {
+      const user = await toMatchStep()
+      await changeTo(user, 'match-1', '2026-10-11', '15:30')
+      expect(updateMatchDateTime).toHaveBeenCalledWith('club-1', 'match-1', new Date('2026-10-11T15:30').toISOString())
+      expect(screen.getByTestId('import-match-date')).toHaveTextContent(formatMatchDateTime(new Date('2026-10-11T15:30').toISOString()))
+      expect(updateMatchDateTime).toHaveBeenCalledTimes(1)
+    })
+
+    it('recomputes the date check: moving a far match onto the file\'s day removes the warning and the tick', async () => {
+      previewImport.mockResolvedValue(makePreview({ matchCandidates: [second({ reasons: ['TEAMS'] })] }))
+      const user = await toMatchStep()
+      expect(screen.getByRole('checkbox', { name: 'I have checked this is the right match' })).toBeInTheDocument()
+      expect(next()).toBeDisabled()
+
+      await changeTo(user, 'match-2', '2026-10-11', '13:00')
+
+      expect(screen.queryByText(/The file says/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'I have checked this is the right match' })).not.toBeInTheDocument()
+      expect(next()).toBeEnabled()
+    })
+
+    it('still asks for the tick, with the new day in the warning, while a difference remains', async () => {
+      previewImport.mockResolvedValue(makePreview({ matchCandidates: [second({ reasons: ['TEAMS'] })] }))
+      const user = await toMatchStep()
+
+      await changeTo(user, 'match-2', '2026-10-25', '13:00')
+
+      expect(screen.getByText('The file says 11 Oct 2026 but this match is on 25 Oct 2026.')).toBeInTheDocument()
+      const tick = screen.getByRole('checkbox', { name: 'I have checked this is the right match' })
+      expect(tick).not.toBeChecked()
+      expect(next()).toBeDisabled()
+      await user.click(tick)
+      expect(next()).toBeEnabled()
+    })
+
+    it('starts asking when an edit moves a matching match away from the file\'s day', async () => {
+      const user = await toMatchStep()
+      expect(screen.queryByText(/The file says/)).not.toBeInTheDocument()
+
+      await changeTo(user, 'match-1', '2026-10-20', '13:00')
+
+      expect(screen.getByText('The file says 11 Oct 2026 but this match is on 20 Oct 2026.')).toBeInTheDocument()
+      expect(next()).toBeDisabled()
+    })
+
+    it('never confirms the import: the wizard stays on the Match step and nothing else is sent', async () => {
+      const user = await toMatchStep()
+      const previews = previewImport.mock.calls.length
+      await changeTo(user, 'match-1', '2026-10-11', '15:30')
+
+      expect(screen.getByText('Which match is this?')).toBeInTheDocument()
+      expect(screen.queryByText('Which side is which?')).not.toBeInTheDocument()
+      expect(previewImport).toHaveBeenCalledTimes(previews)
+    })
+
+    it('keeps the dialog open and the line unchanged when the league dates refuse the change', async () => {
+      const error = Object.assign(new Error('bad'), { isAxiosError: true, response: { status: 400, data: { code: 'MATCH_OUTSIDE_LEAGUE_DATES', detail: 'This league runs from 1 Sep to 31 Jul.' } } })
+      updateMatchDateTime.mockRejectedValue(error)
+      const user = await toMatchStep()
+      await user.click(screen.getByRole('button', { name: 'Edit date and time' }))
+      const dialog = await editDialog()
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+      expect(await within(dialog).findByText('This league runs from 1 Sep to 31 Jul.')).toBeInTheDocument()
+      expect(screen.getByTestId('import-match-date')).toHaveTextContent(formatMatchDateTime(new Date(2026, 9, 11, 13, 0).toISOString()))
+    })
+  })
+
+  it('has Back (filled) on the left and Next (filled) in the shared wizard footer', async () => {
+    await toMatchStep()
+    const footer = screen.getByTestId('wizard-footer')
+    expect(within(footer).getByRole('button', { name: 'Back' }).className).toContain('MuiButton-contained')
+    expect(within(footer).getByRole('button', { name: 'Next' }).className).toContain('MuiButton-contained')
   })
 
   it('shows the problem and stays on the step when the second preview fails, then allows a retry', async () => {

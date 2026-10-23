@@ -70,7 +70,7 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
         <Box sx={{ mt: 0.5 }}>
           <Button
             variant="ghost"
-            size="sm"
+            size="compact"
             onClick={() => onReplace(withToss(draft, { tossWonBy: null, tossDecision: null }))}
             disabled={disabled || !draft.tossWonBy}
           >
@@ -111,7 +111,7 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
               disabled={disabled}
             />
             <Box>
-              <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>
+              <Button variant="ghost" size="compact" onClick={() => setPicking(false)}>
                 Done
               </Button>
             </Box>
@@ -139,7 +139,7 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
                 {fieldChanged ? 'Changed from the scheduled field' : 'Scheduled field for this match'}
               </Typography>
             </Box>
-            <Button variant="ghost" size="sm" onClick={() => setPicking(true)} disabled={disabled}>
+            <Button variant="ghost" size="compact" onClick={() => setPicking(true)} disabled={disabled}>
               Change field
             </Button>
           </Box>
@@ -152,7 +152,6 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
           value={draft.scheduledBalls ?? null}
           onChange={(balls) => onChange({ scheduledBalls: balls })}
           ballsPerOver={ballsPerOver}
-          helperText={leagueScheduledBalls && draft.scheduledBalls === leagueScheduledBalls ? 'From league playing conditions' : undefined}
           disabled={disabled}
         />
         <Input
@@ -162,9 +161,15 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
           onChange={(event) => onChange({ note: event.target.value })}
           disabled={disabled}
           multiline
-          minRows={2}
+          minRows={1}
+          maxRows={4}
           inputProps={{ maxLength: NOTE_MAX }}
         />
+        {leagueScheduledBalls && draft.scheduledBalls === leagueScheduledBalls && (
+          <Typography variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1', mt: -0.5, mx: '14px' }}>
+            From league playing conditions
+          </Typography>
+        )}
       </Box>
 
     </Box>

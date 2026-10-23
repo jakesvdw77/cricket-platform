@@ -8,7 +8,7 @@ import { HowOutSelect } from '../../../../components/HowOutSelect'
 import { ReconcileStrip } from '../../../../components/ReconcileStrip'
 import { GridNumberInput, ScorecardGrid } from '../../../../components/ScorecardGrid'
 import type { ScorecardGridColumn } from '../../../../components/ScorecardGrid'
-import { StandoutToggle } from '../../../../components/StandoutToggle'
+import { StandoutHeader, StandoutToggle } from '../../../../components/StandoutToggle'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { battingRowChecks } from '../../../../utils/scorecardRowChecks'
@@ -387,6 +387,7 @@ export function BattingStep({
             columns={columns}
             renderPlayer={playerCell}
             renderTrailing={star}
+            trailingHeader={<StandoutHeader />}
             reorder={reorder}
             reorderDisabled={disabled}
             isRowMuted={(entry) => entry.howOut === 'DID_NOT_BAT'}
