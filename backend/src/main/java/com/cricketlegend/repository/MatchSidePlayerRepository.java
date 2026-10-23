@@ -39,27 +39,25 @@ public interface MatchSidePlayerRepository extends JpaRepository<MatchSidePlayer
     List<UUID> findDistinctSelectedPlayerProfileIds(@Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
 
     /**
-     * Games played per player, all seasons (docs/specs/088-players-polls-alignment.md): the number of distinct active
-     * matches of {@code clubId} that had started by {@code now} (past or in progress) in which the player was selected.
-     * A player with no such match is absent. One grouped statement, never one per player.
+     * Selections for past active matches (docs/specs/088): the distinct (player, match) pairs of {@code clubId} whose
+     * match had started by {@code now}. The caller drops the matches that have a published result. One statement.
      */
     @Query("""
-            select p.playerProfileId as playerProfileId, count(distinct m.id) as games
+            select distinct p.playerProfileId as playerProfileId, m.id as matchId
             from MatchSidePlayer p, MatchSide s, Match m
             where p.matchSideId = s.id and s.matchId = m.id
               and m.clubId = :clubId and m.active = true and m.matchDate <= :now
-            group by p.playerProfileId
             """)
-    List<PlayerGamesView> findGamesPlayed(@Param("clubId") UUID clubId, @Param("now") java.time.Instant now);
+    List<PlayerMatchView> findSelectionsForStartedMatches(
+            @Param("clubId") UUID clubId, @Param("now") java.time.Instant now);
 
-    /** As {@link #findGamesPlayed}, limited to the matches of {@code seasonId}. */
+    /** As {@link #findSelectionsForStartedMatches}, limited to the matches of {@code seasonId}. */
     @Query("""
-            select p.playerProfileId as playerProfileId, count(distinct m.id) as games
+            select distinct p.playerProfileId as playerProfileId, m.id as matchId
             from MatchSidePlayer p, MatchSide s, Match m
             where p.matchSideId = s.id and s.matchId = m.id
               and m.clubId = :clubId and m.seasonId = :seasonId and m.active = true and m.matchDate <= :now
-            group by p.playerProfileId
             """)
-    List<PlayerGamesView> findGamesPlayedInSeason(
+    List<PlayerMatchView> findSelectionsForStartedMatchesInSeason(
             @Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId, @Param("now") java.time.Instant now);
 }
