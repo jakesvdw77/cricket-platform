@@ -295,7 +295,7 @@ export default function FindYourPlayersPage() {
   ) : undefined
 
   return (
-    <HubFrame title="Find Players" maxWidth={800} testId="welcome-page" footer={footer}>
+    <HubFrame title="Find Players" maxWidth={960} testId="welcome-page" footer={footer}>
       {body}
     </HubFrame>
   )

@@ -19,7 +19,7 @@ export interface HubFrameProps {
   phoneTitle?: 'slim' | 'hidden'
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1040, testId, phoneTitle = 'slim' }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim' }: HubFrameProps) {
   return (
     <AccountShell bare maxWidth={maxWidth} testId={testId}>
       <Box
