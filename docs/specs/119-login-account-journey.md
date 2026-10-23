@@ -545,7 +545,7 @@ Slice 1
 Slice 2
 - A Google sign-in with the email of an existing Keycloak user lands in that same user (same `sub`); an invited manager signing in with Google reaches `/manage` with no second `Person` or Keycloak user.
 - A Google sign-in whose email matches no `Person` never reaches `/manage` or `/admin`.
-- A Google identity with an unverified email is never auto-linked and never binds a `Person`; a normal Google login arrives with a verified email.
+- A normal Google login arrives with a verified email. Note: this relies on Google's address verification with Trust Email on; to be confirmed in the slice 2 spike (the backend still refuses to bind a `Person` from an unverified email).
 - No Keycloak role or group is created or read for Google users.
 
 Slice 3
