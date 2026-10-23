@@ -168,6 +168,10 @@ The product's own colour icon set (dark green circular badges) lives in `ui/src/
 - **Adding or converting an icon**: originals with the baked-in background are kept in `ui/design/icon-originals/<group>/`; run `npm run icons:strip` (or `node scripts/strip-icon-background.mjs <file>`) on a new SVG to remove the background rect and highlight circle and crop the viewBox (restore from `icon-originals` first to re-derive). It is idempotent and skips `src/icons/brand/`. The PNG exports in `ui/design/icon-exports/` keep the old background and are reference copies only.
 - The favicon set in `ui/src/icons/brand/` is the source; copies live in `ui/public/` and are linked from `ui/index.html`.
 
+## Keycloak login theme tokens (`docs/specs/119-login-account-journey.md`)
+
+The token block at the top of `keycloak/themes/cricketlegend/login/resources/css/cricketlegend.css` is a **deliberate copy** of the brand values (greens, gold, cream, fonts) — Keycloak renders server-side and cannot import `ui/src/theme.ts` — so update it by hand whenever the brand tokens change.
+
 ## Two token layers
 
 Per-club white-labelling means the token system has two layers, not one:

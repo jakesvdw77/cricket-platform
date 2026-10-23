@@ -1,0 +1,804 @@
+/*
+ * Cricket Legend: Keycloak login theme.
+ *
+ * Re-skins Keycloak's stock "keycloak" login theme (PatternFly markup). Plain CSS on purpose:
+ * Keycloak renders these pages on the server, so MUI cannot be used here (recorded exception,
+ * docs/specs/119-login-account-journey.md Part 1). Mobile first: the base rules are the phone
+ * layout, wider layouts use min-width queries.
+ *
+ * No third-party requests: fonts and images are served from this theme's own resources.
+ */
+
+/* ------------------------------------------------------------------ tokens
+ * DELIBERATE COPY of the brand values in ui/src/theme.ts and the owner's login design. Keycloak
+ * cannot import the app bundle, so when brand tokens change, update this block by hand
+ * (docs/standards/design-system.md). */
+:root {
+  --cl-green-900: #0B3D26;
+  --cl-green-800: #0F5132;
+  --cl-green-700: #14633F;
+  --cl-gold: #E8B83D;
+  --cl-cream: #F7F3E8;
+  --cl-sand: #E2D5B0;
+  --cl-red: #C8102E;
+  --cl-red-text: #9B0F26;
+  --cl-red-dark: #8A0B20;
+  --cl-muted: #3F5448;
+  --cl-white: #FFFFFF;
+  --cl-disabled: #EFEBDD;
+  /* Control edges: 3:1 against cream and white (WCAG 1.4.11), Decision 23. */
+  --cl-edge: #8A7F5E;
+
+  --cl-font-display: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  --cl-font-body: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+
+  --cl-radius-card: 18px;
+  --cl-radius-field: 10px;
+  --cl-radius-pill: 26px;
+}
+
+/* ------------------------------------------------------------------ fonts (Latin subset, self-hosted) */
+@font-face {
+  font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/barlow-condensed-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Barlow Condensed'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/barlow-condensed-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Inter; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/inter-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Inter; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('../fonts/inter-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Inter; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/inter-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ------------------------------------------------------------------ page background (decoration only) */
+html.login-pf {
+  background: var(--cl-green-900);
+  min-height: 100%;
+}
+
+/* No background on body: the decorative layers below sit at z-index -1 and a body background
+   would paint over them. */
+html.login-pf body {
+  background: none;
+  margin: 0;
+  font-family: var(--cl-font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--cl-green-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The two green ovals. Fixed, behind everything, purely decorative. */
+html.login-pf body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 230px, var(--cl-green-700) calc(55% - 1px), transparent 55%),
+    radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 230px, var(--cl-green-800) calc(100% - 1px), transparent 100%);
+  background-repeat: no-repeat;
+}
+
+/* Page frame: brand above the card, card below, centred. */
+.login-pf-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 32px 0 40px;
+}
+.login-pf-page::before,
+.login-pf-page::after { content: none; }
+
+/* ------------------------------------------------------------------ brand */
+#kc-header {
+  margin: 0;
+  padding: 0;
+  float: none;
+  color: var(--cl-cream);
+  text-align: center;
+  overflow: visible;
+}
+#kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  font-family: var(--cl-font-display);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cl-cream);
+  white-space: nowrap;
+}
+#kc-header-wrapper::before {
+  content: "";
+  flex: none;
+  width: 44px;
+  height: 44px;
+  background: url('../img/mark.svg') center / contain no-repeat;
+}
+
+/* ------------------------------------------------------------------ card */
+.login-pf-page .card-pf {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(100% - 32px, 440px);
+  max-width: none;
+  margin: 0;
+  padding: 24px;
+  background: var(--cl-cream);
+  color: var(--cl-green-900);
+  border: 0;
+  border-radius: var(--cl-radius-card);
+  box-shadow: none;
+}
+
+.login-pf-page .login-pf-header { margin: 0; padding: 0; border: 0; background: none; }
+
+h1#kc-page-title {
+  margin: 0;
+  font-family: var(--cl-font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 6vw, 34px);
+  line-height: 1.1;
+  text-align: center;
+  color: var(--cl-green-900);
+}
+
+/* Attempted-username line (password step of a two-step flow). */
+#kc-username { margin: 0; text-align: center; }
+#kc-attempted-username { font-size: 1rem; font-weight: 600; padding: 0; }
+#reset-login { color: var(--cl-green-800); }
+
+#kc-content,
+#kc-content-wrapper {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+#kc-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+#kc-form,
+#kc-form-wrapper { margin: 0; padding: 0; }
+
+/* Undo PatternFly/Bootstrap grid and form-horizontal spacing inside the card. */
+.card-pf form { display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 0; }
+.card-pf .form-group,
+.card-pf .form-horizontal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.card-pf [class*="col-xs-"],
+.card-pf [class*="col-sm-"],
+.card-pf [class*="col-md-"],
+.card-pf [class*="col-lg-"] {
+  float: none;
+  width: 100%;
+  margin-left: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.card-pf .row { margin-left: 0; margin-right: 0; }
+.card-pf #kc-form-login div.form-group:last-of-type,
+.card-pf #kc-form-buttons { margin: 0; }
+
+/* ------------------------------------------------------------------ text */
+.card-pf p { margin: 0; }
+.card-pf p.instruction,
+.card-pf .instruction,
+.card-pf #kc-terms-text,
+.card-pf #kc-info-message > p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--cl-muted);
+  text-align: center;
+}
+.card-pf .cl-center { font-size: 14px; color: var(--cl-muted); text-align: center; }
+.card-pf li,
+.card-pf p { color: var(--cl-muted); }
+.card-pf .cl-chip { color: var(--cl-green-900); }
+
+.card-pf a,
+.card-pf a:visited {
+  color: var(--cl-green-800);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.card-pf a:hover { color: var(--cl-green-900); }
+
+/* Links inside a sentence stay inline (page expired, resend text). */
+.card-pf p.instruction a,
+.card-pf .instruction a {
+  display: inline;
+  min-height: 0;
+}
+/* The standalone "Back to Cricket Legend" link under a message is centred. */
+#kc-info-message > p:not(.instruction),
+#kc-error-message > p:not(.instruction) { text-align: center; }
+
+/* Links that sit on their own line get a 44px touch target. */
+#kc-form-options a,
+#kc-info a,
+.card-pf .cl-center a,
+#kc-info-message a,
+#kc-error-message a,
+#kc-form-login .login-pf-settings a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* ------------------------------------------------------------------ fields */
+.card-pf label,
+.card-pf .pf-c-form__label,
+.card-pf .control-label {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cl-green-900);
+  text-align: left;
+}
+.card-pf .pf-c-form__label-text { font-size: 14px; font-weight: 600; color: var(--cl-green-900); }
+
+.card-pf input.pf-c-form-control,
+.card-pf input.form-control,
+.card-pf select.pf-c-form-control,
+.card-pf select,
+.card-pf textarea.pf-c-form-control,
+.card-pf textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS zooming on focus */
+  line-height: 1.5;
+  color: var(--cl-green-900);
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-edge);
+  border-radius: var(--cl-radius-field);
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.card-pf textarea.pf-c-form-control,
+.card-pf textarea { height: auto; min-height: 96px; padding: 12px 14px; }
+.card-pf select { background-image: none; }
+.card-pf input.pf-c-form-control:hover,
+.card-pf input.pf-c-form-control:focus,
+.card-pf select:focus,
+.card-pf textarea:focus { border-color: var(--cl-edge); border-width: 1.5px; }
+
+/* Error state: red border AND text, never colour alone. */
+.card-pf input[aria-invalid="true"],
+.card-pf .has-error input.pf-c-form-control,
+.card-pf input.pf-c-form-control[aria-invalid="true"] {
+  border-color: var(--cl-red);
+  box-shadow: inset 0 0 0 1px var(--cl-red);
+}
+.card-pf .pf-c-form__helper-text,
+.card-pf .pf-c-form__helper-text.pf-m-error,
+.card-pf .kc-feedback-text,
+.card-pf span.required.pf-m-error {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--cl-red-text);
+}
+.card-pf .pf-c-form__helper-text.pf-m-error::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239B0F26' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4l9.5 16.5h-19z'/%3E%3Cpath d='M12 10v5M12 17.5v.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.card-pf .required { color: var(--cl-red-text); }
+
+/* Required-fields note (register and update-profile): small, readable, under the heading. */
+.login-pf-header > div { display: flex; flex-direction: column; gap: 8px; }
+.login-pf-header .subtitle {
+  order: 2;
+  margin: 0;
+  font-size: 13px;
+  color: var(--cl-muted);
+  text-align: center;
+}
+.login-pf-header .col-md-10 { order: 1; }
+
+/* Registration: Create account first, "Back to sign in" under it, centred. */
+#kc-register-form .form-group:last-of-type { gap: 12px; }
+#kc-register-form #kc-form-options { order: 2; text-align: center; }
+#kc-register-form #kc-form-buttons { order: 1; }
+
+/* Password field with its show/hide button. */
+.card-pf .pf-c-input-group { display: flex; align-items: stretch; width: 100%; }
+.card-pf .pf-c-input-group input.pf-c-form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.card-pf .pf-c-input-group .pf-c-button.pf-m-control {
+  flex: none;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  min-height: 0;
+  margin: 0 0 0 -1.5px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cl-white);
+  color: var(--cl-green-900);
+  border: 1.5px solid var(--cl-edge);
+  border-radius: 0 var(--cl-radius-field) var(--cl-radius-field) 0;
+  cursor: pointer;
+}
+
+/* PatternFly draws button and control borders with an ::after layer; we draw our own. */
+.card-pf .pf-c-button::after,
+.card-pf .pf-c-button.pf-m-control::after,
+#kc-social-providers .pf-c-button::after { content: none; border: 0; display: none; }
+
+/* Checkboxes and radios (Bootstrap pulls the box out to the left; put it back in the flow). */
+.card-pf .checkbox,
+.card-pf .radio,
+.card-pf .pf-c-check { margin: 0; }
+.card-pf .checkbox label,
+.card-pf .radio label,
+.card-pf .pf-c-check__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cl-green-900);
+}
+.card-pf .checkbox label,
+.card-pf .radio label { padding-left: 0; }
+.card-pf input[type="checkbox"],
+.card-pf input[type="radio"] {
+  position: static;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--cl-green-800);
+}
+
+/* Remember me / Forgot password row: wraps rather than overlaps. */
+.card-pf .login-pf-settings {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+.card-pf #kc-form-options { display: block; margin: 0; }
+.card-pf #kc-form-options .checkbox { color: var(--cl-green-900); }
+.card-pf #kc-form-options span { display: inline; }
+.card-pf .login-pf-settings .pf-c-form__group-control,
+.card-pf .login-pf-settings > div { margin: 0; width: auto; }
+
+/* ------------------------------------------------------------------ buttons */
+.card-pf .pf-c-button,
+.card-pf input.pf-c-button,
+.card-pf a.pf-c-button,
+.card-pf button.pf-c-button,
+.card-pf .btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 20px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--cl-green-900);
+  background: var(--cl-gold);
+  border: 0;
+  border-radius: var(--cl-radius-pill);
+  box-shadow: none;
+  transition: background-color .15s ease, opacity .15s ease;
+}
+.card-pf .pf-c-button.pf-m-primary:hover,
+.card-pf a.pf-c-button.pf-m-primary:hover {
+  background: #F0C458;
+  color: var(--cl-green-900);
+  text-decoration: none;
+}
+.card-pf .pf-c-button:disabled,
+.card-pf .pf-c-button[disabled],
+.card-pf .pf-c-button.pf-m-disabled,
+.card-pf input.pf-c-button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Secondary actions (Cancel, Back, No): white outlined, like the Google button. */
+.card-pf .pf-c-button.pf-m-secondary,
+.card-pf .pf-c-button.pf-m-tertiary,
+.card-pf .pf-c-button.btn-default,
+.card-pf .btn-default,
+.card-pf .pf-c-button.pf-m-link {
+  font-weight: 600;
+  color: var(--cl-green-900);
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-edge);
+}
+.card-pf .pf-c-button.pf-m-secondary:hover,
+.card-pf .pf-c-button.btn-default:hover { background: var(--cl-disabled); color: var(--cl-green-900); }
+
+/* Buttons that sit side by side in stock markup are stacked: one big target each. */
+.card-pf #kc-form-buttons,
+.card-pf .form-actions { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.card-pf form.form-actions .btn { float: none; margin: 0; }
+
+/* The mockup's pill-shaped ghost button is the same as secondary. */
+
+/* ------------------------------------------------------------------ alerts */
+.card-pf .pf-c-alert {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  background: rgba(15, 81, 50, .09);
+  color: var(--cl-green-900);
+  border: 1.5px solid var(--cl-green-800);
+  border-radius: var(--cl-radius-field);
+  box-shadow: none;
+}
+.card-pf .pf-c-alert::before { content: none; display: none; }
+.card-pf .pf-c-alert .pf-c-alert__icon { flex: none; padding: 0; margin: 0; color: var(--cl-green-800); font-size: 18px; line-height: 1.3; }
+.card-pf .pf-c-alert .pf-c-alert__title,
+.card-pf .pf-c-alert .kc-feedback-text {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: inherit;
+}
+.card-pf .pf-c-alert.alert-error,
+.card-pf .pf-c-alert.pf-m-danger {
+  background: rgba(200, 16, 46, .09);
+  border-color: var(--cl-red);
+  color: var(--cl-red-dark);
+}
+.card-pf .pf-c-alert.alert-error .pf-c-alert__icon,
+.card-pf .pf-c-alert.pf-m-danger .pf-c-alert__icon { color: var(--cl-red-dark); }
+.card-pf .pf-c-alert.alert-warning,
+.card-pf .pf-c-alert.pf-m-warning {
+  background: rgba(232, 184, 61, .2);
+  border-color: var(--cl-edge);
+}
+.card-pf .pf-c-alert.alert-warning .pf-c-alert__icon { color: var(--cl-green-900); }
+
+/* ------------------------------------------------------------------ social / "or" divider / Google */
+#kc-social-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+#kc-social-providers hr { display: none; }
+#kc-social-providers h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--cl-font-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--cl-muted);
+}
+#kc-social-providers h2::before,
+#kc-social-providers h2::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cl-sand);
+}
+#kc-social-providers ul {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#kc-social-providers ul.kc-social-grid { display: flex; }
+#kc-social-providers li { width: 100%; margin: 0; padding: 0; }
+
+#kc-social-providers a.pf-c-button,
+#kc-social-providers a.kc-social-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  margin: 0;
+  padding: 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cl-green-900);
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-edge);
+  border-radius: var(--cl-radius-pill);
+  text-decoration: none;
+}
+#kc-social-providers a.pf-c-button:hover { background: var(--cl-disabled); }
+#kc-social-providers .kc-social-provider-name,
+#kc-social-providers .kc-social-icon-text { position: static; left: auto; color: inherit; font-size: 16px; }
+#kc-social-providers .kc-social-provider-logo {
+  float: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+  color: var(--cl-green-900);
+}
+/* Google keeps its official colours, from a local file (no request to Google). */
+#kc-social-providers #social-google .kc-social-provider-logo {
+  font-size: 0;
+  background: url('../img/google.svg') center / 20px 20px no-repeat;
+}
+#kc-social-providers #social-google .kc-social-provider-logo::before { content: none; }
+
+/* "New here? Create an account" and the other footer line. */
+#kc-info { margin: 0; padding: 0; }
+#kc-info-wrapper {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  color: var(--cl-muted);
+  background: none;
+  border: 0;
+  text-align: center;
+}
+#kc-registration { margin: 0; color: var(--cl-muted); }
+#kc-registration span { font-size: 14px; }
+
+/* ------------------------------------------------------------------ icon circle and address chip
+ * Used by login-verify-email.ftl (our override) for "check your inbox". */
+.card-pf .cl-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cl-green-800);
+  color: var(--cl-gold);
+}
+.card-pf .cl-chip {
+  align-self: center;
+  max-width: 100%;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  word-break: break-all;
+  text-align: center;
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-sand);
+  border-radius: var(--cl-radius-field);
+}
+
+/* ------------------------------------------------------------------ other Keycloak pages */
+/* Update password / profile / terms / TOTP / OTP / recovery codes / consent / select authenticator: they
+   reuse the field, button and text rules above; the rules below only cover their own extras. */
+#kc-error-message,
+#kc-info-message { display: flex; flex-direction: column; gap: 12px; }
+#kc-error-message p.instruction,
+#kc-info-message p.instruction { font-size: 15px; }
+
+#kc-terms-text { max-height: 40vh; overflow: auto; text-align: left; }
+#kc-registration-terms-text { max-height: 120px; margin: 0; }
+
+ol#kc-totp-settings { margin: 0; padding-left: 20px; font-size: 15px; color: var(--cl-muted); }
+ol#kc-totp-settings li { margin-bottom: 8px; }
+ul#kc-totp-supported-apps { margin: 8px 0; padding-left: 20px; }
+#kc-totp-secret-qr-code { display: block; max-width: 160px; max-height: 160px; margin: 8px auto; }
+#kc-totp-secret-key,
+.kc-recovery-codes-list {
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  color: var(--cl-green-900);
+  word-break: break-all;
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-sand);
+  border-radius: var(--cl-radius-field);
+}
+.kc-recovery-codes-warning { margin: 0; }
+
+#kc-oauth h3 { margin: 0 0 8px; font-family: var(--cl-font-display); font-size: 22px; }
+#kc-oauth ul { margin: 0; padding: 0; list-style: none; }
+#kc-oauth ul li { padding: 10px 0; font-size: 14px; border-top: 1px solid var(--cl-sand); }
+#kc-oauth ul li:first-of-type { border-top: 0; }
+#kc-oauth .kc-role { display: inline-block; width: 50%; }
+#kc-code textarea { width: 100%; height: 8em; }
+
+/* select-authenticator list ("Try another way") */
+.card-pf .select-auth-container { padding: 0; margin: 0; }
+.card-pf .select-auth-box-parent {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 12px 8px;
+  font: inherit;
+  color: var(--cl-green-900);
+  text-align: left;
+  background: var(--cl-white);
+  border: 1.5px solid var(--cl-edge);
+  border-radius: var(--cl-radius-field);
+}
+.card-pf .select-auth-box-parent:hover { background: var(--cl-disabled); }
+.card-pf .select-auth-box-icon { margin: 0 8px; flex: 0 0 2em; }
+.card-pf .select-auth-box-arrow { margin-right: 8px; }
+.card-pf .select-auth-box-headline { font-size: 16px; font-weight: 600; color: var(--cl-green-900); }
+.card-pf .select-auth-box-desc { font-size: 14px; color: var(--cl-muted); }
+
+/* "Try another way" link form */
+#kc-select-try-another-way-form { align-items: center; }
+
+/* Locale picker only appears with more than one locale. */
+#kc-locale { position: static; text-align: right; font-size: 14px; }
+#kc-locale-dropdown button { color: var(--cl-green-800); font-weight: 600; background: none; border: 0; cursor: pointer; min-height: 44px; }
+#kc-locale ul { background: var(--cl-white); border: 1.5px solid var(--cl-edge); border-radius: var(--cl-radius-field); }
+
+/* ------------------------------------------------------------------ focus: visible 3px gold ring with a dark offset */
+.card-pf a:focus-visible,
+.card-pf button:focus-visible,
+.card-pf input:focus-visible,
+.card-pf select:focus-visible,
+.card-pf textarea:focus-visible,
+.card-pf [tabindex]:focus-visible,
+#kc-social-providers a:focus-visible {
+  outline: 3px solid transparent; /* shows in forced-colors mode, where box-shadow is removed */
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--cl-green-900), 0 0 0 5px var(--cl-gold);
+}
+/* Mouse focus on text fields keeps the ring too (a caret alone is easy to miss). */
+.card-pf input.pf-c-form-control:focus {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--cl-green-900), 0 0 0 5px var(--cl-gold);
+}
+
+/* ------------------------------------------------------------------ wider screens */
+@media (min-width: 480px) {
+  .login-pf-page .card-pf { padding: 36px; }
+}
+
+@media (min-width: 768px) {
+  .login-pf-page { gap: 24px; padding: 48px 0; justify-content: center; }
+  #kc-header-wrapper { font-size: 30px; }
+  #kc-header-wrapper::before { width: 60px; height: 60px; }
+
+  /* Pitch strip, behind the card. */
+  .login-pf-page::before {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    left: 50%;
+    top: max(105px, 15vh);
+    width: 66px;
+    height: min(490px, 70vh);
+    transform: translateX(-50%);
+    background: var(--cl-sand);
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  /* Four gold dots in the corners. */
+  .login-pf-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle closest-side, var(--cl-gold) calc(100% - 1px), transparent 100%) left 7vw top 52px / 57px 57px no-repeat,
+      radial-gradient(circle closest-side, var(--cl-gold) calc(100% - 1px), transparent 100%) right 7vw top 52px / 57px 57px no-repeat,
+      radial-gradient(circle closest-side, var(--cl-gold) calc(100% - 1px), transparent 100%) left 7vw bottom 57px / 57px 57px no-repeat,
+      radial-gradient(circle closest-side, var(--cl-gold) calc(100% - 1px), transparent 100%) right 7vw bottom 57px / 57px 57px no-repeat;
+  }
+}
+
+/* ------------------------------------------------------------------ user preferences */
+@media (prefers-reduced-motion: reduce) {
+  .card-pf *,
+  .card-pf *::before,
+  .card-pf *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Windows High Contrast and other forced-colors modes: let the system palette through, keep shapes. */
+@media (forced-colors: active) {
+  html.login-pf, html.login-pf body { background: Canvas; }
+  html.login-pf body::before,
+  .login-pf-page::before,
+  .login-pf-page::after { display: none; }
+  #kc-header-wrapper { color: CanvasText; }
+  .login-pf-page .card-pf { border: 2px solid CanvasText; background: Canvas; color: CanvasText; }
+  .card-pf input.pf-c-form-control,
+  .card-pf input.pf-c-button,
+  .card-pf a.pf-c-button,
+  .card-pf button.pf-c-button,
+  #kc-social-providers a.pf-c-button,
+  .card-pf .pf-c-alert { border: 2px solid ButtonText; }
+  .card-pf input.pf-c-button.pf-m-primary,
+  .card-pf a.pf-c-button.pf-m-primary { background: ButtonFace; color: ButtonText; }
+  .card-pf a { color: LinkText; }
+  .card-pf .pf-c-button:disabled { opacity: 1; color: GrayText; border-color: GrayText; }
+  .card-pf a:focus-visible,
+  .card-pf button:focus-visible,
+  .card-pf input:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
+}

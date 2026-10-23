@@ -103,35 +103,112 @@ header change. **No Security Defenses/Headers change is required for this, on an
 If a `frame-ancestors`/`X-Frame-Options` change is ever made for some other reason in the future,
 re-check this section first — it's very likely unrelated to auth.
 
-### Email / SMTP — not yet configured anywhere
+### Email / SMTP — Google account SMTP, for testing only
 
-`016-keycloak-account-provisioning.md`'s invite-email flow (`execute-actions-email`,
-`UPDATE_PASSWORD` action) needs the realm's own SMTP settings configured (**Realm settings →
-Email**) to actually deliver anything — confirmed by grep, no SMTP config exists in this repo or
-any environment today. Locally this was worked around with an ad-hoc MailHog/Mailpit-style sink for
-manual testing, not committed anywhere. **A real SMTP provider (transactional email service,
-company mail relay, etc.) needs to be chosen and configured per environment before invite emails
-can go out for real** — not solved here, and blocks `016` actually working end-to-end outside a
-dev machine.
+Two separate consumers send email, and **both currently use the owner's Google account SMTP
+server. That is a testing setup, not a production one.**
 
-`017-subscription-welcome-email.md` adds a second, entirely separate SMTP client: this
-application's own `spring.mail.*` properties, used to send the Subscription welcome email through
-`EmailService`/Thymeleaf, independent of Keycloak's realm-level Email settings above. Locally,
-both consumers can share a single Mailpit/MailHog sink (`docker run -p 1025:1025 -p 8025:8025
-axllent/mailpit`) — `spring.mail.host`/`port` already default to `localhost:1025`, matching that
-sink's own SMTP listener out of the box, no override needed. **A real SMTP provider plus SPF/DKIM/
-DMARC DNS records for `cricketlegend.co.za` remain an open, unresolved decision for either
-consumer** — this application's own emails and Keycloak's invite email both need it configured
-per environment before either works end-to-end outside a dev machine.
+1. **Keycloak** sends verify email, forgot password and the manager invite
+   (`016-keycloak-account-provisioning.md`'s `execute-actions-email` with `VERIFY_EMAIL` and
+   `UPDATE_PASSWORD`). Configured by hand in the realm: **Realm settings, Email** (per realm, per
+   environment; it is not in the repo).
+2. **The backend** sends the Subscription welcome email (`017`) and, from spec 119 slice 3, the
+   link-request outcome and hand-over invitation emails, through `EmailService` and Thymeleaf.
+   Configured by environment variables read in `backend/src/main/resources/application.properties`:
+
+   | Variable | Default | For Google account SMTP |
+   |---|---|---|
+   | `SMTP_HOST` | `localhost` | `smtp.gmail.com` |
+   | `SMTP_PORT` | `1025` | `587` |
+   | `SMTP_USERNAME` | empty | the Google account address |
+   | `SMTP_PASSWORD` | empty | a Google **app password** (needs 2-Step Verification on the account), never the account password |
+   | `SMTP_AUTH` | `false` | `true` |
+   | `SMTP_STARTTLS` | `false` | `true` |
+   | `MAIL_FROM_ADDRESS` | `no-reply@cricketlegend.co.za` | the account's own address (Google rewrites any other From to it) |
+   | `MAIL_FROM_NAME` | `Cricket Legend` | unchanged |
+
+   In the Keycloak realm Email tab use the same host, port 587, Enable StartTLS, Enable
+   Authentication, the same username and app password, and From = the account address.
+
+**Limits to know about (why this is testing only):** a personal Google account sends about 500
+messages a day (a Workspace account about 2,000; check Google's current figures), Google may throttle or block a
+burst, it rewrites the From address to the account's own, and deliverability is weaker than a club
+domain sender. Reset and verify mails from a personal address are likelier to land in spam.
+Keycloak and the backend share the one account's daily allowance.
+
+**Open before real users: a proper transactional provider plus SPF, DKIM and DMARC DNS records for
+`cricketlegend.co.za`**, for both consumers. Moving is a configuration change only (the same
+variables for the backend, the realm's Email tab for Keycloak); no code changes. Until then email
+is never a blocker: the app shows every status in the app regardless of email (spec 119,
+Decision 13).
+
+**Locally without sending real mail:** a Mailpit or MailHog sink on port 1025
+(`docker run -p 1025:1025 -p 8025:8025 axllent/mailpit`). The backend's defaults already point at
+`localhost:1025`; point the realm's Email tab at the same sink.
+
+### Login theme and realm checklist
+
+The Cricket Legend login theme lives in `keycloak/themes/cricketlegend/` (README: `keycloak/README.md`;
+spec 119 Part 1). It is installed per environment by copying the folder or the CI artifact
+(`keycloak-theme` job in `.github/workflows/ci.yml`, built by `keycloak/package.sh`) into
+`/opt/keycloak/themes/`; no backend or UI deployment is involved.
+
+Every setting below is done **by hand in the Keycloak admin console, per environment, and must be
+verified against the real realm, never assumed**. Tick a box only after looking at the real
+realm; the Local column is the owner's `cricketlegend` realm on `cricketlegend-keycloak-dev`.
+Version-specific wording is for Keycloak 24.0.3.
+
+| Setting (Admin console path) | Value | Why | Local | Staging | Production |
+|---|---|---|---|---|---|
+| Authentication, Required actions: **Verify Email** | **Enabled** (default action stays off: the realm Verify email switch and the app invite cover it) | `email_verified` is what the backend trusts; every agent and invited manager verifies before login completes. **Owner is checking.** | [x] | [ ] | [ ] |
+| Realm settings, Login: **Verify email** | **On** | the same requirement as a realm login setting. Local confirmed on 2026-10-23: **On**. | [x] | [ ] | [ ] |
+| Identity providers, Google: **Trust Email** | **On**, and a Google login arrives with `email_verified: true` (slice 2). **Owner is checking.** | satisfies spec 119 Decision 3 for Google users | [ ] | [ ] | [ ] |
+| Realm settings, Themes: **Login theme** | `cricketlegend` | uses the theme | [ ] | [ ] | [ ] |
+| Realm settings, General: **Display name** | `Cricket Legend` | tab titles and emails; the theme's wordmark does not depend on it | [ ] | [ ] | [ ] |
+| Login: **Remember me** | On | the "Remember me" checkbox | [ ] | [ ] | [ ] |
+| Login: **Forgot password** | On | the "Forgot password?" link; needs working realm email | [ ] | [ ] | [ ] |
+| Login: **Login with email** | On | "Username or email" | [ ] | [ ] | [ ] |
+| Login: **Email as username** | On | the registration page has no username field | [ ] | [ ] | [ ] |
+| Login: **Edit username** | Off | email is the identity | [ ] | [ ] | [ ] |
+| Login: **Duplicate emails** | **Off** | one Keycloak user per email; the foundation of bridge-by-email | [x] | [ ] | [ ] |
+| Login: **User registration** | **Off in slices 1 and 2, On in slice 3** | shows "New here? Create an account" | [ ] | [ ] | [ ] |
+| Authentication, Policies, Password policy | at least 10 characters, with a number (`length(10) and digits(1)`) | the wording the registration page promises | [ ] | [ ] | [ ] |
+| Realm settings, Tokens: **Default user-initiated action lifespan** | the lifetime you want the reset link to have (default is 5 minutes, which is short for an email) | the reset and verify pages say how long the link works | [ ] | [ ] | [ ] |
+| Realm settings, Sessions: SSO idle / max, Remember-me idle / max | per environment (suggest 30 min / 10 h; 30 days with Remember me) | makes the checkbox mean something | [ ] | [ ] | [ ] |
+| Realm settings, Security defenses: **Brute force detection** | On | the login page is now a public face | [ ] | [ ] | [ ] |
+| Realm settings, Email (SMTP) | Google account SMTP for testing, a proper provider later (section above) | verify email, forgot password and the manager invite are sent by Keycloak | [ ] | [ ] | [ ] |
+| Authentication, Required actions: **Terms and Conditions** | Off unless terms text is provided | an enabled action with no terms text shows a placeholder | [ ] | [ ] | [ ] |
+
+**Wording Keycloak decides, that the theme cannot change** (spec 119 plan, "Needs the owner" 2):
+after "Send reset link" Keycloak returns to the sign-in page with a green message (there is no
+separate "check your inbox" page and the message cannot echo the address); the lock-out message
+after too many wrong passwords is Keycloak's generic "invalid username or password" unless
+permanent lockout is configured; the "Opening Google..." state is not produced.
 
 ### Known local-only caveat, not applicable to a real server
 
-The local dev Keycloak container (`cricketlegend-keycloak-dev`) was started via a bare `docker run`
-with no compose file and no mounted volume — every admin-console change described above (including
-the Security Defenses/Headers one) is lost if that specific container is ever recreated, and has to
-be redone by hand. A real server deployment should use a proper persistent Keycloak install (or
-realm-export/import as part of provisioning) so this class of problem doesn't recur — worth
-deciding how before the first real server realm is created, not after.
+The local dev Keycloak container (`cricketlegend-keycloak-dev`) was started via a bare
+`docker run` with no compose file and **no mounted volume** — its realm lives in the container's
+own filesystem. Every admin-console change described above (including the Security
+Defenses/Headers one) is lost if that specific container is ever removed or recreated, and has to
+be redone by hand. A restart (`docker restart`) keeps it.
+
+- **Before recreating the container, export the realm first:** Admin console, realm
+  `cricketlegend`, Realm settings, Action, **Partial export** (include groups, roles and clients),
+  and keep the file. Or take a zero-risk copy of the whole data folder:
+  `docker cp cricketlegend-keycloak-dev:/opt/keycloak/data ./keycloak-data-backup`.
+- **Safe ways to get the theme in** without recreating anything: `docker cp keycloak/themes/cricketlegend
+  cricketlegend-keycloak-dev:/opt/keycloak/themes/` then `docker restart cricketlegend-keycloak-dev`
+  (`keycloak/README.md`, option A).
+- **`docker-compose.keycloak.yml`** (repo root) starts a *new* container `cricketlegend-keycloak`
+  (same image `quay.io/keycloak/keycloak:24.0.3`, same `8180:8080`, `start-dev`) with a **named
+  volume** for the realm data and the theme bind-mounted read-only, so this class of loss does not
+  recur. It starts empty: import the exported realm into it. Stop the old container first (same
+  port).
+
+A real server deployment should use a proper persistent Keycloak install (or realm-export/import
+as part of provisioning) — worth deciding how before the first real server realm is created, not
+after.
 
 ## Next up (not written yet)
 
