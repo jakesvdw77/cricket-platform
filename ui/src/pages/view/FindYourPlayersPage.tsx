@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import type { ReactNode } from 'react'
 import { alpha } from '@mui/material/styles'
-import { Alert, Avatar, Box, Button, Checkbox, Skeleton, Tooltip, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Button, Checkbox, Skeleton, Typography } from '@mui/material'
+import { Button as AppButton } from '../../components/Button'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 import { useConfirmLinks, usePlayerMatches, useRegisterAccount } from '../../api/meApi'
-import type { PlayerMatch } from '../../api/meApi'
+import type { MainAgentMatch, PlayerMatch } from '../../api/meApi'
+import { LinkRequestForm } from './LinkRequestForm'
+import type { LinkRequestPrefill } from './LinkRequestForm'
+import { MyLinkRequests } from './MyLinkRequests'
 
 // docs/specs/119 Part 3: "Find your players". Register is idempotent; matches are minimised
 // (first name + surname initial, birth year only, masked email for players that have a main agent).
@@ -77,6 +81,14 @@ export default function FindYourPlayersPage() {
   const confirm = useConfirmLinks()
   const [unticked, setUnticked] = useState<Set<string>>(new Set())
   const [linkedNames, setLinkedNames] = useState<string[] | null>(null)
+  // docs/specs/119 Part 3 (3B): 'form' is "Ask the club to help" for one matched player, 'sent' the one confirmation shown
+  // after every request, 'mine' the requester's own status list.
+  const [view, setView] = useState<'main' | 'form' | 'sent' | 'mine'>('main')
+  const [prefill, setPrefill] = useState<LinkRequestPrefill | undefined>(undefined)
+  const askClub = (p: MainAgentMatch) => {
+    setPrefill({ firstName: p.firstName, surnameInitial: p.surnameInitial, clubId: p.clubId, clubName: p.clubName, targetPlayerRef: p.ref })
+    setView('form')
+  }
   const email = (keycloak.tokenParsed as { email?: string } | undefined)?.email
 
   useEffect(() => {
@@ -116,6 +128,46 @@ export default function FindYourPlayersPage() {
         <Skeleton variant="rounded" height={64} />
       </Box>
     )
+  } else if (view === 'form') {
+    body = (
+      <>
+        <Heading>Ask the club to help</Heading>
+        <Typography variant="body2" color="text.secondary">
+          Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.
+        </Typography>
+        <LinkRequestForm prefill={prefill} onSent={() => setView('sent')} onBack={() => setView('main')} />
+      </>
+    )
+  } else if (view === 'sent') {
+    body = (
+      <>
+        <CheckCircleOutlineIcon color="primary" sx={{ fontSize: 40 }} />
+        <Heading>Thanks, the club will review this</Heading>
+        <Typography variant="body2" color="text.secondary">
+          We will show the outcome here, and email you when the club has decided.
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <AppButton variant="secondary" size="compact" onClick={() => setView('mine')}>
+            See my requests
+          </AppButton>
+          <AppButton variant="secondary" size="compact" onClick={() => { setPrefill(undefined); setView('main') }}>
+            Send another request
+          </AppButton>
+        </Box>
+      </>
+    )
+  } else if (view === 'mine') {
+    body = (
+      <>
+        <Heading>My requests</Heading>
+        <MyLinkRequests />
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-start' } }}>
+          <AppButton onClick={() => setView('main')} sx={{ minHeight: { xs: 44, sm: 40 }, width: { xs: '100%', sm: 'auto' } }}>
+            Back
+          </AppButton>
+        </Box>
+      </>
+    )
   } else {
     const { withoutMainAgent: free, withMainAgent: taken } = matches.data
     const all = [...free, ...taken]
@@ -132,8 +184,14 @@ export default function FindYourPlayersPage() {
               We could not find a player with {email ?? 'your email address'} at any club. Your club may have a different email on file for you.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Requesting a link will be available soon.
+              Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.
             </Typography>
+            <LinkRequestForm onSent={() => setView('sent')} />
+            <Box>
+              <AppButton variant="secondary" size="compact" onClick={() => setView('mine')}>
+                My requests
+              </AppButton>
+            </Box>
           </>
         ) : (
           free.length > 0 && (
@@ -236,14 +294,15 @@ export default function FindYourPlayersPage() {
                 </Box>
               </Box>
             ))}
-            <Box>
-              <Tooltip title="Available soon">
-                <span>
-                  <Button variant="outlined" size="small" sx={{ minHeight: 32 }} disabled>
-                    Ask the club to help
-                  </Button>
-                </span>
-              </Tooltip>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {taken.map((p) => (
+                <AppButton key={p.ref} variant="secondary" size="compact" onClick={() => askClub(p)}>
+                  {taken.length > 1 ? `Ask the club to help with ${describe(p)}` : 'Ask the club to help'}
+                </AppButton>
+              ))}
+              <AppButton variant="secondary" size="compact" onClick={() => setView('mine')}>
+                My requests
+              </AppButton>
             </Box>
           </Box>
         )}

@@ -193,6 +193,10 @@ export interface RecordCardProps {
   // entry), each an icon above a short caption, so no button is clipped or wrapped at any card
   // width - the unified poll card passes exactly four. Every other footer prop is then ignored.
   footerButtons?: RecordCardFooterButton[]
+  // docs/specs/119 (link requests): free footer content, right-aligned and wrapping - for compact action Buttons that do not
+  // fit the icon-over-caption columns (Approve, Decline, New player and approve). Replaces the default Edit footer;
+  // `footerButtons` still wins if both are set; `null` means a read-only card with no footer at all. Purely additive.
+  footerActions?: ReactNode
 }
 
 // The grid unit for any record list (ProductList today, future Subscriptions/Discounts/
@@ -334,6 +338,7 @@ export function RecordCard({
   feedback,
   children,
   footerButtons,
+  footerActions,
 }: RecordCardProps) {
   const titleTypographyProps = titleWrap
     ? {
@@ -652,6 +657,10 @@ export function RecordCard({
               control
             )
           })}
+        </CardActions>
+      ) : footerActions === null ? null : footerActions !== undefined ? (
+        <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1, px: 2, pb: 2, pt: 0, position: 'relative', '& > :not(:first-of-type)': { ml: 0 } }}>
+          {footerActions}
         </CardActions>
       ) : (
         <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>

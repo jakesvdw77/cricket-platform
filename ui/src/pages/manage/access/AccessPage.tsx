@@ -1,4 +1,4 @@
-import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom'
+import { Link as RouterLink, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
@@ -12,6 +12,8 @@ const TABS = [
 
 export default function AccessPage() {
   useDocumentTitle('Access')
+  // ManagerHome's context (clubId), handed on to the tab.
+  const context = useOutletContext<{ clubId?: string }>()
   const { pathname } = useLocation()
   const tab = pathname.startsWith('/manage/permissions/player-accounts') ? 'player-accounts' : 'managers'
   return (
@@ -36,7 +38,7 @@ export default function AccessPage() {
           </Box>
         }
       />
-      <Outlet />
+      <Outlet context={context} />
     </Box>
   )
 }
