@@ -37,6 +37,7 @@ export function LeagueTeamAvatars({ teams }: { teams: LeagueSeasonTeam[] | null 
                   ? avatarSx(34, '0.75rem')
                   : {
                       ...avatarSx(34, '0.75rem'),
+                      backgroundImage: 'none',
                       bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
                       color: 'primary.dark',
                       border: 1,

@@ -1,5 +1,7 @@
 import { Box, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
+import { alpha } from '@mui/material/styles'
+import { BRAND, DARK_MENU_BG } from '../../brandTokens'
 import { BottomSheet } from '../BottomSheet'
 
 export interface ProfileSwitchItem {
@@ -58,7 +60,7 @@ export function ProfileSwitcher({ items, anchorEl, onClose, dark = false }: Prof
       anchorEl={anchorEl}
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: dark ? { bgcolor: '#0a3322', color: '#F7F3E8', border: '1px solid rgba(247,243,232,0.28)', minWidth: 240 } : { minWidth: 240 } }}
+      PaperProps={{ sx: dark ? { bgcolor: DARK_MENU_BG, color: BRAND.cream, border: `1px solid ${alpha(BRAND.cream, 0.28)}`, minWidth: 240 } : { minWidth: 240 } }}
     >
       {rows}
     </Menu>

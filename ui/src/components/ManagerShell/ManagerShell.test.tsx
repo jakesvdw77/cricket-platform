@@ -83,10 +83,10 @@ describe('ManagerShell', () => {
     }
   })
 
-  it('uses the brand-tone header at every width', () => {
+  it('uses the dark platform header at every width', () => {
     stubViewport(1280)
     renderShell()
 
-    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: 'rgb(47, 110, 79)' })
+    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: 'rgb(11, 61, 38)' })
   })
 })

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import sceneUrl from '../../assets/cricket-scene.svg'
+import { BRAND } from '../../brandTokens'
 
 // Cricket-themed full-page backdrop for signed-in-but-not-in-the-app pages (docs/specs/119). Built in
 // an original flat SVG scene (assets/cricket-scene.svg, brand palette only) over the dark green base of the
@@ -8,13 +9,13 @@ import sceneUrl from '../../assets/cricket-scene.svg'
 // `imageUrl` lets an owner supply their own photo instead, drawn behind a dark-green overlay. Decoration only (aria-hidden); forced-colors falls back to Canvas.
 // eslint-disable-next-line react-refresh/only-export-components
 export const BACKDROP_COLOURS = {
-  green900: '#0B3D26',
-  green800: '#0F5132',
-  green700: '#14633F',
-  ink: '#06241A',
-  gold: '#E8B83D',
-  sand: '#E2D5B0',
-  cream: '#F7F3E8',
+  green900: BRAND.green900,
+  green800: BRAND.green800,
+  green700: BRAND.green700,
+  ink: BRAND.ink,
+  gold: BRAND.gold,
+  sand: BRAND.sand,
+  cream: BRAND.cream,
 }
 
 const { green900 } = BACKDROP_COLOURS

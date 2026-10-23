@@ -94,56 +94,38 @@ describe('ShellHeader tone', () => {
     )
   }
 
-  it('plain (default): white header with a divider, as the admin and player shells have it', () => {
-    renderWithTheme(baseTheme)
+  it('is the dark platform chrome for every club, whatever the club colour', () => {
+    renderWithTheme(withClubBranding('#f5d442'))
 
-    expect(screen.getByRole('banner')).not.toHaveStyle({ backgroundColor: 'rgb(47, 110, 79)' })
-    expect(screen.getByRole('banner')).toHaveStyle({ borderBottomWidth: '1px' })
+    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: 'rgb(11, 61, 38)', color: 'rgb(247, 243, 232)' })
   })
 
-  it('brand: solid club colour with the contrast text colour', () => {
-    renderWithTheme(baseTheme, { tone: 'brand' })
-
-    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: 'rgb(47, 110, 79)', color: 'rgb(255, 255, 255)' })
-  })
-
-  it('brand: a light club colour gets dark text, not white', () => {
-    const light = withClubBranding('#f5d442')
-    renderWithTheme(light, { tone: 'brand' })
-
-    const header = screen.getByRole('banner')
-    expect(header).toHaveStyle({ backgroundColor: 'rgb(245, 212, 66)' })
-    expect(light.palette.primary.contrastText).not.toBe('#ffffff')
-    expect(header).toHaveStyle({ color: light.palette.primary.contrastText })
-  })
-
-  it('brand: the logo slot is a white tile, with the initials fallback when there is no logo', () => {
-    renderWithTheme(baseTheme, { tone: 'brand', logoUrl: null })
+  it('the logo slot is a white tile, with the initials fallback when there is no logo', () => {
+    renderWithTheme(baseTheme, { logoUrl: null })
 
     const initials = screen.getByText('RC')
     expect(initials.closest('.MuiAvatar-root')).toHaveStyle({ backgroundColor: 'rgb(255, 255, 255)' })
   })
 
-  it('brand: the account avatar uses the on-brand look, not the solid primary disc', () => {
-    renderWithTheme(baseTheme, { tone: 'brand' })
+  it('the account avatar is the gold disc with dark green initials', () => {
+    renderWithTheme(baseTheme)
 
     const avatar = screen.getByText('SM').closest('.MuiAvatar-root') as HTMLElement
-    expect(avatar).not.toHaveStyle({ backgroundColor: 'rgb(47, 110, 79)' })
-    expect(avatar).toHaveStyle({ color: 'rgb(255, 255, 255)' })
+    expect(avatar).toHaveStyle({ backgroundColor: 'rgb(232, 184, 61)', color: 'rgb(11, 61, 38)' })
   })
 
   it('renders no Notifications bell unless notificationsTo is passed (admin and player shells)', () => {
-    renderWithTheme(baseTheme, { tone: 'brand' })
+    renderWithTheme(baseTheme)
 
     expect(screen.queryByRole('link', { name: 'Notifications' })).not.toBeInTheDocument()
   })
 
   it('renders a Notifications bell link next to the account button when notificationsTo is passed', () => {
-    renderWithTheme(baseTheme, { tone: 'brand', notificationsTo: '/manage/notifications' })
+    renderWithTheme(baseTheme, { notificationsTo: '/manage/notifications' })
 
     const bell = screen.getByRole('link', { name: 'Notifications' })
     expect(bell).toHaveAttribute('href', '/manage/notifications')
-    expect(bell).toHaveStyle({ color: 'rgb(255, 255, 255)' })
+    expect(bell).toHaveStyle({ color: 'rgb(247, 243, 232)' })
     expect(bell.nextElementSibling).toBe(screen.getByRole('button', { name: 'Account menu' }))
   })
 })

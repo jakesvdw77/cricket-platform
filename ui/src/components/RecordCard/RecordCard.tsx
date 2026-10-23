@@ -17,7 +17,8 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { STRUCTURAL_PURPLE } from '../../theme'
+import { BRAND } from '../../brandTokens'
+import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
 import { Button } from '../Button'
 
 // The first three are the original general-purpose tones. The poll tones are for the availability
@@ -213,21 +214,24 @@ export interface RecordCardProps {
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
-// The shared solid-fill avatar treatment — real user feedback preferring AvatarMenu.tsx's
-// existing solid `primary.main` + white-text look over every other avatar site's independently
-// hand-rolled light tint (`alpha(primary.main, 0.14)` + `primary.dark`). `size` covers both list-
-// card and detail-header avatars alike (56px for a record's own primary avatar), `fontSize`
-// defaults to the size that pairs with a 56px avatar; smaller avatar contexts (icon grids, logo
-// rows, the account menu) pass their own existing fontSize explicitly.
+// The shared avatar treatment. docs/specs/120 Decisions 9 and 19: a gold disc (a radial from the light to the solid gold)
+// with dark green initials in the display face, for every avatar, whatever the club's colour (it was the solid
+// `primary.main` and white text). A photo or logo is unchanged (it covers the disc). `size` covers both list-card and
+// detail-header avatars alike (56px for a record's own primary avatar), `fontSize` defaults to the size that pairs with a
+// 56px avatar; smaller avatar contexts (icon grids, logo rows, the account menu) pass their own existing fontSize
+// explicitly. A caller that wants a muted look overrides `bgcolor` and sets `backgroundImage: 'none'`.
 export function avatarSx(size: number, fontSize?: string) {
   return {
     width: size,
     height: size,
     flex: 'none' as const,
+    fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay,
     fontSize: fontSize ?? '1.125rem',
-    fontWeight: 600,
-    bgcolor: 'primary.main',
-    color: 'primary.contrastText',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    bgcolor: BRAND.gold,
+    backgroundImage: `radial-gradient(circle at 30% 25%, ${BRAND.goldLight}, ${BRAND.gold})`,
+    color: BRAND.green900,
   }
 }
 
@@ -340,9 +344,11 @@ export function RecordCard({
   footerButtons,
   footerActions,
 }: RecordCardProps) {
+  // docs/specs/120: the card name is in the display face (uppercase, about 21 px).
   const titleTypographyProps = titleWrap
     ? {
         sx: {
+          ...cardTitleSx,
           minWidth: 0,
           flex: '0 1 auto',
           display: '-webkit-box',
@@ -352,7 +358,7 @@ export function RecordCard({
           overflowWrap: 'anywhere' as const,
         },
       }
-    : { noWrap: true }
+    : { noWrap: true, sx: cardTitleSx }
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
   // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
   const badgeChips = (
@@ -402,7 +408,7 @@ export function RecordCard({
         }),
       }}
     >
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
         {badgesAbove && (badge || (badges && badges.length > 0)) && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end" data-testid="badges-above">
             {badgeChips}
@@ -444,7 +450,7 @@ export function RecordCard({
               // the containing-block search skip over it and resolve to MuiCard (the outer
               // `position: relative` element), which is what actually makes `inset: 0` cover the
               // whole card.
-              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
+              <Typography variant="subtitle1" component="h3" {...titleTypographyProps}>
                 <MuiLink
                   component={RouterLink}
                   to={viewTo}
@@ -456,7 +462,7 @@ export function RecordCard({
                 </MuiLink>
               </Typography>
             ) : (
-              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
+              <Typography variant="subtitle1" component="h3" {...titleTypographyProps}>
                 {title}
               </Typography>
             )}

@@ -1,6 +1,8 @@
 import { Box, Typography } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { BottomSheet } from '../BottomSheet'
+import { CHROME } from '../../brandTokens'
+import { displayLabelSx } from '../../theme'
 import { NavItemIcon } from '../NavItemIcon'
 import { activeNavId } from '../ManagerShell/managerNav'
 import type { NavGroup } from '../ManagerShell/managerNav'
@@ -21,11 +23,11 @@ export function MenuSheet({ open, onOpen, onClose, groups, badges = {} }: MenuSh
   const activeId = activeNavId(groups, pathname)
 
   return (
-    <BottomSheet open={open} onOpen={onOpen} onClose={onClose} ariaLabel="Menu" title="Menu" closeLabel="Close menu">
+    <BottomSheet open={open} onOpen={onOpen} onClose={onClose} ariaLabel="Menu" title="Menu" closeLabel="Close menu" tone="dark">
       {groups.map((group, index) => (
         <Box key={group.label ?? `group-${index}`} sx={{ mb: 1 }}>
           {group.label && (
-            <Typography variant="overline" color="text.secondary" sx={{ display: 'block', fontSize: '0.68rem', pt: 1, pb: 0.5 }}>
+            <Typography variant="overline" color="inherit" sx={{ ...displayLabelSx, display: 'block', fontSize: 11, letterSpacing: '0.12em', opacity: 0.7, pt: 1, pb: 0.5 }}>
               {group.label}
             </Typography>
           )}
@@ -49,18 +51,21 @@ export function MenuSheet({ open, onOpen, onClose, groups, badges = {} }: MenuSh
                     px: 0.5,
                     py: 1,
                     borderRadius: 1,
-                    bgcolor: 'background.paper',
-                    boxShadow: 1,
+                    // Dark raised panel, a gold outline when current (docs/specs/120).
+                    bgcolor: 'chrome.hover',
                     outline: '2px solid',
-                    outlineColor: active ? 'primary.main' : 'transparent',
-                    color: 'text.primary',
+                    outlineColor: active ? 'chrome.selected' : 'transparent',
+                    color: active ? 'chrome.selected' : 'chrome.text',
                     textDecoration: 'none',
                     textAlign: 'center',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
+                    ...displayLabelSx,
+                    fontSize: 15,
+                    letterSpacing: '0.05em',
+                    fontWeight: active ? 700 : 600,
+                    '&:focus-visible': { outlineColor: 'chrome.text', outlineOffset: 2 },
                   }}
                 >
-                  <NavItemIcon name={item.icon} size={40} />
+                  <NavItemIcon name={item.icon} size={40} onDark />
                   {item.label}
                   {typeof badge === 'number' && badge > 0 && (
                     <Box
@@ -75,6 +80,10 @@ export function MenuSheet({ open, onOpen, onClose, groups, badges = {} }: MenuSh
                         borderRadius: 99,
                         bgcolor: 'error.main',
                         color: 'error.contrastText',
+                        boxShadow: `0 0 0 1.5px ${CHROME.text}`,
+                        fontFamily: (theme) => theme.typography.fontFamily,
+                        letterSpacing: 0,
+                        textTransform: 'none',
                         fontSize: '0.68rem',
                         fontWeight: 700,
                         lineHeight: '18px',

@@ -13,6 +13,7 @@ import { keycloak } from '../../auth/keycloak'
 import { getManagerOverview } from '../../api/overviewApi'
 import type { OverviewMatch, OverviewPoll, OverviewResult } from '../../api/overviewApi'
 import { groupPollResponsesPath, squadPollResponsesPath } from '../../utils/pollRoutes'
+import { pageTitleSx } from '../../theme'
 
 // docs/specs/079-manager-shell-and-overview.md: the /manage index - what needs the manager's
 // attention now. The navigation the old tile grid carried lives in the shell's menus.
@@ -287,7 +288,7 @@ export default function ManagerOverviewPage() {
     // Bottom padding on a phone clears the speed dial and the tab bar so the last card is never covered.
     <Stack spacing={2} sx={{ pb: { xs: 12, md: 0 } }}>
       <Stack direction="row" flexWrap="wrap" justifyContent="space-between" alignItems="center" columnGap={2} rowGap={0.5}>
-        <Typography variant="h5" component="h1" fontWeight={700}>
+        <Typography variant="h5" component="h1" sx={pageTitleSx}>
           {greeting(now)}
         </Typography>
         <Stack direction="row" alignItems="center" columnGap={2} rowGap={0.5} flexWrap="wrap">

@@ -1,9 +1,9 @@
 import { alpha } from '@mui/material/styles'
-import { BACKDROP_COLOURS } from '../../../components/PageBackdrop'
+import { BRAND, FONT_DISPLAY, darkMenuProps } from '../../../brandTokens'
 
 // docs/specs/119 3C: the look of the player hub (a dark, console style screen on the cricket-scene backdrop).
-// No condensed face is bundled; this stack falls back to Arial Narrow or Roboto Condensed where Barlow Condensed is not installed.
-const { cream, gold, ink, sand } = BACKDROP_COLOURS
+// docs/specs/120: the colours and the (self-hosted) Barlow Condensed stack come from the shared brand tokens.
+const { cream, gold, ink, sand } = BRAND
 export const HUB = {
   cream,
   gold,
@@ -13,7 +13,7 @@ export const HUB = {
   lineSoft: alpha(cream, 0.14),
   muted: alpha(cream, 0.66),
   panelDark: 'rgba(0,0,0,.30)',
-  display: '"Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif',
+  display: FONT_DISPLAY,
 }
 
 export const hubHeading = {
@@ -65,5 +65,4 @@ export const darkFieldSx = {
   '& .MuiInputBase-input:focus-visible, & .MuiCheckbox-root.Mui-focusVisible': { outline: 'none' },
 } as const
 
-export const darkMenuProps = { PaperProps: { sx: { bgcolor: '#0a3322', color: HUB.cream, border: `1px solid ${HUB.line}`, '& .MuiMenuItem-root.Mui-selected': { bgcolor: alpha(HUB.gold, 0.18) }, '& .MuiMenuItem-root:hover': { bgcolor: alpha(HUB.gold, 0.12) } } } }
-
+export { darkMenuProps }

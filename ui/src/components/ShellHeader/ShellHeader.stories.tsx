@@ -56,7 +56,7 @@ export const WithClubInitialsFallback: Story = {
   },
 }
 
-// docs/specs/079-manager-shell-and-overview.md: the opt-in club-colour header the manager shell uses.
+// docs/specs/079-manager-shell-and-overview.md: the platform chrome header (dark green for every club).
 export const BrandTone: Story = {
   args: {
     brand: 'Riverside Cricket Club',
@@ -64,7 +64,6 @@ export const BrandTone: Story = {
     onLogout: () => {},
     profileTo: '/manage/profile',
     logoUrl: null,
-    tone: 'brand',
   },
 }
 

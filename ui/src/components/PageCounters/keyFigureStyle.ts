@@ -1,11 +1,15 @@
 import { decomposeColor, recomposeColor } from '@mui/material'
 import type { Theme } from '@mui/material'
+import { BRAND } from '../../brandTokens'
 
 // The Overview key-figure card style (docs/specs/079, 081). Shared by ManagerOverviewPage's key figures and
 // PageCounters so the two cannot drift.
+// docs/specs/120: the white card now also carries the card hairline (the shadow is kept, like every other panel).
 export const keyFigureCardSx = {
   bgcolor: 'background.paper',
   boxShadow: 2,
+  border: 1,
+  borderColor: 'divider',
   p: 2,
   display: 'flex',
   flexDirection: 'column',
@@ -29,17 +33,21 @@ export const compactCardSx = {
 
 export const compactValueSx = (warn: boolean) => ({
   ...keyFigureValueSx(warn),
-  fontSize: '1.2rem',
+  fontSize: '1.5rem',
+  lineHeight: 1,
   flex: '0 0 auto',
 })
 
+// docs/specs/120 Decision 8: the numeral is 40 px in the display face (Barlow Condensed 700) in the header green; a warning
+// counter keeps the warning colour.
 export function keyFigureValueSx(warn: boolean) {
   return {
-    fontSize: '1.6rem',
+    fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay,
+    fontSize: '2.5rem',
     fontWeight: 700,
     lineHeight: 1.1,
     fontVariantNumeric: 'tabular-nums',
-    color: warn ? 'warning.main' : 'text.primary',
+    color: warn ? 'warning.main' : BRAND.green900,
   }
 }
 

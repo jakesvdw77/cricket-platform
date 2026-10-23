@@ -5,7 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { Footer } from '../Footer'
 import { ShellHeader } from '../ShellHeader'
-import { pageBackgroundGradient } from '../../theme'
+import { displayLabelSx, pageBackgroundGradient } from '../../theme'
 
 const DRAWER_WIDTH = 232
 
@@ -23,7 +23,8 @@ export interface AppShellProps {
   children: ReactNode
 }
 
-// Desktop-console layout: persistent sidebar + top bar. Below `md`, the sidebar becomes a
+// Desktop-console layout: persistent sidebar + top bar. docs/specs/120 Decision 17: the same dark platform chrome as the manager shell
+// (header, drawers with the gold selected row, footer). Below `md`, the sidebar becomes a
 // temporary drawer behind a menu button rather than a bottom-tab bar — see
 // docs/specs/006-post-login-home-shells.md's System Admin nav decision.
 export function AppShell({ brand, navItems, user, onLogout, profileTo, children }: AppShellProps) {
@@ -38,9 +39,24 @@ export function AppShell({ brand, navItems, user, onLogout, profileTo, children 
           component={RouterLink}
           to={item.to}
           selected={location.pathname === item.to}
+          aria-current={location.pathname === item.to ? 'page' : undefined}
           onClick={() => setMobileOpen(false)}
+          sx={{
+            color: 'chrome.text',
+            borderRadius: 1,
+            mx: 1,
+            width: 'auto',
+            '&:hover': { bgcolor: 'chrome.hover' },
+            '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'chrome.selectedBg', color: 'chrome.selected' },
+            '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 },
+          }}
         >
-          <ListItemText primary={item.label} />
+          <ListItemText
+            primary={item.label}
+            primaryTypographyProps={{
+              sx: { ...displayLabelSx, fontSize: 17, fontWeight: location.pathname === item.to ? 700 : 600 },
+            }}
+          />
         </ListItemButton>
       ))}
     </List>
@@ -58,7 +74,7 @@ export function AppShell({ brand, navItems, user, onLogout, profileTo, children 
             aria-label="Open navigation"
             edge="start"
             onClick={() => setMobileOpen(true)}
-            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: 'chrome.text', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 } }}
           >
             <MenuIcon />
           </IconButton>
@@ -75,8 +91,10 @@ export function AppShell({ brand, navItems, user, onLogout, profileTo, children 
             '& .MuiDrawer-paper': {
               width: DRAWER_WIDTH,
               position: 'relative',
+              bgcolor: 'chrome.menu',
+              color: 'chrome.text',
               borderRight: 1,
-              borderColor: 'divider',
+              borderColor: 'chrome.menuLine',
             },
           }}
         >
@@ -89,7 +107,7 @@ export function AppShell({ brand, navItems, user, onLogout, profileTo, children 
           onClose={() => setMobileOpen(false)}
           sx={{
             display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH },
+            '& .MuiDrawer-paper': { width: DRAWER_WIDTH, bgcolor: 'chrome.menu', color: 'chrome.text' },
           }}
         >
           {drawerList}

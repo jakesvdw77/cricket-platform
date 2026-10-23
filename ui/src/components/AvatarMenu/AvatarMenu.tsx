@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { Avatar, Box, Divider, IconButton, Menu, MenuItem, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { avatarSx } from '../RecordCard'
+import { BRAND, darkMenuProps } from '../../brandTokens'
 import { ProfileSwitcher } from '../ProfileSwitcher'
 import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { initialsFromName } from '../../utils/initials'
@@ -13,8 +13,8 @@ export interface AvatarMenuProps {
   email?: string
   profileTo?: string
   onLogout: () => void
-  // docs/specs/079: for a club-colour (tone="brand") header, where the default primary avatar would
-  // vanish into its own background; renders a translucent contrast-text disc instead.
+  // docs/specs/079, 120: set on the dark platform header; the account dropdown takes the dark look of the player console
+  // (the avatar disc is gold everywhere).
   onBrand?: boolean
   // docs/specs/119 3C: additive item for a person who also has players (their own record or linked ones). Undefined renders nothing.
   myPlayersTo?: string
@@ -31,27 +31,19 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
 
   return (
     <>
-      <IconButton onClick={handleOpen} aria-label="Account menu" size="small">
-        <Avatar
-          sx={{
-            ...avatarSx(32, '0.75rem'),
-            ...(onBrand && {
-              bgcolor: (theme) => alpha(theme.palette.primary.contrastText, 0.2),
-              color: 'primary.contrastText',
-            }),
-          }}
-        >{initialsFromName(name)}</Avatar>
+      <IconButton onClick={handleOpen} aria-label="Account menu" size="small" sx={{ '&:focus-visible': { outline: '2px solid', outlineColor: onBrand ? 'chrome.text' : 'primary.main', outlineOffset: 2 } }}>
+        <Avatar sx={avatarSx(32, '0.75rem')}>{initialsFromName(name)}</Avatar>
       </IconButton>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose} {...(onBrand ? darkMenuProps : {})}>
         <Box sx={{ px: 2, py: 1, minWidth: 180 }}>
           <Typography variant="subtitle2">{name}</Typography>
           {email && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color={onBrand ? 'inherit' : 'text.secondary'} sx={onBrand ? { display: 'block', opacity: 0.8 } : undefined}>
               {email}
             </Typography>
           )}
         </Box>
-        <Divider />
+        <Divider sx={onBrand ? { borderColor: 'chrome.menuLine' } : undefined} />
         <MenuItem component={RouterLink} to={profileTo} onClick={handleClose}>
           Profile
         </MenuItem>
@@ -75,7 +67,7 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
             handleClose()
             onLogout()
           }}
-          sx={{ color: 'error.main' }}
+          sx={{ color: onBrand ? BRAND.errorOnDark : 'error.main' }}
         >
           Log out
         </MenuItem>

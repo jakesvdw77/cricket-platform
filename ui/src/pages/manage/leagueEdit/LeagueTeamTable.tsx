@@ -45,6 +45,7 @@ function LeagueTeamRow({ team, onEdit, onToggleActive, onRemove, togglePending }
           sx={{
             ...avatarSx(32, '0.7rem'),
             borderRadius: 1,
+            backgroundImage: 'none',
             bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
             color: 'primary.main',
             border: 1,

@@ -19,6 +19,11 @@ export const WithTitleAndClose: Story = {
   args: { ...base, title: 'Menu', closeLabel: 'Close menu', children: <Typography>Sheet content</Typography> },
 }
 
+// docs/specs/120: the dark platform chrome look the phone Menu sheet uses.
+export const DarkTone: Story = {
+  args: { ...base, title: 'Menu', closeLabel: 'Close menu', tone: 'dark', children: <Typography>Sheet content</Typography> },
+}
+
 export const TitleOnly: Story = {
   args: { ...base, title: 'Filters', children: <Typography>Sheet content</Typography> },
 }

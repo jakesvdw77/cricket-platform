@@ -27,7 +27,7 @@ export interface ManagerShellProps {
   children: ReactNode
 }
 
-// docs/specs/079-manager-shell-and-overview.md: the club manager's shell. A club-colour header, a
+// docs/specs/079-manager-shell-and-overview.md: the club manager's shell. The platform chrome (dark green header, side menu, bottom bar and footer, the same for every club, docs/specs/120), a
 // persistent side menu from md (icons-only rail from md to lg, full from lg), and on a phone a
 // bottom tab bar whose Menu button opens a sheet. Replaces GridNavShell (top bar only), which only
 // ManagerHome used. Only the layout that fits the viewport is rendered, so there is one nav landmark.
@@ -40,7 +40,6 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <ShellHeader
-        tone="brand"
         brand={brand}
         user={user}
         onLogout={onLogout}

@@ -4,6 +4,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink } from 'react-router-dom'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { ContentCard } from '../ContentCard'
+import { pageTitleSx } from '../../theme'
 
 export interface RecordFormScreenProps {
   title: string
@@ -45,13 +46,13 @@ export function RecordFormScreen({ title, backTo, backLabel, actions, tabs, head
             data-testid="record-form-title-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
           >
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 700, minWidth: 0 }}>
+            <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, minWidth: 0 }}>
               {title}
             </Typography>
             <Box sx={{ flex: 'none' }}>{headerAction}</Box>
           </Box>
         ) : (
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" component="h1" sx={pageTitleSx}>
             {title}
           </Typography>
         )}

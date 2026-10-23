@@ -1,5 +1,7 @@
 import { Box, Paper } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { CHROME } from '../../brandTokens'
+import { displayLabelSx } from '../../theme'
 import { NavItemIcon } from '../NavItemIcon'
 import { activeTabId } from '../ManagerShell/managerNav'
 import type { ManagerTab, NavGroup } from '../ManagerShell/managerNav'
@@ -36,12 +38,14 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
     border: 0,
     bgcolor: 'transparent',
     font: 'inherit',
-    fontSize: '0.66rem',
-    fontWeight: active ? 700 : 400,
-    color: active ? 'primary.dark' : 'text.secondary',
+    ...displayLabelSx,
+    fontSize: 12,
+    letterSpacing: '0.04em',
+    fontWeight: active ? 700 : 600,
+    color: active ? 'chrome.selected' : 'chrome.text',
     textDecoration: 'none',
     cursor: 'pointer',
-    '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
+    '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: -2 },
   })
 
   return (
@@ -52,8 +56,11 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
       elevation={0}
       sx={{
         display: 'flex',
+        bgcolor: 'chrome.menu',
+        color: 'chrome.text',
+        backgroundImage: 'none',
         borderTop: 1,
-        borderColor: 'divider',
+        borderColor: 'chrome.menuLine',
         pb: 'env(safe-area-inset-bottom)',
         position: 'sticky',
         bottom: 0,
@@ -65,8 +72,10 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
         const badge = badges[tab.id]
         return (
           <Box key={tab.id} component={RouterLink} to={tab.to} aria-current={active ? 'page' : undefined} sx={itemSx(active)}>
-            <NavItemIcon name={tab.icon} size={32} padding={3} />
-            {tab.label}
+            <NavItemIcon name={tab.icon} size={32} padding={3} onDark />
+            <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {tab.label}
+            </Box>
             {typeof badge === 'number' && badge > 0 && (
               <Box
                 component="span"
@@ -81,6 +90,9 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
                   borderRadius: 99,
                   bgcolor: 'error.main',
                   color: 'error.contrastText',
+                  boxShadow: `0 0 0 1.5px ${CHROME.text}`,
+                  fontFamily: (theme) => theme.typography.fontFamily,
+                  letterSpacing: 0,
                   fontSize: '0.62rem',
                   fontWeight: 700,
                   lineHeight: '16px',
@@ -94,8 +106,8 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
         )
       })}
       <Box component="button" type="button" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={onMenuClick} sx={itemSx(menuOpen)}>
-        <NavItemIcon name="menu" size={32} padding={3} />
-        Menu
+        <NavItemIcon name="menu" size={32} padding={3} onDark />
+        <span>Menu</span>
       </Box>
     </Paper>
   )
