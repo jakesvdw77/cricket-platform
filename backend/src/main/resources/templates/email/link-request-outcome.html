@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+    <p style="margin:0 0 16px;">
+        Hi <span th:text="${firstName}">Jaco</span>,
+    </p>
+
+    <th:block th:if="${accepted}">
+        <p style="margin:0 0 20px;">
+            Good news: <strong th:text="${clubName}">Riverside CC</strong> has linked you to
+            <strong th:text="${playerName}">Sam Smith</strong>. You can now see and manage this player
+            under My players.
+        </p>
+        <p th:if="${note != null}" style="margin:0 0 20px; color:#52655c;">
+            Note from the club: <span th:text="${note}">Welcome aboard.</span>
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+                <td style="border-radius:8px; background-color:#2f6e4f;">
+                    <a th:href="${accountUrl}" href="#"
+                       style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:15px;
+                              font-weight:600; text-decoration:none;">
+                        Open My players
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </th:block>
+
+    <th:block th:unless="${accepted}">
+        <p style="margin:0 0 20px;">
+            <strong th:text="${clubName}">Riverside CC</strong> could not link you to
+            <strong th:text="${playerName}">Sam Smith</strong>.
+        </p>
+        <p th:if="${note != null}" style="margin:0 0 20px; color:#52655c;">
+            Note from the club: <span th:text="${note}">We could not match this player.</span>
+        </p>
+        <p style="margin:0 0 20px;">
+            If you think this is a mistake, you can send another request from the app or contact the club directly.
+        </p>
+    </th:block>
+
+    <p style="margin:24px 0 0; color:#52655c; font-size:13px;">
+        Questions? Drop us a line at
+        <a th:href="'mailto:' + ${supportAddress}" th:text="${supportAddress}"
+           style="color:#2f6e4f;">support@cricketlegend.co.za</a>.
+    </p>
+</div>
+</body>
+</html>

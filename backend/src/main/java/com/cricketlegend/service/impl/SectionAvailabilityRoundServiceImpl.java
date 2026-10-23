@@ -603,7 +603,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                                     SectionAvailabilityResponse::getStatus));
             statusByWindowThenPlayer.put(window.getId(), statusByPlayerId);
             viaLinkByWindow.put(window.getId(), responsesByWindow.get(window.getId()).stream()
-                    .filter(response -> response.getSource() == AnswerSource.PUBLIC_LINK)
+                    .filter(response -> response.getSource() != AnswerSource.MANAGER)
                     .map(SectionAvailabilityResponse::getPlayerProfileId)
                     .collect(Collectors.toSet()));
             long coveredMatchCount =

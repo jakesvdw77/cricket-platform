@@ -21,6 +21,9 @@ public interface ClubRepository extends JpaRepository<Club, UUID> {
             + "OR LOWER(c.slug) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Club> searchActiveByNameOrSlug(@Param("query") String query);
 
+    /** ACTIVE clubs by name, for the link request club picker (docs/specs/119). */
+    List<Club> findByStatusOrderByNameAsc(com.cricketlegend.domain.ClubStatus status);
+
     boolean existsBySlugIgnoreCase(String slug);
 
     boolean existsBySlugIgnoreCaseAndIdNot(String slug, UUID id);

@@ -53,6 +53,10 @@ public class LinkRequest {
     @Column(length = 500)
     private String message;
 
+    /** Where the manager can reach the requester; null on rows created before migration 054. */
+    @Column(name = "contact_number", length = 30)
+    private String contactNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LinkRequestStatus status;

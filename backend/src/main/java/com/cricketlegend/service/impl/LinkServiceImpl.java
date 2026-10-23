@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.Club;
+import com.cricketlegend.domain.LinkAttemptKind;
 import com.cricketlegend.domain.LinkGrantedVia;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonLink;
@@ -24,7 +25,9 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.LinkService;
 import com.cricketlegend.service.support.MatchCandidate;
+import com.cricketlegend.service.support.LinkAttemptLimiter;
 import com.cricketlegend.service.support.MatchedPlayer;
+import com.cricketlegend.service.support.OwnMatch;
 import com.cricketlegend.service.support.VerifiedEmail;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +69,7 @@ public class LinkServiceImpl implements LinkService {
     private final SectionRepository sectionRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final LinkMapper linkMapper;
+    private final LinkAttemptLimiter limiter;
 
     public LinkServiceImpl(
             PersonRepository personRepository,
@@ -74,7 +79,8 @@ public class LinkServiceImpl implements LinkService {
             PlayerSectionRepository playerSectionRepository,
             SectionRepository sectionRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
-            LinkMapper linkMapper) {
+            LinkMapper linkMapper,
+            LinkAttemptLimiter limiter) {
         this.personRepository = personRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.personLinkRepository = personLinkRepository;
@@ -83,6 +89,7 @@ public class LinkServiceImpl implements LinkService {
         this.sectionRepository = sectionRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.linkMapper = linkMapper;
+        this.limiter = limiter;
     }
 
     @Override
@@ -107,6 +114,7 @@ public class LinkServiceImpl implements LinkService {
         Person caller = personRepository
                 .findByKeycloakUserId(authentication.getName())
                 .orElseThrow(() -> new ValidationException("Register before confirming players."));
+        limiter.assertNotLocked(caller.getId(), LinkAttemptKind.CONFIRM);
 
         // Only the caller's own matches that have no main agent can be confirmed. A reference to anything else (a
         // player with a main agent, someone else's player, a made-up id) gets the same answer, so nothing is revealed.
@@ -115,6 +123,9 @@ public class LinkServiceImpl implements LinkService {
                 .collect(Collectors.toMap(c -> c.view().ref(), c -> c, (a, b) -> a));
         Set<String> refs = new HashSet<>(request.playerRefs());
         if (!available.keySet().containsAll(refs)) {
+            // counted in its own transaction so this refusal's rollback does not erase it; the fifth in an hour locks
+            limiter.recordFailedConfirm(caller.getId());
+            log.warn("Link confirm refused: account={} reason=not-own-matches", caller.getId());
             throw new ValidationException("One or more of these players cannot be confirmed.");
         }
 
@@ -143,6 +154,16 @@ public class LinkServiceImpl implements LinkService {
         }
         linked.sort(Comparator.comparing(MatchedPlayer::firstName));
         return new ConfirmLinksResultDto(linkMapper.toDtos(linked));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OwnMatch> findOwnMatch(String verifiedEmail, UUID callerPersonId, String ref) {
+        Person caller = personRepository.findById(callerPersonId).orElse(null);
+        return candidates(verifiedEmail, caller).stream()
+                .filter(c -> c.view().ref().equals(ref))
+                .findFirst()
+                .map(c -> new OwnMatch(c.profile().getId(), c.profile().getClubId()));
     }
 
     private List<MatchCandidate> candidates(String email, Person caller) {
@@ -196,6 +217,7 @@ public class LinkServiceImpl implements LinkService {
                     String last = subject.getLastName() == null ? "" : subject.getLastName().trim();
                     MatchedPlayer view = new MatchedPlayer(
                             profile.getId().toString(),
+                            profile.getClubId(),
                             subject.getFirstName(),
                             last.isEmpty() ? "" : last.substring(0, last.offsetByCodePoints(0, 1)).toUpperCase(),
                             clubNames.get(profile.getClubId()),

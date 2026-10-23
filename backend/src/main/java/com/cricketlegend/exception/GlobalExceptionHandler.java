@@ -81,6 +81,22 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /** docs/specs/119: a lockout after repeated failed confirmations, 423 with the seconds to wait. */
+    @ExceptionHandler(LinkLockedException.class)
+    ProblemDetail handleLinkLocked(LinkLockedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return problem;
+    }
+
+    /** docs/specs/119: the daily link request limit, 429 with the seconds to wait. */
+    @ExceptionHandler(LinkRateLimitedException.class)
+    ProblemDetail handleLinkRateLimited(LinkRateLimitedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return problem;
+    }
+
     /** docs/specs/119: 403 with the stable {@code code} EMAIL_NOT_VERIFIED. */
     @ExceptionHandler(EmailNotVerifiedException.class)
     ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {

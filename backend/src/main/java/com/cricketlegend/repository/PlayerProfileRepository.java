@@ -68,4 +68,57 @@ public interface PlayerProfileRepository extends JpaRepository<PlayerProfile, UU
             """)
     List<PlayerProfile> findMatchesByEmail(
             @Param("email") String email, @Param("excludePersonId") UUID excludePersonId);
+
+    /**
+     * Every active player of the club with name and date of birth (docs/specs/119): link requests are matched against
+     * these in memory with the lenient {@code PlayerNameMatcher}, one query for a whole queue.
+     */
+    @Query("""
+            select p.id as playerProfileId, p.personId as personId, pe.firstName as firstName,
+                   pe.lastName as lastName, pe.dateOfBirth as dateOfBirth
+            from PlayerProfile p, Person pe
+            where pe.id = p.personId and p.clubId = :clubId and p.active = true
+            """)
+    List<PlayerIdentityView> findActiveIdentitiesByClub(@Param("clubId") UUID clubId);
+
+    /**
+     * One page of the club's active players for "Players and their main agent" (docs/specs/119), ordered by name.
+     * {@code restrictToSections} false ignores {@code sectionIds} (which must still be non-empty); {@code
+     * noMainAgent} keeps only players with no ACTIVE main agent at this club; {@code pattern} is a lower-case
+     * {@code %text%} (or {@code %} for no search).
+     */
+    @Query(value = """
+            select p from PlayerProfile p, Person pe
+            where pe.id = p.personId and p.clubId = :clubId and p.active = true
+              and (:restrictToSections = false or exists (
+                    select 1 from PlayerSection ps
+                    where ps.playerProfileId = p.id and ps.sectionId in :sectionIds))
+              and (:noMainAgent = false or not exists (
+                    select 1 from PersonLink l
+                    where l.subjectPersonId = p.personId and l.clubId = p.clubId and l.main = true
+                      and l.status = com.cricketlegend.domain.PersonLinkStatus.ACTIVE))
+              and (lower(pe.firstName) like :pattern or lower(pe.lastName) like :pattern
+                   or lower(concat(pe.firstName, ' ', pe.lastName)) like :pattern)
+            order by lower(pe.lastName), lower(pe.firstName), p.id
+            """,
+            countQuery = """
+            select count(p) from PlayerProfile p, Person pe
+            where pe.id = p.personId and p.clubId = :clubId and p.active = true
+              and (:restrictToSections = false or exists (
+                    select 1 from PlayerSection ps
+                    where ps.playerProfileId = p.id and ps.sectionId in :sectionIds))
+              and (:noMainAgent = false or not exists (
+                    select 1 from PersonLink l
+                    where l.subjectPersonId = p.personId and l.clubId = p.clubId and l.main = true
+                      and l.status = com.cricketlegend.domain.PersonLinkStatus.ACTIVE))
+              and (lower(pe.firstName) like :pattern or lower(pe.lastName) like :pattern
+                   or lower(concat(pe.firstName, ' ', pe.lastName)) like :pattern)
+            """)
+    org.springframework.data.domain.Page<PlayerProfile> searchForAccounts(
+            @Param("clubId") UUID clubId,
+            @Param("restrictToSections") boolean restrictToSections,
+            @Param("sectionIds") java.util.Collection<UUID> sectionIds,
+            @Param("noMainAgent") boolean noMainAgent,
+            @Param("pattern") String pattern,
+            org.springframework.data.domain.Pageable pageable);
 }

@@ -2061,6 +2061,70 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerMatchesDto"
+  /api/v1/me/clubs:
+    get:
+      tags:
+      - me-link-requests-controller
+      description: "Active clubs by name for the link request club picker (docs/specs/119)."
+      operationId: clubs
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubOptionDto"
+  /api/v1/me/link-requests:
+    get:
+      tags:
+      - me-link-requests-controller
+      description: "The caller's own link requests, newest first (docs/specs/119)."
+      operationId: listMyLinkRequests
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyLinkRequestDto"
+    post:
+      tags:
+      - me-link-requests-controller
+      description: "Needs a verified email (403 code EMAIL_NOT_VERIFIED). Always the same reply, whatever the club holds. 429 (retryAfterSeconds) after 10 requests in a day, 409 with 3 already waiting at the club, 404 for an unknown club, 400 for a targetPlayerRef that is not one of the caller's own matches."
+      operationId: createLinkRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequestRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LinkRequestReceivedDto"
+  /api/v1/me/link-requests/{id}:
+    delete:
+      tags:
+      - me-link-requests-controller
+      description: "Cancels one of the caller's own pending requests. 404 for any other id, 409 once decided."
+      operationId: cancelLinkRequest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/manage/media:
     post:
       tags:
@@ -7015,6 +7079,182 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ShareSettingsDto"
+  /api/v1/manage/clubs/{clubId}/link-requests:
+    get:
+      tags:
+      - link-request-management-controller
+      description: "PENDING link requests the caller may decide, oldest first (docs/specs/119). A section-scoped manager sees only requests whose suggested or target player is in their sections."
+      operationId: listLinkRequests
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkRequestDto"
+  /api/v1/manage/clubs/{clubId}/link-requests/summary:
+    get:
+      tags:
+      - link-request-management-controller
+      operationId: linkRequestSummary
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LinkRequestSummaryDto"
+  /api/v1/manage/clubs/{clubId}/link-requests/{requestId}/approve:
+    post:
+      tags:
+      - link-request-management-controller
+      description: "confirm must be true (400). Exactly one of playerId and newPlayer. One transaction: creates the player (VERIFIED) if new, writes the CLUB_APPROVAL link, closes the request; the outcome email follows the commit."
+      operationId: approveLinkRequest
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveLinkRequestRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/link-requests/{requestId}/decline:
+    post:
+      tags:
+      - link-request-management-controller
+      operationId: declineLinkRequest
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeclineLinkRequestRequest"
+        required: false
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/player-accounts:
+    get:
+      tags:
+      - player-account-controller
+      description: "Players and their main agent (masked email only), paged on the server (docs/specs/119)."
+      operationId: listPlayerAccounts
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: noMainAgent
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagePlayerAccountDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/links:
+    get:
+      tags:
+      - player-account-controller
+      description: "The player's ACTIVE agents, main first (docs/specs/119). Masked emails only."
+      operationId: listPlayerLinks
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerLinkDto"
   /api/v1/manage/clubs/{clubId}/players/{playerId}/stats:
     get:
       tags:
@@ -10520,6 +10760,9 @@ components:
       properties:
         ref:
           type: string
+        clubId:
+          type: string
+          format: uuid
         firstName:
           type: string
         surnameInitial:
@@ -10538,6 +10781,9 @@ components:
       properties:
         ref:
           type: string
+        clubId:
+          type: string
+          format: uuid
         firstName:
           type: string
         surnameInitial:
@@ -10564,6 +10810,248 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PlayerMatchWithMainAgentDto"
+    CreateLinkRequestRequest:
+      type: object
+      properties:
+        contactNumber:
+          type: string
+          maxLength: 30
+          pattern: "^[0-9+()\\-.\\s]{7,30}$"
+        clubId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          maxLength: 255
+        lastName:
+          type: string
+          maxLength: 255
+        dateOfBirth:
+          type: string
+          format: date
+        message:
+          type: string
+          maxLength: 500
+        targetPlayerRef:
+          type: string
+      required:
+      - clubId
+      - firstName
+      - lastName
+      - dateOfBirth
+      - contactNumber
+    LinkRequestReceivedDto:
+      type: object
+      properties:
+        message:
+          type: string
+    MyLinkRequestDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubName:
+          type: string
+        playerName:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - DECLINED
+          - CANCELLED
+        decisionNote:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+    ClubOptionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    SuggestedPlayerDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        exactMatch:
+          type: boolean
+        sectionName:
+          type: string
+        hasMainAgent:
+          type: boolean
+        mainAgentName:
+          type: string
+    LinkRequestDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        requesterName:
+          type: string
+        requesterEmail:
+          type: string
+        typedFirstName:
+          type: string
+        typedLastName:
+          type: string
+        typedDateOfBirth:
+          type: string
+          format: date
+        typedAge:
+          type: integer
+          format: int32
+        message:
+          type: string
+        contactNumber:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        targetPlayerId:
+          type: string
+          format: uuid
+        suggestedPlayer:
+          $ref: "#/components/schemas/SuggestedPlayerDto"
+    LinkRequestSummaryDto:
+      type: object
+      properties:
+        waiting:
+          type: integer
+          format: int32
+    NewLinkedPlayerRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 255
+        lastName:
+          type: string
+          maxLength: 255
+        dateOfBirth:
+          type: string
+          format: date
+        sectionId:
+          type: string
+          format: uuid
+      required:
+      - firstName
+      - lastName
+      - dateOfBirth
+    ApproveLinkRequestRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        newPlayer:
+          $ref: "#/components/schemas/NewLinkedPlayerRequest"
+        mainAgentMode:
+          type: string
+          enum:
+          - MAKE_MAIN
+          - ADD
+        confirm:
+          type: boolean
+      required:
+      - mainAgentMode
+    DeclineLinkRequestRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 500
+    PlayerAccountDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        sectionName:
+          type: string
+        mainAgentName:
+          type: string
+        mainAgentMaskedEmail:
+          type: string
+        otherAgentCount:
+          type: integer
+          format: int32
+    PlayerLinkDto:
+      type: object
+      properties:
+        linkId:
+          type: string
+          format: uuid
+        agentName:
+          type: string
+        maskedEmail:
+          type: string
+        main:
+          type: boolean
+        grantedVia:
+          type: string
+          enum:
+          - EMAIL_MATCH
+          - CLUB_APPROVAL
+          - AGENT_INVITE
+          - CLUB_MANAGER
+        since:
+          type: string
+          format: date-time
+    PagePlayerAccountDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerAccountDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
     CreateSponsorRequest:
       type: object
       properties:

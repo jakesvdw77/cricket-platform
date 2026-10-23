@@ -16,6 +16,7 @@ import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.service.MeService;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,7 @@ public class MeServiceImpl implements MeService {
             person = bridgeByEmail(
                     keycloakUserId, jwt.getClaimAsString("email"), Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")));
         }
+        refuseSuspended(person);
 
         return toAccessDto(person, platformAdmin);
     }
@@ -94,7 +96,16 @@ public class MeServiceImpl implements MeService {
                     .build());
             log.info("Self-registered person created: personId={}", person.getId());
         }
+        refuseSuspended(person);
         return toAccessDto(person, platformAdmin);
+    }
+
+    /** docs/specs/119, scenario 12: a SUSPENDED person is refused with 403 (the rollback also undoes a just-made email bridge). */
+    private static void refuseSuspended(Person person) {
+        if (person != null && person.getStatus() == PersonStatus.SUSPENDED) {
+            log.warn("Suspended person refused: personId={}", person.getId());
+            throw new AccessDeniedException("This account is disabled.");
+        }
     }
 
     private static String claim(Jwt jwt, String name) {

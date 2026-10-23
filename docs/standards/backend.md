@@ -19,8 +19,10 @@ The contract every backend-touching agent is briefed with by path, not by vague 
   | `PublicVerificationLockedException` | 423 (name locked after repeated failures, carries `retryAfterSeconds`; spec 077) |
   | `PublicRateLimitedException` | 429 (per-address limit, carries `retryAfterSeconds`; spec 077) |
 | `EmailNotVerifiedException` | 403 (token has no verified email; problem property `code` = `EMAIL_NOT_VERIFIED`; spec 119) |
+| `LinkLockedException` | 423 (account locked after 5 failed link confirmations in an hour, carries `retryAfterSeconds`; spec 119) |
+| `LinkRateLimitedException` | 429 (more than 10 link requests in a day, carries `retryAfterSeconds`; spec 119) |
 
-  `EmailNotVerifiedException` (spec 119) follows the same pattern and also extends `RuntimeException` directly. The four public-availability exceptions (spec 077) are deliberately their own types rather than subclasses of the three bases, because no base carries 401, 403, 423 or 429; they are mapped in `GlobalExceptionHandler` to a `ProblemDetail` with their extra properties. They are the only exceptions allowed to extend `RuntimeException` directly.
+  `EmailNotVerifiedException`, `LinkLockedException` and `LinkRateLimitedException` (spec 119) follow the same pattern and also extend `RuntimeException` directly; the two link ones mirror the public 423 and 429 and are mapped to a `ProblemDetail` with `retryAfterSeconds`. A suspended person on `/me/activate` or `/me/register` is refused with Spring Security's `AccessDeniedException` (403), the same type the section assertions use. The four public-availability exceptions (spec 077) are deliberately their own types rather than subclasses of the three bases, because no base carries 401, 403, 423 or 429; they are mapped in `GlobalExceptionHandler` to a `ProblemDetail` with their extra properties. They are the only exceptions allowed to extend `RuntimeException` directly.
 
   Extend this table here before introducing a new *base* type — don't invent a new HTTP-status category ad hoc in a controller.
 
