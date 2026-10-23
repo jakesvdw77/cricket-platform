@@ -1,5 +1,4 @@
 import { Suspense, lazy } from 'react'
-import { Typography } from '@mui/material'
 import { DashboardCard, DashboardSkeleton } from '../../../../components/DashboardCard'
 import { CollapsibleSection } from '../../../../components/CollapsibleSection'
 import type { TeamDashboard } from '../../../../api/teamDashboardApi'
@@ -52,7 +51,6 @@ export function TeamDashboardBlock({ shown, onToggle, dashboard, backTo }: TeamD
       onToggle={onToggle}
     >
       {content}
-      <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>Ball-by-ball and partnership charts are not available: that data is not captured yet.</Typography>
     </CollapsibleSection>
   )
 }

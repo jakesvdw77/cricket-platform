@@ -246,7 +246,7 @@ Everything else is **later** (question 3).
 - **Truncated:** "Showing the last 30 of 52 innings"; "Since 3 Mar 2024" under a truncated trend.
 - **Loading:** a skeleton per card, `aria-busy`, reserving the Dashboard's height so the content below does not jump; on a filter change the previous charts stay visible and dimmed (`keepPreviousData`). The tiles never wait for the Dashboard.
 - **Error:** one "Couldn't load the dashboard" state with Try again; it never blocks the rest of the page.
-- One quiet foot line: "Ball-by-ball and partnership charts are not available: that data is not captured yet".
+- No foot line about charts that are not available (removed by the owner, 2026-10-23).
 
 ### Styling and accessibility
 
