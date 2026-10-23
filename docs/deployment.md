@@ -162,7 +162,10 @@ Version-specific wording is for Keycloak 24.0.3.
 |---|---|---|---|---|---|
 | Authentication, Required actions: **Verify Email** | **Enabled** (default action stays off: the realm Verify email switch and the app invite cover it) | `email_verified` is what the backend trusts; every agent and invited manager verifies before login completes. **Owner is checking.** | [x] | [ ] | [ ] |
 | Realm settings, Login: **Verify email** | **On** | the same requirement as a realm login setting. Local confirmed on 2026-10-23: **On**. | [x] | [ ] | [ ] |
-| Identity providers, Google: **Trust Email** | **On**, and a Google login arrives with `email_verified: true` (slice 2). **Owner is checking.** | satisfies spec 119 Decision 3 for Google users | [ ] | [ ] | [ ] |
+| Identity providers, Google: **Trust Email** | **On**, and a Google login arrives with `email_verified: true` (slice 2). Local confirmed working 2026-10-23. | satisfies spec 119 Decision 3 for Google users | [x] | [ ] | [ ] |
+| Identity providers, Google: **Store tokens** | **Off**, display name `Continue with Google`, default mappers | no Google tokens kept; no role or group mapper | [x] | [ ] | [ ] |
+| Identity providers, Google: **First login flow** | `cricketlegend first broker login` (section "Google sign-in (slice 2)") | auto-links to the existing user by verified email | [x] | [ ] | [ ] |
+| Google Cloud: OAuth client (Testing mode locally) with this environment's redirect URI | one client per environment | Google redirects only to Keycloak's broker endpoint | [x] | [ ] | [ ] |
 | Realm settings, Themes: **Login theme** | `cricketlegend` | uses the theme | [ ] | [ ] | [ ] |
 | Realm settings, General: **Display name** | `Cricket Legend` | tab titles and emails; the theme's wordmark does not depend on it | [ ] | [ ] | [ ] |
 | Login: **Remember me** | On | the "Remember me" checkbox | [ ] | [ ] | [ ] |
@@ -184,6 +187,45 @@ after "Send reset link" Keycloak returns to the sign-in page with a green messag
 separate "check your inbox" page and the message cannot echo the address); the lock-out message
 after too many wrong passwords is Keycloak's generic "invalid username or password" unless
 permanent lockout is configured; the "Opening Google..." state is not produced.
+
+### Google sign-in (slice 2)
+
+Spec 119 Part 2. The app never talks to Google; Keycloak brokers it. No backend code is involved.
+
+1. **Google Cloud console:** create an OAuth 2.0 client (Web application) named "Cricket Legend" in
+   **Testing** mode (no verification needed). Add the owner's Google account under **Test users**.
+   Scopes: `openid email profile` only. Authorized redirect URI (local):
+   `http://localhost:8180/realms/cricketlegend/broker/google/endpoint`.
+   **Result (owner, 2026-10-23):** Google rejects `http://auth.localhost:8180/...` ("Must end with a public
+   top-level domain"), but accepts `http://localhost`. So for Google testing the whole login must start at
+   `localhost:8180`, not `auth.localhost:8180` (Keycloak builds its addresses from the host it is browsed on):
+   - **UI:** create `ui/.env.local` (git-ignored) with `VITE_KEYCLOAK_URL=http://localhost:8180` and restart Vite.
+   - **Backend:** set `KEYCLOAK_ISSUER_URI=http://localhost:8180/realms/cricketlegend` in the run configuration
+     and restart (tokens issued at `localhost` carry that issuer).
+   - Mixing the two hosts breaks login; to go back to `auth.localhost`, delete the `.env.local` line and the
+     backend setting. Users are logged out once when the host changes (the session cookie is per host).
+   - Not needed in production: the real host is a public https domain (step 5).
+2. **Keycloak, Identity providers, Google:** client id and secret from step 1; display name
+   `Continue with Google`; **Trust Email: On**; **Store tokens: Off**; Hosted domain empty; keep the
+   default mappers (email, first name, last name); no role or group mapper.
+3. **Custom first-broker-login flow:** Authentication, Flows, duplicate the built-in
+   `first broker login` as `cricketlegend first broker login` (the name the owner used). In the copy: set
+   **Review Profile** to **Disabled**; in the *Handle Existing Account* sub-flow set **Confirm link existing
+   account** and **Account verification options** to **Disabled**, then add the step **Automatically set
+   existing user** inside *Handle Existing Account* (use the **+** on that sub-flow's row, not the buttons at the
+   top of the page) and set it to **Required**. *Create User If Unique* and *Handle Existing Account* stay
+   **Alternative**. Then in Identity providers, Google, Advanced settings set **First login flow override** to this flow.
+4. **Manual test list:**
+   - An invited manager signs in with Google: same Keycloak user (same `sub`), lands in `/manage`, one Person.
+   - An unknown email signs in with Google: lands on `/welcome`, never `/manage` or `/admin`.
+   - An existing password user signs in with Google: keeps the same `sub`, no second account or Person.
+   - Cancelled consent: themed error page with a way back to sign in.
+   - A section-scoped manager is not swallowed by `/welcome` (they keep today's `/admin` behaviour).
+   - A Google login arrives with `email_verified: true` (tick the Trust Email checklist row).
+5. **Production note:** the realm name appears in the redirect URI
+   (`https://auth.<root-domain>/realms/<realm>/broker/google/endpoint`), so the production realm name
+   must be settled before the production Google client is created. One Google client per environment;
+   the consent screen needs privacy-policy and terms URLs before production use.
 
 ### Known local-only caveat, not applicable to a real server
 
