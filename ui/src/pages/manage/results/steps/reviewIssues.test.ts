@@ -21,6 +21,12 @@ describe('stepIdForIssue', () => {
     expect(stepIdForIssue('BATTING', 'BATTER_RUNS_MISSING')).toBe('batting')
   })
 
+  it('no longer treats LINEUP_TOO_LARGE as a team code (docs/specs/118 removed the rule)', () => {
+    expect(stepIdForIssue('BATTING', 'LINEUP_TOO_LARGE')).toBe('batting')
+    expect(stepIdForIssue('TEAMS', 'LINEUP_TOO_LARGE')).toBe('teams')
+    expect(stepIdForIssue('AWARDS', 'LINEUP_TOO_LARGE')).toBe('awards')
+  })
+
   it('is null without a step', () => {
     expect(stepIdForIssue(null)).toBeNull()
     expect(stepIdForIssue(undefined, 'X')).toBeNull()

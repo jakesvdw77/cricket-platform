@@ -50,6 +50,14 @@ const sideOf = (fileTeam: string) => {
 }
 
 describe('Teams mapping step', () => {
+  it('uses the shared wizard footer: Back and Create draft both filled, with the nothing-is-published note', async () => {
+    await toTeamsStep()
+    const footer = screen.getByTestId('wizard-footer')
+    expect(within(footer).getByRole('button', { name: 'Back' }).className).toContain('MuiButton-contained')
+    expect(within(footer).getByRole('button', { name: 'Create draft and review' }).className).toContain('MuiButton-contained')
+    expect(within(footer).getByText('Nothing is published. The draft is only visible to managers.')).toBeInTheDocument()
+  })
+
   it('shows the server proposal for each file team with how sure it was and why', async () => {
     await toTeamsStep()
     expect(sideOf('Northgate Strollers')).toHaveTextContent('Northgate Strollers (home)')

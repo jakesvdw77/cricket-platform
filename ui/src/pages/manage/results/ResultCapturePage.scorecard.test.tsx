@@ -203,6 +203,16 @@ describe('Teams step', () => {
     expect(screen.getByRole('button', { name: 'Populate from the team' })).toBeInTheDocument()
   })
 
+  it('"Select players" opens the Add player picker in the page instead of leaving the result flow', async () => {
+    getScorecardPrefill.mockResolvedValue({ sides: [{ side: 'HOME', teamId: 'team-1', teamName: HOME, selectionState: 'NONE', players: [] }] })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Select players' }))
+    expect(await screen.findByRole('dialog', { name: 'Add player' })).toBeInTheDocument()
+    expect(screen.queryByText('elsewhere')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Select the team' })).not.toBeInTheDocument()
+  })
+
   it('does not warn for an unannounced selection of eleven', async () => {
     getScorecardPrefill.mockResolvedValue(prefill(11, 'NOT_ANNOUNCED'))
     renderPage()
@@ -404,5 +414,81 @@ describe('Review step', () => {
     expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Fix' }))
     expect(await screen.findByText('Who is playing?')).toBeInTheDocument()
+  })
+})
+
+
+// docs/specs/118 (owner items 7 and 'Standout' header): the compact fielding card and the star column header.
+describe('Bowling and fielding step: fielding card and Standout headers', () => {
+  const card = (): Scorecard => ({
+    players: [player('a', 'Ann', 'Ash'), player('b', 'Bob', 'Bell'), oppo('x', 'Sam Jones')] as never,
+    batting: [
+      { battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: 'id-a', position: 1, howOut: 'BOWLED', runs: 72, balls: 40, fours: 5, sixes: 1, featuredOverride: null, suggested: true, featured: true },
+    ] as never,
+    bowling: [
+      { battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: 'id-x', bowlingOrder: 1, balls: 24, maidens: 0, runs: 30, wickets: 1, wides: 0, noBalls: 0, featuredOverride: null },
+      { battingSide: 'AWAY', inningsKind: 'REGULAR', resultPlayerId: 'id-a', bowlingOrder: 1, balls: 24, maidens: 0, runs: 20, wickets: 3, wides: 0, noBalls: 0, featuredOverride: null, suggested: true, featured: true },
+    ] as never,
+    fielding: [
+      { battingSide: 'AWAY', inningsKind: 'REGULAR', resultPlayerId: 'id-a', catches: 2, stumpings: 0, runOuts: 1, featuredOverride: null, suggested: true, featured: true },
+      { battingSide: 'AWAY', inningsKind: 'REGULAR', resultPlayerId: 'id-b', catches: 0, stumpings: 1, runOuts: 0, featuredOverride: null },
+    ] as never,
+    awards: [],
+  })
+
+  beforeEach(() => {
+    getMatchResult.mockResolvedValue(storedDraft({ tossWonBy: 'HOME', tossDecision: 'BAT', outcomeType: 'WON', winningSide: 'HOME', marginType: 'RUNS', marginValue: 24 }))
+    getScorecard.mockResolvedValue(card())
+  })
+
+  async function openBowling() {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Edit result' }, { timeout: 10000 })
+    await user.click(step('Bowling and fielding'))
+    await user.click(await screen.findByRole('radio', { name: new RegExp(escape(HOME)) }))
+    await screen.findByRole('list', { name: `${HOME} fielding` })
+    return user
+  }
+
+  it('shows the Catches / Stumpings / Run-outs labels once, in a header row, and not in every row', async () => {
+    await openBowling()
+    const header = screen.getByTestId('fielding-header')
+    for (const label of ['Catches', 'Stumpings', 'Run-outs']) {
+      expect(within(header).getByText(label)).toBeInTheDocument()
+      expect(screen.getAllByText(label)).toHaveLength(1)
+    }
+    // Short labels for a phone, hidden from assistive technology: each stepper keeps its own accessible name.
+    for (const label of ['Ct', 'St', 'RO']) expect(within(header).getByText(label)).toBeInTheDocument()
+    expect(within(header).getAllByText(/^(Catches|Stumpings|Run-outs|Ct|St|RO)$/).every((node) => node.closest('[aria-hidden="true"]') !== null)).toBe(true)
+    expect(within(header).getByTestId('standout-header')).toBeInTheDocument()
+  })
+
+  it('gives each row one 44 px line and each stepper an accessible name with the player', async () => {
+    await openBowling()
+    const list = screen.getByRole('list', { name: `${HOME} fielding` })
+    const rows = within(list).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    for (const row of rows) expect(row).toHaveStyle({ minHeight: '44px' })
+    expect(within(rows[0]).getByRole('group', { name: 'Catches, Ann Ash' })).toBeInTheDocument()
+    expect(within(rows[0]).getByRole('group', { name: 'Stumpings, Ann Ash' })).toBeInTheDocument()
+    expect(within(rows[0]).getByRole('group', { name: 'Run-outs, Ann Ash' })).toBeInTheDocument()
+    expect(within(rows[1]).getByRole('group', { name: 'Stumpings, Bob Bell' })).toBeInTheDocument()
+  })
+
+  it('bumps a counter by its accessible name', async () => {
+    const user = await openBowling()
+    await user.click(screen.getByRole('button', { name: 'Increase Catches, Ann Ash' }))
+    expect(within(screen.getByRole('group', { name: 'Catches, Ann Ash' })).getByText('3')).toBeInTheDocument()
+  })
+
+  it('names the star column "Standout" on the Batting, Bowling and fielding grids', async () => {
+    const user = await openBowling()
+    // Bowling grid and the fielding list header.
+    expect(screen.getAllByTestId('standout-header').length).toBeGreaterThanOrEqual(2)
+    await user.click(step('Batting'))
+    await screen.findByText(/batting$/)
+    expect(screen.getAllByTestId('standout-header').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByLabelText('Standout').length).toBeGreaterThanOrEqual(1)
   })
 })
