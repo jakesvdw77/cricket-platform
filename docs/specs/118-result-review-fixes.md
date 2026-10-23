@@ -1,7 +1,7 @@
 # 118: Result Review Fixes (squad auto-add, drop the lineup-size warning, clipped Standouts card, Preview button placement, edit match date and time from the result flow)
 
 **Depends on:** `101-match-results-our-side-scorecard.md` (the validation table, `ScorecardRules`, the Teams and Review steps), `102-match-results-opposition-scorecard.md` (reconciliation codes), `104-match-results-import-adaptors.md` (the import wizard's Teams and Match steps), `113-result-players-section-and-age.md` (eligibility; `PLAYER_NOT_IN_SQUAD` stays a warning), `111-league-season-dates.md` (`LeagueSeasonDates.assertWithin`, the `MATCH_OUTSIDE_LEAGUE_DATES` error), `029-league-management.md` (the team season squad endpoint) and `035-section-scoped-access.md` (section scope on it), `100-match-results-core.md` (the result page), `docs/standards/*.md`.
-**Status:** draft (2026-10-22). Written from the owner's first hand test of an import on 2026-10-22. Amends `101`/`104` behaviour; where this spec disagrees with their text, this spec wins.
+**Status:** built, in review (2026-10-23; no migration). Built: goals A to F and owner layout items 1 to 18 below. Deferred: see "As built" and docs/roadmap.md "Deferred by `118`" (source link on the Imported chip, blocking the date change while published, the compact-button sweep of the remaining files, multi-pick in Select players, Playwright never run). Written from the owner's first hand test of an import on 2026-10-22. Amends `101`/`104` behaviour; where this spec disagrees with their text, this spec wins.
 
 ## Problem & Goals
 
@@ -103,7 +103,7 @@ Per `docs/standards/testing.md`.
 
 ## Owner layout list (open)
 
-More items from the owner will be added here; this spec stays in draft until the list is closed.
+More items from the owner will be added here; the list is closed for this PR; later items go in a new spec.
 
 1. Move the "Preview result" button into the header of the "This is how the result will look" card (UI Requirement 5).
 2. The "Edit date and time" action lives in the top panel of the Edit result page (beside the match line with the date), not on the Played row of the preview card (UI Requirement 6).
@@ -113,19 +113,28 @@ More items from the owner will be added here; this spec stays in draft until the
 6. One shared wizard footer (`components/WizardFooter`) on every step of the result wizard and the results import wizard: Back (filled, like Next) on the left; Save draft (the only outlined button) then the filled primary (Next: <step>, Publish, Continue, Create draft and review) on the right; on a phone it stacks full width in the order Next, Back, Save draft; 44 px targets. The optional-scorecard prompt on the Result step loses "Add the batting and bowling" (it duplicated Next: Batting) and keeps the notice with a text link "Skip batting and bowling".
 7. Awards and fielding: the fielding list on Bowling and fielding is compact: the Catches / Stumpings / Run-outs labels are shown once in a header row (Ct / St / RO on a phone, aria-hidden, each stepper keeps an accessible name such as "Catches, Hannes Kruger"), each row is one 44 px line (name with ellipsis, three fixed-width steppers, the star), tabular numerals.
 8. In-card action buttons of the result and import wizards are compact (shared `Button size="compact"`, about 32 px, 13px text, a transparent 44 px touch target below `md`); footer buttons keep the normal size (`design-system.md`, Button sizing).
-11. Result page header: each team's badge (`TeamLogo`) sits inline next to that team's name in the title ("[L2] Laudium 2 XI Stars vs [IRV] Irene Villagers 1"), wrapping cleanly on a phone, instead of a pair of badges beside the title.
-12. Result page header: the "Imported from ..." chip is in the top-right corner (beside View match). The result label with the Published/Draft chip is on the left of the second line and the actions (Edit, Unpublish, Share; compact size) are right-aligned on the same line; on a phone they wrap under as a full-width stack. The disabled Edit carries "Unpublish to edit" in a tooltip and as its accessible description; there is no line of text under the buttons.
-13. Result page header: the result label ("Match tied", "Won by 5 runs") is a bold tinted pill coloured by outcome with theme tokens (won success, lost error from the club team's point of view; a decided result with no club side primary; tie, draw and no result neutral). The status chip is the same pill (32 px high, same type size and radius).
-14. Result page body order: the Details card (Outcome, Decided by, Toss, Field, Scheduled overs, Note) comes before the Innings card (shared `ResultBody`, so the wizard's Preview result dialog follows).
-15. Result page key figures: the four tiles (two innings scores, Margin, Toss) are `KeyFigureTile compact` with the 12 px gap, 2x2 on a phone.
-16. Margin tile: a tie shows "Tied" and a no result, abandoned or draw without a margin shows "No margin" instead of a dash. Server margin fields only, no arithmetic.
-17. Details card: values that are not recorded (Toss, Field, Scheduled overs, Note, ...) use the Review step's treatment (amber icon, warning-coloured "Not recorded"), from the shared `pages/manage/results/NotRecorded.tsx` that the Review step now also uses.
-18. Innings card: a small "Batted first" / "Chased" tag per regular innings, only for a two-innings result and from the server's innings number and batting side; none on super overs.
-19. The "Imported from ..." chip links to the original source only if the result stores a source URL. It does not (the result carries `source` and an opaque `externalId`, no URL), so the chip is unchanged and no backend change was made.
-20. Result page: the Standouts (star chips and the team's player of the match) are the last block of the Details card, full width below the rows (divider above, a small "Standouts" label, compact wrapping chips), not a block inside each team's scorecard (`ResultStandouts`, shared `ResultBody`, so the wizard preview follows). The block was never shown empty, so it is still omitted when there is nothing to show; no Not recorded row.
+9. Result page header: each team's badge (`TeamLogo`) sits inline next to that team's name in the title ("[L2] Laudium 2 XI Stars vs [IRV] Irene Villagers 1"), wrapping cleanly on a phone, instead of a pair of badges beside the title.
+10. Result page header: the "Imported from ..." chip is in the top-right corner (beside View match). The result label with the Published/Draft chip is on the left of the second line and the actions (Edit, Unpublish, Share; compact size) are right-aligned on the same line; on a phone they wrap under as a full-width stack. The disabled Edit carries "Unpublish to edit" in a tooltip and as its accessible description; there is no line of text under the buttons.
+11. Result page header: the result label ("Match tied", "Won by 5 runs") is a bold tinted pill coloured by outcome with theme tokens (won success, lost error from the club team's point of view; a decided result with no club side primary; tie, draw and no result neutral). The status chip is the same pill (32 px high, same type size and radius).
+12. Result page body order: the Details card (Outcome, Decided by, Toss, Field, Scheduled overs, Note) comes before the Innings card (shared `ResultBody`, so the wizard's Preview result dialog follows).
+13. Result page key figures: the four tiles (two innings scores, Margin, Toss) are `KeyFigureTile compact` with the 12 px gap, 2x2 on a phone.
+14. Margin tile: a tie shows "Tied" and a no result, abandoned or draw without a margin shows "No margin" instead of a dash. Server margin fields only, no arithmetic.
+15. Details card: values that are not recorded (Toss, Field, Scheduled overs, Note, ...) use the Review step's treatment (amber icon, warning-coloured "Not recorded"), from the shared `pages/manage/results/NotRecorded.tsx` that the Review step now also uses.
+16. Innings card: a small "Batted first" / "Chased" tag per regular innings, only for a two-innings result and from the server's innings number and batting side; none on super overs.
+17. The "Imported from ..." chip links to the original source only if the result stores a source URL. It does not (the result carries `source` and an opaque `externalId`, no URL), so the chip is unchanged and no backend change was made.
+18. Result page: the Standouts (star chips and the team's player of the match) are the last block of the Details card, full width below the rows (divider above, a small "Standouts" label, compact wrapping chips), not a block inside each team's scorecard (`ResultStandouts`, shared `ResultBody`, so the wizard preview follows). The block was never shown empty, so it is still omitted when there is nothing to show; no Not recorded row.
 
+## Open questions
 
-1. Should the date change be refused while the result is published? The proposal allows it (the date does not alter the stats season, which comes from the match's season), and the Review step is only reachable for a draft anyway. Say if you want it blocked server-side.
+1. Should the date change be refused while the result is published? The proposal allows it (the date does not alter the stats season, which comes from the match's season), and the Review step is only reachable for a draft anyway. Say if you want it blocked server-side. Default: allowed; the owner has not objected.
+
+## As built (deviations from the text above)
+
+- **Select players** (owner item 3) opens the Add player picker one pick per open; the manager reopens it for each player. Multi-pick is deferred.
+- **No source URL, so the Imported chip is not a link** (item 17, was 19): the result stores `source` and an opaque `externalId` only. No backend change.
+- **The Players list games count follows `103` decision 21** (a match counts once per player from a published result's team list, deactivated matches included; with no published result, from a selection for a started active match). Decided only by `PlayerGamesReader` / `PlayerGamesCounter`.
+- **Compact buttons** (item 8) apply to the result wizard and the results import wizard only; the rest of the app keeps full-size buttons until a sweep.
+- The Edit date and time action sits in the top panel of the Edit result page (item 2), not on the Played row.
 
 ## Rollout Notes
 
