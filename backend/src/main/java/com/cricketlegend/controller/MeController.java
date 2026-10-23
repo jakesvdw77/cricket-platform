@@ -28,4 +28,9 @@ class MeController {
     MeAccessDto activate(Authentication authentication, @AuthenticationPrincipal Jwt jwt) {
         return meService.activateAndResolveAccess(authentication, jwt);
     }
+
+    @PostMapping("/register")
+    MeAccessDto register(Authentication authentication, @AuthenticationPrincipal Jwt jwt) {
+        return meService.register(authentication, jwt);
+    }
 }

@@ -78,10 +78,18 @@ public class Person {
     @Column(name = "keycloak_provisioned_at")
     private Instant keycloakProvisionedAt;
 
+    // docs/specs/119: which route created this row; existing rows are CLUB_CREATED.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PersonOrigin origin;
+
     @PrePersist
     void prePersist() {
         if (status == null) {
             status = PersonStatus.ACTIVE;
+        }
+        if (origin == null) {
+            origin = PersonOrigin.CLUB_CREATED;
         }
     }
 }

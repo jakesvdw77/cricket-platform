@@ -2,7 +2,11 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
+import com.cricketlegend.service.support.VerifiedEmail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
@@ -27,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class MeServiceImpl implements MeService {
+
+    private static final Logger log = LoggerFactory.getLogger(MeServiceImpl.class);
 
     private final PersonRepository personRepository;
     private final RoleAssignmentRepository roleAssignmentRepository;
@@ -53,6 +59,50 @@ public class MeServiceImpl implements MeService {
                     keycloakUserId, jwt.getClaimAsString("email"), Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")));
         }
 
+        return toAccessDto(person, platformAdmin);
+    }
+
+    @Override
+    @Transactional
+    public MeAccessDto register(Authentication authentication, Jwt jwt) {
+        String email = VerifiedEmail.require(jwt);
+        boolean platformAdmin = accessService.isPlatformAdmin(authentication);
+        String keycloakUserId = authentication.getName();
+
+        Person person = personRepository.findByKeycloakUserId(keycloakUserId).orElse(null);
+        if (person == null) {
+            person = bridgeByEmail(keycloakUserId, email, true);
+        }
+        if (person == null) {
+            String firstName = claim(jwt, "given_name");
+            String lastName = claim(jwt, "family_name");
+            if (firstName.isEmpty() && lastName.isEmpty()) {
+                String[] parts = claim(jwt, "name").split("\\s+", 2);
+                firstName = parts[0];
+                lastName = parts.length > 1 ? parts[1] : "";
+            }
+            if (firstName.isEmpty()) {
+                firstName = email.substring(0, email.indexOf('@') > 0 ? email.indexOf('@') : email.length());
+            }
+            person = personRepository.save(Person.builder()
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .email(email)
+                    .keycloakUserId(keycloakUserId)
+                    .status(PersonStatus.ACTIVE)
+                    .origin(PersonOrigin.SELF_REGISTERED)
+                    .build());
+            log.info("Self-registered person created: personId={}", person.getId());
+        }
+        return toAccessDto(person, platformAdmin);
+    }
+
+    private static String claim(Jwt jwt, String name) {
+        String value = jwt.getClaimAsString(name);
+        return value == null ? "" : value.trim();
+    }
+
+    private MeAccessDto toAccessDto(Person person, boolean platformAdmin) {
         List<UUID> clubAdminClubIds = person == null
                 ? List.of()
                 : roleAssignmentRepository.findByPersonId(person.getId()).stream()

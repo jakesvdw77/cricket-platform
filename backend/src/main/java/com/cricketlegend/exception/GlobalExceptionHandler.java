@@ -81,6 +81,14 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /** docs/specs/119: 403 with the stable {@code code} EMAIL_NOT_VERIFIED. */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setProperty("code", EmailNotVerifiedException.CODE);
+        return problem;
+    }
+
     @ExceptionHandler(InvalidPublicTokenException.class)
     ProblemDetail handleInvalidPublicToken(InvalidPublicTokenException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
