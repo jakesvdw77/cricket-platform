@@ -1,8 +1,8 @@
 // docs/specs/121-player-hub-menu-and-fields.md: the one source for the Player Hub's menu, in the shape of
 // components/ManagerShell/managerNav.ts. The menu, the routes, the footer Back and the Escape key all read it, so a Hub
-// item is added in this list and nowhere else. At most six top-level items and two levels (a unit test pins both).
-// Ids, labels and order are binding on routes, tests and copy; the Club order is Messages, Club info, Gallery, Bookings,
-// Field Directory (Decision 16).
+// item is added in this list and nowhere else. At most seven top-level items (the owner moved Messages up on 2026-10-24) and two levels (a unit test pins both).
+// Ids, labels and order are binding on routes, tests and copy; the Club order is Club info, Gallery, Bookings, Social Media,
+// Field Directory, Other Services (Decision 16; Messages is now a main menu item).
 
 export type HubPillSource = 'openPolls' | 'invitations' | 'linkRequests'
 
@@ -36,18 +36,25 @@ export interface HubNavItem {
 
 export const HUB_NAV: HubNavItem[] = [
   { id: 'availability', label: 'Availability', pill: 'openPolls' },
+  { id: 'messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
   {
-    id: 'matches',
-    label: 'Matches',
+    id: 'schedule',
+    label: 'Schedule',
     children: [
       {
-        id: 'matches.schedule',
-        label: 'Schedule',
+        id: 'schedule.matches',
+        label: 'Matches',
         soon: true,
         soonCopy: 'Upcoming matches and training for this player will show here once the club shares them with linked accounts.',
       },
-      { id: 'matches.results', label: 'Results', soon: true, soonCopy: "Published results for this player's teams." },
-      { id: 'matches.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
+      {
+        id: 'schedule.leagues',
+        label: 'Leagues',
+        soon: true,
+        soonCopy: "The leagues and competitions this player's teams play in, once the club shares them with linked accounts.",
+      },
+      { id: 'schedule.results', label: 'Results', soon: true, soonCopy: "Published results for this player's teams." },
+      { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
     ],
   },
   {
@@ -68,12 +75,13 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'club',
     label: 'Club',
     children: [
-      { id: 'club.messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
       { id: 'club.info', label: 'Club info', soon: true, soonCopy: "Contacts, the club's places and links." },
       { id: 'club.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
       { id: 'club.bookings', label: 'Bookings', soon: true, soonCopy: 'Nets and facility bookings.' },
-      // Not a Soon item (so Club opens on it); the real screen is checkpoint B, a Soon-style placeholder until then.
+      { id: 'club.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
+      // The one live item (so Club opens on it).
       { id: 'club.fields', label: 'Field Directory' },
+      { id: 'club.services', label: 'Other Services', soon: true, soonCopy: 'Other services the club offers, once the club adds them.' },
     ],
   },
   {
@@ -136,7 +144,7 @@ export function legacyProfileTarget(view: string | undefined): string | undefine
 // `/account/invitations` stays a real route (App.tsx).
 export const LEGACY_REDIRECTS: Record<string, string> = {
   requests: 'account/requests',
-  schedule: 'matches/schedule',
+  matches: 'schedule/matches',
 }
 
 // The part of an id after the dot: the URL segment (`club.fields` is `club/fields`).
@@ -161,7 +169,7 @@ export function visibleItems(ctx: HubNavContext, items: HubNavItem[] = HUB_NAV):
 }
 
 // What a parent opens on where the menu column stays visible: its first child that is a page and not a Soon item, else
-// its first child (Decision 16). Club gives Field Directory, Account gives Invitations, Matches gives Schedule.
+// its first child (Decision 16). Club gives Field Directory, Account gives Invitations, Schedule gives Matches (a Soon item, so it opens the first child).
 export function defaultChild(item: HubNavItem): HubNavItem | undefined {
   const children = item.children ?? []
   return children.find((child) => !child.soon && !child.action) ?? children[0]
