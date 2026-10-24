@@ -78,11 +78,12 @@ export function ConfirmDialog({
       </DialogContent>
       <DialogActions>
         {!acknowledgeOnly && (
-          <Button variant="ghost" onClick={onClose} disabled={pending}>
+          <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
         )}
         <Button
+          size="compact"
           variant={destructive && !acknowledgeOnly ? 'danger' : 'primary'}
           onClick={acknowledgeOnly ? onClose : () => onConfirm?.(reasonLabel ? reason.trim() : undefined)}
           disabled={pending || reasonMissing}

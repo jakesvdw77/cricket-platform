@@ -12,7 +12,7 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 
 export interface RecordQuickViewDialogField {
   icon: ReactNode
@@ -118,10 +118,10 @@ export function RecordQuickViewDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Close
         </Button>
-        <MuiButton component={RouterLink} to={editTo} variant="contained">
+        <MuiButton component={RouterLink} to={editTo} variant="contained" sx={compactButtonSx}>
           {editLabel}
         </MuiButton>
       </DialogActions>

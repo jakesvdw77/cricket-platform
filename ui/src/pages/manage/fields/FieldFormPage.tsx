@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button } from '../../../components/Button'
+import { Button, compactButtonSx } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { EmptyState } from '../../../components/EmptyState'
 import { FieldFormFields } from '../../../components/FieldFormFields'
@@ -62,11 +62,11 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
               {errorDetail(save.error, 'Something went wrong saving this field. Please try again.')}
             </Typography>
           )}
-          <MuiButton component={RouterLink} to={backTo} variant="outlined">
+          <MuiButton component={RouterLink} to={backTo} variant="outlined" sx={compactButtonSx}>
             Cancel
           </MuiButton>
           {edit.editable && (
-            <Button type="submit" form={FIELD_FORM_ID} disabled={save.isPending}>
+            <Button size="compact" type="submit" form={FIELD_FORM_ID} disabled={save.isPending}>
               {save.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Add field'}
             </Button>
           )}

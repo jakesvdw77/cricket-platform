@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { BottomTabShell } from '../../components/BottomTabShell'
-import { keycloak } from '../../auth/keycloak'
+import { signOut } from '../../auth/signOut'
 import { MOCK_PLAYER } from './mockPlayer'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 
@@ -19,7 +19,7 @@ export default function PlayerHome() {
       user={MOCK_PLAYER}
       onLogout={() => {
         forgetProfileChoices()
-        keycloak.logout()
+        signOut()
       }}
       profileTo="/player/profile"
     >

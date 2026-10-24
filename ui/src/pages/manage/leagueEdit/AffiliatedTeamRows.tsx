@@ -112,7 +112,7 @@ export function AffiliatedTeamRows({ clubId, leagueId, seasonLabel, affiliations
       testId="affiliated-teams-panel"
       ariaLabel="Our teams"
       actions={
-        <Button size="sm" startIcon={<GroupsOutlinedIcon fontSize="small" />} onClick={onAddTeam} disabled={!canAdd} sx={{ flex: 'none' }}>
+        <Button size="compact" startIcon={<GroupsOutlinedIcon fontSize="small" />} onClick={onAddTeam} disabled={!canAdd} sx={{ flex: 'none' }}>
           Add team
         </Button>
       }

@@ -127,7 +127,7 @@ export default function AvailabilityCoveragePage() {
         <EmptyState
           title="No polls yet"
           description="Open a poll for these games to see how many players you have."
-          action={<Button onClick={() => navigate('/manage/availability')}>Go to Polls</Button>}
+          action={<Button size="compact" onClick={() => navigate('/manage/availability')}>Go to Polls</Button>}
         />
       )}
 

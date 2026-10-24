@@ -109,7 +109,7 @@ Root-domain page, `ui/src/pages/view/` (public, unauthenticated — the folder's
 - `Card` (`variant="outlined"` default) — feature/benefit tiles, and as the base for the new `TestimonialCard` below.
 - `Button` — all CTAs ("Get started," "Log in," social icon links).
 - `Input` — the lead-capture form's fields (name, email, club name, phone, message) and the club-search field.
-- `EmptyState` — reused twice, not duplicated: (1) the "no clubs matched" state in the "find your club" search, action pointing at the contact form section; (2) the lead-form's post-submission confirmation state, replacing the form once submitted ("Thanks — we'll be in touch").
+- `EmptyState` — reused twice, not duplicated: (1) the "no clubs matched" state in the "find your club" search, action pointing at the contact form section; (2) the lead-form's post-submission confirmation state, replacing the form once submitted ("Thanks, we'll be in touch").
 
 **New shared components — run the `new-ui-component` skill before this page is built:**
 - `TestimonialCard` — quote, attributed name, club/role, optional avatar. A thin wrapper around `Card`, but its content shape (quote + attribution) is distinct enough from `Card`'s generic `title`/`children` contract to warrant its own component and Storybook story rather than ad hoc markup inside `Card`'s children slot.
@@ -125,6 +125,17 @@ Root-domain page, `ui/src/pages/view/` (public, unauthenticated — the folder's
 This page never embeds Keycloak's login form itself and never calls `/api/v1/me/access` — it only ever resolves *which subdomain* to send someone to, then hands off entirely to the flow `002` already defines there.
 
 **Mobile-first.** All sections authored at 375px first per `docs/standards/frontend.md`; the header collapses its nav/CTAs behind a standard MUI responsive pattern below `md`, consistent with how `Nav` itself handles the same breakpoint (even though this page doesn't use `Nav` directly).
+
+## Landing page redesign and content rules (2026-10, supersedes the testimonials and social links above)
+
+The page was rebuilt in the manager look (dark green header and hero, cream ground, white cards, display-face headings, gold CTAs; `pages/view/LandingPage`, copy in `landingContent.ts`). Where this note conflicts with the stories, UI requirements or acceptance criteria above (testimonials, the social links row, the `TestimonialCard` and `SocialLinksRow` use on this page), this note wins. Content rules for any future edit:
+
+- **Honest claims only.** Every line describes something the product does today, or sits under "On the way". No uptime, security, mobile app, SMS or payment claims.
+- **No testimonials, no invented customers, no social links, no numbers or prices.** The only named club is Irene Villagers Cricket Club, worded modestly ("being built alongside"), as the owner approved.
+- **No mention of membership or live scoring.**
+- **"On the way" lists what is planned but not built** (messages to your club, a home page for each club, player schedule and stats, photo gallery) in dashed boxes. When one ships, move it into "What your club gets".
+- Sections and anchors: hero, What your club gets (`#offer`), the Irene Villagers band, On the way (`#soon`), Get started (`#lead-capture`, the lead form unchanged in fields, validation and API), footer ("© Cricket Legend", "Set up by hand for each club"). Log in still opens the club-finder dialog.
+- The Cricket Legend mark (`components/BrandMark`, the green favicon tile) never sits on a white tile; a real club logo may.
 
 ## Test Plan
 

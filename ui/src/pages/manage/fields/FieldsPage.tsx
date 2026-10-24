@@ -211,7 +211,7 @@ export default function FieldsPage() {
       <ManageScreenHeader
         title="Fields"
         action={
-          <Button startIcon={<AddIcon fontSize="small" />} onClick={() => navigate('/manage/fixtures/fields/new')}>
+          <Button size="compact" startIcon={<AddIcon fontSize="small" />} onClick={() => navigate('/manage/fixtures/fields/new')}>
             Add field
           </Button>
         }

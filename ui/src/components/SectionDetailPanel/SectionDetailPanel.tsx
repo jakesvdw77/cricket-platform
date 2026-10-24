@@ -18,7 +18,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { Input } from '../Input'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 import { Card } from '../Card'
 import type { ClubContact } from '../../api/clubContactApi'
 import type { Section, SectionPayload } from '../../api/sectionApi'
@@ -167,7 +167,7 @@ export function SectionDetailPanel({
             This section is inactive.
           </Typography>
           {onReactivate && (
-            <Button variant="secondary" size="sm" onClick={onReactivate}>
+            <Button size="compact" variant="secondary" onClick={onReactivate}>
               Reactivate
             </Button>
           )}
@@ -263,10 +263,10 @@ export function SectionDetailPanel({
         )}
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Button variant="secondary" size="sm" onClick={onLinkExisting}>
+          <Button size="compact" variant="secondary" onClick={onLinkExisting}>
             Link existing
           </Button>
-          <Button variant="ghost" size="sm" onClick={onCreateAndLink}>
+          <Button size="compact" variant="ghost" onClick={onCreateAndLink}>
             + New contact
           </Button>
         </Stack>
@@ -329,8 +329,7 @@ export function SectionDetailPanel({
           to={`/manage/sections/${section.id}/teams`}
           variant="outlined"
           color="primary"
-          size="small"
-        >
+          size="small" sx={compactButtonSx}>
           Manage Teams
         </MuiButton>
       </Card>

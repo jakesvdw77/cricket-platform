@@ -226,7 +226,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
             />
           ) : undefined
         }
-        action={<Button onClick={() => navigate(sectionScopeId ? `/manage/sections/${sectionScopeId}/teams/new` : '/manage/teams/new')}>Add Team</Button>}
+        action={<Button size="compact" onClick={() => navigate(sectionScopeId ? `/manage/sections/${sectionScopeId}/teams/new` : '/manage/teams/new')}>Add Team</Button>}
       />
 
       <PageCounters density="compact" items={counterItems} />

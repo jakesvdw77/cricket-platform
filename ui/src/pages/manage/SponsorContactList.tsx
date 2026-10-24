@@ -127,7 +127,7 @@ export default function SponsorContactList() {
         title="Sponsor Contacts"
         backTo={`/manage/sponsors/${sponsorId}/edit`}
         backLabel="Back to Sponsor"
-        action={<Button onClick={() => navigate(`/manage/sponsors/${sponsorId}/contacts/new`)}>Add Contact</Button>}
+        action={<Button size="compact" onClick={() => navigate(`/manage/sponsors/${sponsorId}/contacts/new`)}>Add Contact</Button>}
       />
 
       <ListToolbar

@@ -596,7 +596,7 @@ export default function ResultCapturePage() {
         title="This result is published"
         description="Unpublish it to edit."
         action={
-          <Button onClick={() => navigate(resultViewTo(matchId as string))}>
+          <Button size="compact" onClick={() => navigate(resultViewTo(matchId as string))}>
             View result
           </Button>
         }

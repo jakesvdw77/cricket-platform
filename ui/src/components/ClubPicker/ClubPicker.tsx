@@ -125,7 +125,7 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
               would let an open popper full of real results visually cover it. Same fix already
               applied to PersonPicker. */}
           {showAddAffordance && (
-            <Button variant="ghost" size="sm" onClick={handleStartCreate} sx={{ alignSelf: 'flex-start' }}>
+            <Button size="compact" variant="ghost" onClick={handleStartCreate} sx={{ alignSelf: 'flex-start' }}>
               {trimmedQuery ? `+ Add "${trimmedQuery}" as a new club` : '+ Add a new club'}
             </Button>
           )}
@@ -216,7 +216,7 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
               onSlugChange={handleSlugChange}
             />
           </Box>
-          <Button variant="ghost" size="sm" onClick={handleBackToSearch} sx={{ alignSelf: 'flex-start' }}>
+          <Button size="compact" variant="ghost" onClick={handleBackToSearch} sx={{ alignSelf: 'flex-start' }}>
             Back to search
           </Button>
         </>

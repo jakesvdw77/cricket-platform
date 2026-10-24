@@ -198,10 +198,10 @@ export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMerge
           {target && <FieldComparison source={source} target={target} />}
         </DialogContent>
         <DialogActions>
-          <Button variant="ghost" onClick={onClose}>
+          <Button size="compact" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={!target} onClick={() => setConfirming(true)}>
+          <Button size="compact" disabled={!target} onClick={() => setConfirming(true)}>
             Merge…
           </Button>
         </DialogActions>

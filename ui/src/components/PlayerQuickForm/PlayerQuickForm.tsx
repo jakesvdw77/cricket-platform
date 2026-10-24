@@ -78,7 +78,7 @@ export function PlayerQuickForm({ initialFirstName = '', initialLastName = '', s
           {error}
         </Alert>
       )}
-      <Button type="submit" disabled={pending} sx={{ alignSelf: 'flex-start', minHeight: 44 }}>
+      <Button size="compact" type="submit" disabled={pending} sx={{ alignSelf: 'flex-start' }}>
         {pending ? 'Saving…' : submitLabel}
       </Button>
     </Box>

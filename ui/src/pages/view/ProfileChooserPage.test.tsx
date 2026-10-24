@@ -13,10 +13,10 @@ vi.mock('../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.fn()
 
 // docs/specs/119 slice 4: the chooser is shown only for more than one card; Remember my choice is off by default.
 const http = api as unknown as ApiMock
-const players: Profile = { kind: 'MY_PLAYERS', title: 'My players', subtitle: 'Aman and 1 more', landing: '/account', pendingCount: 0 }
+const players: Profile = { kind: 'MY_PLAYERS', title: 'Player Hub', subtitle: 'Aman and 1 more', landing: '/account', pendingCount: 0 }
 const manager = (clubId: string, clubName: string, overrides: Partial<Profile> = {}): Profile => ({
   kind: 'MANAGER',
-  title: `Manager of ${clubName}`,
+  title: 'Club manager',
   clubId,
   clubName,
   clubSlug: clubId,
@@ -38,21 +38,21 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('ProfileChooserPage', () => {
-  it('shows scenario 1 as two cards, one Manager card per club and a single My players card with its line', async () => {
+  it('shows scenario 1 as two cards, one Manager card per club and a single Player Hub card with its line', async () => {
     setup([manager('c1', 'Hillcrest CC'), players])
 
     const list = await screen.findByRole('list', { name: 'Profiles' })
     const cards = within(list).getAllByRole('button')
-    expect(cards.map((card) => card.textContent)).toEqual(['Manager of Hillcrest CCHillcrest CC', 'My playersAman and 1 more'])
+    expect(cards.map((card) => card.textContent)).toEqual(['Club managerHillcrest CC', 'Player HubAman and 1 more'])
   })
 
   it('gives each club its own manager card, and a platform admin their own card', async () => {
     setup([manager('c1', 'Hillcrest CC'), manager('c2', 'Riverside CC'), players, admin])
 
-    expect(await screen.findByRole('button', { name: /Manager of Hillcrest CC/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Manager of Riverside CC/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Club manager.*Hillcrest CC/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Club manager.*Riverside CC/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Platform admin/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /My players/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /Player Hub/ })).toHaveLength(1)
   })
 
   it('shows a pending chip on a card with pending items', async () => {
@@ -66,7 +66,7 @@ describe('ProfileChooserPage', () => {
     setup([manager('c1', 'Hillcrest CC'), players])
 
     expect(await screen.findByRole('checkbox', { name: 'Remember my choice on this device' })).not.toBeChecked()
-    await user.click(screen.getByRole('button', { name: /My players/ }))
+    await user.click(screen.getByRole('button', { name: /Player Hub/ }))
 
     expect(await screen.findByTestId('location')).toHaveTextContent('/account')
     expect(localStorage.getItem('profile:remembered')).toBeNull()
@@ -77,7 +77,7 @@ describe('ProfileChooserPage', () => {
     setup([manager('c1', 'Hillcrest CC'), players])
 
     await user.click(await screen.findByRole('checkbox', { name: 'Remember my choice on this device' }))
-    await user.click(screen.getByRole('button', { name: /Manager of Hillcrest CC/ }))
+    await user.click(screen.getByRole('button', { name: /Club manager.*Hillcrest CC/ }))
 
     expect(await screen.findByTestId('location')).toHaveTextContent('/manage')
     expect(localStorage.getItem('profile:remembered')).toBe('MANAGER:c1')
@@ -91,7 +91,7 @@ describe('ProfileChooserPage', () => {
       throw new Error('denied')
     })
 
-    await user.click(screen.getByRole('button', { name: /My players/ }))
+    await user.click(screen.getByRole('button', { name: /Player Hub/ }))
 
     expect(await screen.findByTestId('location')).toHaveTextContent('/account')
   })

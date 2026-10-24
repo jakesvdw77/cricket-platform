@@ -16,8 +16,6 @@ export interface ShareImageActionsProps {
   error: string | null
 }
 
-const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
-
 // docs/specs/114-share-result.md (Preview and delivery): the main button is chosen by capability. Share where the browser can
 // share this file, otherwise Download PNG; Copy image where ClipboardItem exists. Cancelling the share sheet is not an error.
 export function ShareImageActions({ file, shareTitle, error }: ShareImageActionsProps) {
@@ -46,20 +44,20 @@ export function ShareImageActions({ file, shareTitle, error }: ShareImageActions
     <Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {canShare && (
-          <Button startIcon={<ShareOutlinedIcon />} onClick={() => void share()} sx={TOUCH_TARGET_SX}>
+          <Button size="compact" startIcon={<ShareOutlinedIcon />} onClick={() => void share()}>
             Share
           </Button>
         )}
-        <Button variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
+        <Button size="compact" variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)}>
           Download PNG
         </Button>
         {clipboardImage.canCopyImage && (
           <Button
+            size="compact"
             variant="secondary"
             startIcon={<ContentCopyOutlinedIcon />}
             disabled={!file}
             onClick={() => void copyImage()}
-            sx={TOUCH_TARGET_SX}
           >
             Copy image
           </Button>

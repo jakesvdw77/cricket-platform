@@ -5,12 +5,12 @@ import { test, expect } from '@playwright/test'
  *   1. Visit the root domain, submit the lead-capture form, see the confirmation state.
  *   2. Search for a known ACTIVE club and be redirected to its subdomain's /login route.
  *
- * Runs against a real running dev server (not Testcontainers) — start both before running:
+ * Runs against a real running dev server (not Testcontainers), start both before running:
  *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 9082)
  *   - frontend: `cd ui && npm run dev` (port 5173)
  *
  * PREREQUISITE for path 2 ("find your club" redirect): at least one Club row with
- * status = 'ACTIVE' must exist in the dev `cricketlegend_platform` database — there is no
+ * status = 'ACTIVE' must exist in the dev `cricketlegend_platform` database, there is no
  * practical way to seed this from Playwright itself against a real running dev server (no
  * Testcontainers here, and the public API never creates Clubs). Seed one manually before running
  * this spec, e.g. via CLAUDE.md's "Local development" section:
@@ -37,7 +37,7 @@ test.describe('Landing page golden paths', () => {
 
     await page.getByRole('button', { name: 'Get started' }).click();
 
-    await expect(page.getByText("Thanks — we'll be in touch")).toBeVisible();
+    await expect(page.getByText("Thanks, we'll be in touch")).toBeVisible();
     await expect(page.getByRole('button', { name: 'Get started' })).toHaveCount(0);
   });
 
@@ -45,7 +45,7 @@ test.describe('Landing page golden paths', () => {
     await page.goto('/');
 
     // "Log in" opens a dialog (docs/specs/005-admin-login.md) rather than scrolling to a page
-    // section — it's a <button>, not an anchor link.
+    // section, it's a <button>, not an anchor link.
     await page.getByRole('button', { name: 'Log in' }).click();
     await page.getByLabel('Search for your club').fill(CLUB_NAME);
 
@@ -53,12 +53,12 @@ test.describe('Landing page golden paths', () => {
     await expect(resultItem).toBeVisible();
 
     // Same scheme as the current page, matching FindYourClubLogin.tsx's use of
-    // window.location.protocol — HTTP in this dev/CI environment, HTTPS in prod.
+    // window.location.protocol, HTTP in this dev/CI environment, HTTPS in prod.
     const protocol = new URL(page.url()).protocol;
     const expectedUrl = `${protocol}//${CLUB_SLUG}.${ROOT_DOMAIN}/login`;
 
     // The redirect is a real top-level navigation (window.location.href) to another club's
-    // subdomain, which this SPA never actually serves in this test environment — intercept and
+    // subdomain, which this SPA never actually serves in this test environment, intercept and
     // abort the outgoing navigation request so we can assert on its URL without needing a real
     // server listening there.
     let capturedUrl: string | null = null;

@@ -216,7 +216,7 @@ export function SquadPollBranch({
 
       {matches.length > 0 && (
         <Box>
-          <Button disabled={count === 0 || hasCloseTimeError || createMutation.isPending} onClick={() => createMutation.mutate()}>
+          <Button size="compact" disabled={count === 0 || hasCloseTimeError || createMutation.isPending} onClick={() => createMutation.mutate()}>
             {createMutation.isPending ? 'Opening…' : `Open ${count} poll${count === 1 ? '' : 's'}`}
           </Button>
         </Box>

@@ -45,14 +45,14 @@ describe('AvatarMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Profile' })).toHaveAttribute('href', '/player/profile')
   })
 
-  it('adds My players only when a route is given (docs/specs/119)', async () => {
+  it('adds Player Hub only when a route is given (docs/specs/119)', async () => {
     const { unmount } = render(
       <MemoryRouter>
         <AvatarMenu name="Jaco Smith" onLogout={vi.fn()} />
       </MemoryRouter>,
     )
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
-    expect(screen.queryByRole('menuitem', { name: 'My players' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Player Hub' })).not.toBeInTheDocument()
     unmount()
 
     render(
@@ -61,13 +61,13 @@ describe('AvatarMenu', () => {
       </MemoryRouter>,
     )
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
-    expect(screen.getByRole('menuitem', { name: 'My players' })).toHaveAttribute('href', '/account')
+    expect(screen.getByRole('menuitem', { name: 'Player Hub' })).toHaveAttribute('href', '/account')
   })
 
   describe('Switch profile (docs/specs/119 slice 4)', () => {
     const items = (onChoose = vi.fn()) => [
-      { key: 'MY_PLAYERS:', title: 'My players', subtitle: 'Sam and 1 more', active: true, onChoose: vi.fn() },
-      { key: 'MANAGER:c1', title: 'Manager of Riverside CC', subtitle: 'Riverside CC', active: false, onChoose },
+      { key: 'MY_PLAYERS:', title: 'Player Hub', subtitle: 'Sam and 1 more', active: true, onChoose: vi.fn() },
+      { key: 'MANAGER:c1', title: 'Club manager', subtitle: 'Riverside CC', active: false, onChoose },
     ]
 
     it('is hidden with no items or a single card', async () => {
@@ -89,7 +89,7 @@ describe('AvatarMenu', () => {
       )
       await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
       await userEvent.click(screen.getByRole('menuitem', { name: 'Switch profile' }))
-      await userEvent.click(await screen.findByRole('menuitem', { name: /Manager of Riverside CC/ }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: /Club manager.*Riverside CC/ }))
       expect(onChoose).toHaveBeenCalledOnce()
     })
   })

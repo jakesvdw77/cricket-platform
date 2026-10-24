@@ -189,7 +189,7 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
         {query.isError && (
           <Box role="alert" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, py: 1 }}>
             <Typography>We couldn&apos;t load the players.</Typography>
-            <Button variant="secondary" size="sm" onClick={() => query.refetch()}>
+            <Button size="compact" variant="secondary" onClick={() => query.refetch()}>
               Retry
             </Button>
           </Box>
@@ -207,7 +207,7 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
           </Box>
         )}
         {query.hasNextPage && (
-          <Button variant="secondary" size="sm" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} sx={{ mt: 1.5 }}>
+          <Button size="compact" variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} sx={{ mt: 1.5 }}>
             Show more
           </Button>
         )}

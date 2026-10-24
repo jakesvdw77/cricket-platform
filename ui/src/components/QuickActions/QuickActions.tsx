@@ -48,8 +48,8 @@ export function QuickActions({ actions }: QuickActionsProps) {
     return (
       <>
         <Button
+          size="compact"
           variant="secondary"
-          size="sm"
           id="quick-actions-button"
           aria-haspopup="menu"
           aria-expanded={open}

@@ -85,7 +85,7 @@ describe('FindYourPlayersPage', () => {
       await waitFor(() => expect(calls(http.post, '/me/links')).toHaveLength(1))
       expect(calls(http.post, '/me/links')[0][1]).toEqual({ confirm: true, playerRefs: ['ref-1'] })
       expect(await screen.findByRole('heading', { name: 'You now manage Aman N.' })).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Go to My players' }))
+      await user.click(screen.getByRole('button', { name: 'Go to Player Hub' }))
       expect(await screen.findByTestId('location')).toHaveTextContent('/account')
     })
 

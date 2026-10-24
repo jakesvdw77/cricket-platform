@@ -199,10 +199,10 @@ export function ShareScheduleDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={handleShare} disabled={shareDisabled}>
+        <Button size="compact" onClick={handleShare} disabled={shareDisabled}>
           {isGenerating ? 'Generating…' : actionLabel}
         </Button>
       </DialogActions>

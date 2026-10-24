@@ -148,6 +148,7 @@ export function PlayingConditionsShareDialog({
                   minRows={10}
                 />
                 <Button
+                  size="compact"
                   variant="ghost"
                   startIcon={<RefreshOutlinedIcon />}
                   onClick={handleRegenerateWhatsApp}
@@ -174,11 +175,11 @@ export function PlayingConditionsShareDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
         {selectedOption === 'pdf' ? (
-          <Button onClick={handleSharePdf} disabled={!hasStructuredFields || isGenerating}>
+          <Button size="compact" onClick={handleSharePdf} disabled={!hasStructuredFields || isGenerating}>
             {isGenerating ? 'Generating…' : 'Open PDF'}
           </Button>
         ) : null}

@@ -320,8 +320,8 @@ export function ShareResultDialog({
           <ShareFooterContext.Provider value={footer}>
             <Box>
               <Button
+                size="compact"
                 variant="ghost"
-                size="sm"
                 startIcon={<ArrowBackIcon fontSize="small" />}
                 onClick={() => setScreen(null)}
                 sx={{ ml: -1, mb: 1, color: "text.secondary" }}

@@ -423,7 +423,7 @@ export default function ClubStructure() {
               </Typography>
               <Stack direction="row" spacing={0.5} alignItems="center">
                 {selectedId && (
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
+                  <Button size="compact" variant="ghost" onClick={() => setSelectedId(null)}>
                     Clear
                   </Button>
                 )}

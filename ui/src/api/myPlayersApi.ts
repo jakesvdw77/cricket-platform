@@ -4,7 +4,7 @@ import type { BattingStance, BowlingArm, BowlingType } from './playerApi'
 import type { PublicAnswer, PublicAnswers } from './publicAvailabilityShared'
 import type { PublicRoundWindow } from './publicSectionAvailabilityApi'
 
-// docs/specs/119 Part 3 (3C): "My players", what an agent (or a player for their own record) sees and does.
+// docs/specs/119 Part 3 (3C): "Player Hub", what an agent (or a player for their own record) sees and does.
 // Backend: /api/v1/me/players/**, authorised only from the caller's own active links and own player record.
 export interface MyPlayerSummary {
   key: string

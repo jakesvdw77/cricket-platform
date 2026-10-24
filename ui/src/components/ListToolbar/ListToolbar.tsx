@@ -181,8 +181,8 @@ export function ListToolbar({
                 {showSortFieldPicker && (
                   <>
                     <Button
+                      size="compact"
                       variant="ghost"
-                      size="sm"
                       onClick={handleFieldMenuOpen}
                       aria-label={`Sort field: ${activeFieldOption?.label ?? ''}`}
                       endIcon={<ArrowDropDownIcon fontSize="small" />}
@@ -194,8 +194,7 @@ export function ListToolbar({
                         px: 1.5,
                         height: 40,
                         color: 'text.primary',
-                        whiteSpace: 'nowrap',
-                      }}
+                        whiteSpace: 'nowrap' }}
                     >
                       {activeFieldOption?.label ?? ''}
                     </Button>
@@ -259,7 +258,7 @@ export function ListToolbar({
             ) : null}
 
             {createLabel && onCreate && (
-              <Button onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
+              <Button size="compact" onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
                 {createLabel}
               </Button>
             )}

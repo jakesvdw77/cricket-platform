@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { Button, Menu, MenuItem } from '@mui/material'
+import { compactButtonSx } from '../Button'
 import { alpha } from '@mui/material/styles'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import CheckIcon from '@mui/icons-material/Check'
@@ -44,7 +45,7 @@ export function HeaderSeasonSelect({ seasons, value, onChange, allLabel = 'All s
         aria-controls={open ? menuId : undefined}
         title={`Season: ${label}`}
         onClick={(event) => setAnchor(event.currentTarget)}
-        startIcon={<CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} />}
+        startIcon={<CalendarTodayOutlinedIcon sx={{ ...compactButtonSx, fontSize: 16 }} />}
         endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 18 }} />}
         sx={(theme) => ({
           height: 30,

@@ -118,7 +118,8 @@ class ProfileResolverTest {
 
     private HeldPlayer held(String key, String first, String last) {
         Person subject = Person.builder().id(UUID.randomUUID()).firstName(first).lastName(last).build();
-        return new HeldPlayer(key, me, subject, PlayerProfile.builder().id(UUID.randomUUID()).build(), (PersonLink) null);
+        return new HeldPlayer(key, me, subject, PlayerProfile.builder().id(UUID.randomUUID()).build(),
+                key.startsWith("self:") ? null : PersonLink.builder().id(UUID.randomUUID()).build());
     }
 
     // ---- My players ----
@@ -132,8 +133,8 @@ class ProfileResolverTest {
 
         assertThat(profiles).filteredOn(p -> p.kind() == ProfileKind.MY_PLAYERS).hasSize(1);
         ProfileDto card = profiles.get(0);
-        assertThat(card.title()).isEqualTo("My players");
-        assertThat(card.subtitle()).isEqualTo("Me Myself and 3 more");
+        assertThat(card.title()).isEqualTo("Player Hub");
+        assertThat(card.subtitle()).isEqualTo("You, Ann Alpha and 2 more");
         assertThat(card.landing()).isEqualTo("/account");
     }
 
@@ -142,6 +143,21 @@ class ProfileResolverTest {
         when(myPlayerAccess.list(auth)).thenReturn(List.of(held("l1", "Ann", "Alpha")));
 
         assertThat(resolver.resolve(auth, jwt(true), me).get(0).subtitle()).isEqualTo("Ann Alpha");
+    }
+
+    @Test
+    void theOwnRecordAloneIsJustYouAndWithOneOtherPlayerYouAndTheName() {
+        when(myPlayerAccess.list(auth)).thenReturn(List.of(held("self:1", "Me", "Myself")));
+        assertThat(resolver.resolve(auth, jwt(true), me).get(0).subtitle()).isEqualTo("You");
+
+        when(myPlayerAccess.list(auth)).thenReturn(List.of(held("self:1", "Me", "Myself"), held("l1", "Ann", "Alpha")));
+        assertThat(resolver.resolve(auth, jwt(true), me).get(0).subtitle()).isEqualTo("You and Ann Alpha");
+    }
+
+    @Test
+    void withoutAnOwnRecordTheSubtitleStartsWithTheFirstPlayerAsBefore() {
+        when(myPlayerAccess.list(auth)).thenReturn(List.of(held("l1", "Ann", "Alpha"), held("l2", "Bob", "Beta"), held("l3", "Cy", "Gamma")));
+        assertThat(resolver.resolve(auth, jwt(true), me).get(0).subtitle()).isEqualTo("Ann Alpha and 2 more");
     }
 
     @Test
@@ -179,7 +195,7 @@ class ProfileResolverTest {
 
         assertThat(profiles).singleElement().satisfies(p -> {
             assertThat(p.kind()).isEqualTo(ProfileKind.MANAGER);
-            assertThat(p.title()).isEqualTo("Manager of Hillcrest CC");
+            assertThat(p.title()).isEqualTo("Club manager");
             assertThat(p.subtitle()).isNull();
             assertThat(p.clubId()).isEqualTo(hillcrest.getId());
             assertThat(p.clubSlug()).isEqualTo("hillcrest-cc");
@@ -219,8 +235,8 @@ class ProfileResolverTest {
         grant(RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, zebra.getId());
         grant(RoleAssignmentRole.CLUB_ADMIN, ScopeType.SECTION, section(alpha, "Juniors").getId());
 
-        assertThat(resolver.resolve(auth, jwt(true), me)).extracting(ProfileDto::title)
-                .containsExactly("Manager of alpha CC", "Manager of Zebra CC");
+        assertThat(resolver.resolve(auth, jwt(true), me)).extracting(ProfileDto::clubName)
+                .containsExactly("alpha CC", "Zebra CC");
     }
 
     @Test

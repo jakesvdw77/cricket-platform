@@ -42,10 +42,11 @@ export function DeclineLinkRequestDialog({ clubId, request, onClose }: DeclineLi
         {decline.isError && <Alert severity="error">We could not decline this request. Please try again.</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button variant="ghost" onClick={onClose} disabled={decline.isPending}>
+        <Button size="compact" variant="ghost" onClick={onClose} disabled={decline.isPending}>
           Cancel
         </Button>
         <Button
+          size="compact"
           variant="danger"
           disabled={decline.isPending}
           onClick={() => request && decline.mutate({ id: request.id, note: note.trim() || undefined }, { onSuccess: onClose })}

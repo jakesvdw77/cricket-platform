@@ -166,7 +166,7 @@ export default function SeasonList() {
         <EmptyState
           title="No seasons yet"
           description="Create your club's first season to get started."
-          action={<Button onClick={addSeason}>Add Season</Button>}
+          action={<Button size="compact" onClick={addSeason}>Add Season</Button>}
         />
       )
     }
@@ -184,7 +184,7 @@ export default function SeasonList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Seasons" action={<Button onClick={addSeason}>Add Season</Button>} />
+      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={addSeason}>Add Season</Button>} />
 
       <PageCounters density="compact" items={counterItems} />
 

@@ -87,7 +87,7 @@ export function SectionTreeEditor({
         <Typography variant="subtitle1" fontWeight={600}>
           Section tree
         </Typography>
-        <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={() => onAddChild(null)}>
+        <Button size="compact" variant="secondary" startIcon={<AddIcon />} onClick={() => onAddChild(null)}>
           Add top-level section
         </Button>
       </Box>

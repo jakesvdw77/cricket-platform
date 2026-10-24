@@ -71,7 +71,7 @@ export default function ManageClubProfilePage() {
             </Typography>
           )}
 
-          <Button type="submit" form={CLUB_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={CLUB_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </Stack>

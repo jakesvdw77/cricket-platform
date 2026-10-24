@@ -134,7 +134,7 @@ export function PersonPicker({
               (not just when results are empty, per the reasoning above), and MUI's dropdown
               popper is absolutely positioned below the field, so placing the button underneath
               would let an open popper full of real results visually cover it. */}
-          <Button variant="ghost" size="sm" onClick={startCreate} sx={{ alignSelf: 'flex-start' }}>
+          <Button size="compact" variant="ghost" onClick={startCreate} sx={{ alignSelf: 'flex-start' }}>
             {trimmedQuery ? `Create "${trimmedQuery}" as a new person instead` : 'Create a new person instead'}
           </Button>
 
@@ -229,7 +229,7 @@ export function PersonPicker({
             <EmailInput value={currentDraft.email} onChange={handleEmailChange} error={emailError} />
             <PhoneInput value={currentDraft.phone} onChange={handlePhoneChange} />
           </Box>
-          <Button variant="ghost" size="sm" onClick={startSearch} sx={{ alignSelf: 'flex-start' }}>
+          <Button size="compact" variant="ghost" onClick={startSearch} sx={{ alignSelf: 'flex-start' }}>
             Link to an existing person instead
           </Button>
         </>
@@ -247,7 +247,7 @@ export function PersonPicker({
             <Input label="Email" value={value.email} disabled />
             <Input label="Phone" value={value.phone ?? ''} disabled />
           </Box>
-          <Button variant="ghost" size="sm" onClick={handleChangeSelection} sx={{ alignSelf: 'flex-start' }}>
+          <Button size="compact" variant="ghost" onClick={handleChangeSelection} sx={{ alignSelf: 'flex-start' }}>
             Change
           </Button>
         </>

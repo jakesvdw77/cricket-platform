@@ -18,7 +18,7 @@ vi.mock('../../api/meApi', () => ({
 
 const profile = (overrides: Partial<Profile>): Profile => ({
   kind: 'MY_PLAYERS',
-  title: 'My players',
+  title: 'Player Hub',
   landing: '/account',
   pendingCount: 0,
   ...overrides,
@@ -60,12 +60,12 @@ describe('PostLoginRedirect', () => {
     window.localStorage.clear()
   })
 
-  it('renders "Signing you in…" while activation is pending', () => {
+  it('renders the "Signing you in" loader while activation is pending', () => {
     activateSession.mockReturnValue(new Promise(() => {}))
 
     renderPage()
 
-    expect(screen.getByText('Signing you in…')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Signing you in' })).toBeInTheDocument()
   })
 
   it('navigates to /admin when the caller is a platform admin', async () => {

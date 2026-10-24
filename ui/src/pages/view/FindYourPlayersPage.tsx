@@ -21,7 +21,7 @@ import { creamAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 Part 3: "Find your players", in the dark console frame. Register is idempotent; matches are minimised
 // (first name + surname initial, birth year only, masked email for players that have a main agent). Every sub-state has a
-// Back, and the footer's Back slot returns to My players (or the club for a manager), so there is never a dead end.
+// Back, and the footer's Back slot returns to Player Hub (or the club for a manager), so there is never a dead end.
 const describe = (p: PlayerMatch) => `${p.firstName} ${p.surnameInitial}.`
 
 function errorCode(error: unknown): string | undefined {
@@ -85,7 +85,7 @@ export default function FindYourPlayersPage() {
   const failure = register.error ?? matches.error
   const notVerified = failure && (errorCode(failure) === 'EMAIL_NOT_VERIFIED' || (isAxiosError(failure) && failure.response?.status === 403))
 
-  // Back from a finished or side view: My players when the person has players, otherwise the previous state.
+  // Back from a finished or side view: Player Hub when the person has players, otherwise the previous state.
   const backToPlayersOr = (previous: () => void) => () => (hasPlayers ? navigate('/account') : previous())
   const toMain = () => {
     setPrefill(undefined)
@@ -98,10 +98,10 @@ export default function FindYourPlayersPage() {
       <>
         <CheckCircleOutlineIcon sx={{ fontSize: 40, color: HUB.gold }} />
         <Heading>You now manage {linkedNames.join(', ')}</Heading>
-        <Lead>In My players you can see their details and answer availability for them.</Lead>
+        <Lead>In Player Hub you can see their details and answer availability for them.</Lead>
         <Box>
           <Button onClick={() => navigate('/account')} sx={{ ...bigButton, ...hubGoldButton }}>
-            Go to My players
+            Go to Player Hub
           </Button>
         </Box>
       </>
@@ -256,7 +256,7 @@ export default function FindYourPlayersPage() {
                 Contact the main agent
               </Typography>
             )}
-            <Lead>These players already have a main agent. Ask them to add you from their My players screen. We never show the full address.</Lead>
+            <Lead>These players already have a main agent. Ask them to add you from their Player Hub screen. We never show the full address.</Lead>
             {taken.map((p) => (
               <Box key={p.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <PlayerAvatar p={p} />

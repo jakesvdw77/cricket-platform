@@ -20,14 +20,14 @@ export interface RecordStatusToggleProps {
 export function RecordStatusToggle({ active, pending, onClick }: RecordStatusToggleProps) {
   if (active) {
     return (
-      <Button variant="danger" startIcon={<ToggleOffOutlinedIcon fontSize="small" />} disabled={pending} onClick={onClick}>
+      <Button size="compact" variant="danger" startIcon={<ToggleOffOutlinedIcon fontSize="small" />} disabled={pending} onClick={onClick}>
         {pending ? 'Deactivating…' : 'Deactivate'}
       </Button>
     )
   }
 
   return (
-    <Button variant="secondary" startIcon={<ToggleOnOutlinedIcon fontSize="small" />} disabled={pending} onClick={onClick}>
+    <Button size="compact" variant="secondary" startIcon={<ToggleOnOutlinedIcon fontSize="small" />} disabled={pending} onClick={onClick}>
       {pending ? 'Reactivating…' : 'Reactivate'}
     </Button>
   )

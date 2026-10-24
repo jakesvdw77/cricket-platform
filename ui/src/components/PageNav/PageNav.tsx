@@ -13,13 +13,13 @@ export function PageNav({ page, totalPages, onPageChange }: PageNavProps) {
   if (totalPages <= 1) return null
   return (
     <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-      <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+      <Button size="compact" variant="secondary" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
         Previous
       </Button>
       <Typography variant="body2" color="text.secondary">
         Page {page + 1} of {totalPages}
       </Typography>
-      <Button variant="secondary" size="sm" disabled={page + 1 >= totalPages} onClick={() => onPageChange(page + 1)}>
+      <Button size="compact" variant="secondary" disabled={page + 1 >= totalPages} onClick={() => onPageChange(page + 1)}>
         Next
       </Button>
     </Stack>

@@ -222,7 +222,7 @@ export default function LeagueTeamsView() {
               title="Our teams"
               count={ownTeams.length}
               actions={
-                <Button size="sm" startIcon={<GroupsOutlinedIcon fontSize="small" />} onClick={() => setLinkOpen(true)} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
+                <Button size="compact" startIcon={<GroupsOutlinedIcon fontSize="small" />} onClick={() => setLinkOpen(true)} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
                   Add team
                 </Button>
               }
@@ -245,11 +245,11 @@ export default function LeagueTeamsView() {
               count={leagueTeams.length}
               actions={
                 <>
-                  <Button size="sm" startIcon={<AddIcon fontSize="small" />} onClick={leagueTeamActions.openAdd} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
+                  <Button size="compact" startIcon={<AddIcon fontSize="small" />} onClick={leagueTeamActions.openAdd} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
                     Add league team
                   </Button>
                   <Button
-                    size="sm"
+                    size="compact"
                     variant="secondary"
                     startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
                     aria-label="Copy teams from another league or season"

@@ -6,7 +6,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import SearchIcon from '@mui/icons-material/Search'
 import { BottomSheet } from '../BottomSheet'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 import { Input } from '../Input'
 import { SectionTreeSelect } from '../SectionTreeSelect'
 import type { Section } from '../../api/sectionApi'
@@ -285,7 +285,7 @@ export function FilterBar({
           aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : 'Filters'}
           startIcon={<FilterListIcon fontSize="small" />}
           onClick={() => setSheetOpen(true)}
-          sx={{ flex: '0 0 auto', whiteSpace: 'nowrap', fontWeight: 700 }}
+          sx={{ ...compactButtonSx, flex: '0 0 auto', whiteSpace: 'nowrap', fontWeight: 700 }}
         >
           Filters
           {activeCount > 0 && (
@@ -338,10 +338,10 @@ export function FilterBar({
           )}
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-          <MuiButton variant="text" onClick={onClearAll} sx={{ fontWeight: 700 }}>
+          <MuiButton variant="text" onClick={onClearAll} sx={{ ...compactButtonSx, fontWeight: 700 }}>
             Clear all
           </MuiButton>
-          <Button onClick={() => setSheetOpen(false)}>Done</Button>
+          <Button size="compact" onClick={() => setSheetOpen(false)}>Done</Button>
         </Box>
       </BottomSheet>
     </Box>

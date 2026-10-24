@@ -104,15 +104,15 @@ export function PdfShareScreen(props: ShareScreenProps) {
                   mt: 1,
                 }}
               >
-                <Button variant="ghost" size="sm" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}>
+                <Button size="compact" variant="ghost" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}>
                   Previous page
                 </Button>
                 <Typography variant="caption" color="text.secondary" role="status">
                   Page {pageIndex + 1} of {pageCount}
                 </Typography>
                 <Button
+                  size="compact"
                   variant="ghost"
-                  size="sm"
                   disabled={pageIndex >= pageCount - 1}
                   onClick={() => setPageIndex(pageIndex + 1)}
                 >

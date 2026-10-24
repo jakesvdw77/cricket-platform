@@ -202,7 +202,7 @@ export function SocialLinksFields({ value, onChange }: SocialLinksFieldsProps) {
         </Typography>
       )}
 
-      <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={handleAdd} sx={{ alignSelf: 'flex-start' }}>
+      <Button size="compact" variant="secondary" startIcon={<AddIcon />} onClick={handleAdd} sx={{ alignSelf: 'flex-start' }}>
         Add link
       </Button>
     </Stack>

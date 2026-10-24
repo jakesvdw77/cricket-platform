@@ -117,15 +117,15 @@ export default function NewPollPage() {
       backLabel="Back to Availability Polls"
       actions={
         kind ? (
-          <Button variant="ghost" onClick={() => setKind(null)}>
+          <Button size="compact" variant="ghost" onClick={() => setKind(null)}>
             Change poll type
           </Button>
         ) : (
           <>
-            <Button variant="ghost" onClick={done}>
+            <Button size="compact" variant="ghost" onClick={done}>
               Cancel
             </Button>
-            <Button disabled={!choice} onClick={() => setKind(choice)}>
+            <Button size="compact" disabled={!choice} onClick={() => setKind(choice)}>
               Continue
             </Button>
           </>

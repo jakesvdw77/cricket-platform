@@ -98,8 +98,8 @@ export function SectionTreeSelect({
         <Box sx={{ p: 1, minWidth: 280, maxWidth: 400, maxHeight: 400, overflowY: 'auto' }}>
           {allowClear && (
             <Button
+              size="compact"
               variant="ghost"
-              size="sm"
               fullWidth
               startIcon={<ClearIcon fontSize="small" />}
               sx={{ justifyContent: 'flex-start', mb: 1, fontWeight: value === null ? 700 : 400 }}

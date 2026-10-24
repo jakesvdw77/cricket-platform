@@ -4,6 +4,7 @@ import { Box, Stack, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
 import { Button } from '../../../components/Button'
+import { BRAND } from '../../../brandTokens'
 import { EmptyState } from '../../../components/EmptyState'
 import { submitLead } from '../../../api/leadApi'
 import type { SubmitLeadPayload } from '../../../api/leadApi'
@@ -25,6 +26,13 @@ const initialState: FormState = {
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>
+
+// 44 px single-line fields on white, a visible gold focus ring (the public page look).
+const fieldSx = {
+  '& .MuiInputBase-root': { bgcolor: 'background.paper' },
+  '& .MuiInputBase-input:not(textarea)': { minHeight: 20, py: '12px' },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: BRAND.gold, borderWidth: 2 },
+} as const
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -79,12 +87,13 @@ export default function LeadCaptureForm() {
   }
 
   if (mutation.isSuccess) {
-    return <EmptyState title="Thanks — we'll be in touch" description="A member of our team will follow up with you shortly." />
+    return <EmptyState title="Thanks, we'll be in touch" description="A member of our team will follow up with you shortly." />
   }
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Input
+        sx={fieldSx}
         label="Name"
         value={values.name}
         onChange={handleChange('name')}
@@ -92,6 +101,7 @@ export default function LeadCaptureForm() {
         helperText={errors.name}
       />
       <Input
+        sx={fieldSx}
         label="Email"
         type="email"
         value={values.email}
@@ -100,14 +110,16 @@ export default function LeadCaptureForm() {
         helperText={errors.email}
       />
       <Input
+        sx={fieldSx}
         label="Club name"
         value={values.clubName}
         onChange={handleChange('clubName')}
         error={Boolean(errors.clubName)}
         helperText={errors.clubName}
       />
-      <Input label="Phone (optional)" value={values.phone} onChange={handleChange('phone')} />
+      <Input sx={fieldSx} label="Phone (optional)" value={values.phone} onChange={handleChange('phone')} />
       <Input
+        sx={fieldSx}
         label="Message (optional)"
         value={values.message}
         onChange={handleChange('message')}
@@ -121,9 +133,9 @@ export default function LeadCaptureForm() {
         </Typography>
       )}
 
-      <Stack direction="row" justifyContent="flex-end">
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Submitting…' : 'Get started'}
+      <Stack direction="row" justifyContent="flex-start">
+        <Button type="submit" disabled={mutation.isPending} sx={{ minHeight: 44, px: 2.75, fontWeight: 600, fontSize: '0.9375rem', textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}>
+          {mutation.isPending ? 'Submitting...' : 'Get started'}
         </Button>
       </Stack>
     </Box>

@@ -15,7 +15,6 @@ export interface SharePdfActionsProps {
   error: string | null
 }
 
-const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
 // How long a Print tab keeps its object URL before it is released.
 const PRINT_URL_LIFETIME_MS = 60_000
 
@@ -48,14 +47,14 @@ export function SharePdfActions({ file, shareTitle, error }: SharePdfActionsProp
     <Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {canShare && (
-          <Button startIcon={<ShareOutlinedIcon />} onClick={() => void share()} sx={TOUCH_TARGET_SX}>
+          <Button size="compact" startIcon={<ShareOutlinedIcon />} onClick={() => void share()}>
             Share
           </Button>
         )}
-        <Button variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
+        <Button size="compact" variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)}>
           Download PDF
         </Button>
-        <Button variant="secondary" startIcon={<PrintOutlinedIcon />} disabled={!file} onClick={print} sx={TOUCH_TARGET_SX}>
+        <Button size="compact" variant="secondary" startIcon={<PrintOutlinedIcon />} disabled={!file} onClick={print}>
           Print
         </Button>
       </Box>

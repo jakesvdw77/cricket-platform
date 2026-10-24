@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { Container, Typography } from '@mui/material'
+import { StatusScreen } from '../../components/StatusScreen'
+import { FullPageLoader } from '../../components/CricketBallLoader'
 import { activateSession } from '../../api/meApi'
 import { useMyPlayers } from '../../api/myPlayersApi'
 import { getRememberedProfileKey, openProfile, profileKey } from '../../utils/activeProfile'
@@ -12,7 +13,7 @@ export default function PostLoginRedirect() {
   const { data, isError, error } = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
 
   // docs/specs/119 3C: a person with no manager or admin access but with players (their own record or linked ones)
-  // goes to My players. Only asked for exactly that caller, so everyone else keeps today's routing untouched.
+  // goes to Player Hub. Only asked for exactly that caller, so everyone else keeps today's routing untouched.
   const profiles = data?.profiles && data.profiles.length > 0 ? data.profiles : undefined
   const noManagerAccess = Boolean(data) && !profiles && !data?.platformAdmin && data?.clubAdminClubIds.length === 0 && data?.personId !== null
   const players = useMyPlayers(noManagerAccess)
@@ -59,23 +60,8 @@ export default function PostLoginRedirect() {
   }, [data, profiles, isError, error, navigate, players.isLoading, players.data])
 
   if (isError && isAxiosError(error) && error.response?.status === 403) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 5, textAlign: 'center' }}>
-        <Typography variant="h6" component="h1" gutterBottom>
-          Account suspended
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          This account has been suspended. Please contact your club.
-        </Typography>
-      </Container>
-    )
+    return <StatusScreen kind="suspended" />
   }
 
-  return (
-    <Container maxWidth="sm" sx={{ py: 5, textAlign: 'center' }}>
-      <Typography variant="body1" color="text.secondary">
-        Signing you in…
-      </Typography>
-    </Container>
-  )
+  return <FullPageLoader variant="backdrop" message="Signing you in" />
 }

@@ -106,7 +106,7 @@ export default function LeagueContactFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={LEAGUE_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={LEAGUE_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create contact'}
           </Button>
 

@@ -96,10 +96,11 @@ export default function ProductFormPage() {
 
           {!readOnly && (
             <>
-              <Button type="submit" form={PRODUCT_FORM_ID} disabled={saveMutation.isPending}>
+              <Button size="compact" type="submit" form={PRODUCT_FORM_ID} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Saving…' : submitLabel}
               </Button>
               <Button
+                size="compact"
                 variant="ghost"
                 disabled={saveMutation.isPending}
                 onClick={() => navigate('/admin/configuration/products')}
@@ -115,19 +116,19 @@ export default function ProductFormPage() {
                 <>
                   <Typography variant="body2">Retire this product?</Typography>
                   <Button
+                    size="compact"
                     variant="danger"
-                    size="sm"
                     disabled={retireMutation.isPending}
                     onClick={() => retireMutation.mutate()}
                   >
                     {retireMutation.isPending ? 'Retiring…' : 'Confirm retire'}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmingRetire(false)}>
+                  <Button size="compact" variant="ghost" onClick={() => setConfirmingRetire(false)}>
                     Don't retire
                   </Button>
                 </>
               ) : (
-                <Button variant="danger" size="sm" onClick={() => setConfirmingRetire(true)}>
+                <Button size="compact" variant="danger" onClick={() => setConfirmingRetire(true)}>
                   Retire
                 </Button>
               )}

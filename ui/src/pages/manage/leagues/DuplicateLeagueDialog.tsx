@@ -173,14 +173,14 @@ export function DuplicateLeagueDialog({ open, clubId, league, seasons, defaultSe
                       Seasons to copy them for
                     </Typography>
                     <Button
+                      size="compact"
                       variant="ghost"
-                      size="sm"
                       disabled={chosen.size === sortedSeasons.length}
                       onClick={() => setChosen(new Set(sortedSeasons.map((season) => season.id)))}
                     >
                       Select all
                     </Button>
-                    <Button variant="ghost" size="sm" disabled={chosen.size === 0} onClick={() => setChosen(new Set())}>
+                    <Button size="compact" variant="ghost" disabled={chosen.size === 0} onClick={() => setChosen(new Set())}>
                       Select none
                     </Button>
                   </Stack>
@@ -253,10 +253,10 @@ export function DuplicateLeagueDialog({ open, clubId, league, seasons, defaultSe
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button variant="ghost" onClick={onClose} disabled={pending}>
+          <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!canSubmit}>
+          <Button size="compact" type="submit" disabled={!canSubmit}>
             {pending ? 'Duplicating…' : 'Duplicate league'}
           </Button>
         </DialogActions>

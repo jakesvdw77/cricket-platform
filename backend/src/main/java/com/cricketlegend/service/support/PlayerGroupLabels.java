@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The section and team labels shown for a player outside the manager screens (docs/specs/119): the matches step and
- * My players. One place, a fixed number of queries however many players are asked about.
+ * the Player Hub. One place, a fixed number of queries however many players are asked about.
  */
 @Component
 public class PlayerGroupLabels {

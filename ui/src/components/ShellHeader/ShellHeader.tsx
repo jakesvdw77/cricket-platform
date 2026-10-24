@@ -34,7 +34,7 @@ export interface ShellHeaderProps {
   // icon. Undefined renders no bell, so only the shell that passes it (the manager shell) has one.
   // For now it opens the sending page; receiving notifications is a later feature.
   notificationsTo?: string
-  // Passed to AvatarMenu: shows a "My players" item when set.
+  // Passed to AvatarMenu: shows a "Player Hub" item when set.
   myPlayersTo?: string
   profileItems?: ProfileSwitchItem[]
 }

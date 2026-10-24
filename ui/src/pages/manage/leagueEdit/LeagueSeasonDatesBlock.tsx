@@ -142,7 +142,7 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
           InputLabelProps={{ shrink: true }}
           sx={{ maxWidth: { sm: 220 } }}
         />
-        <Button type="submit" disabled={!loaded || save.isPending} sx={{ minHeight: 44 }}>
+        <Button size="compact" type="submit" disabled={!loaded || save.isPending} >
           {save.isPending ? 'Saving…' : 'Save season dates'}
         </Button>
       </Stack>

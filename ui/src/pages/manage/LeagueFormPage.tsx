@@ -8,7 +8,7 @@ import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { LeagueAgeReferenceLine } from '../../components/LeagueAgeReferenceLine'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
@@ -342,17 +342,18 @@ export default function LeagueFormPage() {
               )}
 
               {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
-              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined">
+              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" sx={compactButtonSx}>
                 Cancel
               </MuiButton>
 
-              <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
+              <Button size="compact" type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
               </Button>
 
               {/* docs/specs/096: Duplicate league sits beside the status toggle, edit mode only. */}
               {isEdit && league && (
                 <Button
+                  size="compact"
                   variant="secondary"
                   startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
                   onClick={() => setDuplicateOpen(true)}

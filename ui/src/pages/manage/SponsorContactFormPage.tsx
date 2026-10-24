@@ -105,7 +105,7 @@ export default function SponsorContactFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={SPONSOR_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={SPONSOR_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create contact'}
           </Button>
 

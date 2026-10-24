@@ -436,7 +436,7 @@ export default function MatchList({
           />
         }
         action={
-          <Button onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
+          <Button size="compact" onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
         }
       />
 
@@ -570,15 +570,15 @@ export default function MatchList({
 
       {hasMatches && data.totalPages > 1 && (
         <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-          <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((prev) => prev - 1)}>
+          <Button size="compact" variant="secondary" disabled={page === 0} onClick={() => setPage((prev) => prev - 1)}>
             Previous
           </Button>
           <Typography variant="body2" color="text.secondary">
             Page {data.number + 1} of {data.totalPages}
           </Typography>
           <Button
+            size="compact"
             variant="secondary"
-            size="sm"
             disabled={page + 1 >= data.totalPages}
             onClick={() => setPage((prev) => prev + 1)}
           >

@@ -108,21 +108,23 @@ export function WhatsAppShareScreen(props: ShareScreenProps) {
                   <>
                     {copyImage.canCopyImage && (
                       <Button
+                        size="compact"
                         variant="secondary"
                         startIcon={<ContentCopyOutlinedIcon />}
                         disabled={!image}
                         onClick={() => void copyImage.copyImage(image)}
-                        sx={{ minHeight: { xs: 44, sm: 'auto' } }}
+                        
                       >
                         Copy image
                       </Button>
                     )}
                     <Button
+                      size="compact"
                       variant="secondary"
                       startIcon={<FileDownloadOutlinedIcon />}
                       disabled={!image}
                       onClick={() => image && downloadFile(image)}
-                      sx={{ minHeight: { xs: 44, sm: 'auto' } }}
+                      
                     >
                       Download image
                     </Button>

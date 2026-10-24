@@ -16,8 +16,8 @@ vi.mock('../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.fn()
 // with more than one card, Sign out always; a phone folds the three into the Account menu.
 const http = api as unknown as ApiMock
 const access = (overrides: Partial<MeAccess> = {}): MeAccess => ({ personId: 'p1', personStatus: 'ACTIVE', platformAdmin: false, clubAdminClubIds: [], ...overrides })
-const players: Profile = { kind: 'MY_PLAYERS', title: 'My players', landing: '/account', pendingCount: 0 }
-const riverside: Profile = { kind: 'MANAGER', title: 'Manager of Riverside CC', clubId: 'c1', clubName: 'Riverside CC', clubSlug: 'riverside', landing: '/manage', pendingCount: 0 }
+const players: Profile = { kind: 'MY_PLAYERS', title: 'Player Hub', landing: '/account', pendingCount: 0 }
+const riverside: Profile = { kind: 'MANAGER', title: 'Club manager', clubId: 'c1', clubName: 'Riverside CC', clubSlug: 'riverside', landing: '/manage', pendingCount: 0 }
 
 function renderShell(me: MeAccess, profiles: Profile[] = [players]) {
   routeApi(http, { 'POST /me/activate': me, 'GET /me/profiles': profiles })
@@ -57,7 +57,7 @@ describe('AccountShell on a desktop', () => {
   it('shows Switch profile only with more than one profile card', async () => {
     const several = renderShell(access(), [players, riverside])
     await userEvent.click(await screen.findByRole('button', { name: 'Switch profile' }))
-    expect(await screen.findByRole('menuitem', { name: /Manager of Riverside CC/ })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: /Club manager.*Riverside CC/ })).toBeInTheDocument()
     several.unmount()
 
     renderShell(access(), [players])

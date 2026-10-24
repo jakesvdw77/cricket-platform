@@ -29,8 +29,6 @@ export interface WhatsAppSendActionsProps {
   extraStatus?: string | null
 }
 
-const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
-
 function canNativeShare(file?: File): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false
   // Text only: the native share sheet of a desktop browser drops the text and keeps just a link (seen sharing a poll from a Mac
@@ -86,26 +84,26 @@ export function WhatsAppSendActions({
     <Stack spacing={1}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {fits && (
-          <Button startIcon={<WhatsAppIcon />} onClick={handleSend} disabled={disabled} sx={TOUCH_TARGET_SX}>
+          <Button size="compact" startIcon={<WhatsAppIcon />} onClick={handleSend} disabled={disabled}>
             Send in WhatsApp
           </Button>
         )}
         {fits && desktop && (
-          <Button variant="secondary" startIcon={<WhatsAppIcon />} onClick={handleSendWeb} disabled={disabled} sx={TOUCH_TARGET_SX}>
+          <Button size="compact" variant="secondary" startIcon={<WhatsAppIcon />} onClick={handleSendWeb} disabled={disabled}>
             WhatsApp Web
           </Button>
         )}
         {showShare && (
-          <Button variant="secondary" startIcon={<ShareOutlinedIcon />} onClick={handleShare} disabled={disabled} sx={TOUCH_TARGET_SX}>
+          <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon />} onClick={handleShare} disabled={disabled}>
             Share
           </Button>
         )}
         <Button
+          size="compact"
           variant={fits ? 'secondary' : 'primary'}
           startIcon={<ContentCopyOutlinedIcon />}
           onClick={handleCopy}
           disabled={disabled}
-          sx={TOUCH_TARGET_SX}
         >
           {copiedKey === copyKey ? 'Copied' : copyLabel}
         </Button>

@@ -252,7 +252,7 @@ export default function PlayerList() {
         title="Players"
         // docs/specs/088: the scope of the list under the title when a section is set, as on Matches and Availability.
         subtitle={scope ? `Showing: ${scope}` : undefined}
-        action={<Button onClick={() => navigate('/manage/players/new')}>Add Player</Button>}
+        action={<Button size="compact" onClick={() => navigate('/manage/players/new')}>Add Player</Button>}
       />
 
       <LinkRequestsWaitingCard waiting={linkRequestsWaiting} />

@@ -61,7 +61,7 @@ export function PollMatchesDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="secondary" onClick={onClose}>
+        <Button size="compact" variant="secondary" onClick={onClose}>
           Done
         </Button>
       </DialogActions>

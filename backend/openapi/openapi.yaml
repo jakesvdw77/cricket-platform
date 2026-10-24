@@ -16707,7 +16707,7 @@ components:
             type: string
     MyPlayerSummaryDto:
       type: object
-      description: "One chip of the My players selector. key is the person link id or self:<profileId>."
+      description: "One chip of the Player Hub selector. key is the person link id or self:<profileId>."
       properties:
         key:
           type: string

@@ -81,10 +81,10 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button variant="secondary" onClick={onClose} disabled={mutation.isPending} sx={{ minHeight: 44 }}>
+        <Button size="compact" variant="secondary" onClick={onClose} disabled={mutation.isPending} >
           Cancel
         </Button>
-        <Button onClick={() => mutation.mutate()} disabled={!value || outside || mutation.isPending} sx={{ minHeight: 44 }}>
+        <Button size="compact" onClick={() => mutation.mutate()} disabled={!value || outside || mutation.isPending} >
           {mutation.isPending ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>

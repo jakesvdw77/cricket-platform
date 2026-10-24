@@ -113,15 +113,15 @@ export function FacebookShareScreen(props: ShareScreenProps) {
         actions={
           <Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Button startIcon={<ContentCopyOutlinedIcon />} onClick={() => void copy(text, 'message')} sx={{ minHeight: { xs: 44, sm: 'auto' } }}>
+              <Button size="compact" startIcon={<ContentCopyOutlinedIcon />} onClick={() => void copy(text, 'message')} >
                 {copiedKey === 'message' ? 'Copied' : 'Copy text'}
               </Button>
               {copyImage.canCopyImage && (
-                <Button variant="secondary" startIcon={<ContentCopyOutlinedIcon />} disabled={!image} onClick={() => void copyImage.copyImage(image)} sx={{ minHeight: { xs: 44, sm: 'auto' } }}>
+                <Button size="compact" variant="secondary" startIcon={<ContentCopyOutlinedIcon />} disabled={!image} onClick={() => void copyImage.copyImage(image)} >
                   Copy image
                 </Button>
               )}
-              <Button variant="secondary" startIcon={<FileDownloadOutlinedIcon />} disabled={!image} onClick={() => image && downloadFile(image)} sx={{ minHeight: { xs: 44, sm: 'auto' } }}>
+              <Button size="compact" variant="secondary" startIcon={<FileDownloadOutlinedIcon />} disabled={!image} onClick={() => image && downloadFile(image)} >
                 Download image
               </Button>
             </Box>

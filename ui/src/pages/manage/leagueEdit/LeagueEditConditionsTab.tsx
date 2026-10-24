@@ -64,7 +64,7 @@ export function LeagueEditConditionsTab({
               onUpload={onUpload}
               onUploaded={onUploaded}
             />
-            <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={onShare}>
+            <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={onShare}>
               Share
             </Button>
           </Box>
@@ -80,7 +80,7 @@ export function LeagueEditConditionsTab({
             {errorDetail(error, 'Something went wrong saving Playing Conditions. Please try again.')}
           </Typography>
         )}
-        <Button type="submit" form={PLAYING_CONDITIONS_FORM_ID} disabled={pending}>
+        <Button size="compact" type="submit" form={PLAYING_CONDITIONS_FORM_ID} disabled={pending}>
           {pending ? 'Saving…' : 'Save playing conditions'}
         </Button>
       </Stack>

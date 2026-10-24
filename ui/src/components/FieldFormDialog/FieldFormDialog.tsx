@@ -80,10 +80,10 @@ function DialogBody({ clubId, initialName, phone, onClose, onCreated }: Omit<Fie
 
   const actions = (
     <>
-      <Button variant="ghost" onClick={onClose} disabled={save.isPending} sx={phone ? { flex: 1 } : undefined}>
+      <Button size="compact" variant="ghost" onClick={onClose} disabled={save.isPending} sx={phone ? { flex: 1 } : undefined}>
         Cancel
       </Button>
-      <Button type="submit" form={FIELD_DIALOG_FORM_ID} disabled={save.isPending} sx={phone ? { flex: 1 } : undefined}>
+      <Button size="compact" type="submit" form={FIELD_DIALOG_FORM_ID} disabled={save.isPending} sx={phone ? { flex: 1 } : undefined}>
         {save.isPending ? 'Adding…' : 'Add and select'}
       </Button>
     </>

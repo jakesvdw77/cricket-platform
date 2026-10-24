@@ -166,7 +166,7 @@ export function SectionTemplatePicker({ templates, onChoose, onStartBlank, pendi
               <MiniTreeBranch nodes={template.roots} depth={0} />
             </Box>
 
-            <Button variant="secondary" size="sm" onClick={() => onChoose(template)} disabled={isBuilding}>
+            <Button size="compact" variant="secondary" onClick={() => onChoose(template)} disabled={isBuilding}>
               {pendingTemplateId === template.id ? 'Building…' : 'Use this template'}
             </Button>
           </Box>
@@ -174,7 +174,7 @@ export function SectionTemplatePicker({ templates, onChoose, onStartBlank, pendi
       </Box>
 
       <Box sx={{ textAlign: 'center', mt: 3 }}>
-        <Button variant="ghost" size="sm" onClick={onStartBlank} disabled={isBuilding}>
+        <Button size="compact" variant="ghost" onClick={onStartBlank} disabled={isBuilding}>
           Or start blank and build it yourself →
         </Button>
       </Box>

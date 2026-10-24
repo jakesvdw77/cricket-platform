@@ -9,7 +9,7 @@ import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
 import type { TeamFormValues } from '../../components/TeamForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
@@ -633,11 +633,11 @@ export default function TeamFormPage() {
                 )}
 
                 {/* docs/specs/092: Cancel goes back to the list without saving. */}
-                <MuiButton component={RouterLink} to={backTo} variant="outlined">
+                <MuiButton component={RouterLink} to={backTo} variant="outlined" sx={compactButtonSx}>
                   Cancel
                 </MuiButton>
 
-                <Button type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
+                <Button size="compact" type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create team'}
                 </Button>
               </>
@@ -737,10 +737,10 @@ export default function TeamFormPage() {
             )}
 
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
-              <Button variant="secondary" size="sm" onClick={() => setContactLinkOpen(true)}>
+              <Button size="compact" variant="secondary" onClick={() => setContactLinkOpen(true)}>
                 Link existing
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setContactCreateOpen(true)}>
+              <Button size="compact" variant="ghost" onClick={() => setContactCreateOpen(true)}>
                 + New contact
               </Button>
             </Stack>
@@ -782,10 +782,10 @@ export default function TeamFormPage() {
             )}
 
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5, mb: 3 }}>
-              <Button variant="secondary" size="sm" onClick={() => setSponsorLinkOpen(true)}>
+              <Button size="compact" variant="secondary" onClick={() => setSponsorLinkOpen(true)}>
                 Link existing
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSponsorCreateOpen(true)}>
+              <Button size="compact" variant="ghost" onClick={() => setSponsorCreateOpen(true)}>
                 + New sponsor
               </Button>
             </Stack>
@@ -891,8 +891,8 @@ export default function TeamFormPage() {
                 )}
 
                 <Button
+                  size="compact"
                   variant="secondary"
-                  size="sm"
                   onClick={() => setSquadLinkOpen(true)}
                   disabled={!selectedSquadSeasonId}
                 >
