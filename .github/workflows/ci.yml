@@ -18,6 +18,10 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+      # The runner's Docker now refuses API clients older than 1.40, and the Testcontainers client defaults to 1.32
+      # ("client version 1.32 is too old"), so every database test failed to start. Pin a current API version.
+      - name: Configure the Docker API version for Testcontainers
+        run: echo "api.version=1.44" > ~/.docker-java.properties
       - name: Build and test
         run: mvn -B verify
 
