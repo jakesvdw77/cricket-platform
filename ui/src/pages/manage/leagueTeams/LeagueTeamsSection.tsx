@@ -90,11 +90,11 @@ export function LeagueTeamsSection({ clubId, leagueId, seasonId, contextLabel }:
       caption="Opponents you pick on matches, for this season only"
       actions={
         <>
-          <Button size="sm" startIcon={<AddIcon fontSize="small" />} onClick={openAdd} sx={{ flex: 'none' }}>
+          <Button size="compact" startIcon={<AddIcon fontSize="small" />} onClick={openAdd} sx={{ flex: 'none' }}>
             Add league team
           </Button>
           <Button
-            size="sm"
+            size="compact"
             variant="secondary"
             startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
             aria-label="Copy teams from another league or season"

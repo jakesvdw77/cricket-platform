@@ -9,7 +9,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import { Link as RouterLink } from 'react-router-dom'
 import type { To } from 'react-router-dom'
 import { Card } from '../Card'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 import { KeyFigureTile } from '../KeyFigureTile'
 import { badgeSx } from '../RecordCard'
 import type { ClubContact } from '../../api/clubContactApi'
@@ -201,10 +201,10 @@ export function SectionInfoPanel({
         </Box>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
           {/* Raw MuiButton: the shared Button is not polymorphic, so component+to would fail tsc -b. */}
-          <MuiButton component={RouterLink} to={editTo} variant="contained" color="primary" size="small">
+          <MuiButton component={RouterLink} to={editTo} variant="contained" color="primary" size="small" sx={compactButtonSx}>
             Edit
           </MuiButton>
-          <MuiButton component={RouterLink} to={manageTeamsTo} variant="outlined" color="primary" size="small">
+          <MuiButton component={RouterLink} to={manageTeamsTo} variant="outlined" color="primary" size="small" sx={compactButtonSx}>
             Manage teams
           </MuiButton>
         </Box>
@@ -219,7 +219,7 @@ export function SectionInfoPanel({
             We couldn&apos;t load this section&apos;s details.
           </Typography>
           {onRetry && (
-            <Button variant="secondary" size="sm" onClick={onRetry}>
+            <Button size="compact" variant="secondary" onClick={onRetry}>
               Retry
             </Button>
           )}

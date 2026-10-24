@@ -229,7 +229,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
           </Typography>
           <ImportNotesList notes={resolved.notes} />
           <Box sx={{ display: 'flex' }}>
-            <Button onClick={onReview} sx={{ minHeight: 44, flex: { xs: 1, md: 'none' } }}>
+            <Button size="compact" onClick={onReview} sx={{ flex: { xs: 1, md: 'none' } }}>
               Review in the result wizard
             </Button>
           </Box>

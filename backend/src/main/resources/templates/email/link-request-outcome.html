@@ -11,7 +11,7 @@
         <p style="margin:0 0 20px;">
             Good news: <strong th:text="${clubName}">Riverside CC</strong> has linked you to
             <strong th:text="${playerName}">Sam Smith</strong>. You can now see and manage this player
-            under My players.
+            in the Player Hub.
         </p>
         <p th:if="${note != null}" style="margin:0 0 20px; color:#52655c;">
             Note from the club: <span th:text="${note}">Welcome aboard.</span>
@@ -22,7 +22,7 @@
                     <a th:href="${accountUrl}" href="#"
                        style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:15px;
                               font-weight:600; text-decoration:none;">
-                        Open My players
+                        Open Player Hub
                     </a>
                 </td>
             </tr>

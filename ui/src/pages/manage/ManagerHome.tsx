@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { Box } from '@mui/material'
 import { Navigate, Outlet } from 'react-router-dom'
 import { activateSession } from '../../api/meApi'
 import { useMyPlayers } from '../../api/myPlayersApi'
 import { getManagedClubProfile } from '../../api/clubApi'
 import { ManagerShell } from '../../components/ManagerShell'
-import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
+import { StatusScreen } from '../../components/StatusScreen'
+import { FullPageLoader } from '../../components/CricketBallLoader'
+import { signOut } from '../../auth/signOut'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { forgetProfileChoices, resolveManagerClubId } from '../../utils/activeProfile'
@@ -44,7 +45,7 @@ export default function ManagerHome() {
   // logout) lands here unauthenticated and goes to the landing page to log in again, rather than
   // showing "Not authorized" to someone who is simply not logged in.
   if (!keycloakSettled) {
-    return null
+    return <FullPageLoader label="Loading" />
   }
 
   if (!keycloak.authenticated) {
@@ -53,14 +54,12 @@ export default function ManagerHome() {
 
   if (isError || (data && !data.platformAdmin && data.clubAdminClubIds.length === 0)) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', px: 2, py: 5 }}>
-        <EmptyState title="Not authorized" description="You are not recognized as a club manager." />
-      </Box>
+      <StatusScreen kind="not-authorised" message="You do not have access to the club manager area." secondaryAction={{ label: 'Sign out', onClick: signOut }} />
     )
   }
 
   if (!data) {
-    return null
+    return <FullPageLoader label="Loading your club" />
   }
 
   return (
@@ -70,7 +69,7 @@ export default function ManagerHome() {
       user={{ name: keycloak.tokenParsed?.name ?? '', email: keycloak.tokenParsed?.email }}
       onLogout={() => {
         forgetProfileChoices()
-        keycloak.logout()
+        signOut()
       }}
       profileTo="/manage/profile"
       homeTo="/manage"

@@ -94,8 +94,9 @@ export function GuessChip({ importedName, level, matchedName, reason, onConfirm,
         <Box sx={{ display: 'flex', gap: 1 }}>
           {onConfirm && (
             <Button
+              size="compact"
               fullWidth
-              sx={{ minHeight: 44 }}
+              
               onClick={() => {
                 close()
                 onConfirm()
@@ -105,9 +106,10 @@ export function GuessChip({ importedName, level, matchedName, reason, onConfirm,
             </Button>
           )}
           <Button
+            size="compact"
             variant="secondary"
             fullWidth
-            sx={{ minHeight: 44 }}
+            
             onClick={() => {
               close()
               onChange()

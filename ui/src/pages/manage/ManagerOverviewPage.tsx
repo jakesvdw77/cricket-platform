@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
+import { compactButtonSx } from '../../components/Button'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, Button, Card as MuiCard, Chip, CircularProgress, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Card as MuiCard, Chip, Stack, Typography } from '@mui/material'
+import { FullPageLoader } from '../../components/CricketBallLoader'
 import { BrandIcon } from '../../components/BrandIcon'
 import type { BrandIconName } from '../../components/BrandIcon'
 import { QuickActions } from '../../components/QuickActions'
@@ -91,7 +93,7 @@ function OverviewCard({
         <Typography variant="subtitle2" component="h2" fontWeight={700}>
           {title}
         </Typography>
-        <Button component={RouterLink} to={linkTo} size="small" sx={{ ml: 'auto', fontWeight: 600 }}>
+        <Button component={RouterLink} to={linkTo} size="small" sx={{ ...compactButtonSx, ml: 'auto', fontWeight: 600 }}>
           {linkLabel}
         </Button>
       </Stack>
@@ -246,9 +248,7 @@ export default function ManagerOverviewPage() {
   }
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-        <CircularProgress aria-label="Loading overview" />
-      </Box>
+      <FullPageLoader label="Loading overview" />
     )
   }
   if (isError || !data) {
@@ -256,7 +256,7 @@ export default function ManagerOverviewPage() {
       <Alert
         severity="error"
         action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
+          <Button color="inherit" size="small" onClick={() => refetch()} sx={compactButtonSx}>
             Try again
           </Button>
         }
@@ -278,7 +278,7 @@ export default function ManagerOverviewPage() {
   const actionButton = (label: string) => {
     const action = actions.find((a) => a.label === label)
     return action ? (
-      <Button component={RouterLink} to={action.to} variant="outlined" size="small">
+      <Button component={RouterLink} to={action.to} variant="outlined" size="small" sx={compactButtonSx}>
         {action.label}
       </Button>
     ) : undefined

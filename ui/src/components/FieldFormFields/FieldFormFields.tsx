@@ -73,7 +73,7 @@ function ExistingFieldRow({ field, onUse }: { field: PlayingArea; onUse?: (field
         </Typography>
       </Box>
       {onUse && (
-        <Button variant="secondary" size="sm" onClick={() => onUse(field)}>
+        <Button size="compact" variant="secondary" onClick={() => onUse(field)}>
           Use this field
         </Button>
       )}
@@ -141,7 +141,7 @@ function SimilarFieldsPanel({
         <ExistingFieldRow key={field.id} field={field} onUse={onUseExisting} />
       ))}
       <Box>
-        <Button variant="ghost" size="sm" onClick={() => setDismissedKey(key)}>
+        <Button size="compact" variant="ghost" onClick={() => setDismissedKey(key)}>
           No, this is a different field
         </Button>
       </Box>

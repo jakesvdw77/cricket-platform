@@ -155,11 +155,11 @@ function SelectDocument({ label, accept, maxBytes, helperText, file, onFileChang
           </Typography>
         </Box>
         {file ? (
-          <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onFileChange(null)} sx={{ minHeight: 44, minWidth: 44, color: 'info.main' }}>
+          <Button size="compact" variant="ghost" disabled={disabled} onClick={() => onFileChange(null)} sx={{ color: 'info.main' }}>
             Remove
           </Button>
         ) : (
-          <Button variant="secondary" size="sm" disabled={disabled} onClick={() => inputRef.current?.click()} sx={{ minHeight: 44 }}>
+          <Button size="compact" variant="secondary" disabled={disabled} onClick={() => inputRef.current?.click()} >
             Choose file
           </Button>
         )}
@@ -227,8 +227,8 @@ function UploadDocument({ label, value, onUpload, onUploaded, displayName, layou
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           {value && (
             <Button
+              size="compact"
               variant="secondary"
-              size="sm"
               startIcon={<DescriptionOutlinedIcon fontSize="small" />}
               onClick={() => window.open(value.documentUrl, '_blank', 'noopener')}
             >
@@ -236,8 +236,8 @@ function UploadDocument({ label, value, onUpload, onUploaded, displayName, layou
             </Button>
           )}
           <Button
+            size="compact"
             variant="secondary"
-            size="sm"
             startIcon={uploading ? <CircularProgress size={16} aria-label="Uploading" /> : <UploadFileOutlinedIcon fontSize="small" />}
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
@@ -307,15 +307,15 @@ function UploadDocument({ label, value, onUpload, onUploaded, displayName, layou
 
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
           <Button
+            size="compact"
             variant={value ? 'ghost' : 'primary'}
-            size="sm"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
           >
             {uploading ? 'Uploading…' : value ? 'Replace' : 'Upload'}
           </Button>
           {value && (
-            <Button variant="secondary" size="sm" onClick={() => window.open(value.documentUrl, '_blank')}>
+            <Button size="compact" variant="secondary" onClick={() => window.open(value.documentUrl, '_blank')}>
               View
             </Button>
           )}

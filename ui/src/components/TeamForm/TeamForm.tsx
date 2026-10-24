@@ -170,7 +170,7 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, hidde
           )}
 
           {logoUrl && (
-            <Button variant="ghost" size="sm" sx={{ mt: 1.5 }} onClick={() => setLogoUrl(null)}>
+            <Button size="compact" variant="ghost" sx={{ mt: 1.5 }} onClick={() => setLogoUrl(null)}>
               Reset to club logo
             </Button>
           )}

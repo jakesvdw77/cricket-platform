@@ -176,7 +176,7 @@ export default function AvailabilityHubLayout() {
         }
         action={
           view === 'polls' ? (
-            <Button onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Button size="compact" onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               New poll
             </Button>
           ) : view === 'players' && hub.jumpToToday ? (
@@ -190,7 +190,7 @@ export default function AvailabilityHubLayout() {
             // views instead of jumping to the right edge. visibility: hidden keeps it out of the tab order
             // and the accessibility tree, so the button is still effectively absent on Players and Coverage.
             <Box aria-hidden sx={{ visibility: 'hidden', display: { xs: 'none', sm: 'block' } }}>
-              <Button tabIndex={-1} disabled>
+              <Button size="compact" tabIndex={-1} disabled>
                 New poll
               </Button>
             </Box>

@@ -57,7 +57,7 @@ function Row({ request, onCancel, cancelling, dark }: { request: MyLinkRequest; 
   )
 }
 
-// docs/specs/119 Part 3: the requester's own status list (the full My players page is slice 3C). The in-app status is the
+// docs/specs/119 Part 3: the requester's own status list (the full Player Hub page is slice 3C). The in-app status is the
 // source of truth; the email is an addition.
 export function MyLinkRequests({ statuses, dark }: { statuses?: MyLinkRequestStatus[]; dark?: boolean } = {}) {
   const requests = useMyLinkRequests()

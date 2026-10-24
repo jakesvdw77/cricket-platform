@@ -421,7 +421,7 @@ function BattingMatrix({
                     )}
                     {canAnnounce && (
                       <Button
-                        size="sm"
+                        size="compact"
                         aria-label={`Announce team, ${columnLabel(column)}`}
                         disabled={announcingSideId === side.sideId}
                         onClick={() => onAnnounce(match, side)}

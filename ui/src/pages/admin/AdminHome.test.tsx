@@ -69,7 +69,7 @@ describe('AdminHome', () => {
     renderAdminHome()
 
     expect(await screen.findByText('Landing page')).toBeInTheDocument()
-    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not out, but not in either')).not.toBeInTheDocument()
   })
 
   it('renders nothing (no Not authorized, no redirect) while Keycloak init is pending', async () => {
@@ -79,7 +79,7 @@ describe('AdminHome', () => {
     renderAdminHome()
     await new Promise((resolve) => setTimeout(resolve, 20))
 
-    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not out, but not in either')).not.toBeInTheDocument()
     expect(screen.queryByText('Landing page')).not.toBeInTheDocument()
   })
 
@@ -103,7 +103,7 @@ describe('AdminHome', () => {
 
     renderAdminHome()
 
-    expect(await screen.findByText('Not authorized')).toBeInTheDocument()
+    expect(await screen.findByText('Not out, but not in either')).toBeInTheDocument()
     expect(screen.queryByText('Club Onboarding')).not.toBeInTheDocument()
   })
 

@@ -122,10 +122,10 @@ export function PlayerAgentActions({ clubId, playerId, playerName }: PlayerAgent
           {failed && <Alert severity="error">We could not make that change. Please try again.</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="ghost" onClick={close} disabled={busy}>
+          <Button size="compact" variant="ghost" onClick={close} disabled={busy}>
             Cancel
           </Button>
-          <Button variant={pending?.kind === 'remove' ? 'danger' : 'primary'} onClick={confirm} disabled={busy}>
+          <Button size="compact" variant={pending?.kind === 'remove' ? 'danger' : 'primary'} onClick={confirm} disabled={busy}>
             {busy ? 'Saving…' : pending?.kind === 'remove' ? 'Remove link' : pending?.kind === 'make-main' ? 'Make main agent' : 'Send invitation'}
           </Button>
         </DialogActions>

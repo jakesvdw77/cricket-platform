@@ -19,7 +19,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { BRAND, GOLD_DISC_GRADIENT } from '../../brandTokens'
 import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 
 // The first three are the original general-purpose tones. The poll tones are for the availability
 // poll screens (PollCard and both Responses page headers) so one poll reads the same everywhere:
@@ -672,9 +672,9 @@ export function RecordCard({
         <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
           {allSecondaryActions.map((action, index) => (
             <Button
+              size="compact"
               key={index}
               variant="ghost"
-              size="sm"
               disabled={action.pending}
               onClick={action.onClick}
               startIcon={action.icon}
@@ -691,6 +691,7 @@ export function RecordCard({
                 color="inherit"
                 size="small"
                 startIcon={<EditOutlinedIcon fontSize="small" />}
+                sx={compactButtonSx}
               >
                 {editLabel}
               </MuiButton>
@@ -703,11 +704,12 @@ export function RecordCard({
               color="inherit"
               size="small"
               startIcon={<EditOutlinedIcon fontSize="small" />}
+              sx={compactButtonSx}
             >
               {editLabel}
             </MuiButton>
           ) : (
-            <Button variant="ghost" size="sm" onClick={onEdit} startIcon={<EditOutlinedIcon fontSize="small" />}>
+            <Button size="compact" variant="ghost" onClick={onEdit} startIcon={<EditOutlinedIcon fontSize="small" />}>
               {editLabel}
             </Button>
           )}

@@ -264,6 +264,7 @@ export function TeamSheetCommunicationDialog({
                   minRows={10}
                 />
                 <Button
+                  size="compact"
                   variant="ghost"
                   startIcon={<RefreshOutlinedIcon />}
                   onClick={handleRegenerateWhatsApp}
@@ -292,11 +293,11 @@ export function TeamSheetCommunicationDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
         {selectedOption === 'pdf' ? (
-          <Button onClick={handlePrint} disabled={printDisabled}>
+          <Button size="compact" onClick={handlePrint} disabled={printDisabled}>
             {isGenerating ? 'Generating…' : selectedScope ? scopeLabel(selectedScope) : 'Print'}
           </Button>
         ) : null}

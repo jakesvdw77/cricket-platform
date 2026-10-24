@@ -7,7 +7,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { badgeSx } from '../../components/RecordCard'
@@ -149,8 +149,8 @@ export default function GroupPollResponsesPage() {
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <span title={closed ? SHARE_CLOSED_REASON : undefined}>
             <Button
+              size="compact"
               variant="secondary"
-              size="sm"
               startIcon={<ShareOutlinedIcon fontSize="small" />}
               disabled={closed}
               aria-label={closed ? SHARE_CLOSED_REASON : undefined}
@@ -163,8 +163,8 @@ export default function GroupPollResponsesPage() {
           {closed ? (
             <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
               <Button
+                size="compact"
                 variant="secondary"
-                size="sm"
                 startIcon={<LockOpenOutlinedIcon fontSize="small" />}
                 disabled={reopenBlocked}
                 onClick={() => setCloseTimeOpen(true)}
@@ -174,8 +174,8 @@ export default function GroupPollResponsesPage() {
             </span>
           ) : (
             <Button
+              size="compact"
               variant="secondary"
-              size="sm"
               startIcon={<LockOutlinedIcon fontSize="small" />}
               disabled={pollClose.closing}
               onClick={pollClose.requestClose}
@@ -190,6 +190,7 @@ export default function GroupPollResponsesPage() {
             startIcon={<DeleteOutlineIcon fontSize="small" />}
             disabled={pollDelete.deleting}
             onClick={pollDelete.requestDelete}
+            sx={compactButtonSx}
           >
             Delete poll
           </MuiButton>

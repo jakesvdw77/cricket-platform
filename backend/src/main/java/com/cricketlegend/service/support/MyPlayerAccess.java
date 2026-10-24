@@ -58,7 +58,7 @@ public class MyPlayerAccess {
             return List.of();
         }
         if (caller.getStatus() == PersonStatus.SUSPENDED) {
-            log.warn("Suspended person refused on my players: personId={}", caller.getId());
+            log.warn("Suspended person refused on the player hub: personId={}", caller.getId());
             throw new AccessDeniedException("This account is disabled.");
         }
         List<PersonLink> links = personLinkRepository.findByAccountPersonIdAndStatus(caller.getId(), PersonLinkStatus.ACTIVE);

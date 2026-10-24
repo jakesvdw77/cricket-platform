@@ -54,7 +54,7 @@ export default function MyPlayersPage() {
     )
   } else {
     body = (
-      <Box role="list" aria-label="My players" sx={grid}>
+      <Box role="list" aria-label="Player Hub" sx={grid}>
         {list.map((p) => (
           <Box key={p.key} role="listitem" sx={{ display: 'flex' }}>
             <ButtonBase
@@ -101,7 +101,7 @@ export default function MyPlayersPage() {
 
   return (
     <HubFrame
-      title="My Players"
+      title="Player Hub"
       panel="clear"
       maxWidth={1320}
       testId="my-players-page"

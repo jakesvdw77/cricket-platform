@@ -8,11 +8,12 @@ import { ProfileSwitcher } from '../../components/ProfileSwitcher'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
+import { signOut } from '../../auth/signOut'
 import { creamAlpha, DARK_MENU_BG } from '../../brandTokens'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
-// and My players. The cricket backdrop, a slim header with Sign out and one white card column.
+// and Player Hub. The cricket backdrop, a slim header with Sign out and one white card column.
 export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page', bare = false }: { children: ReactNode; maxWidth?: number; testId?: string; bare?: boolean }) {
   const navigate = useNavigate()
   const backTo = useClubHome()
@@ -68,7 +69,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
                 onClick={() => {
                   setAnchor(null)
                   forgetProfileChoices()
-                  keycloak.logout()
+                  signOut()
                 }}
               >
                 Sign out
@@ -89,7 +90,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
           )}
           <Button variant="outlined" size="small" sx={outline} onClick={() => {
             forgetProfileChoices()
-            keycloak.logout()
+            signOut()
           }}>
             Sign out
           </Button>

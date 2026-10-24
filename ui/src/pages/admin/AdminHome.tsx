@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { Box } from '@mui/material'
 import { Navigate, Outlet } from 'react-router-dom'
 import { getAdminIdentity } from '../../api/adminApi'
 import { AppShell } from '../../components/AppShell'
-import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
+import { StatusScreen } from '../../components/StatusScreen'
+import { FullPageLoader } from '../../components/CricketBallLoader'
+import { signOut } from '../../auth/signOut'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 
@@ -27,7 +28,7 @@ export default function AdminHome() {
 
   // Same session guard as ManagerHome: unauthenticated after init means expired or logged out.
   if (!keycloakSettled) {
-    return null
+    return <FullPageLoader label="Loading" />
   }
 
   if (!keycloak.authenticated) {
@@ -36,14 +37,12 @@ export default function AdminHome() {
 
   if (isError) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', px: 2, py: 5 }}>
-        <EmptyState title="Not authorized" description="You are not recognized as a platform admin." />
-      </Box>
+      <StatusScreen kind="not-authorised" message="You do not have access to the platform admin area." secondaryAction={{ label: 'Sign out', onClick: signOut }} />
     )
   }
 
   if (!data) {
-    return null
+    return <FullPageLoader label="Loading" />
   }
 
   return (
@@ -53,7 +52,7 @@ export default function AdminHome() {
       user={{ name: data.username, email: data.email }}
       onLogout={() => {
         forgetProfileChoices()
-        keycloak.logout()
+        signOut()
       }}
       profileTo="/admin/profile"
     >

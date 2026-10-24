@@ -141,11 +141,11 @@ export function LinkExistingRecordDialog<T>({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
         {extraField && (
-          <Button onClick={handleConfirm} disabled={confirmDisabled}>
+          <Button size="compact" onClick={handleConfirm} disabled={confirmDisabled}>
             Link
           </Button>
         )}

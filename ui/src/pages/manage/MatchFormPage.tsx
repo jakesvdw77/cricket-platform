@@ -5,7 +5,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import {
@@ -142,11 +142,12 @@ export default function MatchFormPage() {
                 to={selectTeamPath(match.id, null, Boolean(match.homeTeamId))}
                 variant="outlined"
                 startIcon={<GroupsOutlinedIcon fontSize="small" />}
+                sx={compactButtonSx}
               >
                 Select team
               </MuiButton>
             ) : (
-              <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />}>
+              <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />} sx={compactButtonSx}>
                 Select team
               </MuiButton>
             )}
@@ -162,11 +163,11 @@ export default function MatchFormPage() {
           )}
 
           {/* docs/specs/089 (B): Cancel goes back to the match (edit) or the list (add), without saving. */}
-          <MuiButton component={RouterLink} to={isEdit && match ? `/manage/fixtures/matches/${match.id}` : '/manage/fixtures/matches'} variant="outlined">
+          <MuiButton component={RouterLink} to={isEdit && match ? `/manage/fixtures/matches/${match.id}` : '/manage/fixtures/matches'} variant="outlined" sx={compactButtonSx}>
             Cancel
           </MuiButton>
 
-          <Button type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create match'}
           </Button>
 
@@ -186,7 +187,7 @@ export default function MatchFormPage() {
                   variant="outlined"
                   color="error"
                   startIcon={<DeleteOutlineIcon fontSize="small" />}
-                  sx={{ minHeight: 44 }}
+                  sx={{ ...compactButtonSx }}
                   disabled={!match.deletable}
                   onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
                 >

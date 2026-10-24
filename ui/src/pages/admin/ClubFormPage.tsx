@@ -132,10 +132,11 @@ export default function ClubFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={CLUB_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={CLUB_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : submitLabel}
           </Button>
           <Button
+            size="compact"
             variant="ghost"
             disabled={saveMutation.isPending}
             onClick={() => navigate('/admin/onboarding')}
@@ -151,19 +152,19 @@ export default function ClubFormPage() {
                     {transitionVerb === 'suspend' ? 'Suspend this club?' : 'Reactivate this club?'}
                   </Typography>
                   <Button
+                    size="compact"
                     variant="danger"
-                    size="sm"
                     disabled={transitionMutation.isPending}
                     onClick={() => transitionMutation.mutate()}
                   >
                     {transitionMutation.isPending ? transitionPendingLabel : `Confirm ${transitionVerb}`}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmingTransition(false)}>
+                  <Button size="compact" variant="ghost" onClick={() => setConfirmingTransition(false)}>
                     {transitionVerb === 'suspend' ? "Don't suspend" : "Don't reactivate"}
                   </Button>
                 </>
               ) : (
-                <Button variant="danger" size="sm" onClick={() => setConfirmingTransition(true)}>
+                <Button size="compact" variant="danger" onClick={() => setConfirmingTransition(true)}>
                   {transitionLabel}
                 </Button>
               )}

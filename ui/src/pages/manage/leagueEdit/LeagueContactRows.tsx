@@ -103,7 +103,7 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
       testId="league-contacts-panel"
       actions={
         <Button
-          size="sm"
+          size="compact"
           startIcon={<AddIcon fontSize="small" />}
           onClick={() => navigate(`/manage/fixtures/leagues/${leagueId}/contacts/new`)}
           sx={{ flex: 'none' }}

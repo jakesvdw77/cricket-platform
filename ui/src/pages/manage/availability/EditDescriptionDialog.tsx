@@ -43,10 +43,10 @@ function DescriptionForm({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose} disabled={pending}>
+        <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
           Cancel
         </Button>
-        <Button disabled={!draft.trim() || pending} onClick={() => onSave(draft.trim())}>
+        <Button size="compact" disabled={!draft.trim() || pending} onClick={() => onSave(draft.trim())}>
           {pending ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>

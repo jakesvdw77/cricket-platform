@@ -87,10 +87,10 @@ export function LeagueTeamFormDialog({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button variant="ghost" onClick={onClose} disabled={pending}>
+          <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button type="submit" disabled={pending}>
+          <Button size="compact" type="submit" disabled={pending}>
             {pending ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>

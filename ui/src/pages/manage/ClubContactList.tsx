@@ -119,7 +119,7 @@ export default function ClubContactList() {
         title="Club Contacts"
         backTo="/manage/club-profile"
         backLabel="Back to Club Profile"
-        action={<Button onClick={() => navigate('/manage/club-contacts/new')}>Add Contact</Button>}
+        action={<Button size="compact" onClick={() => navigate('/manage/club-contacts/new')}>Add Contact</Button>}
       />
 
       <ListToolbar

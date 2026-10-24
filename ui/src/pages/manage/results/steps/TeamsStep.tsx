@@ -379,7 +379,7 @@ function OurSideTeam({
 
       {empty && !notice && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-          <Button variant="secondary" startIcon={<GroupAddOutlinedIcon />} onClick={() => void populate()} disabled={disabled || populating || prefillState === 'loading'}>
+          <Button size="compact" variant="secondary" startIcon={<GroupAddOutlinedIcon />} onClick={() => void populate()} disabled={disabled || populating || prefillState === 'loading'}>
             {populating ? 'Loading the team…' : 'Populate from the team'}
           </Button>
         </Box>

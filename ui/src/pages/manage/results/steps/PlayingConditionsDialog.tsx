@@ -52,14 +52,15 @@ function Body({ clubId, leagueId, seasonId, scheduledOvers, onClose, phone }: Om
       </DialogContent>
       <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5, gap: 1.5, borderTop: 1, borderColor: 'divider', ...(phone ? { flexDirection: 'column', alignItems: 'stretch', '& > :not(style)': { m: 0 } } : {}) }}>
         <Button
+          size="compact"
           variant="secondary"
           onClick={() => window.open(leagueConditionsPath(leagueId), '_blank', 'noopener')}
           endIcon={<OpenInNewIcon fontSize="small" />}
-          sx={{ minHeight: 44 }}
+          
         >
           Open the league&apos;s conditions
         </Button>
-        <Button onClick={onClose} sx={{ minHeight: 44 }}>
+        <Button size="compact" onClick={onClose} >
           Close
         </Button>
       </DialogActions>

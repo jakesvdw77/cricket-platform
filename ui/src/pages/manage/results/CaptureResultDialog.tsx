@@ -128,7 +128,7 @@ function PickerBody({ clubId, teamsById, leaguesById, onPicked, onImport }: Omit
           <Box sx={{ p: 2 }}>
             <Typography color="error" variant="body2" role="alert">
               We couldn't load the matches.{' '}
-              <Button variant="ghost" size="sm" onClick={() => void query.refetch()}>
+              <Button size="compact" variant="ghost" onClick={() => void query.refetch()}>
                 Retry
               </Button>
             </Typography>
@@ -203,7 +203,7 @@ function PickerBody({ clubId, teamsById, leaguesById, onPicked, onImport }: Omit
         ))}
         {query.hasNextPage && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 1.5 }}>
-            <Button variant="secondary" size="sm" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>
+            <Button size="compact" variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>
               {query.isFetchingNextPage ? 'Loading…' : 'Show more'}
             </Button>
           </Box>
@@ -215,7 +215,7 @@ function PickerBody({ clubId, teamsById, leaguesById, onPicked, onImport }: Omit
           {total} {total === 1 ? 'match' : 'matches'} waiting · tap a row to start
         </Typography>
         {/* docs/specs/104: a result that already exists elsewhere is imported, not retyped. */}
-        <Button variant="secondary" size="sm" onClick={onImport} sx={{ minHeight: 44 }}>
+        <Button size="compact" variant="secondary" onClick={onImport} >
           Import a result instead
         </Button>
       </Box>
@@ -261,7 +261,7 @@ export function CaptureResultDialog({ open, onClose, clubId, teamsById, leaguesB
         <PickerBody clubId={clubId} teamsById={teamsById} leaguesById={leaguesById} onPicked={picked} onImport={importInstead} />
       </DialogContent>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 3, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
       </Box>

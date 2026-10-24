@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SeasonForm, SEASON_FORM_ID } from '../../components/SeasonForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { EmptyState } from '../../components/EmptyState'
 import { listSeasons, createSeason, updateSeason, deactivateSeason, reactivateSeason } from '../../api/seasonApi'
@@ -105,11 +105,11 @@ export default function SeasonFormPage() {
             </Typography>
           )}
 
-          <MuiButton component={RouterLink} to="/manage/fixtures/seasons" variant="outlined">
+          <MuiButton component={RouterLink} to="/manage/fixtures/seasons" variant="outlined" sx={compactButtonSx}>
             Cancel
           </MuiButton>
 
-          <Button type="submit" form={SEASON_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={SEASON_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create season'}
           </Button>
         </Stack>

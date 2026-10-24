@@ -134,10 +134,10 @@ function EditCloseTimeForm({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose} disabled={pending}>
+        <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
           Cancel
         </Button>
-        <Button disabled={pending || Boolean(validationError)} onClick={() => saveMutation.mutate()}>
+        <Button size="compact" disabled={pending || Boolean(validationError)} onClick={() => saveMutation.mutate()}>
           {pending ? pendingLabel : primaryLabel}
         </Button>
       </DialogActions>

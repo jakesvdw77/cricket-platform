@@ -20,7 +20,7 @@ export interface ManagerShellProps {
   logoUrl?: string | null
   // Count badge per nav item id (e.g. open polls); wired to data in a later slice.
   badges?: Record<string, number>
-  // Set when the manager also has players: adds "My players" to the profile menu (docs/specs/119 3C).
+  // Set when the manager also has players: adds "Player Hub" to the profile menu (docs/specs/119 3C).
   myPlayersTo?: string
   // Profile switcher items (more than one profile card only).
   profileItems?: ProfileSwitchItem[]

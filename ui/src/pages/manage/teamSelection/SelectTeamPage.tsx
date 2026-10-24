@@ -12,7 +12,7 @@ import IosShareOutlinedIcon from '@mui/icons-material/IosShareOutlined'
 import PanToolOutlinedIcon from '@mui/icons-material/PanToolOutlined'
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
-import { Button } from '../../../components/Button'
+import { Button, compactButtonSx } from '../../../components/Button'
 import { CompactToggleGroup } from '../../../components/CompactToggleGroup'
 import { EmptyState } from '../../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
@@ -241,7 +241,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
+              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
               Back to Team selection
             </MuiButton>
@@ -295,7 +295,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                 disabled={!pollsReady}
                 onClick={openAvailability}
                 startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-                sx={{ justifyContent: 'center', minWidth: 0 }}
+                sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0 }}
               >
                 Availability
               </MuiButton>
@@ -304,7 +304,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                   variant="outlined"
                   onClick={panel.unannounce}
                   disabled={panel.announcing}
-                  sx={{ justifyContent: 'center', minWidth: 0 }}
+                  sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0 }}
                 >
                   {panel.unannouncePending ? 'Un-announcing…' : 'Un-announce'}
                 </MuiButton>
@@ -320,7 +320,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                       onClick={() => panel.setConfirmAnnounce(true)}
                       disabled={!side || Boolean(panel.blockedReason) || panel.announcing}
                       aria-describedby={panel.blockedReason ? blockedReasonId : undefined}
-                      sx={{ justifyContent: 'center', minWidth: 0, flex: 1 }}
+                      sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0, flex: 1 }}
                     >
                       {panel.announcePending ? 'Announcing…' : 'Announce team'}
                     </MuiButton>
@@ -334,13 +334,14 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                     onClick={() => shareSide.share(match.id, sideLabel === 'Home')}
                     disabled={!side?.announced || shareSide.loadingMatchId === match.id}
                     startIcon={<IosShareOutlinedIcon fontSize="small" />}
-                    sx={{ justifyContent: 'center', minWidth: 0, flex: 1 }}
+                    sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0, flex: 1 }}
                   >
                     Share team
                   </MuiButton>
                 </Box>
               </Tooltip>
               <Button
+                size="compact"
                 startIcon={<GroupsOutlinedIcon fontSize="small" />}
                 onClick={panel.dialog.openDialog}
                 disabled={!side}

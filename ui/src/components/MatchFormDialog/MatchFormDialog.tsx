@@ -99,10 +99,10 @@ function DialogBody({ clubId, onClose, onCreated, initialValues, inferSeason, hi
         )}
       </DialogContent>
       <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5, gap: 1.5, borderTop: 1, borderColor: 'divider', ...(phone ? { '& > *': { flex: 1 } } : {}) }}>
-        <Button variant="secondary" onClick={onClose} disabled={create.isPending} sx={{ minHeight: 44 }}>
+        <Button size="compact" variant="secondary" onClick={onClose} disabled={create.isPending} >
           Cancel
         </Button>
-        <Button type="submit" form={MATCH_FORM_ID} disabled={create.isPending || loading} sx={{ minHeight: 44 }}>
+        <Button size="compact" type="submit" form={MATCH_FORM_ID} disabled={create.isPending || loading} >
           {create.isPending ? 'Saving…' : 'Create match'}
         </Button>
       </DialogActions>

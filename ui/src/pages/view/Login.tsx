@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Container, Typography } from '@mui/material'
+import { FullPageLoader } from '../../components/CricketBallLoader'
 import { keycloak } from '../../auth/keycloak'
 
 export default function Login() {
@@ -7,11 +7,5 @@ export default function Login() {
     keycloak.login({ redirectUri: `${window.location.origin}/post-login` })
   }, [])
 
-  return (
-    <Container maxWidth="sm" sx={{ py: 5, textAlign: 'center' }}>
-      <Typography variant="body1" color="text.secondary">
-        Redirecting to login…
-      </Typography>
-    </Container>
-  )
+  return <FullPageLoader variant="backdrop" message="Taking you to sign in" />
 }

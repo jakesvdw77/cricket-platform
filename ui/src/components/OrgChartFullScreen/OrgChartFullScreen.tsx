@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { compactButtonSx } from '../Button'
 import { Box, Button, Dialog, IconButton, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
@@ -109,10 +110,11 @@ export function OrgChartFullScreen({ open, onClose, title, children }: OrgChartF
           size="small"
           startIcon={<FitScreenOutlinedIcon fontSize="small" />}
           onClick={() => setFit(true)}
+          sx={compactButtonSx}
         >
           Fit to screen
         </Button>
-        <Button variant="text" color="inherit" size="small" startIcon={<CloseIcon fontSize="small" />} onClick={onClose}>
+        <Button variant="text" color="inherit" size="small" startIcon={<CloseIcon fontSize="small" />} onClick={onClose} sx={compactButtonSx}>
           Close
         </Button>
       </Box>

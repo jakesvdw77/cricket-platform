@@ -26,14 +26,14 @@ vi.mock('../../api/myPlayersApi', () => ({
 
 const managerProfile = (clubId: string, clubName: string): Profile => ({
   kind: 'MANAGER',
-  title: `Manager of ${clubName}`,
+  title: 'Club manager',
   clubId,
   clubName,
   clubSlug: clubId,
   landing: '/manage',
   pendingCount: 0,
 })
-const playersProfile: Profile = { kind: 'MY_PLAYERS', title: 'My players', landing: '/account', pendingCount: 0 }
+const playersProfile: Profile = { kind: 'MY_PLAYERS', title: 'Player Hub', landing: '/account', pendingCount: 0 }
 
 vi.mock('../../api/clubApi', () => ({
   getManagedClubProfile: (id: string) => getManagedClubProfile(id),
@@ -129,7 +129,7 @@ describe('ManagerHome', () => {
     renderManagerHome()
 
     expect(await screen.findByText('Landing page')).toBeInTheDocument()
-    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not out, but not in either')).not.toBeInTheDocument()
   })
 
   it('navigates to the landing page when init rejected and there is no session', async () => {
@@ -150,7 +150,7 @@ describe('ManagerHome', () => {
     renderManagerHome()
     await new Promise((resolve) => setTimeout(resolve, 20))
 
-    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not out, but not in either')).not.toBeInTheDocument()
     expect(screen.queryByText('Landing page')).not.toBeInTheDocument()
   })
 
@@ -159,8 +159,8 @@ describe('ManagerHome', () => {
 
     renderManagerHome()
 
-    expect(await screen.findByText('Not authorized')).toBeInTheDocument()
-    expect(screen.getByText('You are not recognized as a club manager.')).toBeInTheDocument()
+    expect(await screen.findByText('Not out, but not in either')).toBeInTheDocument()
+    expect(screen.getByText('You do not have access to the club manager area.')).toBeInTheDocument()
     expect(screen.queryByText(/Club context/)).not.toBeInTheDocument()
   })
 
@@ -169,7 +169,7 @@ describe('ManagerHome', () => {
 
     renderManagerHome()
 
-    expect(await screen.findByText('Not authorized')).toBeInTheDocument()
+    expect(await screen.findByText('Not out, but not in either')).toBeInTheDocument()
     expect(screen.queryByText(/Club context/)).not.toBeInTheDocument()
   })
 
@@ -213,7 +213,7 @@ describe('ManagerHome', () => {
     expect(screen.getByText('RC')).toBeInTheDocument()
   })
 
-  describe('profiles and My players (docs/specs/119)', () => {
+  describe('profiles and Player Hub (docs/specs/119)', () => {
     it('loads the club of the first manager profile card when the response carries profiles', async () => {
       activateSession.mockResolvedValueOnce(
         meAccess({ clubAdminClubIds: ['club-1'], profiles: [managerProfile('club-2', 'Hillcrest CC'), managerProfile('club-1', 'Riverside CC')] }),
@@ -235,7 +235,7 @@ describe('ManagerHome', () => {
       expect(await screen.findByText('Club context: club-1')).toBeInTheDocument()
     })
 
-    it('adds a My players menu item for a manager who also has players, and nothing otherwise', async () => {
+    it('adds a Player Hub menu item for a manager who also has players, and nothing otherwise', async () => {
       const user = userEvent.setup()
       useMyPlayers.mockReturnValue({ data: [{ key: 'k' }] })
       activateSession.mockResolvedValue(meAccess({ clubAdminClubIds: ['club-1'] }))
@@ -243,17 +243,17 @@ describe('ManagerHome', () => {
       const first = renderManagerHome()
       await screen.findByText('Club context: club-1')
       await user.click(screen.getByRole('button', { name: 'Account menu' }))
-      expect(screen.getByRole('menuitem', { name: 'My players' })).toHaveAttribute('href', '/account')
+      expect(screen.getByRole('menuitem', { name: 'Player Hub' })).toHaveAttribute('href', '/account')
       first.unmount()
 
       useMyPlayers.mockReturnValue({ data: [] })
       renderManagerHome()
       await screen.findByText('Club context: club-1')
       await user.click(screen.getByRole('button', { name: 'Account menu' }))
-      expect(screen.queryByRole('menuitem', { name: 'My players' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Player Hub' })).not.toBeInTheDocument()
     })
 
-    it('shows Switch profile instead of My players when there is more than one profile card', async () => {
+    it('shows Switch profile instead of Player Hub when there is more than one profile card', async () => {
       const user = userEvent.setup()
       const cards = [managerProfile('club-1', 'Riverside CC'), playersProfile]
       useMyProfiles.mockReturnValue({ data: cards })
@@ -265,7 +265,7 @@ describe('ManagerHome', () => {
       await user.click(screen.getByRole('button', { name: 'Account menu' }))
 
       expect(screen.getByRole('menuitem', { name: 'Switch profile' })).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'My players' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Player Hub' })).not.toBeInTheDocument()
     })
   })
 })

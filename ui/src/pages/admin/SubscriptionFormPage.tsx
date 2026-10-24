@@ -150,12 +150,13 @@ export default function SubscriptionFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={SUBSCRIPTION_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={SUBSCRIPTION_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : submitLabel}
           </Button>
           {/* Nav-away action — leaves the form without saving. Not to be confused with the
               business "Cancel Subscription" action below (Flag #4). */}
           <Button
+            size="compact"
             variant="ghost"
             disabled={saveMutation.isPending}
             onClick={() => navigate('/admin/billing')}
@@ -169,19 +170,19 @@ export default function SubscriptionFormPage() {
                 <>
                   <Typography variant="body2">Cancel this subscription?</Typography>
                   <Button
+                    size="compact"
                     variant="danger"
-                    size="sm"
                     disabled={cancelSubscriptionMutation.isPending}
                     onClick={() => cancelSubscriptionMutation.mutate()}
                   >
                     {cancelSubscriptionMutation.isPending ? 'Cancelling…' : 'Confirm cancel'}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmingCancel(false)}>
+                  <Button size="compact" variant="ghost" onClick={() => setConfirmingCancel(false)}>
                     Keep subscription
                   </Button>
                 </>
               ) : (
-                <Button variant="danger" size="sm" onClick={() => setConfirmingCancel(true)}>
+                <Button size="compact" variant="danger" onClick={() => setConfirmingCancel(true)}>
                   Cancel Subscription
                 </Button>
               )}

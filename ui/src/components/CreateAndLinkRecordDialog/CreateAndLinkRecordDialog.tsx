@@ -111,10 +111,10 @@ export function CreateAndLinkRecordDialog<TPayload>({
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose}>
+        <Button size="compact" variant="ghost" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" form={formId} disabled={confirmDisabled}>
+        <Button size="compact" type="submit" form={formId} disabled={confirmDisabled}>
           {isPending ? pendingLabel : confirmLabel}
         </Button>
       </DialogActions>

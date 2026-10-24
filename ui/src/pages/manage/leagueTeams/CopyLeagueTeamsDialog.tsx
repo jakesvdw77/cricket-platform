@@ -174,16 +174,16 @@ export function CopyLeagueTeamsDialog({
             <>
               <Stack direction="row" spacing={1}>
                 <Button
+                  size="compact"
                   variant="ghost"
-                  size="sm"
                   disabled={allSelected}
                   onClick={() => setDeselected(new Set())}
                 >
                   Select all
                 </Button>
                 <Button
+                  size="compact"
                   variant="ghost"
-                  size="sm"
                   disabled={count === 0}
                   onClick={() => setDeselected(new Set(selectable.map((row) => row.team.id)))}
                 >
@@ -256,10 +256,11 @@ export function CopyLeagueTeamsDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button variant="ghost" onClick={onClose} disabled={pending}>
+        <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
           Cancel
         </Button>
         <Button
+          size="compact"
           disabled={pending || count === 0}
           onClick={() => onCopy({ sourceLeagueId, sourceSeasonId, leagueTeamIds: selectedIds })}
         >

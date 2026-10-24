@@ -9,8 +9,8 @@ import { HubFrame } from './myPlayers/HubFrame'
 import { HUB } from './myPlayers/hubStyle'
 import { creamAlpha, blackAlpha } from '../../brandTokens'
 
-// docs/specs/119 slice 4: /choose-profile, shown only to a person with more than one card: one "My players" card, one
-// "Manager of <club>" card per club and, for a platform admin, "Platform admin". "Remember my choice" is off by default
+// docs/specs/119 slice 4: /choose-profile, shown only to a person with more than one card: one "Player Hub" card, one
+// "Club manager" card per club and, for a platform admin, "Platform admin". "Remember my choice" is off by default
 // and only stores the choice on this device.
 function ProfileCard({ profile, onChoose }: { profile: Profile; onChoose: () => void }) {
   const line = profile.subtitle ?? null

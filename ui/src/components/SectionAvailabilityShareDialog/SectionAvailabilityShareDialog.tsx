@@ -78,13 +78,13 @@ export function SectionAvailabilityShareDialog({ open, onClose, round }: Section
         </Stack>
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2, '& > :not(:first-of-type)': { ml: 0 } }}>
-        <Button variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
+        <Button size="compact" variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
           {copiedKey === 'link' ? 'Copied' : 'Copy link'}
         </Button>
-        <Button variant="ghost" startIcon={<RefreshOutlinedIcon />} onClick={handleRegenerate}>
+        <Button size="compact" variant="ghost" startIcon={<RefreshOutlinedIcon />} onClick={handleRegenerate}>
           Regenerate
         </Button>
-        <Button variant="secondary" onClick={onClose}>
+        <Button size="compact" variant="secondary" onClick={onClose}>
           Close
         </Button>
       </DialogActions>

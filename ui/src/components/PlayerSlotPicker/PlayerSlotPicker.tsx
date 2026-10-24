@@ -18,6 +18,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { compactButtonSx } from '../Button'
 import CloseIcon from '@mui/icons-material/Close'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
@@ -548,7 +549,7 @@ function PickerBody({
             <Alert
               severity="info"
               action={
-                <Button color="inherit" size="small" disabled={Boolean(registeredTaken)} onClick={() => onPickPlayer(registeredMatch)}>
+                <Button color="inherit" size="small" disabled={Boolean(registeredTaken)} onClick={() => onPickPlayer(registeredMatch)} sx={compactButtonSx}>
                   Use this player
                 </Button>
               }
@@ -562,7 +563,7 @@ function PickerBody({
             variant="contained"
             disabled={guestName === '' || guestTaken}
             onClick={() => onPickGuest(guestName)}
-            sx={{ alignSelf: 'flex-start', minHeight: 44 }}
+            sx={{ ...compactButtonSx, alignSelf: 'flex-start' }}
           >
             Add as guest
           </Button>

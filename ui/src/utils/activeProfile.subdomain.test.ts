@@ -5,7 +5,7 @@ import { currentClubSlug, openProfile, resolveManagerClubId } from './activeProf
 
 // docs/specs/119 slice 4 (Decision 29): on a club address the hat follows the address, and another club's card is a
 // navigation to that club's own address, never an in-place swap.
-const manager = (clubId: string, clubSlug: string): Profile => ({ kind: 'MANAGER', title: `Manager of ${clubSlug}`, clubId, clubSlug, landing: '/manage', pendingCount: 0 })
+const manager = (clubId: string, clubSlug: string): Profile => ({ kind: 'MANAGER', title: 'Club manager', clubId, clubSlug, landing: '/manage', pendingCount: 0 })
 
 beforeEach(() => localStorage.clear())
 

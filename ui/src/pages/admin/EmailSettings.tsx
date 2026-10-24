@@ -43,6 +43,7 @@ export default function EmailSettings() {
       actions={
         <>
           <Button
+            size="compact"
             variant="primary"
             disabled={testSend.isPending}
             onClick={() => {

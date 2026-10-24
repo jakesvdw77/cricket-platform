@@ -7,8 +7,8 @@ import { clearViewport, setPhone } from '../../test/accountTestUtils'
 
 // docs/specs/119 slice 4: Switch profile is a menu on desktop and a bottom sheet on a phone, hiding nothing about the loaded card.
 const items = (onPlayers = vi.fn(), onManager = vi.fn()): ProfileSwitchItem[] => [
-  { key: 'MY_PLAYERS:', title: 'My players', subtitle: 'Sam and 1 more', active: true, onChoose: onPlayers },
-  { key: 'MANAGER:c1', title: 'Manager of Riverside CC', subtitle: null, active: false, onChoose: onManager },
+  { key: 'MY_PLAYERS:', title: 'Player Hub', subtitle: 'Sam and 1 more', active: true, onChoose: onPlayers },
+  { key: 'MANAGER:c1', title: 'Club manager', subtitle: null, active: false, onChoose: onManager },
 ]
 
 const anchor = () => document.body.appendChild(document.createElement('button'))
@@ -22,13 +22,13 @@ describe('ProfileSwitcher', () => {
     const onManager = vi.fn()
     render(<ProfileSwitcher items={items(vi.fn(), onManager)} anchorEl={anchor()} onClose={onClose} />)
 
-    const loaded = screen.getByRole('menuitem', { name: /My players/ })
+    const loaded = screen.getByRole('menuitem', { name: /Player Hub/ })
     expect(loaded).toHaveAttribute('aria-current', 'true')
     expect(screen.getByLabelText('Loaded')).toBeInTheDocument()
     expect(screen.getByText('Sam and 1 more')).toBeInTheDocument()
     expect(document.querySelector('.MuiDrawer-paperAnchorBottom')).toBeNull()
 
-    await userEvent.click(screen.getByRole('menuitem', { name: /Manager of Riverside CC/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Club manager/ }))
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(onManager).toHaveBeenCalledOnce()
@@ -40,7 +40,7 @@ describe('ProfileSwitcher', () => {
     const onPlayers = vi.fn()
     render(<ProfileSwitcher items={items(onPlayers)} anchorEl={anchor()} onClose={onClose} />)
 
-    await userEvent.click(screen.getByRole('menuitem', { name: /My players/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Player Hub/ }))
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(onPlayers).not.toHaveBeenCalled()
@@ -52,7 +52,7 @@ describe('ProfileSwitcher', () => {
     render(<ProfileSwitcher items={items(vi.fn(), onManager)} anchorEl={anchor()} onClose={vi.fn()} />)
 
     expect(await screen.findByLabelText('Switch profile', { selector: '.MuiDrawer-paperAnchorBottom' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('menuitem', { name: /Manager of Riverside CC/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Club manager/ }))
     expect(onManager).toHaveBeenCalledOnce()
   })
 

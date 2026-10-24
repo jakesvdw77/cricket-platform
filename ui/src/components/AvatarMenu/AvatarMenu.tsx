@@ -49,7 +49,7 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout, onBr
         </MenuItem>
         {myPlayersTo && (
           <MenuItem component={RouterLink} to={myPlayersTo} onClick={handleClose}>
-            My players
+            Player Hub
           </MenuItem>
         )}
         {profileItems && profileItems.length > 1 && (

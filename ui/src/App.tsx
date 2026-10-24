@@ -4,6 +4,11 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { baseTheme } from './theme'
 import LandingPage from './pages/view/LandingPage'
+import { FullPageLoader } from './components/CricketBallLoader'
+import { StatusScreen } from './components/StatusScreen'
+import { ConnectionGuard } from './components/ConnectionGuard'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
+import { useSigningOut } from './auth/signOut'
 import Login from './pages/view/Login'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import FindYourPlayersPage from './pages/view/FindYourPlayersPage'
@@ -102,10 +107,14 @@ const queryClient = new QueryClient()
 const isRootDomain = window.location.hostname === (import.meta.env.VITE_ROOT_DOMAIN?.split(':')[0] ?? 'localhost')
 
 function App() {
+  const signingOut = useSigningOut()
   return (
     <ThemeProvider theme={baseTheme}>
       <CssBaseline />
+      {signingOut && <FullPageLoader variant="backdrop" overlay message="Signing you out" />}
+      <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <ConnectionGuard>
         <BrowserRouter>
           <Routes>
             {/* A club address has no public home page yet (the old UpcomingMatches placeholder never loaded for a signed-out
@@ -336,9 +345,12 @@ function App() {
               <Route path="availability" element={<EmptyState title="Availability" description="Coming soon." />} />
               <Route path="profile" element={<PlayerProfile />} />
             </Route>
+            <Route path="*" element={<StatusScreen kind="not-found" />} />
           </Routes>
         </BrowserRouter>
+        </ConnectionGuard>
       </QueryClientProvider>
+      </AppErrorBoundary>
     </ThemeProvider>
   )
 }

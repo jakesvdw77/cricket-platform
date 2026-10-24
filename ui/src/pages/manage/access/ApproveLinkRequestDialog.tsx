@@ -199,20 +199,20 @@ export function ApproveLinkRequestDialog({ clubId, request, mode, onClose }: App
         {approve.isError && <Alert severity="error">We could not approve this request. It may already have been decided. Please try again.</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
-        <Button variant="ghost" onClick={onClose} disabled={busy}>
+        <Button size="compact" variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
         {step === 'confirm' ? (
           <>
-            <Button onClick={() => setStep('choose')} disabled={busy}>
+            <Button size="compact" onClick={() => setStep('choose')} disabled={busy}>
               Back
             </Button>
-            <Button onClick={submit} disabled={busy}>
+            <Button size="compact" onClick={submit} disabled={busy}>
               {busy ? 'Approving…' : 'Confirm and approve'}
             </Button>
           </>
         ) : (
-          <Button onClick={() => setStep('confirm')} disabled={!choiceComplete}>
+          <Button size="compact" onClick={() => setStep('confirm')} disabled={!choiceComplete}>
             Next
           </Button>
         )}

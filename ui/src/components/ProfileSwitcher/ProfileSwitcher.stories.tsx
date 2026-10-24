@@ -6,8 +6,8 @@ export default meta
 type Story = StoryObj<typeof ProfileSwitcher>
 
 const items = [
-  { key: 'MANAGER:1', title: 'Manager of Hillcrest CC', subtitle: 'Vets', active: true, onChoose: () => undefined },
-  { key: 'MY_PLAYERS:', title: 'My players', subtitle: 'Anton de Villiers and 1 more', active: false, onChoose: () => undefined },
+  { key: 'MANAGER:1', title: 'Club manager', subtitle: 'Vets', active: true, onChoose: () => undefined },
+  { key: 'MY_PLAYERS:', title: 'Player Hub', subtitle: 'Anton de Villiers and 1 more', active: false, onChoose: () => undefined },
 ]
 
 export const Open: Story = {

@@ -54,7 +54,7 @@ describe('MyPlayersPage', () => {
   it('lists one tile per player in the order given (own record first) with a You chip on the own record', async () => {
     setup([player(), AMAN])
 
-    const list = await screen.findByRole('list', { name: 'My players' })
+    const list = await screen.findByRole('list', { name: 'Player Hub' })
     const tiles = within(list).getAllByRole('button')
     expect(tiles.map((tile) => tile.getAttribute('aria-label'))).toEqual(['Priya Naidoo', 'Aman Naidoo'])
     expect(within(tiles[0]).getByText('You')).toBeInTheDocument()
@@ -73,7 +73,7 @@ describe('MyPlayersPage', () => {
     setup([AMAN])
 
     expect(await screen.findByText('Hub of player')).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'My players' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Player Hub' })).not.toBeInTheDocument()
   })
 
   it('keeps the picker for a single player when an invitation is waiting, with the banner', async () => {
@@ -96,7 +96,7 @@ describe('MyPlayersPage', () => {
   it('has no banner without invitations', async () => {
     setup([player(), AMAN])
 
-    await screen.findByRole('list', { name: 'My players' })
+    await screen.findByRole('list', { name: 'Player Hub' })
     expect(screen.queryByTestId('invitations-banner')).not.toBeInTheDocument()
   })
 
@@ -128,7 +128,7 @@ describe('MyPlayersPage', () => {
   it('hides the requests section when none is waiting or declined', async () => {
     setup([player(), AMAN], { 'GET /me/link-requests': [request({ status: 'APPROVED' })] })
 
-    await screen.findByRole('list', { name: 'My players' })
+    await screen.findByRole('list', { name: 'Player Hub' })
     expect(screen.queryByTestId('my-requests')).not.toBeInTheDocument()
   })
 

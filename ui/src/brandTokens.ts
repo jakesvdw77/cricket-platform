@@ -26,6 +26,10 @@ export const BRAND = {
   inkMuted: '#55665c',
   // Error text on the dark chrome (the platform error colour is too dark there).
   errorOnDark: '#ffb4a9',
+  // The cricket ball loader: leather red (light and shade) and the stitching.
+  ballRed: '#C62828',
+  ballRedShade: '#8E1B1B',
+  ballSeam: '#F4E9D0',
 } as const
 
 // Barlow Condensed (display: titles, menu labels, numerals, avatar initials) and Barlow (body), self-hosted from

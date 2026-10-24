@@ -108,7 +108,7 @@ export function SharePreviewStage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, pixelWidth, zoom])
   const label = zoom === 'fit' ? 'Fit' : `${zoom}%`
-  const buttonSx = { minWidth: 44, minHeight: { xs: 44, sm: 36 } }
+  const buttonSx = { minWidth: 44 }
 
   return (
     <Box sx={{ minWidth: 0 }}>
@@ -125,8 +125,8 @@ export function SharePreviewStage({
           }}
         >
           <Button
+            size="compact"
             variant="secondary"
-            size="sm"
             aria-label="Zoom out"
             disabled={zoom !== 'fit' && zoom <= ZOOM_MIN}
             onClick={() => step(-ZOOM_STEP)}
@@ -135,8 +135,8 @@ export function SharePreviewStage({
             <ZoomOutIcon fontSize="small" />
           </Button>
           <Button
+            size="compact"
             variant="secondary"
-            size="sm"
             aria-label="Zoom in"
             disabled={zoom !== 'fit' && zoom >= ZOOM_MAX}
             onClick={() => step(ZOOM_STEP)}
@@ -145,8 +145,8 @@ export function SharePreviewStage({
             <ZoomInIcon fontSize="small" />
           </Button>
           <Button
+            size="compact"
             variant={zoom === 'fit' ? 'primary' : 'secondary'}
-            size="sm"
             aria-label="Fit to width"
             aria-pressed={zoom === 'fit'}
             onClick={() => setZoom('fit')}
@@ -155,8 +155,8 @@ export function SharePreviewStage({
             Fit
           </Button>
           <Button
+            size="compact"
             variant={zoom === 100 ? 'primary' : 'secondary'}
-            size="sm"
             aria-label="Zoom to 100%"
             aria-pressed={zoom === 100}
             onClick={() => setZoom(100)}

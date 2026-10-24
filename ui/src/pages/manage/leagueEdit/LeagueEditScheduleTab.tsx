@@ -51,11 +51,11 @@ export function LeagueEditScheduleTab({
         scope={`Showing ${matches.length} ${matches.length === 1 ? 'match' : 'matches'}${seasonLabel ? ` · ${seasonLabel}` : ''}`}
         pinned={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} disabled={matchesLoading} onClick={onShare}>
+            <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} disabled={matchesLoading} onClick={onShare}>
               Share
             </Button>
             <Button
-              size="sm"
+              size="compact"
               startIcon={<AddIcon fontSize="small" />}
               onClick={() => navigate(`/manage/fixtures/matches/new?leagueId=${leagueId}&seasonId=${selectedSeasonId}`)}
               disabled={!selectedSeasonId}

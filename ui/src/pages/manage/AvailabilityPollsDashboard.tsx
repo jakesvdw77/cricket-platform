@@ -319,7 +319,7 @@ export default function AvailabilityPollsDashboard() {
         <EmptyState
           title={showClosed ? 'No polls' : 'No open polls'}
           description="Open a squad poll for one team's match, or a group poll for a whole section's fixtures."
-          action={<Button onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
+          action={<Button size="compact" onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
         />
       )}
     </Box>

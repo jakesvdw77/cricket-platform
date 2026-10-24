@@ -170,7 +170,7 @@ export default function PlayerFormPage() {
                   </Typography>
                 )}
 
-                <Button type="submit" form={PLAYER_FORM_ID} disabled={saveMutation.isPending}>
+                <Button size="compact" type="submit" form={PLAYER_FORM_ID} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create player'}
                 </Button>
               </>
@@ -252,7 +252,7 @@ export default function PlayerFormPage() {
               </Stack>
             )}
 
-            <Button variant="secondary" size="sm" onClick={() => setSectionLinkOpen(true)}>
+            <Button size="compact" variant="secondary" onClick={() => setSectionLinkOpen(true)}>
               Link existing
             </Button>
           </Box>
@@ -276,7 +276,7 @@ export default function PlayerFormPage() {
             />
           </DialogContent>
           <DialogActions>
-            <Button variant="ghost" onClick={() => setSectionLinkOpen(false)}>
+            <Button size="compact" variant="ghost" onClick={() => setSectionLinkOpen(false)}>
               Cancel
             </Button>
           </DialogActions>

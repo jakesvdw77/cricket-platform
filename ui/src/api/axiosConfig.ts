@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { keycloak, keycloakInitPromise } from '../auth/keycloak'
 import { isAuthAwarePath, redirectToLanding } from '../auth/sessionExpiry'
+import { reportBackendFailure, reportBackendReachable } from './connectionStatus'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -29,11 +30,21 @@ api.interceptors.request.use(async (config) => {
 
 // 401 on an auth-aware page means the session is gone. 403 is deliberately not handled: that is a
 // real not-authorised case. Public pages (and /post-login) never redirect.
-api.interceptors.response.use(undefined, (error) => {
-  if (axios.isAxiosError(error) && error.response?.status === 401 && isAuthAwarePath()) {
-    redirectToLanding()
-  }
-  return Promise.reject(error)
-})
+api.interceptors.response.use(
+  (response) => {
+    reportBackendReachable()
+    return response
+  },
+  (error) => {
+    // No response at all, or a gateway error: the server cannot be reached (ConnectionGuard shows it). Any other
+    // answer, 4xx included, proves it is up.
+    if (axios.isAxiosError(error) && error.response && ![502, 503, 504].includes(error.response.status)) reportBackendReachable()
+    else reportBackendFailure(error)
+    if (axios.isAxiosError(error) && error.response?.status === 401 && isAuthAwarePath()) {
+      redirectToLanding()
+    }
+    return Promise.reject(error)
+  },
+)
 
 export default api

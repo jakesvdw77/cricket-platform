@@ -22,7 +22,7 @@ import type { Theme } from '@mui/material/styles'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import CheckIcon from '@mui/icons-material/Check'
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
-import { Button } from '../Button'
+import { Button, compactButtonSx } from '../Button'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { Input } from '../Input'
 import { AvailabilityBadge } from '../TeamSelectionList'
@@ -332,7 +332,7 @@ export function SelectPlayersDialog({
             setReleaseError(null)
             setReleasing(entry)
           }}
-          sx={{ flex: 'none' }}
+          sx={{ ...compactButtonSx, flex: 'none' }}
         >
           {`Release from ${entry.taken.teamName}`}
         </MuiButton>
@@ -517,8 +517,8 @@ export function SelectPlayersDialog({
 
           <Box title={selectAllCount === 0 ? 'No available players to select' : undefined} sx={{ alignSelf: 'flex-start' }}>
             <Button
+              size="compact"
               variant="secondary"
-              size="sm"
               disabled={selectAllCount === 0}
               onClick={selectAllAvailable}
               aria-label={`Select all available players not yet selected (${selectAllCount})`}
@@ -566,7 +566,7 @@ export function SelectPlayersDialog({
           )}
 
           <Box>
-            <Button variant="ghost" size="sm" startIcon={<PersonAddAltOutlinedIcon fontSize="small" />} onClick={onAddNewPlayer}>
+            <Button size="compact" variant="ghost" startIcon={<PersonAddAltOutlinedIcon fontSize="small" />} onClick={onAddNewPlayer}>
               Add new player
             </Button>
           </Box>
@@ -580,10 +580,10 @@ export function SelectPlayersDialog({
               ` · ${hiddenTicked} selected ${hiddenTicked === 1 ? 'player is' : 'players are'} not shown by the current search`}
           </Typography>
           <Stack direction="row" spacing={1}>
-            <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            <Button size="compact" variant="ghost" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
-            <Button onClick={handleDone} disabled={!changed || submitting}>
+            <Button size="compact" onClick={handleDone} disabled={!changed || submitting}>
               {submitting ? 'Saving…' : 'Done'}
             </Button>
           </Stack>

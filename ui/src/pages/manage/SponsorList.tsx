@@ -98,7 +98,7 @@ export default function SponsorList() {
         title="Club Sponsors"
         backTo="/manage/club-profile"
         backLabel="Back to Club Profile"
-        action={<Button onClick={() => navigate('/manage/sponsors/new')}>Add Sponsor</Button>}
+        action={<Button size="compact" onClick={() => navigate('/manage/sponsors/new')}>Add Sponsor</Button>}
       />
 
       <ListToolbar

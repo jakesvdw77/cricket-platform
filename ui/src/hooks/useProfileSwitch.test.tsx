@@ -9,8 +9,8 @@ const useMyProfiles = vi.fn()
 vi.mock('../api/meApi', () => ({ useMyProfiles: () => useMyProfiles() }))
 
 // docs/specs/119 slice 4: the switcher's items exist only for a person with more than one profile card.
-const players: Profile = { kind: 'MY_PLAYERS', title: 'My players', subtitle: 'Sam and 1 more', landing: '/account', pendingCount: 0 }
-const riverside: Profile = { kind: 'MANAGER', title: 'Manager of Riverside CC', clubId: 'c1', clubName: 'Riverside CC', clubSlug: 'riverside', landing: '/manage', pendingCount: 0 }
+const players: Profile = { kind: 'MY_PLAYERS', title: 'Player Hub', subtitle: 'Sam and 1 more', landing: '/account', pendingCount: 0 }
+const riverside: Profile = { kind: 'MANAGER', title: 'Club manager', clubId: 'c1', clubName: 'Riverside CC', clubSlug: 'riverside', landing: '/manage', pendingCount: 0 }
 
 function render(path: string) {
   let location = ''
@@ -45,8 +45,8 @@ describe('useProfileSwitch', () => {
 
     const account = render('/account/players/k').result.current
     expect(account?.map((item) => [item.key, item.title, item.subtitle, item.active])).toEqual([
-      ['MY_PLAYERS:', 'My players', 'Sam and 1 more', true],
-      ['MANAGER:c1', 'Manager of Riverside CC', 'Riverside CC', false],
+      ['MY_PLAYERS:', 'Player Hub', 'Sam and 1 more', true],
+      ['MANAGER:c1', 'Club manager', 'Riverside CC', false],
     ])
 
     const manage = render('/manage/players').result.current

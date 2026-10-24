@@ -100,7 +100,7 @@ export default function ClubContactFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={CLUB_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={CLUB_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create contact'}
           </Button>
 

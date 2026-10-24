@@ -4,7 +4,7 @@ import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SponsorForm, SPONSOR_FORM_ID } from '../../components/SponsorForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
-import { Button } from '../../components/Button'
+import { Button, compactButtonSx } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
@@ -96,7 +96,7 @@ export default function SponsorFormPage() {
             </Typography>
           )}
 
-          <Button type="submit" form={SPONSOR_FORM_ID} disabled={saveMutation.isPending}>
+          <Button size="compact" type="submit" form={SPONSOR_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create sponsor'}
           </Button>
 
@@ -144,8 +144,7 @@ export default function SponsorFormPage() {
               to={`/manage/sponsors/${id}/contacts`}
               variant="outlined"
               color="primary"
-              size="small"
-            >
+              size="small" sx={compactButtonSx}>
               Manage Contacts
             </MuiButton>
           </Card>

@@ -136,7 +136,7 @@ function SideRow({
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, position: 'relative', zIndex: 1 }} {...DESKTOP_ONLY} data-testid="selection-row-action">
         {canAnnounce ? (
-          <Button size="sm" onClick={() => onAnnounce?.(match, side)} disabled={announcing} sx={rowActionSx}>
+          <Button size="compact" onClick={() => onAnnounce?.(match, side)} disabled={announcing} sx={rowActionSx}>
             {announcing ? 'Announcing…' : 'Announce'}
           </Button>
         ) : (

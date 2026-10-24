@@ -309,7 +309,7 @@ export default function ResultImportPage() {
       <EmptyState
         title="Couldn't load the sources"
         description="Something went wrong. Please try again."
-        action={<Button onClick={() => void catalogueQuery.refetch()}>Try again</Button>}
+        action={<Button size="compact" onClick={() => void catalogueQuery.refetch()}>Try again</Button>}
       />
     )
   } else if (catalogue.adaptors.length === 0) {
@@ -326,7 +326,7 @@ export default function ResultImportPage() {
         backTo={RESULTS_PATH}
         backLabel="Back to Results"
         action={
-          <Button variant="secondary" onClick={() => navigate(RESULTS_PATH)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+          <Button size="compact" variant="secondary" onClick={() => navigate(RESULTS_PATH)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
             Cancel
           </Button>
         }

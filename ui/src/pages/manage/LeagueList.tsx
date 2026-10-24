@@ -185,7 +185,7 @@ export default function LeagueList() {
             />
           ) : undefined
         }
-        action={<Button onClick={() => navigate('/manage/fixtures/leagues/new')}>Add League</Button>}
+        action={<Button size="compact" onClick={() => navigate('/manage/fixtures/leagues/new')}>Add League</Button>}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}

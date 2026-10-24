@@ -4,8 +4,8 @@ import { activeProfileKey, forgetProfileChoices, getRememberedProfileKey, openPr
 
 // docs/specs/119 slice 4 (Decisions 7, 25, 29). The test address is localhost, the root domain, so there is no club slug here;
 // the club-address cases are in activeProfile.subdomain.test.ts.
-const profile = (overrides: Partial<Profile>): Profile => ({ kind: 'MY_PLAYERS', title: 'My players', landing: '/account', pendingCount: 0, ...overrides })
-const manager = (clubId: string, clubSlug = clubId): Profile => profile({ kind: 'MANAGER', title: `Manager of ${clubId}`, clubId, clubSlug, landing: '/manage' })
+const profile = (overrides: Partial<Profile>): Profile => ({ kind: 'MY_PLAYERS', title: 'Player Hub', landing: '/account', pendingCount: 0, ...overrides })
+const manager = (clubId: string, clubSlug = clubId): Profile => profile({ kind: 'MANAGER', title: 'Club manager', clubId, clubSlug, landing: '/manage' })
 
 beforeEach(() => localStorage.clear())
 

@@ -2,7 +2,7 @@ import type { FormEvent } from 'react'
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button } from '../../../components/Button'
+import { Button, compactButtonSx } from '../../../components/Button'
 import { EmptyState } from '../../../components/EmptyState'
 import { FieldFormFields } from '../../../components/FieldFormFields'
 import { RecordFormScreen } from '../../../components/RecordFormScreen'
@@ -46,10 +46,10 @@ function AdminFieldFormScreen({ field }: { field: PlatformPlayingArea }) {
               {errorDetail(save.error, 'Something went wrong saving this field. Please try again.')}
             </Typography>
           )}
-          <MuiButton component={RouterLink} to={backTo} variant="outlined">
+          <MuiButton component={RouterLink} to={backTo} variant="outlined" sx={compactButtonSx}>
             Cancel
           </MuiButton>
-          <Button type="submit" form={FORM_ID} disabled={save.isPending}>
+          <Button size="compact" type="submit" form={FORM_ID} disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </Stack>

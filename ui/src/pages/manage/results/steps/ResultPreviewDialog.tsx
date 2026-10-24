@@ -66,7 +66,7 @@ export function ResultPreviewDialog({ open, onClose, clubId, match }: ResultPrev
     <Dialog open={open} onClose={onClose} fullScreen>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: { xs: 2, sm: 3 }, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
         <DialogTitle sx={{ p: 0 }}>Result preview</DialogTitle>
-        <Button variant="secondary" onClick={onClose} sx={{ minHeight: 44, flex: 'none' }}>
+        <Button size="compact" variant="secondary" onClick={onClose} sx={{ flex: 'none' }}>
           Back to review
         </Button>
       </Box>

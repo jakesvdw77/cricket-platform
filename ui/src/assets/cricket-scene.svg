@@ -54,5 +54,6 @@
   </g>
   <ellipse cx="700" cy="868" rx="26" ry="5" fill="#0B3D26" opacity="0.3"/>
   <circle cx="700" cy="850" r="20" fill="#C8102E"/>
-  <path d="M684 846 Q700 838 716 846 M684 856 Q700 848 716 856" fill="none" stroke="#F7F3E8" stroke-width="2.5" opacity="0.85"/>
+  <path d="M680 850 H720" fill="none" stroke="#7a0a1c" stroke-width="3" stroke-linecap="round"/>
+  <path d="M683 845 H717 M683 855 H717" fill="none" stroke="#F7F3E8" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3" opacity="0.9"/>
 </svg>

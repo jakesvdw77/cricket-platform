@@ -8,6 +8,7 @@ import type { HubHeaderAction } from './hubContext'
 export function JumpToTodayButton({ action }: { action: HubHeaderAction }) {
   return (
     <Button
+      size="compact"
       variant="secondary"
       startIcon={<TodayOutlinedIcon fontSize="small" />}
       disabled={action.disabled}

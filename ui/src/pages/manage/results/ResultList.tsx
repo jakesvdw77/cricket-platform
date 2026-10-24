@@ -304,13 +304,13 @@ export default function ResultList() {
         action={
           // docs/specs/104: Import result sits beside Capture result; the capture picker also offers it.
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="secondary" startIcon={<EmojiEventsOutlinedIcon />} onClick={() => navigate('/manage/leaderboards')}>
+            <Button size="compact" variant="secondary" startIcon={<EmojiEventsOutlinedIcon />} onClick={() => navigate('/manage/leaderboards')}>
               Leaderboards
             </Button>
-            <Button variant="secondary" onClick={() => navigate(resultImportTo())}>
+            <Button size="compact" variant="secondary" onClick={() => navigate(resultImportTo())}>
               Import result
             </Button>
-            <Button onClick={() => setPickerOpen(true)}>Capture result</Button>
+            <Button size="compact" onClick={() => setPickerOpen(true)}>Capture result</Button>
           </Box>
         }
       />
@@ -427,10 +427,10 @@ export default function ResultList() {
           }
           action={
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button variant="secondary" onClick={() => navigate(resultImportTo())}>
+              <Button size="compact" variant="secondary" onClick={() => navigate(resultImportTo())}>
                 Import result
               </Button>
-              <Button onClick={() => setPickerOpen(true)}>Capture result</Button>
+              <Button size="compact" onClick={() => setPickerOpen(true)}>Capture result</Button>
             </Box>
           }
         />
@@ -438,15 +438,15 @@ export default function ResultList() {
 
       {hasResults && data.totalPages > 1 && (
         <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-          <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((prev) => prev - 1)}>
+          <Button size="compact" variant="secondary" disabled={page === 0} onClick={() => setPage((prev) => prev - 1)}>
             Previous
           </Button>
           <Typography variant="body2" color="text.secondary">
             Page {data.number + 1} of {data.totalPages}
           </Typography>
           <Button
+            size="compact"
             variant="secondary"
-            size="sm"
             disabled={page + 1 >= data.totalPages}
             onClick={() => setPage((prev) => prev + 1)}
           >

@@ -31,7 +31,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * docs/specs/119, Decision 29: the chooser cards, computed on read from the caller's real rows (nothing stores "the user's
- * profiles"). At most one My players card (own record counts), one manager card per club the person manages (any
+ * profiles"). At most one Player Hub card (own record counts), one manager card per club the person manages (any
  * CLUB_ADMIN grant at that club, however many sections) and the platform admin card. The card never grants anything.
  */
 @Component
@@ -62,7 +62,7 @@ public class ProfileResolver {
         this.linkRequestManagementService = linkRequestManagementService;
     }
 
-    /** The caller's cards: My players, then manager cards by club name, then the platform admin card. */
+    /** The caller's cards: Player Hub, then manager cards by club name, then the platform admin card. */
     public List<ProfileDto> resolve(Authentication authentication, Jwt jwt, Person person) {
         List<ProfileDto> profiles = new ArrayList<>();
         if (person != null) {
@@ -90,10 +90,26 @@ public class ProfileResolver {
         }
         String subtitle = null;
         if (!held.isEmpty()) {
-            String first = LinkRequestMapper.fullName(held.get(0).subject());
-            subtitle = held.size() == 1 ? first : first + " and " + (held.size() - 1) + " more";
+            subtitle = playerHubSubtitle(held);
         }
-        return new ProfileDto(ProfileKind.MY_PLAYERS, "My players", subtitle, null, null, null, "/account", (int) invitations);
+        return new ProfileDto(ProfileKind.MY_PLAYERS, "Player Hub", subtitle, null, null, null, "/account", (int) invitations);
+    }
+
+    /**
+     * "You" leads when the person's own record is among the players ("You", "You and Sam Smith", "You, Sam Smith and 1
+     * more"); otherwise the first player and a count ("Sam Smith and 2 more"). Own record is always first in the order.
+     */
+    private static String playerHubSubtitle(List<HeldPlayer> held) {
+        boolean you = held.get(0).self();
+        String first = you ? "You" : LinkRequestMapper.fullName(held.get(0).subject());
+        if (held.size() == 1) {
+            return first;
+        }
+        if (!you) {
+            return first + " and " + (held.size() - 1) + " more";
+        }
+        String second = LinkRequestMapper.fullName(held.get(1).subject());
+        return held.size() == 2 ? first + " and " + second : first + ", " + second + " and " + (held.size() - 2) + " more";
     }
 
     private List<ProfileDto> managers(Authentication authentication, Person person) {
@@ -137,7 +153,7 @@ public class ProfileResolver {
                     : joinNames(sectionNamesByClub.getOrDefault(club.getId(), List.of()));
             int waiting = linkRequestManagementService.summary(authentication, club.getId()).waiting();
             result.add(new ProfileDto(
-                    ProfileKind.MANAGER, "Manager of " + club.getName(), subtitle,
+                    ProfileKind.MANAGER, "Club manager", subtitle,
                     club.getId(), club.getName(), club.getSlug(), "/manage", waiting));
         }
         return result;

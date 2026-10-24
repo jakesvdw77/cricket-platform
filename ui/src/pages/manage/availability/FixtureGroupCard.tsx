@@ -173,7 +173,7 @@ export function FixtureGroupCard({
 
         {!fullyCovered && (
           <Box>
-            <Button disabled={!canSubmit} onClick={() => createMutation.mutate()}>
+            <Button size="compact" disabled={!canSubmit} onClick={() => createMutation.mutate()}>
               {createMutation.isPending ? 'Opening…' : `Open poll for ${selectedIds.size} selected fixture${selectedIds.size === 1 ? '' : 's'}`}
             </Button>
           </Box>
