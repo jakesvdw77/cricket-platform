@@ -23,7 +23,7 @@ describe('AgentChangeView', () => {
   it('hand over: validates the email, confirms in the console, then sends HANDOVER and says it is pending', async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()
-    renderWithProviders(<AgentChangeView player={player} mode="HANDOVER" onBack={onBack} />)
+    renderWithProviders(<AgentChangeView player={player} mode="HANDOVER" />)
 
     expect(screen.getByRole('heading', { name: 'Hand over Aman' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('Email address'), 'nope')
@@ -51,7 +51,7 @@ describe('AgentChangeView', () => {
 
   it('add another agent: sends ADD with its own wording', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<AgentChangeView player={player} mode="ADD" onBack={vi.fn()} />)
+    renderWithProviders(<AgentChangeView player={player} mode="ADD" />)
 
     expect(screen.getByRole('heading', { name: 'Add another agent' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('Email address'), 'second@example.com')
@@ -66,7 +66,7 @@ describe('AgentChangeView', () => {
   it('Back from the confirm returns to the email step without sending, and Back on the first step leaves', async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()
-    renderWithProviders(<AgentChangeView player={player} mode="HANDOVER" onBack={onBack} />)
+    renderWithProviders(<AgentChangeView player={player} mode="HANDOVER" />)
 
     await user.type(screen.getByLabelText('Email address'), 'a@b.co')
     await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -82,7 +82,7 @@ describe('AgentChangeView', () => {
   it('keeps the confirm step with an error when sending fails', async () => {
     const user = userEvent.setup()
     routeApi(http, { [`POST ${AGENTS}`]: httpError(500) })
-    renderWithProviders(<AgentChangeView player={player} mode="ADD" onBack={vi.fn()} />)
+    renderWithProviders(<AgentChangeView player={player} mode="ADD" />)
 
     await user.type(screen.getByLabelText('Email address'), 'a@b.co')
     await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -97,7 +97,7 @@ describe('RemoveLinkView', () => {
   it('cancel pending: confirms in the console, then deletes the invitation link and goes on', async () => {
     const user = userEvent.setup()
     const onDone = vi.fn()
-    renderWithProviders(<RemoveLinkView player={player} linkId="l9" kind="cancel" onBack={vi.fn()} onDone={onDone} />)
+    renderWithProviders(<RemoveLinkView player={player} linkId="l9" kind="cancel" onDone={onDone} />)
 
     expect(screen.getByRole('heading', { name: 'Cancel invitation' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Cancel this invitation? The invited person will no longer be able to accept it.')
@@ -111,7 +111,7 @@ describe('RemoveLinkView', () => {
   it('leave: confirms, then deletes the caller\'s own link', async () => {
     const user = userEvent.setup()
     const onDone = vi.fn()
-    renderWithProviders(<RemoveLinkView player={player} linkId="my-link" kind="leave" onBack={vi.fn()} onDone={onDone} />)
+    renderWithProviders(<RemoveLinkView player={player} linkId="my-link" kind="leave" onDone={onDone} />)
 
     expect(screen.getByRole('heading', { name: 'Leave Aman' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Stop managing Aman? You will no longer see or answer for them, and cannot undo this yourself.')
@@ -125,7 +125,7 @@ describe('RemoveLinkView', () => {
     const user = userEvent.setup()
     routeApi(http, { 'DELETE /me/links/my-link': httpError(409) })
     const onDone = vi.fn()
-    renderWithProviders(<RemoveLinkView player={player} linkId="my-link" kind="leave" onBack={vi.fn()} onDone={onDone} />)
+    renderWithProviders(<RemoveLinkView player={player} linkId="my-link" kind="leave" onDone={onDone} />)
 
     await user.click(screen.getByRole('button', { name: 'Yes, leave' }))
 
@@ -136,7 +136,7 @@ describe('RemoveLinkView', () => {
   it('shows a general error for any other failure', async () => {
     const user = userEvent.setup()
     routeApi(http, { 'DELETE /me/links/l9': httpError(500) })
-    renderWithProviders(<RemoveLinkView player={player} linkId="l9" kind="cancel" onBack={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<RemoveLinkView player={player} linkId="l9" kind="cancel" onDone={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Yes, cancel it' }))
 
@@ -146,7 +146,7 @@ describe('RemoveLinkView', () => {
   it('disables the confirm while the link id is unknown, and Back works', async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()
-    renderWithProviders(<RemoveLinkView player={player} linkId={null} kind="leave" onBack={onBack} onDone={vi.fn()} />)
+    renderWithProviders(<RemoveLinkView player={player} linkId={null} kind="leave" onDone={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'Yes, leave' })).toBeDisabled()
     await user.click(within(screen.getByTestId('remove-link-view')).getByRole('button', { name: 'Back to profile' }))

@@ -26,6 +26,10 @@ export const hubHeading = {
   m: 0,
 } as const
 
+// docs/specs/121: the Hub's page heading (content panel) and its solid ground (about 92 percent opaque).
+export const hubPageHeading = { ...hubHeading, fontSize: 26 } as const
+export const HUB_GROUND = 'rgba(5, 30, 22, 0.92)'
+
 export const hubGoldButton = {
   bgcolor: HUB.gold,
   color: HUB.ink,

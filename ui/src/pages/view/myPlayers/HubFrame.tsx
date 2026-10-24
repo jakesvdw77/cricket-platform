@@ -3,29 +3,63 @@ import { Box, ButtonBase, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
-import { HUB, hubOutlineButton } from './hubStyle'
+import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
 // Nothing opens over it; a sub-view replaces the panel and offers Back.
 export interface HubFrameProps {
-  title: string
+  title: ReactNode
   menu?: ReactNode
   footer?: ReactNode
-  children: ReactNode
+  children?: ReactNode
   maxWidth?: number
   testId?: string
-  // Below md the title bar is slim by default; 'hidden' removes it (the hub shows its own headers there).
+  // Below sm the title bar is slim by default; 'hidden' removes it (the hub shows its own headers there).
   phoneTitle?: 'slim' | 'hidden'
   // 'solid' (default) puts a mostly opaque dark ground behind the content so text is not fought by the page backdrop;
   // 'clear' lets the backdrop show through (sparse screens such as the player picker).
   panel?: 'solid' | 'clear'
+  // docs/specs/121, opt-in (the Player Hub only; the picker and Find players keep their own height): the console fills the
+  // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1400px, 90vw) wide, the
+  // menu column (220 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
+  // HUB_GROUND, and the footer is pinned (56 px high, safe-area padding). With `fill` the caller decides what shows: `menu`
+  // and `children` side by side, or `hideContent` to give the whole body to the menu (a phone's menu screens).
+  fill?: boolean
+  hideContent?: boolean
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid' }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false }: HubFrameProps) {
+  const twoColumns = Boolean(menu) && !hideContent
+  const columns = fill
+    ? { xs: '1fr', sm: twoColumns ? '220px minmax(0, 1fr)' : '1fr', md: twoColumns ? '300px minmax(0, 1fr)' : '1fr' }
+    : { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }
+  const content = (
+    <Box
+      component="section"
+      aria-live="polite"
+      sx={{
+        position: 'relative',
+        overflowX: 'hidden',
+        overflowY: fill ? 'auto' : 'hidden',
+        minHeight: 0,
+        bgcolor: panel === 'solid' ? (fill ? HUB_GROUND : 'rgba(5, 30, 22, 0.88)') : 'transparent',
+        p: { xs: '16px 16px', md: '36px 40px' },
+        minWidth: 0,
+      }}
+    >
+      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
+    </Box>
+  )
+
   return (
-    <AccountShell bare maxWidth={maxWidth} testId={testId}>
+    <AccountShell
+      bare
+      fill={fill}
+      maxWidth={fill ? { xs: '100%', sm: 'min(1400px, 90vw)' } : maxWidth}
+      testId={testId}
+    >
       <Box
         sx={{
           border: `1px solid ${HUB.line}`,
@@ -35,24 +69,59 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           background: 'linear-gradient(180deg, rgba(10,51,34,0.78) 0%, rgba(7,42,28,0.82) 55%, rgba(5,32,26,0.88) 100%)',
           backdropFilter: 'blur(1.5px)',
           display: 'grid',
-          gridTemplateRows: 'auto 1fr auto',
+          gridTemplateRows: 'auto minmax(0, 1fr) auto',
+          ...(fill && {
+            // 56 px header, 16 px above and 24 px below from sm; a phone's console is the whole screen under the header.
+            height: { xs: 'calc(100vh - 56px)', sm: 'max(560px, calc(100vh - 96px))' },
+            minHeight: 560,
+            '@supports (height: 100dvh)': { height: { xs: 'calc(100dvh - 56px)', sm: 'max(560px, calc(100dvh - 96px))' } },
+            borderRadius: { xs: 0, sm: '6px' },
+            borderWidth: { xs: 0, sm: 1 },
+          }),
         }}
       >
-        <Box sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', md: 'flex' }, justifyContent: 'flex-end' }}>
+        <Box sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, justifyContent: 'flex-end' }}>
           <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 22, md: 'clamp(24px, 3vw, 32px)' }, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, textAlign: 'right' }}>
             {title}
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }, minHeight: { md: 'max(560px, calc(100vh - 450px))' }, minWidth: 0 }}>
-          {menu}
-          <Box component="section" aria-live="polite" sx={{ position: 'relative', overflow: 'hidden', bgcolor: panel === 'solid' ? 'rgba(5, 30, 22, 0.88)' : 'transparent', p: { xs: '16px 16px', md: '36px 40px' }, minWidth: 0 }}>
-            <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
-          </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: columns, minHeight: fill ? 0 : { md: 'max(560px, calc(100vh - 450px))' }, minWidth: 0 }}>
+          {fill && menu ? (
+            <Box
+              data-testid="hub-menu-column"
+              sx={{
+                minHeight: 0,
+                overflowY: 'auto',
+                borderRight: { xs: 0, sm: `1px solid ${HUB.line}` },
+                display: 'flex',
+                flexDirection: 'column',
+                background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
+              }}
+            >
+              {menu}
+              {/* Flexible space under the menu, as in the mockup. */}
+              <Box aria-hidden sx={{ flex: 1, display: { xs: 'none', sm: 'block' }, borderTop: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.22) }} />
+            </Box>
+          ) : (
+            menu
+          )}
+          {!hideContent && content}
         </Box>
 
         {footer && (
-          <Box component="footer" sx={{ borderTop: `1px solid ${HUB.line}`, px: { xs: 2, md: 2.5 }, py: 1, bgcolor: blackAlpha(.35), display: 'flex' }}>
+          <Box
+            component="footer"
+            sx={{
+              borderTop: `1px solid ${HUB.line}`,
+              px: { xs: 2, md: 2.5 },
+              py: 1,
+              bgcolor: blackAlpha(0.35),
+              display: 'flex',
+              alignItems: 'center',
+              ...(fill && { minHeight: 56, pb: 'max(8px, env(safe-area-inset-bottom))' }),
+            }}
+          >
             {footer}
           </Box>
         )}
@@ -74,7 +143,7 @@ export function HubFooterButton({ onClick, children, icon }: { onClick: () => vo
   )
 }
 
-// Outlined Back at the top left of the panel.
+// Outlined Back at the top left of the panel. Not used inside the Player Hub (docs/specs/121: the footer is the one Back).
 export function HubBackButton({ onClick, children = 'Back' }: { onClick: () => void; children?: ReactNode }) {
   return (
     <Box>

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Alert, Box, Checkbox, FormControlLabel, MenuItem, Typography } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { Button } from '../../../components/Button'
@@ -10,7 +9,8 @@ import { PhoneInput } from '../../../components/PhoneInput'
 import { MediaUpload } from '../../../components/MediaUpload'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { BattingStance, BowlingArm, BowlingType } from '../../../api/playerApi'
-import { HUB, darkFieldSx as darkSx, darkMenuProps, hubGoldButton, hubOutlineButton } from './hubStyle'
+import { HUB, darkFieldSx as darkSx, darkMenuProps, hubGoldButton } from './hubStyle'
+import { HubLeaveConfirm, useHubLeaveGuard } from './hubLeaveGuard'
 import { useUpdateMyPlayer } from '../../../api/myPlayersApi'
 import type { MyPlayer, UpdateMyPlayerRequest } from '../../../api/myPlayersApi'
 import { blackAlpha } from '../../../brandTokens'
@@ -26,12 +26,11 @@ export interface MyPlayerEditFormProps {
   player: MyPlayer
   // Called after a successful save.
   onDone: () => void
-  // The hub's dark look (inside the console panel) with its own Back button; the default is the light form.
+  // The hub's dark look (inside the console panel); the default is the light form. Back is the hub footer's (docs/specs/121).
   dark?: boolean
-  onBack?: () => void
 }
 
-export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPlayerEditFormProps) {
+export function MyPlayerEditForm({ player, onDone, dark = false }: MyPlayerEditFormProps) {
   const update = useUpdateMyPlayer(player.key)
   const canEditEmail = player.self || player.main
   const [photoUrl, setPhotoUrl] = useState<string | null>(player.photoUrl)
@@ -49,15 +48,11 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
   const [understood, setUnderstood] = useState(false)
   const [dobError, setDobError] = useState<string | undefined>()
   const [emailError, setEmailError] = useState<string | undefined>()
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const snapshot = JSON.stringify([dateOfBirth, photoUrl, phone, email, altContactName, altContactPhone, battingStance, bowlingArm, bowlingType, isWicketKeeper, medicalAidProvider, medicalAidMemberNumber])
   const [initialSnapshot] = useState(snapshot)
-  const dirty = snapshot !== initialSnapshot
+  const [saved, setSaved] = useState(false)
+  useHubLeaveGuard(dark && snapshot !== initialSnapshot && !saved)
   const dobChanged = player.canEditDateOfBirth && dateOfBirth !== (player.dateOfBirth ?? '')
-  const back = () => {
-    if (dirty) setConfirmingDiscard(true)
-    else onBack?.()
-  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -86,7 +81,12 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
       medicalAidProvider: player.canEditMedical ? blankToNull(medicalAidProvider) : player.medicalAidProvider,
       medicalAidMemberNumber: player.canEditMedical ? blankToNull(medicalAidMemberNumber) : player.medicalAidMemberNumber,
     }
-    update.mutate(body, { onSuccess: onDone })
+    update.mutate(body, {
+      onSuccess: () => {
+        setSaved(true)
+        onDone()
+      },
+    })
   }
 
   const select = <T extends string>(set: (value: '' | T) => void) => (event: ChangeEvent<HTMLInputElement>) => set(event.target.value as '' | T)
@@ -94,28 +94,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate sx={{ display: 'flex', flexDirection: 'column', gap: 2, ...(dark ? darkSx : {}) }} data-testid="my-player-edit-form">
-      {dark && onBack && (
-        <Box sx={{ display: 'grid', gap: 1 }}>
-          <Box>
-            <Button variant="secondary" size="compact" startIcon={<ArrowBackIcon />} onClick={back} sx={hubOutlineButton}>
-              Back to profile
-            </Button>
-          </Box>
-          {confirmingDiscard && (
-            <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: blackAlpha(.3) }}>
-              <Typography fontSize={14}>Discard your changes?</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button variant="secondary" size="compact" onClick={() => onBack()} sx={hubOutlineButton}>
-                  Discard
-                </Button>
-                <Button size="compact" onClick={() => setConfirmingDiscard(false)} sx={hubGoldButton}>
-                  Keep editing
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </Box>
-      )}
+      {dark && <HubLeaveConfirm />}
       <MediaUpload label="Photo" value={photoUrl} onUploaded={setPhotoUrl} variant="logo" namespace="manage" />
 
       <Typography variant="subtitle2" component="h2" fontWeight={700}>

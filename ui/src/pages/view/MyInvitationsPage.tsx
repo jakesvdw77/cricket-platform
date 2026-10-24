@@ -65,13 +65,12 @@ function InvitationTile({ invitation }: { invitation: MyInvitation }) {
   )
 }
 
-export default function MyInvitationsPage() {
-  const navigate = useNavigate()
+// The list, shared by the standalone page below and the Player Hub's Account, Invitations panel (docs/specs/121).
+export function InvitationsList() {
   const invitations = useMyInvitations()
   const list = invitations.data ?? []
   return (
-    <HubFrame title="Invitations" maxWidth={720} testId="my-invitations-page">
-      <HubBackButton onClick={() => navigate('/account')}>Back to players</HubBackButton>
+    <>
       {invitations.isLoading && <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(.12) }} />}
       {invitations.isError && <Alert severity="error">We could not load your invitations. Please try again later.</Alert>}
       {invitations.data && list.length === 0 && (
@@ -82,6 +81,16 @@ export default function MyInvitationsPage() {
           <InvitationTile key={invitation.linkId} invitation={invitation} />
         ))}
       </Box>
+    </>
+  )
+}
+
+export default function MyInvitationsPage() {
+  const navigate = useNavigate()
+  return (
+    <HubFrame title="Invitations" maxWidth={720} testId="my-invitations-page">
+      <HubBackButton onClick={() => navigate('/account')}>Back to players</HubBackButton>
+      <InvitationsList />
     </HubFrame>
   )
 }

@@ -15,7 +15,21 @@ import { forgetProfileChoices } from '../../utils/activeProfile'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
 // and Player Hub. The cricket backdrop, a slim header with Sign out and one white card column.
-export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page', bare = false }: { children: ReactNode; maxWidth?: number; testId?: string; bare?: boolean }) {
+// `fill` (the Player Hub, docs/specs/121) drops the vertical padding so the console can fill the window height: nothing
+// around it on a phone, 16 px above and 24 px below from sm. `maxWidth` may then be a responsive value.
+export function AccountShell({
+  children,
+  maxWidth = 592,
+  testId = 'welcome-page',
+  bare = false,
+  fill = false,
+}: {
+  children: ReactNode
+  maxWidth?: number | string | Record<string, number | string>
+  testId?: string
+  bare?: boolean
+  fill?: boolean
+}) {
   const navigate = useNavigate()
   const backTo = useClubHome()
   const theme = useTheme()
@@ -99,7 +113,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
         )}
         {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
       </Box>
-      <Box sx={{ width: '100%', maxWidth, mx: 'auto', px: 2, py: { xs: 2, sm: 4 }, boxSizing: 'border-box' }}>
+      <Box sx={{ width: '100%', maxWidth, mx: 'auto', boxSizing: 'border-box', ...(fill ? { px: { xs: 0, sm: 2 }, pt: { xs: 0, sm: 2 }, pb: { xs: 0, sm: 3 } } : { px: 2, py: { xs: 2, sm: 4 } }) }}>
         <Box
           data-testid={testId}
           sx={bare ? { color: BACKDROP_COLOURS.cream } : { bgcolor: 'background.paper', color: 'text.primary', borderRadius: 2, boxShadow: 1, p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}

@@ -7,12 +7,12 @@ import { Input } from '../../../components/Input'
 import { useInviteAgent } from '../../../api/myPlayersApi'
 import type { MyPlayer } from '../../../api/myPlayersApi'
 import { useRemoveMyLink } from '../../../api/meApi'
-import { HubBackButton } from './HubFrame'
-import { HUB, darkFieldSx, hubGoldButton, hubHeading, hubOutlineButton } from './hubStyle'
+import { HubLeaveConfirm, useHubLeaveGuard } from './hubLeaveGuard'
+import { HUB, darkFieldSx, hubGoldButton, hubOutlineButton, hubPageHeading } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 slice 4, "Changing agents": the main agent hands over or adds another agent, cancels a pending invitation,
-// or any other agent leaves. Each is a sub-view that replaces the console body, with an explicit confirm step and Back.
+// or any other agent leaves. Each is a sub-view that replaces the console body, with an explicit confirm step. Back is the hub footer's (docs/specs/121).
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function Confirm({ children }: { children: string }) {
@@ -23,13 +23,14 @@ function Confirm({ children }: { children: string }) {
   )
 }
 
-export function AgentChangeView({ player, mode, onBack }: { player: MyPlayer; mode: 'HANDOVER' | 'ADD'; onBack: () => void }) {
+export function AgentChangeView({ player, mode }: { player: MyPlayer; mode: 'HANDOVER' | 'ADD' }) {
   const invite = useInviteAgent(player.key)
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email' | 'confirm' | 'sent'>('email')
   const [error, setError] = useState<string | undefined>()
   const handover = mode === 'HANDOVER'
   const address = email.trim().toLowerCase()
+  useHubLeaveGuard(email.trim() !== '' && step !== 'sent')
 
   const next = (event: FormEvent) => {
     event.preventDefault()
@@ -43,8 +44,8 @@ export function AgentChangeView({ player, mode, onBack }: { player: MyPlayer; mo
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="agent-change-view">
-      <HubBackButton onClick={step === 'confirm' ? () => setStep('email') : onBack}>{step === 'confirm' ? 'Back' : 'Back to profile'}</HubBackButton>
-      <Typography component="h2" sx={hubHeading}>
+      <HubLeaveConfirm />
+      <Typography component="h2" sx={hubPageHeading}>
         {handover ? `Hand over ${player.firstName}` : 'Add another agent'}
       </Typography>
       {step === 'email' && (
@@ -79,17 +80,15 @@ export function AgentChangeView({ player, mode, onBack }: { player: MyPlayer; mo
             >
               {invite.isPending ? 'Sending…' : 'Send invitation'}
             </Button>
+            <Button variant="secondary" size="compact" sx={hubOutlineButton} disabled={invite.isPending} onClick={() => setStep('email')}>
+              Change email address
+            </Button>
           </Box>
         </>
       )}
       {step === 'sent' && (
         <>
           <Confirm>{`Invitation sent to ${address}. It shows as pending until they accept, and expires after 14 days.`}</Confirm>
-          <Box>
-            <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={onBack}>
-              Back to profile
-            </Button>
-          </Box>
         </>
       )}
     </Box>
@@ -97,14 +96,13 @@ export function AgentChangeView({ player, mode, onBack }: { player: MyPlayer; mo
 }
 
 // Leave as an agent, or cancel a pending invitation: one confirm, one DELETE /me/links/{linkId}.
-export function RemoveLinkView({ player, linkId, kind, onBack, onDone }: { player: MyPlayer; linkId: string | null | undefined; kind: 'leave' | 'cancel'; onBack: () => void; onDone: () => void }) {
+export function RemoveLinkView({ player, linkId, kind, onDone }: { player: MyPlayer; linkId: string | null | undefined; kind: 'leave' | 'cancel'; onDone: () => void }) {
   const remove = useRemoveMyLink()
   const leaving = kind === 'leave'
   const handOverFirst = isAxiosError(remove.error) && remove.error.response?.status === 409
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="remove-link-view">
-      <HubBackButton onClick={onBack}>Back to profile</HubBackButton>
-      <Typography component="h2" sx={hubHeading}>
+      <Typography component="h2" sx={hubPageHeading}>
         {leaving ? `Leave ${player.firstName}` : 'Cancel invitation'}
       </Typography>
       <Confirm>

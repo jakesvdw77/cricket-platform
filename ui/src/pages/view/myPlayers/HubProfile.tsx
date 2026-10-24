@@ -4,7 +4,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../../components/Button'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { MyPlayer } from '../../../api/myPlayersApi'
-import { HUB, hubGoldButton, hubHeading, hubOutlineButton } from './hubStyle'
+import { HUB, hubGoldButton, hubHeading, hubOutlineButton, hubPageHeading } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/119 3C: the Profile section of the player hub. Fields with no value are hidden; a mostly empty profile gets a
@@ -64,7 +64,7 @@ export function HubProfile({ player }: { player: MyPlayer }) {
   return (
     <Box data-testid="hub-profile" sx={{ display: 'grid', gap: 1.75 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-        <Typography component="h2" sx={hubHeading}>
+        <Typography component="h2" sx={hubPageHeading}>
           Profile
         </Typography>
         <Button size="compact" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`/account/players/${player.key}/profile/edit`)} sx={hubGoldButton}>
