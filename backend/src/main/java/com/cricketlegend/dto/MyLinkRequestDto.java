@@ -12,4 +12,5 @@ public record MyLinkRequestDto(
         LinkRequestStatus status,
         String decisionNote,
         Instant createdAt,
-        Instant decidedAt) {}
+        Instant decidedAt,
+        String sectionName) {}

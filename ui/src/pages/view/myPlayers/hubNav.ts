@@ -105,7 +105,7 @@ export const HUB_NAV: HubNavItem[] = [
     children: [
       { id: 'account.invitations', label: 'Invitations', pill: 'invitations' },
       { id: 'account.requests', label: 'Link requests', pill: 'linkRequests' },
-      { id: 'account.find', label: 'Find more players', action: 'findPlayers' },
+      { id: 'account.find', label: 'Link more players', action: 'findPlayers' },
       { id: 'account.signout', label: 'Sign out', action: 'signOut' },
     ],
   },

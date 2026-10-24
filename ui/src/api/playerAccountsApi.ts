@@ -27,6 +27,8 @@ export interface LinkRequest {
   message?: string | null
   createdAt: string
   targetPlayerId?: string | null
+  sectionId?: string | null
+  sectionName?: string | null
   suggestedPlayer?: SuggestedPlayer | null
 }
 

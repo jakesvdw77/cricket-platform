@@ -63,7 +63,7 @@ export function ApproveLinkRequestDialog({ clubId, request, mode, onClose }: App
     setFirstName(request.typedFirstName)
     setLastName(request.typedLastName)
     setDateOfBirth(request.typedDateOfBirth)
-    setSectionId(null)
+    setSectionId(request.sectionId ?? null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.id, mode])
 

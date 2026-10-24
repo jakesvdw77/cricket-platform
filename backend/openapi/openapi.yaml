@@ -2076,6 +2076,28 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ClubOptionDto"
+  /api/v1/me/clubs/{clubId}/sections:
+    get:
+      tags:
+      - me-link-requests-controller
+      description: "The club's active sections by name for the link request section picker (docs/specs/119 Decision 31). Needs a verified email (403 code EMAIL_NOT_VERIFIED); 404 for an unknown or non-ACTIVE club."
+      operationId: sections
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionOptionDto"
   /api/v1/me/link-requests:
     get:
       tags:
@@ -11166,6 +11188,9 @@ components:
           maxLength: 500
         targetPlayerRef:
           type: string
+        sectionId:
+          type: string
+          format: uuid
       required:
       - clubId
       - firstName
@@ -11202,6 +11227,8 @@ components:
         decidedAt:
           type: string
           format: date-time
+        sectionName:
+          type: string
     ClubOptionDto:
       type: object
       properties:
@@ -11209,6 +11236,16 @@ components:
           type: string
           format: uuid
         name:
+          type: string
+    SectionOptionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        groupLabel:
           type: string
     SuggestedPlayerDto:
       type: object
@@ -11263,6 +11300,11 @@ components:
           format: uuid
         suggestedPlayer:
           $ref: "#/components/schemas/SuggestedPlayerDto"
+        sectionId:
+          type: string
+          format: uuid
+        sectionName:
+          type: string
     LinkRequestSummaryDto:
       type: object
       properties:

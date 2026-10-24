@@ -5,9 +5,11 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.LinkRequest;
 import com.cricketlegend.domain.LinkRequestStatus;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.Section;
 import com.cricketlegend.dto.CreateLinkRequestRequest;
 import com.cricketlegend.dto.LinkRequestReceivedDto;
 import com.cricketlegend.dto.MyLinkRequestDto;
+import com.cricketlegend.dto.SectionOptionDto;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -16,6 +18,7 @@ import com.cricketlegend.mapper.LinkRequestMapper;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.LinkRequestRepository;
 import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.service.LinkService;
 import com.cricketlegend.service.MyLinkRequestService;
 import com.cricketlegend.service.support.LinkAttemptLimiter;
@@ -23,7 +26,9 @@ import com.cricketlegend.service.support.OwnMatch;
 import com.cricketlegend.service.support.VerifiedEmail;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -48,6 +53,7 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
     private final PersonRepository personRepository;
     private final ClubRepository clubRepository;
     private final LinkRequestRepository linkRequestRepository;
+    private final SectionRepository sectionRepository;
     private final LinkService linkService;
     private final LinkAttemptLimiter limiter;
     private final LinkRequestMapper mapper;
@@ -56,12 +62,14 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
             PersonRepository personRepository,
             ClubRepository clubRepository,
             LinkRequestRepository linkRequestRepository,
+            SectionRepository sectionRepository,
             LinkService linkService,
             LinkAttemptLimiter limiter,
             LinkRequestMapper mapper) {
         this.personRepository = personRepository;
         this.clubRepository = clubRepository;
         this.linkRequestRepository = linkRequestRepository;
+        this.sectionRepository = sectionRepository;
         this.linkService = linkService;
         this.limiter = limiter;
         this.mapper = mapper;
@@ -92,6 +100,8 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
             targetProfileId = own.profileId();
         }
 
+        UUID sectionId = resolveSection(club.getId(), request.sectionId(), targetProfileId != null);
+
         limiter.countRequest(caller.getId()); // 10 a day (429)
 
         String firstName = request.firstName().trim();
@@ -117,6 +127,7 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
                 .typedLastName(lastName)
                 .typedDateOfBirth(dob)
                 .targetPlayerProfileId(targetProfileId)
+                .sectionId(sectionId)
                 .message(message)
                 .contactNumber(request.contactNumber().trim())
                 .status(LinkRequestStatus.PENDING)
@@ -124,6 +135,52 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
         log.info("Link request created: request={} account={} club={} withTarget={}",
                 saved.getId(), caller.getId(), club.getId(), targetProfileId != null);
         return new LinkRequestReceivedDto(RECEIVED);
+    }
+
+    /**
+     * The section a request is stored with (spec 119 Decision 31). A club with no active sections stores none and ignores
+     * what was sent; otherwise a typed request (no target player) needs one, and any one sent must be of this club.
+     */
+    private UUID resolveSection(UUID clubId, UUID sectionId, boolean hasTarget) {
+        List<Section> sections = activeSections(clubId);
+        if (sections.isEmpty()) {
+            return null;
+        }
+        if (sectionId == null) {
+            if (hasTarget) {
+                return null;
+            }
+            throw new ValidationException("Choose the section the player belongs to.");
+        }
+        return sections.stream()
+                .map(Section::getId)
+                .filter(sectionId::equals)
+                .findFirst()
+                .orElseThrow(() -> new ValidationException("Choose one of the club's sections."));
+    }
+
+    private List<Section> activeSections(UUID clubId) {
+        return sectionRepository.findByClubId(clubId).stream().filter(Section::isActive).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SectionOptionDto> sectionOptions(Jwt jwt, UUID clubId) {
+        VerifiedEmail.require(jwt);
+        clubRepository
+                .findById(clubId)
+                .filter(c -> c.getStatus() == ClubStatus.ACTIVE)
+                .orElseThrow(() -> new NotFoundException("Club not found: " + clubId));
+        List<Section> all = sectionRepository.findByClubId(clubId);
+        Map<UUID, String> names = all.stream().collect(Collectors.toMap(Section::getId, Section::getName));
+        return all.stream()
+                .filter(Section::isActive)
+                .sorted(Comparator.comparing(Section::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(s -> new SectionOptionDto(
+                        s.getId(),
+                        s.getName(),
+                        Optional.ofNullable(s.getParentSectionId()).map(names::get).orElse(null)))
+                .toList();
     }
 
     @Override
@@ -138,8 +195,15 @@ public class MyLinkRequestServiceImpl implements MyLinkRequestService {
                 .findAllById(requests.stream().map(LinkRequest::getClubId).collect(Collectors.toSet()))
                 .stream()
                 .collect(Collectors.toMap(Club::getId, Club::getName));
+        Map<UUID, String> sectionNames = sectionRepository
+                .findAllById(requests.stream()
+                        .map(LinkRequest::getSectionId)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Section::getId, Section::getName));
         return requests.stream()
-                .map(r -> mapper.toMyDto(r, clubNames.get(r.getClubId())))
+                .map(r -> mapper.toMyDto(r, clubNames.get(r.getClubId()), sectionNames.get(r.getSectionId())))
                 .toList();
     }
 

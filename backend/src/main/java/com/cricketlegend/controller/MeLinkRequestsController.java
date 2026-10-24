@@ -4,6 +4,7 @@ import com.cricketlegend.dto.ClubOptionDto;
 import com.cricketlegend.dto.CreateLinkRequestRequest;
 import com.cricketlegend.dto.LinkRequestReceivedDto;
 import com.cricketlegend.dto.MyLinkRequestDto;
+import com.cricketlegend.dto.SectionOptionDto;
 import com.cricketlegend.service.ClubSearchService;
 import com.cricketlegend.service.MyLinkRequestService;
 import jakarta.validation.Valid;
@@ -40,6 +41,11 @@ class MeLinkRequestsController {
     @GetMapping("/clubs")
     List<ClubOptionDto> clubs() {
         return clubSearchService.listActiveOptions();
+    }
+
+    @GetMapping("/clubs/{clubId}/sections")
+    List<SectionOptionDto> sections(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID clubId) {
+        return myLinkRequestService.sectionOptions(jwt, clubId);
     }
 
     @PostMapping("/link-requests")

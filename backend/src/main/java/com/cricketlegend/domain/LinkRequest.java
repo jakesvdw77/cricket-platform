@@ -50,6 +50,10 @@ public class LinkRequest {
     @Column(name = "target_player_profile_id")
     private UUID targetPlayerProfileId;
 
+    /** The section the requester chose (spec 119 Decision 31); null when the club has none or on older rows. */
+    @Column(name = "section_id")
+    private UUID sectionId;
+
     @Column(length = 500)
     private String message;
 

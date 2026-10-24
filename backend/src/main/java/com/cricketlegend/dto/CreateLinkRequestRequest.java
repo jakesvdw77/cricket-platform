@@ -9,6 +9,7 @@ import java.util.UUID;
 
 /**
  * {@code POST /api/v1/me/link-requests} (docs/specs/119). Everything here is untrusted typed input. {@code
+ * sectionId} is required when there is no {@code targetPlayerRef} and the club has sections; {@code
  * targetPlayerRef} may only be a {@code ref} from the caller's own {@code /me/player-matches} ("Ask the club to help").
  */
 public record CreateLinkRequestRequest(
@@ -19,4 +20,5 @@ public record CreateLinkRequestRequest(
         @NotBlank @Size(max = 30) @Pattern(regexp = "^[0-9+()\\-.\\s]{7,30}$", message = "Enter a valid contact number")
                 String contactNumber,
         @Size(max = 500) String message,
-        String targetPlayerRef) {}
+        String targetPlayerRef,
+        UUID sectionId) {}
