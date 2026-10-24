@@ -1,0 +1,186 @@
+<title>Christmas Backdrop Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap">
+<style>
+/* Layout concept: the real cricket-scene backdrop with a toggle between today's scene and a Christmas version (string lights, tree, Santa hat on the stumps, bow on the bat, gifts, twinkling stars). A translucent hub console sits on top so the owner sees how it looks behind the real screens. Single dark look by choice. */
+:root { --ink:#06241A; --cream:#F7F3E8; --gold:#E8B83D; --line:rgba(247,243,232,.28); --muted:rgba(247,243,232,.66); --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Barlow",system-ui,sans-serif; color-scheme: dark; }
+html, body { background:var(--ink); color:var(--cream); font-family:var(--body); }
+body { margin:0; padding-block:16px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); }
+* { box-sizing:border-box; }
+.bar { max-width:1240px; margin:0 auto 12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.bar p { margin:0; flex:1 1 320px; font-size:14px; color:var(--muted); line-height:1.5; }
+.bar b { color:var(--cream); }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.seg button { font:600 14px var(--body); padding:10px 18px; min-height:44px; border:0; background:transparent; color:var(--cream); cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--gold); color:var(--ink); }
+button:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.stage { position:relative; max-width:1240px; margin:0 auto; aspect-ratio:16 / 9; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#0B3D26; }
+.stage svg.scene { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.stage .xmas { display:none; }
+.stage[data-theme="xmas"] .xmas { display:inline; }
+.console { position:absolute; left:6%; right:34%; top:8%; bottom:26%; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:rgba(5,30,22,.88); display:grid; grid-template-rows:auto 1fr; }
+.console .t { padding:10px 16px; border-bottom:1px solid var(--line); text-align:right; font:700 clamp(14px,2.4vw,26px) var(--display); letter-spacing:.05em; text-transform:uppercase; }
+.console ul { list-style:none; margin:0; padding:0; align-self:start; max-width:46%; border-right:1px solid var(--line); height:100%; }
+.console li { padding:10px 16px; border-bottom:1px solid var(--line); text-align:right; font:600 clamp(12px,1.8vw,20px) var(--display); letter-spacing:.08em; text-transform:uppercase; }
+.console li.on { color:var(--gold); background:rgba(232,184,61,.16); }
+@media (prefers-reduced-motion: no-preference) {
+  .tw { animation: tw 2.6s ease-in-out infinite; }
+  .tw.b { animation-delay: .9s; } .tw.c { animation-delay: 1.7s; }
+  @keyframes tw { 0%,100% { opacity:.25; } 50% { opacity:1; } }
+}
+</style>
+<div class="bar">
+  <p><b>Mockup, not built, and not in the app.</b> The real cricket-scene backdrop, with a seasonal Christmas version for the December launch: string lights from the floodlights to the clubhouse, a tree beside the clubhouse, Father Christmas batting with the elves fielding, a bow on the bat, a few gifts and twinkling stars. Switch back to see today's scene.</p>
+  <div class="seg" role="group" aria-label="Backdrop"><button type="button" id="b-n" aria-pressed="true">Today</button><button type="button" id="b-x" aria-pressed="false">Christmas</button></div>
+</div>
+<div class="stage" id="stage" data-theme="normal">
+  <svg class="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Cricket ground at night">
+
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B3D26"/>
+      <stop offset="1" stop-color="#0F5132"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#E8B83D" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#E8B83D" stop-opacity="0"/>
+    </radialGradient>
+    <g id="pylon">
+      <rect x="-4" y="0" width="8" height="120" fill="#0B3D26"/>
+      <rect x="-30" y="-26" width="60" height="30" rx="3" fill="#0B3D26"/>
+      <g fill="#E8B83D"><circle cx="-20" cy="-18" r="4"/><circle cx="-7" cy="-18" r="4"/><circle cx="7" cy="-18" r="4"/><circle cx="20" cy="-18" r="4"/><circle cx="-20" cy="-6" r="4"/><circle cx="-7" cy="-6" r="4"/><circle cx="7" cy="-6" r="4"/><circle cx="20" cy="-6" r="4"/></g>
+    </g>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1230" cy="250" r="190" fill="url(#glow)"/>
+  <circle cx="1230" cy="250" r="64" fill="#E8B83D" opacity="0.9"/>
+  <path d="M0 470 Q250 400 520 465 T1000 455 T1600 440 V620 H0z" fill="#0F5132"/>
+  <path d="M0 520 Q300 470 640 515 T1240 505 T1600 500 V640 H0z" fill="#14633F"/>
+  <g fill="#0B3D26">
+    <rect x="1060" y="470" width="190" height="52"/>
+    <path d="M1045 470 L1155 430 L1265 470z"/>
+    <rect x="1140" y="404" width="6" height="30"/>
+    <path d="M1146 404 L1172 411 L1146 418z" fill="#C8102E"/>
+  </g>
+  <g fill="#E8B83D" opacity="0.85"><rect x="1080" y="488" width="14" height="14"/><rect x="1110" y="488" width="14" height="14"/><rect x="1186" y="488" width="14" height="14"/><rect x="1216" y="488" width="14" height="14"/></g>
+  <circle cx="1155" cy="470" r="150" fill="url(#glow)" opacity="0.35"/>
+  <g>
+    <circle cx="120" cy="390" r="110" fill="url(#glow)" opacity="0.6"/>
+    <use href="#pylon" x="120" y="400"/>
+    <circle cx="1440" cy="360" r="110" fill="url(#glow)" opacity="0.6"/>
+    <use href="#pylon" x="1440" y="370"/>
+    <circle cx="1530" cy="400" r="90" fill="url(#glow)" opacity="0.5"/>
+    <use href="#pylon" x="1530" y="410"/>
+  </g>
+  <path d="M0 560 Q800 520 1600 555 V900 H0z" fill="#14633F"/>
+  <path d="M0 640 Q800 590 1600 635 V900 H0z" fill="#0F5132" opacity="0.7"/>
+  <g fill="none" stroke="#F7F3E8" stroke-opacity="0.22" stroke-width="3">
+    <path d="M-60 700 Q800 560 1660 690"/>
+    <path d="M-60 790 Q800 650 1660 780"/>
+  </g>
+  <path d="M762 612 H838 L1010 900 H590z" fill="#E2D5B0"/>
+  <path d="M762 612 H838 L842 626 H758z" fill="#F7F3E8" opacity="0.6"/>
+  <g fill="#F7F3E8"><rect x="790" y="580" width="5" height="36" rx="1.5"/><rect x="797.5" y="580" width="5" height="36" rx="1.5"/><rect x="805" y="580" width="5" height="36" rx="1.5"/></g>
+  <g fill="#E8B83D"><rect x="790" y="577" width="9" height="3" rx="1"/><rect x="801" y="577" width="9" height="3" rx="1"/></g>
+  <ellipse cx="800" cy="618" rx="30" ry="3" fill="#0B3D26" opacity="0.25"/>
+  <g transform="translate(930 835) rotate(-62)">
+    <rect x="-9" y="-150" width="18" height="62" rx="4" fill="#E8B83D"/>
+    <rect x="-3" y="-190" width="6" height="44" rx="3" fill="#0B3D26"/>
+    <path d="M-24 -88 H24 L18 70 Q0 82 -18 70z" fill="#E2D5B0"/>
+    <rect x="-3" y="-80" width="6" height="140" fill="#F7F3E8" opacity="0.7"/>
+  </g>
+  <ellipse cx="700" cy="868" rx="26" ry="5" fill="#0B3D26" opacity="0.3"/>
+  <circle cx="700" cy="850" r="20" fill="#C8102E"/>
+  <path d="M680 850 H720" fill="none" stroke="#7a0a1c" stroke-width="3" stroke-linecap="round"/>
+  <path d="M683 845 H717 M683 855 H717" fill="none" stroke="#F7F3E8" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3" opacity="0.9"/>
+
+
+  <g class="xmas">
+    <defs>
+      <g id="elf">
+        <ellipse cx="0" cy="1" rx="12" ry="2.5" fill="#0B3D26" opacity=".3"/>
+        <rect x="-7" y="-16" width="5" height="16" fill="#5a3b1e"/><rect x="2" y="-16" width="5" height="16" fill="#5a3b1e"/>
+        <path d="M-11 -14 L-8 -38 H8 L11 -14z" fill="#3FBF7F"/>
+        <rect x="-10" y="-26" width="20" height="4" fill="#C8102E"/><rect x="-2" y="-27" width="4" height="6" fill="#E8B83D"/>
+        <path d="M-9 -34 L-17 -22 M9 -34 L17 -22" stroke="#3FBF7F" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <circle cx="0" cy="-46" r="7.5" fill="#F2D3B0"/>
+        <path d="M-9 -50 Q0 -82 13 -64 L9 -50z" fill="#C8102E"/><circle cx="13" cy="-64" r="3.6" fill="#E8B83D"/>
+        <rect x="-9.5" y="-52" width="19" height="4" rx="2" fill="#F7F3E8"/>
+      </g>
+      <g id="santa">
+        <ellipse cx="0" cy="1" rx="22" ry="3.5" fill="#0B3D26" opacity=".3"/>
+        <rect x="-11" y="-24" width="9" height="24" fill="#8b0e22"/><rect x="2" y="-24" width="9" height="24" fill="#8b0e22"/>
+        <rect x="-13" y="-7" width="12" height="7" rx="2" fill="#1b1b1b"/><rect x="1" y="-7" width="12" height="7" rx="2" fill="#1b1b1b"/>
+        <path d="M-19 -24 Q-22 -66 -11 -78 H11 Q22 -66 19 -24z" fill="#C8102E"/>
+        <rect x="-3.5" y="-78" width="7" height="54" fill="#F7F3E8"/>
+        <rect x="-19" y="-38" width="38" height="6" fill="#1b1b1b"/><rect x="-4.5" y="-39" width="9" height="8" fill="#E8B83D"/>
+        <circle cx="0" cy="-89" r="10" fill="#F2D3B0"/>
+        <path d="M-10 -87 Q0 -60 10 -87 Q9 -76 0 -71 Q-9 -76 -10 -87z" fill="#F7F3E8"/>
+        <path d="M-11 -93 Q-4 -122 20 -104 L11 -93z" fill="#C8102E"/>
+        <rect x="-12" y="-96" width="24" height="7" rx="3.5" fill="#F7F3E8"/><circle cx="21" cy="-104" r="5.5" fill="#F7F3E8"/>
+        <path d="M13 -68 L26 -48" stroke="#C8102E" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <g transform="translate(27 -50) rotate(8)"><rect x="-3" y="0" width="6" height="15" rx="2" fill="#E8B83D"/><path d="M-8 15 H8 L6 46 Q0 51 -6 46z" fill="#E2D5B0"/></g>
+      </g>
+    </defs>
+
+    <!-- warm horizon glow -->
+    <rect x="0" y="380" width="1600" height="200" fill="#E8B83D" opacity="0.07"/>
+    <!-- stars and sparkles -->
+    <g fill="#F7F3E8">
+      <circle class="tw a" cx="140" cy="90" r="2.4"/><circle class="tw b" cx="330" cy="170" r="1.8"/><circle class="tw c" cx="520" cy="70" r="2.2"/>
+      <circle class="tw b" cx="690" cy="150" r="1.6"/><circle class="tw a" cx="880" cy="60" r="2.4"/><circle class="tw c" cx="1010" cy="170" r="1.8"/>
+      <circle class="tw a" cx="1380" cy="90" r="2.2"/><circle class="tw b" cx="1500" cy="190" r="1.8"/><circle class="tw c" cx="240" cy="260" r="1.6"/>
+      <circle class="tw a" cx="760" cy="260" r="1.8"/><circle class="tw b" cx="1120" cy="110" r="2"/><circle class="tw c" cx="420" cy="300" r="1.6"/>
+    </g>
+    <g fill="#E8B83D">
+      <path class="tw b" d="M1000 120 l4 12 12 4 -12 4 -4 12 -4 -12 -12 -4 12 -4z"/>
+      <path class="tw a" d="M360 110 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3z"/>
+      <path class="tw c" d="M1460 250 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3z"/>
+    </g>
+    <!-- string lights: floodlight pylons to the clubhouse roof -->
+    <g fill="none" stroke-linecap="round" stroke-width="7">
+      <path d="M120 384 Q560 560 1045 470" stroke="#C8102E" stroke-dasharray="1 33"/>
+      <path d="M120 384 Q560 560 1045 470" stroke="#E8B83D" stroke-dasharray="1 33" stroke-dashoffset="-11"/>
+      <path d="M120 384 Q560 560 1045 470" stroke="#3FBF7F" stroke-dasharray="1 33" stroke-dashoffset="-22"/>
+      <path d="M1265 470 Q1350 540 1440 372" stroke="#C8102E" stroke-dasharray="1 29"/>
+      <path d="M1265 470 Q1350 540 1440 372" stroke="#E8B83D" stroke-dasharray="1 29" stroke-dashoffset="-10"/>
+      <path d="M1265 470 Q1350 540 1440 372" stroke="#3FBF7F" stroke-dasharray="1 29" stroke-dashoffset="-20"/>
+      <path d="M1045 470 L1155 430 L1265 470" stroke="#E8B83D" stroke-dasharray="1 20"/>
+      <path d="M1045 470 L1155 430 L1265 470" stroke="#C8102E" stroke-dasharray="1 20" stroke-dashoffset="-10"/>
+    </g>
+    <!-- Christmas tree beside the clubhouse -->
+    <g transform="translate(965 520)">
+      <rect x="-6" y="-6" width="12" height="22" fill="#5a3b1e"/>
+      <path d="M0 -150 L-46 -88 H46z" fill="#2c8a58"/><path d="M0 -118 L-58 -44 H58z" fill="#25774b"/><path d="M0 -84 L-70 0 H70z" fill="#1f6a42"/>
+      <path d="M0 -168 l5 14 15 1 -12 9 4 15 -12 -9 -12 9 4 -15 -12 -9 15 -1z" fill="#E8B83D"/>
+      <circle cx="-14" cy="-70" r="5" fill="#C8102E"/><circle cx="18" cy="-98" r="5" fill="#E8B83D"/><circle cx="-26" cy="-26" r="5" fill="#E8B83D"/>
+      <circle cx="24" cy="-34" r="5" fill="#C8102E"/><circle cx="2" cy="-48" r="4" fill="#F7F3E8"/><circle cx="-4" cy="-110" r="4" fill="#C8102E"/>
+    </g>
+    <!-- Father Christmas bats, the elves field -->
+    <use href="#santa" transform="translate(738 620)"/>
+    <use href="#elf" transform="translate(380 700) scale(0.95)"/>
+    <use href="#elf" transform="translate(1210 705) scale(0.95)"/>
+    <use href="#elf" transform="translate(540 604) scale(0.62)"/>
+    <use href="#elf" transform="translate(1080 612) scale(0.62)"/>
+    <use href="#elf" transform="translate(900 575) scale(0.45)"/>
+    <!-- ribbon bow on the bat handle -->
+    <g transform="translate(930 835) rotate(-62)"><g transform="translate(0 -122)">
+      <ellipse cx="-10" cy="0" rx="10" ry="5.5" fill="#C8102E"/><ellipse cx="10" cy="0" rx="10" ry="5.5" fill="#C8102E"/><circle cx="0" cy="0" r="4" fill="#E8B83D"/>
+    </g></g>
+    <!-- gifts -->
+    <g>
+      <rect x="150" y="810" width="76" height="62" fill="#C8102E"/><rect x="183" y="810" width="10" height="62" fill="#E8B83D"/><rect x="150" y="835" width="76" height="9" fill="#E8B83D"/>
+      <path d="M188 810 q-16 -22 -26 -8 q8 12 26 8z M188 810 q16 -22 26 -8 q-8 12 -26 8z" fill="#E8B83D"/>
+      <rect x="236" y="838" width="52" height="42" fill="#E8B83D"/><rect x="256" y="838" width="8" height="42" fill="#C8102E"/><rect x="236" y="855" width="52" height="7" fill="#C8102E"/>
+      <rect x="298" y="852" width="38" height="30" fill="#F7F3E8"/><rect x="312" y="852" width="7" height="30" fill="#3FBF7F"/>
+    </g>
+  </g>
+
+  </svg>
+  <div class="console" aria-hidden="true"><div class="t">Player Hub</div><ul><li class="on">Availability</li><li>Updates</li><li>Schedule</li><li>Club</li><li>Profile</li></ul></div>
+</div>
+<script>
+const st=document.getElementById('stage'), n=document.getElementById('b-n'), x=document.getElementById('b-x');
+function set(t){ st.dataset.theme=t; n.setAttribute('aria-pressed', String(t==='normal')); x.setAttribute('aria-pressed', String(t==='xmas')); }
+n.addEventListener('click',()=>set('normal')); x.addEventListener('click',()=>set('xmas'));
+</script>
