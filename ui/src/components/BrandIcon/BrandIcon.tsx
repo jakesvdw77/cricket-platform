@@ -1,4 +1,5 @@
 import { Box, alpha } from '@mui/material'
+import { BRAND } from '../../brandTokens'
 import { iconTileBase } from './iconTileBase'
 import { brandIconUrls } from './brandIcons'
 import type { BrandIconName } from './brandIcons'
@@ -17,12 +18,15 @@ export interface BrandIconProps {
   padding?: number
   // Adds the white ring that marks the active navigation row. Ignored for 'none'.
   active?: boolean
+  // docs/specs/120 Decision 13: a solid cream tile for use on the dark chrome (side menu, bottom bar, Menu sheet); the
+  // active ring is gold. Same size, padding and radius.
+  onDark?: boolean
 }
 
 // docs/specs/078-brand-icon-set.md + 080: the product's own colour icon, rendered as an <img> so the SVG
 // stays an emitted asset rather than inline markup. The artwork has no background; by default it sits on
 // one tile tinted from the club's primary colour (36% over the surface). Sole entry point to `src/icons`.
-export function BrandIcon({ name, size = 40, alt, surface = 'tile', padding = 4, active = false }: BrandIconProps) {
+export function BrandIcon({ name, size = 40, alt, surface = 'tile', padding = 4, active = false, onDark = false }: BrandIconProps) {
   const img = (
     <Box
       component="img"
@@ -47,8 +51,8 @@ export function BrandIcon({ name, size = 40, alt, surface = 'tile', padding = 4,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 1.25,
-        bgcolor: (theme) => alpha(iconTileBase(theme), 0.36),
-        boxShadow: active ? (theme) => `0 0 0 2px ${theme.palette.common.white}` : 'none',
+        bgcolor: (theme) => (onDark ? iconTileBase(theme, true) : alpha(iconTileBase(theme), 0.36)),
+        boxShadow: active ? (theme) => `0 0 0 2px ${onDark ? BRAND.gold : theme.palette.common.white}` : 'none',
       }}
     >
       {img}

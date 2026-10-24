@@ -55,7 +55,7 @@ function TeamTile({ name, abbreviation, logoUrl, to }: TeamTileProps) {
         sx={{
           ...avatarSx(40, '0.7rem'),
           borderRadius: 1.25,
-          ...(own ? {} : { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1), color: 'primary.main', border: 1, borderColor: 'divider' }),
+          ...(own ? {} : { backgroundImage: 'none', bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1), color: 'primary.main', border: 1, borderColor: 'divider' }),
         }}
       >
         {abbreviation || initialsFromName(name)}

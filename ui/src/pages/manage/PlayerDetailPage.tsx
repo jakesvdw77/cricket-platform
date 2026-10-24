@@ -29,6 +29,7 @@ import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LAB
 import { fullName } from './PlayerList'
 import { PlayerKeyFigures } from './playerDetail/PlayerKeyFigures'
 import { PlayerStatsCard } from './playerDetail/PlayerStatsCard'
+import { PlayerAccountSection } from './playerDetail/PlayerAccountSection'
 import { InfoCard } from '../../components/InfoCard'
 import type { InfoCardChip } from '../../components/InfoCard'
 
@@ -273,6 +274,11 @@ export default function PlayerDetailPage() {
         {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a desktop. */}
         <Box sx={{ gridColumn: { md: '1 / -1' } }}>
           <PlayerStatsCard clubId={clubId} playerId={player.id} chips={cricketChips} />
+        </Box>
+
+        {/* docs/specs/119 shortcut (b): read-only Account card (main agent and other agents). */}
+        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+          <PlayerAccountSection clubId={clubId} playerId={player.id} playerName={`${player.firstName} ${player.lastName}`} />
         </Box>
       </Box>
 

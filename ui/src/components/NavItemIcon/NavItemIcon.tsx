@@ -15,12 +15,14 @@ export interface NavItemIconProps {
   active?: boolean
   // 'none' draws the bare artwork with no tile (the side menu). Brand icons only.
   surface?: 'tile' | 'none'
+  // docs/specs/120 Decision 13: the icon sits on dark chrome, so its tile is cream.
+  onDark?: boolean
 }
 
 // docs/specs/079-manager-shell-and-overview.md: one icon slot for every manager navigation surface.
-export function NavItemIcon({ name, size = 32, padding, active, surface }: NavItemIconProps) {
+export function NavItemIcon({ name, size = 32, padding, active, surface, onDark }: NavItemIconProps) {
   if (!(name in GLYPH_ICONS)) {
-    return <BrandIcon name={name as BrandIconName} size={size} active={active} {...(surface ? { surface } : {})} {...(padding === undefined ? {} : { padding })} />
+    return <BrandIcon name={name as BrandIconName} size={size} active={active} onDark={onDark} {...(surface ? { surface } : {})} {...(padding === undefined ? {} : { padding })} />
   }
   const Glyph = GLYPH_ICONS[name as NavGlyphName]
   return (
@@ -36,8 +38,8 @@ export function NavItemIcon({ name, size = 32, padding, active, surface }: NavIt
         borderRadius: '50%',
         display: 'grid',
         placeItems: 'center',
-        bgcolor: 'primary.main',
-        color: 'primary.contrastText',
+        bgcolor: onDark ? 'chrome.text' : 'primary.main',
+        color: onDark ? 'chrome.header' : 'primary.contrastText',
       }}
     >
       <Glyph sx={{ fontSize: size * 0.56 }} />

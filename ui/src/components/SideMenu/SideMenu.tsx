@@ -1,6 +1,7 @@
 import { Box, Tooltip, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { CHROME } from '../../brandTokens'
+import { displayLabelSx } from '../../theme'
 import { NavItemIcon } from '../NavItemIcon'
 import { activeNavId } from '../ManagerShell/managerNav'
 import type { NavGroup, NavItem } from '../ManagerShell/managerNav'
@@ -15,7 +16,9 @@ export interface SideMenuProps {
 }
 
 // docs/specs/079-manager-shell-and-overview.md: the manager's persistent menu, grouped, with the
-// active row (by route prefix, see managerNav) tinted and bold.
+// active row (by route prefix, see managerNav) marked. docs/specs/120: the platform chrome, dark green for every club, labels in
+// the display face, the active row gold text on a gold tint (and bold, with aria-current, so it is never colour alone), brand
+// icons on a cream tile.
 export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label': ariaLabel = 'Manager' }: SideMenuProps) {
   const { pathname } = useLocation()
   const activeId = activeNavId(groups, pathname)
@@ -27,15 +30,10 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
       sx={{
         width: collapsed ? 64 : 232,
         flex: 'none',
-        // Solid tint: alpha(primary, 0.24) laid over the white paper colour, so the page wash never shows
-        // through (docs/specs/080, option C).
-        bgcolor: 'background.paper',
-        backgroundImage: (theme) => {
-          const tint = alpha(theme.palette.primary.main, 0.24)
-          return `linear-gradient(${tint}, ${tint})`
-        },
+        bgcolor: 'chrome.menu',
+        color: 'chrome.text',
         borderRight: 1,
-        borderColor: 'divider',
+        borderColor: 'chrome.menuLine',
         px: 1,
         py: 1.25,
         display: 'flex',
@@ -47,12 +45,12 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
         <Box key={group.label ?? `group-${index}`} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           {group.label &&
             (collapsed ? (
-              <Box aria-hidden sx={{ borderTop: 1, borderColor: 'divider', mx: 1, my: 1 }} />
+              <Box aria-hidden sx={{ borderTop: 1, borderColor: 'chrome.menuLine', mx: 1, my: 1 }} />
             ) : (
               <Typography
                 variant="overline"
-                color="text.secondary"
-                sx={{ px: 1, pt: 1.5, pb: 0.5, fontSize: '0.68rem', lineHeight: 1.5 }}
+                color="inherit"
+                sx={{ ...displayLabelSx, px: 1, pt: 1.5, pb: 0.5, fontSize: 11, letterSpacing: '0.12em', lineHeight: 1.5, opacity: 0.7 }}
               >
                 {group.label}
               </Typography>
@@ -83,16 +81,18 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
         px: collapsed ? 0 : 1,
         py: 0.5,
         borderRadius: 1,
-        color: active ? 'primary.dark' : 'text.primary',
-        fontWeight: active ? 700 : 400,
-        fontSize: '0.9rem',
+        ...displayLabelSx,
+        color: active ? 'chrome.selected' : 'chrome.text',
+        fontWeight: active ? 700 : 600,
+        fontSize: 17,
         textDecoration: 'none',
-        bgcolor: active ? (theme) => alpha(theme.palette.primary.main, 0.4) : 'transparent',
-        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, active ? 0.4 : 0.32) },
-        '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
+        bgcolor: active ? 'chrome.selectedBg' : 'transparent',
+        '&:hover': { bgcolor: active ? 'chrome.selectedBg' : 'chrome.hover' },
+        '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 },
+        '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color 120ms ease' },
       }}
     >
-      <NavItemIcon name={item.icon} size={36} surface="none" />
+      <NavItemIcon name={item.icon} size={32} padding={2} onDark />
       {!collapsed && <Box component="span" sx={{ flex: 1, minWidth: 0 }}>{item.label}</Box>}
       {hasBadge && (
         <Box
@@ -106,6 +106,10 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
             borderRadius: 99,
             bgcolor: 'error.main',
             color: 'error.contrastText',
+            boxShadow: `0 0 0 1.5px ${CHROME.text}`,
+            fontFamily: (theme) => theme.typography.fontFamily,
+            letterSpacing: 0,
+            textTransform: 'none',
             fontSize: '0.68rem',
             fontWeight: 700,
             lineHeight: '18px',

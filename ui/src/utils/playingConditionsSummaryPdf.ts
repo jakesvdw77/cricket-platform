@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import type { PlayingConditionsPayload } from '../api/leaguePlayingConditionsApi'
 import { resolveEffectiveMaxOversPerBowler } from './playingConditions'
+import { PLATFORM_PRIMARY_RGB } from '../brandTokens'
 
 // docs/specs/052-league-playing-conditions.md UI Requirements item 8 — mirrors
 // leagueSchedulePdf.ts's/teamSheetPdf.ts's own colour constants and dark header-band shape,
@@ -8,7 +9,7 @@ import { resolveEffectiveMaxOversPerBowler } from './playingConditions'
 // these small PDF generator modules — see leagueSchedulePdf.ts's own doc comment). Only
 // DARK/MID/WHITE/LGRAY are needed here.
 const DARK: [number, number, number] = [20, 35, 28] // theme.palette.text.primary (#14231c)
-const MID: [number, number, number] = [47, 110, 79] // theme.palette.primary.main (#2f6e4f)
+const MID: [number, number, number] = PLATFORM_PRIMARY_RGB // the platform default primary (brandTokens, docs/specs/120)
 const WHITE: [number, number, number] = [255, 255, 255]
 const LGRAY: [number, number, number] = [150, 165, 158]
 

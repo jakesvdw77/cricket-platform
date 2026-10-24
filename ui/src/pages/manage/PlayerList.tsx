@@ -13,6 +13,8 @@ import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PageCounters } from '../../components/PageCounters'
+import { LinkRequestsWaitingCard } from '../../components/LinkRequestsWaitingCard'
+import { useLinkRequestsSummary } from '../../api/playerAccountsApi'
 import type { PageCounterItem } from '../../components/PageCounters'
 import { getPlayersSummary, listPlayers, playersSummaryKey } from '../../api/playerApi'
 import type { Player, PlayerListFocus, PlayersSummaryFilters } from '../../api/playerApi'
@@ -90,6 +92,8 @@ export default function PlayerList() {
   // only how the same players are shown: the filters, counters and Status actions are identical in both views.
   const [view, setView] = useListViewPreference('playerList:view')
   const statusActions = usePlayerStatusActions(clubId)
+  // docs/specs/119 shortcut (a): a failed or pending count renders nothing.
+  const linkRequestsWaiting = useLinkRequestsSummary(clubId).data?.waiting
 
   const { data: players, isPending, isError } = useQuery({
     queryKey: ['managed-club', clubId, 'players', sectionId, missingDateOfBirth, showInactive, focus, seasonId],
@@ -250,6 +254,8 @@ export default function PlayerList() {
         subtitle={scope ? `Showing: ${scope}` : undefined}
         action={<Button onClick={() => navigate('/manage/players/new')}>Add Player</Button>}
       />
+
+      <LinkRequestsWaitingCard waiting={linkRequestsWaiting} />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
 

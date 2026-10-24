@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 
@@ -99,6 +100,8 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
             fontSize: textValue ? { xs: '0.95rem', md: '1.05rem' } : compact ? { xs: '1.25rem', md: '1.375rem' } : { xs: '1.3rem', md: '1.6rem' },
             lineHeight: 1.15,
             fontWeight: 700,
+            // docs/specs/120 Decision 14: numerals take the display face; the icon tile is unchanged.
+            ...(!textValue && { fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay }),
             ...(compact && { color: `${emphasis ?? 'primary'}.dark` }),
             fontVariantNumeric: 'tabular-nums',
             overflowWrap: 'anywhere',

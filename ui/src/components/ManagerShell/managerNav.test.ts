@@ -124,6 +124,16 @@ describe('managerNav', () => {
     expect(activeTabId(MANAGER_NAV, '/manage/players')).toBe('players')
   })
 
+  it('names the permissions item Access (spec 119: id, label, tile title) with no count in the model', () => {
+    const access = items.find((item) => item.id === 'access')
+    expect(access?.label).toBe('Access')
+    expect(access?.tileTitle).toBe('Access')
+    expect(access?.to).toBe('/manage/permissions')
+    expect(items.find((item) => item.label === 'Managers')).toBeUndefined()
+    expect(Object.keys(access ?? {}).filter((key) => /count|badge/i.test(key))).toEqual([])
+    expect(managerTabs().map((tab) => tab.id)).not.toContain('access')
+  })
+
   it('highlights nothing for an unknown route', () => {
     expect(activeNavId(MANAGER_NAV, '/manage/profile')).toBeUndefined()
   })

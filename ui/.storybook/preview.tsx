@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { MemoryRouter } from 'react-router-dom'
 import { baseTheme } from '../src/theme'
+import '../src/index.css'
 
 const preview: Preview = {
   parameters: {

@@ -2,8 +2,10 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
+import com.cricketlegend.service.support.ProfileResolver;
 import com.cricketlegend.service.support.VerifiedEmail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,11 +13,13 @@ import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.dto.MeAccessDto;
+import com.cricketlegend.dto.ProfileDto;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.service.MeService;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -37,11 +41,14 @@ public class MeServiceImpl implements MeService {
     private final PersonRepository personRepository;
     private final RoleAssignmentRepository roleAssignmentRepository;
     private final AccessService accessService;
+    private final ProfileResolver profileResolver;
 
     public MeServiceImpl(
             PersonRepository personRepository,
             RoleAssignmentRepository roleAssignmentRepository,
-            AccessService accessService) {
+            AccessService accessService,
+            ProfileResolver profileResolver) {
+        this.profileResolver = profileResolver;
         this.personRepository = personRepository;
         this.roleAssignmentRepository = roleAssignmentRepository;
         this.accessService = accessService;
@@ -58,8 +65,9 @@ public class MeServiceImpl implements MeService {
             person = bridgeByEmail(
                     keycloakUserId, jwt.getClaimAsString("email"), Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")));
         }
+        refuseSuspended(person);
 
-        return toAccessDto(person, platformAdmin);
+        return toAccessDto(authentication, jwt, person, platformAdmin);
     }
 
     @Override
@@ -74,6 +82,13 @@ public class MeServiceImpl implements MeService {
             person = bridgeByEmail(keycloakUserId, email, true);
         }
         if (person == null) {
+            // bridgeByEmail skips a Person under 18, but that Person still holds the email (ux_person_email_lower): a
+            // plain insert would be a 500, so say what to do instead
+            if (personRepository.findByEmailIgnoreCase(email).isPresent()) {
+                log.warn("Registration refused: email already held by another person");
+                throw new ConflictException("This email address is already on record for someone else at your club. "
+                        + "Ask your club to correct the email, then try again.");
+            }
             String firstName = claim(jwt, "given_name");
             String lastName = claim(jwt, "family_name");
             if (firstName.isEmpty() && lastName.isEmpty()) {
@@ -94,7 +109,24 @@ public class MeServiceImpl implements MeService {
                     .build());
             log.info("Self-registered person created: personId={}", person.getId());
         }
-        return toAccessDto(person, platformAdmin);
+        refuseSuspended(person);
+        return toAccessDto(authentication, jwt, person, platformAdmin);
+    }
+
+    /** docs/specs/119, scenario 12: a SUSPENDED person is refused with 403 (the rollback also undoes a just-made email bridge). */
+    private static void refuseSuspended(Person person) {
+        if (person != null && person.getStatus() == PersonStatus.SUSPENDED) {
+            log.warn("Suspended person refused: personId={}", person.getId());
+            throw new AccessDeniedException("This account is disabled.");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileDto> profiles(Authentication authentication, Jwt jwt) {
+        Person person = personRepository.findByKeycloakUserId(authentication.getName()).orElse(null);
+        refuseSuspended(person);
+        return profileResolver.resolve(authentication, jwt, person);
     }
 
     private static String claim(Jwt jwt, String name) {
@@ -102,7 +134,7 @@ public class MeServiceImpl implements MeService {
         return value == null ? "" : value.trim();
     }
 
-    private MeAccessDto toAccessDto(Person person, boolean platformAdmin) {
+    private MeAccessDto toAccessDto(Authentication authentication, Jwt jwt, Person person, boolean platformAdmin) {
         List<UUID> clubAdminClubIds = person == null
                 ? List.of()
                 : roleAssignmentRepository.findByPersonId(person.getId()).stream()
@@ -115,7 +147,8 @@ public class MeServiceImpl implements MeService {
                 person == null ? null : person.getId(),
                 person == null ? null : person.getStatus(),
                 platformAdmin,
-                clubAdminClubIds);
+                clubAdminClubIds,
+                profileResolver.resolve(authentication, jwt, person));
     }
 
     // Requires email_verified on the JWT before binding keycloakUserId to a Person by email —
@@ -134,6 +167,13 @@ public class MeServiceImpl implements MeService {
         Person person = personRepository.findByEmailIgnoreCase(email).orElse(null);
         if (person == null) {
             return null; // authenticated, but no Person record exists for this email at all
+        }
+        // docs/specs/119, Decision 16: never bind a login to a Person under 18 (a player's record that carries a parent's
+        // email); that login falls through to the match step. A missing date of birth counts as adult.
+        if (person.getDateOfBirth() != null
+                && java.time.Period.between(person.getDateOfBirth(), java.time.LocalDate.now()).getYears() < 18) {
+            log.info("Email bridge skipped: personId={} reason=under-18", person.getId());
+            return null;
         }
         person.setKeycloakUserId(keycloakUserId);
         if (person.getStatus() == PersonStatus.PENDING) {

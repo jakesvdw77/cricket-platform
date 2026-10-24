@@ -32,7 +32,7 @@ export const keycloak = new Keycloak({
 //   only ever loaded fresh via a direct navigation/refresh/bookmark — never via a pending OAuth
 //   callback (Login.tsx's redirectUri points at /post-login, never straight to /admin) — so it's
 //   the one path that's actually safe to run check-sso on.
-export const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage', '/welcome']
+export const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage', '/welcome', '/account', '/choose-profile']
 const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix))
 
 // Fires once, automatically, the first time anything imports this module

@@ -23,6 +23,7 @@ import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined
 import TagOutlinedIcon from '@mui/icons-material/TagOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
+import { cardTitleSx } from '../../theme'
 import { DetailLine } from '../DetailLine'
 import { PlayerStatusMenu } from '../PlayerStatusMenu'
 import { playerAvatarSrc } from '../BrandIcon'
@@ -112,7 +113,7 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
         '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
       }}
     >
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
           <Avatar src={playerAvatarSrc(player.photoUrl, player.gender)} variant="circular" sx={avatarSx(56)}>
             {initialsFromName(name)}
@@ -120,8 +121,8 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
           <Typography
             variant="subtitle1"
             component="h3"
-            fontWeight={600}
             sx={{
+              ...cardTitleSx,
               flex: 1,
               minWidth: 0,
               overflowWrap: 'anywhere',

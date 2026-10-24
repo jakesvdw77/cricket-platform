@@ -5,6 +5,7 @@ import { BottomTabBar } from '../BottomTabBar'
 import { Footer } from '../Footer'
 import { MenuSheet } from '../MenuSheet'
 import { ShellHeader } from '../ShellHeader'
+import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { SideMenu } from '../SideMenu'
 import { MANAGER_NAV, managerTabs } from './managerNav'
 import { pageBackgroundGradient } from '../../theme'
@@ -19,14 +20,18 @@ export interface ManagerShellProps {
   logoUrl?: string | null
   // Count badge per nav item id (e.g. open polls); wired to data in a later slice.
   badges?: Record<string, number>
+  // Set when the manager also has players: adds "My players" to the profile menu (docs/specs/119 3C).
+  myPlayersTo?: string
+  // Profile switcher items (more than one profile card only).
+  profileItems?: ProfileSwitchItem[]
   children: ReactNode
 }
 
-// docs/specs/079-manager-shell-and-overview.md: the club manager's shell. A club-colour header, a
+// docs/specs/079-manager-shell-and-overview.md: the club manager's shell. The platform chrome (dark green header, side menu, bottom bar and footer, the same for every club, docs/specs/120), a
 // persistent side menu from md (icons-only rail from md to lg, full from lg), and on a phone a
 // bottom tab bar whose Menu button opens a sheet. Replaces GridNavShell (top bar only), which only
 // ManagerHome used. Only the layout that fits the viewport is rendered, so there is one nav landmark.
-export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl, badges, children }: ManagerShellProps) {
+export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl, badges, myPlayersTo, profileItems, children }: ManagerShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const theme = useTheme()
   const showSide = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -35,7 +40,6 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <ShellHeader
-        tone="brand"
         brand={brand}
         user={user}
         onLogout={onLogout}
@@ -43,6 +47,8 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
         homeTo={homeTo}
         notificationsTo="/manage/notifications"
         logoUrl={logoUrl}
+        myPlayersTo={myPlayersTo}
+        profileItems={profileItems}
       />
 
       <Box sx={{ flex: 1, display: 'flex', minWidth: 0 }}>

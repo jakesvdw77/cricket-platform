@@ -6,6 +6,7 @@ package com.cricketlegend.service.support;
  */
 public record MatchedPlayer(
         String ref,
+        java.util.UUID clubId,
         String firstName,
         String surnameInitial,
         String clubName,

@@ -32,6 +32,9 @@ export interface PageCountersProps {
 
 const SKELETON_COUNT = 4
 
+// docs/specs/120: counter labels are uppercase, 12 px, tracked 0.1em.
+const counterLabelSx = { fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1.3 } as const
+
 // docs/specs/091: the columns follow the number of counters, so a row of five or six does not wrap onto a second line on a
 // large screen: up to four stay four across from md; more than four are three across on a medium screen and one row (up
 // to six) from lg. Two across on a phone as before.
@@ -107,7 +110,7 @@ function CounterBody({ item, interactive, compact, phone }: { item: PageCounterI
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={compact ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : undefined}
+        sx={compact ? { ...counterLabelSx, letterSpacing: '0.06em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : counterLabelSx}
         title={compact || label !== item.label ? item.label : undefined}
       >
         {label}

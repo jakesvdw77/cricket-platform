@@ -10,4 +10,5 @@ public record MeAccessDto(
                         // platform_admin with no Person row — normal, not an error)
         PersonStatus personStatus, // null iff personId is null
         boolean platformAdmin,
-        List<UUID> clubAdminClubIds) {}
+        List<UUID> clubAdminClubIds,
+        List<ProfileDto> profiles) {} // docs/specs/119: the chooser cards, additive

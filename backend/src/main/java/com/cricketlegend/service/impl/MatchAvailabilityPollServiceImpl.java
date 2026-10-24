@@ -484,7 +484,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 row.lastName(),
                 row.squadJerseyNumber(),
                 answer == null ? null : answer.getStatus(),
-                answer != null && answer.getSource() == AnswerSource.PUBLIC_LINK);
+                answer != null && answer.getSource() != AnswerSource.MANAGER);
     }
 
     private long countStatus(List<PlayerAvailabilityRowDto> rows, AvailabilityStatus status) {

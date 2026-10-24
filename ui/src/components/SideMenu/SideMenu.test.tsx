@@ -1,16 +1,20 @@
 import type { ComponentProps } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ThemeProvider } from '@mui/material/styles'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { SideMenu } from './SideMenu'
 import { MANAGER_NAV } from '../ManagerShell/managerNav'
+import { baseTheme } from '../../theme'
 
 function renderMenu(path: string, props: Partial<ComponentProps<typeof SideMenu>> = {}) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <SideMenu groups={MANAGER_NAV} {...props} />
-    </MemoryRouter>,
+    <ThemeProvider theme={baseTheme}>
+      <MemoryRouter initialEntries={[path]}>
+        <SideMenu groups={MANAGER_NAV} {...props} />
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 
@@ -38,7 +42,7 @@ describe('SideMenu', () => {
       'Club profile',
       'Fields',
       'Gallery',
-      'Managers',
+      'Access',
     ])
     expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Fields' })).toHaveAttribute('href', '/manage/fixtures/fields')
@@ -135,18 +139,19 @@ describe('SideMenu', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Players')
   })
 
-  it('draws bare 36 px icons with no tile', () => {
+  it('draws each icon on a soft green tile (docs/specs/120, so cream artwork stays visible), the same 36 px footprint as before', () => {
     renderMenu('/manage')
 
     const nav = screen.getByRole('navigation', { name: 'Manager' })
-    expect(within(nav).queryByTestId('brand-icon-tile')).not.toBeInTheDocument()
-    expect(nav.querySelector('img')).toHaveStyle({ width: '36px', height: '36px' })
+    const tile = within(nav).getAllByTestId('brand-icon-tile')[0]
+    expect(tile).toHaveStyle({ width: '36px', height: '36px', backgroundColor: 'rgb(185, 209, 195)' })
   })
 
-  it('tints the panel with a solid primary wash', () => {
-    renderMenu('/manage')
+  it('is the dark menu ground, and the current row is gold on a gold tint', () => {
+    renderMenu('/manage/players')
 
     const nav = screen.getByRole('navigation', { name: 'Manager' })
-    expect(getComputedStyle(nav).backgroundImage).toContain('linear-gradient')
+    expect(nav).toHaveStyle({ backgroundColor: 'rgb(10, 46, 29)' })
+    expect(screen.getByRole('link', { name: 'Players' })).toHaveStyle({ color: 'rgb(232, 184, 61)', fontWeight: '700' })
   })
 })

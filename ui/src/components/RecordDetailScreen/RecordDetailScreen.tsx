@@ -8,6 +8,7 @@ import type { RecordCardAvatar, RecordCardBadge } from '../RecordCard'
 import { avatarSx } from '../RecordCard'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { ContentCard } from '../ContentCard'
+import { pageTitleSx } from '../../theme'
 
 export interface RecordDetailScreenSection {
   // Omitted entirely for a single-section page (Season/Club Contact/Sponsor Contact/Sponsor) —
@@ -99,7 +100,7 @@ export function RecordDetailScreen({
               </Avatar>
             )}
             <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" noWrap sx={pageTitleSx}>
                 {title}
               </Typography>
               {badge && (

@@ -54,4 +54,14 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
     /** docs/specs/109-delete-empty-match.md: which of these matches have at least one row here (one query for a page). */
     @Query("select distinct p.matchId from MatchAvailabilityPoll p where p.matchId in :matchIds")
     List<UUID> findMatchIdsWithPollByMatchIdIn(@Param("matchIds") Collection<UUID> matchIds);
+
+    /**
+     * The open polls whose own squad (the poll team's squad for the match's season) holds this player: exactly the
+     * rule {@code AvailabilityPollSquadResolver} applies for the public form (docs/specs/077), as one query for
+     * docs/specs/119 My players.
+     */
+    @Query("SELECT p FROM MatchAvailabilityPoll p, Match m WHERE p.open = true AND m.id = p.matchId "
+            + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
+            + "AND s.playerProfileId = :playerProfileId) ORDER BY m.matchDate")
+    List<MatchAvailabilityPoll> findOpenForPlayer(@Param("playerProfileId") UUID playerProfileId);
 }

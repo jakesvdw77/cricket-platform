@@ -3,6 +3,7 @@ import { Box, Button as MuiButton, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink } from 'react-router-dom'
 import { PageHeaderBand } from '../PageHeaderBand'
+import { pageTitleSx } from '../../theme'
 
 export interface ManageScreenHeaderProps {
   title: string
@@ -37,7 +38,7 @@ export interface ManageScreenHeaderProps {
 // exists to make structurally true rather than just documented.
 export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle, subtitle, titleAdornment }: ManageScreenHeaderProps) {
   const titleNode = (
-    <Typography variant="h5" component="h1" fontWeight={700}>
+    <Typography variant="h5" component="h1" sx={pageTitleSx}>
       {title}
     </Typography>
   )

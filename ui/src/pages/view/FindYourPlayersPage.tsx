@@ -1,17 +1,27 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
+import { useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { alpha } from '@mui/material/styles'
-import { Alert, Avatar, Box, Button, Checkbox, Skeleton, Tooltip, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Checkbox, Skeleton, Typography } from '@mui/material'
+import { Button } from '../../components/Button'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
-import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
+import { useMyPlayers } from '../../api/myPlayersApi'
 import { useConfirmLinks, usePlayerMatches, useRegisterAccount } from '../../api/meApi'
-import type { PlayerMatch } from '../../api/meApi'
+import type { MainAgentMatch, PlayerMatch } from '../../api/meApi'
+import { LinkRequestForm } from './LinkRequestForm'
+import type { LinkRequestPrefill } from './LinkRequestForm'
+import { MyLinkRequests } from './MyLinkRequests'
+import { HubBackButton, HubFooterButton, HubFrame } from './myPlayers/HubFrame'
+import { HUB, hubGoldButton, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
+import { useClubHome } from './myPlayers/useClubHome'
+import { creamAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
-// docs/specs/119 Part 3: "Find your players". Register is idempotent; matches are minimised
-// (first name + surname initial, birth year only, masked email for players that have a main agent).
+// docs/specs/119 Part 3: "Find your players", in the dark console frame. Register is idempotent; matches are minimised
+// (first name + surname initial, birth year only, masked email for players that have a main agent). Every sub-state has a
+// Back, and the footer's Back slot returns to My players (or the club for a manager), so there is never a dead end.
 const describe = (p: PlayerMatch) => `${p.firstName} ${p.surnameInitial}.`
 
 function errorCode(error: unknown): string | undefined {
@@ -22,61 +32,50 @@ const detail = (p: PlayerMatch) => [p.clubName, p.groupLabel, p.birthYear ? `Bor
 
 function PlayerAvatar({ p }: { p: PlayerMatch }) {
   return (
-    <Avatar
-      sx={(t) => ({ width: 40, height: 40, fontSize: 15, fontWeight: 600, bgcolor: alpha(t.palette.primary.main, 0.14), color: 'primary.dark' })}
-    >
+    <Avatar sx={{ width: 40, height: 40, fontFamily: HUB.display, fontSize: 18, fontWeight: 700, color: HUB.ink, background: GOLD_DISC_GRADIENT }}>
       {`${p.firstName[0] ?? ''}${p.surnameInitial[0] ?? ''}`.toUpperCase()}
     </Avatar>
   )
 }
 
-function Shell({ children }: { children: ReactNode }) {
-  return (
-    <PageBackdrop>
-      <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box component="img" src="/favicon.svg" alt="" width={28} height={28} />
-          <Typography fontWeight={700} fontSize={16}>
-            Cricket Legend
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          sx={{ minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: 'rgba(247,243,232,0.12)' } }}
-          onClick={() => keycloak.logout()}
-        >
-          Sign out
-        </Button>
-      </Box>
-      <Box sx={{ width: '100%', maxWidth: 592, mx: 'auto', px: 2, py: { xs: 2, sm: 4 }, boxSizing: 'border-box' }}>
-        <Box
-          data-testid="welcome-page"
-          sx={{ bgcolor: 'background.paper', color: 'text.primary', borderRadius: 2, boxShadow: 1, p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}
-        >
-          {children}
-        </Box>
-      </Box>
-    </PageBackdrop>
-  )
-}
-
 function Heading({ children }: { children: ReactNode }) {
   return (
-    <Typography variant="h5" component="h1" fontWeight={700} fontSize={22} lineHeight={1.25}>
+    <Typography component="h2" sx={{ ...hubHeading, fontSize: { xs: 24, md: 28 }, color: HUB.cream, lineHeight: 1.1 }}>
       {children}
     </Typography>
   )
 }
 
+function Lead({ children }: { children: ReactNode }) {
+  return (
+    <Typography variant="body2" sx={{ color: HUB.muted }}>
+      {children}
+    </Typography>
+  )
+}
+
+const bigButton = { minHeight: { xs: 44, sm: 40 }, width: { xs: '100%', sm: 'auto' } }
+const darkBox = { border: 1, borderColor: HUB.line, bgcolor: HUB.panelDark, borderRadius: '4px' }
+
 export default function FindYourPlayersPage() {
+  const navigate = useNavigate()
   const register = useRegisterAccount()
   const { mutate: registerMutate } = register
   const registered = register.isSuccess
   const matches = usePlayerMatches(registered)
   const confirm = useConfirmLinks()
+  const hasPlayers = (useMyPlayers().data?.length ?? 0) > 0
+  const clubHome = useClubHome()
   const [unticked, setUnticked] = useState<Set<string>>(new Set())
   const [linkedNames, setLinkedNames] = useState<string[] | null>(null)
+  // docs/specs/119 Part 3 (3B): 'form' is "Ask the club to help" for one matched player, 'sent' the one confirmation shown
+  // after every request, 'mine' the requester's own status list.
+  const [view, setView] = useState<'main' | 'form' | 'sent' | 'mine'>('main')
+  const [prefill, setPrefill] = useState<LinkRequestPrefill | undefined>(undefined)
+  const askClub = (p: MainAgentMatch) => {
+    setPrefill({ firstName: p.firstName, surnameInitial: p.surnameInitial, clubId: p.clubId, clubName: p.clubName, targetPlayerRef: p.ref })
+    setView('form')
+  }
   const email = (keycloak.tokenParsed as { email?: string } | undefined)?.email
 
   useEffect(() => {
@@ -86,15 +85,25 @@ export default function FindYourPlayersPage() {
   const failure = register.error ?? matches.error
   const notVerified = failure && (errorCode(failure) === 'EMAIL_NOT_VERIFIED' || (isAxiosError(failure) && failure.response?.status === 403))
 
+  // Back from a finished or side view: My players when the person has players, otherwise the previous state.
+  const backToPlayersOr = (previous: () => void) => () => (hasPlayers ? navigate('/account') : previous())
+  const toMain = () => {
+    setPrefill(undefined)
+    setView('main')
+  }
+
   let body
   if (linkedNames) {
     body = (
       <>
-        <CheckCircleOutlineIcon color="primary" sx={{ fontSize: 40 }} />
+        <CheckCircleOutlineIcon sx={{ fontSize: 40, color: HUB.gold }} />
         <Heading>You now manage {linkedNames.join(', ')}</Heading>
-        <Typography variant="body2" color="text.secondary">
-          My players is coming soon, where you will see and answer availability for them.
-        </Typography>
+        <Lead>In My players you can see their details and answer availability for them.</Lead>
+        <Box>
+          <Button onClick={() => navigate('/account')} sx={{ ...bigButton, ...hubGoldButton }}>
+            Go to My players
+          </Button>
+        </Box>
       </>
     )
   } else if (failure) {
@@ -111,10 +120,44 @@ export default function FindYourPlayersPage() {
   } else if (!matches.data) {
     body = (
       <Box aria-busy="true" aria-label="Looking for your players" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Skeleton variant="text" width="60%" height={32} />
-        <Skeleton variant="rounded" height={64} />
-        <Skeleton variant="rounded" height={64} />
+        <Skeleton variant="text" width="60%" height={32} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={64} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={64} sx={{ bgcolor: creamAlpha(.12) }} />
       </Box>
+    )
+  } else if (view === 'form') {
+    body = (
+      <>
+        <HubBackButton onClick={() => setView('main')} />
+        <Heading>Ask the club to help</Heading>
+        <Lead>Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.</Lead>
+        <LinkRequestForm dark prefill={prefill} onSent={() => setView('sent')} />
+      </>
+    )
+  } else if (view === 'sent') {
+    body = (
+      <>
+        <HubBackButton onClick={backToPlayersOr(toMain)}>{hasPlayers ? 'Back to players' : 'Back'}</HubBackButton>
+        <CheckCircleOutlineIcon sx={{ fontSize: 40, color: HUB.gold }} />
+        <Heading>Thanks, the club will review this</Heading>
+        <Lead>We will show the outcome here, and email you when the club has decided.</Lead>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => setView('mine')}>
+            See my requests
+          </Button>
+          <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={toMain}>
+            Send another request
+          </Button>
+        </Box>
+      </>
+    )
+  } else if (view === 'mine') {
+    body = (
+      <>
+        <HubBackButton onClick={backToPlayersOr(toMain)}>{hasPlayers ? 'Back to players' : 'Back'}</HubBackButton>
+        <Heading>My requests</Heading>
+        <MyLinkRequests dark />
+      </>
     )
   } else {
     const { withoutMainAgent: free, withMainAgent: taken } = matches.data
@@ -124,23 +167,21 @@ export default function FindYourPlayersPage() {
     const selected = free.filter((p) => !unticked.has(p.ref))
     body = (
       <>
-        {all.length === 0 && <SearchOffOutlinedIcon color="primary" sx={{ fontSize: 40 }} />}
+        {all.length === 0 && <SearchOffOutlinedIcon sx={{ fontSize: 40, color: HUB.gold }} />}
         <Heading>{title}</Heading>
         {all.length === 0 ? (
           <>
-            <Typography variant="body2" color="text.secondary">
-              We could not find a player with {email ?? 'your email address'} at any club. Your club may have a different email on file for you.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Requesting a link will be available soon.
-            </Typography>
+            <Lead>We could not find a player with {email ?? 'your email address'} at any club. Your club may have a different email on file for you.</Lead>
+            <Lead>Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.</Lead>
+            <LinkRequestForm dark onSent={() => setView('sent')} />
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => setView('mine')}>
+                My requests
+              </Button>
+            </Box>
           </>
         ) : (
-          free.length > 0 && (
-            <Typography variant="body2" color="text.secondary">
-              We found these on record for {email ?? 'your email address'}. Untick any that are not yours.
-            </Typography>
-          )
+          free.length > 0 && <Lead>We found these on record for {email ?? 'your email address'}. Untick any that are not yours.</Lead>
         )}
         {free.length > 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} role="group" aria-label="Players to link">
@@ -150,7 +191,7 @@ export default function FindYourPlayersPage() {
                 <Box
                   key={p.ref}
                   component="label"
-                  sx={(t) => ({
+                  sx={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1.5,
@@ -159,24 +200,26 @@ export default function FindYourPlayersPage() {
                     py: 1,
                     cursor: 'pointer',
                     border: 1,
-                    borderColor: on ? 'primary.main' : 'divider',
-                    boxShadow: on ? `inset 0 0 0 1px ${t.palette.primary.main}` : 'none',
-                    borderRadius: 2,
-                    bgcolor: on ? alpha(t.palette.primary.main, 0.05) : 'background.paper',
-                  })}
+                    borderColor: on ? HUB.gold : HUB.line,
+                    boxShadow: on ? `inset 0 0 0 1px ${HUB.gold}` : 'none',
+                    borderRadius: '4px',
+                    bgcolor: on ? alpha(HUB.gold, 0.1) : HUB.panelDark,
+                    '&:focus-within': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
+                  }}
                 >
                   <PlayerAvatar p={p} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="body2" fontWeight={700} fontSize={15}>
                       {describe(p)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography variant="caption" display="block" sx={{ color: HUB.muted }}>
                       {detail(p)}
                     </Typography>
                   </Box>
                   <Checkbox
                     checked={on}
                     inputProps={{ 'aria-label': describe(p) }}
+                    sx={{ color: HUB.muted, '&.Mui-checked': { color: HUB.gold } }}
                     onChange={(_, v) =>
                       setUnticked((prev) => {
                         const next = new Set(prev)
@@ -192,8 +235,7 @@ export default function FindYourPlayersPage() {
             {confirm.isError && <Alert severity="error">We could not link those players. Please try again.</Alert>}
             <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' }, mt: 1 }}>
               <Button
-                variant="contained"
-                sx={{ minHeight: { xs: 44, sm: 40 }, width: { xs: '100%', sm: 'auto' } }}
+                sx={{ ...bigButton, ...hubGoldButton }}
                 disabled={selected.length === 0 || confirm.isPending}
                 onClick={() =>
                   confirm.mutate(
@@ -208,18 +250,13 @@ export default function FindYourPlayersPage() {
           </Box>
         )}
         {taken.length > 0 && (
-          <Box
-            data-testid="main-agent-block"
-            sx={(t) => ({ bgcolor: alpha(t.palette.primary.main, 0.04), border: 1, borderColor: 'divider', borderRadius: 2, p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 })}
-          >
+          <Box data-testid="main-agent-block" sx={{ ...darkBox, p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {free.length > 0 && (
-              <Typography variant="subtitle1" component="h2" fontWeight={700}>
+              <Typography component="h2" sx={{ ...hubHeading, fontSize: 18 }}>
                 Contact the main agent
               </Typography>
             )}
-            <Typography variant="body2" color="text.secondary">
-              These players already have a main agent. Ask them to add you from their My players screen. We never show the full address.
-            </Typography>
+            <Lead>These players already have a main agent. Ask them to add you from their My players screen. We never show the full address.</Lead>
             {taken.map((p) => (
               <Box key={p.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <PlayerAvatar p={p} />
@@ -227,23 +264,24 @@ export default function FindYourPlayersPage() {
                   <Typography variant="body2" fontWeight={700} fontSize={15}>
                     {describe(p)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography variant="caption" display="block" sx={{ color: HUB.muted }}>
                     {detail(p)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography variant="caption" display="block" sx={{ color: HUB.muted }}>
                     Main agent: {p.maskedMainAgentEmail}
                   </Typography>
                 </Box>
               </Box>
             ))}
-            <Box>
-              <Tooltip title="Available soon">
-                <span>
-                  <Button variant="outlined" size="small" sx={{ minHeight: 32 }} disabled>
-                    Ask the club to help
-                  </Button>
-                </span>
-              </Tooltip>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {taken.map((p) => (
+                <Button key={p.ref} variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => askClub(p)}>
+                  {taken.length > 1 ? `Ask the club to help with ${describe(p)}` : 'Ask the club to help'}
+                </Button>
+              ))}
+              <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => setView('mine')}>
+                My requests
+              </Button>
             </Box>
           </Box>
         )}
@@ -251,5 +289,15 @@ export default function FindYourPlayersPage() {
     )
   }
 
-  return <Shell>{body}</Shell>
+  const footer = hasPlayers ? (
+    <HubFooterButton onClick={() => navigate('/account')}>Back to players</HubFooterButton>
+  ) : clubHome ? (
+    <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton>
+  ) : undefined
+
+  return (
+    <HubFrame title="Find Players" maxWidth={960} testId="welcome-page" footer={footer}>
+      {body}
+    </HubFrame>
+  )
 }

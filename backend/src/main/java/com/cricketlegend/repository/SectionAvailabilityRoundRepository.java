@@ -31,4 +31,14 @@ public interface SectionAvailabilityRoundRepository extends JpaRepository<Sectio
     @Query("SELECT r FROM SectionAvailabilityRound r WHERE r.open = true AND r.autoClose = true "
             + "AND r.scheduledCloseAt IS NOT NULL AND r.scheduledCloseAt <= :now")
     List<SectionAvailabilityRound> findDueForAutoClose(@Param("now") Instant now);
+
+    /**
+     * The open rounds whose section the player is tagged to: the audience rule {@code
+     * SectionAvailabilityAudienceResolver} applies for the public form (docs/specs/077), as one query for
+     * docs/specs/119 My players. The caller has already required an active player.
+     */
+    @Query("SELECT r FROM SectionAvailabilityRound r WHERE r.open = true AND EXISTS "
+            + "(SELECT 1 FROM PlayerSection ps WHERE ps.sectionId = r.sectionId "
+            + "AND ps.playerProfileId = :playerProfileId) ORDER BY r.firstMatchDate")
+    List<SectionAvailabilityRound> findOpenForPlayer(@Param("playerProfileId") UUID playerProfileId);
 }

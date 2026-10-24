@@ -2,6 +2,7 @@ package com.cricketlegend.mapper;
 
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.dto.ClubDto;
+import com.cricketlegend.dto.ClubOptionDto;
 import com.cricketlegend.dto.ClubSummaryDto;
 import org.mapstruct.Mapper;
 
@@ -15,4 +16,6 @@ public interface ClubMapper {
     // id/name/slug/status/createdAt/updatedAt/updatedBy all exist with matching names on both
     // sides — MapStruct maps all seven by convention, no explicit @Mapping needed.
     ClubDto toDto(Club club);
+
+    ClubOptionDto toOptionDto(Club club);
 }

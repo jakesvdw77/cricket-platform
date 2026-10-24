@@ -6,5 +6,7 @@ package com.cricketlegend.domain;
  */
 public enum AnswerSource {
     MANAGER,
-    PUBLIC_LINK
+    PUBLIC_LINK,
+    /** docs/specs/119: written by a linked (agent) account through My players. */
+    LINKED_ACCOUNT
 }

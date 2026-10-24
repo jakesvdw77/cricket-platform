@@ -17,7 +17,8 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { STRUCTURAL_PURPLE } from '../../theme'
+import { BRAND, GOLD_DISC_GRADIENT } from '../../brandTokens'
+import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
 import { Button } from '../Button'
 
 // The first three are the original general-purpose tones. The poll tones are for the availability
@@ -193,6 +194,10 @@ export interface RecordCardProps {
   // entry), each an icon above a short caption, so no button is clipped or wrapped at any card
   // width - the unified poll card passes exactly four. Every other footer prop is then ignored.
   footerButtons?: RecordCardFooterButton[]
+  // docs/specs/119 (link requests): free footer content, right-aligned and wrapping - for compact action Buttons that do not
+  // fit the icon-over-caption columns (Approve, Decline, New player and approve). Replaces the default Edit footer;
+  // `footerButtons` still wins if both are set; `null` means a read-only card with no footer at all. Purely additive.
+  footerActions?: ReactNode
 }
 
 // The grid unit for any record list (ProductList today, future Subscriptions/Discounts/
@@ -209,21 +214,24 @@ export interface RecordCardProps {
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
-// The shared solid-fill avatar treatment — real user feedback preferring AvatarMenu.tsx's
-// existing solid `primary.main` + white-text look over every other avatar site's independently
-// hand-rolled light tint (`alpha(primary.main, 0.14)` + `primary.dark`). `size` covers both list-
-// card and detail-header avatars alike (56px for a record's own primary avatar), `fontSize`
-// defaults to the size that pairs with a 56px avatar; smaller avatar contexts (icon grids, logo
-// rows, the account menu) pass their own existing fontSize explicitly.
+// The shared avatar treatment. docs/specs/120 Decisions 9 and 19: a gold disc (a radial from the light to the solid gold)
+// with dark green initials in the display face, for every avatar, whatever the club's colour (it was the solid
+// `primary.main` and white text). A photo or logo is unchanged (it covers the disc). `size` covers both list-card and
+// detail-header avatars alike (56px for a record's own primary avatar), `fontSize` defaults to the size that pairs with a
+// 56px avatar; smaller avatar contexts (icon grids, logo rows, the account menu) pass their own existing fontSize
+// explicitly. A caller that wants a muted look overrides `bgcolor` and sets `backgroundImage: 'none'`.
 export function avatarSx(size: number, fontSize?: string) {
   return {
     width: size,
     height: size,
     flex: 'none' as const,
+    fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay,
     fontSize: fontSize ?? '1.125rem',
-    fontWeight: 600,
-    bgcolor: 'primary.main',
-    color: 'primary.contrastText',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    bgcolor: BRAND.gold,
+    backgroundImage: GOLD_DISC_GRADIENT,
+    color: BRAND.green900,
   }
 }
 
@@ -334,10 +342,13 @@ export function RecordCard({
   feedback,
   children,
   footerButtons,
+  footerActions,
 }: RecordCardProps) {
+  // docs/specs/120: the card name is in the display face (uppercase, about 21 px).
   const titleTypographyProps = titleWrap
     ? {
         sx: {
+          ...cardTitleSx,
           minWidth: 0,
           flex: '0 1 auto',
           display: '-webkit-box',
@@ -347,7 +358,7 @@ export function RecordCard({
           overflowWrap: 'anywhere' as const,
         },
       }
-    : { noWrap: true }
+    : { noWrap: true, sx: cardTitleSx }
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
   // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
   const badgeChips = (
@@ -397,7 +408,7 @@ export function RecordCard({
         }),
       }}
     >
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
         {badgesAbove && (badge || (badges && badges.length > 0)) && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end" data-testid="badges-above">
             {badgeChips}
@@ -439,7 +450,7 @@ export function RecordCard({
               // the containing-block search skip over it and resolve to MuiCard (the outer
               // `position: relative` element), which is what actually makes `inset: 0` cover the
               // whole card.
-              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
+              <Typography variant="subtitle1" component="h3" {...titleTypographyProps}>
                 <MuiLink
                   component={RouterLink}
                   to={viewTo}
@@ -451,7 +462,7 @@ export function RecordCard({
                 </MuiLink>
               </Typography>
             ) : (
-              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
+              <Typography variant="subtitle1" component="h3" {...titleTypographyProps}>
                 {title}
               </Typography>
             )}
@@ -652,6 +663,10 @@ export function RecordCard({
               control
             )
           })}
+        </CardActions>
+      ) : footerActions === null ? null : footerActions !== undefined ? (
+        <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1, px: 2, pb: 2, pt: 0, position: 'relative', '& > :not(:first-of-type)': { ml: 0 } }}>
+          {footerActions}
         </CardActions>
       ) : (
         <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>

@@ -49,7 +49,7 @@ function selectedSx(status: AvailabilityStatus) {
   }
 }
 
-function StatusToggle({
+export function StatusToggle({
   label,
   value,
   onChange,

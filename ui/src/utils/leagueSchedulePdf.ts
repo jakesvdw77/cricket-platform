@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
+import { PLATFORM_PRIMARY_RGB } from '../brandTokens'
 
 // docs/specs/051-league-schedule-sharing.md, mirrors teamSheetPdf.ts's own jsPDF structure and
 // colour constants (theme.palette tokens converted to RGB tuples) exactly, but renders a
@@ -10,7 +11,7 @@ import type { Team } from '../api/teamApi'
 // docs/standards/frontend.md's extraction threshold requires). Only DARK/MID/WHITE/LGRAY are
 // needed here, GRAY/TWELFTH_FILL/TWELFTH_BORDER are team-sheet-specific and stay there.
 const DARK: [number, number, number] = [20, 35, 28] // theme.palette.text.primary (#14231c)
-const MID: [number, number, number] = [47, 110, 79] // theme.palette.primary.main (#2f6e4f)
+const MID: [number, number, number] = PLATFORM_PRIMARY_RGB // the platform default primary (brandTokens, docs/specs/120)
 const WHITE: [number, number, number] = [255, 255, 255]
 const LGRAY: [number, number, number] = [150, 165, 158]
 

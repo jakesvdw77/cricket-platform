@@ -16,6 +16,7 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
+import { cardTitleSx } from '../../theme'
 import { DetailLine } from '../DetailLine'
 import { FieldStatusMenu } from '../FieldStatusMenu'
 import { initialsFromName } from '../../utils/initials'
@@ -106,7 +107,7 @@ export function FieldCard({ field, viewTo, editTo, clubId, onToggleHome, homePen
         '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
       }}
     >
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
           <Avatar variant="rounded" sx={avatarSx(56)}>
             {initialsFromName(field.name)}
@@ -114,8 +115,8 @@ export function FieldCard({ field, viewTo, editTo, clubId, onToggleHome, homePen
           <Typography
             variant="subtitle1"
             component="h3"
-            fontWeight={600}
             sx={{
+              ...cardTitleSx,
               flex: 1,
               minWidth: 0,
               overflowWrap: 'anywhere',

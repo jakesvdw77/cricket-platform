@@ -73,7 +73,7 @@ type FormErrors = PlayerBasicsErrors
 
 // The exact BowlingType option list from the spec's UI Requirements — arm is already captured
 // separately (Bowling arm), so this list is arm-independent style, not combined codes like "RFM".
-const BOWLING_TYPE_OPTIONS: Array<{ value: BowlingType; label: string }> = [
+export const BOWLING_TYPE_OPTIONS: Array<{ value: BowlingType; label: string }> = [
   { value: 'FAST', label: 'Fast' },
   { value: 'FAST_MEDIUM', label: 'Fast-medium' },
   { value: 'MEDIUM_FAST', label: 'Medium-fast' },

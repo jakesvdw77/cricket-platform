@@ -13,6 +13,7 @@ const listSections = vi.fn()
 const listSeasons = vi.fn()
 const verifyPlayer = vi.fn()
 const rejectPlayer = vi.fn()
+const linkRequestsSummary = vi.fn()
 const deactivatePlayer = vi.fn()
 const reactivatePlayer = vi.fn()
 
@@ -25,6 +26,11 @@ vi.mock('../../api/playerApi', () => ({
   rejectPlayer: (clubId: string, id: string) => rejectPlayer(clubId, id),
   deactivatePlayer: (clubId: string, id: string) => deactivatePlayer(clubId, id),
   reactivatePlayer: (clubId: string, id: string) => reactivatePlayer(clubId, id),
+}))
+
+// docs/specs/119: the shortcut card reads the summary hook only; a failed or loading summary has no data.
+vi.mock('../../api/playerAccountsApi', () => ({
+  useLinkRequestsSummary: (clubId: string | undefined) => linkRequestsSummary(clubId),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -50,6 +56,8 @@ beforeEach(() => {
   // docs/specs/043-list-toolbar-gold-standard.md: PlayerList's Section filter persists via usePersistedListFilters -
   // clear the real jsdom localStorage so a selection made in one test never leaks into the next.
   localStorage.clear()
+  linkRequestsSummary.mockReset()
+  linkRequestsSummary.mockReturnValue({ data: undefined })
 })
 
 function makePlayer(overrides: Partial<Player> = {}): Player {
@@ -128,6 +136,33 @@ function renderList(clubId?: string) {
 }
 
 describe('PlayerList', () => {
+  describe('link requests shortcut (docs/specs/119 Part 3)', () => {
+    it('shows the waiting card with Review requests when requests are waiting', async () => {
+      listPlayers.mockResolvedValue([makePlayer()])
+      linkRequestsSummary.mockReturnValue({ data: { waiting: 3 } })
+
+      renderList('test-club-id')
+
+      expect(await screen.findByText('3 link requests waiting')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Review requests' })).toHaveAttribute('href', '/manage/permissions/player-accounts')
+      expect(linkRequestsSummary).toHaveBeenCalledWith('test-club-id')
+    })
+
+    it.each([
+      ['none are waiting', { data: { waiting: 0 } }],
+      ['the count is loading', { data: undefined, isPending: true }],
+      ['the count failed to load', { data: undefined, isError: true }],
+    ])('shows no card when %s', async (_name, result) => {
+      listPlayers.mockResolvedValue([makePlayer()])
+      linkRequestsSummary.mockReturnValue(result)
+
+      renderList('test-club-id')
+
+      await screen.findByText('Sipho Ndlovu')
+      expect(screen.queryByTestId('link-requests-waiting-card')).not.toBeInTheDocument()
+    })
+  })
+
   const counter = (id: string) => screen.getByTestId(`page-counter-${id}`)
 
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {

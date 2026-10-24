@@ -21,7 +21,7 @@ keycloak/
     login-reset-password.ftl         override: instruction above the field, "Send reset link", back link under the button
     login-verify-email.ftl           override: mail icon, address chip, Resend button, "Use a different account"
     resources/css/cricketlegend.css  tokens + layout + every page
-    resources/fonts/                 Barlow Condensed 600/700, Inter 400/500/600 (Latin woff2) + OFL licences
+    resources/fonts/                 Barlow Condensed 600/700, Barlow 400/500/600 (Latin and Latin Extended woff2) + OFL licences
     resources/img/                   mark.svg, google.svg, favicon.ico
   META-INF/keycloak-themes.json      only used for the provider-JAR form
   package.sh                         builds keycloak/dist/ (zip of the folder, and a theme JAR)

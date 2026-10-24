@@ -18,4 +18,7 @@ public interface PlayerAvailabilityRepository extends JpaRepository<PlayerAvaila
 
     /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
     List<PlayerAvailability> findByPollIdIn(Collection<UUID> pollIds);
+
+    /** One player's answers across several polls (docs/specs/119 My players), one query. */
+    List<PlayerAvailability> findByPollIdInAndPlayerProfileId(Collection<UUID> pollIds, UUID playerProfileId);
 }

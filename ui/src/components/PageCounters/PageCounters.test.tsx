@@ -42,7 +42,7 @@ describe('PageCounters', () => {
     renderCounters([{ ...items[0], active: true }, items[1]])
 
     expect(screen.getByTestId('page-counter-a')).toHaveAttribute('data-active', 'true')
-    expect(getComputedStyle(screen.getByTestId('page-counter-a')).outline).toMatch(/2px solid rgba\(47, 110, 79, 0\.55\)/)
+    expect(getComputedStyle(screen.getByTestId('page-counter-a')).outline).toMatch(/2px solid rgba\(20, 99, 63, 0\.55\)/)
     expect(screen.getByTestId('page-counter-b')).not.toHaveAttribute('data-active')
   })
 

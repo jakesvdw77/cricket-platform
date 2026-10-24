@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Avatar, Box, IconButton, Tooltip, Typography } from '@mui/material'
+import type { Theme } from '@mui/material/styles'
 import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { AvatarMenu } from '../AvatarMenu'
+import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { avatarSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 
@@ -28,23 +30,30 @@ export interface ShellHeaderProps {
   // initials treatment RecordCard's own avatar slot already established for Team/Sponsor/Club
   // Contact, reused here rather than inventing a second convention for "no logo yet".
   logoUrl?: string | null
-  // docs/specs/079-manager-shell-and-overview.md: opt-in club-colour header (solid primary.main,
-  // primary.contrastText, logo on a white tile). Undefined/'plain' is the white header the admin and
-  // player shells keep unchanged.
-  tone?: 'plain' | 'brand'
   // Renders a bell icon button (aria-label "Notifications") linking here, just before the profile
   // icon. Undefined renders no bell, so only the shell that passes it (the manager shell) has one.
   // For now it opens the sending page; receiving notifications is a later feature.
   notificationsTo?: string
+  // Passed to AvatarMenu: shows a "My players" item when set.
+  myPlayersTo?: string
+  profileItems?: ProfileSwitchItem[]
 }
 
 // The header row (brand + AvatarMenu) shared by every post-login shell — see
-// docs/specs/006-post-login-home-shells.md. Pulled out once AppShell, ManagerShell, and
+// docs/specs/006-post-login-home-shells.md. docs/specs/120: it is the platform chrome for every shell and every club (dark
+// green, cream text, the club logo on a white tile, a gold account disc); the club's identity here is its name and logo only. Pulled out once AppShell, ManagerShell, and
 // BottomTabShell all turned out to render the same row, differing only in what nav they wrap
 // it with (sidebar drawer, nothing, or a bottom tab bar).
-export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo }: ShellHeaderProps) {
+const brandNameSx = {
+  fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay,
+  fontWeight: 600,
+  fontSize: 19,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+} as const
+
+export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, notificationsTo, myPlayersTo, profileItems }: ShellHeaderProps) {
   const hasLogoSlot = logoUrl !== undefined
-  const onBrand = tone === 'brand'
 
   return (
     <Box
@@ -55,9 +64,9 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
         justifyContent: 'space-between',
         px: dense ? 2 : { xs: 2, md: 3 },
         py: dense ? 1.5 : 2,
-        ...(onBrand
-          ? { bgcolor: 'primary.main', color: 'primary.contrastText', minHeight: { xs: 56, md: 64 } }
-          : { borderBottom: 1, borderColor: 'divider' }),
+        bgcolor: 'chrome.header',
+        color: 'chrome.text',
+        minHeight: { xs: 56, md: 64 },
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
@@ -68,7 +77,12 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
             variant="rounded"
             sx={{
               ...avatarSx(dense ? 28 : 32, '0.6875rem'),
-              ...(onBrand && { bgcolor: 'background.paper', color: 'primary.dark', fontWeight: 700 }),
+              // The logo always sits on a white 6 px tile (docs/specs/120 Decision 18), so a white-on-transparent logo is never bare.
+              bgcolor: 'background.paper',
+              backgroundImage: 'none',
+              color: 'chrome.header',
+              borderRadius: '6px',
+              '& img': { objectFit: 'contain', p: 0.25 },
             }}
           >
             {initialsFromName(brand)}
@@ -76,13 +90,9 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
         )}
         <Typography
           variant={dense ? 'subtitle2' : 'subtitle1'}
-          fontWeight={700}
           noWrap
-          {...(homeTo && {
-            component: RouterLink,
-            to: homeTo,
-            sx: { color: 'inherit', textDecoration: 'none' },
-          })}
+          sx={homeTo ? { ...brandNameSx, color: 'inherit', textDecoration: 'none', '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 } } : brandNameSx}
+          {...(homeTo && { component: RouterLink, to: homeTo })}
         >
           {brand}
         </Typography>
@@ -95,13 +105,13 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
               to={notificationsTo}
               aria-label="Notifications"
               size="small"
-              sx={{ color: onBrand ? 'primary.contrastText' : 'text.secondary', p: 0.5 }}
+              sx={{ color: 'chrome.text', p: 0.5, '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 } }}
             >
               <NotificationsOutlined sx={{ fontSize: 28 }} />
             </IconButton>
           </Tooltip>
         )}
-        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} />
+        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand myPlayersTo={myPlayersTo} profileItems={profileItems} />
       </Box>
     </Box>
   )
