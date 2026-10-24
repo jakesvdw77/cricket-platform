@@ -146,7 +146,7 @@ export function legacyProfileTarget(view: string | undefined): string | undefine
 }
 
 // Old URLs that still land somewhere sensible (Decision 14). `/stats` is not here: Stats is now a section of its own, and
-// on desktop and tablet it opens on My stats (its first child) by itself; on a phone it is the Stats sub menu.
+// on desktop and tablet it opens on My stats (its first child) by itself; on a phone it opens on My stats with the pill row.
 // `/account/invitations` stays a real route (App.tsx).
 export const LEGACY_REDIRECTS: Record<string, string> = {
   requests: 'account/requests',
@@ -245,11 +245,8 @@ export function hubBack(state: HubBackState): HubBackAction | null {
   }
   const toPlayers = many ? { label: 'Back to players', target: '/account' } : null
   if (layout === 'phone') {
+    // Every page, parent or leaf, goes back to the main menu (the sub menu is a pill row on the page itself).
     if (route.root) return toPlayers
-    if (isParent(route.section)) {
-      if (!route.item) return { label: 'Back to menu', target: main }
-      return { label: `Back to ${route.section.label}`, target: hubPath(playerKey, segmentOf(route.section)) }
-    }
     return { label: 'Back to menu', target: main }
   }
   // Tablet and desktop: while a sub menu is open the footer goes up to the main menu (the column swaps back to the main

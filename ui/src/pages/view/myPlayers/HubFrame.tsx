@@ -23,17 +23,19 @@ export interface HubFrameProps {
   panel?: 'solid' | 'clear'
   // docs/specs/121, opt-in (the Player Hub only; the picker and Find players keep their own height): the console fills the
   // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1400px, 90vw) wide, the
-  // menu column (220 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
+  // menu column (260 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
   // HUB_GROUND, and the footer is pinned (56 px high, safe-area padding). With `fill` the caller decides what shows: `menu`
   // and `children` side by side, or `hideContent` to give the whole body to the menu (a phone's menu screens).
   fill?: boolean
   hideContent?: boolean
+  // A strip pinned to the top of the scrolling content (the phone's pill row), bleeding to the content edges.
+  stickyTop?: ReactNode
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
   const twoColumns = Boolean(menu) && !hideContent
   const columns = fill
-    ? { xs: '1fr', sm: twoColumns ? '220px minmax(0, 1fr)' : '1fr', md: twoColumns ? '300px minmax(0, 1fr)' : '1fr' }
+    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? '300px minmax(0, 1fr)' : '1fr' }
     : { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }
   const content = (
     <Box
@@ -49,6 +51,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         minWidth: 0,
       }}
     >
+      {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 2, mx: -2, mt: -2, mb: 2, bgcolor: HUB_GROUND }}>{stickyTop}</Box>}
       <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
     </Box>
   )

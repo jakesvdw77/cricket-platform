@@ -14,6 +14,7 @@ import type { ProfilePage } from './myPlayers/HubProfile'
 import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
 import { HubLeaveGuardProvider, useHubLeaveGuardController } from './myPlayers/hubLeaveGuard'
 import { HubMenu } from './myPlayers/HubMenu'
+import { HubPillStrip } from './myPlayers/HubPillStrip'
 import { HubPlayerCard } from './myPlayers/HubPlayerCard'
 import { HubSoonPanel } from './myPlayers/HubSoonPanel'
 import { HubFields } from './myPlayers/HubFields'
@@ -27,7 +28,7 @@ import { creamAlpha } from '../../brandTokens'
 // docs/specs/121 (builds on 119 3C): the Player Hub, /account/players/:key[/:section[/:item]]. A thin composer: the menu is
 // defined once in myPlayers/hubNav.ts; this reads the URL (the only navigation state), picks the layout and renders the
 // menu column, the page and the footer's one Back (hubBack, also run by Escape).
-//   phone (below 600 px): main menu, then sub menu, then the page, one screen at a time;
+//   phone (below 600 px): the main menu, then a page; a parent opens its default page with a pill row as its sub menu;
 //   tablet (600 to 899 px) and desktop: the menu column (220 px or 300 px) beside the page.
 // An unknown section or item means Availability. Old URLs redirect (LEGACY_REDIRECTS, LegacyDetailsRedirect).
 
@@ -67,17 +68,17 @@ export default function MyPlayerPage() {
   const parentOpen = !route.root && isParent(section)
   // A URL naming an action (sign out, find players) never runs it: that is a click, not a page.
   const named = route.item && !route.item.action ? route.item : undefined
-  // Desktop and tablet open a parent on its first child that is a page and not Soon; a phone's sub menu opens no page.
-  const pageItem: HubNavItem | undefined = parentOpen ? (named ?? (phone ? undefined : defaultChild(section))) : undefined
+  // A parent opens on its first child that is a page and not Soon, on every layout (a phone shows the pill row above it).
+  const pageItem: HubNavItem | undefined = parentOpen ? (named ?? defaultChild(section)) : undefined
   const subView = section.id === 'profile' && isProfileSubView(sub, leaf)
-  const phoneMenuScreen = phone && !subView && (route.root || (parentOpen && !pageItem))
+  const phoneMenuScreen = phone && route.root
 
   const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
     attempt(() => {
-      if (parentOpen && !subView) setFocusId(phone && named ? named.id : section.id)
+      if (parentOpen && !subView) setFocusId(section.id)
       navigate(back.target)
     })
   }
@@ -182,14 +183,14 @@ export default function MyPlayerPage() {
   }
 
   // The menu ----------------------------------------------------------------------------------------------------------
-  const listItems = parentOpen ? (section.children ?? []) : tree
+  const listItems = phone || !parentOpen ? tree : (section.children ?? [])
   const selectedId = phone ? undefined : parentOpen ? pageItem?.id : section.id
   const card = player ? <HubPlayerCard player={player} /> : <Skeleton variant="rounded" height={104} sx={{ m: 2, bgcolor: creamAlpha(0.12) }} />
   const menu = subView ? undefined : phone && !phoneMenuScreen ? undefined : (
     <>
       {/* On Profile pages the page shows its own card, so the menu column starts with the list (wide and tablet). */}
       {(phone ? route.root : section.id !== 'profile' || route.root) && card}
-      <HubMenu items={listItems} selectedId={selectedId} counts={counts} onSelect={select} levelKey={parentOpen ? section.id : 'root'} focusId={focusId} />
+      <HubMenu items={listItems} selectedId={selectedId} counts={counts} onSelect={select} levelKey={parentOpen && !phone ? section.id : 'root'} focusId={focusId} />
     </>
   )
 
@@ -214,7 +215,8 @@ export default function MyPlayerPage() {
     <HubFrame
       fill
       title={title}
-      phoneTitle={phoneMenuScreen ? 'slim' : 'hidden'}
+      phoneTitle={phoneMenuScreen || (parentOpen && !subView) ? 'slim' : 'hidden'}
+      stickyTop={phone && parentOpen && !subView ? <HubPillStrip label={`${section.label} pages`} items={section.children ?? []} selectedId={pageItem?.id} onSelect={select} /> : undefined}
       menu={menu}
       hideContent={phoneMenuScreen}
       footer={footer}
@@ -222,7 +224,7 @@ export default function MyPlayerPage() {
     >
       {playerQuery.isError && <Alert severity="error">We could not load this player. Please try again.</Alert>}
       {!player && !playerQuery.isError && (needsPlayer || subView) && <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(0.12) }} />}
-      {phonePage && !subView && (
+      {phonePage && !subView && !parentOpen && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44 }}>
           <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
             {pageLabel}

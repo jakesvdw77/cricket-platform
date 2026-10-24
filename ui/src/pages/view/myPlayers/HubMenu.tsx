@@ -25,9 +25,32 @@ export interface HubMenuProps {
 }
 
 function Pill({ children, dashed }: { children: string; dashed?: boolean }) {
+  // A count ("1 open", "2 new") is shown as just the number in a round badge so it never competes with the label for
+  // width; the row's accessible name still carries the full wording.
+  const count = !dashed ? /^\d+/.exec(children)?.[0] : undefined
   return (
-    <Box component="span" sx={{ fontFamily: 'inherit', fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', px: '9px', py: '3px', borderRadius: 999, border: `1px ${dashed ? 'dashed' : 'solid'} currentColor`, textTransform: 'none', whiteSpace: 'nowrap' }}>
-      {children}
+    <Box
+      component="span"
+      sx={{
+        fontFamily: 'inherit',
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        lineHeight: 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: count ? 22 : undefined,
+        height: 22,
+        px: count ? '6px' : '8px',
+        borderRadius: 999,
+        border: `1px ${dashed ? 'dashed' : 'solid'} currentColor`,
+        textTransform: 'none',
+        whiteSpace: 'nowrap',
+        flex: 'none',
+      }}
+    >
+      {count ?? children}
     </Box>
   )
 }
@@ -43,7 +66,7 @@ const barSx = {
   fontWeight: 600,
   fontSize: { xs: 22, md: 26 },
   lineHeight: 1.1,
-  letterSpacing: '0.08em',
+  letterSpacing: '0.06em',
   textTransform: 'uppercase',
   color: HUB.cream,
   bgcolor: blackAlpha(0.22),
@@ -111,12 +134,15 @@ export function HubMenu({ items, selectedId, counts, onSelect, levelKey, focusId
                   ...(index === items.length - 1 && { borderBottom: `1px solid ${HUB.line}` }),
                 }}
               >
-                <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                {/* The pill sits at the left edge so it never takes width from the label, which stays right aligned and on one
+                    line; the chevron slot is always reserved so every label ends on the same vertical line. */}
+                {pill ? <Pill>{pill}</Pill> : item.soon ? <Pill dashed>Soon</Pill> : null}
+                <Box component="span" sx={{ flex: 1, minWidth: 0, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {item.label}
                 </Box>
-                {pill && <Pill>{pill}</Pill>}
-                {item.soon && <Pill dashed>Soon</Pill>}
-                {parent && <ChevronRightIcon aria-hidden sx={{ fontSize: 26, opacity: 0.8, flex: 'none', mr: -0.5 }} />}
+                <Box component="span" aria-hidden sx={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                  {parent && <ChevronRightIcon sx={{ fontSize: 26, opacity: 0.8, mr: -0.5, flex: 'none' }} />}
+                </Box>
               </ButtonBase>
             </li>
           )
