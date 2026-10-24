@@ -63,9 +63,14 @@ export function HubProfile({ player }: { player: MyPlayer }) {
 
   return (
     <Box data-testid="hub-profile" sx={{ display: 'grid', gap: 1.75 }}>
-      <Typography component="h2" sx={hubHeading}>
-        Profile
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+        <Typography component="h2" sx={hubHeading}>
+          Profile
+        </Typography>
+        <Button size="compact" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`/account/players/${player.key}/profile/edit`)} sx={hubGoldButton}>
+          Edit profile
+        </Button>
+      </Box>
       {mostlyEmpty && (
         <Box data-testid="complete-profile" sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2, bgcolor: blackAlpha(.22), color: HUB.muted }}>
           <Box component="b" sx={{ color: HUB.cream, display: 'block' }}>
@@ -132,12 +137,6 @@ export function HubProfile({ player }: { player: MyPlayer }) {
           </Button>
         </Box>
       )}
-
-      <Box>
-        <Button size="compact" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`/account/players/${player.key}/profile/edit`)} sx={hubGoldButton}>
-          Edit profile
-        </Button>
-      </Box>
 
     </Box>
   )

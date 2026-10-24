@@ -1,4 +1,5 @@
 import { Box, Typography } from '@mui/material'
+import { BrandMark } from '../BrandMark'
 import { PageBackdrop, BACKDROP_COLOURS } from '../PageBackdrop'
 import { FONT_DISPLAY } from '../../brandTokens'
 import { CricketBallLoader } from './CricketBallLoader'
@@ -37,7 +38,7 @@ export function FullPageLoader({ message, label, variant = 'plain', size, overla
     >
       {backdrop && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: BACKDROP_COLOURS.cream, mb: 2 }}>
-          <Box component="img" src="/favicon.svg" alt="" width={40} height={40} />
+          <BrandMark size={40} />
           <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 28, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1 }}>
             Cricket Legend
           </Typography>

@@ -5,6 +5,7 @@ import { Avatar, Box, Button, IconButton, Menu, MenuItem, Typography, useMediaQu
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useClubHome } from './myPlayers/useClubHome'
 import { ProfileSwitcher } from '../../components/ProfileSwitcher'
+import { BrandMark } from '../../components/BrandMark'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
@@ -29,7 +30,7 @@ export function AccountShell({ children, maxWidth = 592, testId = 'welcome-page'
     <PageBackdrop>
       <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box component="img" src="/favicon.svg" alt="" width={28} height={28} />
+          <BrandMark size={28} />
           <Typography fontWeight={700} fontSize={16}>
             Cricket Legend
           </Typography>

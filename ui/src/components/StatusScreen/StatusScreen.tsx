@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { Button } from '../Button'
+import { BrandMark } from '../BrandMark'
 import { PageBackdrop, BACKDROP_COLOURS } from '../PageBackdrop'
 import { BRAND, FONT_DISPLAY, creamAlpha } from '../../brandTokens'
 import { StatusIllustration } from './StatusIllustration'
@@ -80,7 +81,7 @@ export function StatusScreen({ kind, title, message, primaryAction, secondaryAct
         sx={{ flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5, textAlign: 'center', px: 3, py: 3 }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: BACKDROP_COLOURS.cream, mb: 1 }}>
-          <Box component="img" src="/favicon.svg" alt="" width={32} height={32} />
+          <BrandMark size={32} />
           <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 24, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1 }}>Cricket Legend</Typography>
         </Box>
         <StatusIllustration kind={kind} />
