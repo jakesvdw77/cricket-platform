@@ -1,8 +1,8 @@
 // docs/specs/121-player-hub-menu-and-fields.md: the one source for the Player Hub's menu, in the shape of
 // components/ManagerShell/managerNav.ts. The menu, the routes, the footer Back and the Escape key all read it, so a Hub
-// item is added in this list and nowhere else. At most seven top-level items (the owner moved Messages up on 2026-10-24) and two levels (a unit test pins both).
-// Ids, labels and order are binding on routes, tests and copy; the Club order is Club info, Gallery, Bookings, Social Media,
-// Field Directory, Other Services (Decision 16; Messages is now a main menu item).
+// item is added in this list and nowhere else. At most seven top-level items and two levels (a unit test pins both).
+// Ids, labels and order are binding on routes, tests and copy; the Club order is Club info, Bookings, Field Directory,
+// Other Services, and Updates holds Messages, Gallery, Social Media (owner, 2026-10-24).
 
 export type HubPillSource = 'openPolls' | 'invitations' | 'linkRequests'
 
@@ -36,7 +36,15 @@ export interface HubNavItem {
 
 export const HUB_NAV: HubNavItem[] = [
   { id: 'availability', label: 'Availability', pill: 'openPolls' },
-  { id: 'messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
+  {
+    id: 'updates',
+    label: 'Updates',
+    children: [
+      { id: 'updates.messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
+      { id: 'updates.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
+      { id: 'updates.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
+    ],
+  },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -76,9 +84,7 @@ export const HUB_NAV: HubNavItem[] = [
     label: 'Club',
     children: [
       { id: 'club.info', label: 'Club info', soon: true, soonCopy: "Contacts, the club's places and links." },
-      { id: 'club.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
       { id: 'club.bookings', label: 'Bookings', soon: true, soonCopy: 'Nets and facility bookings.' },
-      { id: 'club.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
       // The one live item (so Club opens on it).
       { id: 'club.fields', label: 'Field Directory' },
       { id: 'club.services', label: 'Other Services', soon: true, soonCopy: 'Other services the club offers, once the club adds them.' },
