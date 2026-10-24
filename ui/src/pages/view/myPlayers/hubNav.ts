@@ -76,7 +76,15 @@ export const HUB_NAV: HubNavItem[] = [
       { id: 'club.fields', label: 'Field Directory' },
     ],
   },
-  { id: 'profile', label: 'Profile' },
+  {
+    id: 'profile',
+    label: 'Profile',
+    children: [
+      { id: 'profile.contact', label: 'Contact' },
+      { id: 'profile.cricket', label: 'Cricket' },
+      { id: 'profile.agents', label: 'Agents' },
+    ],
+  },
   {
     id: 'account',
     label: 'Account',
@@ -89,13 +97,38 @@ export const HUB_NAV: HubNavItem[] = [
   },
 ]
 
-// The Profile sub views keep their routes (/profile/edit and the rest) and their titles.
+// The Profile sub views and their titles. `edit` lives under a page (profile/contact/edit, also cricket); `edit-card` is the player card's photo and date of birth, from any page;
+// the agent views live under Agents (profile/agents/hand-over and the rest).
 export const PROFILE_SUBVIEWS: Record<string, string> = {
   edit: 'Edit Profile',
-  'hand-over': 'Hand Over',
-  'add-agent': 'Add Agent',
+  'edit-card': 'Edit Photo and Date of Birth',
   leave: 'Leave',
-  'cancel-invite': 'Cancel Invitation',
+}
+export const PROFILE_EDIT_PAGES = ['contact', 'cricket']
+export const PROFILE_PAGES = [...PROFILE_EDIT_PAGES, 'agents']
+
+// True when `view` is a real Profile sub view of the page `item`.
+export function isProfileSubView(item: string | undefined, view: string | undefined): boolean {
+  if (!view || !(view in PROFILE_SUBVIEWS) || !item) return false
+  // The Agents page's own edit is profile/agents/edit (add or hand over, pending invitations).
+  if (view === 'edit') return PROFILE_EDIT_PAGES.includes(item) || item === 'agents'
+  // The card's own edit (photo and date of birth) opens from any Profile page and returns to it.
+  if (view === 'edit-card') return PROFILE_PAGES.includes(item)
+  return item === 'agents'
+}
+
+// profile/agents/hand-over, add-agent and cancel-invite are old links: they redirect to the Agents edit view.
+export const isLegacyAgentView = (item: string | undefined, view: string | undefined): boolean => item === 'agents' && LEGACY_AGENT_VIEWS.includes(view ?? '')
+
+// Old Profile deep links (/profile/edit, /profile/hand-over ...) land on the page that now owns them.
+const LEGACY_AGENT_VIEWS = ['hand-over', 'add-agent', 'cancel-invite']
+export function legacyProfileTarget(view: string | undefined): string | undefined {
+  if (!view || !(view in PROFILE_SUBVIEWS || LEGACY_AGENT_VIEWS.includes(view))) return undefined
+  if (view === 'edit') return 'profile/contact/edit'
+  if (view === 'hand-over') return 'profile/agents/edit?mode=handover'
+  if (view === 'add-agent') return 'profile/agents/edit?mode=add'
+  if (view === 'cancel-invite') return 'profile/agents/edit'
+  return view === 'edit-card' ? undefined : `profile/agents/${view}`
 }
 
 // Old URLs that still land somewhere sensible (Decision 14). `/stats` is not here: Stats is now a section of its own, and
@@ -179,7 +212,8 @@ export interface HubBackState {
   // The URL's section, item and sub segments.
   section?: string
   item?: string
-  sub?: string
+  // The segment after the item: a Profile sub view (edit, hand-over ...).
+  view?: string
 }
 
 export interface HubBackAction {
@@ -189,11 +223,11 @@ export interface HubBackAction {
 
 // The footer's one Back (Decision 15); Escape runs the same action. Null means no Back control at all.
 export function hubBack(state: HubBackState): HubBackAction | null {
-  const { playerKey, layout, many, section, item, sub } = state
+  const { playerKey, layout, many, section, item, view } = state
   const main = hubPath(playerKey)
   const route = resolveRoute(section, item)
-  if (route.section.id === 'profile' && sub !== undefined && sub in PROFILE_SUBVIEWS) {
-    return { label: 'Back to Profile', target: hubPath(playerKey, 'profile') }
+  if (route.section.id === 'profile' && isProfileSubView(item, view)) {
+    return { label: 'Back to Profile', target: hubPath(playerKey, 'profile', item) }
   }
   const toPlayers = many ? { label: 'Back to players', target: '/account' } : null
   if (layout === 'phone') {

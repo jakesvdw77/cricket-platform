@@ -134,6 +134,7 @@ function App() {
             <Route path="/account/players/:key/details" element={<LegacyDetailsRedirect />} />
             <Route path="/account/players/:key/:section" element={<MyPlayerPage />} />
             <Route path="/account/players/:key/:section/:sub" element={<MyPlayerPage />} />
+            <Route path="/account/players/:key/:section/:sub/:leaf" element={<MyPlayerPage />} />
 
             {/* docs/specs/032-match-availability-polls.md: the poll's own public, no-login
                 response page — top-level and unguarded, outside both the /manage and /player

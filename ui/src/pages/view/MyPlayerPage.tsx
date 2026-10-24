@@ -6,9 +6,11 @@ import { InvitationsList } from './MyInvitationsPage'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { useMyPlayer, useMyPlayerPolls, useMyPlayers } from '../../api/myPlayersApi'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
-import { AgentChangeView, RemoveLinkView } from './myPlayers/AgentViews'
+import { EditAgentsView, RemoveLinkView } from './myPlayers/AgentViews'
 import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
+import type { EditSection } from './myPlayers/MyPlayerEditForm'
 import { HubProfile } from './myPlayers/HubProfile'
+import type { ProfilePage } from './myPlayers/HubProfile'
 import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
 import { HubLeaveGuardProvider, useHubLeaveGuardController } from './myPlayers/hubLeaveGuard'
 import { HubMenu } from './myPlayers/HubMenu'
@@ -16,7 +18,7 @@ import { HubPlayerCard } from './myPlayers/HubPlayerCard'
 import { HubSoonPanel } from './myPlayers/HubSoonPanel'
 import { HubFields } from './myPlayers/HubFields'
 import { HUB, hubPageHeading } from './myPlayers/hubStyle'
-import { LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isParent, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
+import { LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
 import type { HubLayout, HubNavContext, HubNavItem, HubPillCounts } from './myPlayers/hubNav'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 import { signOut } from '../../auth/signOut'
@@ -36,9 +38,10 @@ export function LegacyDetailsRedirect() {
 }
 
 export default function MyPlayerPage() {
-  const { key = '', section: rawSection, sub } = useParams<{ key: string; section?: string; sub?: string }>()
+  // Route params: /:section/:sub is a section and its item (profile/card); /:section/:sub/:leaf adds a Profile sub view (profile/card/edit).
+  const { key = '', section: rawSection, sub, leaf } = useParams<{ key: string; section?: string; sub?: string; leaf?: string }>()
   const navigate = useNavigate()
-  const [search] = useSearchParams()
+  const [search, setSearch] = useSearchParams()
   const playerQuery = useMyPlayer(key)
   const player = playerQuery.data
   const polls = useMyPlayerPolls(key)
@@ -66,10 +69,10 @@ export default function MyPlayerPage() {
   const named = route.item && !route.item.action ? route.item : undefined
   // Desktop and tablet open a parent on its first child that is a page and not Soon; a phone's sub menu opens no page.
   const pageItem: HubNavItem | undefined = parentOpen ? (named ?? (phone ? undefined : defaultChild(section))) : undefined
-  const subView = section.id === 'profile' && sub !== undefined && sub in PROFILE_SUBVIEWS
+  const subView = section.id === 'profile' && isProfileSubView(sub, leaf)
   const phoneMenuScreen = phone && !subView && (route.root || (parentOpen && !pageItem))
 
-  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, sub })
+  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
@@ -94,6 +97,11 @@ export default function MyPlayerPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // The Player Card and Medical pages are gone (the card sits on every page, medical aid is on Contact): both go to Contact.
+  if (rawSection === 'profile' && (sub === 'card' || sub === 'medical')) return <Navigate to={`/account/players/${key}/profile/contact${leaf ? `/${leaf}` : ''}`} replace />
+  // Old Profile links (/profile/edit, /profile/hand-over, /profile/agents/hand-over ...) land on the page that now owns them.
+  const profileTarget = rawSection === 'profile' ? (!leaf ? legacyProfileTarget(sub) : isLegacyAgentView(sub, leaf) ? legacyProfileTarget(leaf) : undefined) : undefined
+  if (profileTarget) return <Navigate to={`/account/players/${key}/${profileTarget}`} replace />
   if (LEGACY_REDIRECTS[rawSection ?? '']) return <Navigate to={`/account/players/${key}/${LEGACY_REDIRECTS[rawSection ?? '']}`} replace />
   // Desktop and tablet: the bare player URL means Availability (a phone shows the main menu there).
   if (!phone && !rawSection && key) return <Navigate to={hubPath(key, 'availability')} replace />
@@ -116,28 +124,26 @@ export default function MyPlayerPage() {
 
   // The page ----------------------------------------------------------------------------------------------------------
   const pageLabel = pageItem?.label ?? section.label
-  const needsPlayer = !parentOpen
+  const needsPlayer = !parentOpen || section.id === 'profile'
   let panel
-  if (subView && sub !== 'edit') {
-    panel =
-      player &&
-      (sub === 'hand-over' || sub === 'add-agent' ? (
-        <AgentChangeView player={player} mode={sub === 'hand-over' ? 'HANDOVER' : 'ADD'} />
-      ) : (
-        <RemoveLinkView
-          player={player}
-          kind={sub === 'leave' ? 'leave' : 'cancel'}
-          linkId={sub === 'leave' ? player.myLinkId : search.get('link')}
-          onDone={() => (sub === 'leave' ? navigate('/account') : navigate(hubPath(key, 'profile')))}
-        />
-      ))
+  if (subView && leaf === 'leave') {
+    panel = player && <RemoveLinkView player={player} kind="leave" linkId={player.myLinkId} onDone={() => navigate('/account')} />
+  } else if (subView && leaf === 'edit' && sub === 'agents') {
+    panel = player && (
+      <EditAgentsView
+        player={player}
+        mode={search.get('mode') === 'handover' ? 'HANDOVER' : 'ADD'}
+        onModeChange={(next) => setSearch({ mode: next === 'HANDOVER' ? 'handover' : 'add' }, { replace: true })}
+      />
+    )
   } else if (subView) {
+    const cardEdit = leaf === 'edit-card'
     panel = player && (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
         <Typography component="h2" sx={hubPageHeading}>
-          Edit profile
+          {cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`}
         </Typography>
-        <MyPlayerEditForm key={player.key} player={player} dark onDone={() => navigate(hubPath(key, 'profile'))} />
+        <MyPlayerEditForm key={`${player.key}-${leaf}-${sub}`} player={player} dark section={cardEdit ? 'photo' : (sub as EditSection)} onDone={() => navigate(hubPath(key, 'profile', sub))} />
       </Box>
     )
   } else if (section.id === 'availability') {
@@ -149,8 +155,8 @@ export default function MyPlayerPage() {
         {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
       </Box>
     )
-  } else if (section.id === 'profile') {
-    panel = player && <HubProfile player={player} />
+  } else if (section.id === 'profile' && pageItem) {
+    panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
   } else if (pageItem?.id === 'club.fields') {
     panel = <HubFields />
   } else if (pageItem?.id === 'account.invitations') {
@@ -181,13 +187,14 @@ export default function MyPlayerPage() {
   const card = player ? <HubPlayerCard player={player} /> : <Skeleton variant="rounded" height={104} sx={{ m: 2, bgcolor: creamAlpha(0.12) }} />
   const menu = subView ? undefined : phone && !phoneMenuScreen ? undefined : (
     <>
-      {(!phone || route.root) && card}
+      {/* On Profile pages the page shows its own card, so the menu column starts with the list (wide and tablet). */}
+      {(phone ? route.root : section.id !== 'profile' || route.root) && card}
       <HubMenu items={listItems} selectedId={selectedId} counts={counts} onSelect={select} levelKey={parentOpen ? section.id : 'root'} focusId={focusId} />
     </>
   )
 
-  const title = subView && sub ? (
-    PROFILE_SUBVIEWS[sub]
+  const title = subView && leaf ? (
+    PROFILE_SUBVIEWS[leaf]
   ) : parentOpen ? (
     <>
       Player Hub /{' '}

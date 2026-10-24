@@ -171,27 +171,34 @@ public class MyPlayerServiceImpl implements MyPlayerService {
         String clubName = clubRepository.findById(profile.getClubId()).map(Club::getName).orElse(null);
 
         List<PersonLink> links = personLinkRepository.findActiveBySubjectAndClub(held.subject().getId(), profile.getClubId());
-        List<MyPlayerAgentDto> agents = new ArrayList<>();
-        if (held.canManageAgents()) {
-            // the main agent sees the other agents by name and masked email, never anything more
-            Map<UUID, Person> accounts = personRepository
-                    .findAllById(links.stream()
-                            .map(PersonLink::getAccountPersonId)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toSet()))
-                    .stream()
-                    .collect(Collectors.toMap(Person::getId, p -> p));
-            List<MyPlayerAgentDto> shown = links.stream()
-                    .filter(l -> (held.link() == null || !l.getId().equals(held.link().getId()))
-                            && accounts.containsKey(l.getAccountPersonId()))
-                    .sorted(Comparator.comparing(PersonLink::getCreatedAt).thenComparing(PersonLink::getId))
-                    .map(l -> mapper.toAgent(l.getId(), accounts.get(l.getAccountPersonId()), l.isMain()))
-                    .collect(Collectors.toCollection(ArrayList::new));
-            // invitations this player has sent and that are still open, by masked invited email
+        // docs/specs/121, Decision 23: every linked agent sees all ACTIVE agents including themselves, the main agent
+        // first. Names for everyone; link ids and masked emails (and the open invitations) only for the main agent
+        // or the adult player, so one agent never receives another agent's email.
+        boolean reveal = held.canManageAgents();
+        Map<UUID, Person> accounts = personRepository
+                .findAllById(links.stream()
+                        .map(PersonLink::getAccountPersonId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Person::getId, p -> p));
+        List<MyPlayerAgentDto> agents = links.stream()
+                .filter(l -> accounts.containsKey(l.getAccountPersonId()))
+                .sorted(Comparator.comparing((PersonLink l) -> !l.isMain())
+                        .thenComparing(l -> MyPlayerMapper.name(accounts.get(l.getAccountPersonId())).toLowerCase())
+                        .thenComparing(PersonLink::getId))
+                .map(l -> mapper.toAgent(
+                        l.getId(),
+                        accounts.get(l.getAccountPersonId()),
+                        l.isMain(),
+                        held.link() != null && l.getId().equals(held.link().getId()),
+                        reveal))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (reveal) {
+            // invitations this player has sent and that are still open, by masked invited email, after the agents
             personLinkRepository
                     .findOpenInvitationsBySubjectAndClub(held.subject().getId(), profile.getClubId(), Instant.now())
-                    .forEach(l -> shown.add(mapper.toInvited(l.getId(), l.getInvitedEmail())));
-            agents = shown;
+                    .forEach(l -> agents.add(mapper.toInvited(l.getId(), l.getInvitedEmail())));
         }
         return mapper.toDto(held, clubName, label, sections, teams, links.size(), agents);
     }

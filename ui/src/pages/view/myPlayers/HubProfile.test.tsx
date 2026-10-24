@@ -12,7 +12,7 @@ function renderProfile(player: MyPlayer) {
   return render(
     <MemoryRouter initialEntries={['/account/players/k1/profile']}>
       <Routes>
-        <Route path="/account/players/k1/profile" element={<HubProfile player={player} />} />
+        <Route path="/account/players/k1/profile" element={<HubProfile player={player} page="contact" />} />
         <Route path="*" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,

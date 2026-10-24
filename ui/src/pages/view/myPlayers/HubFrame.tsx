@@ -80,13 +80,14 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           }),
         }}
       >
-        <Box sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, justifyContent: 'flex-end' }}>
+        <Box sx={{ gridRow: 1, px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, justifyContent: 'flex-end' }}>
           <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 22, md: 'clamp(24px, 3vw, 32px)' }, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, textAlign: 'right' }}>
             {title}
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: columns, minHeight: fill ? 0 : { md: 'max(560px, calc(100vh - 450px))' }, minWidth: 0 }}>
+        {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
+        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
           {fill && menu ? (
             <Box
               data-testid="hub-menu-column"
@@ -113,6 +114,8 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           <Box
             component="footer"
             sx={{
+              gridRow: 3,
+              alignSelf: 'end',
               borderTop: `1px solid ${HUB.line}`,
               px: { xs: 2, md: 2.5 },
               py: 1,

@@ -18,11 +18,15 @@ export interface MyPlayerSummary {
   main: boolean
 }
 
+// The full list of agents, primary first, for every linked agent (docs/specs/121). maskedEmail and linkId only come for the
+// main agent; INVITED rows too, after the active ones.
 export interface MyPlayerAgent {
-  linkId: string
+  linkId?: string
   name: string
-  maskedEmail: string
+  maskedEmail?: string
   main: boolean
+  // True on the caller's own row.
+  you?: boolean
   status: 'ACTIVE' | 'INVITED'
 }
 

@@ -69,16 +69,26 @@ public class MyPlayerMapper {
                 agents);
     }
 
-    public MyPlayerAgentDto toAgent(UUID linkId, Person agent, boolean main) {
+    /** {@code reveal} (the viewer is the main agent or the adult player) adds the link id and masked email; else both are null. */
+    public MyPlayerAgentDto toAgent(UUID linkId, Person agent, boolean main, boolean you, boolean reveal) {
+        return new MyPlayerAgentDto(
+                reveal ? linkId : null,
+                name(agent),
+                reveal ? MaskedEmail.mask(agent.getEmail()) : null,
+                main,
+                PersonLinkStatus.ACTIVE,
+                you);
+    }
+
+    public static String name(Person agent) {
         String first = agent.getFirstName() == null ? "" : agent.getFirstName().trim();
         String last = agent.getLastName() == null ? "" : agent.getLastName().trim();
-        return new MyPlayerAgentDto(
-                linkId, (first + " " + last).trim(), MaskedEmail.mask(agent.getEmail()), main, PersonLinkStatus.ACTIVE);
+        return (first + " " + last).trim();
     }
 
     /** An invitation the main agent sent: shown by the masked invited email. */
     public MyPlayerAgentDto toInvited(UUID linkId, String invitedEmail) {
         String masked = MaskedEmail.mask(invitedEmail);
-        return new MyPlayerAgentDto(linkId, masked, masked, false, PersonLinkStatus.INVITED);
+        return new MyPlayerAgentDto(linkId, masked, masked, false, PersonLinkStatus.INVITED, false);
     }
 }

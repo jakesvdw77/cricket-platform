@@ -16730,9 +16730,12 @@ components:
           type: boolean
     MyPlayerAgentDto:
       type: object
+      description: "Every linked agent sees all ACTIVE agents including themselves (you), the main agent first, then by name. name is given to every viewer; maskedEmail and linkId are null unless the viewer is the main agent (or the adult player). INVITED entries (open invitations, by masked invited email) are included only for the main agent, after the agents."
       properties:
+        you:
+          type: boolean
         linkId:
-          type: string
+          type: [string, 'null']
           format: uuid
         status:
           type: string
@@ -16747,7 +16750,7 @@ components:
           type: boolean
     MyPlayerDto:
       type: object
-      description: "The date of birth is shown to a linked account here only (owner decision). agents (active agents and open invitations, by masked email) is filled when canManageAgents; agentCount counts every active agent including the caller. myLinkId is the caller's own link id (null on the adult player's own record)."
+      description: "The date of birth is shown to a linked account here only (owner decision). agents (all active agents including the caller, main first; open invitations too when canManageAgents) is filled for every linked agent; agentCount counts every active agent including the caller. myLinkId is the caller's own link id (null on the adult player's own record)."
       properties:
         key:
           type: string
