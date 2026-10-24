@@ -49,9 +49,9 @@ export const CHROME = {
   selected: BRAND.gold,
   selectedBg: alpha(BRAND.gold, 0.16),
   hover: alpha(BRAND.cream, 0.08),
-  // The brand icon tile on the dark chrome: a soft green (the 36% primary tint the icons were drawn for, over white).
-  // A cream tile made the icons whose artwork is cream or white (Players, Leagues) disappear.
-  iconTile: '#B9D1C3',
+  // The brand icon tile on the dark chrome: the mid green of the buttons, with a thin cream ring (BrandIcon). A cream tile
+  // made the icons whose artwork is cream or white (Players, Leagues) disappear, and the soft mint tile looked flat.
+  iconTile: BRAND.green700,
 }
 
 // The dark dropdown ground (a touch lighter than the menu).

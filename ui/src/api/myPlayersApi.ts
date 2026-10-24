@@ -157,3 +157,28 @@ export function useInviteAgent(key: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key] }),
   })
 }
+
+// docs/specs/121 (Field Directory): the club's fields for the selected player, read only. The server orders them (home first,
+// then name) and caps the list at 200. mapUrl is https or null; the screen re-checks the scheme before linking.
+export interface FieldDto {
+  id: string
+  name: string
+  owner: string | null
+  addressLine1: string | null
+  city: string
+  provinceState: string | null
+  postalCode: string | null
+  country: string
+  mapUrl: string | null
+  verified: boolean
+  home: boolean
+}
+
+export async function listMyPlayerFields(key: string): Promise<FieldDto[]> {
+  const { data } = await api.get<FieldDto[]>(`/v1/me/players/${key}/fields`)
+  return data
+}
+
+export function useMyPlayerFields(key: string | undefined) {
+  return useQuery({ queryKey: [...myPlayersKey, key, 'fields'], queryFn: () => listMyPlayerFields(key as string), enabled: Boolean(key), retry: false })
+}

@@ -1,6 +1,7 @@
 package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.InviteAgentRequest;
+import com.cricketlegend.dto.MyFieldDto;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.MyPollDto;
@@ -8,6 +9,7 @@ import com.cricketlegend.dto.PublicAnswersDto;
 import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
 import com.cricketlegend.service.AgentInvitationService;
+import com.cricketlegend.service.MyFieldService;
 import com.cricketlegend.service.MyPlayerPollService;
 import com.cricketlegend.service.MyPlayerService;
 import jakarta.validation.Valid;
@@ -36,14 +38,17 @@ class MePlayersController {
     private final MyPlayerService myPlayerService;
     private final MyPlayerPollService myPlayerPollService;
     private final AgentInvitationService agentInvitationService;
+    private final MyFieldService myFieldService;
 
     MePlayersController(
             MyPlayerService myPlayerService,
             MyPlayerPollService myPlayerPollService,
-            AgentInvitationService agentInvitationService) {
+            AgentInvitationService agentInvitationService,
+            MyFieldService myFieldService) {
         this.myPlayerService = myPlayerService;
         this.myPlayerPollService = myPlayerPollService;
         this.agentInvitationService = agentInvitationService;
+        this.myFieldService = myFieldService;
     }
 
     // Write endpoints below: MyPlayerAccess (inside the services) is the only authorisation gate, from the caller's own rows.
@@ -76,6 +81,12 @@ class MePlayersController {
     @GetMapping("/{playerKey}/polls")
     List<MyPollDto> polls(Authentication authentication, @PathVariable String playerKey) {
         return myPlayerPollService.list(authentication, playerKey);
+    }
+
+    /** docs/specs/121: the Field Directory, read-only, authorised only through MyPlayerAccess in the service. */
+    @GetMapping("/{playerKey}/fields")
+    List<MyFieldDto> fields(Authentication authentication, @PathVariable String playerKey) {
+        return myFieldService.list(authentication, playerKey);
     }
 
     @PutMapping("/{playerKey}/polls/{pollId}/answers")

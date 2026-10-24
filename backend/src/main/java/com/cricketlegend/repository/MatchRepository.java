@@ -28,6 +28,14 @@ import org.springframework.data.repository.query.Param;
  */
 public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecificationExecutor<Match> {
 
+    /**
+     * docs/specs/121 (Field Directory): the distinct, non-null {@code playing_area_id} of the club's ACTIVE matches in
+     * one season. A match with only a free-text venue has no id and contributes nothing.
+     */
+    @Query("SELECT DISTINCT m.playingAreaId FROM Match m WHERE m.clubId = :clubId AND m.seasonId = :seasonId "
+            + "AND m.active = true AND m.playingAreaId IS NOT NULL")
+    List<UUID> findPlayingAreaIdsInSeason(@Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
+
     Page<Match> findByClubId(UUID clubId, Pageable pageable);
 
     /**

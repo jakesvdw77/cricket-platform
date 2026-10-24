@@ -158,7 +158,7 @@ export default function MyPlayerPage() {
   } else if (section.id === 'profile' && pageItem) {
     panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
   } else if (pageItem?.id === 'club.fields') {
-    panel = <HubFields />
+    panel = <HubFields playerKey={player?.key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>

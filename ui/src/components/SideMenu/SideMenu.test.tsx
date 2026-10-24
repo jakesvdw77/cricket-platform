@@ -139,12 +139,12 @@ describe('SideMenu', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Players')
   })
 
-  it('draws each icon on a soft green tile (docs/specs/120, so cream artwork stays visible), the same 36 px footprint as before', () => {
+  it('draws each icon on a mid green tile with a cream ring (docs/specs/120, so cream artwork stays visible), the same 36 px footprint as before', () => {
     renderMenu('/manage')
 
     const nav = screen.getByRole('navigation', { name: 'Manager' })
     const tile = within(nav).getAllByTestId('brand-icon-tile')[0]
-    expect(tile).toHaveStyle({ width: '36px', height: '36px', backgroundColor: 'rgb(185, 209, 195)' })
+    expect(tile).toHaveStyle({ width: '36px', height: '36px', backgroundColor: 'rgb(20, 99, 63)' })
   })
 
   it('is the dark menu ground, and the current row is gold on a gold tint', () => {
