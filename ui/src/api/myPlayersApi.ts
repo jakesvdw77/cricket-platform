@@ -175,7 +175,7 @@ export interface FieldDto {
 }
 
 export async function listMyPlayerFields(key: string): Promise<FieldDto[]> {
-  const { data } = await api.get<FieldDto[]>(`/v1/me/players/${key}/fields`)
+  const { data } = await api.get<FieldDto[]>(`/me/players/${key}/fields`)
   return data
 }
 
