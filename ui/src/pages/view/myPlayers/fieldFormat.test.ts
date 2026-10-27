@@ -27,4 +27,19 @@ describe('fieldFormat', () => {
     expect(matchesSearch(field, 'nowhere')).toBe(false)
     expect(matchesSearch(field, '  ')).toBe(true)
   })
+  it('refuses an https-looking value with leading junk and trims surrounding whitespace', () => {
+    expect(isHttpsUrl('  https://maps.example/x  ')).toBe(true)
+    expect(isHttpsUrl('')).toBe(false)
+    expect(isHttpsUrl(undefined)).toBe(false)
+    expect(isHttpsUrl('JAVASCRIPT:alert(1)')).toBe(false)
+    expect(isHttpsUrl('//maps.example/x')).toBe(false)
+  })
+  it('searches by owner and by country name, and ignores a missing owner', () => {
+    expect(matchesSearch(field, 'south africa')).toBe(true)
+    expect(matchesSearch({ ...field, owner: null }, 'council')).toBe(false)
+    expect(matchesSearch({ ...field, owner: null }, 'oval')).toBe(true)
+  })
+  it('joins a full address in order, including the postal code', () => {
+    expect(joinAddress({ ...field, postalCode: '7646' })).toBe('1 Main Rd, Paarl, Western Cape, 7646, South Africa')
+  })
 })

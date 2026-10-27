@@ -14,6 +14,9 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.LinkRequest;
 import com.cricketlegend.domain.LinkRequestStatus;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.Section;
+import com.cricketlegend.dto.MyLinkRequestDto;
+import com.cricketlegend.dto.SectionOptionDto;
 import com.cricketlegend.dto.CreateLinkRequestRequest;
 import com.cricketlegend.dto.LinkRequestReceivedDto;
 import com.cricketlegend.exception.ConflictException;
@@ -222,5 +225,124 @@ class MyLinkRequestServiceImplTest {
     void aLoginWithNoPersonHasNoRequests() {
         when(personRepository.findByKeycloakUserId(SUB)).thenReturn(Optional.empty());
         assertThat(service.list(auth)).isEmpty();
+    }
+
+    // ---- sections (spec 119 Decision 31) ----
+
+    private Section section(String name, boolean active, UUID parentId) {
+        return Section.builder().id(UUID.randomUUID()).clubId(club.getId()).name(name).active(active)
+                .parentSectionId(parentId).build();
+    }
+
+    private CreateLinkRequestRequest bodyWithSection(UUID sectionId, String targetRef) {
+        return new CreateLinkRequestRequest(club.getId(), "Sam", "Smith", DOB, "082 123 4567", null, targetRef, sectionId);
+    }
+
+    private LinkRequest savedRequest() {
+        ArgumentCaptor<LinkRequest> saved = ArgumentCaptor.forClass(LinkRequest.class);
+        verify(linkRequestRepository).save(saved.capture());
+        return saved.getValue();
+    }
+
+    @Test
+    void aTypedRequestToAClubWithSectionsStoresTheChosenSection() {
+        Section juniors = section("Juniors", true, null);
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(juniors, section("Vets", true, null)));
+
+        service.create(auth, jwt(true), bodyWithSection(juniors.getId(), null));
+
+        assertThat(savedRequest().getSectionId()).isEqualTo(juniors.getId());
+    }
+
+    @Test
+    void aTypedRequestToAClubWithSectionsNeedsOne() {
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(section("Juniors", true, null)));
+
+        assertThatThrownBy(() -> service.create(auth, jwt(true), bodyWithSection(null, null)))
+                .isInstanceOf(ValidationException.class);
+        verify(linkRequestRepository, never()).save(any());
+        verifyNoInteractions(limiter);
+    }
+
+    @Test
+    void aSectionOutsideTheClubsActiveSectionsIsRefused() {
+        Section retired = section("Retired", false, null);
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(section("Juniors", true, null), retired));
+
+        assertThatThrownBy(() -> service.create(auth, jwt(true), bodyWithSection(UUID.randomUUID(), null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.create(auth, jwt(true), bodyWithSection(retired.getId(), null)))
+                .isInstanceOf(ValidationException.class);
+        verify(linkRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void aClubWithNoActiveSectionsStoresNoSectionAndIgnoresOneSent() {
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(section("Retired", false, null)));
+
+        service.create(auth, jwt(true), bodyWithSection(UUID.randomUUID(), null));
+
+        assertThat(savedRequest().getSectionId()).isNull();
+    }
+
+    @Test
+    void aRequestWithATargetPlayerNeedsNoSectionButAChosenOneIsStored() {
+        UUID profileId = UUID.randomUUID();
+        Section juniors = section("Juniors", true, null);
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(juniors));
+        when(linkService.findOwnMatch(any(), eq(caller.getId()), eq("ref-1")))
+                .thenReturn(Optional.of(new OwnMatch(profileId, club.getId())));
+
+        service.create(auth, jwt(true), bodyWithSection(null, "ref-1"));
+        service.create(auth, jwt(true), new CreateLinkRequestRequest(club.getId(), "Tom", "Jones", DOB, "082 123 4567",
+                null, "ref-1", juniors.getId()));
+
+        ArgumentCaptor<LinkRequest> saved = ArgumentCaptor.forClass(LinkRequest.class);
+        verify(linkRequestRepository, org.mockito.Mockito.times(2)).save(saved.capture());
+        assertThat(saved.getAllValues().get(0).getSectionId()).isNull();
+        assertThat(saved.getAllValues().get(1).getSectionId()).isEqualTo(juniors.getId());
+    }
+
+    @Test
+    void sectionOptionsAreTheActiveSectionsByNameWithTheParentNameAsGroupLabel() {
+        Section senior = section("Senior", true, null);
+        Section firsts = section("1st XI", true, senior.getId());
+        Section colts = section("colts", true, null);
+        Section retired = section("Aardvarks", false, null);
+        when(sectionRepository.findByClubId(club.getId())).thenReturn(List.of(senior, colts, retired, firsts));
+
+        List<SectionOptionDto> options = service.sectionOptions(jwt(true), club.getId());
+
+        assertThat(options).extracting(SectionOptionDto::name).containsExactly("1st XI", "colts", "Senior");
+        assertThat(options.get(0).groupLabel()).isEqualTo("Senior");
+        assertThat(options.get(1).groupLabel()).isNull();
+    }
+
+    @Test
+    void sectionOptionsNeedAVerifiedEmailAndAnActiveClub() {
+        assertThatThrownBy(() -> service.sectionOptions(jwt(false), club.getId()))
+                .isInstanceOf(EmailNotVerifiedException.class);
+        assertThatThrownBy(() -> service.sectionOptions(jwt(true), UUID.randomUUID()))
+                .isInstanceOf(NotFoundException.class);
+        club.setStatus(ClubStatus.SUSPENDED);
+        assertThatThrownBy(() -> service.sectionOptions(jwt(true), club.getId())).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void myRequestsCarryTheSectionName() {
+        Section juniors = section("Juniors", true, null);
+        LinkRequest withSection = LinkRequest.builder().id(UUID.randomUUID()).accountPersonId(caller.getId())
+                .clubId(club.getId()).typedFirstName("Sam").typedLastName("Smith").sectionId(juniors.getId())
+                .status(LinkRequestStatus.PENDING).build();
+        LinkRequest without = LinkRequest.builder().id(UUID.randomUUID()).accountPersonId(caller.getId())
+                .clubId(club.getId()).typedFirstName("Tom").typedLastName("Jones").status(LinkRequestStatus.PENDING).build();
+        when(linkRequestRepository.findByAccountPersonIdOrderByCreatedAtDesc(caller.getId()))
+                .thenReturn(List.of(withSection, without));
+        when(clubRepository.findAllById(any())).thenReturn(List.of(club));
+        when(sectionRepository.findAllById(any())).thenReturn(List.of(juniors));
+
+        List<MyLinkRequestDto> mine = service.list(auth);
+
+        assertThat(mine).extracting(MyLinkRequestDto::sectionName).containsExactly("Juniors", null);
     }
 }
