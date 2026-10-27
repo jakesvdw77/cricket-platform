@@ -21,4 +21,6 @@ public record LinkRequestDto(
         String contactNumber,
         Instant createdAt,
         UUID targetPlayerId,
-        SuggestedPlayerDto suggestedPlayer) {}
+        SuggestedPlayerDto suggestedPlayer,
+        UUID sectionId,
+        String sectionName) {}

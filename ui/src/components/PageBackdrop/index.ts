@@ -1,2 +1,2 @@
-export { PageBackdrop, BACKDROP_COLOURS } from './PageBackdrop'
-export type { PageBackdropProps } from './PageBackdrop'
+export { PageBackdrop, BACKDROP_COLOURS, ACTIVE_BACKDROP_THEME } from './PageBackdrop'
+export type { PageBackdropProps, BackdropTheme } from './PageBackdrop'

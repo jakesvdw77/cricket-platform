@@ -57,6 +57,7 @@ class MyLinkRequestServiceImplTest {
     @Mock private PersonRepository personRepository;
     @Mock private ClubRepository clubRepository;
     @Mock private LinkRequestRepository linkRequestRepository;
+    @Mock private com.cricketlegend.repository.SectionRepository sectionRepository;
     @Mock private LinkService linkService;
     @Mock private LinkAttemptLimiter limiter;
 
@@ -68,7 +69,7 @@ class MyLinkRequestServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new MyLinkRequestServiceImpl(
-                personRepository, clubRepository, linkRequestRepository, linkService, limiter, new LinkRequestMapper());
+                personRepository, clubRepository, linkRequestRepository, sectionRepository, linkService, limiter, new LinkRequestMapper());
         caller = Person.builder().id(UUID.randomUUID()).firstName("Pat").lastName("Parent").email("p@example.com").build();
         club = Club.builder().id(UUID.randomUUID()).name("Hillcrest CC").slug("hillcrest").status(ClubStatus.ACTIVE).build();
         when(personRepository.findByKeycloakUserId(SUB)).thenReturn(Optional.of(caller));
@@ -83,7 +84,7 @@ class MyLinkRequestServiceImplTest {
     }
 
     private CreateLinkRequestRequest body(LocalDate dob, String targetRef) {
-        return new CreateLinkRequestRequest(club.getId(), "  Sam ", " Smith ", dob, "082 123 4567", " Please link ", targetRef);
+        return new CreateLinkRequestRequest(club.getId(), "  Sam ", " Smith ", dob, "082 123 4567", " Please link ", targetRef, null);
     }
 
     @Test

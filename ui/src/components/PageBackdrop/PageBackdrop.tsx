@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
-import sceneUrl from '../../assets/cricket-scene.svg'
+import defaultSceneUrl from '../../assets/cricket-scene.svg'
+import christmasSceneUrl from '../../assets/cricket-scene-christmas.svg'
 import { BRAND } from '../../brandTokens'
 
 // Cricket-themed full-page backdrop for signed-in-but-not-in-the-app pages (docs/specs/119). Built in
@@ -20,13 +21,23 @@ export const BACKDROP_COLOURS = {
 
 const { green900 } = BACKDROP_COLOURS
 
+// Seasonal scenes (roadmap: seasonal backdrops). The default scene is the fallback; to switch the whole product to the
+// Christmas scene for December, set ACTIVE_BACKDROP_THEME to 'christmas' (a date-range or a platform setting can replace this
+// constant later). Only the cricket scene changes; the console panels, text and colours are the same.
+export type BackdropTheme = 'default' | 'christmas'
+export const ACTIVE_BACKDROP_THEME: BackdropTheme = 'default'
+const SCENES: Record<BackdropTheme, string> = { default: defaultSceneUrl, christmas: christmasSceneUrl }
+
 export interface PageBackdropProps {
   children: ReactNode
   // Optional photo URL, drawn behind a rgba(11,61,38,0.72) overlay in place of the CSS shapes.
   imageUrl?: string
+  // Overrides ACTIVE_BACKDROP_THEME (stories, tests, previews).
+  theme?: BackdropTheme
 }
 
-export function PageBackdrop({ children, imageUrl }: PageBackdropProps) {
+export function PageBackdrop({ children, imageUrl, theme = ACTIVE_BACKDROP_THEME }: PageBackdropProps) {
+  const sceneUrl = SCENES[theme]
   return (
     <Box
       data-testid="page-backdrop"

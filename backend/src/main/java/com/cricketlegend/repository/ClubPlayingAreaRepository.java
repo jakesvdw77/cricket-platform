@@ -14,6 +14,9 @@ public interface ClubPlayingAreaRepository extends JpaRepository<ClubPlayingArea
 
     List<ClubPlayingArea> findByClubIdAndPlayingAreaIdIn(UUID clubId, Collection<UUID> playingAreaIds);
 
+    /** docs/specs/121: a club's home links (the Field Directory's home fields). */
+    List<ClubPlayingArea> findByClubIdAndHomeTrue(UUID clubId);
+
     List<ClubPlayingArea> findByPlayingAreaId(UUID playingAreaId);
 
     List<ClubPlayingArea> findByPlayingAreaIdIn(Collection<UUID> playingAreaIds);

@@ -280,7 +280,7 @@ class MyPlayerServiceImplTest {
     // ---- response ----
 
     @Test
-    void aNonMainAgentSeesNoOtherAgentsButTheCountWhileTheMainAgentSeesThemMasked() {
+    void everyAgentSeesAllActiveAgentsMainFirstButOnlyTheMainAgentGetsMaskedEmailsAndLinkIds() {
         Person otherAgent = person("Olga", "Other", "olga@example.org", null);
         PersonLink mine = linked(true).link();
         PersonLink theirs = PersonLink.builder().id(UUID.randomUUID()).accountPersonId(otherAgent.getId())
@@ -290,9 +290,14 @@ class MyPlayerServiceImplTest {
 
         MyPlayerDto asMain = service.get(auth, mine.getId().toString());
         assertThat(asMain.agentCount()).isEqualTo(2);
-        assertThat(asMain.agents()).singleElement().satisfies(a -> {
+        assertThat(asMain.agents()).hasSize(2);
+        assertThat(asMain.agents().get(0).main()).isTrue();
+        assertThat(asMain.agents().get(0).you()).isTrue();
+        assertThat(asMain.agents().get(1)).satisfies(a -> {
             assertThat(a.name()).isEqualTo("Olga Other");
             assertThat(a.maskedEmail()).isEqualTo("o***@example.org");
+            assertThat(a.linkId()).isEqualTo(theirs.getId());
+            assertThat(a.you()).isFalse();
         });
         assertThat(asMain.toString()).doesNotContain("olga@example.org");
 
@@ -307,10 +312,18 @@ class MyPlayerServiceImplTest {
                 .thenReturn(List.of(mine, theirs, secondLink));
 
         MyPlayerDto seen = service.get(auth, asSecond.key());
-        assertThat(seen.agents()).isEmpty();
+        // all three agents, the main agent first, names for everyone, but no email and no link id for a non-main viewer
+        assertThat(seen.agents()).hasSize(3);
+        assertThat(seen.agents().get(0).main()).isTrue();
+        assertThat(seen.agents()).filteredOn(a -> a.you()).singleElement().satisfies(a -> assertThat(a.name()).isEqualTo("Sec Ond"));
+        assertThat(seen.agents()).allSatisfy(a -> {
+            assertThat(a.maskedEmail()).isNull();
+            assertThat(a.linkId()).isNull();
+        });
+        assertThat(seen.agents()).extracting(a -> a.name()).contains("Olga Other");
         assertThat(seen.agentCount()).isEqualTo(3);
         assertThat(seen.canManageAgents()).isFalse();
-        assertThat(seen.toString()).doesNotContain("olga@example.org").doesNotContain("Olga");
+        assertThat(seen.toString()).doesNotContain("olga@example.org").doesNotContain("o***@").doesNotContain("sec@example.com");
     }
 
     @Test
@@ -324,7 +337,8 @@ class MyPlayerServiceImplTest {
 
         MyPlayerDto dto = service.get(auth, held.key());
 
-        assertThat(dto.agents()).singleElement().satisfies(a -> {
+        assertThat(dto.agents()).hasSize(2); // the main agent themself, then the invitation
+        assertThat(dto.agents().get(1)).satisfies(a -> {
             assertThat(a.status()).isEqualTo(PersonLinkStatus.INVITED);
             assertThat(a.maskedEmail()).isEqualTo("g***@example.net");
         });

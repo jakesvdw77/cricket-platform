@@ -19,3 +19,4 @@ const card = (
 
 export const Default: Story = { args: { children: card } }
 export const WithPhoto: Story = { args: { children: card, imageUrl: 'https://placehold.co/1200x800' } }
+export const Christmas: Story = { args: { children: card, theme: 'christmas' } }

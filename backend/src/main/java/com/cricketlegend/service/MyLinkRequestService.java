@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.CreateLinkRequestRequest;
 import com.cricketlegend.dto.LinkRequestReceivedDto;
 import com.cricketlegend.dto.MyLinkRequestDto;
+import com.cricketlegend.dto.SectionOptionDto;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -16,6 +17,12 @@ public interface MyLinkRequestService {
      * email (403 EMAIL_NOT_VERIFIED). Limits: 10 requests per account per day (429) and 3 waiting per club (409).
      */
     LinkRequestReceivedDto create(Authentication authentication, Jwt jwt, CreateLinkRequestRequest request);
+
+    /**
+     * The club's ACTIVE sections for the request form's section picker, by name. Needs a verified email (403
+     * EMAIL_NOT_VERIFIED); 404 for an unknown or non-ACTIVE club.
+     */
+    List<SectionOptionDto> sectionOptions(Jwt jwt, UUID clubId);
 
     /** The caller's own requests, newest first, with the club's decision note once decided. */
     List<MyLinkRequestDto> list(Authentication authentication);

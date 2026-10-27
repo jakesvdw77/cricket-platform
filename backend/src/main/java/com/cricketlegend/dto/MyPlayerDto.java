@@ -13,9 +13,10 @@ import java.util.UUID;
  * One player as their linked account (or the player) sees them (docs/specs/119, Decision 6). Read-only: name, club,
  * group and team labels, jersey number. Maintainable: the contact, cricket and medical aid fields. {@code
  * canEditMedical} is true for the main agent and the adult player, false for other agents. {@code agents} lists
- * the other agents and the invitations sent (name and masked email) for whoever {@code canManageAgents} (the main
- * agent, or the adult player on their own record) only; everyone else gets an empty list and the
- * {@code agentCount}, which counts every active agent including the caller. The date of birth is shown to a linked account on this response only (owner decision), never before a link. No squads, selections,
+ * all active agents including the caller (main first, the caller marked {@code you}); link ids and masked emails, and the
+ * open invitations sent, only for whoever {@code canManageAgents} (the main agent, or the adult player on their own
+ * record). {@code agentCount} counts every active agent including the caller. The date of birth is shown to a linked
+ * account on this response only (owner decision), never before a link. No squads, selections,
  * results, statistics, club notes or anyone else's contact details.
  */
 public record MyPlayerDto(

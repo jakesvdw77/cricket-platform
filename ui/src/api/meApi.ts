@@ -89,6 +89,7 @@ export interface LinkRequestInput {
   contactNumber: string
   message?: string
   targetPlayerRef?: string
+  sectionId?: string
 }
 
 export type MyLinkRequestStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELLED'
@@ -96,6 +97,7 @@ export type MyLinkRequestStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELL
 export interface MyLinkRequest {
   id: string
   clubName: string
+  sectionName?: string | null
   playerName: string
   status: MyLinkRequestStatus
   decisionNote?: string | null
@@ -125,6 +127,26 @@ export async function cancelLinkRequest(id: string): Promise<void> {
 export async function listMyClubs(): Promise<MyClub[]> {
   const { data } = await api.get<MyClub[]>('/me/clubs')
   return data
+}
+
+export interface ClubSectionOption {
+  id: string
+  name: string
+  groupLabel?: string | null
+}
+
+export async function listClubSections(clubId: string): Promise<ClubSectionOption[]> {
+  const { data } = await api.get<ClubSectionOption[]>(`/me/clubs/${clubId}/sections`)
+  return data
+}
+
+export function useClubSections(clubId: string | undefined) {
+  return useQuery({
+    queryKey: ['me', 'clubs', clubId, 'sections'],
+    queryFn: () => listClubSections(clubId as string),
+    enabled: Boolean(clubId),
+    retry: false,
+  })
 }
 
 export function useMyClubs() {

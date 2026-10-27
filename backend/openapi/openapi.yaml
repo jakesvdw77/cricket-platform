@@ -2076,6 +2076,28 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ClubOptionDto"
+  /api/v1/me/clubs/{clubId}/sections:
+    get:
+      tags:
+      - me-link-requests-controller
+      description: "The club's active sections by name for the link request section picker (docs/specs/119 Decision 31). Needs a verified email (403 code EMAIL_NOT_VERIFIED); 404 for an unknown or non-ACTIVE club."
+      operationId: sections
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionOptionDto"
   /api/v1/me/link-requests:
     get:
       tags:
@@ -2207,6 +2229,28 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MyPollDto"
+  /api/v1/me/players/{playerKey}/fields:
+    get:
+      tags:
+      - me-players-controller
+      description: "The Field Directory (docs/specs/121): the held player's club's home fields plus the away fields of its active matches in the current season, home first then by name, capped at 200. Rejected, merged-away and non-cricket-field rows are excluded. 404 for a key the caller does not hold; a suspended caller is 403."
+      operationId: listMyPlayerFields
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FieldDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -11144,6 +11188,9 @@ components:
           maxLength: 500
         targetPlayerRef:
           type: string
+        sectionId:
+          type: string
+          format: uuid
       required:
       - clubId
       - firstName
@@ -11180,6 +11227,8 @@ components:
         decidedAt:
           type: string
           format: date-time
+        sectionName:
+          type: string
     ClubOptionDto:
       type: object
       properties:
@@ -11187,6 +11236,16 @@ components:
           type: string
           format: uuid
         name:
+          type: string
+    SectionOptionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        groupLabel:
           type: string
     SuggestedPlayerDto:
       type: object
@@ -11241,6 +11300,11 @@ components:
           format: uuid
         suggestedPlayer:
           $ref: "#/components/schemas/SuggestedPlayerDto"
+        sectionId:
+          type: string
+          format: uuid
+        sectionName:
+          type: string
     LinkRequestSummaryDto:
       type: object
       properties:
@@ -16730,9 +16794,12 @@ components:
           type: boolean
     MyPlayerAgentDto:
       type: object
+      description: "Every linked agent sees all ACTIVE agents including themselves (you), the main agent first, then by name. name is given to every viewer; maskedEmail and linkId are null unless the viewer is the main agent (or the adult player). INVITED entries (open invitations, by masked invited email) are included only for the main agent, after the agents."
       properties:
+        you:
+          type: boolean
         linkId:
-          type: string
+          type: [string, 'null']
           format: uuid
         status:
           type: string
@@ -16747,7 +16814,7 @@ components:
           type: boolean
     MyPlayerDto:
       type: object
-      description: "The date of birth is shown to a linked account here only (owner decision). agents (active agents and open invitations, by masked email) is filled when canManageAgents; agentCount counts every active agent including the caller. myLinkId is the caller's own link id (null on the adult player's own record)."
+      description: "The date of birth is shown to a linked account here only (owner decision). agents (all active agents including the caller, main first; open invitations too when canManageAgents) is filled for every linked agent; agentCount counts every active agent including the caller. myLinkId is the caller's own link id (null on the adult player's own record)."
       properties:
         key:
           type: string
@@ -16890,6 +16957,45 @@ components:
           description: "Null leaves it unchanged; a different value is 403 unless canEditDateOfBirth; 400 for a future date, before 1900 or over 100 years ago. Stored on the shared Person."
       required:
       - isWicketKeeper
+    FieldDto:
+      type: object
+      description: "A Field Directory row (docs/specs/121). Read-only and deliberately free of manager-only data (no verification internals, created-by club, ground, area type, merge target, counts or linked clubs)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        owner:
+          type: [string, 'null']
+          description: "Null when the owner is blank."
+        addressLine1:
+          type: [string, 'null']
+          description: "Number and street, joined."
+        city:
+          type: string
+        provinceState:
+          type: [string, 'null']
+        postalCode:
+          type: [string, 'null']
+        country:
+          type: string
+          description: "ISO 3166-1 alpha-2."
+        mapUrl:
+          type: [string, 'null']
+          description: "https map link as stored; the client re-checks the scheme."
+        verified:
+          type: boolean
+        home:
+          type: boolean
+          description: "True for one of the club's home fields, false for an away field from the current season."
+      required:
+      - id
+      - name
+      - city
+      - country
+      - verified
+      - home
     MyPollDto:
       type: object
       description: "An open poll the player belongs to. pollId is the squad poll id or the round id. SQUAD sets teamName, homeName, awayName, matchDate and venue; GROUP sets sectionName and windows."

@@ -78,6 +78,7 @@ class LinkRequestManagementServiceImplTest {
     @Mock private PersonRepository personRepository;
     @Mock private PlayerProfileRepository playerProfileRepository;
     @Mock private PersonLinkRepository personLinkRepository;
+    @Mock private com.cricketlegend.repository.SectionRepository sectionRepository;
     @Mock private PlayerService playerService;
     @Mock private PlayerSectionService playerSectionService;
     @Mock private PlayerSectionNames playerSectionNames;
@@ -96,7 +97,7 @@ class LinkRequestManagementServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new LinkRequestManagementServiceImpl(linkRequestRepository, personRepository, playerProfileRepository,
-                personLinkRepository, playerService, playerSectionService, playerSectionNames, suggester,
+                personLinkRepository, sectionRepository, playerService, playerSectionService, playerSectionNames, suggester,
                 new LinkRequestMapper(), outcomeEmailService, accessService);
         requester = person("Pat", "Parent");
         request = pending(requester);

@@ -211,7 +211,8 @@ class AgentHandoverIntegrationTest extends AbstractLinkIntegrationTest {
         mockMvc.perform(post("/api/v1/me/links/{id}/accept", invitation.getId()).with(as(invitee))).andExpect(status().isNotFound());
         // the main agent's own list of sent invitations drops it too
         mockMvc.perform(get("/api/v1/me/players/{k}", mainLink.getId()).with(as(main)))
-                .andExpect(jsonPath("$.agents.length()").value(0));
+                .andExpect(jsonPath("$.agents.length()").value(1))
+                .andExpect(jsonPath("$.agents[?(@.status=='INVITED')]").isEmpty());
     }
 
     @Test

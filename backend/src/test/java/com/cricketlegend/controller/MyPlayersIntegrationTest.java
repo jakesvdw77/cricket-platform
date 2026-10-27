@@ -181,14 +181,22 @@ class MyPlayersIntegrationTest extends AbstractLinkIntegrationTest {
 
         String asSecond = mockMvc.perform(get("/api/v1/me/players/{k}", secondLink.getId()).with(as(second)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(asSecond).doesNotContain("mary.main@example.org").doesNotContain("Mary").doesNotContain("m***@");
-        assertThat(com.jayway.jsonpath.JsonPath.<java.util.List<Object>>read(asSecond, "$.agents")).isEmpty();
+        // names for everyone, the main agent first, but never an email (not even masked) or a link id
+        assertThat(asSecond).doesNotContain("mary.main@example.org").doesNotContain("m***@").doesNotContain("sid.second@example.net");
+        assertThat(com.jayway.jsonpath.JsonPath.<java.util.List<Object>>read(asSecond, "$.agents")).hasSize(2);
+        assertThat(com.jayway.jsonpath.JsonPath.<String>read(asSecond, "$.agents[0].name")).isEqualTo("Mary Main");
+        assertThat(com.jayway.jsonpath.JsonPath.<Boolean>read(asSecond, "$.agents[0].main")).isTrue();
+        assertThat(com.jayway.jsonpath.JsonPath.<Boolean>read(asSecond, "$.agents[1].you")).isTrue();
+        assertThat(com.jayway.jsonpath.JsonPath.<Object>read(asSecond, "$.agents[0].maskedEmail")).isNull();
+        assertThat(com.jayway.jsonpath.JsonPath.<Object>read(asSecond, "$.agents[0].linkId")).isNull();
         assertThat(com.jayway.jsonpath.JsonPath.<Integer>read(asSecond, "$.agentCount")).isEqualTo(2);
         assertThat(com.jayway.jsonpath.JsonPath.<Boolean>read(asSecond, "$.canEditMedical")).isFalse();
 
         String asMain = mockMvc.perform(get("/api/v1/me/players/{k}", mainLink.getId()).with(as(main)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(asMain).contains("s***@example.net").doesNotContain("sid.second@example.net");
+        assertThat(com.jayway.jsonpath.JsonPath.<Boolean>read(asMain, "$.agents[0].you")).isTrue();
+        assertThat(com.jayway.jsonpath.JsonPath.<String>read(asMain, "$.agents[1].linkId")).isEqualTo(secondLink.getId().toString());
     }
 
     // ---- polls ----

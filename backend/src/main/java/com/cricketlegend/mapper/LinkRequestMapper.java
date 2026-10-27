@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class LinkRequestMapper {
 
-    public MyLinkRequestDto toMyDto(LinkRequest request, String clubName) {
+    public MyLinkRequestDto toMyDto(LinkRequest request, String clubName, String sectionName) {
         return new MyLinkRequestDto(
                 request.getId(),
                 clubName,
@@ -30,10 +30,11 @@ public class LinkRequestMapper {
                 request.getStatus(),
                 request.getDecisionNote(),
                 request.getCreatedAt(),
-                request.getDecidedAt());
+                request.getDecidedAt(),
+                sectionName);
     }
 
-    public LinkRequestDto toDto(LinkRequest request, Person requester, SuggestedPlayerDto suggestion, LocalDate today) {
+    public LinkRequestDto toDto(LinkRequest request, Person requester, SuggestedPlayerDto suggestion, String sectionName, LocalDate today) {
         return new LinkRequestDto(
                 request.getId(),
                 fullName(requester),
@@ -46,7 +47,9 @@ public class LinkRequestMapper {
                 request.getContactNumber(),
                 request.getCreatedAt(),
                 request.getTargetPlayerProfileId(),
-                suggestion);
+                suggestion,
+                request.getSectionId(),
+                sectionName);
     }
 
     public SuggestedPlayerDto toSuggestedDto(

@@ -1,9 +1,10 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../../../api/axiosConfig'
 import type { MyPlayer } from '../../../api/myPlayersApi'
 import { MyPlayerEditForm } from './MyPlayerEditForm'
+import { HubLeaveGuardProvider, useHubLeaveGuardController } from './hubLeaveGuard'
 import { calls, httpError, renderWithProviders, routeApi } from '../../../test/accountTestUtils'
 import type { ApiMock } from '../../../test/accountTestUtils'
 import { makeMyPlayer } from '../../../test/myPlayerFixtures'
@@ -14,7 +15,7 @@ vi.mock('../../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.f
 const http = api as unknown as ApiMock
 const PUT = '/me/players/k1'
 
-function renderForm(player: MyPlayer, props: { dark?: boolean; onBack?: () => void } = {}) {
+function renderForm(player: MyPlayer, props: { dark?: boolean } = {}) {
   routeApi(http, { [`PUT ${PUT}`]: player })
   const onDone = vi.fn()
   renderWithProviders(<MyPlayerEditForm player={player} onDone={onDone} {...props} />)
@@ -29,7 +30,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('MyPlayerEditForm date of birth', () => {
   it('changing it shows the warning and Save stays disabled until I understand is ticked', async () => {
     const user = userEvent.setup()
-    const onDone = renderForm(makeMyPlayer({ canEditDateOfBirth: true }), { dark: true, onBack: vi.fn() })
+    const onDone = renderForm(makeMyPlayer({ canEditDateOfBirth: true }), { dark: true })
 
     expect(screen.queryByTestId('dob-warning')).not.toBeInTheDocument()
     expect(save()).toBeEnabled()
@@ -157,24 +158,35 @@ describe('MyPlayerEditForm saving and leaving', () => {
     expect(await screen.findByText('We could not save the changes. Please try again.')).toBeInTheDocument()
   })
 
-  it('the dark form has Back to profile, asking to discard only when something changed', async () => {
+  it('the dark form leaves at once when clean, and asks to discard only when something changed', async () => {
     const user = userEvent.setup()
-    const onBack = vi.fn()
-    renderForm(makeMyPlayer(), { dark: true, onBack })
+    const go = vi.fn()
+    let attempt: (go: () => void) => void = () => {}
+    function Harness() {
+      const controller = useHubLeaveGuardController()
+      attempt = controller.attempt
+      return (
+        <HubLeaveGuardProvider value={controller.guard}>
+          <MyPlayerEditForm player={makeMyPlayer()} onDone={vi.fn()} dark />
+        </HubLeaveGuardProvider>
+      )
+    }
+    routeApi(http, { [`PUT ${PUT}`]: makeMyPlayer() })
+    renderWithProviders(<Harness />)
 
-    await user.click(screen.getByRole('button', { name: 'Back to profile' }))
-    expect(onBack).toHaveBeenCalledTimes(1)
+    act(() => attempt(go))
+    expect(go).toHaveBeenCalledTimes(1)
 
     await user.type(screen.getByLabelText('Alternative contact name'), 'x')
-    await user.click(screen.getByRole('button', { name: 'Back to profile' }))
+    act(() => attempt(go))
     expect(screen.getByRole('alert')).toHaveTextContent('Discard your changes?')
-    expect(onBack).toHaveBeenCalledTimes(1)
+    expect(go).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'Keep editing' }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Back to profile' }))
+    act(() => attempt(go))
     await user.click(screen.getByRole('button', { name: 'Discard' }))
-    expect(onBack).toHaveBeenCalledTimes(2)
+    expect(go).toHaveBeenCalledTimes(2)
   })
 })

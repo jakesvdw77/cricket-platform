@@ -9,6 +9,7 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonLink;
 import com.cricketlegend.domain.PersonLinkStatus;
 import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.Section;
 import com.cricketlegend.dto.ApproveLinkRequestRequest;
 import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.DeclineLinkRequestRequest;
@@ -26,6 +27,7 @@ import com.cricketlegend.repository.LinkRequestRepository;
 import com.cricketlegend.repository.PersonLinkRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
+import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.service.LinkRequestManagementService;
 import com.cricketlegend.service.LinkRequestOutcomeEmailService;
 import com.cricketlegend.service.PlayerSectionService;
@@ -60,6 +62,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
     private final PersonRepository personRepository;
     private final PlayerProfileRepository playerProfileRepository;
     private final PersonLinkRepository personLinkRepository;
+    private final SectionRepository sectionRepository;
     private final PlayerService playerService;
     private final PlayerSectionService playerSectionService;
     private final PlayerSectionNames playerSectionNames;
@@ -73,6 +76,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
             PersonRepository personRepository,
             PlayerProfileRepository playerProfileRepository,
             PersonLinkRepository personLinkRepository,
+            SectionRepository sectionRepository,
             PlayerService playerService,
             PlayerSectionService playerSectionService,
             PlayerSectionNames playerSectionNames,
@@ -84,6 +88,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         this.personRepository = personRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.personLinkRepository = personLinkRepository;
+        this.sectionRepository = sectionRepository;
         this.playerService = playerService;
         this.playerSectionService = playerSectionService;
         this.playerSectionNames = playerSectionNames;
@@ -105,6 +110,8 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
                 .stream()
                 .collect(Collectors.toMap(Person::getId, p -> p));
         Map<UUID, SuggestedPlayerDto> suggested = suggestedDtos(clubId, visible.suggestions().values());
+        Map<UUID, String> sectionNames = sectionRepository.findByClubId(clubId).stream()
+                .collect(Collectors.toMap(Section::getId, Section::getName));
         LocalDate today = LocalDate.now();
         return visible.requests().stream()
                 .map(r -> {
@@ -113,6 +120,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
                             r,
                             requesters.get(r.getAccountPersonId()),
                             suggestion == null ? null : suggested.get(suggestion.profile().getId()),
+                            sectionNames.get(r.getSectionId()),
                             today);
                 })
                 .toList();
@@ -140,7 +148,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
 
         UUID subjectPersonId = body.playerId() != null
                 ? existingPlayerPerson(authentication, clubId, body.playerId())
-                : createPlayerPerson(authentication, clubId, body.newPlayer());
+                : createPlayerPerson(authentication, clubId, body.newPlayer(), request.getSectionId());
         UUID requesterId = request.getAccountPersonId();
         if (subjectPersonId.equals(requesterId)) {
             throw new ValidationException("The requester's own player record cannot be linked to themselves.");
@@ -198,8 +206,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
             throw new InvalidStatusTransitionException("This request has already been decided or cancelled.");
         }
         Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
-        if (accessible.isPresent()
-                && !suggester.suggest(clubId, List.of(request), accessible).containsKey(request.getId())) {
+        if (accessible.isPresent() && !isVisibleToScoped(request, accessible, clubId)) {
             throw new AccessDeniedException("Not authorized to decide this link request");
         }
         return request;
@@ -218,9 +225,11 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         return profile.getPersonId();
     }
 
-    private UUID createPlayerPerson(Authentication authentication, UUID clubId, NewLinkedPlayerRequest np) {
-        if (np.sectionId() != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, np.sectionId());
+    private UUID createPlayerPerson(
+            Authentication authentication, UUID clubId, NewLinkedPlayerRequest np, UUID requestSectionId) {
+        UUID sectionId = np.sectionId() != null ? np.sectionId() : requestSectionId; // default to the requester's choice
+        if (sectionId != null) {
+            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
         } else {
             // an untagged player is administerable only club-wide
             accessService.assertCanAdministerAnySection(authentication, clubId, Set.of());
@@ -228,8 +237,8 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         PlayerDto created = playerService.create(clubId, new CreatePlayerRequest(
                 np.firstName().trim(), np.lastName().trim(), np.dateOfBirth(), null, null, null, null, null, null,
                 null, null, null, null, null, null, false, null));
-        if (np.sectionId() != null) {
-            playerSectionService.link(clubId, created.id(), np.sectionId());
+        if (sectionId != null) {
+            playerSectionService.link(clubId, created.id(), sectionId);
         }
         return created.personId();
     }
@@ -282,8 +291,23 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         Map<UUID, Suggestion> suggestions = suggester.suggest(clubId, pending, accessible);
         List<LinkRequest> shown = accessible.isEmpty()
                 ? pending
-                : pending.stream().filter(r -> suggestions.containsKey(r.getId())).toList();
+                : pending.stream()
+                        .filter(r -> r.getSectionId() != null
+                                ? accessible.get().contains(r.getSectionId())
+                                : suggestions.containsKey(r.getId()))
+                        .toList();
         return new VisibleLinkRequests(shown, suggestions);
+    }
+
+    /**
+     * A section-scoped manager's view of one request: a request with a section is theirs only if they administer that
+     * section; one without keeps the suggested-player rule (spec 119 Decision 31).
+     */
+    private boolean isVisibleToScoped(LinkRequest request, Optional<Set<UUID>> accessible, UUID clubId) {
+        if (request.getSectionId() != null) {
+            return accessible.get().contains(request.getSectionId());
+        }
+        return suggester.suggest(clubId, List.of(request), accessible).containsKey(request.getId());
     }
 
     /** The suggested players as DTOs keyed by profile id, with main agent state from one links query. */

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Alert, Box, Checkbox, FormControlLabel, MenuItem, Typography } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { Button } from '../../../components/Button'
@@ -10,7 +9,8 @@ import { PhoneInput } from '../../../components/PhoneInput'
 import { MediaUpload } from '../../../components/MediaUpload'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { BattingStance, BowlingArm, BowlingType } from '../../../api/playerApi'
-import { HUB, darkFieldSx as darkSx, darkMenuProps, hubGoldButton, hubOutlineButton } from './hubStyle'
+import { HUB, darkFieldSx as darkSx, darkMenuProps, hubGoldButton } from './hubStyle'
+import { HubLeaveConfirm, useHubLeaveGuard } from './hubLeaveGuard'
 import { useUpdateMyPlayer } from '../../../api/myPlayersApi'
 import type { MyPlayer, UpdateMyPlayerRequest } from '../../../api/myPlayersApi'
 import { blackAlpha } from '../../../brandTokens'
@@ -22,16 +22,19 @@ import { blackAlpha } from '../../../brandTokens'
 const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim())
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+export type EditSection = 'photo' | 'contact' | 'cricket'
+
 export interface MyPlayerEditFormProps {
   player: MyPlayer
   // Called after a successful save.
   onDone: () => void
-  // The hub's dark look (inside the console panel) with its own Back button; the default is the light form.
+  // The hub's dark look (inside the console panel); the default is the light form. Back is the hub footer's (docs/specs/121).
   dark?: boolean
-  onBack?: () => void
+  // docs/specs/121: show only one page's fields (the Profile pages' own Edit). The other stored values are still sent back unchanged.
+  section?: EditSection
 }
 
-export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPlayerEditFormProps) {
+export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPlayerEditFormProps) {
   const update = useUpdateMyPlayer(player.key)
   const canEditEmail = player.self || player.main
   const [photoUrl, setPhotoUrl] = useState<string | null>(player.photoUrl)
@@ -49,19 +52,15 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
   const [understood, setUnderstood] = useState(false)
   const [dobError, setDobError] = useState<string | undefined>()
   const [emailError, setEmailError] = useState<string | undefined>()
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const snapshot = JSON.stringify([dateOfBirth, photoUrl, phone, email, altContactName, altContactPhone, battingStance, bowlingArm, bowlingType, isWicketKeeper, medicalAidProvider, medicalAidMemberNumber])
   const [initialSnapshot] = useState(snapshot)
-  const dirty = snapshot !== initialSnapshot
+  const [saved, setSaved] = useState(false)
+  useHubLeaveGuard(dark && snapshot !== initialSnapshot && !saved)
   const dobChanged = player.canEditDateOfBirth && dateOfBirth !== (player.dateOfBirth ?? '')
-  const back = () => {
-    if (dirty) setConfirmingDiscard(true)
-    else onBack?.()
-  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (canEditEmail && email.trim() !== '' && !EMAIL_PATTERN.test(email.trim())) {
+    if (canEditEmail && (!section || section === 'contact') && email.trim() !== '' && !EMAIL_PATTERN.test(email.trim())) {
       setEmailError('Enter a valid email address')
       return
     }
@@ -86,41 +85,29 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
       medicalAidProvider: player.canEditMedical ? blankToNull(medicalAidProvider) : player.medicalAidProvider,
       medicalAidMemberNumber: player.canEditMedical ? blankToNull(medicalAidMemberNumber) : player.medicalAidMemberNumber,
     }
-    update.mutate(body, { onSuccess: onDone })
+    update.mutate(body, {
+      onSuccess: () => {
+        setSaved(true)
+        onDone()
+      },
+    })
   }
 
+  // The medical aid fields (one group, shown with Contact; see also medicalFacts in HubProfile) could become their own page later.
+  const show = (key: EditSection) => !section || section === key
   const select = <T extends string>(set: (value: '' | T) => void) => (event: ChangeEvent<HTMLInputElement>) => set(event.target.value as '' | T)
   const errorText = isAxiosError(update.error) && update.error.response?.status === 403 ? 'You cannot change that detail for this player.' : 'We could not save the changes. Please try again.'
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate sx={{ display: 'flex', flexDirection: 'column', gap: 2, ...(dark ? darkSx : {}) }} data-testid="my-player-edit-form">
-      {dark && onBack && (
-        <Box sx={{ display: 'grid', gap: 1 }}>
-          <Box>
-            <Button variant="secondary" size="compact" startIcon={<ArrowBackIcon />} onClick={back} sx={hubOutlineButton}>
-              Back to profile
-            </Button>
-          </Box>
-          {confirmingDiscard && (
-            <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: blackAlpha(.3) }}>
-              <Typography fontSize={14}>Discard your changes?</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button variant="secondary" size="compact" onClick={() => onBack()} sx={hubOutlineButton}>
-                  Discard
-                </Button>
-                <Button size="compact" onClick={() => setConfirmingDiscard(false)} sx={hubGoldButton}>
-                  Keep editing
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </Box>
-      )}
+      {dark && <HubLeaveConfirm />}
+      {show('photo') && (
+        <>
       <MediaUpload label="Photo" value={photoUrl} onUploaded={setPhotoUrl} variant="logo" namespace="manage" />
 
-      <Typography variant="subtitle2" component="h2" fontWeight={700}>
+      {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Personal
-      </Typography>
+      </Typography>}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <Input
           label="Date of birth"
@@ -142,10 +129,14 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
           <FormControlLabel control={<Checkbox checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />} label="I understand" />
         </Box>
       )}
+        </>
+      )}
 
-      <Typography variant="subtitle2" component="h2" fontWeight={700}>
+      {show('contact') && (
+        <>
+      {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Contact
-      </Typography>
+      </Typography>}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <PhoneInput value={phone} onChange={setPhone} />
         {canEditEmail ? (
@@ -156,10 +147,14 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
         <Input label="Alternative contact name" value={altContactName} onChange={(e) => setAltContactName(e.target.value)} />
         <PhoneInput label="Alternative contact phone" value={altContactPhone} onChange={setAltContactPhone} />
       </Box>
+        </>
+      )}
 
-      <Typography variant="subtitle2" component="h2" fontWeight={700}>
+      {show('cricket') && (
+        <>
+      {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Cricket
-      </Typography>
+      </Typography>}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <Input label="Batting stance" SelectProps={dark ? { MenuProps: darkMenuProps } : undefined} select value={battingStance} onChange={select<BattingStance>(setBattingStance)}>
           <MenuItem value="">Not specified</MenuItem>
@@ -181,10 +176,14 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
         </Input>
         <FormControlLabel control={<Checkbox checked={isWicketKeeper} onChange={(e) => setIsWicketKeeper(e.target.checked)} />} label="Wicketkeeper" />
       </Box>
+        </>
+      )}
 
-      <Typography variant="subtitle2" component="h2" fontWeight={700}>
+      {show('contact') && (
+        <>
+      {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Medical aid
-      </Typography>
+      </Typography>}
       {!player.canEditMedical && (
         <Typography variant="caption" color="text.secondary">
           Only the main agent or the player can change medical aid details.
@@ -204,6 +203,8 @@ export function MyPlayerEditForm({ player, onDone, dark = false, onBack }: MyPla
           disabled={!player.canEditMedical}
         />
       </Box>
+        </>
+      )}
 
       {update.isError && <Alert severity="error">{errorText}</Alert>}
 

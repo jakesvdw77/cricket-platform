@@ -4,7 +4,7 @@ import { isAxiosError } from 'axios'
 import { Alert, Box, MenuItem, Skeleton, Typography } from '@mui/material'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
-import { useCreateLinkRequest, useMyClubs } from '../../api/meApi'
+import { useClubSections, useCreateLinkRequest, useMyClubs } from '../../api/meApi'
 import { HUB, darkFieldSx, darkMenuProps, hubGoldButton } from './myPlayers/hubStyle'
 
 export interface LinkRequestPrefill {
@@ -38,6 +38,7 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [clubId, setClubId] = useState('')
   const [contactNumber, setContactNumber] = useState('')
+  const [sectionId, setSectionId] = useState('')
   const [message, setMessage] = useState('')
   const [touched, setTouched] = useState(false)
 
@@ -51,7 +52,12 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
     if (chosen) setClubId(chosen.id)
   }, [clubs.data, clubId, prefill?.clubName, prefill?.clubId])
 
-  const missing = !firstName.trim() || !lastName.trim() || !dateOfBirth || !contactNumber.trim() || !clubId
+  const sections = useClubSections(clubId || undefined)
+  const sectionList = sections.data ?? []
+  const hasSections = Boolean(clubId) && sectionList.length > 0
+  const asking = Boolean(prefill?.targetPlayerRef)
+  const sectionRequired = hasSections && !asking
+  const missing = (sectionRequired && !sectionId) || !firstName.trim() || !lastName.trim() || !dateOfBirth || !contactNumber.trim() || !clubId
   const submit = (event: FormEvent) => {
     event.preventDefault()
     setTouched(true)
@@ -63,6 +69,7 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
         lastName: lastName.trim(),
         dateOfBirth,
         contactNumber: contactNumber.trim(),
+        ...(hasSections && sectionId ? { sectionId } : {}),
         ...(message.trim() ? { message: message.trim() } : {}),
         ...(prefill?.targetPlayerRef ? { targetPlayerRef: prefill.targetPlayerRef } : {}),
       },
@@ -72,7 +79,7 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
 
   const tooMany = isAxiosError(create.error) && create.error.response?.status === 429
   return (
-    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...(dark ? darkFieldSx : {}) }}>
+    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, columnGap: 1.5, rowGap: 1.5, alignItems: 'start', ...(dark ? darkFieldSx : {}) }}>
       <Input
         label="First name"
         value={firstName}
@@ -117,7 +124,10 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
           SelectProps={dark ? { MenuProps: darkMenuProps } : undefined}
           label="Club"
           value={clubId}
-          onChange={(event) => setClubId(event.target.value)}
+          onChange={(event) => {
+            setClubId(event.target.value)
+            setSectionId('')
+          }}
           error={touched && !clubId}
           helperText={touched && !clubId ? 'Choose the club' : clubs.isError ? 'We could not load the clubs. Please try again later.' : undefined}
         >
@@ -128,30 +138,55 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
           ))}
         </Input>
       )}
+      {!clubId || sections.isPending || hasSections ? (
+        clubId && sections.isPending ? (
+          <Skeleton variant="rounded" height={40} />
+        ) : (
+          <Input
+            select
+            SelectProps={dark ? { MenuProps: darkMenuProps } : undefined}
+            label={asking ? 'Section (optional)' : 'Section'}
+            value={sectionId}
+            disabled={!clubId}
+            onChange={(event) => setSectionId(event.target.value)}
+            error={touched && sectionRequired && !sectionId}
+            helperText={!clubId ? 'Choose a club first' : touched && sectionRequired && !sectionId ? 'Choose the section' : undefined}
+          >
+            {sectionList.map((section) => (
+              <MenuItem key={section.id} value={section.id}>
+                {section.name}
+              </MenuItem>
+            ))}
+          </Input>
+        )
+      ) : null}
       <Input
         label="Message (optional)"
         value={message}
         onChange={(event) => setMessage(event.target.value)}
         multiline
+        sx={{ gridColumn: '1 / -1' }}
         minRows={2}
         inputProps={{ maxLength: 500 }}
         placeholder="Anything that helps the club, for example the team or coach"
       />
-      <Typography variant="caption" color={dark ? undefined : 'text.secondary'} sx={dark ? { color: HUB.muted } : undefined}>
-        The club checks every request before anyone is linked.
-      </Typography>
       {create.isError && (
-        <Alert severity="error">{tooMany ? 'You have sent too many requests. Please try again later.' : 'We could not send your request. Please try again.'}</Alert>
+        <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>{tooMany ? 'You have sent too many requests. Please try again later.' : 'We could not send your request. Please try again.'}</Alert>
       )}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, justifyContent: 'flex-end', gap: 1 }}>
-        {onBack && (
-          <Button onClick={onBack} disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 } }}>
-            Back
+      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+        <Typography variant="caption" color={dark ? undefined : 'text.secondary'} sx={{ flex: '1 1 220px', ...(dark ? { color: HUB.muted } : {}) }}>
+          The club checks every request before anyone is linked.
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+          {onBack && (
+            <Button onClick={onBack} disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 } }}>
+              Back
+            </Button>
+          )}
+          <Button type="submit" disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 }, ...(dark ? hubGoldButton : {}) }}>
+            {create.isPending ? 'Sending…' : 'Send request'}
           </Button>
-        )}
-        <Button type="submit" disabled={create.isPending} sx={{ minHeight: { xs: 44, sm: 40 }, ...(dark ? hubGoldButton : {}) }}>
-          {create.isPending ? 'Sending…' : 'Send request'}
-        </Button>
+        </Box>
       </Box>
     </Box>
   )

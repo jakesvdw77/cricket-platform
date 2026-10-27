@@ -52,7 +52,7 @@ export function BrandIcon({ name, size = 40, alt, surface = 'tile', padding = 4,
         justifyContent: 'center',
         borderRadius: 1.25,
         bgcolor: (theme) => (onDark ? iconTileBase(theme, true) : alpha(iconTileBase(theme), 0.36)),
-        boxShadow: active ? (theme) => `0 0 0 2px ${onDark ? BRAND.gold : theme.palette.common.white}` : 'none',
+        boxShadow: active ? (theme) => `0 0 0 2px ${onDark ? BRAND.gold : theme.palette.common.white}` : onDark ? `0 0 0 1px ${alpha(BRAND.cream, 0.28)}` : 'none',
       }}
     >
       {img}

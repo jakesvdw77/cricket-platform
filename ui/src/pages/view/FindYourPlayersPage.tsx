@@ -167,18 +167,26 @@ export default function FindYourPlayersPage() {
     const selected = free.filter((p) => !unticked.has(p.ref))
     body = (
       <>
-        {all.length === 0 && <SearchOffOutlinedIcon sx={{ fontSize: 40, color: HUB.gold }} />}
-        <Heading>{title}</Heading>
+        {all.length === 0 ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <SearchOffOutlinedIcon sx={{ fontSize: 36, color: HUB.gold }} />
+              <Heading>{title}</Heading>
+            </Box>
+            <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => setView('mine')}>
+              My requests
+            </Button>
+          </Box>
+        ) : (
+          <Heading>{title}</Heading>
+        )}
         {all.length === 0 ? (
           <>
-            <Lead>We could not find a player with {email ?? 'your email address'} at any club. Your club may have a different email on file for you.</Lead>
-            <Lead>Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.</Lead>
+            <Lead>
+              We could not find a player with <Box component="b" sx={{ color: HUB.gold, fontWeight: 600, overflowWrap: 'anywhere' }}>{email ?? 'your email address'}</Box> at any club. Tell the club who you are and which player you manage. A club
+              manager will check it before anyone is linked.
+            </Lead>
             <LinkRequestForm dark onSent={() => setView('sent')} />
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Button variant="secondary" size="compact" sx={hubOutlineButton} onClick={() => setView('mine')}>
-                My requests
-              </Button>
-            </Box>
           </>
         ) : (
           free.length > 0 && <Lead>We found these on record for {email ?? 'your email address'}. Untick any that are not yours.</Lead>

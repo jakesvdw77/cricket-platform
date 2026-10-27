@@ -57,6 +57,9 @@ export function LinkRequestCard({ request, onApprove, onDecline, onNewPlayer }: 
             </Link>
           </Typography>
         )}
+        {request.sectionName && (
+          <Typography variant="body2">Section: {request.sectionName}</Typography>
+        )}
         <Typography variant="body2" color="text.secondary">
           Waiting {waitingText(request.createdAt)}
         </Typography>

@@ -18,11 +18,15 @@ export interface MyPlayerSummary {
   main: boolean
 }
 
+// The full list of agents, primary first, for every linked agent (docs/specs/121). maskedEmail and linkId only come for the
+// main agent; INVITED rows too, after the active ones.
 export interface MyPlayerAgent {
-  linkId: string
+  linkId?: string
   name: string
-  maskedEmail: string
+  maskedEmail?: string
   main: boolean
+  // True on the caller's own row.
+  you?: boolean
   status: 'ACTIVE' | 'INVITED'
 }
 
@@ -152,4 +156,29 @@ export function useInviteAgent(key: string) {
     mutationFn: (body: { email: string; mode: 'HANDOVER' | 'ADD' }) => inviteMyPlayerAgent(key, body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key] }),
   })
+}
+
+// docs/specs/121 (Field Directory): the club's fields for the selected player, read only. The server orders them (home first,
+// then name) and caps the list at 200. mapUrl is https or null; the screen re-checks the scheme before linking.
+export interface FieldDto {
+  id: string
+  name: string
+  owner: string | null
+  addressLine1: string | null
+  city: string
+  provinceState: string | null
+  postalCode: string | null
+  country: string
+  mapUrl: string | null
+  verified: boolean
+  home: boolean
+}
+
+export async function listMyPlayerFields(key: string): Promise<FieldDto[]> {
+  const { data } = await api.get<FieldDto[]>(`/me/players/${key}/fields`)
+  return data
+}
+
+export function useMyPlayerFields(key: string | undefined) {
+  return useQuery({ queryKey: [...myPlayersKey, key, 'fields'], queryFn: () => listMyPlayerFields(key as string), enabled: Boolean(key), retry: false })
 }

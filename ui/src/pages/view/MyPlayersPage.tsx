@@ -1,19 +1,52 @@
 import { Alert, Avatar, Box, ButtonBase, Chip, Skeleton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined'
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { Button } from '../../components/Button'
 import { useMyPlayers } from '../../api/myPlayersApi'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { MyLinkRequests } from './MyLinkRequests'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
-import { HUB, hubHeading, hubOutlineButton } from './myPlayers/hubStyle'
+import { HUB, hubHeading } from './myPlayers/hubStyle'
 import { useClubHome } from './myPlayers/useClubHome'
 import { creamAlpha, blackAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 3C: /account is the picker, in the same dark console as the player hub. One tile per player (own record
 // first); choosing one opens that player's hub. A person with exactly one player skips the picker.
 const playerPath = (key: string) => `/account/players/${key}`
+
+// The "Link more players" tile: the same size as a player tile, dashed gold, at the end of the grid.
+function LinkMoreTile({ onClick }: { onClick: () => void }) {
+  return (
+    <ButtonBase
+      onClick={onClick}
+      data-testid="link-more-players"
+      sx={{
+        width: '100%',
+        minHeight: 176,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1,
+        p: 2.5,
+        textAlign: 'center',
+        bgcolor: alpha(HUB.gold, 0.06),
+        border: 2,
+        borderStyle: 'dashed',
+        borderColor: alpha(HUB.gold, 0.7),
+        borderRadius: '4px',
+        color: HUB.gold,
+        '&:hover': { borderColor: HUB.gold, bgcolor: alpha(HUB.gold, 0.14) },
+        '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
+        '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color .15s, border-color .15s' },
+      }}
+    >
+      <PersonAddAlt1OutlinedIcon sx={{ fontSize: 44 }} />
+      <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 26, lineHeight: 1.05, letterSpacing: '.04em', textTransform: 'uppercase' }}>Link more players</Typography>
+      <Typography sx={{ fontSize: 14, color: HUB.muted }}>Find players you manage</Typography>
+    </ButtonBase>
+  )
+}
 
 export default function MyPlayersPage() {
   const navigate = useNavigate()
@@ -31,14 +64,14 @@ export default function MyPlayersPage() {
   if (list.length === 1 && !invitations.isLoading && invitationCount === 0) return <Navigate to={playerPath(list[0].key)} replace />
 
   const open = (requests.data ?? []).some((r) => r.status === 'PENDING' || r.status === 'DECLINED')
-  const grid = { display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }
+  const grid = { display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }
 
   let body
   if (players.isLoading) {
     body = (
       <Box aria-busy="true" aria-label="Loading your players" sx={grid}>
-        <Skeleton variant="rounded" height={104} sx={{ bgcolor: creamAlpha(.12) }} />
-        <Skeleton variant="rounded" height={104} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={176} sx={{ bgcolor: creamAlpha(.12) }} />
+        <Skeleton variant="rounded" height={176} sx={{ bgcolor: creamAlpha(.12) }} />
       </Box>
     )
   } else if (players.isError) {
@@ -62,13 +95,14 @@ export default function MyPlayersPage() {
               aria-label={`${p.firstName} ${p.lastName}`}
               sx={{
                 width: '100%',
-                minHeight: 104,
+                minHeight: 176,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: 2,
-                p: 2,
-                textAlign: 'left',
+                justifyContent: 'center',
+                gap: 1.5,
+                p: 2.5,
+                textAlign: 'center',
                 bgcolor: blackAlpha(.30),
                 border: 1,
                 borderColor: HUB.line,
@@ -82,11 +116,11 @@ export default function MyPlayersPage() {
               <Avatar
                 src={p.photoUrl ?? undefined}
                 alt=""
-                sx={{ width: 72, height: 72, border: `2px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: 28, color: HUB.ink, background: GOLD_DISC_GRADIENT }}
+                sx={{ width: 92, height: 92, border: `3px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: 34, color: HUB.ink, background: GOLD_DISC_GRADIENT }}
               >
                 {`${p.firstName[0] ?? ''}${p.lastName[0] ?? ''}`.toUpperCase()}
               </Avatar>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Box sx={{ minWidth: 0, width: '100%' }}>
                 <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 26, lineHeight: 1.05, letterSpacing: '.02em', textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
                   {p.firstName} {p.lastName}
                 </Typography>
@@ -95,6 +129,9 @@ export default function MyPlayersPage() {
             </ButtonBase>
           </Box>
         ))}
+        <Box role="listitem" sx={{ display: 'flex' }}>
+          <LinkMoreTile onClick={() => navigate('/welcome')} />
+        </Box>
       </Box>
     )
   }
@@ -118,11 +155,9 @@ export default function MyPlayersPage() {
         </ButtonBase>
       )}
       {body}
-      {!players.isLoading && !players.isError && (
-        <Box>
-          <Button variant="secondary" size="compact" startIcon={<PersonSearchOutlinedIcon />} onClick={() => navigate('/welcome')} sx={hubOutlineButton}>
-            Find more players
-          </Button>
+      {!players.isLoading && !players.isError && list.length === 0 && (
+        <Box sx={grid}>
+          <LinkMoreTile onClick={() => navigate('/welcome')} />
         </Box>
       )}
       {open && (

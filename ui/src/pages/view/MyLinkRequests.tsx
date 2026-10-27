@@ -39,7 +39,7 @@ function Row({ request, onCancel, cancelling, dark }: { request: MyLinkRequest; 
         <Chip size="small" label={status.label(request.clubName)} variant={dark ? 'outlined' : 'filled'} sx={dark ? { color: pill.color, borderColor: pill.color, borderStyle: pill.borderStyle, fontWeight: 600 } : badgeSx(status.tone)} />
       </Box>
       <Typography variant="caption" color={dark ? undefined : 'text.secondary'} sx={dark ? { color: HUB.muted } : undefined}>
-        {request.clubName} · Sent {sentOn(request.createdAt)}
+        {request.clubName}{request.sectionName ? ` · ${request.sectionName}` : ''} · Sent {sentOn(request.createdAt)}
       </Typography>
       {request.status === 'DECLINED' && request.decisionNote && (
         <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
