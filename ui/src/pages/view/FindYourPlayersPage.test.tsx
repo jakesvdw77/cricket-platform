@@ -115,7 +115,7 @@ describe('FindYourPlayersPage', () => {
       setup({ withoutMainAgent: [], withMainAgent: [] })
 
       expect(await screen.findByRole('heading', { name: 'No player found' })).toBeInTheDocument()
-      expect(screen.getByText(/We could not find a player with priya@example.com at any club/)).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.tagName === 'P' && /We could not find a player with priya@example.com at any club/.test(node.textContent ?? ''))).toBeInTheDocument()
       const form = await screen.findByTestId('link-request-form')
 
       await user.click(within(form).getByRole('button', { name: 'Send request' }))

@@ -37,13 +37,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * docs/specs/121, Integration: the Field Directory ({@code GET /api/v1/me/players/{playerKey}/fields}). Deliberately NOT
- * transactional (the {@code open-in-view=false} trap in docs/standards/backend.md): rows are committed with unique names
- * and left behind, as the other committed link tests do.
+ * transactional (the {@code open-in-view=false} trap in docs/standards/backend.md): rows are committed with unique names.
+ * The playing areas it creates ARE removed in {@code @AfterEach}: the spec 099 tests assume an empty {@code playing_area}
+ * table and share this database, so leftovers made them fail in CI.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,6 +59,26 @@ class MePlayersFieldsIntegrationTest extends AbstractLinkIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private PlayingAreaRepository playingAreaRepository;
     @Autowired private ClubPlayingAreaRepository clubPlayingAreaRepository;
+    @Autowired private JdbcTemplate jdbc;
+
+    private final List<UUID> createdFieldIds = new ArrayList<>();
+
+    /** Removes every playing area this class created, with the matches and club links that point at them. */
+    @AfterEach
+    void removeCreatedPlayingAreas() {
+        for (UUID id : createdFieldIds) {
+            jdbc.update("delete from match where playing_area_id = ?", id);
+            jdbc.update("delete from club_playing_area where playing_area_id = ?", id);
+        }
+        // Merged-away rows first: they point at their survivors.
+        for (UUID id : createdFieldIds) {
+            jdbc.update("delete from playing_area where merged_into_id = ?", id);
+        }
+        for (UUID id : createdFieldIds) {
+            jdbc.update("delete from playing_area where id = ?", id);
+        }
+        createdFieldIds.clear();
+    }
 
     /** A club with a current season, a parent and one linked child. */
     private record Setup(Club club, Season season, Person parent, PersonLink link, Team team) {}
@@ -73,12 +96,14 @@ class MePlayersFieldsIntegrationTest extends AbstractLinkIntegrationTest {
     }
 
     private PlayingArea field(String name, PlayingAreaVerificationStatus status) {
-        return playingAreaRepository.save(PlayingArea.builder().areaType(PlayingAreaType.CRICKET_FIELD)
+        PlayingArea saved = playingAreaRepository.save(PlayingArea.builder().areaType(PlayingAreaType.CRICKET_FIELD)
                 .name(unique(name)).category(PlayingAreaCategory.CLUB).ownerType(PlayingAreaOwnerType.CLUB)
                 .ownerName("Owner").address(Address.builder().number("1").street("High St").city(unique("City"))
                         .provinceState("WC").postalCode("8000").country("ZA").build())
                 .mapUrl("https://maps.example.com/" + name).verificationStatus(status)
                 .createdByClubId(club("Creator").getId()).locationNotes("Gate code 1234").build());
+        createdFieldIds.add(saved.getId());
+        return saved;
     }
 
     private PlayingArea field(String name) {

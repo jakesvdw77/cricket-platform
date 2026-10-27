@@ -55,7 +55,9 @@ describe('MyPlayersPage', () => {
     setup([player(), AMAN])
 
     const list = await screen.findByRole('list', { name: 'Player Hub' })
-    const tiles = within(list).getAllByRole('button')
+    const all = within(list).getAllByRole('button')
+    expect(all.at(-1)).toHaveTextContent('Link more players')
+    const tiles = all.slice(0, -1)
     expect(tiles.map((tile) => tile.getAttribute('aria-label'))).toEqual(['Priya Naidoo', 'Aman Naidoo'])
     expect(within(tiles[0]).getByText('You')).toBeInTheDocument()
     expect(within(tiles[1]).queryByText('You')).not.toBeInTheDocument()
@@ -132,11 +134,11 @@ describe('MyPlayersPage', () => {
     expect(screen.queryByTestId('my-requests')).not.toBeInTheDocument()
   })
 
-  it('shows the empty state and Find more players, which goes to /welcome', async () => {
+  it('shows the empty state and the Link more players tile, which goes to /welcome', async () => {
     setup([])
 
     expect(await screen.findByText('No players yet')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Find more players' }))
+    await userEvent.click(screen.getByTestId('link-more-players'))
     expect(await screen.findByTestId('location')).toHaveTextContent('/welcome')
   })
 
@@ -144,6 +146,6 @@ describe('MyPlayersPage', () => {
     setup(httpError(500))
 
     expect(await screen.findByText('Something went wrong loading your players. Please try again later.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Find more players' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('link-more-players')).not.toBeInTheDocument()
   })
 })
