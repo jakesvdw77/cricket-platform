@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 import { Button } from '../../../components/Button'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -48,9 +48,9 @@ export default function LeagueConditionsView() {
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {documentUrl && (
-            <MuiButton variant="outlined" startIcon={<DescriptionOutlinedIcon fontSize="small" />} onClick={() => window.open(documentUrl, '_blank', 'noopener')}>
+            <Button size="compact" variant="secondary" startIcon={<DescriptionOutlinedIcon fontSize="small" />} onClick={() => window.open(documentUrl, '_blank', 'noopener')}>
               {PLAYING_CONDITIONS_PDF_NAME}
-            </MuiButton>
+            </Button>
           )}
           <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
             Share
