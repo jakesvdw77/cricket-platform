@@ -36,7 +36,7 @@ Owner decisions, binding:
 2. The page lists the leagues the **selected** linked player's teams play in. Current season by default, with a season switcher. Switching players re-fetches.
 3. Each league opens a **read-only league page** with tabs **Details, Playing conditions, Teams, Schedule, Results, Key dates**. League information is shown for every league the player plays in.
 4. **Schedule** shows the **whole league schedule**, with the player's team games highlighted. **Results** shows published results only, with scores and result lines.
-5. A **Share** button reuses the `ShareLeagueDialog` of `122`: formats and the per-club disabled formats honoured, contacts role and name only by default, junior names as initials.
+5. A **Share** button reuses the `ShareLeagueDialog` of `122`: formats and the per-club disabled formats honoured, no contacts (managers only), junior names as initials.
 6. New backend: player-scoped read endpoints under `/me/players/{key}/...`, authorised by the account's link to that player only. Existing league read services are reused. No new tables.
 7. Mobile follows the Player Hub phone rules: the footer Back is the one Back, a pill row for the tabs, 44 px touch targets. Compact buttons. Mirror the poll screens.
 8. Empty state: brand icon plus "No league available".
@@ -101,7 +101,7 @@ No other endpoint is added or changed. Both are added to `MePlayersController` (
 
 | Property | Type | Notes |
 |---|---|---|
-| `league` | `{ id, name, description, logoUrl, minAge, maxAge, ageCutoffDay, ageCutoffMonth, format, website, socialLinks[], contacts[] }` | No `contacts` at all: league contacts are for managers (Decision 3). Fields that are manager-only on `LeagueDto` (active flag, created and updated audit fields, internal notes) are absent |
+| `league` | `{ id, name, description, logoUrl, minAge, maxAge, ageCutoffDay, ageCutoffMonth, format, website, socialLinks[] }` | No `contacts` at all: league contacts are for managers (Decision 3). Fields that are manager-only on `LeagueDto` (active flag, created and updated audit fields, internal notes) are absent |
 | `season` | `{ id, name, startDate, endDate }` | |
 | `playingConditions` | object or null | The season's structured conditions and the link to the PDF if one exists, as the Conditions tab reads them; null when none are set |
 | `teams` | list of `{ id, name, abbreviation, logoUrl, mine }` | Active league teams of the season, name order; `mine` marks the player's teams. No affiliation ids, no inactive rows |
@@ -168,7 +168,7 @@ Tabs use `role="tablist"`, `tab` and `tabpanel`; left and right arrows move betw
 Per `docs/standards/testing.md`. New endpoints and new UI need unit, integration, contract, component and one E2E. **Tests are written once, at the end of the whole leagues work, after the owner has checked the function**; no per-step tests.
 
 - **Unit (JUnit 5, no Spring):** `MyLeagueServiceImpl` rules: leagues derived from the player's squad rows and affiliations for the season; the `mine` flag by team id and by league team; published-only results; inactive leagues excluded; contacts absent from the DTO; seasons list newest first including the selected one.
-- **Unit (Vitest):** `hubNav` (`schedule.leagues` is not Soon; menu still six top-level items, no third level); `hubBack` league states ("Back to Schedule" on a phone list, "Back to Leagues" on a league page, Escape equal to the footer); mapper from `MyLeagueDto` to `LeagueShareModel` (own teams flagged, contacts role and name, junior initials when `maxAge` is 18 or below); age band wording; "Only my games" filtering.
+- **Unit (Vitest):** `hubNav` (`schedule.leagues` is not Soon; menu still six top-level items, no third level); `hubBack` league states ("Back to Schedule" on a phone list, "Back to Leagues" on a league page, Escape equal to the footer); mapper from `MyLeagueDto` to `LeagueShareModel` (own teams flagged, no contacts, junior initials when `maxAge` is 18 or below); age band wording; "Only my games" filtering.
 - **Integration (Testcontainers via `AbstractIntegrationTest`, no ambient class-level `@Transactional`):**
   - List: returns exactly the leagues of the held player's squad teams for the season; a league the player's team is not in never appears; a season switch returns that season's leagues; the default is the current season; another club's league never appears.
   - **Authorisation:** a key the caller does not hold, a malformed key, a dropped-out player and another account's valid key are 404; unauthenticated is 401; SUSPENDED is 403; a caller with a manager `RoleAssignment` but no link gets 404; a league id the player's teams are not in (same club, other club) is 404 on the detail call; an invalid `seasonId` is 404.
