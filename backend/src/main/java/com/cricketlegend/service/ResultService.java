@@ -92,4 +92,10 @@ public interface ResultService {
 
     /** Deletes a draft; a published result must be unpublished first. */
     void deleteDraft(Authentication authentication, UUID clubId, UUID matchId);
+
+    /**
+     * docs/specs/123: the PUBLISHED results only, by match id, for matches of {@code clubId}; a draft is never returned
+     * and carries no scorecard flags. No access check: for the Player Hub read, which has already proven the matches.
+     */
+    Map<UUID, MatchResultDto> publishedResults(UUID clubId, Collection<UUID> matchIds);
 }

@@ -32,6 +32,8 @@ const baseConditions: PlayingConditionsPayload = {
   maxOversPerInnings: 20,
   powerplayOvers: 6,
   maxOversPerBowler: null,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
   fieldingRestrictionsNotes: 'Two fielders outside the circle.',
   allowSubstitutions: false,
   pointsForWin: 2,

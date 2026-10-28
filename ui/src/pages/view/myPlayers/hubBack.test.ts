@@ -67,3 +67,29 @@ describe('hubBack on tablet and desktop', () => {
     expect(hubBack(state({ section: 'club', item: 'fields', view: 'edit' }))?.label).toBe('Back to menu')
   })
 })
+
+// docs/specs/123: Schedule > Leagues. A league page goes back to the list (same season); the list is an ordinary Schedule child.
+describe('hubBack on Schedule > Leagues', () => {
+  const list = { section: 'schedule', item: 'leagues' } as const
+
+  it('is Back to menu on the list on a phone', () => {
+    expect(hubBack(state({ layout: 'phone', ...list }))).toEqual({ label: 'Back to menu', target: BASE })
+  })
+
+  it('is Back to menu on the list on a wide screen, going up to the main menu', () => {
+    expect(hubBack(state({ ...list }))).toEqual({ label: 'Back to menu', target: `${BASE}/availability` })
+  })
+
+  it('is Back to Leagues on a league page, on every layout, whatever the player count', () => {
+    for (const layout of ['phone', 'wide'] as const) {
+      for (const many of [true, false]) {
+        expect(hubBack(state({ layout, many, ...list, view: 'l1' }))).toEqual({ label: 'Back to Leagues', target: `${BASE}/schedule/leagues` })
+      }
+    }
+  })
+
+  it('keeps the season of the league page in the target', () => {
+    expect(hubBack(state({ ...list, view: 'l1', season: 's0' }))).toEqual({ label: 'Back to Leagues', target: `${BASE}/schedule/leagues?season=s0` })
+    expect(hubBack(state({ layout: 'phone', ...list, view: 'l1', season: 'a b' })).target).toBe(`${BASE}/schedule/leagues?season=a%20b`)
+  })
+})

@@ -71,4 +71,7 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
             """)
     List<PlayerTeamNameView> findActiveSeasonTeamNames(
             @org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids);
+
+    /** docs/specs/123: every squad row of one player profile, across seasons, for the Player Hub leagues read. */
+    List<TeamSquadMember> findByPlayerProfileId(UUID playerProfileId);
 }

@@ -222,6 +222,13 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             @Param("from") Instant from,
             @Param("until") Instant until);
 
+    /**
+     * docs/specs/123: the active matches of one league and season of a club, in date order (the Player Hub league
+     * schedule), with a stable tie-break on id.
+     */
+    List<Match> findByClubIdAndLeagueIdAndSeasonIdAndActiveTrueOrderByMatchDateAscIdAsc(
+            UUID clubId, UUID leagueId, UUID seasonId);
+
     /** Projection backing {@link #summariseOutsideDates}. */
     interface OutsideDatesSummary {
         long getMatchCount();

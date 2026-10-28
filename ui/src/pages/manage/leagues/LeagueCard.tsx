@@ -1,10 +1,12 @@
-import { Box, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography, alpha } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { BrandIcon } from '../../../components/BrandIcon'
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
@@ -24,7 +26,30 @@ export function leagueSocialLinks(league: League): SocialLink[] {
 // format and Active badges under the title, the website and social icons in the corner, a Next match strip (amber within
 // 24 hours of the kickoff), a Matches played gauge, every team of the season and an icon-over-caption footer. The whole
 // card opens the Schedule for the chosen season. Deactivate/Reactivate lives on the edit screen (038).
-export function LeagueCard({ league, seasonId }: { league: League; seasonId?: string }) {
+// Why an active league shows under "Setup needed" (the backend's LeagueListRow.needsAttention): no teams entered, no
+// matches scheduled in the season. Empty for an inactive league or one that is fully set up.
+export function leagueSetupReasons(league: League): string[] {
+  if (!league.active) {
+    return []
+  }
+  const reasons: string[] = []
+  if ((league.teams ?? []).length === 0) {
+    reasons.push('No teams entered')
+  }
+  if ((league.matchCount ?? 0) === 0) {
+    reasons.push('No matches scheduled in this season')
+  }
+  return reasons
+}
+
+export interface LeagueCardProps {
+  league: League
+  seasonId?: string
+  // docs/specs/122-league-sharing.md: opens the Share League dialog (the page owns it); absent, the card has no Share button.
+  onShare?: (league: League) => void
+}
+
+export function LeagueCard({ league, seasonId, onShare }: LeagueCardProps) {
   const navigate = useNavigate()
   const search = seasonId ? `?seasonId=${seasonId}` : ''
   const base = `/manage/fixtures/leagues/${league.id}`
@@ -33,13 +58,14 @@ export function LeagueCard({ league, seasonId }: { league: League; seasonId?: st
   const playedCount = league.playedCount ?? 0
   const links = leagueSocialLinks(league)
   const next = useCountdown(league.nextMatchDate)
+  const setupReasons = leagueSetupReasons(league)
 
   return (
     <RecordCard
       title={league.name}
       titleWrap
       badgesBelow
-      avatar={{ imageUrl: league.logoUrl, fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+      avatar={{ imageUrl: league.logoUrl, fallback: <BrandIcon name="nav/cricket-leagues" size={40} surface="none" />, shape: 'rounded' }}
       badges={leagueBadges(league)}
       // position: relative paints the links above the card's stretched link (059).
       headerActions={
@@ -58,9 +84,25 @@ export function LeagueCard({ league, seasonId }: { league: League; seasonId?: st
           icon: <DescriptionOutlinedIcon fontSize="small" />,
           onClick: () => navigate(`${base}/conditions${search}`),
         },
+        ...(onShare ? [{ label: 'Share', ariaLabel: `Share ${league.name}`, icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare(league) }] : []),
         { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/edit`) },
       ]}
     >
+      {setupReasons.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="flex-start"
+          data-testid="league-setup-needed"
+          sx={{ px: 1.25, py: 0.75, borderRadius: 1, bgcolor: (theme) => alpha(theme.palette.warning.main, 0.14), color: 'text.primary' }}
+        >
+          <WarningAmberOutlinedIcon sx={{ fontSize: 16, mt: '2px' }} />
+          <Typography variant="caption" fontWeight={600}>
+            Setup needed: {setupReasons.join('. ')}
+          </Typography>
+        </Stack>
+      )}
+
       {league.nextMatchDate ? (
         <CardTimeStrip
           testId="league-next-match"

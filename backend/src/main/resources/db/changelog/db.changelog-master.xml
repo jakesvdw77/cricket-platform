@@ -60,5 +60,7 @@
     <include file="db/changelog/v1/053-person-links.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/054-link-request-contact-number.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/055-link-request-section.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/056-club-share-disabled-formats.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/057-playing-conditions-balls-and-free-hit.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

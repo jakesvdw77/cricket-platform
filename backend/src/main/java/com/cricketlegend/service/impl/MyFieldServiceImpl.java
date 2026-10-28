@@ -14,6 +14,7 @@ import com.cricketlegend.service.MyFieldService;
 import com.cricketlegend.service.support.MyPlayerAccess;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.SeasonResolution;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -94,6 +95,23 @@ class MyFieldServiceImpl implements MyFieldService {
                         away.values().stream().map(a -> mapper.toDto(a, false)))
                 .sorted(order)
                 .limit(MAX_FIELDS)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MyFieldDto> describe(UUID clubId, Collection<UUID> playingAreaIds) {
+        if (playingAreaIds.isEmpty()) {
+            return List.of();
+        }
+        playingAreaRepository.findAllById(playingAreaIds);
+        Set<UUID> homeIds = new LinkedHashSet<>();
+        for (ClubPlayingArea link : clubPlayingAreaRepository.findByClubIdAndHomeTrue(clubId)) {
+            homeIds.add(link.getPlayingAreaId());
+        }
+        return surviving(new LinkedHashSet<>(playingAreaIds)).values().stream()
+                .map(a -> mapper.toDto(a, homeIds.contains(a.getId())))
+                .sorted(Comparator.comparing((MyFieldDto f) -> f.name().toLowerCase()).thenComparing(MyFieldDto::id))
                 .toList();
     }
 

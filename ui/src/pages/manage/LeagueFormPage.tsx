@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import { useTheme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
@@ -12,9 +11,8 @@ import { Button, compactButtonSx } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
-import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
-import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
-import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
+import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
+import type { LeagueContent } from '../../utils/share/leagueShareFormats'
 import { DuplicateLeagueDialog } from './leagues/DuplicateLeagueDialog'
 import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
 import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
@@ -39,12 +37,7 @@ import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditions
 import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
-import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
-import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
-import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
-import { generatePlayingConditionsSummaryPdf } from '../../utils/playingConditionsSummaryPdf'
 import { resolvePlayingConditionsPayload } from '../../utils/playingConditions'
-import { triggerDownload } from '../../utils/triggerDownload'
 
 // docs/specs/029-league-management.md and docs/specs/095-league-edit-gold-standard.md: the standard list/create/update CRUD
 // anatomy, extended in edit mode with a tab strip (?tab=details|teams|schedule|conditions|contacts), each tab in its own
@@ -59,7 +52,6 @@ export default function LeagueFormPage() {
   const isEdit = Boolean(leagueId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const theme = useTheme()
   const [searchParams] = useSearchParams()
   const location = useLocation()
 
@@ -68,7 +60,9 @@ export default function LeagueFormPage() {
   const seasonParam = searchParams.get('seasonId')
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
+  // docs/specs/122-league-sharing.md: the one Share League dialog; the Schedule tab opens it on Schedule, the Conditions tab on
+  // Playing conditions.
+  const [sharePreselected, setSharePreselected] = useState<LeagueContent[] | null>(null)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   // docs/specs/096-duplicate-league.md: the success notice a Duplicate league navigation carries in router state. Read once
   // on mount, shown until dismissed, and the router state is then cleared so a reload or Back does not show it again.
@@ -81,10 +75,6 @@ export default function LeagueFormPage() {
       navigate(location.pathname + location.search, { replace: true, state: null })
     }
   }, [location, navigate])
-  // docs/specs/052-league-playing-conditions.md, a second, independent Share flow (the captain
-  // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
-  // never share state.
-  const [playingConditionsShareOpen, setPlayingConditionsShareOpen] = useState(false)
 
   const {
     data: league,
@@ -180,42 +170,9 @@ export default function LeagueFormPage() {
     [seasonsQuery.data, selectedSeasonId],
   )
 
-  const shareTeams: ShareScheduleTeamOption[] = affiliationsForSeason.map((affiliation) => ({
-    teamId: affiliation.teamId,
-    teamName: teamsById.get(affiliation.teamId)?.name ?? 'Unknown team',
-  }))
-
-  const handleSharePdf = async (teamFilter: ShareScheduleTeamOption | null) => {
-    const url = await generateLeagueSchedulePdf(
-      matchesQuery.data ?? [],
-      teamsById,
-      league?.name ?? '',
-      seasonLabel,
-      teamFilter,
-    )
-    window.open(url, '_blank')
-  }
-
-  const handleSharePoster = async (teamFilter: ShareScheduleTeamOption | null) => {
-    const url = await generateLeagueSchedulePoster(
-      matchesQuery.data ?? [],
-      teamsById,
-      league?.name ?? '',
-      seasonLabel,
-      teamFilter,
-      theme.palette.primary.main,
-    )
-    triggerDownload(url, `${league?.name ?? 'schedule'}-poster.png`)
-  }
-
-  const handleShareCalendar = async (team: ShareScheduleTeamOption) => {
-    const url = generateLeagueScheduleIcs(matchesQuery.data ?? [], teamsById, league?.name ?? '', seasonLabel, team)
-    triggerDownload(url, `${team.teamName}-schedule.ics`)
-  }
-
   // docs/specs/052-league-playing-conditions.md UI Requirements item 4, `maxOversPerInnings !=
   // null` is the "has this league+season's structured Playing Conditions ever been saved" signal;
-  // shared by PlayingConditionsForm's own initialValues and PlayingConditionsShareDialog's
+  // shared by PlayingConditionsForm's own initialValues and the share dialog's
   // hasStructuredFields/conditions props below.
   const playingConditionsPayload = resolvePlayingConditionsPayload(playingConditionsQuery.data)
 
@@ -224,17 +181,6 @@ export default function LeagueFormPage() {
       updatePlayingConditions(clubId as string, leagueId as string, selectedSeasonId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey }),
   })
-
-  // A second, independent Share handler for the captain summary, never touches
-  // generateLeagueSchedulePdf/handleSharePdf above, which belongs to the unrelated Schedule-sharing
-  // feature.
-  const handleSharePlayingConditionsPdf = async () => {
-    if (!playingConditionsPayload) {
-      return
-    }
-    const url = await generatePlayingConditionsSummaryPdf(league?.name ?? '', seasonLabel, playingConditionsPayload)
-    window.open(url, '_blank')
-  }
 
   const affiliatedTeamIds = new Set(affiliationsForSeason.map((affiliation) => affiliation.teamId))
   const linkableTeams: Team[] = (teamsQuery.data ?? []).filter(
@@ -334,7 +280,7 @@ export default function LeagueFormPage() {
         }
         actions={
           activeTab === 'details' ? (
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               {saveMutation.isError && (
                 <Typography variant="body2" color="error.main">
                   {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
@@ -342,7 +288,7 @@ export default function LeagueFormPage() {
               )}
 
               {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
-              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" sx={compactButtonSx}>
+              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" size="small" sx={compactButtonSx}>
                 Cancel
               </MuiButton>
 
@@ -452,7 +398,7 @@ export default function LeagueFormPage() {
             matches={matchesQuery.data ?? []}
             matchesLoading={matchesQuery.isLoading}
             teamsById={teamsById}
-            onShare={() => setShareOpen(true)}
+            onShare={() => setSharePreselected(['SCHEDULE'])}
           />
         )}
 
@@ -479,7 +425,7 @@ export default function LeagueFormPage() {
             onSubmit={(payload) => updatePlayingConditionsMutation.mutate(payload)}
             pending={updatePlayingConditionsMutation.isPending}
             error={updatePlayingConditionsMutation.isError ? updatePlayingConditionsMutation.error : undefined}
-            onShare={() => setPlayingConditionsShareOpen(true)}
+            onShare={() => setSharePreselected(['CONDITIONS'])}
           />
         )}
 
@@ -503,28 +449,14 @@ export default function LeagueFormPage() {
         />
       )}
 
-      {isEdit && league && (
-        <ShareScheduleDialog
-          open={shareOpen}
-          onClose={() => setShareOpen(false)}
-          leagueName={league.name}
-          seasonLabel={seasonLabel}
-          teams={shareTeams}
-          onSharePdf={handleSharePdf}
-          onSharePoster={handleSharePoster}
-          onShareCalendar={handleShareCalendar}
-        />
-      )}
-
-      {isEdit && league && (
-        <PlayingConditionsShareDialog
-          open={playingConditionsShareOpen}
-          onClose={() => setPlayingConditionsShareOpen(false)}
-          hasStructuredFields={Boolean(playingConditionsPayload)}
-          leagueName={league.name}
-          seasonLabel={seasonLabel}
-          conditions={playingConditionsPayload}
-          onSharePdf={handleSharePlayingConditionsPdf}
+      {isEdit && league && sharePreselected && (
+        <ShareLeagueDialog
+          open
+          onClose={() => setSharePreselected(null)}
+          clubId={clubId as string}
+          league={league}
+          seasonId={selectedSeasonId || null}
+          preselected={sharePreselected}
         />
       )}
 

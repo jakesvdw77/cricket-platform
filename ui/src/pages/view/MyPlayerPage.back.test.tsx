@@ -53,7 +53,7 @@ describe.each([
   it.each([
     ['a page', '/account/players/k1/availability', 'Availability'],
     ['a sub menu page', '/account/players/k1/club/fields', 'Field Directory'],
-    ['a Soon page', '/account/players/k1/schedule', 'Matches'],
+    ['a Soon page', '/account/players/k1/schedule/matches', 'Matches'],
     ['a Profile page', '/account/players/k1/profile/contact', 'Contact'],
   ])('%s has exactly one Back control and it is the footer', async (_name, path, heading) => {
     setup(path)

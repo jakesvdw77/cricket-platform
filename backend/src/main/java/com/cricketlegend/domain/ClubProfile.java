@@ -77,6 +77,14 @@ public class ClubProfile {
     private boolean shareInitialsOnly = false;
 
     /**
+     * docs/specs/122-league-sharing.md: JSON object of formats the club switched off per content type, for example
+     * {@code {"RESULT":["TV"]}}. Written only by the share settings service, not part of the profile form.
+     */
+    @Column(name = "share_disabled_formats", nullable = false)
+    @Builder.Default
+    private String shareDisabledFormats = "{}";
+
+    /**
      * docs/specs/103-player-stats.md, decision 18: the LeaderboardBoard codes shown on the Awards view; null means the
      * nine defaults. Not part of the profile form (written only by the leaderboard settings service).
      */

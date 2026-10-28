@@ -50,7 +50,7 @@ export function LeagueEditScheduleTab({
       <ContentControlsLine
         scope={`Showing ${matches.length} ${matches.length === 1 ? 'match' : 'matches'}${seasonLabel ? ` · ${seasonLabel}` : ''}`}
         pinned={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
             <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} disabled={matchesLoading} onClick={onShare}>
               Share
             </Button>

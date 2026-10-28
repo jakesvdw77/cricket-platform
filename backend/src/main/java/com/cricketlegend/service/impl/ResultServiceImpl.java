@@ -475,6 +475,28 @@ public class ResultServiceImpl implements ResultService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<UUID, MatchResultDto> publishedResults(UUID clubId, Collection<UUID> matchIds) {
+        Map<UUID, MatchResultDto> byMatch = new HashMap<>();
+        if (matchIds.isEmpty()) {
+            return byMatch;
+        }
+        List<MatchResult> published = resultRepository.findAllByMatchIdIn(matchIds).stream()
+                .filter(r -> clubId.equals(r.getClubId()) && r.getStatus() == ResultStatus.PUBLISHED)
+                .toList();
+        if (published.isEmpty()) {
+            return byMatch;
+        }
+        Map<UUID, List<MatchInnings>> inningsByResultId = inningsRepository
+                .findByMatchResultIdInOrderBySequence(published.stream().map(MatchResult::getId).toList()).stream()
+                .collect(Collectors.groupingBy(MatchInnings::getMatchResultId));
+        for (MatchResult result : published) {
+            byMatch.put(result.getMatchId(), mapper.toDto(result, inningsByResultId.getOrDefault(result.getId(), List.of())));
+        }
+        return byMatch;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<ExistingResultDto> findImported(UUID clubId, String source, String externalId) {
         return resultRepository.findByClubIdAndSourceAndExternalId(clubId, source, externalId).map(this::summaryOf);
     }

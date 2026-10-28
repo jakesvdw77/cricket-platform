@@ -26,7 +26,7 @@ export function LeagueEditPanel({ icon, title, caption, actions, testId, ariaLab
       sx={{ border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 2, overflow: 'clip' }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, p: { xs: 1.5, md: 2 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: '1 1 200px' }}>
           <Box
             aria-hidden
             sx={{
@@ -77,7 +77,7 @@ export function LeagueEditPanel({ icon, title, caption, actions, testId, ariaLab
         </Box>
         {actions && (
           // Wraps (and may shrink) so two header buttons drop onto a second line on a narrow screen instead of being clipped.
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%' }}>{actions}</Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%', flex: '0 1 auto' }}>{actions}</Box>
         )}
       </Box>
       {children}

@@ -20,6 +20,9 @@ export interface LeaguePlayingConditions {
   maxOversPerInnings: number | null
   powerplayOvers: number | null
   maxOversPerBowler: number | null
+  // docs/specs/124: null = no limit on balls in an over; free hit defaults to true.
+  maxBallsPerOver: number | null
+  freeHitOnNoBall: boolean
   fieldingRestrictionsNotes: string | null
   allowSubstitutions: boolean
   pointsForWin: number | null
@@ -41,6 +44,9 @@ export interface PlayingConditionsPayload {
   maxOversPerInnings: number
   powerplayOvers: number
   maxOversPerBowler: number | null
+  // docs/specs/124: null = no limit on balls in an over; free hit defaults to true.
+  maxBallsPerOver: number | null
+  freeHitOnNoBall: boolean
   fieldingRestrictionsNotes: string | null
   allowSubstitutions: boolean
   pointsForWin: number

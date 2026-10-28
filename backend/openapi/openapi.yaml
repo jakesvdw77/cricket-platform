@@ -2251,6 +2251,66 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/FieldDto"
+  /api/v1/me/players/{playerKey}/leagues:
+    get:
+      tags:
+      - me-players-controller
+      description: "The leagues the held player teams play in for the season (docs/specs/123), plus the seasons to offer. Authorised only through the account link to the player: a key not held, malformed or dropped out is 404, a suspended caller 403. Inactive leagues are hidden."
+      operationId: listMyPlayerLeagues
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "The season; omitted means the club current season. A season that is not the club own is 404."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaguesDto"
+  /api/v1/me/players/{playerKey}/leagues/{leagueId}:
+    get:
+      tags:
+      - me-players-controller
+      description: "One league of the held player teams for the season (docs/specs/123): details, playing conditions, teams, the whole schedule, published results and key dates. No contacts. 404 when the player teams are not in the league for the season, whatever the reason."
+      operationId: getMyPlayerLeague
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        description: "The season; omitted means the club current season. A season that is not the club own is 404."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeagueDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -10698,6 +10758,14 @@ components:
         maxOversPerInnings:
           type: integer
           format: int32
+        maxBallsPerOver:
+          type: integer
+          format: int32
+          maximum: 20
+          minimum: 1
+        freeHitOnNoBall:
+          type: boolean
+          description: "Defaults to true when omitted."
         powerplayOvers:
           type: integer
           format: int32
@@ -10776,6 +10844,11 @@ components:
         maxOversPerInnings:
           type: integer
           format: int32
+        maxBallsPerOver:
+          type: integer
+          format: int32
+        freeHitOnNoBall:
+          type: boolean
         powerplayOvers:
           type: integer
           format: int32
@@ -14668,6 +14741,12 @@ components:
       properties:
         initialsOnlyDefault:
           type: boolean
+        disabledFormats:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
     PlayerStatsDto:
       type: object
       properties:
@@ -16996,6 +17075,346 @@ components:
       - country
       - verified
       - home
+    MySeasonOptionDto:
+      type: object
+      description: "A season offered by the Player Hub league switcher (docs/specs/123)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        current:
+          type: boolean
+      required:
+      - id
+      - name
+      - current
+    MyTeamRefDto:
+      type: object
+      description: "One of the held player teams in a league (docs/specs/123)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    MyLeagueSummaryDto:
+      type: object
+      description: "One league card for the held player (docs/specs/123). teamCount is the active own teams plus active registered opponents; nextMatchDate is null when no match is ahead."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        logoUrl:
+          type: [string, 'null']
+        minAge:
+          type: [integer, 'null']
+          format: int32
+        maxAge:
+          type: [integer, 'null']
+          format: int32
+        teamCount:
+          type: integer
+          format: int32
+        myTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamRefDto"
+        nextMatchDate:
+          type: [string, 'null']
+          format: date
+        matchCount:
+          type: integer
+          format: int32
+      required:
+      - id
+      - name
+      - teamCount
+      - myTeams
+      - matchCount
+    MyLeaguesDto:
+      type: object
+      description: "The leagues the held player teams play in for one season (docs/specs/123). seasons are those with a league for the player plus the current and selected season, newest first; leagues are in case-insensitive name order."
+      properties:
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MySeasonOptionDto"
+        seasonId:
+          type: [string, 'null']
+          format: uuid
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeagueSummaryDto"
+      required:
+      - seasons
+      - leagues
+    MyLeagueInfoDto:
+      type: object
+      description: "The league profile for the Player Hub (docs/specs/123). No contacts, phone, email, active flag or audit fields."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        logoUrl:
+          type: [string, 'null']
+        minAge:
+          type: [integer, 'null']
+          format: int32
+        maxAge:
+          type: [integer, 'null']
+          format: int32
+        ageCutoffDay:
+          type: [integer, 'null']
+          format: int32
+        ageCutoffMonth:
+          type: [integer, 'null']
+          format: int32
+        format:
+          type: [string, 'null']
+          enum:
+          - T20
+          - T30
+          - T45
+          - T50
+          - ONE_DAY
+          - THREE_DAY
+          - FIVE_DAY
+        website:
+          type: [string, 'null']
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
+      required:
+      - id
+      - name
+      - socialLinks
+    MyLeagueSeasonDto:
+      type: object
+      description: "The season of a Player Hub league page (docs/specs/123)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - id
+      - name
+      - startDate
+      - endDate
+    MyPlayingConditionsDto:
+      type: object
+      description: "A season playing conditions for the Player Hub (docs/specs/123): no ids, uploader or upload time."
+      properties:
+        documentUrl:
+          type: [string, 'null']
+        maxOversPerInnings:
+          type: [integer, 'null']
+          format: int32
+        maxBallsPerOver:
+          type: [integer, 'null']
+          format: int32
+        freeHitOnNoBall:
+          type: boolean
+        powerplayOvers:
+          type: [integer, 'null']
+          format: int32
+        maxOversPerBowler:
+          type: [integer, 'null']
+          format: int32
+        fieldingRestrictionsNotes:
+          type: [string, 'null']
+        allowSubstitutions:
+          type: boolean
+        pointsForWin:
+          type: [integer, 'null']
+          format: int32
+        pointsForLoss:
+          type: [integer, 'null']
+          format: int32
+        pointsForDraw:
+          type: [integer, 'null']
+          format: int32
+        pointsForNoResult:
+          type: [integer, 'null']
+          format: int32
+        pointsForForfeitWin:
+          type: [integer, 'null']
+          format: int32
+        bonusPointsEnabled:
+          type: boolean
+        bonusBattingOversThreshold:
+          type: [integer, 'null']
+          format: int32
+        bonusBowlingRestrictionPercentage:
+          type: [integer, 'null']
+          format: int32
+        additionalNotes:
+          type: [string, 'null']
+      required:
+      - allowSubstitutions
+      - bonusPointsEnabled
+    MyLeagueTeamDto:
+      type: object
+      description: "One active team of a league season; mine marks the held player own teams (docs/specs/123)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        abbreviation:
+          type: [string, 'null']
+        logoUrl:
+          type: [string, 'null']
+        mine:
+          type: boolean
+      required:
+      - id
+      - name
+      - mine
+    MyScheduleItemDto:
+      type: object
+      description: "One fixture of the whole league schedule (docs/specs/123). date and time are on the server clock (time to the minute, HH:mm); matchId is opaque and only a list key."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          format: partial-time
+        homeName:
+          type: string
+        homeLogoUrl:
+          type: [string, 'null']
+        awayName:
+          type: string
+        awayLogoUrl:
+          type: [string, 'null']
+        venue:
+          type: [string, 'null']
+        mine:
+          type: boolean
+      required:
+      - matchId
+      - date
+      - time
+      - homeName
+      - awayName
+      - mine
+    MyResultItemDto:
+      type: object
+      description: "One published result (docs/specs/123): scores as short text such as 142/6 (20.0) and the result line; never a scorecard."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        homeName:
+          type: string
+        awayName:
+          type: string
+        homeScore:
+          type: string
+        awayScore:
+          type: string
+        resultLine:
+          type: string
+        mine:
+          type: boolean
+      required:
+      - matchId
+      - date
+      - homeName
+      - awayName
+      - homeScore
+      - awayScore
+      - resultLine
+      - mine
+    MyKeyDatesDto:
+      type: object
+      description: "The key dates of a league season (docs/specs/123), each null when unknown. seasonStart and seasonEnd are the league own season dates."
+      properties:
+        seasonStart:
+          type: [string, 'null']
+          format: date
+        seasonEnd:
+          type: [string, 'null']
+          format: date
+        firstMatchDate:
+          type: [string, 'null']
+          format: date
+        lastMatchDate:
+          type: [string, 'null']
+          format: date
+        nextMatchDate:
+          type: [string, 'null']
+          format: date
+    MyLeagueDto:
+      type: object
+      description: "One league for the held player (docs/specs/123). No contacts and no manager-only data; playingConditions is null when none are set; results are published only, newest first; schedule is every active match in date order."
+      properties:
+        league:
+          $ref: "#/components/schemas/MyLeagueInfoDto"
+        season:
+          $ref: "#/components/schemas/MyLeagueSeasonDto"
+        playingConditions:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyPlayingConditionsDto"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeagueTeamDto"
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyScheduleItemDto"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultItemDto"
+        keyDates:
+          $ref: "#/components/schemas/MyKeyDatesDto"
+        shareDisabledFormats:
+          type: array
+          description: "LEAGUE share format codes the club has disabled (docs/specs/122); empty when none."
+          items:
+            type: string
+        fields:
+          type: array
+          description: "Distinct fields (playing areas) used by the league's matches in the season, sorted by name, same shape as the Field Directory; empty when none. Free-text venues are not listed."
+          items:
+            $ref: "#/components/schemas/MyFieldDto"
+      required:
+      - league
+      - season
+      - teams
+      - schedule
+      - results
+      - keyDates
     MyPollDto:
       type: object
       description: "An open poll the player belongs to. pollId is the squad poll id or the round id. SQUAD sets teamName, homeName, awayName, matchDate and venue; GROUP sets sectionName and windows."

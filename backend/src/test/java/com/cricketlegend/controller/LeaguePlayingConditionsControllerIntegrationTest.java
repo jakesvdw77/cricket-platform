@@ -588,4 +588,84 @@ class LeaguePlayingConditionsControllerIntegrationTest {
                 .active(true)
                 .build();
     }
+
+    // --- docs/specs/124: balls per over and free hit ---
+
+    private static final String BODY_TEMPLATE =
+            """
+            {
+                "maxOversPerInnings": 20,
+                %s
+                "powerplayOvers": 6,
+                "pointsForWin": 2,
+                "pointsForLoss": 0,
+                "pointsForDraw": 1,
+                "pointsForNoResult": 1,
+                "pointsForForfeitWin": 2,
+                "bonusPointsEnabled": false
+            }
+            """;
+
+    private static final String PC_URL =
+            "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions";
+
+    private org.springframework.test.web.servlet.ResultActions putConditions(String extraFields) throws Exception {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        Club club = clubRepository.save(newClub("Riverside " + unique, "riverside-" + unique));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-" + unique, club.getId());
+        return mockMvc.perform(put(PC_URL, club.getId(), league.getId(), season.getId())
+                .with(admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(BODY_TEMPLATE.formatted(extraFields)));
+    }
+
+    @Test
+    void aSaveWithoutTheNewFieldsMeansNoLimitAndFreeHitOn() throws Exception {
+        putConditions("")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxBallsPerOver").doesNotExist())
+                .andExpect(jsonPath("$.freeHitOnNoBall").value(true));
+    }
+
+    @Test
+    void ballsPerOverAndFreeHitRoundTripThroughSaveAndGet() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(put(PC_URL, club.getId(), league.getId(), season.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY_TEMPLATE.formatted("\"maxBallsPerOver\": 8, \"freeHitOnNoBall\": false,")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxBallsPerOver").value(8))
+                .andExpect(jsonPath("$.freeHitOnNoBall").value(false));
+
+        mockMvc.perform(get(PC_URL, club.getId(), league.getId(), season.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxBallsPerOver").value(8))
+                .andExpect(jsonPath("$.freeHitOnNoBall").value(false));
+
+        mockMvc.perform(put(PC_URL, club.getId(), league.getId(), season.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY_TEMPLATE.formatted("\"maxBallsPerOver\": null, \"freeHitOnNoBall\": true,")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxBallsPerOver").doesNotExist())
+                .andExpect(jsonPath("$.freeHitOnNoBall").value(true));
+    }
+
+    @Test
+    void ballsPerOverOfOneAndTwentyAreAccepted() throws Exception {
+        putConditions("\"maxBallsPerOver\": 1,").andExpect(status().isOk()).andExpect(jsonPath("$.maxBallsPerOver").value(1));
+        putConditions("\"maxBallsPerOver\": 20,").andExpect(status().isOk()).andExpect(jsonPath("$.maxBallsPerOver").value(20));
+    }
+
+    @Test
+    void ballsPerOverOfZeroOrTwentyOneOrNegativeIsRejectedWith400() throws Exception {
+        putConditions("\"maxBallsPerOver\": 0,").andExpect(status().isBadRequest());
+        putConditions("\"maxBallsPerOver\": 21,").andExpect(status().isBadRequest());
+        putConditions("\"maxBallsPerOver\": -1,").andExpect(status().isBadRequest());
+    }
 }

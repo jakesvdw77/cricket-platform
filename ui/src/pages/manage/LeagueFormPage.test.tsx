@@ -12,6 +12,17 @@ import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueContact } from '../../api/leagueContactApi'
 
+// docs/specs/122-league-sharing.md (Entry points): the dialog has its own test; here it is a stub that shows what the Schedule
+// and Playing conditions tabs open it with.
+vi.mock('../../components/ShareLeagueDialog', () => ({
+  ShareLeagueDialog: (props: { open: boolean; preselected: string[]; league: { name: string }; seasonId?: string | null }) =>
+    props.open ? (
+      <div role="dialog" aria-label="Share league" data-preselected={props.preselected.join(',')} data-season={props.seasonId ?? ''}>
+        <h2>Share league</h2>
+      </div>
+    ) : null,
+}))
+
 const listLeagues = vi.fn()
 const createLeague = vi.fn()
 const updateLeague = vi.fn()
@@ -820,7 +831,7 @@ describe('LeagueFormPage', () => {
 
     // docs/specs/051-league-schedule-sharing.md item 8: the Share button, rendered alongside "Add
     // match" on the content line, opens the same ShareScheduleDialog used on the league Schedule view.
-    it('"Share" button, alongside "Add match", opens ShareScheduleDialog', async () => {
+    it('"Share" button, alongside "Add match", opens the Share League dialog', async () => {
       const user = userEvent.setup()
 
       renderScheduleTab()
@@ -829,11 +840,14 @@ describe('LeagueFormPage', () => {
       await user.click(screen.getByRole('tab', { name: 'Schedule' }))
 
       expect(screen.getByRole('button', { name: 'Add match' })).toBeInTheDocument()
-      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+      expect(screen.queryByText('Share league')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Share' }))
 
-      expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
+      expect(await screen.findByText('Share league')).toBeInTheDocument()
+      // The Schedule tab preselects Schedule only, for the season the tab shows.
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-preselected', 'SCHEDULE')
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-season', 'season-1')
     })
 
   })
@@ -1000,7 +1014,7 @@ describe('LeagueFormPage', () => {
 
     // docs/specs/052-league-playing-conditions.md: a second, independent Share flow, never
     // touches the Schedule tab's own ShareScheduleDialog/shareOpen state.
-    it('"Share" button on the Playing Conditions tab opens PlayingConditionsShareDialog, independent of the Schedule tab\'s own Share', async () => {
+    it('"Share" button on the Playing Conditions tab opens the Share League dialog', async () => {
       const user = userEvent.setup()
       getPlayingConditions.mockResolvedValue(null)
 
@@ -1009,13 +1023,13 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
-      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
-      expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
+      expect(screen.queryByText('Share league')).not.toBeInTheDocument()
 
       await user.click(await screen.findByRole('button', { name: 'Share' }))
 
-      expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
-      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+      expect(await screen.findByText('Share league')).toBeInTheDocument()
+      // The Playing conditions tab preselects Playing conditions only.
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-preselected', 'CONDITIONS')
     })
   })
 

@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
-import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
 import { VIEW_TABS_PROPS, viewTabSx, viewTabsSx } from '../../../utils/viewTabs'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import AddIcon from '@mui/icons-material/Add'
+import { Button, compactButtonSx } from '../../../components/Button'
+import { BrandIcon } from '../../../components/BrandIcon'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
@@ -23,8 +24,7 @@ import { avatarSx, badgeSx } from '../../../components/RecordCard'
 import { EmptyState } from '../../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { LeagueAgeReferenceLine } from '../../../components/LeagueAgeReferenceLine'
-import { ShareScheduleDialog } from '../../../components/ShareScheduleDialog'
-import type { ShareScheduleTeamOption } from '../../../components/ShareScheduleDialog'
+import { ShareLeagueDialog } from '../../../components/ShareLeagueDialog'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../../components/RecordQuickViewDialog'
 import { SocialLinksRow } from '../../../components/marketing/SocialLinksRow'
@@ -39,10 +39,6 @@ import { leagueTeamsQueryKey, listLeagueTeams } from '../../../api/leagueTeamApi
 import { pickDefaultSeasonId } from '../../../utils/defaultSeason'
 import { initialsFromName } from '../../../utils/initials'
 import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../../utils/leagueContact'
-import { generateLeagueSchedulePdf } from '../../../utils/leagueSchedulePdf'
-import { generateLeagueSchedulePoster } from '../../../utils/leagueSchedulePoster'
-import { generateLeagueScheduleIcs } from '../../../utils/leagueScheduleIcs'
-import { triggerDownload } from '../../../utils/triggerDownload'
 import { leagueBadges } from '../leagues/leagueBadges'
 import { DuplicateLeagueDialog } from '../leagues/DuplicateLeagueDialog'
 import { editTabForView } from '../leagueEdit/leagueEditTabConfig'
@@ -60,14 +56,14 @@ const VIEW_TABS = [
 // Conditions views. Owns the data the header and all three views need (carried over from the old
 // LeagueDetailPage, docs/specs/062-league-detail-redesign.md), the selected season (kept in
 // ?seasonId=), the always-visible header and the view switcher, and renders the active view through
-// <Outlet context>. docs/specs/091 (C): the header is the poll page's (Back, Season pill, Share schedule and a filled Edit
+// <Outlet context>. docs/specs/091 (C): the header is the poll page's (Back, Season pill, Share and a filled Edit
 // on the top row; logo and title; format and Active badges; contacts and links on one line), a key-figure strip follows,
-// and the season's matches and the Share schedule dialog live here so the header button works on every tab.
+// and the season's matches and the Share League dialog live here so the header button works on every tab.
 export default function LeagueViewLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId } = useParams<{ leagueId?: string }>()
+  const navigate = useNavigate()
   const location = useLocation()
-  const theme = useTheme()
   const [searchParams, setSearchParams] = useSearchParams()
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
@@ -217,6 +213,8 @@ export default function LeagueViewLayout() {
     editParams.set('seasonId', selectedSeasonId)
   }
   const editQuery = editParams.toString()
+  // The existing Add match form (MatchFormPage) reads ?leagueId= and ?seasonId= to preselect both.
+  const createMatchPath = `/manage/fixtures/matches/new?leagueId=${leagueId}${selectedSeasonId ? `&seasonId=${selectedSeasonId}` : ''}`
   const editPath = `${leagueBasePath}/edit${editQuery ? `?${editQuery}` : ''}`
 
   const context: LeagueViewContext = {
@@ -234,33 +232,6 @@ export default function LeagueViewLayout() {
     isLoadingMatches: matchesQuery.isLoading,
   }
 
-  const shareTeams: ShareScheduleTeamOption[] = affiliationsForSeason.map((affiliation) => ({
-    teamId: affiliation.teamId,
-    teamName: teamsById.get(affiliation.teamId)?.name ?? 'Unknown team',
-  }))
-
-  const handleSharePdf = async (teamFilter: ShareScheduleTeamOption | null) => {
-    const url = await generateLeagueSchedulePdf(matches, teamsById, league.name, seasonLabel, teamFilter)
-    window.open(url, '_blank', 'noopener')
-  }
-
-  const handleSharePoster = async (teamFilter: ShareScheduleTeamOption | null) => {
-    const url = await generateLeagueSchedulePoster(
-      matches,
-      teamsById,
-      league.name,
-      seasonLabel,
-      teamFilter,
-      theme.palette.primary.main,
-    )
-    triggerDownload(url, `${league.name}-poster.png`)
-  }
-
-  const handleShareCalendar = async (team: ShareScheduleTeamOption) => {
-    const url = generateLeagueScheduleIcs(matches, teamsById, league.name, seasonLabel, team)
-    triggerDownload(url, `${team.teamName}-schedule.ics`)
-  }
-
   const linkSx = { fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere' } as const
   const linkItemSx = { display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 } as const
 
@@ -268,7 +239,7 @@ export default function LeagueViewLayout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          {/* Top row: Back on the left; the Season pill, Share schedule, Duplicate league and the filled primary Edit on the right. */}
+          {/* Top row: Back on the left; the Season pill, Share, Duplicate league and the filled primary Edit on the right. */}
           <Box
             data-testid="league-header-top-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
@@ -280,7 +251,7 @@ export default function LeagueViewLayout() {
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
+              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
               Back to Leagues
             </MuiButton>
@@ -294,27 +265,39 @@ export default function LeagueViewLayout() {
                   showAll={false}
                 />
               )}
-              <MuiButton
-                variant="outlined"
+              <Button
+                size="compact"
+                variant="secondary"
                 startIcon={<ShareOutlinedIcon fontSize="small" />}
-                disabled={matchesQuery.isLoading}
                 onClick={() => setShareOpen(true)}
               >
-                Share schedule
-              </MuiButton>
+                Share
+              </Button>
+              <Button
+                size="compact"
+                variant="secondary"
+                startIcon={<AddIcon fontSize="small" />}
+                disabled={!selectedSeasonId}
+                onClick={() => navigate(createMatchPath)}
+              >
+                Create match
+              </Button>
               {/* docs/specs/096: outlined, so Edit stays the one filled primary action; the labelled button wraps on a phone. */}
-              <MuiButton
-                variant="outlined"
+              <Button
+                size="compact"
+                variant="secondary"
                 startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
                 onClick={() => setDuplicateOpen(true)}
               >
                 Duplicate league
-              </MuiButton>
+              </Button>
               <MuiButton
                 component={RouterLink}
                 to={editPath}
                 variant="contained"
+                size="small"
                 startIcon={<EditOutlinedIcon fontSize="small" />}
+                sx={compactButtonSx}
               >
                 Edit
               </MuiButton>
@@ -328,7 +311,7 @@ export default function LeagueViewLayout() {
               variant="rounded"
               sx={{ ...avatarSx(64), width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
             >
-              <EmojiEventsOutlinedIcon />
+              <BrandIcon name="nav/cricket-leagues" size={40} surface="none" />
             </Avatar>
             <Stack spacing={1} sx={{ minWidth: 0 }}>
               <Typography
@@ -484,15 +467,13 @@ export default function LeagueViewLayout() {
         <Outlet context={context} />
       </Box>
 
-      <ShareScheduleDialog
+      <ShareLeagueDialog
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        leagueName={league.name}
-        seasonLabel={seasonLabel}
-        teams={shareTeams}
-        onSharePdf={handleSharePdf}
-        onSharePoster={handleSharePoster}
-        onShareCalendar={handleShareCalendar}
+        clubId={clubId}
+        league={league}
+        seasonId={selectedSeasonId || null}
+        preselected={['SCHEDULE']}
       />
 
       {duplicateOpen && (

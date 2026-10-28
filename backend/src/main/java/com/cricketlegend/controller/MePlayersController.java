@@ -2,6 +2,8 @@ package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.InviteAgentRequest;
 import com.cricketlegend.dto.MyFieldDto;
+import com.cricketlegend.dto.MyLeagueDto;
+import com.cricketlegend.dto.MyLeaguesDto;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.MyPollDto;
@@ -10,6 +12,7 @@ import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
 import com.cricketlegend.service.AgentInvitationService;
 import com.cricketlegend.service.MyFieldService;
+import com.cricketlegend.service.MyLeagueService;
 import com.cricketlegend.service.MyPlayerPollService;
 import com.cricketlegend.service.MyPlayerService;
 import jakarta.validation.Valid;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -39,16 +43,19 @@ class MePlayersController {
     private final MyPlayerPollService myPlayerPollService;
     private final AgentInvitationService agentInvitationService;
     private final MyFieldService myFieldService;
+    private final MyLeagueService myLeagueService;
 
     MePlayersController(
             MyPlayerService myPlayerService,
             MyPlayerPollService myPlayerPollService,
             AgentInvitationService agentInvitationService,
-            MyFieldService myFieldService) {
+            MyFieldService myFieldService,
+            MyLeagueService myLeagueService) {
         this.myPlayerService = myPlayerService;
         this.myPlayerPollService = myPlayerPollService;
         this.agentInvitationService = agentInvitationService;
         this.myFieldService = myFieldService;
+        this.myLeagueService = myLeagueService;
     }
 
     // Write endpoints below: MyPlayerAccess (inside the services) is the only authorisation gate, from the caller's own rows.
@@ -87,6 +94,25 @@ class MePlayersController {
     @GetMapping("/{playerKey}/fields")
     List<MyFieldDto> fields(Authentication authentication, @PathVariable String playerKey) {
         return myFieldService.list(authentication, playerKey);
+    }
+
+    /** docs/specs/123: the leagues the held player's teams play in, read-only, authorised only through MyPlayerAccess. */
+    @GetMapping("/{playerKey}/leagues")
+    MyLeaguesDto leagues(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID seasonId) {
+        return myLeagueService.list(authentication, playerKey, seasonId);
+    }
+
+    /** docs/specs/123: one of those leagues; a 404 when the player's teams are not in it for the season. */
+    @GetMapping("/{playerKey}/leagues/{leagueId}")
+    MyLeagueDto league(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @PathVariable UUID leagueId,
+            @RequestParam(required = false) UUID seasonId) {
+        return myLeagueService.get(authentication, playerKey, leagueId, seasonId);
     }
 
     @PutMapping("/{playerKey}/polls/{pollId}/answers")

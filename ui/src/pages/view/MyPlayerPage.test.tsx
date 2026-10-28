@@ -100,7 +100,7 @@ describe('MyPlayerPage on a desktop', () => {
   })
 
   it.each([
-    ['schedule', 'Matches', /Upcoming matches and training for this player will show here/],
+    ['schedule/matches', 'Matches', /Upcoming matches and training for this player will show here/],
     ['stats', 'My stats', /Personal bests, form and season progress/],
   ])('%s opens on its first child, a locked panel that says Coming soon', async (path, label, text) => {
     setup(`/account/players/k1/${path}`)

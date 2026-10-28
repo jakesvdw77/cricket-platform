@@ -4,6 +4,8 @@ import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import { Button } from '../../../components/Button'
 import { badgeSx } from '../../../components/RecordCard'
 import { useCountdown } from '../../../components/Countdown'
 import { LEAGUE_FORMAT_LABELS } from '../../../api/leagueApi'
@@ -15,14 +17,16 @@ export interface LeagueTableProps {
   leagues: League[]
   // The chosen season, carried into the league page.
   seasonId?: string
+  // docs/specs/122-league-sharing.md: opens the Share League dialog (the page owns it); absent, rows have no Share action.
+  onShare?: (league: League) => void
 }
 
 const NOT_ON_FILE = '–'
 
 // Desktop: League, Format, Teams, Next match, Matches played, Status, chevron. A phone keeps League, Played and the chevron.
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 64px 32px',
-  sm: 'minmax(220px, 2fr) 90px 70px minmax(170px, 1.2fr) minmax(190px, 1.3fr) 100px 32px',
+  xs: 'minmax(0, 1fr) 64px 84px',
+  sm: 'minmax(220px, 2fr) 90px 70px minmax(170px, 1.2fr) minmax(190px, 1.3fr) 100px 112px',
 }
 
 const gridSx = {
@@ -39,7 +43,7 @@ const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
 
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
-function LeagueRow({ league, seasonId }: { league: League; seasonId?: string }) {
+function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: string; onShare?: (league: League) => void }) {
   const next = useCountdown(league.nextMatchDate)
   const soon = next.stage !== 'none' && next.stage !== 'expired' && next.warn
   const matchCount = league.matchCount ?? 0
@@ -127,8 +131,20 @@ function LeagueRow({ league, seasonId }: { league: League; seasonId?: string }) 
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="league-row-status">
         <Chip size="small" label={league.active ? 'Active' : 'Inactive'} sx={{ ...badgeSx(league.active ? 'active' : 'muted'), height: 22, fontSize: '0.75rem' }} />
       </Box>
-      <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
-        <ChevronRightOutlinedIcon fontSize="small" />
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, color: 'primary.main' }}>
+        {onShare && (
+          // position: relative paints the button above the row's stretched link, so it never navigates.
+          <Button
+            size="compact"
+            variant="secondary"
+            aria-label={`Share ${league.name}`}
+            title="Share"
+            onClick={() => onShare(league)}
+            sx={{ position: 'relative', zIndex: 1, minHeight: 28, height: 28, minWidth: { xs: 44, md: 28 }, p: 0, '& .MuiButton-startIcon': { m: 0 } }}
+            startIcon={<ShareOutlinedIcon />}
+          />
+        )}
+        <ChevronRightOutlinedIcon fontSize="small" aria-hidden />
       </Box>
     </Box>
   )
@@ -137,7 +153,7 @@ function LeagueRow({ league, seasonId }: { league: League; seasonId?: string }) 
 // docs/specs/091-leagues-gold-standard.md (A): the list view of the Leagues page, built like PlayerTable, MatchTable and
 // PollTable: one bordered panel with a header row that sticks to the top of the scrolling page and zebra rows; the whole
 // row opens the league's Schedule for the chosen season. A phone keeps League, Played and the chevron.
-export function LeagueTable({ leagues, seasonId }: LeagueTableProps) {
+export function LeagueTable({ leagues, seasonId, onShare }: LeagueTableProps) {
   return (
     <Box
       role="table"
@@ -183,7 +199,7 @@ export function LeagueTable({ leagues, seasonId }: LeagueTableProps) {
       </Box>
       <Box role="rowgroup">
         {leagues.map((league) => (
-          <LeagueRow key={league.id} league={league} seasonId={seasonId} />
+          <LeagueRow key={league.id} league={league} seasonId={seasonId} onShare={onShare} />
         ))}
       </Box>
     </Box>

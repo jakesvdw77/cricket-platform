@@ -55,12 +55,7 @@ export const HUB_NAV: HubNavItem[] = [
         soon: true,
         soonCopy: 'Upcoming matches and training for this player will show here once the club shares them with linked accounts.',
       },
-      {
-        id: 'schedule.leagues',
-        label: 'Leagues',
-        soon: true,
-        soonCopy: "The leagues and competitions this player's teams play in, once the club shares them with linked accounts.",
-      },
+      { id: 'schedule.leagues', label: 'Leagues' },
       { id: 'schedule.results', label: 'Results', soon: true, soonCopy: "Published results for this player's teams." },
       { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
     ],
@@ -226,8 +221,10 @@ export interface HubBackState {
   // The URL's section, item and sub segments.
   section?: string
   item?: string
-  // The segment after the item: a Profile sub view (edit, hand-over ...).
+  // The segment after the item: a Profile sub view (edit, hand-over ...), or a league id under Schedule > Leagues.
   view?: string
+  // The season the league page was opened from (docs/specs/123); the Back to Leagues target keeps it.
+  season?: string
 }
 
 export interface HubBackAction {
@@ -237,11 +234,16 @@ export interface HubBackAction {
 
 // The footer's one Back (Decision 15); Escape runs the same action. Null means no Back control at all.
 export function hubBack(state: HubBackState): HubBackAction | null {
-  const { playerKey, layout, many, section, item, view } = state
+  const { playerKey, layout, many, section, item, view, season } = state
   const main = hubPath(playerKey)
   const route = resolveRoute(section, item)
   if (route.section.id === 'profile' && isProfileSubView(item, view)) {
     return { label: 'Back to Profile', target: hubPath(playerKey, 'profile', item) }
+  }
+  // docs/specs/123: a league page goes back to the list for the same season, on every layout; the list itself falls through to the
+  // usual rules (a phone: Back to menu, as every other Schedule child).
+  if (route.section.id === 'schedule' && item === 'leagues') {
+    if (view) return { label: 'Back to Leagues', target: `${hubPath(playerKey, 'schedule', 'leagues')}${season ? `?season=${encodeURIComponent(season)}` : ''}` }
   }
   const toPlayers = many ? { label: 'Back to players', target: '/account' } : null
   if (layout === 'phone') {

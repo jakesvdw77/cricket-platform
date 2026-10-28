@@ -6,6 +6,8 @@ const baseConditions: PlayingConditionsPayload = {
   maxOversPerInnings: 20,
   powerplayOvers: 6,
   maxOversPerBowler: null,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
   fieldingRestrictionsNotes: 'Two fielders outside the circle.',
   allowSubstitutions: false,
   pointsForWin: 2,
@@ -94,5 +96,19 @@ describe('generatePlayingConditionsWhatsAppText', () => {
 
     expect(text).not.toContain('Two fielders outside the circle.')
     expect(text).not.toContain('DLS applies for rain-affected matches.')
+  })
+})
+
+describe('generatePlayingConditionsWhatsAppText balls per over and free hit (docs/specs/124)', () => {
+  it('says no limit and free hit Yes by default', () => {
+    const text = generatePlayingConditionsWhatsAppText('Riverside T20 League', '2026', baseConditions)
+    expect(text).toContain('Balls per over: No limit')
+    expect(text).toContain('Free hit after a no ball: Yes')
+  })
+
+  it('states the limit and a switched-off free hit', () => {
+    const text = generatePlayingConditionsWhatsAppText('Riverside T20 League', '2026', { ...baseConditions, maxBallsPerOver: 8, freeHitOnNoBall: false })
+    expect(text).toContain('Balls per over: At most 8, wides and no balls included')
+    expect(text).toContain('Free hit after a no ball: No')
   })
 })

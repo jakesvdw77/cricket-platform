@@ -171,7 +171,7 @@ function extrasOf(
   return { total, text: `Extras ${total}${detail.length ? ` (${detail.join(', ')})` : ''}` }
 }
 
-function sideScoreText(result: MatchResult, side: ResultSide, ballsPerOver: number): string {
+export function sideScoreText(result: MatchResult, side: ResultSide, ballsPerOver: number): string {
   const innings = inningsFor(result.innings, side)
   const regular = innings.filter((item) => item.kind !== 'SUPER_OVER').map((item) => inningsScoreText(item, ballsPerOver))
   const superOvers = innings.filter((item) => item.kind === 'SUPER_OVER').map((item) => inningsScoreText(item, ballsPerOver))

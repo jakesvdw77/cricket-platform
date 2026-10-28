@@ -129,7 +129,7 @@ describe('LeagueList', () => {
 
     renderList('test-club-id')
 
-    expect(screen.queryByText('No leagues yet')).not.toBeInTheDocument()
+    expect(screen.queryByText('No league available')).not.toBeInTheDocument()
     expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
   })
 
@@ -141,12 +141,12 @@ describe('LeagueList', () => {
     expect(await screen.findByText("Couldn't load leagues")).toBeInTheDocument()
   })
 
-  it('renders the "No leagues yet" empty state when the club has no leagues', async () => {
+  it('renders the "No league available" empty state when the club has no leagues', async () => {
     listLeagues.mockResolvedValueOnce([])
 
     renderList('test-club-id')
 
-    expect(await screen.findByText('No leagues yet')).toBeInTheDocument()
+    expect(await screen.findByText('No league available')).toBeInTheDocument()
   })
 
   it('renders no back link (the shell menu replaces "Back to Dashboard")', async () => {
@@ -223,7 +223,7 @@ describe('LeagueList', () => {
       await screen.findByText('Internal League')
       expect(await screen.findByRole('button', { name: /Active leagues/ })).toHaveTextContent('5')
       expect(screen.getByRole('button', { name: /Matches this week/ })).toHaveTextContent('9')
-      expect(screen.getByRole('button', { name: /Need attention/ })).toHaveTextContent('2')
+      expect(screen.getByRole('button', { name: /Setup needed/ })).toHaveTextContent('2')
       expect(screen.getByText('Teams entered')).toBeInTheDocument()
       expect(screen.getByText('42')).toBeInTheDocument()
       expect(screen.getByText('Players')).toBeInTheDocument()
@@ -239,13 +239,13 @@ describe('LeagueList', () => {
       renderList('test-club-id')
 
       await screen.findByText('Internal League')
-      await user.click(await screen.findByRole('button', { name: /Need attention/ }))
+      await user.click(await screen.findByRole('button', { name: /Setup needed/ }))
       await waitFor(() => expect(lastListParams()).toEqual(expect.objectContaining({ focus: 'attention' })))
-      expect(screen.getByRole('button', { name: /Need attention/ })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: /Setup needed/ })).toHaveAttribute('aria-pressed', 'true')
 
       await user.click(screen.getByRole('button', { name: /Matches this week/ }))
       await waitFor(() => expect(lastListParams()).toEqual(expect.objectContaining({ focus: 'this-week' })))
-      expect(screen.getByRole('button', { name: /Need attention/ })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /Setup needed/ })).toHaveAttribute('aria-pressed', 'false')
 
       await user.click(screen.getByRole('button', { name: /Matches this week/ }))
       await waitFor(() => expect(lastListParams().focus).toBeUndefined())
@@ -446,21 +446,21 @@ describe('LeagueList', () => {
       await screen.findByText('Internal League')
 
       listLeagues.mockResolvedValue([])
-      await user.click(await screen.findByRole('button', { name: /Need attention/ }))
+      await user.click(await screen.findByRole('button', { name: /Setup needed/ }))
 
       expect(await screen.findByText('No matching leagues')).toBeInTheDocument()
-      expect(screen.getByText('No leagues match need attention.')).toBeInTheDocument()
+      expect(screen.getByText('No leagues match setup needed.')).toBeInTheDocument()
     })
 
-    it('shows "No leagues yet" for a club with no leagues even with a typed search', async () => {
+    it('shows "No league available" for a club with no leagues even with a typed search', async () => {
       const user = userEvent.setup()
       listLeagues.mockResolvedValue([])
 
       renderList('test-club-id')
 
-      await screen.findByText('No leagues yet')
+      await screen.findByText('No league available')
       await user.type(screen.getByLabelText('Search'), 'cup')
-      expect(screen.getByText('No leagues yet')).toBeInTheDocument()
+      expect(screen.getByText('No league available')).toBeInTheDocument()
     })
   })
 

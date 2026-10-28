@@ -15,8 +15,12 @@ import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { EmptyState } from '../../components/EmptyState'
+import { ShareFormatsSettings } from '../../components/ShareFormatsSettings'
+import { activateSession } from '../../api/meApi'
+import { useShareSettings } from '../../hooks/useShareSettings'
 import { InfoCard } from '../../components/InfoCard'
 import { KeyFigureTile } from '../../components/KeyFigureTile'
 import { OrgChartFullScreen } from '../../components/OrgChartFullScreen'
@@ -113,6 +117,11 @@ export default function ClubOverviewPage() {
     queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
+
+  // Share formats are for club administrators only (the same cached read ManagerHome makes); the settings are not read otherwise.
+  const { data: access } = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
+  const isClubAdmin = Boolean(clubId && access?.clubAdminClubIds.includes(clubId))
+  const shareSettings = useShareSettings(clubId, isClubAdmin)
 
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
@@ -410,6 +419,17 @@ export default function ClubOverviewPage() {
           />
         )}
       </InfoCard>
+
+      {isClubAdmin && (
+        <InfoCard title="Share formats" icon={<ShareOutlinedIcon />} testId="share-formats-card">
+          <ShareFormatsSettings
+            disabledFormats={shareSettings.disabledFormats}
+            onChange={shareSettings.setDisabledFormats}
+            disabled={shareSettings.isLoading || shareSettings.isSaving}
+            error={shareSettings.saveFailed ? shareSettings.saveError : undefined}
+          />
+        </InfoCard>
+      )}
 
       {/* The same read-only chart, full screen with zoom and fit. A node opens the same details drawer on top of it. */}
       <OrgChartFullScreen open={expanded && !isPhone} onClose={() => setExpanded(false)} title="Club structure">

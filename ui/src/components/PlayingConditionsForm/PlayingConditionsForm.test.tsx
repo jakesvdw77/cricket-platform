@@ -9,6 +9,8 @@ const savedValues: PlayingConditionsPayload = {
   maxOversPerInnings: 20,
   powerplayOvers: 6,
   maxOversPerBowler: 4,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
   fieldingRestrictionsNotes: 'Two fielders outside the circle in the powerplay.',
   allowSubstitutions: true,
   pointsForWin: 4,
@@ -175,6 +177,8 @@ describe('PlayingConditionsForm', () => {
       maxOversPerInnings: 20,
       powerplayOvers: 6,
       maxOversPerBowler: null,
+      maxBallsPerOver: null,
+      freeHitOnNoBall: true,
       fieldingRestrictionsNotes: null,
       allowSubstitutions: false,
       pointsForWin: 2,
@@ -217,5 +221,101 @@ describe('PlayingConditionsForm', () => {
     expect(payload.bonusPointsEnabled).toBe(true)
     expect(payload.bonusBattingOversThreshold).toBe(17)
     expect(payload.bonusBowlingRestrictionPercentage).toBe(80)
+  })
+})
+
+// docs/specs/124: the optional balls-per-over limit and the free hit rule.
+describe('PlayingConditionsForm balls per over and free hit', () => {
+  const save = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Save playing conditions' }))
+
+  it('hides the number while the limit is off and shows it, empty, when the switch is turned on', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    expect(screen.queryByLabelText('Maximum balls per over')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+
+    expect(screen.getByLabelText('Maximum balls per over')).toHaveValue(null)
+  })
+
+  it('clears the number when the switch is turned off, so a null is submitted', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    await user.type(screen.getByLabelText('Maximum balls per over'), '8')
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    expect(screen.queryByLabelText('Maximum balls per over')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    expect(screen.getByLabelText('Maximum balls per over')).toHaveValue(null)
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    await save(user)
+
+    expect((onSubmit.mock.calls[0][0] as PlayingConditionsPayload).maxBallsPerOver).toBeNull()
+  })
+
+  it('prefills the switch and number from a saved limit and submits the number', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit, initialValues: { ...savedValues, maxBallsPerOver: 8 } })
+
+    expect(screen.getByRole('checkbox', { name: /limit balls per over/i })).toBeChecked()
+    expect(screen.getByLabelText('Maximum balls per over')).toHaveValue(8)
+    await save(user)
+
+    expect((onSubmit.mock.calls[0][0] as PlayingConditionsPayload).maxBallsPerOver).toBe(8)
+  })
+
+  it.each(['0', '21'])('blocks submit when the limit is %s, outside 1 to 20', async (value) => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    await user.type(screen.getByLabelText('Maximum balls per over'), value)
+    await save(user)
+
+    expect(await screen.findByText('Enter a whole number from 1 to 20')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it.each(['1', '20'])('accepts %s, the bounds of the limit', async (value) => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    await user.type(screen.getByLabelText('Maximum balls per over'), value)
+    await save(user)
+
+    expect((onSubmit.mock.calls[0][0] as PlayingConditionsPayload).maxBallsPerOver).toBe(Number(value))
+  })
+
+  it('blocks submit when the limit is on but the number is empty', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('checkbox', { name: /limit balls per over/i }))
+    await save(user)
+
+    expect(await screen.findByText('Enter a whole number from 1 to 20')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('has the free hit switch on by default and submits false once it is turned off', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+    const freeHit = screen.getByRole('checkbox', { name: /free hit after a no ball/i })
+    expect(freeHit).toBeChecked()
+
+    await fillRequiredFields(user)
+    await user.click(freeHit)
+    await save(user)
+
+    expect((onSubmit.mock.calls[0][0] as PlayingConditionsPayload).freeHitOnNoBall).toBe(false)
   })
 })

@@ -22,6 +22,8 @@ public record LeaguePlayingConditionsDto(
         Instant uploadedAt,
         UUID uploadedBy,
         Integer maxOversPerInnings,
+        Integer maxBallsPerOver,
+        boolean freeHitOnNoBall,
         Integer powerplayOvers,
         Integer maxOversPerBowler,
         String fieldingRestrictionsNotes,

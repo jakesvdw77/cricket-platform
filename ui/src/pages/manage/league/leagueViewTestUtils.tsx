@@ -151,6 +151,8 @@ export function makePlayingConditions(overrides: Partial<LeaguePlayingConditions
     maxOversPerInnings: 20,
     powerplayOvers: 6,
     maxOversPerBowler: 4,
+    maxBallsPerOver: null,
+    freeHitOnNoBall: true,
     fieldingRestrictionsNotes: null,
     allowSubstitutions: false,
     pointsForWin: 2,

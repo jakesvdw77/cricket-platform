@@ -133,7 +133,7 @@ class LeaguePlayingConditionsServiceImplTest {
                 .uploadedAt(Instant.now()).build();
         LeaguePlayingConditionsDto dto = new LeaguePlayingConditionsDto(
                 existing.getId(), leagueId, seasonId, "/media/rules.pdf", existing.getUploadedAt(), null, null,
-                null, null, null, false, null, null, null, null, null, false, null, null, null);
+                null, true, null, null, null, false, null, null, null, null, null, false, null, null, null);
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
         when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
@@ -190,8 +190,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(UUID.randomUUID(), leagueId, seasonId, "/media/rules.pdf",
-                        Instant.now(), null, null, null, null, null, false, null, null, null, null, null, false,
-                        null, null, null));
+                        Instant.now(), null, null, null, true, null, null, null, false, null, null, null, null, null,
+                        false, null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, null);
 
@@ -214,7 +214,7 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(UUID.randomUUID(), leagueId, seasonId, "/media/rules.pdf",
-                        Instant.now(), uploadedBy, null, null, null, null, false, null, null, null, null, null,
+                        Instant.now(), uploadedBy, null, null, true, null, null, null, false, null, null, null, null, null,
                         false, null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, uploadedBy);
@@ -248,8 +248,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(existingId, leagueId, seasonId, "/media/new-rules.pdf",
-                        Instant.now(), newUploadedBy, null, null, null, null, false, null, null, null, null,
-                        null, false, null, null, null));
+                        Instant.now(), newUploadedBy, null, null, true, null, null, null, false, null, null, null, null, null,
+                        false, null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, newUploadedBy);
 
@@ -265,6 +265,8 @@ class LeaguePlayingConditionsServiceImplTest {
     private UpdateLeaguePlayingConditionsRequest validRequest(boolean bonusPointsEnabled) {
         return new UpdateLeaguePlayingConditionsRequest(
                 20,
+                null,
+                null,
                 6,
                 4,
                 "Fielding circle applies for the first 6 overs.",
@@ -325,7 +327,7 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(
-                        UUID.randomUUID(), leagueId, seasonId, null, null, null, 20, 6, 4, null, true, 2, 0, 1,
+                        UUID.randomUUID(), leagueId, seasonId, null, null, null, 20, null, true, 6, 4, null, true, 2, 0, 1,
                         1, 2, false, null, null, null));
 
         service.update(clubId, leagueId, seasonId, validRequest(false));
@@ -362,7 +364,7 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(
-                        existingId, leagueId, seasonId, "/media/rules.pdf", uploadedAt, uploadedBy, 20, 6, 4,
+                        existingId, leagueId, seasonId, "/media/rules.pdf", uploadedAt, uploadedBy, 20, null, true, 6, 4,
                         null, true, 2, 0, 1, 1, 2, false, null, null, null));
 
         service.update(clubId, leagueId, seasonId, validRequest(false));
@@ -382,7 +384,7 @@ class LeaguePlayingConditionsServiceImplTest {
         UUID seasonId = UUID.randomUUID();
         stubValidLeagueAndSeason(clubId, leagueId, seasonId);
         UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
-                20, 21, null, null, false, 2, 0, 1, 1, 2, false, null, null, null);
+                20, null, null, 21, null, null, false, 2, 0, 1, 1, 2, false, null, null, null);
 
         assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
                 .isInstanceOf(ValidationException.class);
@@ -396,7 +398,7 @@ class LeaguePlayingConditionsServiceImplTest {
         UUID seasonId = UUID.randomUUID();
         stubValidLeagueAndSeason(clubId, leagueId, seasonId);
         UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
-                20, 6, 21, null, false, 2, 0, 1, 1, 2, false, null, null, null);
+                20, null, null, 6, 21, null, false, 2, 0, 1, 1, 2, false, null, null, null);
 
         assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
                 .isInstanceOf(ValidationException.class);
@@ -410,7 +412,7 @@ class LeaguePlayingConditionsServiceImplTest {
         UUID seasonId = UUID.randomUUID();
         stubValidLeagueAndSeason(clubId, leagueId, seasonId);
         UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
-                20, 6, null, null, false, 2, 0, 1, 1, 2, true, null, 80, null);
+                20, null, null, 6, null, null, false, 2, 0, 1, 1, 2, true, null, 80, null);
 
         assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
                 .isInstanceOf(ValidationException.class);
@@ -424,7 +426,7 @@ class LeaguePlayingConditionsServiceImplTest {
         UUID seasonId = UUID.randomUUID();
         stubValidLeagueAndSeason(clubId, leagueId, seasonId);
         UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
-                20, 6, null, null, false, 2, 0, 1, 1, 2, true, 21, 80, null);
+                20, null, null, 6, null, null, false, 2, 0, 1, 1, 2, true, 21, 80, null);
 
         assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
                 .isInstanceOf(ValidationException.class);
@@ -449,12 +451,12 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(
-                        existingId, leagueId, seasonId, null, null, null, 20, 6, 4, null, false, 2, 0, 1, 1, 2,
+                        existingId, leagueId, seasonId, null, null, null, 20, null, true, 6, 4, null, false, 2, 0, 1, 1, 2,
                         false, null, null, null));
         // bonusPointsEnabled=false in the request, but the caller still sends stale threshold
         // values — the service must ignore them and persist null for both regardless.
         UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
-                20, 6, null, null, false, 2, 0, 1, 1, 2, false, 17, 80, null);
+                20, null, null, 6, null, null, false, 2, 0, 1, 1, 2, false, 17, 80, null);
 
         service.update(clubId, leagueId, seasonId, request);
 
@@ -462,5 +464,46 @@ class LeaguePlayingConditionsServiceImplTest {
         assertThat(saved.isBonusPointsEnabled()).isFalse();
         assertThat(saved.getBonusBattingOversThreshold()).isNull();
         assertThat(saved.getBonusBowlingRestrictionPercentage()).isNull();
+    }
+
+    // --- docs/specs/124: balls per over and free hit ---
+
+    private LeaguePlayingConditions saveWith(Integer maxBallsPerOver, Boolean freeHitOnNoBall) {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
+                .thenReturn(Optional.empty());
+        ArgumentCaptor<LeaguePlayingConditions> captor = ArgumentCaptor.forClass(LeaguePlayingConditions.class);
+        when(leaguePlayingConditionsRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        UpdateLeaguePlayingConditionsRequest base = validRequest(false);
+        service.update(clubId, leagueId, seasonId, new UpdateLeaguePlayingConditionsRequest(
+                base.maxOversPerInnings(), maxBallsPerOver, freeHitOnNoBall, base.powerplayOvers(),
+                base.maxOversPerBowler(), base.fieldingRestrictionsNotes(), base.allowSubstitutions(),
+                base.pointsForWin(), base.pointsForLoss(), base.pointsForDraw(), base.pointsForNoResult(),
+                base.pointsForForfeitWin(), false, null, null, base.additionalNotes()));
+        return captor.getValue();
+    }
+
+    @Test
+    void ballsPerOverIsStoredAndNullMeansNoLimit() {
+        assertThat(saveWith(8, true).getMaxBallsPerOver()).isEqualTo(8);
+        assertThat(saveWith(null, true).getMaxBallsPerOver()).isNull();
+    }
+
+    @Test
+    void freeHitDefaultsToOnWhenTheRequestOmitsItAndIsOffOnlyWhenExplicitlyFalse() {
+        assertThat(saveWith(null, null).isFreeHitOnNoBall()).isTrue();
+        assertThat(saveWith(null, true).isFreeHitOnNoBall()).isTrue();
+        assertThat(saveWith(null, false).isFreeHitOnNoBall()).isFalse();
+    }
+
+    @Test
+    void aNewEntityDefaultsToNoLimitAndFreeHitOn() {
+        LeaguePlayingConditions fresh = LeaguePlayingConditions.builder().build();
+
+        assertThat(fresh.getMaxBallsPerOver()).isNull();
+        assertThat(fresh.isFreeHitOnNoBall()).isTrue();
     }
 }

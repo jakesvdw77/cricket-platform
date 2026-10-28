@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
+import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
@@ -19,6 +20,8 @@ import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { cardGridSx } from '../../utils/cardGrid'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
+import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
+import type { League } from '../../api/leagueApi'
 import { LeagueCard } from './leagues/LeagueCard'
 import { LeagueTable } from './leagues/LeagueTable'
 
@@ -27,7 +30,7 @@ const FORMATS = Object.keys(LEAGUE_FORMAT_LABELS) as LeagueFormat[]
 const FOCUS_LABELS: Record<LeagueListFocus, string> = {
   active: 'Active leagues',
   'this-week': 'Matches this week',
-  attention: 'Need attention',
+  attention: 'Setup needed',
 }
 
 function noMatchDescription(term: string, format: string): string {
@@ -43,7 +46,7 @@ function noMatchDescription(term: string, format: string): string {
 
 // docs/specs/091-leagues-gold-standard.md (A): the Leagues page on the Polls / Matches / Players pattern - a Season pill
 // beside the title (every card, counter and the list describe that season), counters that are quick filters (Active
-// leagues, Matches this week, Need attention) or plain figures (Teams entered, Players, Seasons), the shared FilterBar
+// leagues, Matches this week, Setup needed) or plain figures (Teams entered, Players, Seasons), the shared FilterBar
 // (Format and search, client-side as before) and content line (sort, Show inactive, Cards | List). The season, Format and
 // the view are remembered; the quick filter and Show inactive are per visit. Deliberately no pagination - a club's own
 // leagues are a small, bounded list (docs/specs/029-league-management.md).
@@ -55,6 +58,8 @@ export default function LeagueList() {
   const [focus, setFocus] = useState<LeagueListFocus | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   const [view, setView] = useListViewPreference('leagueList:view')
+  // docs/specs/122-league-sharing.md: the one Share League dialog of the page, opened from a card or a row.
+  const [shareLeague, setShareLeague] = useState<League | null>(null)
   // docs/specs/071: Format is client-side but persisted per club; 091 persists the chosen season with it.
   const [{ format, seasonId: savedSeasonId }, setFilters] = usePersistedListFilters(`leagueList:filters:${clubId}`, {
     format: '',
@@ -171,7 +176,7 @@ export default function LeagueList() {
   const sortLink = <SortLink label={sortAsc ? 'Name, A to Z' : 'Name, Z to A'} onToggle={() => setSortAsc((current) => !current)} />
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
       <ManageScreenHeader
         title="Leagues"
         // docs/specs/091: the season every card, counter and row describes; there is no "All seasons" here.
@@ -242,31 +247,44 @@ export default function LeagueList() {
         }
       />
 
-      {visibleLeagues.length > 0 && view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} />}
+      {visibleLeagues.length > 0 && view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} onShare={setShareLeague} />}
 
       {visibleLeagues.length > 0 && view === 'cards' && (
         <Box sx={cardGridSx}>
           {visibleLeagues.map((league) => (
-            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} />
+            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} />
           ))}
         </Box>
       )}
 
       {visibleLeagues.length === 0 && hasLeagues && isFiltering && (
         <EmptyState
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
           title="No matching leagues"
           description={focus && !isSearching && format === '' ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : noMatchDescription(search.trim(), format)}
         />
       )}
 
       {!hasLeagues && !isFiltering && !showInactive && (
-        <EmptyState title="No leagues yet" description="Create your club's first league to get started." />
+        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." />
       )}
 
       {!hasLeagues && (isFiltering || showInactive) && (
         <EmptyState
-          title={focus ? 'No matching leagues' : 'No leagues yet'}
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
+          title={focus ? 'No matching leagues' : 'No league available'}
           description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
+        />
+      )}
+
+      {clubId && shareLeague && (
+        <ShareLeagueDialog
+          open
+          onClose={() => setShareLeague(null)}
+          clubId={clubId}
+          league={shareLeague}
+          seasonId={seasonId || null}
+          preselected={['DETAILS', 'SCHEDULE']}
         />
       )}
     </Box>
