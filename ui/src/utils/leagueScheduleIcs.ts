@@ -32,7 +32,7 @@ function resolveSide(
 
 // RFC 5545 §3.3.11 text escaping, backslash first (so it doesn't double-escape the characters
 // escaped after it), then semicolon/comma, then any line break to a literal "\n" token.
-function escapeIcsText(value: string): string {
+export function escapeIcsText(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
@@ -43,7 +43,7 @@ function escapeIcsText(value: string): string {
 // UTC `YYYYMMDDTHHMMSSZ`, deliberately not attempting VTIMEZONE handling, since a UTC-stamped
 // event already renders correctly in the recipient's own local time in every mainstream calendar
 // app (this spec's own stated reasoning).
-function formatIcsDate(date: Date): string {
+export function formatIcsDate(date: Date): string {
   return `${date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`
 }
 

@@ -71,7 +71,7 @@ class ClubShareSettingsServiceImplTest {
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.empty());
         when(clubProfileRepository.save(any(ClubProfile.class))).thenAnswer(i -> i.getArgument(0));
 
-        ShareSettingsDto result = service.put(clubId, new ShareSettingsDto(true));
+        ShareSettingsDto result = service.put(clubId, new ShareSettingsDto(true, null), false);
 
         assertThat(result.initialsOnlyDefault()).isTrue();
         ArgumentCaptor<ClubProfile> saved = ArgumentCaptor.forClass(ClubProfile.class);
@@ -90,7 +90,7 @@ class ClubShareSettingsServiceImplTest {
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.of(existing));
         when(clubProfileRepository.save(existing)).thenReturn(existing);
 
-        ShareSettingsDto result = service.put(clubId, new ShareSettingsDto(true));
+        ShareSettingsDto result = service.put(clubId, new ShareSettingsDto(true, null), false);
 
         assertThat(result.initialsOnlyDefault()).isTrue();
         assertThat(existing.getEmail()).isEqualTo("hello@club.test");
@@ -100,7 +100,7 @@ class ClubShareSettingsServiceImplTest {
     void putOnAnUnknownClubIsNotFoundAndSavesNothing() {
         when(clubRepository.existsById(clubId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.put(clubId, new ShareSettingsDto(true)))
+        assertThatThrownBy(() -> service.put(clubId, new ShareSettingsDto(true, null), false))
                 .isInstanceOf(NotFoundException.class);
 
         verify(clubProfileRepository, never()).save(any());

@@ -1,4 +1,11 @@
 import { MAX_SHARE_SPONSORS } from './logoLayout'
+import type {
+  LeagueContent,
+  LeagueFacebookTemplate,
+  LeagueShareFormat,
+  LeagueWhatsAppTemplate,
+} from './leagueShareFormats'
+import { LEAGUE_CONTENTS, LEAGUE_FACEBOOK_TEMPLATES, LEAGUE_SHARE_FORMATS, LEAGUE_WHATSAPP_TEMPLATES } from './leagueShareFormats'
 import type { TeamsChoice } from './shareResultData'
 
 // docs/specs/114-share-result.md (Browser storage): the manager's remembered choices, one object per club in
@@ -23,6 +30,21 @@ export const TV_TEMPLATES: TvTemplate[] = ['BROADCAST', 'CLUB', 'LIGHT']
 export const WHATSAPP_TEMPLATES: WhatsAppTemplate[] = ['SHORT', 'PERFORMERS', 'SCORECARD']
 export const FACEBOOK_TEMPLATES: FacebookTemplate[] = ['REPORT', 'CELEBRATION', 'BRIEF']
 export const IMAGE_SIZES: ImageSize[] = ['SQUARE', 'PORTRAIT', 'STORY']
+
+// docs/specs/122-league-sharing.md (Browser storage): the league branch. The Include phone and email opt-in is per share by
+// rule and is deliberately NOT a field here, so it can never be remembered.
+export type LeagueShareChoices = {
+  // The last contents ticked and the last format used (null before the first use).
+  contents: LeagueContent[]
+  format: LeagueShareFormat | null
+  templates: { pdf: PdfTemplate; whatsapp: LeagueWhatsAppTemplate; facebook: LeagueFacebookTemplate }
+  include: {
+    whatsapp: { emoji: boolean }
+    facebook: { hashtags: boolean }
+    // Results as the result line (true) or scores only (false).
+    results: { resultLine: boolean }
+  }
+}
 
 // A type alias (not an interface) so it satisfies usePersistedListFilters' Record<string, unknown>.
 export type ShareChoices = {
@@ -52,6 +74,7 @@ export type ShareChoices = {
   sponsorIds: string[]
   // The user's own First names as initials choice for non-junior matches; null means never chosen (the club default applies).
   initialsOnly: boolean | null
+  league: LeagueShareChoices
 }
 
 export const DEFAULT_SHARE_CHOICES: ShareChoices = {
@@ -71,6 +94,12 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
   footerLine: true,
   sponsorIds: [],
   initialsOnly: null,
+  league: {
+    contents: [],
+    format: null,
+    templates: { pdf: 'CLUB', whatsapp: 'SHORT', facebook: 'FULL_POST' },
+    include: { whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: true } },
+  },
 }
 
 // A change to the choices: any nested object may carry just the keys that changed (arrays and primitives replace).
@@ -117,6 +146,9 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
   const sponsorIds = Array.isArray(raw.sponsorIds)
     ? [...new Set(raw.sponsorIds.filter((id): id is string => typeof id === 'string' && id !== ''))].slice(0, MAX_SHARE_SPONSORS)
     : []
+  const league = isRecord(raw.league) ? raw.league : {}
+  const leagueTemplates = isRecord(league.templates) ? league.templates : {}
+  const leagueInclude = isRecord(league.include) ? league.include : {}
   return {
     format: typeof raw.format === 'string' && (SHARE_FORMATS as string[]).includes(raw.format) ? (raw.format as ShareFormat) : null,
     templates: {
@@ -140,5 +172,19 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
     footerLine: typeof raw.footerLine === 'boolean' ? raw.footerLine : d.footerLine,
     sponsorIds,
     initialsOnly: typeof raw.initialsOnly === 'boolean' ? raw.initialsOnly : null,
+    league: {
+      contents: Array.isArray(league.contents) ? LEAGUE_CONTENTS.filter((content) => (league.contents as unknown[]).includes(content)) : [],
+      format: typeof league.format === 'string' && (LEAGUE_SHARE_FORMATS as string[]).includes(league.format) ? (league.format as LeagueShareFormat) : null,
+      templates: {
+        pdf: pickEnum(leagueTemplates.pdf, PDF_TEMPLATES, d.league.templates.pdf),
+        whatsapp: pickEnum(leagueTemplates.whatsapp, LEAGUE_WHATSAPP_TEMPLATES, d.league.templates.whatsapp),
+        facebook: pickEnum(leagueTemplates.facebook, LEAGUE_FACEBOOK_TEMPLATES, d.league.templates.facebook),
+      },
+      include: {
+        whatsapp: pickBooleans(leagueInclude.whatsapp, d.league.include.whatsapp),
+        facebook: pickBooleans(leagueInclude.facebook, d.league.include.facebook),
+        results: pickBooleans(leagueInclude.results, d.league.include.results),
+      },
+    },
   }
 }

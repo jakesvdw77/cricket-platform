@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 122 League sharing mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+.lede{color:var(--inkMuted);max-width:820px;margin:0 0 28px;font-size:15px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.note{color:var(--inkMuted);font-size:13px;margin:0 0 14px;max-width:900px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;position:relative;overflow:hidden}
+.frame.d{width:1280px;height:640px;zoom:.62}
+.frame.p{width:375px;height:700px;zoom:.9}
+.frame.d.tall{height:760px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center}
+.dlg{background:#fff;border-radius:6px;display:flex;flex-direction:column;width:640px;max-height:92%;box-shadow:0 8px 32px color-mix(in srgb,var(--ink) 35%,transparent)}
+.p .dlg{width:100%;height:100%;max-height:none;border-radius:0}
+.dlg-h{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--cardLine)}
+.dlg-h b{font-family:var(--display);font-size:24px;font-weight:700;color:var(--green900)}
+.x{color:var(--inkMuted);font-size:22px;line-height:1}
+.steps{display:flex;gap:6px;align-items:center;padding:10px 20px 0;font-size:13px;color:var(--inkMuted)}
+.steps .on{color:var(--green800);font-weight:600}
+.dot{width:20px;height:20px;border-radius:50%;background:var(--cardLine);color:var(--ink900);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-right:4px}
+.on .dot{background:var(--green700);color:#fff}
+.dlg-b{padding:14px 20px;overflow:auto;flex:1}
+.dlg-f{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--cardLine);display:flex;gap:8px;align-items:center;justify-content:flex-end;background:#fff}
+.dlg-f .hint{margin-right:auto;font-size:13px;color:var(--error)}
+.p .dlg-f{flex-wrap:wrap}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;cursor:default;white-space:nowrap}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:transparent;color:var(--green700);border-color:var(--green700)}
+.btn.t{background:transparent;color:var(--green700)}
+.btn.dis{background:color-mix(in srgb,var(--ink900) 12%,transparent);color:color-mix(in srgb,var(--ink900) 38%,transparent);border-color:transparent}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border:1px solid var(--cardLine);border-radius:14px;background:#fff;font-size:13px;font-weight:600;color:var(--green800)}
+.sec{font-family:var(--display);font-weight:700;font-size:18px;margin:14px 0 6px}
+.chk{display:flex;align-items:flex-start;gap:12px;padding:9px 12px;border:1px solid var(--cardLine);border-radius:6px;margin-bottom:8px}
+.chk.sel{border-color:var(--green700);background:color-mix(in srgb,var(--green700) 7%,#fff)}
+.chk.off{background:color-mix(in srgb,var(--cardLine) 35%,#fff);color:color-mix(in srgb,var(--ink900) 45%,transparent)}
+.chk .t{font-weight:600;font-size:15px}
+.chk .s{font-size:12.5px;color:var(--inkMuted)}
+.chk.off .s{color:var(--warning)}
+.box{width:18px;height:18px;border:2px solid var(--inkMuted);border-radius:3px;flex:none;margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+.sel .box{background:var(--green700);border-color:var(--green700)}
+.off .box{border-color:var(--cardLine)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.p .tiles{grid-template-columns:repeat(2,1fr)}
+.tile{border:1px solid var(--cardLine);border-radius:6px;padding:12px 8px;text-align:center;min-height:96px;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:center}
+.tile .ic{width:36px;height:36px;border-radius:6px;background:var(--green700);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px var(--display)}
+.tile .n{font-weight:600;font-size:14px}
+.tile .r{font-size:11.5px;color:var(--warning);line-height:1.25}
+.tile.sel{border-color:var(--green700);box-shadow:0 0 0 1px var(--green700)}
+.tile.off{background:color-mix(in srgb,var(--cardLine) 35%,#fff);color:color-mix(in srgb,var(--ink900) 45%,transparent)}
+.tile.off .ic{background:var(--cardLine);color:var(--inkMuted)}
+.tile.ghost{border-style:dashed;background:none;color:var(--inkMuted);font-size:12px}
+.callout{border-left:3px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,#fff);padding:8px 12px;font-size:13px;border-radius:0 6px 6px 0;margin:10px 0}
+.split{display:flex;gap:16px;height:100%}
+.p .split{flex-direction:column}
+.ctrl{width:250px;flex:none}
+.p .ctrl{width:auto}
+.stage{flex:1;background:var(--groundTop);border:1px solid var(--cardLine);border-radius:6px;padding:12px;display:flex;justify-content:center}
+.wa{background:var(--cream);border-radius:8px;border:1px solid var(--sand);padding:12px;font-size:13px;line-height:1.45;max-width:340px;width:100%;white-space:pre-wrap}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:14px}
+.sw small{display:block;color:var(--inkMuted);font-size:12px}
+.tg{width:34px;height:18px;border-radius:9px;background:var(--cardLine);position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 40%,transparent)}
+.tg.on{background:var(--green700)}.tg.on::after{left:18px}
+.tg.lock{opacity:.5}
+.page{padding:16px}
+.page h3{font-family:var(--display);font-size:26px;margin:0 0 10px;color:var(--green900)}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.card .nm{font-family:var(--display);font-weight:700;font-size:22px;color:var(--green900)}
+.card .m{font-size:13px;color:var(--inkMuted)}
+.card .ft{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.p .cards{grid-template-columns:1fr}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:14px}
+th{font-family:var(--display);font-size:15px;text-align:left;color:var(--green800);background:var(--groundTop);padding:8px 12px}
+td{padding:8px 12px;border-top:1px solid var(--cardLine)}
+td.a{text-align:right;white-space:nowrap}
+.legend{font-size:12.5px;color:var(--inkMuted);margin-top:8px}
+.msg{font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--error);background:color-mix(in srgb,var(--error) 8%,#fff);color:var(--error);margin-top:8px}
+</style>
+</head>
+<body>
+<h1>Share a league</h1>
+<p class="lede">Mockup for spec 122. Desktop (1280, shown scaled) and phone (375) side by side. Colours and fonts come from <code>brandTokens.ts</code> and <code>theme.ts</code>; buttons are the compact 32 px size. Players are never called children anywhere in the dialog or its output.</p>
+
+<!-- 1 -->
+<h2>1. Step 1, What to share</h2>
+<p class="note">Multi-select rows (checkbox pattern). Season pill shows only when the dialog opens without a season. Here the league card opened it, so Details and Schedule are preselected. Playing conditions is greyed with its reason. With nothing ticked, Next is disabled and the footer says why (second phone frame).</p>
+<div class="row" id="s1"></div>
+
+<!-- 2 -->
+<h2>2. Step 2, Output format</h2>
+<p class="note">Teams and Schedule are ticked. Calendar needs every ticked content to support it, so it is greyed with the reason. Facebook is hidden because this club switched it off. Back keeps the ticks.</p>
+<div class="row" id="s2"></div>
+
+<!-- 3 -->
+<h2>3. WhatsApp preview with contact privacy</h2>
+<p class="note">League details is ticked and names a contact. Phone and email are off every time the dialog opens and are never remembered. Role and name only by default.</p>
+<div class="row" id="s3"></div>
+
+<!-- 4 -->
+<h2>4. Share on the league card and the list row</h2>
+<p class="note">Card: labelled outlined Share in the footer buttons row (no icon-only variant). List row: Share in the row actions. Card view of the list uses the card. Both preselect League details and Schedule, with the list's selected season.</p>
+<div class="row" id="s4"></div>
+
+<!-- 5 -->
+<h2>5. Club profile, Share formats</h2>
+<p class="note">One switch per format, per content type. Administrators only: everyone else sees it read only. The last enabled format for a content type cannot be switched off.</p>
+<div class="row" id="s5"></div>
+
+<script>
+const tick='&#10003;';
+const shell=(cls,title,body,foot,step)=>`<div><p class="cap">${cls==='d'?'Desktop 1280':'Phone 375'}</p><div class="frame ${cls}"><div class="scrim"><div class="dlg">
+<div class="dlg-h"><b>${title}</b><span class="x">&times;</span></div>
+${step?`<div class="steps"><span class="${step===1?'on':''}"><span class="dot">1</span>What to share</span> &rsaquo; <span class="${step===2?'on':''}"><span class="dot">2</span>Format</span>${step===3?' &rsaquo; <span class="on"><span class="dot">3</span>WhatsApp</span>':''}</div>`:''}
+<div class="dlg-b">${body}</div><div class="dlg-f">${foot}</div></div></div></div></div>`;
+const both=(f)=>['d','p'].map(c=>f(c)).join('');
+const chk=(t,s,st)=>`<div class="chk ${st}"><span class="box">${st==='sel'?tick:''}</span><div><div class="t">${t}</div><div class="s">${s}</div></div></div>`;
+const list=(a)=>chk('League details','Name, format, age group, contacts','sel')+chk('Playing conditions',a?'No playing conditions set for this season yet':'Overs, powerplay, ball type, rules','off')+chk('Teams','The 8 teams in this season','')+chk('Schedule','26 fixtures, 5 rounds','sel')+chk('Results','12 published results','')+chk('Key dates','Season start 5 Nov, finals 21 Feb','');
+document.getElementById('s1').innerHTML=both(c=>shell(c,'Share league',`<span class="pill">Season 2026/27 &#9662;</span>${list(true)}`,`<span class="hint" style="color:var(--inkMuted)">2 selected</span><span class="btn t">Cancel</span><span class="btn c">Next</span>`,1))
++`<div><p class="cap">Phone 375, nothing ticked</p><div class="frame p"><div class="scrim"><div class="dlg"><div class="dlg-h"><b>Share league</b><span class="x">&times;</span></div><div class="steps"><span class="on"><span class="dot">1</span>What to share</span> &rsaquo; <span><span class="dot">2</span>Format</span></div><div class="dlg-b"><span class="pill">Season 2026/27 &#9662;</span>${chk('League details','Name, format, age group, contacts','')+chk('Playing conditions','No playing conditions set for this season yet','off')+chk('Teams','The 8 teams in this season','')+chk('Schedule','26 fixtures, 5 rounds','')}</div><div class="dlg-f"><span class="hint">Tick at least one thing to share</span><span class="btn t">Cancel</span><span class="btn dis">Next</span></div></div></div></div></div>`;
+
+const tile=(n,i,st,r)=>`<div class="tile ${st}"><div class="ic">${i}</div><div class="n">${n}</div>${r?`<div class="r">${r}</div>`:''}</div>`;
+const tiles=(c)=>`<div class="sec" style="margin-top:0">Sharing: Teams, Schedule</div><div class="tiles">${tile('PDF','PDF','','')}${tile('Poster','IMG','sel','')}${tile('Calendar','ICS','off','Calendar is not available for Teams')}${tile('WhatsApp','TXT','','')}<div class="tile ghost">Facebook is switched off for this club</div></div><div class="callout">If a format you expect is missing, go back and untick the content that blocks it.</div>`;
+document.getElementById('s2').innerHTML=both(c=>shell(c,'Share league',tiles(c),`<span class="btn t">Back</span><span class="btn t">Cancel</span><span class="btn c">Next</span>`,2));
+
+const wa=`*Riverside Cricket Club*\nSummer Premier League, 2026/27\nAge group: Open\nFormat: 40 overs, Saturdays\n\nLeague convenor: Sam Naidoo\nScorer: Priya Reddy\n\nGood luck to all teams.`;
+const waBody=(c)=>`<div class="split"><div class="ctrl"><div class="sw"><span>League logo</span><span class="tg on"></span></div><div class="sw"><span>Club logo</span><span class="tg on"></span></div><div class="sw"><span>Footer line</span><span class="tg on"></span></div><div class="sw"><span>Include phone and email<small>Off each time this opens</small></span><span class="tg"></span></div><div class="callout">Only share contact details people expect to be public.</div></div><div class="stage"><div class="wa">${wa}</div></div></div>`;
+document.getElementById('s3').innerHTML=both(c=>shell(c,'Share league',waBody(c),`<span class="btn t">Back</span><span class="btn o">Copy text</span><span class="btn c">Send on WhatsApp</span>`,3));
+
+const lc=(n,m)=>`<div class="card"><div class="nm">${n}</div><div class="m">${m}</div><div class="ft"><span class="btn o">Open</span><span class="btn o">&#8599; Share</span></div></div>`;
+const rows=`<table><tr><th>League</th><th>Teams</th><th></th></tr>${['Summer Premier League|8','Winter Midweek 20s|6','Junior Under 13s|10'].map(r=>{const[a,b]=r.split('|');return `<tr><td>${a}</td><td>${b}</td><td class="a"><span class="btn t">Edit</span> <span class="btn o">&#8599; Share</span></td></tr>`}).join('')}</table>`;
+document.getElementById('s4').innerHTML=`<div><p class="cap">Desktop 1280, card view</p><div class="frame d tall" style="height:300px"><div class="page"><h3>Leagues</h3><div class="cards">${lc('Summer Premier League','40 overs, 8 teams')}${lc('Winter Midweek 20s','20 overs, 6 teams')}${lc('Junior Under 13s','30 overs, 10 teams')}</div></div></div></div>
+<div><p class="cap">Desktop 1280, list view</p><div class="frame d tall" style="height:300px"><div class="page"><h3>Leagues</h3>${rows}</div></div></div>
+<div><p class="cap">Phone 375, card</p><div class="frame p" style="height:300px"><div class="page"><h3>Leagues</h3>${lc('Summer Premier League','40 overs, 8 teams')}</div></div></div>
+<div><p class="cap">Phone 375, list row</p><div class="frame p" style="height:300px"><div class="page"><h3>Leagues</h3>${rows.replace(/<th>Teams<\/th>/,'').replace(/<td>\d+<\/td>/g,'').replace(/<span class="btn t">Edit<\/span> /g,'')}</div></div></div>`;
+
+const sf=(t,v)=>`<tr><td>${t}</td>${v.map(x=>`<td style="text-align:center"><span class="tg ${x?'on':''} ${x==='L'?'lock':''}" style="display:inline-block"></span></td>`).join('')}</tr>`;
+const fm=(c)=>`<div class="page"><h3>Club profile</h3><div class="card"><div class="nm" style="font-size:20px">Share formats</div><div class="m">Choose which formats managers can use when sharing. Administrators only.</div>
+<table style="margin-top:8px"><tr><th>Content</th><th>PDF</th><th>Poster</th><th>Cal</th><th>WA</th><th>FB</th></tr>
+${sf('League details',[1,0,0,1,0])}${sf('Playing conditions',[1,0,0,1,1])}${sf('Teams',[1,1,0,1,1])}${sf('Schedule',[1,1,1,1,1])}${sf('Results',[1,0,0,1,1])}${sf('Key dates',[1,1,1,1,1])}</table>
+<div class="msg">Playing conditions needs at least one format. Keep another one on before switching WhatsApp off.</div>
+<div class="legend">Formats a content type cannot produce stay off and cannot be switched. Switches are read only for anyone who is not a club administrator.</div>
+<div class="ft"><span class="btn c">Save</span><span class="btn t">Cancel</span></div></div></div>`;
+document.getElementById('s5').innerHTML=`<div><p class="cap">Desktop 1280</p><div class="frame d tall" style="height:560px">${fm('d')}</div></div><div><p class="cap">Phone 375</p><div class="frame p" style="height:560px;overflow:auto">${fm('p')}</div></div>`;
+</script>
+</body>
+</html>

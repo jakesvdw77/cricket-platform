@@ -25,6 +25,7 @@ import type { Team } from "../../api/teamApi";
 import { useShareChoices } from "../../hooks/useShareChoices";
 import { useShareResultData } from "../../hooks/useShareResultData";
 import { useShareSettings } from "../../hooks/useShareSettings";
+import { offeredFormats } from "../../utils/share/enabledFormats";
 import { MAX_SHARE_SPONSORS } from "../../utils/share/logoLayout";
 import type { ShareFormat } from "../../utils/share/shareChoices";
 import { buildShareResultModel } from "../../utils/share/shareResultData";
@@ -208,10 +209,20 @@ export function ShareResultDialog({
     setScreen(format);
   };
 
+  // Formats the club switched off are not shown at all (docs/specs/122-league-sharing.md).
+  const offered = useMemo(
+    () => offeredFormats<ShareFormat>("RESULT", settings.settings?.disabledFormats),
+    [settings.settings?.disabledFormats],
+  );
+  const visibleTiles = useMemo(
+    () => TILES.filter((item) => offered.includes(item.value)),
+    [offered],
+  );
+
   // The last format used is highlighted on opening.
   const highlighted =
     picked ??
-    TILES.find((tile) => tile.value === choices.format)?.value ??
+    visibleTiles.find((tile) => tile.value === choices.format)?.value ??
     null;
 
   const screenProps = {
@@ -227,7 +238,7 @@ export function ShareResultDialog({
     selectedSponsorIds,
     shareTitle,
   };
-  const tile = TILES.find((item) => item.value === screen);
+  const tile = visibleTiles.find((item) => item.value === screen);
 
   return (
     <Dialog
@@ -258,7 +269,12 @@ export function ShareResultDialog({
         </IconButton>
       </DialogTitle>
       <DialogContent sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
-        {screen === null || !tile ? (
+        {(screen === null || !tile) && visibleTiles.length === 0 ? (
+          <Typography role="status" color="text.secondary">
+            No share format is switched on for results. A club administrator
+            can turn one on in the club profile share settings.
+          </Typography>
+        ) : screen === null || !tile ? (
           <Box
             onKeyDownCapture={(event) => {
               arrowing.current = ARROW_KEYS.includes(event.key);
@@ -283,7 +299,7 @@ export function ShareResultDialog({
                 justifyContent: "flex-start",
                 alignItems: "center",
               }}
-              options={TILES.map((item) => ({
+              options={visibleTiles.map((item) => ({
                 value: item.value,
                 content: (
                   <Box

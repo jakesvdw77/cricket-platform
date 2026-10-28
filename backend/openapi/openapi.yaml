@@ -14668,6 +14668,12 @@ components:
       properties:
         initialsOnlyDefault:
           type: boolean
+        disabledFormats:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
     PlayerStatsDto:
       type: object
       properties:

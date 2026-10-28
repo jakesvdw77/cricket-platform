@@ -569,3 +569,29 @@ export async function listOppositionNames(
   })
   return data
 }
+
+const ALL_RESULTS_PAGE_SIZE = 200
+const ALL_RESULTS_MAX_PAGES = 10
+
+// docs/specs/122-league-sharing.md: every published result of one league and season, oldest first (the list itself is
+// paged; a season's results are a small bounded set). Pages of 200 while more remain, stopping at 10 pages as a safety
+// bound. Rows carry the match and the result only, never a scorecard.
+export async function listPublishedLeagueResults(
+  clubId: string,
+  { leagueId, seasonId }: { leagueId: string; seasonId: string },
+): Promise<ResultListItem[]> {
+  const items: ResultListItem[] = []
+  for (let page = 0; page < ALL_RESULTS_MAX_PAGES; page += 1) {
+    const result = await listResults(clubId, {
+      page,
+      size: ALL_RESULTS_PAGE_SIZE,
+      sort: 'matchDate,asc',
+      leagueId,
+      seasonId,
+      status: 'PUBLISHED',
+    })
+    items.push(...result.content)
+    if (page + 1 >= result.totalPages) break
+  }
+  return items
+}
