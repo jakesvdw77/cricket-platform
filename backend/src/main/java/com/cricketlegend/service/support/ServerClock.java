@@ -40,6 +40,11 @@ public final class ServerClock {
         return instant.atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
+    /** The local time of day (server clock) of the given instant, to the minute. */
+    public static java.time.LocalTime localTime(Instant instant) {
+        return instant.atZone(ZoneId.systemDefault()).toLocalTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+    }
+
     /**
      * The current instant on the server clock. Read once per request that needs several aggregates
      * to agree on "now" (docs/specs/071-league-card-redesign.md's {@code LeagueServiceImpl.list}).

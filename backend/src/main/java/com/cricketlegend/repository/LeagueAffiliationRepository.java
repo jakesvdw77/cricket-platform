@@ -15,6 +15,12 @@ public interface LeagueAffiliationRepository extends JpaRepository<LeagueAffilia
 
     List<LeagueAffiliation> findByLeagueId(UUID leagueId);
 
+    /** docs/specs/123: the affiliations of a set of teams across seasons (the Player Hub leagues read). */
+    List<LeagueAffiliation> findByTeamIdIn(java.util.Collection<UUID> teamIds);
+
+    /** docs/specs/123: the affiliations of a set of leagues in one season, in one round trip. */
+    List<LeagueAffiliation> findByLeagueIdInAndSeasonId(java.util.Collection<UUID> leagueIds, UUID seasonId);
+
     boolean existsByLeagueIdAndTeamIdAndSeasonId(UUID leagueId, UUID teamId, UUID seasonId);
 
     /**

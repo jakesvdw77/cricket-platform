@@ -5,6 +5,7 @@ import type { LeaguePlayingConditions } from '../../api/leaguePlayingConditionsA
 import type { LeagueSeasonDates } from '../../api/leagueSeasonDatesApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 import type { Match } from '../../api/matchApi'
+import type { MyLeagueDto } from '../../api/myPlayersApi'
 import type { ResultListItem } from '../../api/matchResultApi'
 import type { Section } from '../../api/sectionApi'
 import type { Team } from '../../api/teamApi'
@@ -167,7 +168,9 @@ function dateParts(value: string): { iso: string; label: string; time: string } 
 export const leagueShareFileName = (model: Pick<LeagueShareModel, 'title'>, extension: string): string =>
   `${model.title.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim()}.${extension}`
 
-function conditionSections(record: LeaguePlayingConditions | null | undefined): LeagueShareConditionSection[] {
+type ConditionsInput = Omit<LeaguePlayingConditions, 'id' | 'leagueId' | 'seasonId' | 'uploadedAt' | 'uploadedBy'>
+
+function conditionSections(record: ConditionsInput | null | undefined): LeagueShareConditionSection[] {
   if (!record || record.maxOversPerInnings == null) return []
   const sections: LeagueShareConditionSection[] = []
   const format: LeagueShareConditionRow[] = [{ label: 'Overs per innings', value: String(record.maxOversPerInnings) }]
@@ -213,7 +216,7 @@ function conditionSections(record: LeaguePlayingConditions | null | undefined): 
 // Why a content has nothing to share, or null when it has something. The dialog lists such a content greyed with this
 // reason. `conditions` undefined (still loading) is treated as nothing yet by the caller, not here.
 export function leagueContentGaps(input: {
-  conditions: LeaguePlayingConditions | null | undefined
+  conditions: ConditionsInput | null | undefined
   teamCount: number
   matchCount: number
   publishedResultCount: number
@@ -350,3 +353,101 @@ export function buildLeagueShareModel(input: BuildLeagueShareInput): LeagueShare
 
 // The heading of a content section, shared by the PDF and the texts.
 export const leagueSectionHeading = (content: LeagueContent): string => LEAGUE_CONTENT_LABELS[content]
+
+export interface BuildMyLeagueShareInput {
+  contents: readonly string[]
+  // The Player Hub read (docs/specs/123): no contacts exist in it, so the model never has any.
+  league: MyLeagueDto
+  clubName: string | null
+  initialsOnly: boolean
+}
+
+// The second input source (docs/specs/123, Share): the same LeagueShareModel from the Player Hub's MyLeagueDto. Own teams
+// are the `mine` ones; contacts and the phone and email are always empty; a junior share is decided on the league's maxAge
+// alone (the Hub reads no sections, so an uncapped league fails safe to junior, initials on).
+export function buildMyLeagueShareModel(input: BuildMyLeagueShareInput): LeagueShareModel {
+  const { league: dto } = input
+  const info = dto.league
+  const junior = isJuniorMatch({ league: { maxAge: info.maxAge }, sections: undefined, teams: [] })
+  const initialsOnly = junior.junior ? true : input.initialsOnly
+  const ownNames = new Set(dto.teams.filter((team) => team.mine).map((team) => team.name))
+  const side = (name: string, logoUrl: string | null): LeagueShareSide => ({ name: name.trim() || 'TBC', logoUrl, own: ownNames.has(name) })
+
+  const schedule: LeagueShareFixture[] = [...dto.schedule]
+    .sort((a, b) => `${a.date}${a.time ?? ''}`.localeCompare(`${b.date}${b.time ?? ''}`))
+    .map((row) => {
+      const parts = dateParts(row.date)
+      const time = row.time ? row.time.slice(0, 5) : ''
+      return {
+        matchId: row.matchId,
+        dateIso: parts.iso,
+        dateLabel: parts.label,
+        timeLabel: time,
+        startsAt: time ? `${row.date}T${time}:00` : row.date,
+        home: side(row.homeName, row.homeLogoUrl),
+        away: side(row.awayName, row.awayLogoUrl),
+        venue: row.venue,
+      }
+    })
+
+  const results: LeagueShareResult[] = [...dto.results]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((row) => {
+      const parts = dateParts(row.date)
+      return {
+        matchId: row.matchId,
+        dateIso: parts.iso,
+        dateLabel: parts.label,
+        home: side(row.homeName, null),
+        away: side(row.awayName, null),
+        homeScore: row.homeScore,
+        awayScore: row.awayScore,
+        resultLine: row.resultLine,
+        venue: null,
+      }
+    })
+
+  const teams: LeagueShareTeam[] = [...dto.teams]
+    .sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
+    .map((team) => ({ name: team.name, abbreviation: team.abbreviation, logoUrl: team.logoUrl, own: team.mine }))
+
+  const keyDates: LeagueShareKeyDate[] = []
+  const addDate = (kind: LeagueKeyDateKind, label: string, value: string | null | undefined) => {
+    if (!value) return
+    const parts = dateParts(value)
+    keyDates.push({ kind, label, dateIso: parts.iso, dateLabel: parts.label })
+  }
+  addDate('LEAGUE_START', 'League starts', dto.keyDates.seasonStart)
+  addDate('FIRST_MATCH', 'First match', dto.keyDates.firstMatchDate)
+  addDate('NEXT_MATCH', 'Next match', dto.keyDates.nextMatchDate)
+  addDate('LAST_MATCH', 'Last match', dto.keyDates.lastMatchDate)
+  addDate('LEAGUE_END', 'League ends', dto.keyDates.seasonEnd)
+  keyDates.sort((a, b) => a.dateIso.localeCompare(b.dateIso))
+
+  const seasonLabel = dto.season.name
+  return {
+    contents: orderedContents(input.contents),
+    clubName: input.clubName,
+    season: { label: seasonLabel },
+    league: {
+      name: info.name,
+      formatLabel: info.format ? LEAGUE_FORMAT_LABELS[info.format] : null,
+      ageLabel: ageRangeLabel(info),
+      logoUrl: info.logoUrl,
+      website: info.website,
+      phone: null,
+      email: null,
+      contacts: [],
+      matchCount: dto.schedule.length,
+    },
+    junior,
+    initialsOnly,
+    includeContact: false,
+    conditions: conditionSections(dto.playingConditions),
+    teams,
+    schedule,
+    results,
+    keyDates,
+    title: [info.name, seasonLabel].filter(Boolean).join(' '),
+  }
+}

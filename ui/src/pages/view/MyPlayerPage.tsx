@@ -18,6 +18,9 @@ import { HubPillStrip } from './myPlayers/HubPillStrip'
 import { HubPlayerCard } from './myPlayers/HubPlayerCard'
 import { HubSoonPanel } from './myPlayers/HubSoonPanel'
 import { HubFields } from './myPlayers/HubFields'
+import { HubLeague } from './myPlayers/HubLeague'
+import { HubLeagues } from './myPlayers/HubLeagues'
+import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
 import { HUB, hubPageHeading } from './myPlayers/hubStyle'
 import { LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
 import type { HubLayout, HubNavContext, HubNavItem, HubPillCounts } from './myPlayers/hubNav'
@@ -73,7 +76,7 @@ export default function MyPlayerPage() {
   const subView = section.id === 'profile' && isProfileSubView(sub, leaf)
   const phoneMenuScreen = phone && route.root
 
-  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf })
+  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
@@ -160,6 +163,26 @@ export default function MyPlayerPage() {
     panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
   } else if (pageItem?.id === 'club.fields') {
     panel = <HubFields playerKey={player?.key} />
+  } else if (pageItem?.id === 'schedule.leagues') {
+    const season = search.get('season') ?? undefined
+    panel = leaf ? (
+      <HubLeague
+        playerKey={key}
+        leagueId={leaf}
+        seasonId={season}
+        clubId={player?.clubId ?? ''}
+        clubName={player?.clubName ?? null}
+        tab={parseLeagueTab(search.get('tab'))}
+        onTab={(tab) => navigate(hubLeaguePath(key, leaf, { season, tab }), { replace: true })}
+      />
+    ) : (
+      <HubLeagues
+        playerKey={key}
+        seasonId={season}
+        onSeasonChange={(next) => navigate(hubLeaguePath(key, undefined, { season: next }), { replace: true })}
+        onOpen={(leagueId, seasonId) => navigate(hubLeaguePath(key, leagueId, { season: seasonId }))}
+      />
+    )
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>

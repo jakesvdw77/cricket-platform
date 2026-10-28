@@ -93,7 +93,8 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
     return { CONDITIONS: reason, TEAMS: reason, SCHEDULE: reason, RESULTS: reason, KEY_DATES: reason } as Partial<Record<LeagueContent, string>>
   }, [noSeason, data.gaps])
   const contents = useMemo(() => LEAGUE_CONTENTS.filter((content) => ticked.includes(content) && !gaps[content]), [ticked, gaps])
-  const formats = useMemo(() => availability(contents, settings.settings?.disabledFormats), [contents, settings.settings?.disabledFormats])
+  const disabledFormats = settings.settings?.disabledFormats
+  const formats = useMemo(() => availability(contents, disabledFormats), [contents, disabledFormats])
 
   const junior = useMemo(
     () => isJuniorMatch({ league, sections: data.sections, teams: data.ownTeams.map((team) => ({ sectionId: team.sectionId })) }),

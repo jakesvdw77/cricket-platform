@@ -8,7 +8,7 @@ import com.cricketlegend.repository.ClubProfileRepository;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.service.ClubShareSettingsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,7 +35,7 @@ public class ClubShareSettingsServiceImpl implements ClubShareSettingsService {
             "LEAGUE", Set.of("PDF", "POSTER", "CALENDAR", "WHATSAPP", "FACEBOOK"));
 
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final TypeReference<Map<String, List<String>>> MAP_TYPE = new TypeReference<>() {};
+    private static final JavaType MAP_TYPE = JSON.getTypeFactory().constructMapType(Map.class, JSON.getTypeFactory().constructType(String.class), JSON.getTypeFactory().constructCollectionType(List.class, String.class));
 
     private final ClubRepository clubRepository;
     private final ClubProfileRepository clubProfileRepository;
@@ -107,7 +107,8 @@ public class ClubShareSettingsServiceImpl implements ClubShareSettingsService {
             return new TreeMap<>();
         }
         try {
-            return new TreeMap<>(JSON.readValue(json, MAP_TYPE));
+            Map<String, List<String>> parsed = JSON.readValue(json, MAP_TYPE);
+            return new TreeMap<>(parsed);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Stored share_disabled_formats is not valid JSON", e);
         }

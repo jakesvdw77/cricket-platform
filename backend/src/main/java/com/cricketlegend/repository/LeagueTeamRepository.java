@@ -62,4 +62,7 @@ public interface LeagueTeamRepository extends JpaRepository<LeagueTeam, UUID> {
 
         long getMatchCount();
     }
+
+    /** docs/specs/123: the active league teams of a set of leagues in one season, in one round trip (unsorted). */
+    List<LeagueTeam> findByLeagueIdInAndSeasonIdAndActiveTrue(Collection<UUID> leagueIds, UUID seasonId);
 }

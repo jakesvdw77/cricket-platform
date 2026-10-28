@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from './axiosConfig'
+import type { LeagueFormat } from './leagueApi'
+import type { LeaguePlayingConditions } from './leaguePlayingConditionsApi'
+import type { SocialLink } from '../components/marketing/SocialLinksRow'
 import type { BattingStance, BowlingArm, BowlingType } from './playerApi'
 import type { PublicAnswer, PublicAnswers } from './publicAvailabilityShared'
 import type { PublicRoundWindow } from './publicSectionAvailabilityApi'
@@ -181,4 +184,139 @@ export async function listMyPlayerFields(key: string): Promise<FieldDto[]> {
 
 export function useMyPlayerFields(key: string | undefined) {
   return useQuery({ queryKey: [...myPlayersKey, key, 'fields'], queryFn: () => listMyPlayerFields(key as string), enabled: Boolean(key), retry: false })
+}
+
+// docs/specs/123-player-hub-leagues.md (API Contract): the leagues the selected player's teams play in, read only. Hand-typed
+// from the spec; the server twin is MyLeagueService. No contacts, no manager-only fields, no fixture link target.
+export interface MyLeagueSeasonOption {
+  id: string
+  name: string
+  current: boolean
+}
+
+export interface MyLeagueTeamRef {
+  id: string
+  name: string
+}
+
+export interface MyLeagueSummaryDto {
+  id: string
+  name: string
+  logoUrl: string | null
+  minAge: number | null
+  maxAge: number | null
+  teamCount: number
+  myTeams: MyLeagueTeamRef[]
+  nextMatchDate: string | null
+  matchCount: number
+}
+
+export interface MyLeaguesDto {
+  seasons: MyLeagueSeasonOption[]
+  seasonId: string
+  leagues: MyLeagueSummaryDto[]
+}
+
+export interface MyLeagueInfoDto {
+  id: string
+  name: string
+  description: string | null
+  logoUrl: string | null
+  minAge: number | null
+  maxAge: number | null
+  ageCutoffDay: number | null
+  ageCutoffMonth: number | null
+  format: LeagueFormat | null
+  website: string | null
+  socialLinks: SocialLink[]
+}
+
+export interface MyLeagueSeasonDto {
+  id: string
+  name: string
+  startDate: string | null
+  endDate: string | null
+}
+
+// The structured conditions as the Conditions tab reads them, plus the PDF link; null on MyLeagueDto when none are set.
+export type MyPlayingConditionsDto = Omit<LeaguePlayingConditions, 'id' | 'leagueId' | 'seasonId' | 'uploadedAt' | 'uploadedBy'>
+
+export interface MyLeagueTeamDto {
+  id: string
+  name: string
+  abbreviation: string | null
+  logoUrl: string | null
+  mine: boolean
+}
+
+export interface MyLeagueFixtureDto {
+  matchId: string
+  // yyyy-MM-dd and HH:mm.
+  date: string
+  time: string | null
+  homeName: string
+  homeLogoUrl: string | null
+  awayName: string
+  awayLogoUrl: string | null
+  venue: string | null
+  mine: boolean
+}
+
+export interface MyLeagueResultDto {
+  matchId: string
+  date: string
+  homeName: string
+  awayName: string
+  homeScore: string
+  awayScore: string
+  resultLine: string
+  mine: boolean
+}
+
+export interface MyLeagueKeyDatesDto {
+  seasonStart: string | null
+  seasonEnd: string | null
+  firstMatchDate: string | null
+  lastMatchDate: string | null
+  nextMatchDate: string | null
+}
+
+export interface MyLeagueDto {
+  league: MyLeagueInfoDto
+  season: MyLeagueSeasonDto
+  playingConditions: MyPlayingConditionsDto | null
+  teams: MyLeagueTeamDto[]
+  schedule: MyLeagueFixtureDto[]
+  results: MyLeagueResultDto[]
+  keyDates: MyLeagueKeyDatesDto
+  // LEAGUE share format codes the club has disabled.
+  shareDisabledFormats: string[]
+}
+
+export async function getMyPlayerLeagues(key: string, seasonId?: string): Promise<MyLeaguesDto> {
+  const { data } = await api.get<MyLeaguesDto>(`/me/players/${key}/leagues`, { params: seasonId ? { seasonId } : undefined })
+  return data
+}
+
+export async function getMyPlayerLeague(key: string, leagueId: string, seasonId?: string): Promise<MyLeagueDto> {
+  const { data } = await api.get<MyLeagueDto>(`/me/players/${key}/leagues/${leagueId}`, { params: seasonId ? { seasonId } : undefined })
+  return data
+}
+
+export function useMyPlayerLeagues(key: string | undefined, seasonId?: string) {
+  return useQuery({
+    queryKey: [...myPlayersKey, key, 'leagues', seasonId ?? 'current'],
+    queryFn: () => getMyPlayerLeagues(key as string, seasonId),
+    enabled: Boolean(key),
+    retry: false,
+  })
+}
+
+export function useMyPlayerLeague(key: string | undefined, leagueId: string | undefined, seasonId?: string) {
+  return useQuery({
+    queryKey: [...myPlayersKey, key, 'leagues', leagueId, seasonId ?? 'current'],
+    queryFn: () => getMyPlayerLeague(key as string, leagueId as string, seasonId),
+    enabled: Boolean(key) && Boolean(leagueId),
+    retry: false,
+  })
 }
