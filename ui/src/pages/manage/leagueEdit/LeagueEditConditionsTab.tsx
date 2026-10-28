@@ -51,7 +51,7 @@ export function LeagueEditConditionsTab({
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <ContentControlsLine
         scope={seasonLabel ? `Playing conditions for ${seasonLabel}` : 'Playing conditions'}
         pinned={

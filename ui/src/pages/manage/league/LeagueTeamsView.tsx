@@ -92,7 +92,7 @@ function TeamsCard({ title, count, testId, actions, children }: TeamsCardProps) 
   return (
     <Card data-testid={testId} sx={{ height: '100%' }} contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0, flex: '1 1 200px' }}>
         <Box
           aria-hidden
           sx={{ width: 32, height: 32, flex: 'none', borderRadius: 1, bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'center', '& svg': { fontSize: 20 } }}
@@ -104,7 +104,7 @@ function TeamsCard({ title, count, testId, actions, children }: TeamsCardProps) 
         </Typography>
       </Stack>
       {actions && (
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%' }}>{actions}</Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%', flex: '0 1 auto' }}>{actions}</Box>
       )}
       </Box>
       <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, alignContent: 'start' }}>{children}</Box>

@@ -119,8 +119,8 @@ describe('LeagueCard', () => {
 
       renderCard(makeLeague({ logoUrl: null }))
       const avatar = document.querySelector('.MuiAvatar-root')
-      expect(avatar?.querySelector('img')).not.toBeInTheDocument()
-      expect(avatar?.querySelector('[data-testid="EmojiEventsOutlinedIcon"]')).toBeInTheDocument()
+      expect(avatar?.querySelector('img')?.getAttribute('src') ?? '').not.toContain('example.com')
+      expect(avatar?.querySelector('img')).toBeInTheDocument()
     })
   })
 

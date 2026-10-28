@@ -205,10 +205,10 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
       id={LEAGUE_FORM_ID}
       onSubmit={handleSubmit}
       noValidate
-      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}
+      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}
     >
       <FormSectionHeading icon={<InfoOutlinedIcon />} title="Basic info" />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
         <Input label="Name" value={values.name} onChange={handleChange('name')} error={Boolean(errors.name)} helperText={errors.name} />
 
         <Input select label="Format" value={values.format} onChange={handleFormatChange}>
@@ -258,7 +258,7 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
           <Typography id="league-cutoff-heading" variant="subtitle2" component="p">
             Age cut-off (day and month)
           </Typography>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
             <Input
               select
               label="Cut-off month (optional)"
@@ -305,7 +305,7 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
       </Box>
 
       <FormSectionHeading icon={<AlternateEmailIcon />} title="Contact" />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
         <Input label="Phone (optional)" value={values.phone} onChange={handleChange('phone')} />
 
         <WebsiteInput label="Website (optional)" value={values.website} onChange={handleWebsiteChange} error={errors.website} showHint={false} />
@@ -321,7 +321,7 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
       </Box>
 
       <FormSectionHeading icon={<PaletteOutlinedIcon />} title="Branding and social" />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
         <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
         <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
       </Box>

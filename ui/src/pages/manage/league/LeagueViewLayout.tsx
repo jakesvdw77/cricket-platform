@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
-import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { VIEW_TABS_PROPS, viewTabSx, viewTabsSx } from '../../../utils/viewTabs'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import AddIcon from '@mui/icons-material/Add'
+import { Button, compactButtonSx } from '../../../components/Button'
+import { BrandIcon } from '../../../components/BrandIcon'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
@@ -66,6 +68,7 @@ const VIEW_TABS = [
 export default function LeagueViewLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId } = useParams<{ leagueId?: string }>()
+  const navigate = useNavigate()
   const location = useLocation()
   const theme = useTheme()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -217,6 +220,8 @@ export default function LeagueViewLayout() {
     editParams.set('seasonId', selectedSeasonId)
   }
   const editQuery = editParams.toString()
+  // The existing Add match form (MatchFormPage) reads ?leagueId= and ?seasonId= to preselect both.
+  const createMatchPath = `/manage/fixtures/matches/new?leagueId=${leagueId}${selectedSeasonId ? `&seasonId=${selectedSeasonId}` : ''}`
   const editPath = `${leagueBasePath}/edit${editQuery ? `?${editQuery}` : ''}`
 
   const context: LeagueViewContext = {
@@ -280,7 +285,7 @@ export default function LeagueViewLayout() {
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
+              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
               Back to Leagues
             </MuiButton>
@@ -294,27 +299,40 @@ export default function LeagueViewLayout() {
                   showAll={false}
                 />
               )}
-              <MuiButton
-                variant="outlined"
+              <Button
+                size="compact"
+                variant="secondary"
                 startIcon={<ShareOutlinedIcon fontSize="small" />}
                 disabled={matchesQuery.isLoading}
                 onClick={() => setShareOpen(true)}
               >
                 Share schedule
-              </MuiButton>
+              </Button>
+              <Button
+                size="compact"
+                variant="secondary"
+                startIcon={<AddIcon fontSize="small" />}
+                disabled={!selectedSeasonId}
+                onClick={() => navigate(createMatchPath)}
+              >
+                Create match
+              </Button>
               {/* docs/specs/096: outlined, so Edit stays the one filled primary action; the labelled button wraps on a phone. */}
-              <MuiButton
-                variant="outlined"
+              <Button
+                size="compact"
+                variant="secondary"
                 startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
                 onClick={() => setDuplicateOpen(true)}
               >
                 Duplicate league
-              </MuiButton>
+              </Button>
               <MuiButton
                 component={RouterLink}
                 to={editPath}
                 variant="contained"
+                size="small"
                 startIcon={<EditOutlinedIcon fontSize="small" />}
+                sx={compactButtonSx}
               >
                 Edit
               </MuiButton>
@@ -328,7 +346,7 @@ export default function LeagueViewLayout() {
               variant="rounded"
               sx={{ ...avatarSx(64), width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
             >
-              <EmojiEventsOutlinedIcon />
+              <BrandIcon name="nav/cricket-leagues" size={40} surface="none" />
             </Avatar>
             <Stack spacing={1} sx={{ minWidth: 0 }}>
               <Typography

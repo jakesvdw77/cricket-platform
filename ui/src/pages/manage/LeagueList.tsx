@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
+import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
@@ -27,7 +28,7 @@ const FORMATS = Object.keys(LEAGUE_FORMAT_LABELS) as LeagueFormat[]
 const FOCUS_LABELS: Record<LeagueListFocus, string> = {
   active: 'Active leagues',
   'this-week': 'Matches this week',
-  attention: 'Need attention',
+  attention: 'Setup needed',
 }
 
 function noMatchDescription(term: string, format: string): string {
@@ -43,7 +44,7 @@ function noMatchDescription(term: string, format: string): string {
 
 // docs/specs/091-leagues-gold-standard.md (A): the Leagues page on the Polls / Matches / Players pattern - a Season pill
 // beside the title (every card, counter and the list describe that season), counters that are quick filters (Active
-// leagues, Matches this week, Need attention) or plain figures (Teams entered, Players, Seasons), the shared FilterBar
+// leagues, Matches this week, Setup needed) or plain figures (Teams entered, Players, Seasons), the shared FilterBar
 // (Format and search, client-side as before) and content line (sort, Show inactive, Cards | List). The season, Format and
 // the view are remembered; the quick filter and Show inactive are per visit. Deliberately no pagination - a club's own
 // leagues are a small, bounded list (docs/specs/029-league-management.md).
@@ -171,7 +172,7 @@ export default function LeagueList() {
   const sortLink = <SortLink label={sortAsc ? 'Name, A to Z' : 'Name, Z to A'} onToggle={() => setSortAsc((current) => !current)} />
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
       <ManageScreenHeader
         title="Leagues"
         // docs/specs/091: the season every card, counter and row describes; there is no "All seasons" here.
@@ -254,18 +255,20 @@ export default function LeagueList() {
 
       {visibleLeagues.length === 0 && hasLeagues && isFiltering && (
         <EmptyState
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
           title="No matching leagues"
           description={focus && !isSearching && format === '' ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : noMatchDescription(search.trim(), format)}
         />
       )}
 
       {!hasLeagues && !isFiltering && !showInactive && (
-        <EmptyState title="No leagues yet" description="Create your club's first league to get started." />
+        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." />
       )}
 
       {!hasLeagues && (isFiltering || showInactive) && (
         <EmptyState
-          title={focus ? 'No matching leagues' : 'No leagues yet'}
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
+          title={focus ? 'No matching leagues' : 'No league available'}
           description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
         />
       )}

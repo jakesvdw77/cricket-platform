@@ -334,7 +334,7 @@ export default function LeagueFormPage() {
         }
         actions={
           activeTab === 'details' ? (
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               {saveMutation.isError && (
                 <Typography variant="body2" color="error.main">
                   {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
@@ -342,7 +342,7 @@ export default function LeagueFormPage() {
               )}
 
               {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
-              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" sx={compactButtonSx}>
+              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" size="small" sx={compactButtonSx}>
                 Cancel
               </MuiButton>
 
