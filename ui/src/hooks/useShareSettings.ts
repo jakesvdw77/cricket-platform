@@ -28,5 +28,6 @@ export function useShareSettings(clubId: string | undefined, enabled = true) {
     disabledFormats: query.data?.disabledFormats ?? ({} as Record<string, string[]>),
     isSaving: mutation.isPending,
     saveFailed: mutation.isError,
+    saveError: mutation.error,
   }
 }
