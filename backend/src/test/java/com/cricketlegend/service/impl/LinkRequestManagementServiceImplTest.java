@@ -21,6 +21,7 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonLink;
 import com.cricketlegend.domain.PersonLinkStatus;
 import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.Section;
 import com.cricketlegend.dto.ApproveLinkRequestRequest;
 import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.DeclineLinkRequestRequest;
@@ -436,5 +437,97 @@ class LinkRequestManagementServiceImplTest {
         assertThat(visible.get(0).suggestedPlayer().playerId()).isEqualTo(profile.getId());
         assertThat(visible.get(0).requesterEmail()).isEqualTo("pat@example.com");
         verify(suggester, times(4)).suggest(any(), any(), any());
+    }
+
+    // ---- request section (spec 119 Decision 31) ----
+
+    @Test
+    void aRequestWithASectionIsVisibleToAScopedManagerOfThatSectionEvenWithNoSuggestion() {
+        UUID mySection = UUID.randomUUID();
+        request.setSectionId(mySection);
+        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+
+        assertThat(service.summary(auth, clubId).waiting()).isEqualTo(1);
+        assertThat(service.list(auth, clubId)).extracting(LinkRequestDto::id).containsExactly(request.getId());
+        service.decline(auth, clubId, request.getId(), null);
+        assertThat(request.getStatus()).isEqualTo(LinkRequestStatus.DECLINED);
+    }
+
+    @Test
+    void aRequestWithASectionIsHiddenFromAndUndecidableByAManagerOfAnotherSectionEvenWithASuggestionInTheirs() {
+        UUID mySection = UUID.randomUUID();
+        UUID requestSection = UUID.randomUUID();
+        request.setSectionId(requestSection);
+        Person kid = person("Sam", "Smith");
+        PlayerProfile profile = existingPlayer(kid);
+        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(suggester.suggest(any(), any(), any())).thenReturn(
+                Map.of(request.getId(), new Suggestion(profile, kid, Set.of(mySection), true)));
+
+        assertThat(service.summary(auth, clubId).waiting()).isZero();
+        assertThat(service.list(auth, clubId)).isEmpty();
+        assertThatThrownBy(() -> service.decline(auth, clubId, request.getId(), null)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.approve(auth, clubId, request.getId(),
+                approveExisting(profile, MainAgentMode.ADD, true))).isInstanceOf(AccessDeniedException.class);
+        assertThat(request.getStatus()).isEqualTo(LinkRequestStatus.PENDING);
+        verify(outcomeEmailService, never()).sendAfterCommit(any());
+    }
+
+    @Test
+    void aClubWideManagerSeesARequestWithASection() {
+        request.setSectionId(UUID.randomUUID());
+
+        assertThat(service.summary(auth, clubId).waiting()).isEqualTo(1);
+        assertThat(service.list(auth, clubId)).hasSize(1);
+    }
+
+    @Test
+    void theListCarriesTheSectionIdAndName() {
+        Section juniors = Section.builder().id(UUID.randomUUID()).clubId(clubId).name("Juniors").active(true).build();
+        request.setSectionId(juniors.getId());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(juniors));
+
+        LinkRequestDto dto = service.list(auth, clubId).get(0);
+
+        assertThat(dto.sectionId()).isEqualTo(juniors.getId());
+        assertThat(dto.sectionName()).isEqualTo("Juniors");
+    }
+
+    @Test
+    void approvingANewPlayerDefaultsTheSectionToTheRequestsAndAnExplicitOneWins() {
+        UUID requestSection = UUID.randomUUID();
+        UUID chosen = UUID.randomUUID();
+        request.setSectionId(requestSection);
+        PlayerDto created = mock(PlayerDto.class);
+        when(created.id()).thenReturn(UUID.randomUUID());
+        when(created.personId()).thenReturn(UUID.randomUUID());
+        when(playerService.create(eq(clubId), any(CreatePlayerRequest.class))).thenReturn(created);
+
+        service.approve(auth, clubId, request.getId(), new ApproveLinkRequestRequest(
+                null, new NewLinkedPlayerRequest("Sam", "Smith", LocalDate.of(2012, 6, 15), null), MainAgentMode.ADD, true));
+
+        verify(accessService).assertCanAdministerSection(auth, clubId, requestSection);
+        verify(playerSectionService).link(clubId, created.id(), requestSection);
+
+        LinkRequest second = pending(person("Tina", "Third"));
+        second.setSectionId(requestSection);
+        when(linkRequestRepository.findByIdAndClubId(second.getId(), clubId)).thenReturn(Optional.of(second));
+        service.approve(auth, clubId, second.getId(), new ApproveLinkRequestRequest(
+                null, new NewLinkedPlayerRequest("Tom", "Jones", LocalDate.of(2012, 6, 15), chosen), MainAgentMode.ADD, true));
+        verify(playerSectionService).link(clubId, created.id(), chosen);
+    }
+
+    @Test
+    void approvingANewPlayerWithNoSectionAnywhereNeedsClubWideAdministration() {
+        PlayerDto created = mock(PlayerDto.class);
+        when(created.id()).thenReturn(UUID.randomUUID());
+        when(created.personId()).thenReturn(UUID.randomUUID());
+        when(playerService.create(eq(clubId), any(CreatePlayerRequest.class))).thenReturn(created);
+
+        service.approve(auth, clubId, request.getId(), new ApproveLinkRequestRequest(
+                null, new NewLinkedPlayerRequest("Sam", "Smith", LocalDate.of(2012, 6, 15), null), MainAgentMode.ADD, true));
+
+        verify(accessService).assertCanAdministerAnySection(auth, clubId, Set.of());
+        verify(playerSectionService, never()).link(any(), any(), any());
     }
 }

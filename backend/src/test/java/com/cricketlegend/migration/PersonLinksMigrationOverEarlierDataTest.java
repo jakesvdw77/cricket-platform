@@ -99,6 +99,13 @@ class PersonLinksMigrationOverEarlierDataTest {
             assertThat(str(c, "select contact_number from link_request where id = '" + request + "'")).isEqualTo("082 123 4567");
             assertThatThrownBy(() -> exec(c, "update link_request set contact_number = '" + "1".repeat(31) + "' where id = '" + request + "'"))
                     .isInstanceOf(SQLException.class);
+            // ---- 055 (section on a link request) applied over that same row: it keeps a NULL section, new ones may carry one ----
+            assertThat(count(c, "select count(*) from link_request where id = '" + request + "' and section_id is null")).isEqualTo(1);
+            UUID section = insert(c, "insert into section (id, club_id, name, active) values (?, '" + club + "', 'Juniors', true)");
+            exec(c, "update link_request set section_id = '" + section + "' where id = '" + request + "'");
+            assertThat(count(c, "select count(*) from link_request where section_id = '" + section + "'")).isEqualTo(1);
+            assertThatThrownBy(() -> exec(c, "update link_request set section_id = '" + UUID.randomUUID() + "' where id = '" + request + "'"))
+                    .isInstanceOf(SQLException.class); // must reference a real section
             assertThat(count(c, "select count(*) from player_profile where id = '" + kidProfile + "'")).isEqualTo(1);
         }
     }

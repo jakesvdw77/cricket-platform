@@ -13,8 +13,10 @@ vi.mock('../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.fn()
 const http = api as unknown as ApiMock
 const CLUBS = [{ id: 'c1', name: 'Riverside CC' }, { id: 'c2', name: 'Hillcrest CC' }]
 
-function renderForm(props: Partial<LinkRequestFormProps> = {}, clubs = CLUBS, post: unknown = { message: 'ok' }) {
-  routeApi(http, { 'GET /me/clubs': clubs, 'POST /me/link-requests': post })
+const SECTIONS = [{ id: 's1', name: 'Under 14' }, { id: 's2', name: 'Under 16' }]
+
+function renderForm(props: Partial<LinkRequestFormProps> = {}, clubs = CLUBS, post: unknown = { message: 'ok' }, sections: Record<string, unknown> = {}) {
+  routeApi(http, { 'GET /me/clubs': clubs, 'POST /me/link-requests': post, ...sections })
   const onSent = vi.fn()
   renderWithProviders(<LinkRequestForm onSent={onSent} {...props} />)
   return onSent
@@ -138,5 +140,109 @@ describe('LinkRequestForm', () => {
     routeApi(http, { 'GET /me/clubs': [CLUBS[0]], 'POST /me/link-requests': httpError(500) })
     await user.click(screen.getByRole('button', { name: 'Send request' }))
     expect(await screen.findByText('We could not send your request. Please try again.')).toBeInTheDocument()
+  })
+
+  describe('section (docs/specs/121)', () => {
+    const sectionsFor = (c1: unknown = SECTIONS, c2: unknown = []) => ({ 'GET /me/clubs/c1/sections': c1, 'GET /me/clubs/c2/sections': c2 })
+    const sectionBox = () => screen.getByRole('combobox', { name: /^Section/ })
+
+    it('is disabled with "Choose a club first" until a club is chosen, then loads the club\'s sections', async () => {
+      const user = userEvent.setup()
+      renderForm({}, CLUBS, undefined, sectionsFor())
+      await screen.findByRole('combobox', { name: 'Club' })
+
+      expect(sectionBox()).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('Choose a club first')).toBeInTheDocument()
+      expect(calls(http.get, '/me/clubs/c1/sections')).toHaveLength(0)
+
+      await chooseClub(user, 'Riverside CC')
+      await waitFor(() => expect(sectionBox()).not.toHaveAttribute('aria-disabled', 'true'))
+      await user.click(sectionBox())
+      expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['Under 14', 'Under 16'])
+      expect(screen.queryByText('Choose a club first')).not.toBeInTheDocument()
+    })
+
+    it('clears the chosen section when the club changes', async () => {
+      const user = userEvent.setup()
+      renderForm({}, CLUBS, undefined, sectionsFor(SECTIONS, [{ id: 's9', name: 'Seniors' }]))
+      await chooseClub(user, 'Riverside CC')
+      await waitFor(() => expect(sectionBox()).not.toHaveAttribute('aria-disabled', 'true'))
+      await user.click(sectionBox())
+      await user.click(await screen.findByRole('option', { name: 'Under 16' }))
+      expect(sectionBox()).toHaveTextContent('Under 16')
+
+      await user.click(screen.getByRole('combobox', { name: 'Club' }))
+      await user.click(await screen.findByRole('option', { name: 'Hillcrest CC' }))
+
+      await waitFor(() => expect(sectionBox()).not.toHaveTextContent('Under 16'))
+      await waitFor(() => expect(calls(http.get, '/me/clubs/c2/sections')).toHaveLength(1))
+    })
+
+    it('is required with "Choose the section" when the club has sections, and sends nothing without it', async () => {
+      const user = userEvent.setup()
+      renderForm({}, [CLUBS[0]], undefined, sectionsFor())
+      await fillRequired(user)
+      await waitFor(() => expect(sectionBox()).not.toHaveAttribute('aria-disabled', 'true'))
+
+      await user.click(screen.getByRole('button', { name: 'Send request' }))
+
+      expect(screen.getByText('Choose the section')).toBeInTheDocument()
+      expect(sectionBox()).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Section' })).toBeInTheDocument()
+      expect(calls(http.post, '/me/link-requests')).toHaveLength(0)
+    })
+
+    it('sends sectionId in the payload once chosen', async () => {
+      const user = userEvent.setup()
+      const onSent = renderForm({}, [CLUBS[0]], undefined, sectionsFor())
+      await fillRequired(user)
+      await waitFor(() => expect(sectionBox()).not.toHaveAttribute('aria-disabled', 'true'))
+      await user.click(sectionBox())
+      await user.click(await screen.findByRole('option', { name: 'Under 16' }))
+
+      await user.click(screen.getByRole('button', { name: 'Send request' }))
+
+      await waitFor(() => expect(onSent).toHaveBeenCalledOnce())
+      expect(calls(http.post, '/me/link-requests')[0][1]).toMatchObject({ clubId: 'c1', sectionId: 's2' })
+    })
+
+    it('is optional, labelled so, when asking about a matched player, and a request without it is sent', async () => {
+      const user = userEvent.setup()
+      const onSent = renderForm({ prefill: { firstName: 'Zane', clubId: 'c1', targetPlayerRef: 'ref-9' } }, CLUBS, undefined, sectionsFor())
+      await user.type(screen.getByLabelText('Surname'), 'Botha')
+      fireEvent.change(screen.getByLabelText('Date of birth'), { target: { value: '2010-05-06' } })
+      await user.type(screen.getByLabelText('Contact number'), '0825550100')
+      expect(await screen.findByRole('combobox', { name: 'Section (optional)' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Send request' }))
+
+      await waitFor(() => expect(onSent).toHaveBeenCalledOnce())
+      expect(screen.queryByText('Choose the section')).not.toBeInTheDocument()
+      expect(calls(http.post, '/me/link-requests')[0][1]).not.toHaveProperty('sectionId')
+    })
+
+    it('is hidden when the club has no sections, and the request is sent without one', async () => {
+      const user = userEvent.setup()
+      const onSent = renderForm({}, [CLUBS[0]], undefined, sectionsFor([]))
+      await fillRequired(user)
+      await waitFor(() => expect(calls(http.get, '/me/clubs/c1/sections')).toHaveLength(1))
+      await waitFor(() => expect(screen.queryByRole('combobox', { name: /^Section/ })).not.toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Send request' }))
+
+      await waitFor(() => expect(onSent).toHaveBeenCalledOnce())
+      expect(calls(http.post, '/me/link-requests')[0][1]).not.toHaveProperty('sectionId')
+    })
+
+    it('lets the message field span both columns', async () => {
+      renderForm()
+      await screen.findByRole('combobox', { name: 'Club' })
+
+      // jsdom does not compute grid shorthands, so read the rule emotion injected for the field's class.
+      const field = screen.getByLabelText('Message (optional)').closest('.MuiTextField-root') as HTMLElement
+      const cls = Array.from(field.classList).find((name) => name.startsWith('css-')) as string
+      const css = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules).map((r) => r.cssText)).join('\n')
+      expect(css.split('}').find((chunk) => chunk.includes(`.${cls}`) && chunk.includes('grid-column'))).toMatch(/grid-column:\s*1\s*\/\s*-1/)
+    })
   })
 })

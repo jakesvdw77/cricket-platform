@@ -82,6 +82,18 @@ describe('PlayerAccountsTab', () => {
       await waitFor(() => expect(screen.getByTestId('link-requests-counter')).toHaveTextContent('2 link requests waiting'))
     })
 
+    it('shows "Section: X" on the card only when the request names a section', async () => {
+      routes([request({ sectionId: 's1', sectionName: 'Under 14' })])
+      const first = renderTab()
+      expect(await screen.findByText('Section: Under 14')).toBeInTheDocument()
+      first.unmount()
+
+      routes([request()])
+      renderTab()
+      await screen.findByRole('heading', { name: 'Aman Naidoo' })
+      expect(screen.queryByText(/^Section:/)).not.toBeInTheDocument()
+    })
+
     it('makes the asked-about player the card title, with a Requested by block and the suggested match', async () => {
       routes([request()])
       renderTab()
@@ -225,6 +237,26 @@ describe('PlayerAccountsTab', () => {
       await waitFor(() => expect(calls(http.post, `${BASE}/link-requests/r1/approve`)).toHaveLength(1))
       expect(calls(http.post, `${BASE}/link-requests/r1/approve`)[0][1]).toEqual({
         newPlayer: { firstName: 'Amanpreet', lastName: 'Naidoo', dateOfBirth: '2012-03-04' },
+        mainAgentMode: 'MAKE_MAIN',
+        confirm: true,
+      })
+    })
+
+    it('New player and approve prefills the section from the request and sends it', async () => {
+      const user = userEvent.setup()
+      const section = { id: 's1', clubId: 'c1', parentSectionId: null, name: 'Under 14', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null }
+      routes([request({ suggestedPlayer: null, sectionId: 's1', sectionName: 'Under 14' })], { [`GET ${BASE}/sections`]: [section] })
+      renderTab()
+
+      await user.click(await screen.findByRole('button', { name: 'New player and approve' }))
+      const dialog = await screen.findByRole('dialog', { name: 'New player and approve' })
+      await waitFor(() => expect(within(dialog).getByLabelText('Section (optional)')).toHaveValue('Under 14'))
+      await user.click(within(dialog).getByRole('button', { name: 'Next' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Confirm and approve' }))
+
+      await waitFor(() => expect(calls(http.post, `${BASE}/link-requests/r1/approve`)).toHaveLength(1))
+      expect(calls(http.post, `${BASE}/link-requests/r1/approve`)[0][1]).toEqual({
+        newPlayer: { firstName: 'Aman', lastName: 'Naidoo', dateOfBirth: '2012-03-04', sectionId: 's1' },
         mainAgentMode: 'MAKE_MAIN',
         confirm: true,
       })
