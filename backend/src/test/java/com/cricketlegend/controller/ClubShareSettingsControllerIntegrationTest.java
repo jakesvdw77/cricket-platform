@@ -171,4 +171,130 @@ class ClubShareSettingsControllerIntegrationTest {
     private Club newClub(String slug) {
         return clubRepository.save(Club.builder().name(slug).slug(slug).status(ClubStatus.ACTIVE).build());
     }
+
+    // --- docs/specs/122-league-sharing.md: disabledFormats ---
+
+    @Test
+    void disabledFormatsRoundTripAndDefaultToEmpty() throws Exception {
+        Club club = newClub("riverside-cc");
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, club.getId());
+
+        mockMvc.perform(get(URL, club.getId()).with(admin))
+                .andExpect(jsonPath("$.disabledFormats").isMap())
+                .andExpect(jsonPath("$.disabledFormats").isEmpty());
+
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"RESULT\":[\"TV\"],\"LEAGUE\":[\"POSTER\",\"FACEBOOK\"]}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disabledFormats.RESULT[0]").value("TV"))
+                .andExpect(jsonPath("$.disabledFormats.LEAGUE[0]").value("FACEBOOK"))
+                .andExpect(jsonPath("$.disabledFormats.LEAGUE[1]").value("POSTER"));
+
+        mockMvc.perform(get(URL, club.getId()).with(admin))
+                .andExpect(jsonPath("$.disabledFormats.RESULT[0]").value("TV"))
+                .andExpect(jsonPath("$.disabledFormats.LEAGUE.length()").value(2));
+
+        // a save of only the flag leaves the formats alone
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON).content(ON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.initialsOnlyDefault").value(true))
+                .andExpect(jsonPath("$.disabledFormats.RESULT[0]").value("TV"));
+
+        // an empty list clears one content type
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":true,\"disabledFormats\":{\"RESULT\":[],\"LEAGUE\":[\"POSTER\",\"FACEBOOK\"]}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disabledFormats.RESULT").doesNotExist())
+                .andExpect(jsonPath("$.disabledFormats.LEAGUE.length()").value(2));
+    }
+
+    @Test
+    void aProfilePutDoesNotResetDisabledFormats() throws Exception {
+        Club club = newClub("riverside-cc");
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, club.getId());
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"LEAGUE\":[\"CALENDAR\"]}}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/v1/platform/clubs/{id}/profile", club.getId())
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"CLUB\",\"email\":\"hello@riverside.test\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(URL, club.getId()).with(admin))
+                .andExpect(jsonPath("$.disabledFormats.LEAGUE[0]").value("CALENDAR"));
+    }
+
+    @Test
+    void switchingOffTheLastFormatOfAContentTypeIs400AndStoresNothing() throws Exception {
+        Club club = newClub("riverside-cc");
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, club.getId());
+
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"RESULT\":[\"PDF\",\"IMAGE\",\"TV\",\"WHATSAPP\",\"FACEBOOK\"]}}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get(URL, club.getId()).with(admin)).andExpect(jsonPath("$.disabledFormats").isEmpty());
+    }
+
+    @Test
+    void anUnknownContentTypeOrFormatCodeIs400() throws Exception {
+        Club club = newClub("riverside-cc");
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, club.getId());
+
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"BOGUS\":[\"PDF\"]}}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"LEAGUE\":[\"TV\"]}}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void aSectionScopedManagerCannotChangeTheFormatsButMaySaveTheFlagAndResendTheSameFormats() throws Exception {
+        Club club = newClub("riverside-cc");
+        Section section = sectionRepository.save(
+                Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, club.getId());
+        JwtRequestPostProcessor sectionAdmin = grant("section-admin", ScopeType.SECTION, section.getId());
+        String formats = "{\"initialsOnlyDefault\":true,\"disabledFormats\":{\"RESULT\":[\"TV\"]}}";
+
+        mockMvc.perform(put(URL, club.getId()).with(sectionAdmin).contentType(MediaType.APPLICATION_JSON).content(formats))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put(URL, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON).content(formats))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(URL, club.getId()).with(sectionAdmin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"RESULT\":[\"TV\"]}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.initialsOnlyDefault").value(false))
+                .andExpect(jsonPath("$.disabledFormats.RESULT[0]").value("TV"));
+    }
+
+    @Test
+    void aClubAdminOfAnotherClubCannotChangeThisClubsFormats() throws Exception {
+        Club mine = newClub("riverside-cc");
+        Club other = newClub("lakeside-cc");
+        JwtRequestPostProcessor admin = grant("admin", ScopeType.CLUB, mine.getId());
+
+        mockMvc.perform(put(URL, other.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialsOnlyDefault\":false,\"disabledFormats\":{\"RESULT\":[\"TV\"]}}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void theMigrationAddedTheDisabledFormatsColumnAsNotNullDefaultingToAnEmptyObject() {
+        String defaultValue = jdbcTemplate.queryForObject(
+                "SELECT column_default FROM information_schema.columns "
+                        + "WHERE table_name = 'club_profile' AND column_name = 'share_disabled_formats'",
+                String.class);
+        String nullable = jdbcTemplate.queryForObject(
+                "SELECT is_nullable FROM information_schema.columns "
+                        + "WHERE table_name = 'club_profile' AND column_name = 'share_disabled_formats'",
+                String.class);
+        assertThat(defaultValue).contains("{}");
+        assertThat(nullable).isEqualTo("NO");
+    }
 }

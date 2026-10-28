@@ -130,4 +130,24 @@ class LeagueCopyRulesTest {
         assertThat(copy.isActive()).isTrue();
         assertThat(copy.getUpdatedBy()).isNull();
     }
+
+    @Test
+    void copyOfPlayingConditionsCarriesBallsPerOverAndFreeHit() {
+        LeaguePlayingConditions source = conditions(false);
+        source.setMaxBallsPerOver(8);
+        source.setFreeHitOnNoBall(false);
+
+        LeaguePlayingConditions copy = LeagueCopyRules.copyOfPlayingConditions(source, UUID.randomUUID());
+
+        assertThat(copy.getMaxBallsPerOver()).isEqualTo(8);
+        assertThat(copy.isFreeHitOnNoBall()).isFalse();
+    }
+
+    @Test
+    void copyOfPlayingConditionsKeepsNoLimitAndFreeHitOnFromADefaultSource() {
+        LeaguePlayingConditions copy = LeagueCopyRules.copyOfPlayingConditions(conditions(false), UUID.randomUUID());
+
+        assertThat(copy.getMaxBallsPerOver()).isNull();
+        assertThat(copy.isFreeHitOnNoBall()).isTrue();
+    }
 }

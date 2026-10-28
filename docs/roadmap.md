@@ -365,6 +365,17 @@ Full reasoning is in the spec's "Later" list and Rollout Notes; this is the inde
 - Found while building: a share-context read for section-scoped managers, who cannot read leagues, sections, sponsors or the club profile (the junior lock fails safe to on and logos are skipped).
 - Found while building: rename the `Initials only` code identifiers (`initialsOnly`, `initialsOnlyDefault`, `ShareInitialsControl`) to first-name-initials in a later clean-up.
 
+## Deferred by `122`, `123` and `124`: League sharing, Player Hub leagues, balls per over and free hit
+
+Built on `feat/leagues-completion` (2026-10-28). Still open:
+
+- **League sharing contents:** Contacts, Venues, Next fixtures (and its Poster) and Standings (needs a points table read, left out of the first round by the owner). A per-section format setting, a public league page and link, and sharing a league from the Player Hub with the full dialog (the Hub only has the one-tap Poster plus Download).
+- **Player Hub poster:** no club logo option; the footer line is off by design. Hub leagues: show a league's contacts only if a club opts in (own spec); standings once a points table read exists; a league fixture opening the match page or team sheet when Schedule > Matches ships.
+- **Result share dialog size:** `ShareResultDialog` is still `maxWidth` lg while `ShareLeagueDialog` fills about 96% of the screen (`ShareFillContext`); align them if the owner wants.
+- **Bonus point card:** shown only on the Player Hub conditions tab; the manager summary and share outputs do not list it.
+- **Free hit and balls per over** are recorded and displayed only; the platform does not score ball by ball, so nothing enforces them.
+- **League schedule import (groups E, specs `097`/`098`)** is the one piece of the leagues completion not built: next on its own branch, framework first.
+
 ## Deferred by `097` and `098`: Import framework and league schedule import
 
 Both specs are written and not built (`097-import-framework.md`, `098-league-schedule-import.md`); `050`'s "no bulk fixture import" non-goal is resolved by `098`.

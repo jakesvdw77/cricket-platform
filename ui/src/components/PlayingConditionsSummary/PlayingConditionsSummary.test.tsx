@@ -79,3 +79,17 @@ describe('PlayingConditionsSummary', () => {
     expect(screen.queryByText(/This result is/)).not.toBeInTheDocument()
   })
 })
+
+describe('PlayingConditionsSummary balls per over and free hit (docs/specs/124)', () => {
+  it('says no limit and Yes by default', () => {
+    show()
+    expect(screen.getByText('Balls per over').nextSibling).toHaveTextContent('No limit')
+    expect(screen.getByText('Free hit after a no ball').nextSibling).toHaveTextContent('Yes')
+  })
+
+  it('states the limit with wides and no balls included, and No when the free hit is off', () => {
+    show({ conditions: { ...conditions, maxBallsPerOver: 8, freeHitOnNoBall: false } })
+    expect(screen.getByText('Balls per over').nextSibling).toHaveTextContent('At most 8, wides and no balls included')
+    expect(screen.getByText('Free hit after a no ball').nextSibling).toHaveTextContent('No')
+  })
+})

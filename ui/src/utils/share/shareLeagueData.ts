@@ -370,7 +370,7 @@ export interface BuildMyLeagueShareInput {
 export function buildMyLeagueShareModel(input: BuildMyLeagueShareInput): LeagueShareModel {
   const { league: dto } = input
   const info = dto.league
-  const junior = isJuniorMatch({ league: { maxAge: info.maxAge }, sections: undefined, teams: [] })
+  const junior = isJuniorMatch({ league: { maxAge: info.maxAge }, sections: [], teams: [] })
   const initialsOnly = junior.junior ? true : input.initialsOnly
   const ownNames = new Set(dto.teams.filter((team) => team.mine).map((team) => team.name))
   const side = (name: string, logoUrl: string | null): LeagueShareSide => ({ name: name.trim() || 'TBC', logoUrl, own: ownNames.has(name) })

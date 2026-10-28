@@ -12,6 +12,17 @@ import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueContact } from '../../api/leagueContactApi'
 
+// docs/specs/122-league-sharing.md (Entry points): the dialog has its own test; here it is a stub that shows what the Schedule
+// and Playing conditions tabs open it with.
+vi.mock('../../components/ShareLeagueDialog', () => ({
+  ShareLeagueDialog: (props: { open: boolean; preselected: string[]; league: { name: string }; seasonId?: string | null }) =>
+    props.open ? (
+      <div role="dialog" aria-label="Share league" data-preselected={props.preselected.join(',')} data-season={props.seasonId ?? ''}>
+        <h2>Share league</h2>
+      </div>
+    ) : null,
+}))
+
 const listLeagues = vi.fn()
 const createLeague = vi.fn()
 const updateLeague = vi.fn()
@@ -834,6 +845,9 @@ describe('LeagueFormPage', () => {
       await user.click(screen.getByRole('button', { name: 'Share' }))
 
       expect(await screen.findByText('Share league')).toBeInTheDocument()
+      // The Schedule tab preselects Schedule only, for the season the tab shows.
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-preselected', 'SCHEDULE')
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-season', 'season-1')
     })
 
   })
@@ -1014,6 +1028,8 @@ describe('LeagueFormPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Share' }))
 
       expect(await screen.findByText('Share league')).toBeInTheDocument()
+      // The Playing conditions tab preselects Playing conditions only.
+      expect(screen.getByRole('dialog', { name: 'Share league' })).toHaveAttribute('data-preselected', 'CONDITIONS')
     })
   })
 

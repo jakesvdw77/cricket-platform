@@ -1,5 +1,14 @@
 import type { Match } from '../../api/matchApi'
 import type { MatchResult, ResultPlayer, Scorecard } from '../../api/matchResultApi'
+import type { League } from '../../api/leagueApi'
+import type { LeagueContact } from '../../api/leagueContactApi'
+import type { LeaguePlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import type { LeagueTeam } from '../../api/leagueTeamApi'
+import type { ResultListItem } from '../../api/matchResultApi'
+import type { Team } from '../../api/teamApi'
+import { buildLeagueShareModel } from './shareLeagueData'
+import type { BuildLeagueShareInput, LeagueShareModel } from './shareLeagueData'
+import { LEAGUE_CONTENTS } from './leagueShareFormats'
 import { buildShareResultModel } from './shareResultData'
 import type { ShareResultModel, TeamsChoice } from './shareResultData'
 
@@ -132,4 +141,96 @@ export function privacyModel(
     clubName: 'Riverside CC',
     leagueName: 'Premier League',
   })
+}
+
+// docs/specs/122-league-sharing.md (Test Plan, junior privacy): the league fixture. The league contacts carry the same
+// distinctive given names, so a full first name anywhere in a league share is a leak. A junior league (maxAge 13) forces
+// initials on whatever the caller asks for.
+export const leagueFixture = (maxAge: number | null): League =>
+  ({
+    id: 'l1',
+    clubId: 'c1',
+    name: 'Premier League',
+    source: 'INTERNAL',
+    maxPlayingXiSize: 11,
+    minAge: null,
+    maxAge,
+    ageCutoffMonth: null,
+    ageCutoffDay: null,
+    active: true,
+    format: 'T20',
+    logoUrl: null,
+    phone: '011 555 0100',
+    website: 'https://premier.example.org',
+    email: 'info@premier.example.org',
+    socialLinks: [],
+  }) as unknown as League
+
+const leagueContact = (id: string, firstName: string, lastName: string, role: string, isPrimary: boolean): LeagueContact => ({
+  id,
+  leagueId: 'l1',
+  contact: { firstName, lastName, email: `${id}@example.org`, phone: '082 555 0199' },
+  role,
+  isPrimary,
+  active: true,
+  createdAt: '',
+  updatedAt: '',
+  updatedBy: null,
+})
+
+export const leaguePrivacyContacts: LeagueContact[] = [
+  leagueContact('k1', 'Thabo', 'Mokoena', 'Convenor', true),
+  leagueContact('k2', 'Nomvula', 'Dlamini', 'Secretary', false),
+]
+
+export const leaguePrivacyConditions = {
+  maxOversPerInnings: 20,
+  powerplayOvers: 6,
+  maxOversPerBowler: 4,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
+  allowSubstitutions: true,
+  pointsForWin: 4,
+  pointsForLoss: 0,
+  pointsForDraw: 2,
+  pointsForNoResult: 1,
+  pointsForForfeitWin: 4,
+  bonusPointsEnabled: false,
+  bonusBattingOversThreshold: null,
+  bonusBowlingRestrictionPercentage: null,
+} as unknown as LeaguePlayingConditions
+
+const ownTeam = { id: 't1', clubId: 'c1', sectionId: 's1', name: 'Riverside 1', abbreviation: 'RIV', logoUrl: null, active: true } as unknown as Team
+const opposition = { id: 'lt1', leagueId: 'l1', seasonId: 'se1', name: 'Pretoria CC', abbreviation: null, logoUrl: null, active: true, referencedByMatchCount: 1 } as unknown as LeagueTeam
+
+export const leaguePrivacyResults: ResultListItem[] = [
+  { match: privacyMatch, result: { ...privacyResult, status: 'PUBLISHED' } as unknown as MatchResult, playerOfTheMatch: null },
+]
+
+export function leagueInput(initialsOnly: boolean, overrides: Partial<BuildLeagueShareInput> = {}): BuildLeagueShareInput {
+  return {
+    contents: LEAGUE_CONTENTS,
+    league: leagueFixture(null),
+    season: { label: '2026/27' },
+    clubName: 'Riverside CC',
+    conditions: leaguePrivacyConditions,
+    contacts: leaguePrivacyContacts,
+    ownTeams: [ownTeam],
+    leagueTeams: [opposition],
+    teamsById: new Map([['t1', ownTeam]]),
+    matches: [{ ...privacyMatch, active: true, matchDate: '2026-10-17T10:00:00' } as Match, { ...privacyMatch, id: 'm2', active: true, matchDate: '2026-10-24T10:00:00' } as Match],
+    results: leaguePrivacyResults,
+    seasonDates: { startDate: '2026-10-01', endDate: '2027-03-31' },
+    initialsOnly,
+    includeContact: false,
+    sections: [{ id: 's1', parentSectionId: null, name: 'Seniors', maxAge: null }],
+    now: new Date('2026-10-18T00:00:00'),
+    ...overrides,
+  }
+}
+
+export function leaguePrivacyModel(initialsOnly: boolean, options: { maxAge?: number | null; includeContact?: boolean } = {}): LeagueShareModel {
+  return buildLeagueShareModel(
+    leagueInput(initialsOnly, { league: leagueFixture(options.maxAge ?? null), includeContact: options.includeContact ?? false }),
+  )
 }

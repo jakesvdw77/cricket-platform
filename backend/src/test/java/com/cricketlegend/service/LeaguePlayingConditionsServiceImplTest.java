@@ -465,4 +465,45 @@ class LeaguePlayingConditionsServiceImplTest {
         assertThat(saved.getBonusBattingOversThreshold()).isNull();
         assertThat(saved.getBonusBowlingRestrictionPercentage()).isNull();
     }
+
+    // --- docs/specs/124: balls per over and free hit ---
+
+    private LeaguePlayingConditions saveWith(Integer maxBallsPerOver, Boolean freeHitOnNoBall) {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
+                .thenReturn(Optional.empty());
+        ArgumentCaptor<LeaguePlayingConditions> captor = ArgumentCaptor.forClass(LeaguePlayingConditions.class);
+        when(leaguePlayingConditionsRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        UpdateLeaguePlayingConditionsRequest base = validRequest(false);
+        service.update(clubId, leagueId, seasonId, new UpdateLeaguePlayingConditionsRequest(
+                base.maxOversPerInnings(), maxBallsPerOver, freeHitOnNoBall, base.powerplayOvers(),
+                base.maxOversPerBowler(), base.fieldingRestrictionsNotes(), base.allowSubstitutions(),
+                base.pointsForWin(), base.pointsForLoss(), base.pointsForDraw(), base.pointsForNoResult(),
+                base.pointsForForfeitWin(), false, null, null, base.additionalNotes()));
+        return captor.getValue();
+    }
+
+    @Test
+    void ballsPerOverIsStoredAndNullMeansNoLimit() {
+        assertThat(saveWith(8, true).getMaxBallsPerOver()).isEqualTo(8);
+        assertThat(saveWith(null, true).getMaxBallsPerOver()).isNull();
+    }
+
+    @Test
+    void freeHitDefaultsToOnWhenTheRequestOmitsItAndIsOffOnlyWhenExplicitlyFalse() {
+        assertThat(saveWith(null, null).isFreeHitOnNoBall()).isTrue();
+        assertThat(saveWith(null, true).isFreeHitOnNoBall()).isTrue();
+        assertThat(saveWith(null, false).isFreeHitOnNoBall()).isFalse();
+    }
+
+    @Test
+    void aNewEntityDefaultsToNoLimitAndFreeHitOn() {
+        LeaguePlayingConditions fresh = LeaguePlayingConditions.builder().build();
+
+        assertThat(fresh.getMaxBallsPerOver()).isNull();
+        assertThat(fresh.isFreeHitOnNoBall()).isTrue();
+    }
 }

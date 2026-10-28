@@ -124,6 +124,35 @@ describe('LeagueCard', () => {
     })
   })
 
+  // The reasons behind the "Setup needed" filter on the league list.
+  describe('setup needed strip', () => {
+    it('names both reasons for an active league with no teams and no matches', () => {
+      renderCard(makeLeague({ teams: [], matchCount: 0 }))
+
+      expect(screen.getByTestId('league-setup-needed')).toHaveTextContent('Setup needed: No teams entered. No matches scheduled in this season')
+    })
+
+    it('names only the missing thing', () => {
+      const { unmount } = renderCard(makeLeague({ teams: [team('A')], matchCount: 0 }))
+      expect(screen.getByTestId('league-setup-needed')).toHaveTextContent('Setup needed: No matches scheduled in this season')
+      expect(screen.getByTestId('league-setup-needed')).not.toHaveTextContent('No teams entered')
+      unmount()
+
+      renderCard(makeLeague({ teams: [], matchCount: 3 }))
+      expect(screen.getByTestId('league-setup-needed')).toHaveTextContent('Setup needed: No teams entered')
+      expect(screen.getByTestId('league-setup-needed')).not.toHaveTextContent('No matches')
+    })
+
+    it('is absent for a fully set up league and for an inactive one', () => {
+      const { unmount } = renderCard(makeLeague({ teams: [team('A')], matchCount: 3 }))
+      expect(screen.queryByTestId('league-setup-needed')).not.toBeInTheDocument()
+      unmount()
+
+      renderCard(makeLeague({ active: false, teams: [], matchCount: 0 }))
+      expect(screen.queryByTestId('league-setup-needed')).not.toBeInTheDocument()
+    })
+  })
+
   describe('next match strip', () => {
     it('shows the next match date-time with a countdown chip, neutral when it is days away', () => {
       renderCard(makeLeague({ nextMatchDate: localIso(6, 10), matchCount: 4, playedCount: 1 }))

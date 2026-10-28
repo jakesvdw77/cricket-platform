@@ -332,6 +332,32 @@ describe('LeagueViewLayout', () => {
       )
     })
 
+    it('Create match opens the Add match form with the league and the selected season preselected', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await user.click(await screen.findByRole('button', { name: 'Create match' }))
+
+      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1')
+    })
+
+    it('Create match carries a season chosen with ?seasonId=', async () => {
+      const user = userEvent.setup()
+      mocks.listSeasons.mockResolvedValue([makeSeason(), makeSeason({ id: 'season-2', label: '2027' })])
+      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-2`)
+
+      await user.click(await screen.findByRole('button', { name: 'Create match' }))
+
+      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-2')
+    })
+
+    it('disables Create match while the league has no season', async () => {
+      mocks.listSeasons.mockResolvedValue([])
+      renderLeagueView(`${LEAGUE_PATH}/teams`)
+
+      expect(await screen.findByRole('button', { name: 'Create match' })).toBeDisabled()
+    })
+
     it('drops seasonId from the Edit link when no season exists, keeping the tab', async () => {
       mocks.listSeasons.mockResolvedValue([])
 

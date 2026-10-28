@@ -184,4 +184,20 @@ describe('LeagueConditionsView', () => {
 
     expect(await screen.findByText('Playing conditions for 2026')).toBeInTheDocument()
   })
+
+  // docs/specs/124: the two rules read as lines in the Innings card.
+  it('shows no limit and free hit Yes by default, and the limit with the free hit off when set', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions())
+    const { unmount } = renderLeagueView(CONDITIONS_PATH)
+    const innings = await screen.findByTestId('conditions-innings')
+    expect(within(innings).getByText('Balls per over').nextSibling).toHaveTextContent('No limit')
+    expect(within(innings).getByText('Free hit after a no ball').nextSibling).toHaveTextContent('Yes')
+    unmount()
+
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions({ maxBallsPerOver: 8, freeHitOnNoBall: false }))
+    renderLeagueView(CONDITIONS_PATH)
+    const next = await screen.findByTestId('conditions-innings')
+    expect(await within(next).findByText('At most 8, wides and no balls included')).toBeInTheDocument()
+    expect(within(next).getByText('Free hit after a no ball').nextSibling).toHaveTextContent('No')
+  })
 })
