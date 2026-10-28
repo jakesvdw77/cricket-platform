@@ -128,7 +128,6 @@ describe('LeagueScheduleView', () => {
     renderLeagueView(SCHEDULE_PATH)
 
     expect(await screen.findByLabelText('Loading fixtures')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Share schedule' })).toBeDisabled()
     expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
   })
 

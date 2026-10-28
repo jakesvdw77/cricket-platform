@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Button } from '../../../components/Button'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
@@ -8,14 +9,13 @@ import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
 import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { InfoCard } from '../../../components/InfoCard'
-import { PlayingConditionsShareDialog } from '../../../components/PlayingConditionsShareDialog'
+import { ShareLeagueDialog } from '../../../components/ShareLeagueDialog'
 import { getPlayingConditions, PLAYING_CONDITIONS_PDF_NAME } from '../../../api/leaguePlayingConditionsApi'
-import { generatePlayingConditionsSummaryPdf } from '../../../utils/playingConditionsSummaryPdf'
 import { resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../../utils/playingConditions'
 import { useLeagueView } from './leagueViewContext'
 
 // docs/specs/072-league-view-pages.md section 5: the Conditions view - the selected season's playing
-// conditions rows (unchanged from the old LeagueDetailPage, docs/specs/052), a Share button and,
+// conditions rows (unchanged from the old LeagueDetailPage, docs/specs/052), a Share button (the Share League dialog, Playing conditions preselected) and,
 // when a PDF is stored, a button labelled PLAYING_CONDITIONS_PDF_NAME (never the stored file name).
 export default function LeagueConditionsView() {
   const { clubId, leagueId, league, selectedSeasonId, seasonLabel } = useLeagueView()
@@ -31,14 +31,6 @@ export default function LeagueConditionsView() {
   // LeagueFormPage use (docs/specs/052).
   const payload = resolvePlayingConditionsPayload(playingConditionsQuery.data)
   const documentUrl = playingConditionsQuery.data?.documentUrl ?? null
-
-  const handleSharePdf = async () => {
-    if (!payload) {
-      return
-    }
-    const url = await generatePlayingConditionsSummaryPdf(league.name, seasonLabel, payload)
-    window.open(url, '_blank', 'noopener')
-  }
 
   const maxOversPerBowler =
     payload && payload.maxOversPerBowler != null
@@ -60,9 +52,9 @@ export default function LeagueConditionsView() {
               {PLAYING_CONDITIONS_PDF_NAME}
             </MuiButton>
           )}
-          <MuiButton variant="outlined" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+          <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
             Share
-          </MuiButton>
+          </Button>
         </Stack>
       </Stack>
 
@@ -123,14 +115,13 @@ export default function LeagueConditionsView() {
         </>
       )}
 
-      <PlayingConditionsShareDialog
+      <ShareLeagueDialog
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        hasStructuredFields={Boolean(payload)}
-        leagueName={league.name}
-        seasonLabel={seasonLabel}
-        conditions={payload}
-        onSharePdf={handleSharePdf}
+        clubId={clubId}
+        league={league}
+        seasonId={selectedSeasonId || null}
+        preselected={['CONDITIONS']}
       />
     </Box>
   )

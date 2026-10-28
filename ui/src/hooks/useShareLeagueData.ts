@@ -160,6 +160,7 @@ export function useShareLeagueData(
     [sponsorsQuery.data],
   )
 
+  const contacts = useMemo(() => contactsQuery.data ?? [], [contactsQuery.data])
   const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data])
   const results = useMemo(() => resultsQuery.data ?? [], [resultsQuery.data])
   const leagueTeams = useMemo(() => leagueTeamsQuery.data ?? [], [leagueTeamsQuery.data])
@@ -195,7 +196,7 @@ export function useShareLeagueData(
   return {
     season: seasonsQuery.data?.find((item) => item.id === seasonId) ?? null,
     conditions,
-    contacts: contactsQuery.data ?? [],
+    contacts,
     ownTeams,
     leagueTeams,
     teamsById,

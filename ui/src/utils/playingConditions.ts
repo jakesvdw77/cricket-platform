@@ -21,7 +21,7 @@ export function resolveEffectiveMaxOversPerBowler(
 
 // Shared derivation both LeagueFormPage.tsx and LeagueDetailPage.tsx use to decide "has this
 // league+season's structured Playing Conditions ever been saved" and to build the writable payload
-// shape (PlayingConditionsForm's initialValues, PlayingConditionsShareDialog's conditions prop) from
+// shape (PlayingConditionsForm's initialValues, the playing conditions share text's conditions) from
 // the read shape a GET returns — `maxOversPerInnings != null` is the group's own "has this been
 // saved" signal (docs/specs/052's UI Requirements item 4): every other required field is always
 // non-null alongside it, per the write endpoint's own "saved as one whole form" rule.

@@ -68,7 +68,7 @@ describe('LeagueConditionsView', () => {
     renderLeagueView(CONDITIONS_PATH)
 
     expect(await screen.findByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Share' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Playing Conditions.pdf' })).not.toBeInTheDocument()
     expect(mocks.getPlayingConditions).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1')
   })
@@ -134,18 +134,18 @@ describe('LeagueConditionsView', () => {
     expect(screen.getByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
   })
 
-  it('opens PlayingConditionsShareDialog from the Share button', async () => {
+  it('opens the Share League dialog from the Share button', async () => {
     const user = userEvent.setup()
 
     renderLeagueView(CONDITIONS_PATH)
 
     await screen.findByText('Playing conditions for 2026')
-    expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
+    expect(screen.queryByText('Share league')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Share' }))
+    // The header's Share comes first, the tab's own Share last.
+    await user.click(screen.getAllByRole('button', { name: 'Share' }).at(-1) as HTMLElement)
 
-    expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
-    expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+    expect(await screen.findByText('Share league')).toBeInTheDocument()
   })
 
   // docs/specs/091 (C): icon-tile section cards, the two top ones the same height.

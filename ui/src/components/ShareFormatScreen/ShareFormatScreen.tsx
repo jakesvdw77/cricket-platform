@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Box, Typography } from "@mui/material";
 import { ShareFooterContext } from "./ShareFooterContext";
+import { ShareFillContext } from "./ShareFillContext";
 
 export interface ShareFormatScreenProps {
   // The format's heading ("WhatsApp").
@@ -27,33 +28,62 @@ export function ShareFormatScreen({
 }: ShareFormatScreenProps) {
   const footer = useContext(ShareFooterContext);
   const inline = footer === undefined;
+  const fill = useContext(ShareFillContext) && !inline;
 
   return (
     <Box
       sx={{
         display: "grid",
         gap: 2,
-        gridTemplateColumns: {
-          xs: "minmax(0, 1fr)",
-          md: "minmax(280px, 360px) minmax(0, 1fr)",
-        },
+        gridTemplateColumns: fill
+          ? {
+              xs: "minmax(0, 1fr)",
+              sm: "minmax(220px, 320px) minmax(0, 1fr)",
+              md: "minmax(280px, 360px) minmax(0, 1fr)",
+            }
+          : {
+              xs: "minmax(0, 1fr)",
+              md: "minmax(280px, 360px) minmax(0, 1fr)",
+            },
         gridTemplateAreas: inline
           ? {
               xs: '"controls" "preview" "actions"',
               md: '"controls preview" "actions preview"',
             }
-          : { xs: '"controls" "preview"', md: '"controls preview"' },
-        gridTemplateRows: inline ? { md: "auto 1fr" } : undefined,
-        alignItems: "start",
+          : fill
+            ? { xs: '"controls" "preview"', sm: '"controls preview"' }
+            : { xs: '"controls" "preview"', md: '"controls preview"' },
+        gridTemplateRows: inline
+          ? { md: "auto 1fr" }
+          : fill
+            ? { sm: "minmax(0, 1fr)" }
+            : undefined,
+        alignItems: fill ? { xs: "start", sm: "stretch" } : "start",
+        // Filling: the grid takes the height the dialog gives it and never grows past it.
+        ...(fill ? { flex: { sm: 1 }, minHeight: { sm: 0 }, minWidth: 0 } : {}),
       }}
     >
-      <Box sx={{ gridArea: "controls", minWidth: 0 }}>
+      <Box
+        sx={{
+          gridArea: "controls",
+          minWidth: 0,
+          ...(fill ? { minHeight: { sm: 0 }, overflowY: { sm: "auto" }, overflowX: "hidden" } : {}),
+        }}
+      >
         <Typography variant="h6" component="h3" sx={{ fontWeight: 700, mb: 1 }}>
           {title}
         </Typography>
         {controls}
       </Box>
-      <Box sx={{ gridArea: "preview", minWidth: 0 }}>{preview}</Box>
+      <Box
+        sx={{
+          gridArea: "preview",
+          minWidth: 0,
+          ...(fill ? { minHeight: { sm: 0 }, display: { sm: "flex" }, flexDirection: "column" } : {}),
+        }}
+      >
+        {preview}
+      </Box>
       {inline && <Box sx={{ gridArea: "actions", minWidth: 0 }}>{actions}</Box>}
       {footer && createPortal(actions, footer)}
     </Box>

@@ -20,6 +20,8 @@ import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { cardGridSx } from '../../utils/cardGrid'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
+import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
+import type { League } from '../../api/leagueApi'
 import { LeagueCard } from './leagues/LeagueCard'
 import { LeagueTable } from './leagues/LeagueTable'
 
@@ -56,6 +58,8 @@ export default function LeagueList() {
   const [focus, setFocus] = useState<LeagueListFocus | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   const [view, setView] = useListViewPreference('leagueList:view')
+  // docs/specs/122-league-sharing.md: the one Share League dialog of the page, opened from a card or a row.
+  const [shareLeague, setShareLeague] = useState<League | null>(null)
   // docs/specs/071: Format is client-side but persisted per club; 091 persists the chosen season with it.
   const [{ format, seasonId: savedSeasonId }, setFilters] = usePersistedListFilters(`leagueList:filters:${clubId}`, {
     format: '',
@@ -243,12 +247,12 @@ export default function LeagueList() {
         }
       />
 
-      {visibleLeagues.length > 0 && view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} />}
+      {visibleLeagues.length > 0 && view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} onShare={setShareLeague} />}
 
       {visibleLeagues.length > 0 && view === 'cards' && (
         <Box sx={cardGridSx}>
           {visibleLeagues.map((league) => (
-            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} />
+            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} />
           ))}
         </Box>
       )}
@@ -270,6 +274,17 @@ export default function LeagueList() {
           icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
           title={focus ? 'No matching leagues' : 'No league available'}
           description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
+        />
+      )}
+
+      {clubId && shareLeague && (
+        <ShareLeagueDialog
+          open
+          onClose={() => setShareLeague(null)}
+          clubId={clubId}
+          league={shareLeague}
+          seasonId={seasonId || null}
+          preselected={['DETAILS', 'SCHEDULE']}
         />
       )}
     </Box>

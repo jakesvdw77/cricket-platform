@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ZoomInIcon from '@mui/icons-material/ZoomIn'
 import ZoomOutIcon from '@mui/icons-material/ZoomOut'
 import { Button } from '../Button'
+import { ShareFillContext } from '../ShareFormatScreen/ShareFillContext'
 
 const ZOOM_MIN = 50
 const ZOOM_MAX = 300
@@ -38,6 +39,9 @@ export interface SharePreviewStageProps {
   fitMaxWidth?: number
   // Controls that belong with the preview but must not scroll with it (for example page buttons).
   footer?: ReactNode
+  // Page height divided by page width (A4: 1.414, square poster: 1). Where the dialog gives the stage a fixed height, Fit
+  // then sizes the page to the width and the height available; without it Fit is by width only.
+  fitAspect?: number
   // Told the view whenever it changes, for screens whose drawing happens outside the stage (the PDF preview hook).
   onViewChange?: (view: SharePreviewView) => void
 }
@@ -55,10 +59,13 @@ export function SharePreviewStage({
   baseWidth = DEFAULT_BASE_WIDTH,
   fitMaxWidth = DEFAULT_FIT_MAX_WIDTH,
   footer,
+  fitAspect,
   onViewChange,
 }: SharePreviewStageProps) {
+  const fill = useContext(ShareFillContext)
   const [zoom, setZoom] = useState<'fit' | number>('fit')
   const [available, setAvailable] = useState(fitMaxWidth)
+  const [availableHeight, setAvailableHeight] = useState<number | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -68,6 +75,8 @@ export function SharePreviewStage({
       const style = window.getComputedStyle(stage)
       const inner = stage.clientWidth - parseFloat(style.paddingLeft || '0') - parseFloat(style.paddingRight || '0')
       if (inner > 0) setAvailable(inner)
+      const innerHeight = stage.clientHeight - parseFloat(style.paddingTop || '0') - parseFloat(style.paddingBottom || '0')
+      if (innerHeight > 0) setAvailableHeight(innerHeight)
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -99,7 +108,10 @@ export function SharePreviewStage({
     event.preventDefault()
   }
 
-  const width = !zoomable || zoom === 'fit' ? Math.min(available, fitMaxWidth) : (baseWidth * zoom) / 100
+  const fitWidth = Math.min(available, fitMaxWidth)
+  // A page that has a known shape also has to fit the stage's height (minus a hair so no scrollbar appears at Fit).
+  const fitByHeight = fill && fitAspect && availableHeight ? Math.floor((availableHeight - 1) / fitAspect) : Infinity
+  const width = !zoomable || zoom === 'fit' ? Math.max(1, Math.min(fitWidth, fitByHeight)) : (baseWidth * zoom) / 100
   const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
   const pixelWidth = Math.round(Math.min(width * ratio, Math.max(MAX_BACKING_WIDTH, width)))
   const view: SharePreviewView = { width, pixelWidth, zoom }
@@ -111,7 +123,7 @@ export function SharePreviewStage({
   const buttonSx = { minWidth: 44 }
 
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Box sx={{ minWidth: 0, ...(fill ? { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } : {}) }}>
       {zoomable && (
         <Box
           role="toolbar"
@@ -187,7 +199,8 @@ export function SharePreviewStage({
           borderColor: 'divider',
           overflow: 'auto',
           maxWidth: '100%',
-          maxHeight: zoomable && zoom !== 'fit' ? '70vh' : undefined,
+          maxHeight: fill ? undefined : zoomable && zoom !== 'fit' ? '70vh' : undefined,
+          ...(fill ? { flex: 1, minHeight: 0 } : {}),
           backgroundColor: theme.palette.background.paper,
           backgroundImage: `conic-gradient(${alpha(theme.palette.text.primary, 0.05)} 25%, transparent 0 50%, ${alpha(theme.palette.text.primary, 0.05)} 0 75%, transparent 0)`,
           backgroundSize: '16px 16px',
@@ -214,8 +227,9 @@ export function SharePreviewStage({
 
 const visuallyHidden = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  // Pixel strings: a bare 1 in sx means 100 percent, which made this span as wide as the dialog and forced a horizontal scrollbar.
+  width: '1px',
+  height: '1px',
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
   whiteSpace: 'nowrap',

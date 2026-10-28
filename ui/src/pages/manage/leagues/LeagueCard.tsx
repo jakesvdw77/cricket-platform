@@ -6,6 +6,7 @@ import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
@@ -41,7 +42,14 @@ export function leagueSetupReasons(league: League): string[] {
   return reasons
 }
 
-export function LeagueCard({ league, seasonId }: { league: League; seasonId?: string }) {
+export interface LeagueCardProps {
+  league: League
+  seasonId?: string
+  // docs/specs/122-league-sharing.md: opens the Share League dialog (the page owns it); absent, the card has no Share button.
+  onShare?: (league: League) => void
+}
+
+export function LeagueCard({ league, seasonId, onShare }: LeagueCardProps) {
   const navigate = useNavigate()
   const search = seasonId ? `?seasonId=${seasonId}` : ''
   const base = `/manage/fixtures/leagues/${league.id}`
@@ -76,6 +84,7 @@ export function LeagueCard({ league, seasonId }: { league: League; seasonId?: st
           icon: <DescriptionOutlinedIcon fontSize="small" />,
           onClick: () => navigate(`${base}/conditions${search}`),
         },
+        ...(onShare ? [{ label: 'Share', ariaLabel: `Share ${league.name}`, icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare(league) }] : []),
         { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/edit`) },
       ]}
     >

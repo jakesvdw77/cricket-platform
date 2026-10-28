@@ -49,22 +49,46 @@ export const orderedContents = (ticked: readonly string[]): LeagueContent[] =>
   LEAGUE_CONTENTS.filter((content) => ticked.includes(content))
 
 export interface LeagueFormatAvailability {
-  // Formats every ticked content supports and the club has on, in the standard order.
+  // Formats the club has on that at least one ticked content supports, in the standard order. A content the format cannot
+  // carry is left out of that output (see leftOut).
   offered: LeagueShareFormat[]
-  // Formats the club has on that a ticked content does not support, with the visible reason.
+  // Formats the club has on that NO ticked content supports, with the visible reason.
   greyed: { format: LeagueShareFormat; reason: string }[]
   // Formats the club switched off: not shown at all.
   hidden: LeagueShareFormat[]
 }
 
-const joinLabels = (labels: string[]): string =>
-  labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+const joinLabels = (labels: string[], joiner = 'and'): string =>
+  labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} ${joiner} ${labels[labels.length - 1]}`
 
-// "Poster is not available for Results", naming every ticked content that cannot do the format.
+// The ticked contents a format carries, in the standard order.
+export const supportedContents = (format: LeagueShareFormat, ticked: readonly string[]): LeagueContent[] =>
+  orderedContents(ticked).filter((content) => supports(content, format))
+
+// The ticked contents a format cannot carry: they are simply not part of that output.
+export const leftOutContents = (format: LeagueShareFormat, ticked: readonly string[]): LeagueContent[] =>
+  orderedContents(ticked).filter((content) => !supports(content, format))
+
+// "League details is not included in a calendar": the small note on a format screen, or null when nothing is left out.
+const FORMAT_NOUN: Record<LeagueShareFormat, string> = {
+  PDF: 'a PDF',
+  POSTER: 'a poster',
+  CALENDAR: 'a calendar',
+  WHATSAPP: 'a WhatsApp message',
+  FACEBOOK: 'a Facebook post',
+}
+export function leftOutNote(format: LeagueShareFormat, ticked: readonly string[]): string | null {
+  const left = leftOutContents(format, ticked)
+  if (left.length === 0) return null
+  const names = joinLabels(left.map((content) => LEAGUE_CONTENT_LABELS[content]))
+  return `${names} ${left.length === 1 ? 'is' : 'are'} not included in ${FORMAT_NOUN[format]}.`
+}
+
+// Why a format is greyed: no ticked content can be carried by it ("Needs Schedule or Key dates ticked").
 export function unsupportedReason(format: LeagueShareFormat, ticked: readonly string[]): string | null {
-  const blockers = orderedContents(ticked).filter((content) => !supports(content, format))
-  if (blockers.length === 0) return null
-  return `${LEAGUE_SHARE_FORMAT_LABELS[format]} is not available for ${joinLabels(blockers.map((content) => LEAGUE_CONTENT_LABELS[content]))}`
+  if (supportedContents(format, ticked).length > 0) return null
+  const needed = LEAGUE_CONTENTS.filter((content) => supports(content, format))
+  return `Needs ${joinLabels(needed.map((content) => LEAGUE_CONTENT_LABELS[content]), 'or')} ticked`
 }
 
 // `clubDisabled` is the share-settings map (`disabledFormats`); undefined offers everything the contents support.

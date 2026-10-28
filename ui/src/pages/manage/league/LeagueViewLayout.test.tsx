@@ -236,7 +236,7 @@ describe('LeagueViewLayout', () => {
       mocks.listSeasons.mockResolvedValue([makeSeason()])
     })
 
-    it('lays the rows out in order: Back with the Season pill, Share schedule and Edit; logo, name and badges; contacts and links; the strip', async () => {
+    it('lays the rows out in order: Back with the Season pill, Share and Edit; logo, name and badges; contacts and links; the strip', async () => {
       mocks.listLeagues.mockResolvedValue([
         makeLeague({
           format: 'T20',
@@ -253,7 +253,7 @@ describe('LeagueViewLayout', () => {
       const titleRow = screen.getByTestId('league-header-title-row')
       const back = within(topRow).getByRole('link', { name: 'Back to Leagues' })
       const season = within(topRow).getByRole('button', { name: 'Season' })
-      const share = within(topRow).getByRole('button', { name: 'Share schedule' })
+      const share = within(topRow).getByRole('button', { name: 'Share' })
       const duplicate = within(topRow).getByRole('button', { name: 'Duplicate league' })
       const edit = within(topRow).getByRole('link', { name: 'Edit' })
       const people = screen.getByTestId('league-header-contact-people')
@@ -285,7 +285,7 @@ describe('LeagueViewLayout', () => {
       expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis')
     })
 
-    it('shares the top row between Back (left) and the Season pill, Share schedule and Edit (right)', async () => {
+    it('shares the top row between Back (left) and the Season pill, Share and Edit (right)', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
@@ -294,7 +294,7 @@ describe('LeagueViewLayout', () => {
       expect(getComputedStyle(topRow).justifyContent).toBe('space-between')
       expect(getComputedStyle(topRow).flexWrap).toBe('wrap')
       expect(within(topRow).getByRole('button', { name: 'Season' })).toBeInTheDocument()
-      expect(within(topRow).getByRole('button', { name: 'Share schedule' })).toBeInTheDocument()
+      expect(within(topRow).getByRole('button', { name: 'Share' })).toBeInTheDocument()
       expect(screen.queryByLabelText('League badges', { selector: '[data-testid="league-header-top-row"] *' })).not.toBeInTheDocument()
     })
 
@@ -401,11 +401,11 @@ describe('LeagueViewLayout', () => {
       expect(screen.getByText('Playing XI · age 40–any')).toBeInTheDocument()
     })
 
-    it('opens the Share schedule dialog from the header on any tab', async () => {
+    it('opens the Share League dialog from the header on any tab', async () => {
       const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/conditions`)
 
-      await user.click(await screen.findByRole('button', { name: 'Share schedule' }))
+      await user.click((await screen.findAllByRole('button', { name: 'Share' }))[0])
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
     })
