@@ -14,5 +14,6 @@ public record MyLeagueDto(
         List<MyScheduleItemDto> schedule,
         List<MyResultItemDto> results,
         MyKeyDatesDto keyDates,
-        List<String> shareDisabledFormats) {
+        List<String> shareDisabledFormats,
+        List<MyFieldDto> fields) {
 }

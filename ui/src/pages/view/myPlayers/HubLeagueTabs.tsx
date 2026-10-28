@@ -15,11 +15,13 @@ import type { MyLeagueDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HUB, hubOutlineButton } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
+import { HubFieldCard } from './HubFieldCard'
 import { LEAGUE_TABS, ageBand, isHttps, longDate } from './leagueFormat'
 import type { LeagueTab } from './leagueFormat'
+import { describeBallsPerOver, describeFreeHit } from '../../../utils/playingConditions'
 
 // docs/specs/123 (League page): the tab row (a pill row on a phone, a tab bar on wider screens, role=tablist with arrow keys)
-// and the read-only Details, Playing conditions, Teams and Key dates tabs. Schedule and Results live in HubLeagueGames.
+// and the read-only Details, Playing conditions, and Teams tabs. Schedule and Results live in HubLeagueGames.
 export const tabId = (tab: LeagueTab) => `hub-league-tab-${tab}`
 export const panelId = (tab: LeagueTab) => `hub-league-panel-${tab}`
 
@@ -151,7 +153,8 @@ export function HubLeagueSocialLinks({ league }: { league: MyLeagueDto['league']
 export function HubLeagueDetails({ dto }: { dto: MyLeagueDto }) {
   const { league } = dto
   const band = ageBand(league)
-  const hasAny = league.description || band || league.format
+  const dates = keyDateTiles(dto)
+  const hasAny = league.description || band || league.format || dates.length > 0
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
       {league.description && <Typography sx={{ fontSize: 17, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{league.description}</Typography>}
@@ -159,6 +162,7 @@ export function HubLeagueDetails({ dto }: { dto: MyLeagueDto }) {
         {band && <FactTile label="Age group" value={band} />}
         {league.format && <FactTile label="Format" value={LEAGUE_FORMAT_LABELS[league.format]} />}
       </Box>
+      {dates.length > 0 && <Box sx={tileGrid}>{dates}</Box>}
       {!hasAny && <Box sx={emptyLine}>No further details have been added for this league.</Box>}
     </Box>
   )
@@ -171,12 +175,16 @@ export function HubLeagueConditions({ dto }: { dto: MyLeagueDto }) {
     ['Overs per innings', c.maxOversPerInnings],
     ['Powerplay overs', c.powerplayOvers],
     ['Max overs per bowler', c.maxOversPerBowler],
+    ['Balls per over', c.maxOversPerInnings != null ? describeBallsPerOver(c.maxBallsPerOver) : null],
+    ['Free hit after a no ball', c.maxOversPerInnings != null ? describeFreeHit(c.freeHitOnNoBall) : null],
     ['Substitutions', c.maxOversPerInnings != null || c.allowSubstitutions ? (c.allowSubstitutions ? 'Allowed' : 'Not allowed') : null],
     ['Win', c.pointsForWin],
     ['Loss', c.pointsForLoss],
     ['Draw', c.pointsForDraw],
     ['No result', c.pointsForNoResult],
     ['Forfeit win', c.pointsForForfeitWin],
+    // A bonus point is always one point (docs/specs/052): 1 when bonus points apply, 0 when the league scores points but has none.
+    ['Bonus point', c.bonusPointsEnabled ? 1 : [c.pointsForWin, c.pointsForLoss, c.pointsForDraw, c.pointsForNoResult, c.pointsForForfeitWin].some((v) => v != null) ? 0 : null],
   ]
   const shown = facts.filter(([, value]) => value != null) as [string, string | number][]
   const notes = [c.fieldingRestrictionsNotes, c.additionalNotes].filter(Boolean)
@@ -215,7 +223,18 @@ export function HubLeagueTeams({ dto }: { dto: MyLeagueDto }) {
   )
 }
 
-export function HubLeagueDates({ dto }: { dto: MyLeagueDto }) {
+export function HubLeagueFields({ dto }: { dto: MyLeagueDto }) {
+  const fields = dto.fields ?? []
+  if (fields.length === 0) return <Box sx={emptyLine}>No fields for this league yet</Box>
+  return (
+    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+      {fields.map((field) => <HubFieldCard key={field.id} field={field} />)}
+    </Box>
+  )
+}
+
+// Key dates are part of Details (no tab of their own); empty when the season has none.
+function keyDateTiles(dto: MyLeagueDto) {
   const k = dto.keyDates
   const dates: [string, string | null][] = [
     ['Season starts', k.seasonStart],
@@ -224,12 +243,6 @@ export function HubLeagueDates({ dto }: { dto: MyLeagueDto }) {
     ['Next match', k.nextMatchDate],
     ['Last match', k.lastMatchDate],
   ]
-  const shown = dates.filter(([, value]) => value) as [string, string][]
-  if (shown.length === 0) return <Box sx={emptyLine}>No key dates set for this season yet.</Box>
-  return (
-    <Box sx={tileGrid}>
-      {shown.map(([label, value]) => <FactTile key={label} label={label} value={longDate(value)} gold />)}
-    </Box>
-  )
+  return (dates.filter(([, value]) => value) as [string, string][]).map(([label, value]) => <FactTile key={label} label={label} value={longDate(value)} gold />)
 }
 

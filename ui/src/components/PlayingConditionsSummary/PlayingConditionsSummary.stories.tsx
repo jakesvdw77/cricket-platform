@@ -12,6 +12,8 @@ const conditions: LeaguePlayingConditions = {
   maxOversPerInnings: 40,
   powerplayOvers: 10,
   maxOversPerBowler: null,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
   fieldingRestrictionsNotes: 'No more than two fielders outside the circle in the first ten overs.',
   allowSubstitutions: true,
   pointsForWin: 4,

@@ -10758,6 +10758,14 @@ components:
         maxOversPerInnings:
           type: integer
           format: int32
+        maxBallsPerOver:
+          type: integer
+          format: int32
+          maximum: 20
+          minimum: 1
+        freeHitOnNoBall:
+          type: boolean
+          description: "Defaults to true when omitted."
         powerplayOvers:
           type: integer
           format: int32
@@ -10836,6 +10844,11 @@ components:
         maxOversPerInnings:
           type: integer
           format: int32
+        maxBallsPerOver:
+          type: integer
+          format: int32
+        freeHitOnNoBall:
+          type: boolean
         powerplayOvers:
           type: integer
           format: int32
@@ -17215,6 +17228,11 @@ components:
         maxOversPerInnings:
           type: [integer, 'null']
           format: int32
+        maxBallsPerOver:
+          type: [integer, 'null']
+          format: int32
+        freeHitOnNoBall:
+          type: boolean
         powerplayOvers:
           type: [integer, 'null']
           format: int32
@@ -17385,6 +17403,11 @@ components:
           description: "LEAGUE share format codes the club has disabled (docs/specs/122); empty when none."
           items:
             type: string
+        fields:
+          type: array
+          description: "Distinct fields (playing areas) used by the league's matches in the season, sorted by name, same shape as the Field Directory; empty when none. Free-text venues are not listed."
+          items:
+            $ref: "#/components/schemas/MyFieldDto"
       required:
       - league
       - season

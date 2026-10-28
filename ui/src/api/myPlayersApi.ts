@@ -288,6 +288,8 @@ export interface MyLeagueDto {
   teams: MyLeagueTeamDto[]
   schedule: MyLeagueFixtureDto[]
   results: MyLeagueResultDto[]
+  // Only the fields this league's matches or results use in the selected season; the Field Directory shape.
+  fields: FieldDto[]
   keyDates: MyLeagueKeyDatesDto
   // LEAGUE share format codes the club has disabled.
   shareDisabledFormats: string[]

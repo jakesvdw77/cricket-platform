@@ -26,7 +26,7 @@ export function HubLeagueShare({ dto, clubName }: { dto: MyLeagueDto; clubName: 
     setError(null)
     try {
       const model = buildMyLeagueShareModel({ contents: ['SCHEDULE'], league: dto, clubName, initialsOnly: false })
-      const url = await generateLeagueSharePoster(model, colour, { teamLogos: true })
+      const url = await generateLeagueSharePoster(model, colour, { teamLogos: true, footer: false })
       let file: File
       try {
         file = new File([await (await fetch(url)).blob()], leagueShareFileName(model, 'png'), { type: 'image/png' })

@@ -272,10 +272,15 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
       </DialogContent>
 
       <DialogActions
-        sx={{ display: step === 'screen' ? 'block' : 'flex', flexWrap: 'wrap', gap: 1, px: { xs: 2, sm: 3 }, pt: 1.5, pb: 'max(12px, env(safe-area-inset-bottom))', borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
+        sx={{ display: 'flex', flexWrap: step === 'screen' ? 'nowrap' : 'wrap', alignItems: 'center', gap: 1, px: { xs: 2, sm: 3 }, pt: 1.5, pb: 'max(12px, env(safe-area-inset-bottom))', borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
       >
         {step === 'screen' ? (
-          !data.isLoading && <Box ref={setFooter} data-testid="share-footer" sx={{ minWidth: 0 }} />
+          <>
+            <Box ref={setFooter} data-testid="share-footer" sx={{ minWidth: 0, flex: 1 }} />
+            <Button size="compact" variant="secondary" onClick={onClose} sx={{ flexShrink: 0 }}>
+              Close
+            </Button>
+          </>
         ) : (
           <>
             <Typography variant="body2" role="status" sx={{ mr: 'auto', color: step === 'contents' && contents.length === 0 && !data.isLoading ? 'error.main' : 'text.secondary' }}>

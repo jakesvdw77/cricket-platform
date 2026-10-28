@@ -1,5 +1,5 @@
 import type { PlayingConditionsPayload } from '../api/leaguePlayingConditionsApi'
-import { resolveEffectiveMaxOversPerBowler } from './playingConditions'
+import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler } from './playingConditions'
 
 // docs/specs/052-league-playing-conditions.md UI Requirements item 8 — the captain-friendly
 // summary's WhatsApp-formatted (*bold*) counterpart to teamSheetWhatsAppText.ts's own
@@ -25,6 +25,8 @@ export function generatePlayingConditionsWhatsAppText(
     `Overs per innings: ${conditions.maxOversPerInnings}`,
     `Powerplay overs: ${conditions.powerplayOvers}`,
     `Max overs per bowler: ${effectiveMaxOversPerBowler ?? 'N/A'}`,
+    `Balls per over: ${describeBallsPerOver(conditions.maxBallsPerOver)}`,
+    `Free hit after a no ball: ${describeFreeHit(conditions.freeHitOnNoBall)}`,
   ])
 
   blocks.push([

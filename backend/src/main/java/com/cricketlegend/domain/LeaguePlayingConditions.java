@@ -57,6 +57,13 @@ public class LeaguePlayingConditions {
     @Column(name = "max_overs_per_innings")
     private Integer maxOversPerInnings;
 
+    @Column(name = "max_balls_per_over")
+    private Integer maxBallsPerOver;
+
+    @Column(name = "free_hit_on_no_ball", nullable = false)
+    @Builder.Default
+    private boolean freeHitOnNoBall = true;
+
     @Column(name = "powerplay_overs")
     private Integer powerplayOvers;
 

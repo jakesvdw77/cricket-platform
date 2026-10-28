@@ -138,14 +138,11 @@ function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: s
             size="compact"
             variant="secondary"
             aria-label={`Share ${league.name}`}
-            startIcon={<ShareOutlinedIcon />}
+            title="Share"
             onClick={() => onShare(league)}
-            sx={{ position: 'relative', zIndex: 1, '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } } }}
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Share
-            </Box>
-          </Button>
+            sx={{ position: 'relative', zIndex: 1, minHeight: 28, height: 28, minWidth: { xs: 44, md: 28 }, p: 0, '& .MuiButton-startIcon': { m: 0 } }}
+            startIcon={<ShareOutlinedIcon />}
+          />
         )}
         <ChevronRightOutlinedIcon fontSize="small" aria-hidden />
       </Box>

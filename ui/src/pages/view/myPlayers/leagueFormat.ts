@@ -4,15 +4,15 @@ import type { LeagueContent } from '../../../utils/share/leagueShareFormats'
 
 // docs/specs/123 (Player Hub leagues): the small pure helpers the league screens share. Pure; no React.
 
-export type LeagueTab = 'details' | 'conditions' | 'teams' | 'schedule' | 'results' | 'dates'
+export type LeagueTab = 'details' | 'conditions' | 'teams' | 'schedule' | 'results' | 'fields'
 
-export const LEAGUE_TABS: { id: LeagueTab; label: string; content: LeagueContent }[] = [
+export const LEAGUE_TABS: { id: LeagueTab; label: string; content?: LeagueContent }[] = [
   { id: 'details', label: 'Details', content: 'DETAILS' },
   { id: 'conditions', label: 'Playing conditions', content: 'CONDITIONS' },
   { id: 'teams', label: 'Teams', content: 'TEAMS' },
   { id: 'schedule', label: 'Schedule', content: 'SCHEDULE' },
   { id: 'results', label: 'Results', content: 'RESULTS' },
-  { id: 'dates', label: 'Key dates', content: 'KEY_DATES' },
+  { id: 'fields', label: 'Fields' },
 ]
 
 export const parseLeagueTab = (value: string | null): LeagueTab => LEAGUE_TABS.find((tab) => tab.id === value)?.id ?? 'details'

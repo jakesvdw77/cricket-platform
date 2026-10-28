@@ -32,6 +32,7 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.ClubShareSettingsService;
+import com.cricketlegend.service.MyFieldService;
 import com.cricketlegend.service.MyLeagueService;
 import com.cricketlegend.service.ResultService;
 import com.cricketlegend.service.support.LeagueResultText;
@@ -81,6 +82,7 @@ class MyLeagueServiceImpl implements MyLeagueService {
     private final ResultService resultService;
     private final MyLeagueMapper mapper;
     private final ClubShareSettingsService shareSettingsService;
+    private final MyFieldService myFieldService;
 
     MyLeagueServiceImpl(
             MyPlayerAccess myPlayerAccess,
@@ -95,7 +97,8 @@ class MyLeagueServiceImpl implements MyLeagueService {
             MatchRepository matchRepository,
             ResultService resultService,
             MyLeagueMapper mapper,
-            ClubShareSettingsService shareSettingsService) {
+            ClubShareSettingsService shareSettingsService,
+            MyFieldService myFieldService) {
         this.myPlayerAccess = myPlayerAccess;
         this.seasonRepository = seasonRepository;
         this.squadRepository = squadRepository;
@@ -109,6 +112,7 @@ class MyLeagueServiceImpl implements MyLeagueService {
         this.resultService = resultService;
         this.mapper = mapper;
         this.shareSettingsService = shareSettingsService;
+        this.myFieldService = myFieldService;
     }
 
     @Override
@@ -249,7 +253,9 @@ class MyLeagueServiceImpl implements MyLeagueService {
 
         return new MyLeagueDto(
                 mapper.toInfo(league), mapper.toSeason(season), conditions, teams, schedule, results, keyDates,
-                shareSettingsService.get(clubId).disabledFormats().getOrDefault("LEAGUE", List.of()));
+                shareSettingsService.get(clubId).disabledFormats().getOrDefault("LEAGUE", List.of()),
+                myFieldService.describe(clubId, matches.stream().map(Match::getPlayingAreaId)
+                        .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new))));
     }
 
     /**

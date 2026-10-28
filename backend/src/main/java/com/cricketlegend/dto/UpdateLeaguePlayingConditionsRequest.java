@@ -22,6 +22,8 @@ import jakarta.validation.constraints.Size;
  */
 public record UpdateLeaguePlayingConditionsRequest(
         @NotNull @Positive Integer maxOversPerInnings,
+        @Min(1) @Max(20) Integer maxBallsPerOver,
+        Boolean freeHitOnNoBall,
         @NotNull @Positive Integer powerplayOvers,
         @Positive Integer maxOversPerBowler,
         @Size(max = 2000) String fieldingRestrictionsNotes,

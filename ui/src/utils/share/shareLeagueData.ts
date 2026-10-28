@@ -11,7 +11,7 @@ import type { Section } from '../../api/sectionApi'
 import type { Team } from '../../api/teamApi'
 import { ageRangeLabel } from '../ageRange'
 import { DEFAULT_BALLS_PER_OVER } from '../oversFormat'
-import { resolveEffectiveMaxOversPerBowler } from '../playingConditions'
+import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler } from '../playingConditions'
 import { resultLine } from '../resultLine'
 import { isJuniorMatch } from './isJuniorMatch'
 import type { JuniorMatchResult } from './isJuniorMatch'
@@ -177,6 +177,8 @@ function conditionSections(record: ConditionsInput | null | undefined): LeagueSh
   if (record.powerplayOvers != null) format.push({ label: 'Powerplay overs', value: String(record.powerplayOvers) })
   const perBowler = resolveEffectiveMaxOversPerBowler(record.maxOversPerInnings, record.maxOversPerBowler)
   if (perBowler != null) format.push({ label: 'Max overs per bowler', value: String(perBowler) })
+  format.push({ label: 'Balls per over', value: describeBallsPerOver(record.maxBallsPerOver) })
+  format.push({ label: 'Free hit after a no ball', value: describeFreeHit(record.freeHitOnNoBall) })
   format.push({ label: 'Substitutions', value: record.allowSubstitutions ? 'Allowed' : 'Not allowed' })
   sections.push({ heading: 'Match format', rows: format })
 

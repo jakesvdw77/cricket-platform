@@ -3,7 +3,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { PLAYING_CONDITIONS_PDF_NAME } from '../../api/leaguePlayingConditionsApi'
 import type { LeaguePlayingConditions } from '../../api/leaguePlayingConditionsApi'
-import { resolveEffectiveMaxOversPerBowler } from '../../utils/playingConditions'
+import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler } from '../../utils/playingConditions'
 
 export interface PlayingConditionsSummaryProps {
   leagueName: string
@@ -37,6 +37,8 @@ export function PlayingConditionsSummary({ leagueName, seasonLabel, conditions, 
         ['Max overs per innings', String(conditions.maxOversPerInnings)],
         ['Powerplay overs', conditions.powerplayOvers != null ? String(conditions.powerplayOvers) : null],
         ['Max overs per bowler', perBowler],
+        ['Balls per over', describeBallsPerOver(conditions.maxBallsPerOver)],
+        ['Free hit after a no ball', describeFreeHit(conditions.freeHitOnNoBall)],
         ['Substitutions allowed', conditions.allowSubstitutions ? 'Yes' : 'No'],
       ]
     : []

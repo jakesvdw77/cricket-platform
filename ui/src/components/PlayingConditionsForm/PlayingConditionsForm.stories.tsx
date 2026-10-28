@@ -24,6 +24,8 @@ const savedValues: PlayingConditionsPayload = {
   maxOversPerInnings: 20,
   powerplayOvers: 6,
   maxOversPerBowler: 4,
+  maxBallsPerOver: null,
+  freeHitOnNoBall: true,
   fieldingRestrictionsNotes: 'Two fielders outside the 30-yard circle during the powerplay.',
   allowSubstitutions: true,
   pointsForWin: 4,

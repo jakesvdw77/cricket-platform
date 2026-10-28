@@ -10,7 +10,7 @@ In the Player Hub, Schedule > Leagues is a locked Soon item (`121`). A parent, a
 Goals:
 
 - **A. Make Schedule > Leagues live** for the selected linked player, with a season switcher (current season by default).
-- **B. A read-only league page** with tabs Details, Playing conditions, Teams, Schedule, Results and Key dates.
+- **B. A read-only league page** with tabs Details, Playing conditions, Teams, Schedule, Results and Fields (key dates are shown on Details).
 - **C. One player-scoped backend read** under `/api/v1/me/players/{playerKey}/...`, authorised only by the account's link to that player, reusing the existing league read services and exposing no manager-only data.
 - **D. Share** from the page through the `122` dialog, with its privacy defaults.
 - **E. A phone experience** that follows the Player Hub phone rules and the poll-screen look.
@@ -34,7 +34,7 @@ Owner decisions, binding:
 
 1. Schedule > Leagues (`schedule.leagues`) stops being a Soon item.
 2. The page lists the leagues the **selected** linked player's teams play in. Current season by default, with a season switcher. Switching players re-fetches.
-3. Each league opens a **read-only league page** with tabs **Details, Playing conditions, Teams, Schedule, Results, Key dates**. League information is shown for every league the player plays in.
+3. Each league opens a **read-only league page** with tabs **Details, Playing conditions, Teams, Schedule, Results, Fields** (key dates sit on Details, no tab of their own). League information is shown for every league the player plays in.
 4. **Schedule** shows the **whole league schedule**, with the player's team games highlighted. **Results** shows published results only, with scores and result lines.
 5. A **Share** button reuses the `ShareLeagueDialog` of `122`: formats and the per-club disabled formats honoured, no contacts (managers only), junior names as initials.
 6. New backend: player-scoped read endpoints under `/me/players/{key}/...`, authorised by the account's link to that player only. Existing league read services are reused. No new tables.
@@ -107,6 +107,7 @@ No other endpoint is added or changed. Both are added to `MePlayersController` (
 | `teams` | list of `{ id, name, abbreviation, logoUrl, mine }` | Active league teams of the season, name order; `mine` marks the player's teams. No affiliation ids, no inactive rows |
 | `schedule` | list of `{ matchId, date, time, homeName, homeLogoUrl, awayName, awayLogoUrl, venue, mine }` | The whole league schedule. `matchId` is opaque and used only as a list key; no fixture link target exists in the Hub |
 | `results` | list of `{ matchId, date, homeName, awayName, homeScore, awayScore, resultLine, mine }` | Published only; scores as short text (for example "142/6 (20.0)"); the result line as `100` produces it |
+| `fields` | list of the Field Directory's `FieldDto` shape | Only fields used by this league's matches or results in the selected season; same manager-data exclusions as `121` |
 | `keyDates` | `{ seasonStart, seasonEnd, firstMatchDate, lastMatchDate, nextMatchDate }` | Each nullable |
 
 **Deliberately absent (manager-only or internal):** draft or unpublished result data, scorecards and player performances, active and inactive flags, affiliation ids, `createdBy` and audit fields, contact phone and email, notes, import data, other clubs' data. A test asserts the exact JSON keys of each DTO.
@@ -120,7 +121,7 @@ Composed from `HubFrame`, `hubStyle.ts` (`HUB`, `hubHeading`, `hubOutlineButton`
 ### 1. Menu and routes
 
 - In `hubNav.ts`, `schedule.leagues` loses `soon` and `soonCopy`. No new item, no change to the six top-level limit or to the label table of `121`. The label stays "Leagues".
-- Routes follow the `121` shape: `/account/players/:key/schedule/leagues` shows the list; `/account/players/:key/schedule/leagues/:leagueId` shows a league; the tab is a query parameter `?tab=details|conditions|teams|schedule|results|dates` (default `details`); `?season=` carries the season. State is the URL so refresh and the browser Back agree with the footer Back.
+- Routes follow the `121` shape: `/account/players/:key/schedule/leagues` shows the list; `/account/players/:key/schedule/leagues/:leagueId` shows a league; the tab is a query parameter `?tab=details|conditions|teams|schedule|results|fields|dates` (default `details`); `?season=` carries the season. State is the URL so refresh and the browser Back agree with the footer Back.
 - `hubBack` gains the league page states (see section 4); the table in `121` is otherwise unchanged. There is still exactly one Back, in the footer.
 
 ### 2. Leagues list (`HubLeagues.tsx`, new)
@@ -132,14 +133,15 @@ Composed from `HubFrame`, `hubStyle.ts` (`HUB`, `hubHeading`, `hubOutlineButton`
 
 ### 3. League page (`HubLeague.tsx` and one component per tab, new)
 
-- Header: league logo or brand icon, league name, season pill, the player's team chips, a compact **Share** button on the right. The Share button opens `ShareLeagueDialog` with the `MyLeagueDto`-based model, preselecting the current tab's content (Schedule from Schedule, Playing conditions from that tab, Teams from Teams, Results from Results, Key dates from Key dates, League details from Details). It is hidden if the club has disabled every format for leagues (the dialog's own "no format" message does not appear here, because the entry would be dead); formats the club disabled are not offered, as in `122`.
-- **Tabs.** Wide layouts: a tab bar. Phone: a **pill row** (scrolls horizontally, selected pill filled gold, 44 px high pills, `role="tablist"` with arrow key support, `aria-selected`). Tabs, in order: **Details, Playing conditions, Teams, Schedule, Results, Key dates**. A tab with nothing to show stays visible and shows its own empty line (below), never hides.
+- Header: league logo or brand icon, league name, season pill, the player's team chips, a compact **Share** button on the right. The Share button opens `ShareLeagueDialog` with the `MyLeagueDto`-based model, preselecting the current tab's content (Schedule from Schedule, Playing conditions from that tab, Teams from Teams, Results from Results, League details from Details). It is hidden if the club has disabled every format for leagues (the dialog's own "no format" message does not appear here, because the entry would be dead); formats the club disabled are not offered, as in `122`.
+- **Tabs.** Wide layouts: a tab bar. Phone: a **pill row** (scrolls horizontally, selected pill filled gold, 44 px high pills, `role="tablist"` with arrow key support, `aria-selected`). Tabs, in order: **Details, Playing conditions, Teams, Schedule, Results, Fields**. A tab with nothing to show stays visible and shows its own empty line (below), never hides.
 - **Details:** description, age band, format, website and social links as buttons. No contacts (manager-only). Fields that are empty are hidden.
 - **Playing conditions:** the season's structured conditions as fact tiles, and an "Open PDF" outlined button when a conditions PDF exists (https only, new tab, `rel="noopener noreferrer"`). Empty: "No playing conditions set for this season yet."
 - **Teams:** a card per team with logo and name; the player's team or teams carry a gold "Your team" tag (text, not colour alone). Empty: "No teams entered yet."
 - **Schedule:** the **whole** schedule as rows grouped by date: time, home vs away with logos, venue. A row with `mine` has a gold left edge, a gold tinted ground and the text tag "Your game", and a switch **"Only my games"** (off by default, not remembered) filters to them. Past games stay in the list, dimmed slightly, with the date. Empty: "No matches scheduled yet."
 - **Results:** published results, newest first, each a card with teams, scores and the result line; `mine` rows tagged "Your game" and a switch "Only my games" as above. Empty: "No results published yet."
-- **Key dates:** season start and end, first, last and next match date, as fact tiles with the date in gold. Missing dates are hidden; none at all: "No key dates set for this season yet."
+- **Fields:** the league's fields (`fields` on `MyLeagueDto`) as the Field Directory's read-only `HubFieldCard`, no manager data. Empty: "No fields for this league yet".
+- **Key dates (on Details, below the age group and format tiles):** season start and end, first, last and next match date, as fact tiles with the date in gold. Missing dates are hidden; none at all: nothing is shown (Details keeps its own empty line).
 - The page has no Edit, Add, Delete, no manager links and no link into a fixture, a team sheet or availability. A link to nothing is never drawn.
 - Loading is a skeleton per tab; an error shows the retry line. Tabs share one query for the league (not one request per tab).
 
@@ -185,7 +187,7 @@ Per `docs/standards/testing.md`. New endpoints and new UI need unit, integration
 1. Schedule > Leagues is live and not marked Soon; the menu still has six top-level items.
 2. For the selected player and season, the list shows exactly the leagues the player's squad teams are affiliated to, defaulting to the club's current season, with a season switcher limited to seasons that have leagues for the player.
 3. Selecting another player re-fetches and shows that player's club and leagues only.
-4. A league page has tabs Details, Playing conditions, Teams, Schedule, Results, Key dates, in that order, each with a clear empty line.
+4. A league page has tabs Details, Playing conditions, Teams, Schedule, Results, Fields, Key dates, in that order, each with a clear empty line.
 5. Schedule shows every league match; the player's team games carry the "Your game" text tag and highlight, and "Only my games" filters them.
 6. Results shows published results only, with scores and result lines, and no scorecards or player performances.
 7. Share opens the `122` dialog, offers only formats the club has enabled, offers no contacts, and shows junior names as initials.

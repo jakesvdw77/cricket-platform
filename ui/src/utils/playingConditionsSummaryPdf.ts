@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import type { PlayingConditionsPayload } from '../api/leaguePlayingConditionsApi'
-import { resolveEffectiveMaxOversPerBowler } from './playingConditions'
+import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler } from './playingConditions'
 import { PLATFORM_PRIMARY_RGB } from '../brandTokens'
 
 // docs/specs/052-league-playing-conditions.md UI Requirements item 8 — mirrors
@@ -42,6 +42,8 @@ function buildSections(conditions: PlayingConditionsPayload): SummarySection[] {
           label: 'Max overs per bowler',
           value: effectiveMaxOversPerBowler != null ? String(effectiveMaxOversPerBowler) : 'N/A',
         },
+        { label: 'Balls per over', value: describeBallsPerOver(conditions.maxBallsPerOver) },
+        { label: 'Free hit after a no ball', value: describeFreeHit(conditions.freeHitOnNoBall) },
       ],
     },
     {

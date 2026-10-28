@@ -4,6 +4,8 @@ package com.cricketlegend.dto;
 public record MyPlayingConditionsDto(
         String documentUrl,
         Integer maxOversPerInnings,
+        Integer maxBallsPerOver,
+        boolean freeHitOnNoBall,
         Integer powerplayOvers,
         Integer maxOversPerBowler,
         String fieldingRestrictionsNotes,

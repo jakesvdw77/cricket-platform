@@ -36,6 +36,8 @@ export function resolvePlayingConditionsPayload(
     maxOversPerInnings: record.maxOversPerInnings,
     powerplayOvers: record.powerplayOvers as number,
     maxOversPerBowler: record.maxOversPerBowler,
+    maxBallsPerOver: record.maxBallsPerOver ?? null,
+    freeHitOnNoBall: record.freeHitOnNoBall ?? true,
     fieldingRestrictionsNotes: record.fieldingRestrictionsNotes,
     allowSubstitutions: record.allowSubstitutions,
     pointsForWin: record.pointsForWin as number,
@@ -48,4 +50,13 @@ export function resolvePlayingConditionsPayload(
     bonusBowlingRestrictionPercentage: record.bonusBowlingRestrictionPercentage,
     additionalNotes: record.additionalNotes,
   }
+}
+
+// docs/specs/124: the one wording for the two rules, shared by every read view and share format.
+export function describeBallsPerOver(maxBallsPerOver: number | null | undefined): string {
+  return maxBallsPerOver != null ? `At most ${maxBallsPerOver}, wides and no balls included` : 'No limit'
+}
+
+export function describeFreeHit(freeHitOnNoBall: boolean | null | undefined): string {
+  return freeHitOnNoBall === false ? 'No' : 'Yes'
 }

@@ -26,6 +26,9 @@ interface FormState {
   maxOversPerInnings: string
   powerplayOvers: string
   maxOversPerBowler: string
+  limitBallsPerOver: boolean
+  maxBallsPerOver: string
+  freeHitOnNoBall: boolean
   fieldingRestrictionsNotes: string
   allowSubstitutions: boolean
   pointsForWin: string
@@ -44,6 +47,7 @@ type TextField =
   | 'maxOversPerInnings'
   | 'powerplayOvers'
   | 'maxOversPerBowler'
+  | 'maxBallsPerOver'
   | 'fieldingRestrictionsNotes'
   | PointsField
   | 'bonusBattingOversThreshold'
@@ -51,7 +55,7 @@ type TextField =
   | 'additionalNotes'
 
 type FormErrors = Partial<
-  Record<'maxOversPerInnings' | 'powerplayOvers' | 'maxOversPerBowler' | PointsField | 'bonusThresholds', string>
+  Record<'maxOversPerInnings' | 'powerplayOvers' | 'maxOversPerBowler' | 'maxBallsPerOver' | PointsField | 'bonusThresholds', string>
 >
 
 const POINTS_FIELDS: { field: PointsField; label: string }[] = [
@@ -79,6 +83,9 @@ function toFormState(initialValues?: PlayingConditionsPayload | null): FormState
     maxOversPerInnings: initialValues?.maxOversPerInnings != null ? String(initialValues.maxOversPerInnings) : '',
     powerplayOvers: initialValues?.powerplayOvers != null ? String(initialValues.powerplayOvers) : '',
     maxOversPerBowler: initialValues?.maxOversPerBowler != null ? String(initialValues.maxOversPerBowler) : '',
+    limitBallsPerOver: initialValues?.maxBallsPerOver != null,
+    maxBallsPerOver: initialValues?.maxBallsPerOver != null ? String(initialValues.maxBallsPerOver) : '',
+    freeHitOnNoBall: initialValues?.freeHitOnNoBall ?? true,
     fieldingRestrictionsNotes: initialValues?.fieldingRestrictionsNotes ?? '',
     allowSubstitutions: initialValues?.allowSubstitutions ?? false,
     pointsForWin: String(initialValues?.pointsForWin ?? DEFAULT_POINTS.pointsForWin),
@@ -123,6 +130,13 @@ function validate(values: FormState): FormErrors {
       errors.maxOversPerBowler = 'Enter a positive whole number'
     } else if (maxOversPerInningsValid && maxOversPerBowler > maxOversPerInnings) {
       errors.maxOversPerBowler = 'Must be less than or equal to max overs per innings'
+    }
+  }
+
+  if (values.limitBallsPerOver) {
+    const maxBalls = Number(values.maxBallsPerOver)
+    if (!values.maxBallsPerOver.trim() || !Number.isInteger(maxBalls) || maxBalls < 1 || maxBalls > 20) {
+      errors.maxBallsPerOver = 'Enter a whole number from 1 to 20'
     }
   }
 
@@ -173,6 +187,8 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
       maxOversPerInnings: Number(values.maxOversPerInnings),
       powerplayOvers: Number(values.powerplayOvers),
       maxOversPerBowler: values.maxOversPerBowler.trim() ? Number(values.maxOversPerBowler) : null,
+      maxBallsPerOver: values.limitBallsPerOver && values.maxBallsPerOver.trim() ? Number(values.maxBallsPerOver) : null,
+      freeHitOnNoBall: values.freeHitOnNoBall,
       fieldingRestrictionsNotes: values.fieldingRestrictionsNotes.trim() || null,
       allowSubstitutions: values.allowSubstitutions,
       pointsForWin: Number(values.pointsForWin),
@@ -237,6 +253,40 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
           inputProps={{ min: 1 }}
         />
       </FieldWithInfo>
+      <Box sx={{ gridColumn: '1 / -1' }}>
+        <CompactSwitch
+          checked={values.limitBallsPerOver}
+          onChange={(checked) =>
+            setValues((prev) => ({ ...prev, limitBallsPerOver: checked, maxBallsPerOver: checked ? prev.maxBallsPerOver : '' }))
+          }
+          label="Limit balls per over"
+        />
+      </Box>
+      {values.limitBallsPerOver && (
+        <FieldWithInfo
+          info="The over ends after this many balls, wides and no balls included."
+          infoLabel="About maximum balls per over"
+        >
+          <Input
+            label="Maximum balls per over"
+            type="number"
+            placeholder="e.g. 8"
+            InputLabelProps={placeholderLabel}
+            value={values.maxBallsPerOver}
+            onChange={handleChange('maxBallsPerOver')}
+            error={Boolean(errors.maxBallsPerOver)}
+            helperText={errors.maxBallsPerOver}
+            inputProps={{ min: 1, max: 20 }}
+          />
+        </FieldWithInfo>
+      )}
+      <Box sx={{ gridColumn: '1 / -1' }}>
+        <CompactSwitch
+          checked={values.freeHitOnNoBall}
+          onChange={(checked) => setValues((prev) => ({ ...prev, freeHitOnNoBall: checked }))}
+          label="Free hit after a no ball"
+        />
+      </Box>
       <Box sx={{ gridColumn: '1 / -1' }}>
         <FieldWithInfo
           multiline

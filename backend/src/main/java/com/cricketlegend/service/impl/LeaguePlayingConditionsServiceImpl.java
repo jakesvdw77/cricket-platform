@@ -95,6 +95,8 @@ public class LeaguePlayingConditionsServiceImpl implements LeaguePlayingConditio
 
         LeaguePlayingConditions playingConditions = findOrCreate(leagueId, seasonId);
         playingConditions.setMaxOversPerInnings(request.maxOversPerInnings());
+        playingConditions.setMaxBallsPerOver(request.maxBallsPerOver());
+        playingConditions.setFreeHitOnNoBall(request.freeHitOnNoBall() == null || request.freeHitOnNoBall());
         playingConditions.setPowerplayOvers(request.powerplayOvers());
         playingConditions.setMaxOversPerBowler(request.maxOversPerBowler());
         playingConditions.setFieldingRestrictionsNotes(request.fieldingRestrictionsNotes());

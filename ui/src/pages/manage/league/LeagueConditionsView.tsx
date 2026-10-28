@@ -11,7 +11,7 @@ import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { InfoCard } from '../../../components/InfoCard'
 import { ShareLeagueDialog } from '../../../components/ShareLeagueDialog'
 import { getPlayingConditions, PLAYING_CONDITIONS_PDF_NAME } from '../../../api/leaguePlayingConditionsApi'
-import { resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../../utils/playingConditions'
+import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../../utils/playingConditions'
 import { useLeagueView } from './leagueViewContext'
 
 // docs/specs/072-league-view-pages.md section 5: the Conditions view - the selected season's playing
@@ -74,6 +74,8 @@ export default function LeagueConditionsView() {
                 { label: 'Max overs per innings', value: String(payload.maxOversPerInnings) },
                 { label: 'Powerplay overs', value: String(payload.powerplayOvers) },
                 { label: 'Max overs per bowler', value: maxOversPerBowler },
+                { label: 'Balls per over', value: describeBallsPerOver(payload.maxBallsPerOver) },
+                { label: 'Free hit after a no ball', value: describeFreeHit(payload.freeHitOnNoBall) },
                 { label: 'Substitutions allowed', value: payload.allowSubstitutions ? 'Yes' : 'No' },
               ]}
             />

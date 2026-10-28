@@ -6,7 +6,7 @@ import { HUB, HUB_GROUND } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLeagueResults, HubLeagueSchedule } from './HubLeagueGames'
 import { HubLeagueShare } from './HubLeagueShare'
-import { HubLeagueConditions, HubLeagueDates, HubLeagueDetails, HubLeagueSocialLinks, HubLeagueTabBar, HubLeagueTeams, panelId, tabId, tagSx } from './HubLeagueTabs'
+import { HubLeagueConditions, HubLeagueDetails, HubLeagueFields, HubLeagueSocialLinks, HubLeagueTabBar, HubLeagueTeams, panelId, tabId, tagSx } from './HubLeagueTabs'
 import type { LeagueTab } from './leagueFormat'
 
 // docs/specs/123 (League page): one read-only league for the selected player. The tabs share ONE query. Share makes the standard poster in one tap.
@@ -70,7 +70,7 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
         {tab === 'teams' && <HubLeagueTeams dto={dto} />}
         {tab === 'schedule' && <HubLeagueSchedule dto={dto} />}
         {tab === 'results' && <HubLeagueResults dto={dto} />}
-        {tab === 'dates' && <HubLeagueDates dto={dto} />}
+        {tab === 'fields' && <HubLeagueFields dto={dto} />}
       </Box>
     </Box>
   )

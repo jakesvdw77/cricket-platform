@@ -59,6 +59,8 @@ public final class LeagueCopyRules {
                 .uploadedAt(source.getUploadedAt())
                 .uploadedBy(source.getUploadedBy())
                 .maxOversPerInnings(source.getMaxOversPerInnings())
+                .maxBallsPerOver(source.getMaxBallsPerOver())
+                .freeHitOnNoBall(source.isFreeHitOnNoBall())
                 .powerplayOvers(source.getPowerplayOvers())
                 .maxOversPerBowler(source.getMaxOversPerBowler())
                 .fieldingRestrictionsNotes(source.getFieldingRestrictionsNotes())
