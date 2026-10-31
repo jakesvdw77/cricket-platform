@@ -40,6 +40,25 @@ public class LeagueSeasonDates {
         });
     }
 
+    /** As {@link #assertWithin} for many dates of one league season, reading the dates once (docs/specs/098). */
+    public void assertAllWithin(UUID leagueId, UUID seasonId, java.util.Collection<Instant> matchDates) {
+        if (leagueId == null || seasonId == null || matchDates.isEmpty()) {
+            return;
+        }
+        leagueSeasonRepository.findByLeagueIdAndSeasonId(leagueId, seasonId).ifPresent(dates -> {
+            for (Instant matchDate : matchDates) {
+                if (matchDate == null) {
+                    continue;
+                }
+                LocalDate day = ServerClock.localDate(matchDate);
+                if (day.isBefore(dates.getStartDate()) || day.isAfter(dates.getEndDate())) {
+                    throw new MatchOutsideLeagueDatesException("This league runs from " + format(dates.getStartDate())
+                            + " to " + format(dates.getEndDate()) + ".");
+                }
+            }
+        });
+    }
+
     /** A day as {@code 1 Sep 2026}, the style of every date message. */
     public static String format(LocalDate day) {
         return DAY.format(day);

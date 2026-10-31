@@ -8486,6 +8486,604 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/types:
+    get:
+      tags:
+      - import-controller
+      operationId: listImportTypes
+      summary: The import types the club can use
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                    $ref: "#/components/schemas/ImportTypeDto"
+  /api/v1/manage/clubs/{clubId}/imports/{type}/template:
+    get:
+      tags:
+      - import-controller
+      operationId: downloadImportTemplate
+      summary: Download the template for a scope (xlsx or csv); other query parameters are the type own scope parameters
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: format
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: templateScope
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - OURS_ONLY
+          - OURS_AND_OTHERS
+      responses:
+        "200":
+          description: The template file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Bad scope or format
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Scope of another club or unknown type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{type}/ai-help:
+    get:
+      tags:
+      - import-controller
+      operationId: importAiHelp
+      summary: The versioned Convert with AI prompt for the type
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AiHelpDto"
+        "404":
+          description: No help for this type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{type}/preview:
+    post:
+      tags:
+      - import-controller
+      operationId: previewImport
+      summary: Parse and validate a file and create a PREVIEW batch; writes only the batch row
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: timeZone
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                scope:
+                  $ref: "#/components/schemas/ImportScopeDto"
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "400":
+          description: File rejected (type, size, row cap, wrong template, unreadable)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: A preview limit is reached
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{type}/blank:
+    post:
+      tags:
+      - import-controller
+      operationId: startBlankImport
+      summary: Spec 125 - create an empty MANUAL PREVIEW batch with no file (rows are typed in the wizard); writes only the batch row
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: timeZone
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportScopeDto"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "400":
+          description: The type is not editable (cannot start without a file) or the scope is invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: A preview limit is reached
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}:
+    get:
+      tags:
+      - import-controller
+      operationId: getImportBatch
+      summary: "The batch: status, counts, scope, issues, proposals, planned changes"
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/rows:
+    get:
+      tags:
+      - import-controller
+      operationId: listImportRows
+      summary: Paginated rows; status=ERROR,WARNING is Problems only, outcome=SKIPPED_NOT_OURS feeds the skipped list
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - OK
+            - WARNING
+            - ERROR
+            - SKIPPED_NOT_OURS
+      - name: outcome
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - NEW
+            - DUPLICATE
+            - DIFFERS
+            - POSSIBLE_DUPLICATE
+            - SKIPPED_NOT_OURS
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageImportRowDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: The stored rows have expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/decisions:
+    put:
+      tags:
+      - import-controller
+      operationId: saveImportDecisions
+      summary: Save decisions, re-validate with them applied, bump the revision; a token is returned only at zero errors and every warning acknowledged
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportDecisionsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Not a PREVIEW, stale revision, or expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/commit:
+    post:
+      tags:
+      - import-controller
+      operationId: commitImport
+      summary: Commit a reviewed import in one transaction; an already committed batch with the same token returns the stored report
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitImportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "400":
+          description: Live re-validation found errors or unacknowledged warnings; body carries issues and the fresh batch
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Invalid or stale confirmation, data changed (body carries the fresh batch), expired or not a PREVIEW
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/discard:
+    post:
+      tags:
+      - import-controller
+      operationId: discardImport
+      summary: End a PREVIEW (idempotent)
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Already committed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports:
+    get:
+      tags:
+      - import-controller
+      operationId: listImportHistory
+      summary: Paginated import history, newest first
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: scopeKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PREVIEW
+          - COMMITTED
+          - DISCARDED
+          - EXPIRED
+          - DELETED
+      - name: includeEnded
+        in: query
+        required: false
+        description: When true, deleted, discarded and expired imports are listed too. Ignored when a status is given. Default false.
+        schema:
+          type: boolean
+          default: false
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageImportBatchDto"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/deletion-check:
+    get:
+      tags:
+      - import-controller
+      operationId: importDeletionCheck
+      summary: Can this import be deleted? Never writes
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeletionCheckDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Not a committed import
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/imports/{batchId}/delete:
+    post:
+      tags:
+      - import-controller
+      operationId: deleteImport
+      summary: Delete a committed import as a whole or not at all; only records it created and nothing depends on
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteImportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportBatchDto"
+        "404":
+          description: No such import in this club
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Blocked (body carries blockers), already deleted, or not committed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -17453,3 +18051,556 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublicAnswerDto"
+    ImportFileLimitsDto:
+      type: object
+      properties:
+        maxFileBytes:
+          type: integer
+          format: int64
+        maxRows:
+          type: integer
+          format: int32
+        maxCellCharacters:
+          type: integer
+          format: int32
+        maxOpenPreviewsPerUser:
+          type: integer
+          format: int32
+        maxOpenPreviewsPerClub:
+          type: integer
+          format: int32
+        maxPreviewsPerClubPerHour:
+          type: integer
+          format: int32
+    ImportTypeDto:
+      type: object
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        templateVersion:
+          type: integer
+          format: int32
+        formats:
+          type: array
+          items:
+            type: string
+        supportsOursScope:
+          type: boolean
+        limits:
+          $ref: "#/components/schemas/ImportFileLimitsDto"
+        editable:
+          type: boolean
+          description: Spec 125 - true when the type declares editable columns
+        editableColumns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportEditableColumnDto"
+    ImportEditableColumnDto:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum:
+          - TEXT
+          - DATE
+          - TIME
+    ImportScopeDto:
+      type: object
+      properties:
+        scopeMode:
+          type: string
+          enum:
+          - OURS_ONLY
+          - ALL
+        templateScope:
+          type: string
+          enum:
+          - OURS_ONLY
+          - OURS_AND_OTHERS
+        params:
+          type: object
+          additionalProperties:
+            type: string
+    ImportRowDto:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          format: int32
+        sourceRef:
+          type: string
+        values:
+          type: object
+          additionalProperties: {}
+        status:
+          type: string
+          enum:
+          - OK
+          - WARNING
+          - ERROR
+          - SKIPPED_NOT_OURS
+        outcome:
+          type: string
+          enum:
+          - NEW
+          - DUPLICATE
+          - DIFFERS
+          - POSSIBLE_DUPLICATE
+          - SKIPPED_NOT_OURS
+        action:
+          type: string
+          enum:
+          - CREATE
+          - SKIP
+          - UPDATE
+          - EXCLUDED
+        issueCodes:
+          type: array
+          items:
+            type: string
+        existingRef:
+          type: [string, 'null']
+        origin:
+          type: string
+          description: Spec 125 - null is treated as FILE
+          enum:
+          - FILE
+          - EDITED
+          - ADDED
+        fileValues:
+          type: object
+          description: Spec 125 - only for an EDITED row, the file's original values of the changed keys
+          additionalProperties: {}
+    ImportIssueDto:
+      type: object
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+          enum:
+          - ERROR
+          - WARNING
+        rowNumbers:
+          type: array
+          items:
+            type: integer
+        field:
+          type: [string, 'null']
+        message:
+          type: string
+        hint:
+          type: [string, 'null']
+    ImportDecisionsDto:
+      type: object
+      properties:
+        excludedRows:
+          type: array
+          items:
+            type: integer
+        identifiedAsOurs:
+          type: array
+          items:
+            type: string
+        resolutions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportResolutionDto"
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportRowUpdateDto"
+        updateAllDiffering:
+          type: boolean
+        acknowledgedWarnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportAcknowledgementDto"
+        options:
+          type: object
+          additionalProperties: {}
+        rowEdits:
+          type: array
+          description: Spec 125 - only the changed column keys of a file row; a value equal to the file's is dropped
+          items:
+            $ref: "#/components/schemas/ImportRowValuesDto"
+        addedRows:
+          type: array
+          description: Spec 125 - rows the file did not have, numbered from 1001 upward
+          items:
+            $ref: "#/components/schemas/ImportRowValuesDto"
+    ImportRowValuesDto:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          format: int32
+        values:
+          type: object
+          additionalProperties:
+            type: string
+    ImportResolutionDto:
+      type: object
+      properties:
+        key:
+          type: string
+        kind:
+          type: string
+          enum:
+          - LINK
+          - CREATE
+          - SKIP_ROWS
+        targetKind:
+          type: [string, 'null']
+        targetId:
+          type: string
+          format: uuid
+        targetName:
+          type: [string, 'null']
+        remember:
+          type: boolean
+        abbreviation:
+          type: [string, 'null']
+          description: Optional abbreviation for a CREATE resolution (a new league team).
+    ImportRowUpdateDto:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          format: int32
+        attributes:
+          type: array
+          description: Attributes to update for the row. Empty or omitted means ALL the attributes the type allows to be updated for that row.
+          items:
+            type: string
+    ImportAcknowledgementDto:
+      type: object
+      properties:
+        code:
+          type: string
+        rowNumbers:
+          type: array
+          items:
+            type: integer
+    ReferenceProposalDto:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        step:
+          type: string
+          enum:
+          - IDENTIFY_OURS
+          - RESOLVE
+        rowNumbers:
+          type: array
+          items:
+            type: integer
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferenceProposalCandidateDto"
+        suggestedCreateName:
+          type: [string, 'null']
+          description: The tidied name a CREATE resolution is pre-filled with (schedule import).
+    ReferenceProposalCandidateDto:
+      type: object
+      properties:
+        targetKind:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+        targetName:
+          type: string
+        origin:
+          type: string
+        confidence:
+          type: integer
+          format: int32
+        reasons:
+          type: array
+          items:
+            type: string
+        preselected:
+          type: boolean
+        source:
+          type: [string, 'null']
+          description: Where the candidate lives (ALIAS, OWN_AFFILIATED, LEAGUE_THIS_SEASON, LEAGUE_PREVIOUS_SEASON, LEAGUE_OTHER, OWN_OTHER).
+        seasonLabel:
+          type: [string, 'null']
+        leagueName:
+          type: [string, 'null']
+    PlannedChangeDto:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - CREATED
+          - UPDATED
+        entityType:
+          type: string
+        label:
+          type: string
+        rowNumber:
+          type: integer
+          format: int32
+        detail:
+          type: object
+          additionalProperties: {}
+        changes:
+          type: object
+          additionalProperties: {}
+    DeletionBlockerDto:
+      type: object
+      properties:
+        entityType:
+          type: [string, 'null']
+        entityId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        detail:
+          type: string
+        link:
+          type: [string, 'null']
+    DeletionCheckDto:
+      type: object
+      properties:
+        deletable:
+          type: boolean
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeletionBlockerDto"
+        willDelete:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        willKeep:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        notes:
+          type: array
+          description: Plain sentences that never block the deletion (edited since import, already played, a league team that is kept and why).
+          items:
+            type: string
+    ImportBatchDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        templateVersion:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - PREVIEW
+          - COMMITTED
+          - DISCARDED
+          - EXPIRED
+          - DELETED
+        scopeKey:
+          type: string
+        scope:
+          type: object
+          additionalProperties: {}
+        scopeMode:
+          type: string
+          enum:
+          - OURS_ONLY
+          - ALL
+        timeZone:
+          type: [string, 'null']
+        fileName:
+          type: string
+        source:
+          type: string
+          description: Spec 125 - MANUAL for a batch started with no file
+          enum:
+          - TEMPLATE_FILE
+          - AI_TRANSFORM
+          - MANUAL
+        fileSizeBytes:
+          type: integer
+          format: int64
+        revision:
+          type: integer
+          format: int32
+        counts:
+          type: object
+          additionalProperties: {}
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportIssueDto"
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferenceProposalDto"
+        plannedChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlannedChangeDto"
+        fileWarnings:
+          type: array
+          items:
+            type: string
+        earlierImportWarning:
+          type: [string, 'null']
+        decisions:
+          $ref: "#/components/schemas/ImportDecisionsDto"
+        firstRows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportRowDto"
+        confirmationToken:
+          type: [string, 'null']
+        creationsDigest:
+          type: [string, 'null']
+        lastError:
+          type: [string, 'null']
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        committedBy:
+          type: string
+          format: uuid
+        committedAt:
+          type: string
+          format: date-time
+        deletedBy:
+          type: string
+          format: uuid
+        deletedAt:
+          type: string
+          format: date-time
+    ImportDecisionsRequest:
+      type: object
+      properties:
+        revision:
+          type: integer
+          format: int32
+        decisions:
+          $ref: "#/components/schemas/ImportDecisionsDto"
+      required:
+      - decisions
+    CommitImportRequest:
+      type: object
+      properties:
+        revision:
+          type: integer
+          format: int32
+        confirmationToken:
+          type: [string, 'null']
+        confirmedCreationsDigest:
+          type: [string, 'null']
+    DeleteImportRequest:
+      type: object
+      properties:
+        confirm:
+          type: boolean
+    AiHelpDto:
+      type: object
+      properties:
+        type:
+          type: string
+        templateVersion:
+          type: integer
+          format: int32
+        prompt:
+          type: string
+    PageImportRowDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportRowDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PageImportBatchDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportBatchDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean

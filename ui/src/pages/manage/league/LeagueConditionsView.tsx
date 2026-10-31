@@ -1,25 +1,26 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Stack, Typography } from '@mui/material'
-import { Button } from '../../../components/Button'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import { Box, Typography } from '@mui/material'
+import { useLocation } from 'react-router-dom'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
 import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { InfoCard } from '../../../components/InfoCard'
-import { ShareLeagueDialog } from '../../../components/ShareLeagueDialog'
-import { getPlayingConditions, PLAYING_CONDITIONS_PDF_NAME } from '../../../api/leaguePlayingConditionsApi'
+import { getPlayingConditions } from '../../../api/leaguePlayingConditionsApi'
 import { describeBallsPerOver, describeFreeHit, resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../../utils/playingConditions'
+import { LeagueTabMenu } from './LeagueTabMenu'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { useLeagueView } from './leagueViewContext'
 
 // docs/specs/072-league-view-pages.md section 5: the Conditions view - the selected season's playing
-// conditions rows (unchanged from the old LeagueDetailPage, docs/specs/052), a Share button (the Share League dialog, Playing conditions preselected) and,
-// when a PDF is stored, a button labelled PLAYING_CONDITIONS_PDF_NAME (never the stored file name).
+// conditions rows (unchanged from the old LeagueDetailPage, docs/specs/052), and one white Edit Conditions link on the tab row
+// (Share and the PDF are Manage League options, docs/specs/126).
 export default function LeagueConditionsView() {
-  const { clubId, leagueId, league, selectedSeasonId, seasonLabel } = useLeagueView()
-  const [shareOpen, setShareOpen] = useState(false)
+  const { clubId, leagueId, league, selectedSeasonId, seasonLabel, openShare } = useLeagueView()
+  const location = useLocation()
 
   const playingConditionsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'playing-conditions', selectedSeasonId],
@@ -30,7 +31,6 @@ export default function LeagueConditionsView() {
   // The same "has structured Playing Conditions ever been saved" signal PlayingConditionsForm and
   // LeagueFormPage use (docs/specs/052).
   const payload = resolvePlayingConditionsPayload(playingConditionsQuery.data)
-  const documentUrl = playingConditionsQuery.data?.documentUrl ?? null
 
   const maxOversPerBowler =
     payload && payload.maxOversPerBowler != null
@@ -39,24 +39,52 @@ export default function LeagueConditionsView() {
         ? `${resolveEffectiveMaxOversPerBowler(payload.maxOversPerInnings, null)} (auto)`
         : null
 
+  const documentUrl = playingConditionsQuery.data?.documentUrl ?? null
+  const editConditionsPath = withReturnTo(
+    `/manage/fixtures/leagues/${leagueId}/edit?tab=conditions${selectedSeasonId ? `&seasonId=${selectedSeasonId}` : ''}`,
+    currentOrigin(location),
+    `${league.name} playing conditions`,
+  )
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* The tab's own line: which season these conditions are for, and the PDF and Share actions. */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap">
-        <Typography variant="body2" color="text.secondary">
-          {seasonLabel ? `Playing conditions for ${seasonLabel}` : 'Playing conditions'}
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {documentUrl && (
-            <Button size="compact" variant="secondary" startIcon={<DescriptionOutlinedIcon fontSize="small" />} onClick={() => window.open(documentUrl, '_blank', 'noopener')}>
-              {PLAYING_CONDITIONS_PDF_NAME}
-            </Button>
-          )}
-          <Button size="compact" variant="secondary" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
-            Share
-          </Button>
-        </Stack>
-      </Stack>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      {/* The tab's one action: a white Manage Playing Conditions menu (docs/standards/page-anatomy.md). */}
+      <LeagueTabMenu
+        label="Manage Playing Conditions"
+        heading="Playing Conditions"
+        testId="manage-conditions"
+        items={[
+          {
+            id: 'edit-conditions',
+            title: 'Edit Playing Conditions',
+            description: 'Overs, points, bonus points and notes for this league and season.',
+            icon: <EditOutlinedIcon fontSize="small" />,
+            to: editConditionsPath,
+          },
+          {
+            id: 'share-conditions',
+            title: 'Share Playing Conditions',
+            description: 'The conditions as a PDF, poster or message.',
+            icon: <ShareOutlinedIcon fontSize="small" />,
+            onClick: () => openShare?.(['CONDITIONS']),
+            disabled: !openShare,
+          },
+          {
+            id: 'view-document',
+            title: 'View Document',
+            description: "Open the season's playing conditions PDF in a new tab.",
+            icon: <PictureAsPdfOutlinedIcon fontSize="small" />,
+            onClick: () => window.open(documentUrl ?? '', '_blank', 'noopener'),
+            disabled: !documentUrl,
+            reason: 'No PDF uploaded',
+          },
+        ]}
+      />
+
+      {/* The tab's own line: which season these conditions are for. */}
+      <Typography variant="body1" color="text.secondary">
+        {seasonLabel ? `Playing conditions for ${seasonLabel}` : 'Playing conditions'}
+      </Typography>
 
       {!payload ? (
         <Typography variant="body2" color="text.secondary">
@@ -68,6 +96,8 @@ export default function LeagueConditionsView() {
           <Box sx={{ display: 'grid', gap: 2, alignItems: 'stretch', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
             <InfoCard
               testId="conditions-innings"
+              fieldSize="large"
+              columns={3}
               title="Innings"
               icon={<TimerOutlinedIcon />}
               fields={[
@@ -81,6 +111,8 @@ export default function LeagueConditionsView() {
             />
             <InfoCard
               testId="conditions-points"
+              fieldSize="large"
+              columns={3}
               title="Points"
               icon={<EmojiEventsOutlinedIcon />}
               fields={[
@@ -101,6 +133,7 @@ export default function LeagueConditionsView() {
           {payload.fieldingRestrictionsNotes && (
             <InfoCard
               testId="conditions-fielding"
+              fieldSize="large"
               title="Fielding restrictions"
               icon={<NotesOutlinedIcon />}
               fields={[{ label: 'Notes', value: payload.fieldingRestrictionsNotes }]}
@@ -109,6 +142,7 @@ export default function LeagueConditionsView() {
           {payload.additionalNotes && (
             <InfoCard
               testId="conditions-notes"
+              fieldSize="large"
               title="Additional notes"
               icon={<StarOutlineOutlinedIcon />}
               fields={[{ label: 'Notes', value: payload.additionalNotes }]}
@@ -116,15 +150,6 @@ export default function LeagueConditionsView() {
           )}
         </>
       )}
-
-      <ShareLeagueDialog
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        clubId={clubId}
-        league={league}
-        seasonId={selectedSeasonId || null}
-        preselected={['CONDITIONS']}
-      />
     </Box>
   )
 }

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League logo placement (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--shell:#0e2b1d;--green700:#14633F;--gold:#E8B83D;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;
+  --groundTop:#e9efe6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:24px;margin:30px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:900px;font-size:14px;margin:0 0 10px}
+.frame{width:980px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundEnd))}
+.shell{background:var(--shell);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:#fff;font:700 14px var(--display);letter-spacing:.1em}
+.shell .r{display:flex;align-items:center;gap:14px}
+.bell{width:20px;height:20px;border:2px solid #cfe0d5;border-radius:50% 50% 4px 4px}
+.me{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#0e2b1d;display:flex;align-items:center;justify-content:center;font:700 12px var(--body)}
+.pad{padding:16px 20px;min-height:150px}
+.title{font-family:var(--display);font-size:32px;font-weight:700;color:var(--green900);display:flex;align-items:center;gap:12px}
+.chip{display:inline-flex;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);align-items:center;border:1px solid var(--cardLine);background:#fff}
+/* the logo: a transparent emblem so you can see how a transparent image sits on each surface */
+.logo{width:56px;height:56px;flex:none}
+.logo svg{width:100%;height:100%}
+.tile-white{background:#fff;border-radius:10px;padding:4px;box-shadow:0 1px 3px rgba(6,36,26,.16)}
+.tile-gold{background:var(--gold);border-radius:10px;padding:4px}
+.small{width:36px;height:36px}
+.round{border-radius:50%;background:#fff;padding:3px}
+.tag{display:inline-block;background:#fff4d6;border:1px dashed #b7791f;border-radius:6px;padding:2px 8px;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>League logo placement</h1>
+<p class="note">I took you to mean: how would the league logo look in the dark top bar, at the right corner beside the bell and your avatar, and does it need a white background there. The logo below is a stand-in (a transparent emblem) to show how a transparent image behaves on each surface; your real logo will differ.</p>
+
+<svg width="0" height="0" style="position:absolute"><defs><symbol id="emb" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="#fff" stroke="#14633F" stroke-width="4"/><path d="M20 44c4-14 8-24 14-26 6 2 9 8 8 16-2 8-8 12-14 12-4 0-6-1-8-2z" fill="#14633F"/><circle cx="26" cy="38" r="5" fill="#c0392b"/></symbol></defs></svg>
+
+<h2>1. Logo left of the title, no tile (what I proposed)</h2>
+<p class="note">The logo shown as it is, no gold behind it. A transparent logo sits on the page wash.</p>
+<div class="frame"><div class="shell"><span>CRICKET LEGEND</span><span class="r"><i class="bell"></i><span class="me">JV</span></span></div>
+ <div class="pad"><div class="title"><span class="logo"><svg><use href="#emb"/></svg></span>TVL Division 1 T20 <span class="chip">T20</span><span class="chip">Active</span></div></div></div>
+
+<h2>2. Logo left of the title on a white tile</h2>
+<p class="note">A white rounded tile with a light shadow: safest for any logo (white, pale, dark, transparent).</p>
+<div class="frame"><div class="shell"><span>CRICKET LEGEND</span><span class="r"><i class="bell"></i><span class="me">JV</span></span></div>
+ <div class="pad"><div class="title"><span class="logo tile-white"><svg><use href="#emb"/></svg></span>TVL Division 1 T20 <span class="chip">T20</span><span class="chip">Active</span></div></div></div>
+
+<h2>3. Logo in the top bar, right corner (duplicated there, transparent)</h2>
+<p class="note">Beside the bell and your avatar. Directly on the dark green a transparent logo can lose contrast.</p>
+<div class="frame"><div class="shell"><span>CRICKET LEGEND</span><span class="r"><span class="logo small"><svg><use href="#emb"/></svg></span><i class="bell"></i><span class="me">JV</span></span></div>
+ <div class="pad"><div class="title">TVL Division 1 T20 <span class="chip">T20</span><span class="chip">Active</span></div></div></div>
+
+<h2>4. Logo in the top bar, right corner, on a white round chip</h2>
+<p class="note">A white circle behind it keeps it readable on the dark bar and echoes your round avatar.</p>
+<div class="frame"><div class="shell"><span>CRICKET LEGEND</span><span class="r"><span class="logo small round"><svg><use href="#emb"/></svg></span><i class="bell"></i><span class="me">JV</span></span></div>
+ <div class="pad"><div class="title">TVL Division 1 T20 <span class="chip">T20</span><span class="chip">Active</span></div></div></div>
+
+<h2>My read</h2>
+<p class="note">The top bar belongs to the whole app (the club and you), so a league logo there would change as you move between leagues and compete with your avatar. I would keep the logo beside the title (variant 1, or variant 2 if your logos vary), and show a league logo in the top bar only if you want a persistent "which league am I in" cue; if so it needs the white chip (variant 4).</p>
+</body>
+</html>

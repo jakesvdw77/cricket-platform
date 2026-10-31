@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elevation: raised figures only (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green700:#14633F;--gold:#E8B83D;--amber:#b7791f;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+  --raise:0 1px 3px rgba(6,36,26,.16),0 1px 2px rgba(6,36,26,.10);--raise2:0 2px 6px rgba(6,36,26,.20),0 1px 3px rgba(6,36,26,.12)}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:36px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:940px;font-size:14px;margin:0 0 12px}
+.note b{color:var(--ink900)}
+.frame{width:1100px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd))}
+.pad{padding:16px 20px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);display:inline-flex;align-items:center;border:1px solid transparent}
+.btn.c{background:var(--green700);color:#fff}.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.titlerow{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.logo{width:56px;height:56px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font:700 22px var(--display);color:var(--green900)}
+.title{font-family:var(--display);font-size:32px;font-weight:700;color:var(--green900)}
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.fig{height:44px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.fig b{font:700 22px var(--display);color:var(--green900);letter-spacing:0;text-transform:none}
+.tabs{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--cardLine);margin-bottom:16px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.tabs .btn{margin-bottom:8px}
+.bar{display:grid;grid-template-columns:260px 1fr auto auto;gap:10px;align-items:center;margin-bottom:12px}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px;border-radius:8px}
+.raised table{box-shadow:var(--raise)}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:9px 10px;border-bottom:1px solid #edf0e9}
+tr:nth-child(even) td{background:#f8faf6}
+td small{display:block;color:var(--inkMuted);font-size:12px}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:var(--tint);font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:#0F5132}
+.chip{display:inline-flex;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);align-items:center;background:#dbe9de;color:#0F5132;border:1px solid #bcd4c1}
+.flat table{box-shadow:none}
+.flat tr:hover td{background:#eef4ee}
+.flat .hover-note{font-size:12px;color:var(--inkMuted);margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Elevation: only the figures raised</h1>
+<p class="note">Same league Schedule tab twice. <b>Left/top: today</b> (figure cards raised, filter row flat, table raised). <b>Below: proposal</b> (only the figure cards raised; the table is a flat white panel with the same hairline border, so the eye goes to the figures first and the table reads as the working surface).</p>
+
+<h2>Today: figures raised, filters flat, table raised</h2>
+<div class="frame raised"><div class="pad">
+  <div class="titlerow"><div class="logo">TV</div><div class="title">TVL Division 1 T20</div></div>
+  <div class="figs"><div class="fig"><b>7</b>Teams</div><div class="fig"><b>5 of 6</b>Matches played</div><div class="fig"><b style="color:var(--amber)">Sat, 31 Oct</b>Next match 10:00</div><div class="fig"><b>12</b>Playing XI</div></div>
+  <div class="tabs"><div><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div><button class="btn o">Import Schedule</button></div>
+  <div class="bar"><div class="field">Team: All teams ⌄</div><div class="field">Search teams or venue</div><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></div>
+  <table><tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">3 matches</th></tr>
+  <tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td style="text-align:right"><span class="chip">Our match</span></td></tr>
+  <tr><td>Sat, 7 Nov<small>09:00</small></td><td><div class="team"><i>HA</i>Harlequins</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Hofmeyer Park</td><td></td></tr>
+  <tr><td>Sat, 14 Nov<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 2</div></td><td><div class="team"><i>PO</i>Police</div></td><td>-</td><td style="text-align:right"><span class="chip">Our match</span></td></tr></table>
+</div></div>
+
+<h2>Proposal: only the figures are raised, the table is flat</h2>
+<div class="frame flat"><div class="pad">
+  <div class="titlerow"><div class="logo">TV</div><div class="title">TVL Division 1 T20</div></div>
+  <div class="figs"><div class="fig"><b>7</b>Teams</div><div class="fig"><b>5 of 6</b>Matches played</div><div class="fig"><b style="color:var(--amber)">Sat, 31 Oct</b>Next match 10:00</div><div class="fig"><b>12</b>Playing XI</div></div>
+  <div class="tabs"><div><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div><button class="btn o">Import Schedule</button></div>
+  <div class="bar"><div class="field">Team: All teams ⌄</div><div class="field">Search teams or venue</div><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></div>
+  <table><tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">3 matches</th></tr>
+  <tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td style="text-align:right"><span class="chip">Our match</span></td></tr>
+  <tr><td>Sat, 7 Nov<small>09:00</small></td><td><div class="team"><i>HA</i>Harlequins</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Hofmeyer Park</td><td></td></tr>
+  <tr><td>Sat, 14 Nov<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 2</div></td><td><div class="team"><i>PO</i>Police</div></td><td>-</td><td style="text-align:right"><span class="chip">Our match</span></td></tr></table>
+  <div class="hover-note">Rows tint on hover (the whole row opens the record); the figure cards lift on hover only where they are clickable.</div>
+</div></div>
+
+<h2>The rule this would make</h2>
+<p class="note"><b>Raised</b> = at-a-glance summary only (figure cards, and a card the user can click). <b>Flat with a hairline border</b> = a working surface that holds content (tables, record cards, panels). <b>Flat without a border</b> = controls (filter bar, toolbars, tab rows). Record cards in the Cards view would be flat with the hairline and lift on hover as their click cue, so Cards and List views match. I can also show the card grid in this style before we decide.</p>
+</body>
+</html>

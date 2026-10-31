@@ -113,4 +113,5 @@ describe('KeyFigureTile', () => {
       expect(getComputedStyle(screen.getByTestId('plain-value')).color).not.toBe(error.value)
     })
   })
+
 })

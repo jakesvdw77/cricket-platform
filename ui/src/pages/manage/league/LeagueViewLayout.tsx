@@ -1,36 +1,42 @@
 import { useMemo, useState } from 'react'
+import { LogoAvatar } from '../../../components/LogoAvatar'
 import type { MouseEvent } from 'react'
-import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
-import { VIEW_TABS_PROPS, viewTabSx, viewTabsSx } from '../../../utils/viewTabs'
+import { Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { pageTitleSx } from '../../../theme'
+import { VIEW_TABS_PROPS, viewTabSx } from '../../../utils/viewTabs'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import AddIcon from '@mui/icons-material/Add'
-import { Button, compactButtonSx } from '../../../components/Button'
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import { compactButtonSx } from '../../../components/Button'
+import { ManageMenu, MANAGE_BUTTON_WIDTH } from '../../../components/ManageMenu'
+import type { ManageMenuGroup } from '../../../components/ManageMenu'
 import { BrandIcon } from '../../../components/BrandIcon'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
-import { avatarSx, badgeSx } from '../../../components/RecordCard'
+import { badgeSx } from '../../../components/RecordCard'
 import { EmptyState } from '../../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
-import { LeagueAgeReferenceLine } from '../../../components/LeagueAgeReferenceLine'
 import { ShareLeagueDialog } from '../../../components/ShareLeagueDialog'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../../components/RecordQuickViewDialog'
 import { SocialLinksRow } from '../../../components/marketing/SocialLinksRow'
-import { listLeagues } from '../../../api/leagueApi'
+import { ageReferenceKey, getLeagueAgeReference, listLeagues } from '../../../api/leagueApi'
 import { listSeasons } from '../../../api/seasonApi'
 import { listAllMatches } from '../../../api/matchApi'
+import { useBackLink } from '../../../hooks/useReturnTo'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
 import { listLeagueAffiliations } from '../../../api/leagueAffiliationApi'
@@ -42,6 +48,8 @@ import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../
 import { leagueBadges } from '../leagues/leagueBadges'
 import { DuplicateLeagueDialog } from '../leagues/DuplicateLeagueDialog'
 import { editTabForView } from '../leagueEdit/leagueEditTabConfig'
+import { useImportHistoryPanel } from '../leagueImport/useImportHistoryPanel'
+import type { LeagueContent } from '../../../utils/share/leagueShareFormats'
 import { LeagueKeyFigures } from './LeagueKeyFigures'
 import type { LeagueViewContext } from './leagueViewContext'
 
@@ -49,26 +57,33 @@ const LEAGUES_LIST_PATH = '/manage/fixtures/leagues'
 const VIEW_TABS = [
   { segment: 'schedule', label: 'Schedule', icon: <EventOutlinedIcon fontSize="small" /> },
   { segment: 'teams', label: 'Teams', icon: <GroupsOutlinedIcon fontSize="small" /> },
-  { segment: 'conditions', label: 'Conditions', icon: <DescriptionOutlinedIcon fontSize="small" /> },
+  { segment: 'conditions', label: 'Playing Conditions', icon: <DescriptionOutlinedIcon fontSize="small" /> },
 ] as const
 
 // docs/specs/072-league-view-pages.md: the shared layout route for a league's Schedule, Teams and
 // Conditions views. Owns the data the header and all three views need (carried over from the old
 // LeagueDetailPage, docs/specs/062-league-detail-redesign.md), the selected season (kept in
 // ?seasonId=), the always-visible header and the view switcher, and renders the active view through
-// <Outlet context>. docs/specs/091 (C): the header is the poll page's (Back, Season pill, Share and a filled Edit
-// on the top row; logo and title; format and Active badges; contacts and links on one line), a key-figure strip follows,
+// <Outlet context>. docs/specs/091 (C): the header is the poll page's (Back; the Season pill and the one filled Manage League button (docs/specs/126) on the title row; logo, title with the format and Active badges inline and the contacts line under it), a key-figure strip follows,
 // and the season's matches and the Share League dialog live here so the header button works on every tab.
 export default function LeagueViewLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId } = useParams<{ leagueId?: string }>()
-  const navigate = useNavigate()
   const location = useLocation()
+  const leagueBack = useBackLink(LEAGUES_LIST_PATH, 'Back to Leagues')
   const [searchParams, setSearchParams] = useSearchParams()
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [shareContent, setShareContent] = useState<LeagueContent[]>(['SCHEDULE'])
+  const openShare = (content: LeagueContent[]) => {
+    setShareContent(content)
+    setShareOpen(true)
+  }
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
+  const [tabActionsTarget, setTabActionsTarget] = useState<HTMLElement | null>(null)
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'))
 
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
@@ -86,6 +101,9 @@ export default function LeagueViewLayout() {
       ? seasonParam
       : (pickDefaultSeasonId(seasons) ?? '')
 
+  // docs/specs/126: the import history count and side panel, opened from the Manage League panel.
+  const importHistory = useImportHistoryPanel(clubId ?? '', leagueId ?? '', selectedSeasonId)
+
   // docs/specs/091: the league with the figures of the selected season (teams, matches played, next match), so the key
   // figures follow the Season pill. Held until the seasons are known so the first request already names the season.
   const {
@@ -98,6 +116,16 @@ export default function LeagueViewLayout() {
     enabled: Boolean(clubId) && !seasonsQuery.isPending,
     select: (leagues) => leagues.find((candidate) => candidate.id === leagueId),
   })
+
+  // docs/specs/110: the date ages are judged on (quiet while loading or on error), shown inside the Playing XI tile.
+  const hasAgeLimit = league?.minAge != null || league?.maxAge != null
+  const ageReferenceQuery = useQuery({
+    queryKey: ageReferenceKey(clubId ?? '', leagueId ?? '', selectedSeasonId),
+    queryFn: () => getLeagueAgeReference(clubId as string, leagueId as string, selectedSeasonId),
+    enabled: hasAgeLimit && Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId),
+    retry: false,
+  })
+  const ageReference = ageReferenceQuery.data
 
   const teamsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams'],
@@ -213,9 +241,11 @@ export default function LeagueViewLayout() {
     editParams.set('seasonId', selectedSeasonId)
   }
   const editQuery = editParams.toString()
-  // The existing Add match form (MatchFormPage) reads ?leagueId= and ?seasonId= to preselect both.
-  const createMatchPath = `/manage/fixtures/matches/new?leagueId=${leagueId}${selectedSeasonId ? `&seasonId=${selectedSeasonId}` : ''}`
-  const editPath = `${leagueBasePath}/edit${editQuery ? `?${editQuery}` : ''}`
+  // docs/specs/127: links that leave the league page carry the page itself (tab and season) as their origin, labelled by tab.
+  const originLabel = activeTab ? `${league.name} ${activeTab}` : league.name
+  const originPath = currentOrigin(location)
+  const leaveTo = (destination: string) => withReturnTo(destination, originPath, originLabel)
+  const editPath = leaveTo(`${leagueBasePath}/edit${editQuery ? `?${editQuery}` : ''}`)
 
   const context: LeagueViewContext = {
     clubId,
@@ -230,194 +260,206 @@ export default function LeagueViewLayout() {
     isLoadingTeams: affiliationsQuery.isLoading || teamsQuery.isLoading || leagueTeamsQuery.isLoading,
     matches,
     isLoadingMatches: matchesQuery.isLoading,
+    tabActionsTarget,
+    openShare,
   }
+
+  // docs/specs/126: the one filled "Manage League" button holds everything you can do to the league, grouped, the active tab's
+  // group first. Add Team goes to the Teams tab with ?add=team, which opens its chooser once (works from any tab).
+  const noSeason = 'Create a season first'
+  const leagueGroup: ManageMenuGroup = {
+    id: 'league',
+    heading: 'League',
+    items: [
+      { id: 'edit-league', title: 'Edit League Details', description: 'Name, format, age rules, contacts and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
+      { id: 'duplicate', title: 'Duplicate League', description: "Start next season from this league's setup.", icon: <ContentCopyOutlinedIcon fontSize="small" />, onClick: () => setDuplicateOpen(true) },
+      {
+        id: 'import-history',
+        title: importHistory.label,
+        description: 'See, resume or delete earlier imports.',
+        icon: <HistoryOutlinedIcon fontSize="small" />,
+        onClick: importHistory.open,
+        disabled: !selectedSeasonId,
+        reason: noSeason,
+      },
+      { id: 'share', title: 'Share League', description: 'Schedule, results, teams or conditions as a PDF, poster, calendar or message.', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => openShare(activeSegment === 'conditions' ? ['CONDITIONS'] : ['SCHEDULE']) },
+    ],
+  }
+  const manageMenu = <ManageMenu label="Manage League" groups={[leagueGroup]} testId="manage-league" fixedWidth />
 
   const linkSx = { fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere' } as const
   const linkItemSx = { display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 } as const
 
+  // The contacts and links on one line directly under the title block, the social links inline at its end (docs/specs/126);
+  // on a phone it sits under the full-width Edit League and wraps.
+  const contactsLine = hasContactSection && (
+    <Box
+      data-testid="league-header-contacts-line"
+      sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 0.75 }}
+    >
+          {primaryContact && (
+            <Box data-testid="league-header-contact-people" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.75 }}>
+              <Box sx={linkItemSx}>
+                <PersonOutlineOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                <Tooltip title={primaryContact.role}>
+                  <MuiLink
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    aria-label={`${contactFullName(primaryContact)}, ${primaryContact.role}, open contact`}
+                    onClick={() => setOpenContactId(primaryContact.id)}
+                    sx={{ ...linkSx, textAlign: 'left' }}
+                  >
+                    {contactFullName(primaryContact)}
+                  </MuiLink>
+                </Tooltip>
+              </Box>
+              {otherContacts.length > 0 && (
+                <MuiLink
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  aria-label={`Show ${otherContacts.length} more league contacts`}
+                  aria-haspopup="menu"
+                  onClick={(event: MouseEvent<HTMLElement>) => setMoreAnchor(event.currentTarget)}
+                  sx={linkSx}
+                >
+                  {`+${otherContacts.length}`}
+                </MuiLink>
+              )}
+              <Menu anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)}>
+                {otherContacts.map((contact) => (
+                  <MenuItem
+                    key={contact.id}
+                    sx={{ minHeight: 44 }}
+                    aria-label={`${contactFullName(contact)}, ${contact.role}, open contact`}
+                    onClick={() => {
+                      setMoreAnchor(null)
+                      setOpenContactId(contact.id)
+                    }}
+                  >
+                    <ListItemText primary={contactFullName(contact)} secondary={contact.role} />
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
+          )}
+
+          {hasLinks && (
+            <Box data-testid="league-header-links-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.75 }}>
+              {league.phone && (
+                <Box sx={linkItemSx}>
+                  <PhoneOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <MuiLink href={`tel:${league.phone}`} underline="hover" sx={linkSx}>
+                    {league.phone}
+                  </MuiLink>
+                </Box>
+              )}
+              {league.email && (
+                <Box sx={linkItemSx}>
+                  <EmailOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <MuiLink href={`mailto:${league.email}`} underline="hover" sx={linkSx}>
+                    {league.email}
+                  </MuiLink>
+                </Box>
+              )}
+              {league.website && (
+                <Box sx={linkItemSx}>
+                  <LanguageOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <MuiLink href={league.website} target="_blank" rel="noopener" underline="hover" sx={linkSx}>
+                    {league.website}
+                  </MuiLink>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {hasSocial && (
+            <Box data-testid="league-header-social" sx={{ minWidth: 0 }}>
+              <SocialLinksRow links={league.socialLinks} size="small" variant="labelled" />
+            </Box>
+          )}
+    </Box>
+  )
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          {/* Top row: Back on the left; the Season pill, Share, Duplicate league and the filled primary Edit on the right. */}
+          {/* Top row: only the quiet Back link; the page actions are at title level (docs/standards/page-anatomy.md section 1). */}
           <Box
             data-testid="league-header-top-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
           >
             <MuiButton
               component={RouterLink}
-              to={LEAGUES_LIST_PATH}
+              to={leagueBack.to ?? LEAGUES_LIST_PATH}
               variant="text"
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
               sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
-              Back to Leagues
+              {leagueBack.label}
             </MuiButton>
-
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, flex: 'none' }}>
-              {seasons.length > 0 && (
-                <HeaderSeasonSelect
-                  seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
-                  value={selectedSeasonId || null}
-                  onChange={handleSeasonChange}
-                  showAll={false}
-                />
-              )}
-              <Button
-                size="compact"
-                variant="secondary"
-                startIcon={<ShareOutlinedIcon fontSize="small" />}
-                onClick={() => setShareOpen(true)}
-              >
-                Share
-              </Button>
-              <Button
-                size="compact"
-                variant="secondary"
-                startIcon={<AddIcon fontSize="small" />}
-                disabled={!selectedSeasonId}
-                onClick={() => navigate(createMatchPath)}
-              >
-                Create match
-              </Button>
-              {/* docs/specs/096: outlined, so Edit stays the one filled primary action; the labelled button wraps on a phone. */}
-              <Button
-                size="compact"
-                variant="secondary"
-                startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
-                onClick={() => setDuplicateOpen(true)}
-              >
-                Duplicate league
-              </Button>
-              <MuiButton
-                component={RouterLink}
-                to={editPath}
-                variant="contained"
-                size="small"
-                startIcon={<EditOutlinedIcon fontSize="small" />}
-                sx={compactButtonSx}
-              >
-                Edit
-              </MuiButton>
-            </Box>
           </Box>
 
-          {/* Title row: logo tile and name (wraps, never ellipsised), then the format and Active badges under it. */}
-          <Box data-testid="league-header-title-row" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-            <Avatar
-              src={league.logoUrl ?? undefined}
+          {/* Title row: logo tile and name (wraps, never ellipsised) with the format and Active badges inline, the contacts line under them. */}
+          <Box data-testid="league-header-title-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 1.5, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0, flex: '1 1 auto' }}>
+            <LogoAvatar
+              src={league.logoUrl}
               variant="rounded"
-              sx={{ ...avatarSx(64), width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
+              size={64}
+              sx={{ width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
             >
               <BrandIcon name="nav/cricket-leagues" size={40} surface="none" />
-            </Avatar>
-            <Stack spacing={1} sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-              >
-                {league.name}
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="League badges">
-                {badges.map((badge) => (
-                  <Chip key={badge.label} size="small" label={badge.label} sx={badgeSx(badge.tone)} />
-                ))}
-              </Stack>
+            </LogoAvatar>
+            <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+              {/* The name and the badges share the line; both wrap rather than ellipsise. */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.25, rowGap: 0.5, minWidth: 0 }}>
+                <Box data-testid="league-header-title-group" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.25, rowGap: 0.5, minWidth: 0 }}>
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    sx={{ ...pageTitleSx, fontSize: { xs: 26, md: 32 }, lineHeight: 1.1, letterSpacing: '0.02em', textTransform: 'none', overflowWrap: 'anywhere' }}
+                  >
+                    {league.name}
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="League badges" sx={{ flex: 'none' }}>
+                    {badges.map((badge) => (
+                      <Chip key={badge.label} size="small" label={badge.label} sx={badgeSx(badge.tone)} />
+                    ))}
+                  </Stack>
+                </Box>
+                {seasons.length > 0 && (
+                  <Box data-testid="league-header-season-pill" sx={{ display: 'inline-flex', minWidth: 0 }}>
+                    <HeaderSeasonSelect
+                      seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
+                      value={selectedSeasonId || null}
+                      onChange={handleSeasonChange}
+                      showAll={false}
+                    />
+                  </Box>
+                )}
+              </Box>
+              {!phone && contactsLine}
             </Stack>
+            </Box>
+            {!phone && (
+              <Box data-testid="league-header-actions" sx={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 1, flex: 'none', ml: 'auto' }}>
+                {manageMenu}
+              </Box>
+            )}
           </Box>
 
-          {hasContactSection && (
-            <Box
-              data-testid="league-header-contacts-line"
-              sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 1 }}
-            >
-              {primaryContact && (
-                <Box data-testid="league-header-contact-people" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.75 }}>
-                  <Box sx={linkItemSx}>
-                    <PersonOutlineOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                    <Tooltip title={primaryContact.role}>
-                      <MuiLink
-                        component="button"
-                        type="button"
-                        underline="hover"
-                        aria-label={`${contactFullName(primaryContact)}, ${primaryContact.role}, open contact`}
-                        onClick={() => setOpenContactId(primaryContact.id)}
-                        sx={{ ...linkSx, textAlign: 'left' }}
-                      >
-                        {contactFullName(primaryContact)}
-                      </MuiLink>
-                    </Tooltip>
-                  </Box>
-                  {otherContacts.length > 0 && (
-                    <MuiLink
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      aria-label={`Show ${otherContacts.length} more league contacts`}
-                      aria-haspopup="menu"
-                      onClick={(event: MouseEvent<HTMLElement>) => setMoreAnchor(event.currentTarget)}
-                      sx={linkSx}
-                    >
-                      {`+${otherContacts.length}`}
-                    </MuiLink>
-                  )}
-                  <Menu anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)}>
-                    {otherContacts.map((contact) => (
-                      <MenuItem
-                        key={contact.id}
-                        sx={{ minHeight: 44 }}
-                        aria-label={`${contactFullName(contact)}, ${contact.role}, open contact`}
-                        onClick={() => {
-                          setMoreAnchor(null)
-                          setOpenContactId(contact.id)
-                        }}
-                      >
-                        <ListItemText primary={contactFullName(contact)} secondary={contact.role} />
-                      </MenuItem>
-                    ))}
-                  </Menu>
-                </Box>
-              )}
-
-              {hasLinks && (
-                <Box data-testid="league-header-links-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.75 }}>
-                  {league.phone && (
-                    <Box sx={linkItemSx}>
-                      <PhoneOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                      <MuiLink href={`tel:${league.phone}`} underline="hover" sx={linkSx}>
-                        {league.phone}
-                      </MuiLink>
-                    </Box>
-                  )}
-                  {league.email && (
-                    <Box sx={linkItemSx}>
-                      <EmailOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                      <MuiLink href={`mailto:${league.email}`} underline="hover" sx={linkSx}>
-                        {league.email}
-                      </MuiLink>
-                    </Box>
-                  )}
-                  {league.website && (
-                    <Box sx={linkItemSx}>
-                      <LanguageOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                      <MuiLink href={league.website} target="_blank" rel="noopener" underline="hover" sx={linkSx}>
-                        {league.website}
-                      </MuiLink>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              {hasSocial && (
-                <Box data-testid="league-header-social" sx={{ flex: 'none', ml: { sm: 'auto' } }}>
-                  <SocialLinksRow links={league.socialLinks} size="small" />
-                </Box>
-              )}
+          {phone && (
+            <Box data-testid="league-header-actions" sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, display: 'flex' }}>{manageMenu}</Box>
             </Box>
           )}
+
+          {phone && contactsLine}
         </Stack>
       </PageHeaderBand>
 
@@ -429,24 +471,22 @@ export default function LeagueViewLayout() {
         maxPlayingXiSize={league.maxPlayingXiSize}
         minAge={league.minAge}
         maxAge={league.maxAge}
+        ageReference={ageReference}
       />
 
-      {/* docs/specs/110: which date ages are judged on in the selected season (quiet while loading or on error). */}
-      <LeagueAgeReferenceLine
-        clubId={clubId}
-        leagueId={leagueId}
-        seasonId={selectedSeasonId}
-        hasAgeLimit={league.minAge != null || league.maxAge != null}
-      />
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
         {/* The switcher is link navigation, so it is a nav landmark and the active link carries
             aria-current="page". */}
-        <Box component="nav" aria-label="League views" sx={{ minWidth: 0 }}>
+        <Box
+          component="nav"
+          aria-label="League views"
+          sx={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, borderBottom: 1, borderColor: 'divider' }}
+        >
           <Tabs
             value={activeTab}
             {...VIEW_TABS_PROPS}
-            sx={viewTabsSx}
+            // The divider sits on the row (so it runs under the actions too), hence no borderBottom here.
+            sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: '1 1 0' }, minWidth: 0 }}
           >
             {VIEW_TABS.map((tab) => (
               <Tab
@@ -462,10 +502,32 @@ export default function LeagueViewLayout() {
               />
             ))}
           </Tabs>
+          {/* docs/specs/126: the active view's actions (LeagueTabActions portals into this). Under sm it wraps onto its own
+              row under the tabs, buttons side by side at equal width and 44 px; from sm they are compact and right-aligned. */}
+          <Box
+            ref={setTabActionsTarget}
+            data-testid="league-tab-actions"
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 1,
+              ml: 'auto',
+              minWidth: 0,
+              width: { xs: '100%', sm: 'auto' },
+              py: { xs: 1, sm: 0 },
+              '&:empty': { display: 'none' },
+              '& > *': { flex: { xs: '1 1 100%', sm: '0 0 auto' } },
+              '& .MuiButton-root': { width: { xs: '100%', sm: MANAGE_BUTTON_WIDTH }, minHeight: { xs: 44, sm: 32 }, justifyContent: 'center' },
+            }}
+          />
         </Box>
 
         <Outlet context={context} />
       </Box>
+
+      {importHistory.panel}
 
       <ShareLeagueDialog
         open={shareOpen}
@@ -473,7 +535,7 @@ export default function LeagueViewLayout() {
         clubId={clubId}
         league={league}
         seasonId={selectedSeasonId || null}
-        preselected={['SCHEDULE']}
+        preselected={shareContent}
       />
 
       {duplicateOpen && (

@@ -133,7 +133,7 @@ describe('LeagueContactRows', () => {
     expect(screen.getByText('No contacts yet for this league.')).toBeInTheDocument()
     expect(screen.queryByTestId('league-contact-row')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Add contact' }))
+    await user.click(screen.getByRole('button', { name: 'Add Contact' }))
 
     expect(await screen.findByText('Add contact page')).toBeInTheDocument()
   })

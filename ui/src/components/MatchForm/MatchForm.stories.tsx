@@ -222,6 +222,15 @@ export const LeagueTeamPicker: Story = {
   },
 }
 
+// The home side is 1st XI, so the away team list leaves it out (and the other way round); a typed Other name equal to the
+// home team shows "A team cannot play itself" and blocks Save.
+export const TeamCannotPlayItself: Story = {
+  args: {
+    ...NewMatch.args,
+    initialValues: { seasonId: 'season-1', homeTeamId: 'team-1', awayTeamName: '1st XI' },
+  },
+}
+
 // No league or season chosen yet: the League team button is disabled with a hint.
 export const LeagueTeamNeedsLeagueAndSeason: Story = {
   args: { ...NewMatch.args, canUseLeagueTeams: true, leagueTeams: [] },

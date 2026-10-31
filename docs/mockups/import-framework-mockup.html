@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 097 Import framework mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;--ok:#2f7d4f;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-weight:700;font-size:26px;margin:44px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:900px;font-size:14px;margin:0 0 14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.frame.d{width:1000px;height:640px}
+.frame.p{width:375px;height:720px}
+.pad{padding:14px 18px;overflow:auto;flex:1}
+.p .pad{padding:12px}
+.hdr{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--cardLine);background:#fff}
+.hdr b{font-family:var(--display);font-size:24px;color:var(--green900)}
+.hdr small{display:block;font-size:12.5px;color:var(--inkMuted)}
+.target{margin:0;font-size:12.5px;color:var(--green800);font-weight:600}
+.steps{display:flex;gap:6px;align-items:center;padding:10px 18px;font-size:13px;color:var(--inkMuted);background:#fff;border-bottom:1px solid var(--cardLine);flex-wrap:wrap}
+.steps .on{color:var(--green800);font-weight:600}
+.dot{width:20px;height:20px;border-radius:50%;background:var(--cardLine);color:var(--ink900);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-right:4px}
+.on .dot{background:var(--green700);color:#fff}.done .dot{background:var(--ok);color:#fff}
+.cap-step{padding:8px 12px;font-size:13px;font-weight:600;color:var(--green800);background:#fff;border-bottom:1px solid var(--cardLine)}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.p .btn{height:44px}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:transparent;color:var(--green700);border-color:var(--green700)}
+.btn.t{background:transparent;color:var(--green700)}
+.btn.dis{background:color-mix(in srgb,var(--ink900) 12%,transparent);color:color-mix(in srgb,var(--ink900) 38%,transparent)}
+.btn.sm{height:28px;padding:0 10px;font-size:12.5px}
+.p .btn.sm{height:44px}
+.foot{padding:10px 18px;border-top:1px solid var(--cardLine);background:#fff;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.foot .hint{margin-right:auto;font-size:13px;color:var(--error)}
+.p .foot{flex-wrap:wrap}.p .foot .btn.c{width:100%;justify-content:center}
+.counters{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.p .counters{grid-template-columns:repeat(3,1fr)}
+.cnt{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:8px 10px}
+.cnt b{font:700 24px var(--display);display:block}.cnt span{font-size:12px;color:var(--inkMuted)}
+.cnt.f{border-color:var(--green700);box-shadow:0 0 0 1px var(--green700)}
+.bar{display:flex;gap:14px;align-items:center;margin:6px 0 10px;font-size:13.5px;flex-wrap:wrap}
+.sw{display:inline-flex;align-items:center;gap:8px}
+.sw i{width:34px;height:18px;border-radius:9px;background:var(--green700);position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px}
+th{position:sticky;top:0;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:8px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:7px 10px;border-bottom:1px solid #edf0e9;vertical-align:top}
+tr:nth-child(even) td{background:#f8faf6}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600;border:1px solid}
+.chip.ok{color:var(--ok);border-color:var(--ok)}.chip.w{color:var(--warning);border-color:var(--warning)}
+.chip.e{color:var(--error);border-color:var(--error)}.chip.n{color:var(--inkMuted);border-color:var(--inkMuted)}
+.chip.i{color:var(--info);border-color:var(--info)}
+.why{color:var(--inkMuted);font-size:12.5px}.why.e{color:var(--error)}.why.w{color:var(--warning)}
+.exp{margin-top:10px;background:#fff;border:1px dashed var(--cardLine);border-radius:6px;padding:8px 12px;font-size:13.5px;display:flex;justify-content:space-between}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.card.err{border-left:4px solid var(--error)}.card.wrn{border-left:4px solid var(--warning)}.card.okc{border-left:4px solid var(--ok)}
+.card .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.card .v{font-weight:600;font-size:14.5px}.card .m{font-size:12.5px;color:var(--inkMuted);margin-top:2px}
+.prog{font-size:13px;color:var(--inkMuted);margin:2px 0 10px}
+.prog .barx{height:6px;border-radius:3px;background:var(--cardLine);margin-top:4px}.prog .barx i{display:block;height:6px;border-radius:3px;background:var(--green700);width:57%}
+.prop{border:1px solid var(--cardLine);border-radius:6px;padding:8px 10px;margin:6px 0;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.prop.best{border-color:var(--green700);background:color-mix(in srgb,var(--green700) 6%,#fff)}
+.prop .nm{font-weight:600;font-size:14px}.prop .src{font-size:12px;color:var(--inkMuted)}
+.reasons{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.rs{font-size:11.5px;border-radius:10px;padding:1px 8px;background:#eef2ea;color:var(--green800)}
+.conf{font-weight:700;font-size:13px;min-width:44px;text-align:right}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.rem{font-size:13px;display:inline-flex;align-items:center;gap:6px;color:var(--inkMuted)}
+.rem u{width:16px;height:16px;border:2px solid var(--inkMuted);border-radius:3px;display:inline-block}
+.rem u.on{background:var(--green700);border-color:var(--green700)}
+.alert{border-radius:6px;padding:9px 12px;font-size:13.5px;margin-bottom:10px;background:#e8f0f9;color:#17406f;border:1px solid #c5d8ee}
+.alert.w{background:#fdf3e0;color:#7a4e0c;border-color:#efd9a8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.p .grid2{grid-template-columns:1fr}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.p .tiles{grid-template-columns:repeat(2,1fr)}
+.tile{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:8px 10px}
+.tile b{font:700 26px var(--display);display:block;color:var(--green800)}.tile span{font-size:12px;color:var(--inkMuted)}
+.h3{font-family:var(--display);font-weight:700;font-size:18px;margin:12px 0 6px;color:var(--green900)}
+.li{font-size:13.5px;padding:5px 0;border-bottom:1px solid #edf0e9;display:flex;justify-content:space-between;gap:8px}
+.li small{color:var(--inkMuted)}
+.ack{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:1px solid var(--cardLine);border-radius:6px;background:#fff;margin-bottom:6px;font-size:13.5px}
+.ack u{width:18px;height:18px;border:2px solid var(--inkMuted);border-radius:3px;flex:none;margin-top:1px}
+.ack u.on{background:var(--green700);border-color:var(--green700)}
+</style>
+</head>
+<body>
+<h1>Import framework: wizard screens</h1>
+<p class="lede">Spec 097. Three new patterns for approval: the Validate step (issue table), the Resolve step (reference resolver, also used for "Identify what is ours") and the Review and confirm step. Shown at desktop and 375 px. The sample is a league schedule import (the first consumer, 098), but the screens are generic. Buttons are 32 px (44 px on a phone), status is always an icon-style chip plus a word, never colour alone.</p>
+
+<!-- ============ 1. ISSUE TABLE ============ -->
+<h2>1. Validate: issue table</h2>
+<p class="note">Counters double as filters (Warnings and Errors). "Problems only" switch sends the filter to the server. A fourth neutral chip, "Skipped, not ours", is not a problem and never blocks. Each row has Exclude or Include. The skipped rows sit in an expandable section.</p>
+<div class="row">
+<div><p class="cap">Desktop</p>
+<div class="frame d">
+  <div class="hdr"><div><b>Import league schedule</b><small>Importing into: Northern Premier League, 2026/27</small></div><span class="chip n">Ours only</span></div>
+  <div class="steps"><span class="done"><span class="dot">✓</span>Upload</span> › <span class="on"><span class="dot">2</span>Check rows</span> › <span><span class="dot">3</span>Identify ours</span> › <span><span class="dot">4</span>Match teams</span> › <span><span class="dot">5</span>Review</span></div>
+  <div class="pad">
+    <div class="counters">
+      <div class="cnt"><b>90</b><span>Rows</span></div>
+      <div class="cnt"><b>38</b><span>OK</span></div>
+      <div class="cnt f"><b>6</b><span>Warnings</span></div>
+      <div class="cnt"><b>2</b><span>Errors</span></div>
+      <div class="cnt"><b>44</b><span>Skipped, not ours</span></div>
+    </div>
+    <div class="bar"><span class="sw"><i></i>Problems only</span><span style="color:var(--inkMuted)">Showing 8 of 90 rows</span></div>
+    <table>
+      <tr><th>Row</th><th>Status</th><th>Date</th><th>Home</th><th>Away</th><th>Time</th><th>Reason</th><th></th></tr>
+      <tr><td>14</td><td><span class="chip e">✕ Error</span></td><td>20 Sep 2026</td><td>POLICE 1</td><td>POLICE 1</td><td>09:00</td><td class="why e">Home and away are the same team.</td><td><button class="btn t sm">Exclude</button></td></tr>
+      <tr><td>22</td><td><span class="chip e">✕ Error</span></td><td>31 Feb 2026</td><td>PHSOB</td><td>CBCOB</td><td>13:30</td><td class="why e">31 Feb is not a date (cell C22).</td><td><button class="btn t sm">Exclude</button></td></tr>
+      <tr><td>31</td><td><span class="chip w">⚠ Warning</span></td><td>27 Sep 2026</td><td>VETS</td><td>OLD BOYS</td><td>09:00</td><td class="why w">Outside the league dates (starts 1 Oct).</td><td><button class="btn t sm">Exclude</button></td></tr>
+      <tr><td>37</td><td><span class="chip w">⚠ Possible duplicate</span></td><td>04 Oct 2026</td><td>CBC U13</td><td>HILTON</td><td>09:00</td><td class="why w">Close to an existing match on 04 Oct at 09:30.</td><td><button class="btn t sm">Exclude</button></td></tr>
+      <tr><td>41</td><td><span class="chip i">≈ Differs</span></td><td>11 Oct 2026</td><td>CBC U13</td><td>MARITZ</td><td>10:00</td><td class="why">Exists at 09:00. Skipped unless you choose Update.</td><td><button class="btn t sm">Update</button></td></tr>
+      <tr><td>43</td><td><span class="chip ok">✓ Already exists</span></td><td>18 Oct 2026</td><td>CBC U13</td><td>GLENWOOD</td><td>09:00</td><td class="why">Same match is already in the schedule. Skipped.</td><td></td></tr>
+    </table>
+    <div class="exp"><span>▸ <b>Skipped, not ours (44)</b> <span class="why">Rows with none of your teams. Not imported.</span></span><span class="why">Download list</span></div>
+  </div>
+  <div class="foot"><span class="hint">Fix or exclude 2 errors to continue.</span><button class="btn o">Back</button><button class="btn c dis">Next</button></div>
+</div></div>
+
+<div><p class="cap">Phone (375 px)</p>
+<div class="frame p">
+  <div class="hdr"><div><b>Import schedule</b><small>Northern Premier League, 2026/27</small></div></div>
+  <div class="cap-step">Step 2 of 5: Check rows</div>
+  <div class="pad">
+    <div class="counters">
+      <div class="cnt"><b>90</b><span>Rows</span></div><div class="cnt"><b>38</b><span>OK</span></div><div class="cnt f"><b>6</b><span>Warnings</span></div>
+      <div class="cnt"><b>2</b><span>Errors</span></div><div class="cnt" style="grid-column:span 2"><b>44</b><span>Skipped, not ours</span></div>
+    </div>
+    <div class="bar"><span class="sw"><i></i>Problems only</span></div>
+    <div class="card err"><div class="top"><span class="v">Row 14 · 20 Sep, 09:00</span><span class="chip e">✕ Error</span></div>
+      <div class="m">POLICE 1 v POLICE 1</div><div class="why e" style="margin-top:4px">Home and away are the same team.</div>
+      <div class="acts"><button class="btn t sm">Exclude</button></div></div>
+    <div class="card wrn"><div class="top"><span class="v">Row 37 · 04 Oct, 09:00</span><span class="chip w">⚠ Possible duplicate</span></div>
+      <div class="m">CBC U13 v HILTON</div><div class="why w" style="margin-top:4px">Close to an existing match on 04 Oct at 09:30.</div>
+      <div class="acts"><button class="btn t sm">Exclude</button></div></div>
+    <div class="exp"><span>▸ <b>Skipped, not ours (44)</b></span></div>
+  </div>
+  <div class="foot"><button class="btn c dis">Next</button><button class="btn o" style="width:100%;justify-content:center">Back</button></div>
+</div></div>
+</div>
+
+<!-- ============ 2. REFERENCE RESOLVER ============ -->
+<h2>2. Resolve: reference resolver</h2>
+<p class="note">One card per distinct unrecognised name, with ranked proposals (confidence and reasons). Nothing is preselected except an exact match or an alias you already confirmed once (still shown, still counted). Creating is only chosen here and confirmed on the Review step. The same component renders "Identify what is ours".</p>
+<div class="row">
+<div><p class="cap">Desktop</p>
+<div class="frame d">
+  <div class="hdr"><div><b>Match teams</b><small>Importing into: Northern Premier League, 2026/27</small></div><span class="chip n">Ours only</span></div>
+  <div class="steps"><span class="done"><span class="dot">✓</span>Upload</span> › <span class="done"><span class="dot">✓</span>Check rows</span> › <span class="done"><span class="dot">✓</span>Identify ours</span> › <span class="on"><span class="dot">4</span>Match teams</span> › <span><span class="dot">5</span>Review</span></div>
+  <div class="pad">
+    <div class="prog">4 of 7 names resolved<div class="barx"><i></i></div></div>
+    <div class="card okc"><div class="top"><div><span class="v">CBCOB</span><div class="m">Used in 6 rows</div></div><span class="chip ok">✓ Linked to Collegians Old Boys</span></div></div>
+    <div class="card err">
+      <div class="top"><div><span class="v">VETERANS</span><div class="m">Used in 4 rows · not resolved</div></div><span class="chip e">Needs a decision</span></div>
+      <div class="prop best"><div><div class="nm">Vets <span class="src">· this league, 2025/26</span></div>
+        <div class="reasons"><span class="rs">VETERANS = VETS</span><span class="rs">same league last season</span></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><span class="conf">92%</span><button class="btn o sm">Link to this</button></div></div>
+      <div class="prop"><div><div class="nm">Veterans XI <span class="src">· Southern Cup, 2026/27</span></div>
+        <div class="reasons"><span class="rs">token similarity</span><span class="rs">other league of the club</span></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><span class="conf">61%</span><button class="btn o sm">Link to this</button></div></div>
+      <div class="acts"><button class="btn o sm">Create new league team</button><button class="btn t sm">Skip these rows</button><span class="rem"><u class="on"></u>Remember this match</span></div>
+    </div>
+    <div class="card err">
+      <div class="top"><div><span class="v">Zebras</span><div class="m">Used in 2 rows · not resolved</div></div><span class="chip e">Needs a decision</span></div>
+      <div class="why" style="margin:6px 0">No team with a similar name was found in this or earlier seasons. Create it only if you are sure it is a new team.</div>
+      <div class="acts"><button class="btn o sm">Create new league team</button><button class="btn t sm">Skip these rows</button></div>
+    </div>
+  </div>
+  <div class="foot"><span class="hint">3 names still need a decision.</span><button class="btn o">Back</button><button class="btn c dis">Next</button></div>
+</div></div>
+
+<div><p class="cap">Phone (375 px)</p>
+<div class="frame p">
+  <div class="hdr"><div><b>Match teams</b><small>Northern Premier League, 2026/27</small></div></div>
+  <div class="cap-step">Step 4 of 5: Match teams</div>
+  <div class="pad">
+    <div class="prog">4 of 7 resolved<div class="barx"><i></i></div></div>
+    <div class="card err">
+      <div class="top"><span class="v">VETERANS</span><span class="chip e">Decide</span></div><div class="m">Used in 4 rows</div>
+      <div class="prop best" style="flex-direction:column;align-items:stretch"><div class="nm">Vets <span class="conf" style="float:right">92%</span></div>
+        <div class="src">this league, 2025/26</div><div class="reasons"><span class="rs">VETERANS = VETS</span><span class="rs">same league last season</span></div>
+        <button class="btn o" style="margin-top:6px;justify-content:center">Link to this</button></div>
+      <div class="prop" style="flex-direction:column;align-items:stretch"><div class="nm">Veterans XI <span class="conf" style="float:right">61%</span></div>
+        <div class="src">Southern Cup, 2026/27</div><button class="btn o" style="margin-top:6px;justify-content:center">Link to this</button></div>
+      <div class="acts"><button class="btn o" style="flex:1;justify-content:center">Create new</button><button class="btn t" style="flex:1;justify-content:center">Skip rows</button></div>
+      <div class="acts"><span class="rem"><u class="on"></u>Remember this match</span></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn c dis">Next</button><button class="btn o" style="width:100%;justify-content:center">Back</button></div>
+</div></div>
+</div>
+
+<!-- ============ 3. CONFIRM PANEL ============ -->
+<h2>3. Review and confirm</h2>
+<p class="note">Everything that will be created is listed, nothing has been saved yet and the page says so. Warnings are grouped by kind, each with one tick. Confirm stays disabled, with the reason beside it, until there are no errors and every warning is ticked. On a phone the Confirm button is full width and sticky.</p>
+<div class="row">
+<div><p class="cap">Desktop</p>
+<div class="frame d">
+  <div class="hdr"><div><b>Review and import</b><small>Importing into: Northern Premier League, 2026/27</small></div><span class="chip n">Ours only</span></div>
+  <div class="steps"><span class="done"><span class="dot">✓</span>Upload</span> › <span class="done"><span class="dot">✓</span>Check rows</span> › <span class="done"><span class="dot">✓</span>Identify ours</span> › <span class="done"><span class="dot">✓</span>Match teams</span> › <span class="on"><span class="dot">5</span>Review</span></div>
+  <div class="pad">
+    <div class="alert">Nothing has been saved yet. Matches and teams are only created when you press Confirm and import.</div>
+    <div class="tiles">
+      <div class="tile"><b>40</b><span>Matches will be created</span></div>
+      <div class="tile"><b>1</b><span>Match will be updated</span></div>
+      <div class="tile"><b>5</b><span>Already exist, skipped</span></div>
+      <div class="tile"><b>44</b><span>Not ours, not imported</span></div>
+    </div>
+    <div class="alert w">44 of 90 rows do not involve your teams and will not be imported. League schedule shares will show only your matches.</div>
+    <div class="grid2">
+      <div><div class="h3">Teams that will be created (2)</div>
+        <div class="li"><span>Zebras <small>league team, 2026/27</small></span><span class="chip w">New</span></div>
+        <div class="li"><span>Hilton 2nd XI <small>league team, 2026/27</small></span><span class="chip w">New</span></div>
+        <div class="h3">Teams linked (5)</div>
+        <div class="li"><span>VETERANS <small>→ Vets</small></span><span class="why">92%</span></div>
+        <div class="li"><span>CBCOB <small>→ Collegians Old Boys</small></span><span class="why">remembered</span></div>
+        <div class="h3">Match to be updated (1)</div>
+        <div class="li"><span>CBC U13 v Maritz, 11 Oct <small>time 09:00 → 10:00</small></span></div></div>
+      <div><div class="h3">Matches that will be created (40)</div>
+        <div class="li"><span>04 Oct 09:00 · CBC U13 v Hilton</span><small>row 37</small></div>
+        <div class="li"><span>11 Oct 09:00 · CBC U15 v Glenwood</span><small>row 44</small></div>
+        <div class="li"><span>18 Oct 09:00 · CBC U13 v Maritz</span><small>row 51</small></div>
+        <div class="li"><span class="why">and 37 more</span><span class="why">Show all</span></div>
+        <div class="h3">Warnings to acknowledge</div>
+        <div class="ack"><u class="on"></u><div><b>Outside the league dates (1 row)</b><div class="why">Row 31. The match will still be created.</div></div></div>
+        <div class="ack"><u></u><div><b>Possible duplicate (1 row)</b><div class="why">Row 37 is close to an existing match on 04 Oct at 09:30.</div></div></div></div>
+    </div>
+  </div>
+  <div class="foot"><span class="hint">Acknowledge 1 warning to continue.</span><button class="btn o">Back</button><button class="btn c dis">Confirm and import</button></div>
+</div></div>
+
+<div><p class="cap">Phone (375 px)</p>
+<div class="frame p">
+  <div class="hdr"><div><b>Review and import</b><small>Northern Premier League, 2026/27</small></div></div>
+  <div class="cap-step">Step 5 of 5: Review</div>
+  <div class="pad">
+    <div class="alert">Nothing has been saved yet.</div>
+    <div class="tiles"><div class="tile"><b>40</b><span>Created</span></div><div class="tile"><b>1</b><span>Updated</span></div><div class="tile"><b>5</b><span>Skipped</span></div><div class="tile"><b>44</b><span>Not ours</span></div></div>
+    <div class="alert w">44 rows do not involve your teams and will not be imported.</div>
+    <div class="h3">Teams that will be created (2)</div>
+    <div class="li"><span>Zebras</span><span class="chip w">New</span></div><div class="li"><span>Hilton 2nd XI</span><span class="chip w">New</span></div>
+    <div class="h3">Warnings</div>
+    <div class="ack"><u class="on"></u><div><b>Outside the league dates (1)</b></div></div>
+    <div class="ack"><u></u><div><b>Possible duplicate (1)</b></div></div>
+  </div>
+  <div class="foot"><span class="hint" style="width:100%">Acknowledge 1 warning to continue.</span><button class="btn c dis">Confirm and import</button><button class="btn o" style="width:100%;justify-content:center">Back</button></div>
+</div></div>
+</div>
+
+<h2>Notes for approval</h2>
+<p class="note">Step names above (Check rows, Identify ours, Match teams, Review) are plain-English labels for the spec's Validate and Resolve steps; "Identify ours" only shows in Ours-only mode. The report step, the history panel and the upload step reuse existing patterns (key figure tiles, side panel, the results import's upload and "convert with AI" help) and are not redrawn here.</p>
+</body>
+</html>

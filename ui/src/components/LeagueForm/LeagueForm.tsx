@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
-import { Box, FormHelperText, MenuItem, Typography } from '@mui/material'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import { Box, FormHelperText, MenuItem } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
@@ -10,6 +10,7 @@ import { WebsiteInput } from '../WebsiteInput'
 import { MediaUpload } from '../MediaUpload'
 import { SocialLinksFields } from '../SocialLinksFields'
 import type { SocialLink } from '../marketing/SocialLinksRow'
+import { compactFieldSx } from '../../utils/compactFieldSx'
 import { cutoffError, DEFAULT_CUTOFF, MONTH_NAMES, maxDayInMonth } from '../../utils/ageCutoff'
 import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { LeagueFormat, LeaguePayload } from '../../api/leagueApi'
@@ -21,6 +22,11 @@ export const LEAGUE_FORM_ID = 'league-form'
 export interface LeagueFormProps {
   initialValues?: Partial<LeaguePayload>
   onSubmit: (payload: LeaguePayload) => void
+  // docs/specs/128: which part of the one form is on screen. The other part stays mounted (display: none), so edits on either
+  // tab survive switching and one Save posts everything. Default: both (Add League and every other caller).
+  visibleSection?: 'details' | 'branding'
+  // Shown directly under the age fields (the page passes the "ages are judged on" sentence).
+  ageReference?: ReactNode
 }
 
 interface FormState {
@@ -116,6 +122,9 @@ function blankToNull(value: string): string | null {
   return trimmed ? trimmed : null
 }
 
+// Fields in 3 columns at md, 2 at sm, 1 on a phone (docs/specs/128).
+const fieldColumns = { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }
+
 // Note: League.source is deliberately not exposed here — every League created through this UI is
 // INTERNAL (the server default when omitted); source = EXTERNAL is a reserved placeholder for a
 // future CricClubs sync with no UI of its own yet (docs/specs/029-league-management.md's
@@ -125,7 +134,7 @@ function blankToNull(value: string): string | null {
 // shape (Basic Info/Branding/Social Media) now that League carries the same club-facing profile
 // fields (logo, format, phone/website/email, social links) alongside its original scheduling
 // fields — all of which stay on Basic Info, since none of them warrant their own tab.
-export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
+export function LeagueForm({ initialValues, onSubmit, visibleSection, ageReference }: LeagueFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
   // docs/specs/110: true once the manager has chosen or cleared either cut-off field. Until then the form may fill
@@ -207,8 +216,9 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
       noValidate
       sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}
     >
-      <FormSectionHeading icon={<InfoOutlinedIcon />} title="Basic info" />
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: visibleSection === 'branding' ? 'none' : 'flex', flexDirection: 'column', gap: 1.5, ...compactFieldSx }}>
+      <FormSectionHeading compact icon={<InfoOutlinedIcon />} title="Basic info" />
+      <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: fieldColumns }}>
         <Input label="Name" value={values.name} onChange={handleChange('name')} error={Boolean(errors.name)} helperText={errors.name} />
 
         <Input select label="Format" value={values.format} onChange={handleFormatChange}>
@@ -250,62 +260,52 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
         />
 
         {/* docs/specs/110: the cut-off is a day and a month; the year is the one the league starts in. */}
-        <Box
-          role="group"
-          aria-labelledby="league-cutoff-heading"
-          sx={{ gridColumn: { xs: '1', md: '1 / -1' }, display: 'flex', flexDirection: 'column', gap: 1 }}
+        <Input
+          select
+          label="Cut-off month (optional)"
+          value={values.ageCutoffMonth}
+          onChange={handleCutoffChange('ageCutoffMonth')}
+          error={Boolean(errors.cutoff)}
         >
-          <Typography id="league-cutoff-heading" variant="subtitle2" component="p">
-            Age cut-off (day and month)
-          </Typography>
-          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
-            <Input
-              select
-              label="Cut-off month (optional)"
-              value={values.ageCutoffMonth}
-              onChange={handleCutoffChange('ageCutoffMonth')}
-              error={Boolean(errors.cutoff)}
-            >
-              <MenuItem value="">Not set</MenuItem>
-              {MONTH_NAMES.map((name, index) => (
-                <MenuItem key={name} value={String(index + 1)}>
-                  {name}
-                </MenuItem>
-              ))}
-            </Input>
-            <Input
-              select
-              label="Cut-off day (optional)"
-              value={values.ageCutoffDay}
-              onChange={handleCutoffChange('ageCutoffDay')}
-              error={Boolean(errors.cutoff)}
-            >
-              <MenuItem value="">Not set</MenuItem>
-              {Array.from({ length: 31 }, (_, index) => (
-                <MenuItem key={index + 1} value={String(index + 1)}>
-                  {index + 1}
-                </MenuItem>
-              ))}
-            </Input>
-          </Box>
-          {errors.cutoff && (
-            <FormHelperText error role="alert" sx={{ mx: 0 }}>
-              {errors.cutoff}
-            </FormHelperText>
-          )}
-          <FormHelperText sx={{ mx: 0 }}>
-            Ages are judged on this day in the year the league starts. Leave empty to judge ages on the day the league starts (for example a winter league).
-          </FormHelperText>
-          {noEffect && (
-            <FormHelperText sx={{ mx: 0 }} data-testid="cutoff-no-effect">
-              This cut-off has no effect until an age limit is set.
-            </FormHelperText>
-          )}
-        </Box>
+          <MenuItem value="">Not set</MenuItem>
+          {MONTH_NAMES.map((name, index) => (
+            <MenuItem key={name} value={String(index + 1)}>
+              {name}
+            </MenuItem>
+          ))}
+        </Input>
+        <Input
+          select
+          label="Cut-off day (optional)"
+          value={values.ageCutoffDay}
+          onChange={handleCutoffChange('ageCutoffDay')}
+          error={Boolean(errors.cutoff)}
+        >
+          <MenuItem value="">Not set</MenuItem>
+          {Array.from({ length: 31 }, (_, index) => (
+            <MenuItem key={index + 1} value={String(index + 1)}>
+              {index + 1}
+            </MenuItem>
+          ))}
+        </Input>
       </Box>
+      {errors.cutoff && (
+        <FormHelperText error role="alert" sx={{ mx: 0, mt: -0.5 }}>
+          {errors.cutoff}
+        </FormHelperText>
+      )}
+      {ageReference}
+      <FormHelperText sx={{ mx: 0, mt: -0.5 }}>
+        Ages are judged on the cut-off day in the year the league starts. Leave it empty to judge ages on the day the league starts.
+      </FormHelperText>
+      {noEffect && (
+        <FormHelperText sx={{ mx: 0, mt: -0.5 }} data-testid="cutoff-no-effect">
+          This cut-off has no effect until an age limit is set.
+        </FormHelperText>
+      )}
 
-      <FormSectionHeading icon={<AlternateEmailIcon />} title="Contact" />
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <FormSectionHeading compact icon={<AlternateEmailIcon />} title="Contact" />
+      <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: fieldColumns }}>
         <Input label="Phone (optional)" value={values.phone} onChange={handleChange('phone')} />
 
         <WebsiteInput label="Website (optional)" value={values.website} onChange={handleWebsiteChange} error={errors.website} showHint={false} />
@@ -320,10 +320,14 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
         />
       </Box>
 
-      <FormSectionHeading icon={<PaletteOutlinedIcon />} title="Branding and social" />
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
-        <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
-        <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
+      </Box>
+
+      <Box sx={{ display: visibleSection === 'details' ? 'none' : 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <FormSectionHeading compact icon={<PaletteOutlinedIcon />} title="Branding and social" />
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+          <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
+          <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
+        </Box>
       </Box>
     </Box>
   )

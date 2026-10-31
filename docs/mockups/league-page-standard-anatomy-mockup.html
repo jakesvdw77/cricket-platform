@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League page: proposed standard anatomy (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--gold:#E8B83D;--amber:#b7791f;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+  --raise:0 1px 3px rgba(6,36,26,.16),0 1px 2px rgba(6,36,26,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:40px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:980px;font-size:14px;margin:0 0 14px}
+.note b{color:var(--ink900)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden}
+.frame.d{width:1180px}.frame.p{width:375px}
+.pad{padding:14px 20px}.p .pad{padding:12px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.p .btn{height:44px}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 14px;border:1px solid var(--cardLine);border-radius:16px;background:#fff;font-size:13.5px;font-weight:600;color:var(--green800)}
+.p .pill{height:44px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.back{font-size:13.5px;font-weight:600;color:var(--green800)}
+.titlerow{display:flex;gap:14px;align-items:center;margin:12px 0 12px}
+.logo{width:56px;height:56px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font:700 22px var(--display);color:var(--green900);flex:none}
+.p .logo{width:44px;height:44px}
+.title{font-family:var(--display);font-size:34px;font-weight:700;color:var(--green900);line-height:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p .title{font-size:26px}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);border:1px solid var(--cardLine);background:#fff}
+.chip.g{background:#dbe9de;color:var(--green800);border-color:#bcd4c1}
+.contacts{font-size:13px;color:var(--inkMuted);display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:6px}
+/* STANDARD FIGURE CARD: one height, no icon, number then label, raised */
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 12px}
+.p .figs{grid-template-columns:1fr 1fr;gap:8px}
+.fig{height:44px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);white-space:nowrap;overflow:hidden}
+.p .fig{height:44px}
+.fig b{font:700 22px var(--display);color:var(--green900);letter-spacing:0;text-transform:none}
+.fig.amber b{color:var(--amber)}
+.fig.click{cursor:pointer}
+.fig.click:hover{box-shadow:0 3px 8px rgba(6,36,26,.2)}
+.fig.sel{border-color:var(--green700);box-shadow:0 0 0 1px var(--green700),var(--raise)}
+.tabs{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;border-bottom:1px solid var(--cardLine);margin:8px 0 12px;flex-wrap:wrap}
+.tabset{display:flex;gap:6px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.tabs .acts{padding-bottom:8px}
+/* STANDARD FLAT FILTER BAR */
+.bar{display:grid;grid-template-columns:260px 1fr auto auto;gap:10px;align-items:center;margin:0 0 10px}
+.p .bar{grid-template-columns:auto 1fr}
+.bar.teams{grid-template-columns:1fr auto}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.sw{display:inline-flex;align-items:center;gap:6px;color:var(--ink900);font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:#fff}
+.seg span{padding:0 12px;height:34px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--inkMuted);border-left:1px solid var(--cardLine)}
+.seg span:first-child{border-left:0}.seg .on{background:var(--tint);color:var(--green800)}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px;box-shadow:var(--raise)}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:8px 10px;border-bottom:1px solid #edf0e9}
+tr:nth-child(even) td{background:#f8faf6}
+td small{display:block;color:var(--inkMuted);font-size:12px}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:var(--tint);flex:none;font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--green800)}
+.panel{background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);padding:12px}
+.panel h3{margin:0 0 10px;font:700 17px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--green900)}
+.tile{border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--raise)}
+.card .l1{display:flex;justify-content:space-between;font-size:12.5px;color:var(--inkMuted)}
+.card .l2{font-weight:600;margin:3px 0}
+.card .l3{font-size:12.5px;color:var(--inkMuted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.spec{background:#fff;border:1px dashed var(--green700);border-radius:8px;padding:12px 16px;max-width:980px;font-size:13.5px}
+.spec b{color:var(--green800)}
+.spec li{margin:3px 0}
+</style>
+</head>
+<body>
+<h1>League page: the proposed standard anatomy</h1>
+<p class="lede">Starting with the league view. The same four rules would then apply to every page. This is a proposal for you to judge; heights below are the Matches counter card's, to be taken exactly from <code>PageCounters</code> when built.</p>
+
+<div class="spec">
+<b>The four rules</b>
+<ol>
+<li><b>One figure card:</b> the Matches counter card. Raised, one fixed height (44 px), the number then its label on one line, <b>no icon</b>, no "FILTER" tag. A card you can click (a counter that filters) shows a pointer cursor and a small lift on hover, and a green ring when selected. A static figure is the same card without the pointer.</li>
+<li><b>One filter bar:</b> flat. Search, selects and switches on a single row on the page wash (no box). The segmented toggle sits in that row too.</li>
+<li><b>One header:</b> Back and the page-level actions on the top row (Actions menu, Edit); title with its badges and the Season pill beside it; contacts directly under the title; then figures, tabs (with the tab's actions on the tab row), the filter bar, and the data.</li>
+<li><b>Raised only where it holds content:</b> figure cards, tables and panels are raised; controls (filter bar, toolbars) are flat. Counts live in the table header, never repeated above it.</li>
+</ol>
+</div>
+
+<h2>Schedule tab, desktop</h2>
+<p class="note">Compare with the Matches page: the figure cards are the same card. On the league page the first and third are static (no click), the age reference is an info icon in its card.</p>
+<div class="frame d"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">Actions ⌄</button><button class="btn c">Edit League</button></div></div>
+  <div class="titlerow"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20 <span class="chip">T20</span><span class="chip g">Active</span></div>
+    <div class="contacts"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>jakesvdw77@gmail.com</span><span>cricclubs.com/TVL</span><span>f</span></div></div></div>
+  <div class="figs">
+    <div class="fig"><b>7</b>Teams</div>
+    <div class="fig"><b>5 of 6</b>Matches played</div>
+    <div class="fig amber"><b>Sat, 31 Oct</b>Next match 10:00</div>
+    <div class="fig"><b>12</b>Playing XI · age 40-any ⓘ</div>
+  </div>
+  <div class="tabs"><div class="tabset"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div><div class="acts"><button class="btn o">Import Schedule</button><button class="btn c">+ Add Match</button></div></div>
+  <div class="bar"><div class="field">Team: All teams ⌄</div><div class="field">Search teams or venue</div><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></div>
+  <table>
+    <tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">1 upcoming match</th></tr>
+    <tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td style="text-align:right"><span class="chip g">Our match</span></td></tr>
+  </table>
+</div></div>
+
+<h2>Teams tab, desktop</h2>
+<p class="note">Same header, figures and tab row. Search and the toggle (counts in the labels) share one flat row. Panels only hold their lists.</p>
+<div class="frame d"><div class="pad">
+  <div class="tabs" style="margin-top:0"><div class="tabset"><span class="tab">Schedule</span><span class="tab on">Teams</span><span class="tab">Conditions</span></div><div class="acts"><button class="btn o">Copy Teams</button><button class="btn c">+ Add Team</button></div></div>
+  <div class="bar teams"><div class="field">Search teams</div><span class="seg"><span class="on">All</span><span>Our teams</span><span>League teams</span></span></div>
+  <div class="row" style="gap:12px;flex-wrap:nowrap">
+    <div class="panel" style="flex:1"><h3>Our teams · 1</h3><div class="tile"><div class="logo" style="width:40px;height:40px;font-size:13px">V15</div><div><b>IRENE VILLAGERS U15</b><div style="font-size:12px;color:var(--inkMuted)">Open team ›</div></div></div></div>
+    <div class="panel" style="flex:1"><h3>League teams · 1</h3><div class="tile"><div class="team"><i style="width:40px;height:40px">PTA</i></div><div><b>Pretoria A</b><div style="font-size:12px;color:var(--inkMuted)">League team</div></div></div></div>
+  </div>
+</div></div>
+
+<h2>Conditions tab, desktop (actions only)</h2>
+<div class="frame d"><div class="pad">
+  <div class="tabs" style="margin-top:0"><div class="tabset"><span class="tab">Schedule</span><span class="tab">Teams</span><span class="tab on">Conditions</span></div><div class="acts"><button class="btn o">PDF</button><button class="btn o">Share</button><button class="btn c">Edit Conditions</button></div></div>
+  <div class="panel" style="height:60px;color:var(--inkMuted);font-size:13px">Playing conditions card (unchanged)</div>
+</div></div>
+
+<h2>Phone (375 px)</h2>
+<p class="note">Figures two across, same card. The tab actions wrap to a row under the tabs. The Filters button and Search share one row; the switches live in the Filters sheet.</p>
+<div class="row"><div class="frame p"><div class="pad">
+  <div class="top"><span class="back">← Back</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">⋮</button></div></div>
+  <div class="titlerow"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span> <span class="chip g">Active</span></div></div></div>
+  <button class="btn c" style="width:100%;justify-content:center;margin-bottom:8px">Edit League</button>
+  <div class="contacts" style="margin:0 0 10px"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>f</span></div>
+  <div class="figs"><div class="fig"><b>7</b>Teams</div><div class="fig"><b>5 of 6</b>Played</div><div class="fig amber"><b>31 Oct</b>Next 10:00</div><div class="fig"><b>12</b>Playing XI ⓘ</div></div>
+  <div class="tabs"><div class="tabset"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Cond.</span></div></div>
+  <div class="two" style="margin-bottom:8px"><button class="btn o" style="justify-content:center">Import</button><button class="btn c" style="justify-content:center">+ Add Match</button></div>
+  <div class="bar"><button class="btn o">Filters</button><div class="field">Search teams or venue</div></div>
+  <div class="card"><div class="l1"><span>Sat, 31 Oct · 10:00</span><span class="chip g">Our match</span></div><div class="l2">Irene Villagers 1 v CBC 1</div><div class="l3">Laudium · 1 upcoming match</div></div>
+</div></div></div>
+
+<h2>What changes versus today</h2>
+<p class="note">1. The league page's figure row uses the Matches card (no icon, 44 px, raised), replacing the icon tiles and my strip. 2. The filter bar is flat here and, once agreed, on every page. 3. "FILTER" tags disappear everywhere; clickable counters rely on the pointer cursor, hover lift and the selected ring. 4. The header pattern is identical on every detail page. 5. A static figure and a clickable counter are the same component with one optional prop.</p>
+</body>
+</html>

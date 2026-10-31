@@ -57,7 +57,7 @@ describe('LeagueTeamsSection', () => {
     renderSection()
     expect(await screen.findByText('No league teams yet')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add league team' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy teams from another league or season' })).toHaveTextContent('Copy from...')
+    expect(screen.getByRole('button', { name: 'Copy teams from another league or season' })).toHaveTextContent('Copy teams')
     expect(screen.getByRole('heading', { name: 'League teams · 0' })).toBeInTheDocument()
   })
 

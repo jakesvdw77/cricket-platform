@@ -36,7 +36,8 @@ const creamOutlineSx = {
   textTransform: 'none',
   color: BRAND.cream,
   borderColor: alpha(BRAND.cream, 0.6),
-  '&:hover': { borderColor: BRAND.cream, bgcolor: alpha(BRAND.cream, 0.1) },
+  bgcolor: 'transparent',
+  '&:hover': { borderColor: BRAND.cream, bgcolor: alpha(BRAND.cream, 0.1), backgroundImage: 'none' },
   '&:focus-visible': focusRing,
 } as const
 

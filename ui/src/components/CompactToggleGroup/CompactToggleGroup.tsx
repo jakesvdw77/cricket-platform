@@ -2,6 +2,7 @@ import { ToggleButtonGroup } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
 import type { ReactNode } from 'react'
 import { alpha } from '@mui/material/styles'
+import { toolbarSegmentedSx } from '../ToolbarCard/toolbarControlSx'
 
 export interface CompactToggleGroupProps<T extends string> {
   value: T
@@ -13,6 +14,8 @@ export interface CompactToggleGroupProps<T extends string> {
   fullWidth?: boolean
   // Compact on a desktop, full width with 40 px buttons on a phone (a form's side selector).
   fullWidthOnPhone?: boolean
+  // The toolbar look (a sibling of the toolbar's select and search: 36 px, 13 px weight 600 ink text, white, hairline edge, 6 px radius).
+  toolbar?: boolean
 }
 
 const buttonSx = {
@@ -33,7 +36,10 @@ const selectedSx = {
   fontWeight: 700,
 } as const
 
-function groupSx(fullWidth: boolean, fullWidthOnPhone: boolean): SxProps<Theme> {
+function groupSx(fullWidth: boolean, fullWidthOnPhone: boolean, toolbar: boolean): SxProps<Theme> {
+  if (toolbar) {
+    return toolbarSegmentedSx
+  }
   return (theme: Theme) => ({
     flex: 'none',
     bgcolor: 'background.paper',
@@ -60,6 +66,7 @@ export function CompactToggleGroup<T extends string>({
   children,
   fullWidth = false,
   fullWidthOnPhone = false,
+  toolbar = false,
 }: CompactToggleGroupProps<T>) {
   return (
     <ToggleButtonGroup
@@ -70,7 +77,7 @@ export function CompactToggleGroup<T extends string>({
       onChange={(_event, next: T | null) => {
         if (next) onChange(next)
       }}
-      sx={groupSx(fullWidth, fullWidthOnPhone)}
+      sx={groupSx(fullWidth, fullWidthOnPhone, toolbar)}
     >
       {children}
     </ToggleButtonGroup>

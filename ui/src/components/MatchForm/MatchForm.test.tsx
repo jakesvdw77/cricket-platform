@@ -570,7 +570,7 @@ describe('MatchForm league teams', () => {
   it('treats choosing an Our teams entry exactly like My team', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    renderWithTeams({ onSubmit, initialValues: { ...SCOPE, awayTeamId: 'team-1' } })
+    renderWithTeams({ onSubmit, initialValues: { ...SCOPE, awayTeamName: 'Visitors' } })
 
     await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
     await user.click(screen.getByLabelText('Home league team'))
@@ -599,7 +599,7 @@ describe('MatchForm league teams', () => {
     renderWithTeams({ initialValues: SCOPE, leagueTeams: [] })
     await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
     expect(screen.getByText('No league teams registered for this league and season.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Teams tab/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit?tab=teams')
+    expect(screen.getByRole('link', { name: /Open the league's Teams/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/teams')
   })
 
   it('opens a stored league-team side on League team, showing an inactive pick with its suffix', async () => {
@@ -638,6 +638,104 @@ describe('MatchForm league teams', () => {
 })
 
 // docs/specs/075-match-view-and-edit.md section 6: the two optional link fields.
+describe('MatchForm a team cannot play itself', () => {
+  const SELF_SCOPE = { seasonId: 'season-1', leagueId: 'league-1' }
+  const LT = (id: string, name: string, active = true): LeagueTeam => ({
+    id,
+    leagueId: 'league-1',
+    seasonId: 'season-1',
+    name,
+    abbreviation: null,
+    logoUrl: null,
+    active,
+    referencedByMatchCount: 0,
+  })
+  const LEAGUE_TEAMS = [LT('lt-1', 'Centurion Brits CC'), LT('lt-2', 'Laudium CC'), LT('lt-3', '1st xi')]
+
+  function renderIt(props: Partial<MatchFormProps> = {}) {
+    const merged: MatchFormProps = {
+      clubId: 'club-1',
+      teams: TEAMS,
+      seasons: SEASONS,
+      leagues: LEAGUES,
+      affiliations: [],
+      leagueTeams: LEAGUE_TEAMS,
+      canUseLeagueTeams: true,
+      onSubmit: vi.fn(),
+      ...props,
+    }
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <MatchForm {...merged} />
+          <button type="submit" form={MATCH_FORM_ID}>
+            Submit
+          </button>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    return merged
+  }
+
+  it('leaves the home team out of the away list and updates live', async () => {
+    const user = userEvent.setup()
+    renderIt({ initialValues: { homeTeamId: 'team-1' } })
+    await user.click(screen.getByLabelText('Away team'))
+    expect(screen.queryByRole('option', { name: /1st XI/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /2nd XI/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: /2nd XI/ }))
+
+    // Changing the home side to the other team frees 1st XI for the away side and takes 2nd XI away from home.
+    await user.click(screen.getByLabelText('Home team'))
+    expect(screen.queryByRole('option', { name: /2nd XI/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: /O\/13A/ }))
+    await user.click(screen.getByLabelText('Away team'))
+    expect(screen.queryByRole('option', { name: /O\/13A/ })).not.toBeInTheDocument()
+  })
+
+  it('leaves the other side out of the league picker, own team winning over a league team of the same name', async () => {
+    const user = userEvent.setup()
+    renderIt({ initialValues: { ...SELF_SCOPE, homeTeamId: 'team-3' } })
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[1])
+    await user.click(screen.getByLabelText('Away league team'))
+    // No team is affiliated, so every active own team is offered, minus the home team.
+    expect(screen.getByRole('option', { name: /2nd XI/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /O\/13A/ })).not.toBeInTheDocument()
+    // The league team called "1st xi" is dropped (our team of that name wins), so it is listed once.
+    expect(screen.getAllByRole('option', { name: /1st xi/i })).toHaveLength(1)
+    expect(screen.getByRole('option', { name: /Centurion Brits CC/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Laudium CC/ })).toBeInTheDocument()
+  })
+
+  it('shows the helper and blocks Save when a typed name equals the other side', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderIt({ onSubmit, initialValues: { ...SELF_SCOPE, homeTeamId: 'team-1' } })
+    await user.click(screen.getAllByRole('button', { name: 'Other' })[1])
+    await user.type(screen.getByLabelText('Away opponent name'), '  1ST   xi ')
+    expect(screen.getByText('A team cannot play itself')).toBeInTheDocument()
+    setDateTime('Match date & time', '2026-06-01T14:30')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await user.clear(screen.getByLabelText('Away opponent name'))
+    await user.type(screen.getByLabelText('Away opponent name'), 'Visitors')
+    expect(screen.queryByText('A team cannot play itself')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists our affiliated teams and the league teams together for a league match', async () => {
+    const user = userEvent.setup()
+    renderIt({ initialValues: SELF_SCOPE, affiliations: [makeAffiliation({ teamId: 'team-2' })] })
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
+    await user.click(screen.getByLabelText('Home league team'))
+    expect(screen.getByRole('option', { name: /2nd XI/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /O\/13A/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Centurion Brits CC/ })).toBeInTheDocument()
+  })
+})
+
 describe('MatchForm links', () => {
   async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByLabelText('Season'))

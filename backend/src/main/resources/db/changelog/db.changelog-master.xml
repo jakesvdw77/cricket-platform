@@ -62,5 +62,7 @@
     <include file="db/changelog/v1/055-link-request-section.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/056-club-share-disabled-formats.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/057-playing-conditions-balls-and-free-hit.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/058-add-import-framework.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/059-import-batch-source-manual.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

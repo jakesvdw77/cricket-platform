@@ -72,15 +72,15 @@ This spec adds **Import schedule** for a league and season: a club admin downloa
 3. **Lookups**: columns for the chosen template scope (below).
 4. **`_meta`** (very hidden): `template=LEAGUE_SCHEDULE`, `version=1`, `clubId`, `leagueId`, `seasonId`, `templateScope`, `generatedAt`. Used only to warn on a scope mismatch; never trusted for access.
 
-**Columns of the Schedule sheet** (order follows the user's source layout, team, team, venue, time, so conversion is closest):
+**Columns of the Schedule sheet** (order changed 2026-10-30: the Start Time column now comes right after Date; the reader still accepts the old order and the old header `Time`, because headers are matched by name):
 
 | Col | Header | Required | Meaning and format |
 |---|---|---|---|
 | A | `Date` | Yes | The match day. Cell formatted `yyyy-mm-dd`. |
-| B | `Home team` | Yes | The first-named team, as written in the source. |
-| C | `Away team` | Yes | The second-named team. |
-| D | `Venue` | No (a warning when blank) | The ground, as written in the source. |
-| E | `Time` | Yes | Local start time, `HH:mm`. |
+| B | `Start Time` | Yes | Local start time, `HH:mm` (aliases `Start`, `Time`). |
+| C | `Home team` | Yes | The first-named team, as written in the source. |
+| D | `Away team` | Yes | The second-named team. |
+| E | `Venue` | No (a warning when blank) | The ground, as written in the source. |
 | F | `Notes` | No | Free text for the human or AI converter ("time unclear in source"). Shown in the preview next to the row, never saved on the match. |
 
 **Template scope (`templateScope`)** decides the Lookups sheet and the drop-downs:
@@ -103,6 +103,9 @@ All applied by the server (`097` "Template generation and parsing"). Anything un
 - **Numeric dates are day-first only** (South African convention). `07/09/2026` is 7 September. If a file contains numeric dates where both orders are possible for every such row, one warning "Dates were read day first; check 07/09/2026 is 7 September" is raised once for the file.
 - Month-first forms (`09/13/2026`) fail to parse unless the day is greater than 12 and the month cannot be read day-first, and are then an error ("month cannot be 13"), never reinterpreted.
 - Weekday names in the cell (`Sun 13 Sep`) are accepted and ignored for parsing, then used only by the weekday check.
+- **More forms (added 2026-10-30):** year-first numeric `2026/09/13`, `2026.09.13`, `2026-9-13` (unambiguous: month then day); ordinal days `13th September 2026`, `1st Oct 2026`, `22nd of March 2027`; month-name first `September 13, 2026`, `Sep 13 2026`; compact `13Sep2026`, `13Sep26`, `13SEPT2026`. Month-first is accepted only with a month name, never for numbers.
+- **Missing year (added 2026-10-30):** `Sun 13 Sep`, `13 Sep`, `Sept 13`, `13/09`, `13-09` take their year from the season: the year in which the date falls inside the season start and end dates; if it fits none, the season start year is used and the normal date-outside-season check reports it. One file-level note "The year was taken from the season for dates written without one" (`DATE_YEAR_INFERRED`, not a warning) is shown. Without season dates a missing year is an error. Impossible dates (month 13, 31 April, 29 February in a non-leap year) remain errors; day-first versus month-first is never guessed.
+- **Template (added 2026-10-30):** the Date column is formatted `yyyy-mm-dd` with a warn-only date validation (2000-01-01 to 2100-12-31, prompt "Enter a date, for example 2026-09-13") so Excel offers its date handling; the Start Time column is formatted `hh:mm` with a warn-only time validation. Warnings never block typing.
 
 **Times** (column `Time`): `HH:mm`, `H:mm`, `HH.mm`, `HHhmm` (`14h30`), `HH:mm:ss` (seconds dropped), 12-hour `2:30 pm`, and an Excel time fraction. `08:00`, `8:00`, `8.00` are all 08:00. Blank, text that is not a time, or a value of 24:00 or more is an **Error** (no silent default time). Seconds and a date part on the time cell are ignored.
 
@@ -150,7 +153,7 @@ The chosen mode and the template scope are stored in `import_batch.scope` and `s
 | **NEW** | No existing match with this key and no near match. | Create | none |
 | **DUPLICATE** | Existing match with the same key and the same time and venue. | **Skip**; shown as "Already exists" (the existing match is linked), never created | none (not a warning) |
 | **DIFFERS** | Existing match with the same key but a different time and/or venue (or home/away orientation). The row shows old and new values. | **Skip** | Needs a visible decision only if the user opts in to update; otherwise no acknowledgement |
-| **POSSIBLE DUPLICATE** | Not the same key, but: (a) the same pair already plays within `windowDays` (default **14**, adjustable 1 to 60 on the Upload step) of the row's date (this also catches a rescheduled fixture); or (b) the same pair now meets more times in the season (existing plus this file) than the most meetings of any pair in the file (for example a third meeting in a double round-robin); or (c) a similar free-text opponent name on an existing manual match. | Held: **Warning** to acknowledge ("These teams already play on 20 Sep 2026"); the row is created unless the user excludes it | Warning must be acknowledged |
+| **POSSIBLE DUPLICATE** | Not the same key, but: (a) the same pair already plays within `windowDays` (default **14**, adjustable 1 to 60 as a setting on the Check rows step, stored in the decisions options as `windowDays`, so changing it rechecks every row and is part of the confirmation digest; changed 2026-10-30) of the row's date (this also catches a rescheduled fixture); or (b) the same pair now meets more times in the season (existing plus this file) than the most meetings of any pair in the file (for example a third meeting in a double round-robin); or (c) a similar free-text opponent name on an existing manual match. | Held: **Warning** to acknowledge ("These teams already play on 20 Sep 2026"); the row is created unless the user excludes it | Warning must be acknowledged |
 
 **The rescheduled-fixture case:** a rescheduled fixture (same pair, a different date) cannot be told from a second-round fixture by data alone. It is therefore shown, never decided silently: the nearby-date and extra-meeting warnings above list the other date(s) and let the user decide (keep both, or exclude this row). The user can later correct the date by editing the match.
 
@@ -203,6 +206,9 @@ Every rule is deterministic, runs on the server, and gives a plain-English messa
 | `TWO_NAMES_ONE_TEAM` | Warning | B | Two different sheet names were resolved to the same team ("POLICE 1 and POLICE ONE both link to Police 1"). |
 
 Whole-league completeness (every team present on every round) is the combination of `TEAM_TWICE_SAME_DATE` and `TEAM_MISSING_ON_DATE` and is `ALL` only. Severity choices and the two gap constants are recommendations, revisited in R8.
+
+### Amendment 2026-10-30: league dates can be extended by the import (owner feedback)
+`DATE_OUTSIDE_LEAGUE_DATES` (a match must fall inside the league season's start and end dates, spec 111) must not be a dead end. When it is raised, the Check rows step offers **Extend the league dates to include these matches**. Choosing it is a decision (`decisions.options.extendLeagueDates = true`), not a write: the validator then treats the league season's range as widened to the earliest and latest date among the rows that would be created, so the error clears, and the Review step lists the change under "Will be updated" as "League dates: 1 Oct 2026 to 31 Mar 2027 becomes 1 Oct 2026 to 30 Apr 2027" (it is part of the confirmation digest). On commit, before any match is created, the handler widens the dates through the existing league season dates service in the same transaction (never narrows, never touches a league season that has no dates), recording a `LEAGUE_SEASON` `UPDATED` entry with the previous dates. Deleting the import restores the previous dates only when no remaining match of that league and season falls outside them; otherwise the dates are left as changed and the delete reports it. The club season's own dates (`DATE_OUTSIDE_SEASON`) are not changed by this.
 
 ## Team resolution
 
@@ -332,7 +338,7 @@ Uses the `097` endpoints unchanged (`/api/v1/manage/clubs/{clubId}/imports...`, 
 Composed from the shared `097` components; **no new shared component is introduced by this spec**.
 
 - **Pages:** `pages/manage/leagueImport/LeagueScheduleImportPage` (the wizard configuration: columns Date, Home, Away, Venue, Time, Notes, status; the Identify-our-teams step; the resolver's candidate renderer; the confirm and report link targets). A Claude Design pass for the three new `097` patterns is required first (`docs/workflow.md` Step 2).
-- **Wizard steps for this type:** 1 Upload (template download with the template scope choice, the scope choice, window days under "Advanced", the AI help panel, the drop zone), 2 Check (issue table), 3 **Our teams** (only in `OURS_ONLY`), 4 Teams (resolver), 5 Review and confirm, 6 Done (report). A phone shows "Step 4 of 6".
+- **Wizard steps for this type:** 1 Upload (template download with the template scope choice, the scope choice, the AI help panel, the drop zone), 2 Check (issue table, with the possible-duplicate window days setting, `options.windowDays`, changed 2026-10-30), 3 **Our teams** (only in `OURS_ONLY`), 4 Teams (resolver), 5 Review and confirm, 6 Done (report). A phone shows "Step 4 of 6".
 - **Header and target:** `ManageScreenHeader`-style title "Import schedule" with the league and season names on every step ("Northern Premier League, 2026/27") and a Back link to the tab it came from (R9 of `097`).
 - **Copy of the scope choice** (plain words): "All matches in the file: the whole league schedule, every team is checked. Only matches involving our teams: only your fixtures are imported, other matches are listed and skipped, and only your opponents need linking. League schedule shares will show only your matches."
 - **Mobile:** issue rows are cards (date and time, "Home v Away", venue, then the status and reason), the resolver is a stack of cards, buttons are 44 px, no horizontal scroll at 375 px.
@@ -430,18 +436,18 @@ Labelled **R**, each with a recommended default and the alternative. `097`'s R1 
 
 ## Appendix A: Phase 1 AI prompt, `LEAGUE_SCHEDULE` template version 1
 
-Served by `GET /imports/LEAGUE_SCHEDULE/ai-help` from `backend/src/main/resources/imports/prompts/LEAGUE_SCHEDULE/v1.md` (the text below is the content; `{{...}}` placeholders are filled by the endpoint from the league and season, and may be omitted by the user).
+(Header order and the name `Start Time` changed 2026-10-30.) Served by `GET /imports/LEAGUE_SCHEDULE/ai-help` from `backend/src/main/resources/imports/prompts/LEAGUE_SCHEDULE/v1.md` (the text below is the content; `{{...}}` placeholders are filled by the endpoint from the league and season, and may be omitted by the user).
 
 ```
 You are helping me convert a cricket league's fixture list into a CSV file with an exact layout. I will attach the league's file (it may be a spreadsheet, a PDF or a photo, with merged cells, a date written once above several matches, blank lines between dates and no header).
 
 Produce a CSV with exactly this header row, in this order:
-Date,Home team,Away team,Venue,Time,Notes
+Date,Start Time,Home team,Away team,Venue,Notes
 
 Rules, please follow every one:
 1. One row per match. Repeat the date on every row. Never merge, skip or leave blank separator rows.
 2. Date as yyyy-mm-dd. The season runs from {{seasonStart}} to {{seasonEnd}}; day comes before month in the source (South African style). Read short forms like "13-Sept-26" as 2026-09-13.
-3. Time as 24-hour HH:mm (for example 08:00, 14:30). If a match has no time in the source, leave Time empty and say so in Notes.
+3. Start Time as 24-hour HH:mm (for example 08:00, 14:30). If a match has no time in the source, leave Start Time empty and say so in Notes.
 4. Home team is the team named first, Away team the team named second. Copy team names EXACTLY as written in the source, including upper case and numbers (for example "POLICE 1" and "POLICE 2" are different teams). Do not expand, shorten, translate or correct names; my system matches names for me.
 5. Venue is the ground as written in the source, copied exactly. Leave it empty if there is none.
 6. Never invent, merge or guess a match. If something is unclear (a missing time, a team that appears twice on one date, "BYE", "TBC", a cut-off page), still output what you can and put a short reason in Notes. Do not output BYE rows as matches.

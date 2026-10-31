@@ -24,6 +24,13 @@ public interface LeagueTeamService {
     LeagueTeamDto create(UUID clubId, UUID leagueId, UUID seasonId, CreateLeagueTeamRequest request);
 
     /**
+     * docs/specs/098: creates several in one transaction (the schedule import), returned in request order. The same
+     * rules as {@link #create} with one name-collision read: 400 on a blank name, 409 on a name that already exists
+     * (case-insensitive, inactive included) or that appears twice in the request. Nothing is created on a refusal.
+     */
+    List<LeagueTeamDto> createAll(UUID clubId, UUID leagueId, UUID seasonId, List<CreateLeagueTeamRequest> requests);
+
+    /**
      * Updates name/abbreviation/logo; when the name or logo actually changed, rewrites the
      * denormalised name/logo on every referencing match in the same transaction.
      */

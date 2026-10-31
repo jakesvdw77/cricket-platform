@@ -1,6 +1,7 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.Match;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,6 +29,18 @@ import org.springframework.data.repository.query.Param;
  * {@code @Query} method below is kept exactly as-is — additive, not a replacement.
  */
 public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecificationExecutor<Match> {
+
+    /** docs/specs/098: every match (active or not) of one league and season, for the schedule import's identity check. */
+    List<Match> findByLeagueIdAndSeasonId(UUID leagueId, UUID seasonId);
+
+    /** docs/specs/098: the distinct non-blank venue spellings of a club's matches, for the template and spelling help. */
+    @Query("SELECT DISTINCT m.venue FROM Match m WHERE m.clubId = :clubId AND m.venue IS NOT NULL AND m.venue <> ''")
+    List<String> findDistinctVenuesByClubId(@Param("clubId") UUID clubId);
+
+    /** docs/specs/098: locks the given matches (FOR UPDATE) so an import delete can re-check them race-free. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Match m WHERE m.id IN :ids")
+    List<Match> findAllByIdForUpdate(@Param("ids") Collection<UUID> ids);
 
     /**
      * docs/specs/121 (Field Directory): the distinct, non-null {@code playing_area_id} of the club's ACTIVE matches in

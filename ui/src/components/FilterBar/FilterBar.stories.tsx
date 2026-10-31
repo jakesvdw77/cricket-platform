@@ -86,6 +86,12 @@ export const AllFilters: Story = { args: base, render: (args) => <Interactive {.
 
 // The Coverage view: no Team, no search.
 // docs/specs/085 (I): the compact density the Availability pages use - 8 px panel padding and gap, 36 px fields.
+// docs/specs/126: the calmer league Schedule tab - no card, the view controls at the right end of the row.
+export const BareInline: Story = {
+  args: { ...base, density: 'compact', bare: true, viewControlsInline: true, viewControls: <span>Only our matches · View entire season</span> },
+  render: (args) => <Interactive {...args} />,
+}
+
 export const Compact: Story = { args: { ...base, density: 'compact' }, render: (args) => <Interactive {...args} /> }
 
 export const NoTeamNoSearch: Story = {

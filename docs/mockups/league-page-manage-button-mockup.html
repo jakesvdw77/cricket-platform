@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League page: one Manage League button (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--gold:#E8B83D;--amber:#b7791f;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+  --raise:0 1px 3px rgba(6,36,26,.16),0 1px 2px rgba(6,36,26,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:40px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:980px;font-size:14px;margin:0 0 14px}
+.note b{color:var(--ink900)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;position:relative}
+.frame.d{width:1180px}.frame.p{width:375px;height:760px}
+.pad{padding:14px 20px}.p .pad{padding:12px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.p .btn{height:44px}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #8fb09b;border-radius:15px;background:#fff;font-size:13px;font-weight:700;color:var(--green800)}
+.back{font-size:13.5px;font-weight:600;color:var(--green800)}
+.titlerow{display:flex;gap:14px;align-items:center;margin:10px 0 6px}
+.logo{width:56px;height:56px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font:700 22px var(--display);color:var(--green900);flex:none}
+.p .logo{width:44px;height:44px}
+.tblock{flex:1;min-width:0}
+.title{font-family:var(--display);font-size:32px;font-weight:700;color:var(--green900);line-height:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p .title{font-size:26px}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);border:1px solid var(--cardLine);background:#fff}
+.chip.g{background:#dbe9de;color:var(--green800);border-color:#bcd4c1}
+.contacts{font-size:13px;color:var(--inkMuted);display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
+.p .figs{grid-template-columns:1fr 1fr;gap:8px}
+.fig{height:44px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);white-space:nowrap;overflow:hidden}
+.fig b{font:700 22px var(--display);color:var(--green900);letter-spacing:0;text-transform:none}
+.fig.amber b{color:var(--amber)}
+.tabs{display:flex;border-bottom:1px solid var(--cardLine);margin:8px 0 12px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.bar{display:grid;grid-template-columns:260px 1fr auto auto;gap:10px;align-items:center;margin:0 0 10px}
+.p .bar{grid-template-columns:auto 1fr}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.sw{display:inline-flex;align-items:center;gap:6px;color:var(--ink900);font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px;box-shadow:var(--raise)}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:8px 10px;border-bottom:1px solid #edf0e9}
+td small{display:block;color:var(--inkMuted);font-size:12px}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:var(--tint);flex:none;font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--green800)}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--raise)}
+.card .l1{display:flex;justify-content:space-between;font-size:12.5px;color:var(--inkMuted)}
+.card .l2{font-weight:600;margin:3px 0}
+/* manage panel */
+.panel{position:absolute;right:20px;top:92px;width:520px;background:#fff;border:1px solid var(--cardLine);border-radius:10px;box-shadow:0 12px 32px rgba(6,36,26,.22);padding:8px;z-index:5}
+.grp{padding:6px 8px 2px;font:700 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--inkMuted)}
+.item{display:flex;gap:12px;align-items:flex-start;padding:9px 8px;border-radius:8px}
+.item:hover{background:var(--tint)}
+.item .ic{width:20px;height:20px;border-radius:5px;background:var(--tint);flex:none;margin-top:1px}
+.item b{display:block;font-size:14px}
+.item span{display:block;font-size:12.5px;color:var(--inkMuted);margin-top:1px}
+.panel hr{border:0;border-top:1px solid var(--cardLine);margin:4px 0}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:150px;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -8px 28px rgba(6,36,26,.28);padding:10px 12px;overflow:hidden}
+.sheet .handle{width:40px;height:4px;border-radius:2px;background:#c8d1c9;margin:0 auto 10px}
+.scrim{position:absolute;inset:0;background:rgba(6,36,26,.45)}
+.p .item{padding:10px 6px;min-height:44px}
+.empty{background:#fff;border:1px dashed var(--cardLine);border-radius:8px;padding:28px;text-align:center;color:var(--inkMuted);font-size:14px}
+.empty .btn{margin-top:10px}
+.ink{background:#fff4d6;border:1px dashed var(--amber);border-radius:6px;padding:8px 12px;font-size:13px;max-width:980px;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>League page: one "Manage League" button</h1>
+<p class="lede">Everything you can do to a league lives behind one filled button on the title row. The tab rows carry no buttons. Page header: Back alone; title row = logo, title, badges, Season pill on the left, <b>Manage League</b> on the right.</p>
+
+<h2>Desktop, panel open</h2>
+<p class="note">A popover (not a dialog, so it opens and closes in one click). Grouped by what you are working on, each option with a one-line explanation; the group for the tab you are on is listed first. Menu items keep their icons (the menu exception to the icon rule). Items that need a season are disabled with the reason beneath them.</p>
+<div class="frame d"><div class="pad">
+  <div class="back">← Back to Leagues</div>
+  <div class="titlerow"><div class="logo">TV</div>
+    <div class="tblock"><div class="title">TVL Division 1 T20 <span class="chip">T20</span><span class="chip g">Active</span><span class="pill">2026/2027 ⌄</span></div>
+      <div class="contacts"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>jakesvdw77@gmail.com</span><span>cricclubs.com/TVL</span><span>Facebook</span></div></div>
+    <button class="btn c" style="margin-left:auto;align-self:flex-start">Manage League ⌄</button></div>
+  <div class="figs"><div class="fig"><b>7</b>Teams</div><div class="fig"><b>5 of 6</b>Matches played</div><div class="fig amber"><b>Sat, 31 Oct</b>Next match 10:00</div><div class="fig"><b>12</b>Playing XI · age 40-any ⓘ</div></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div>
+  <div class="bar"><div class="field">Team: All teams ⌄</div><div class="field">Search teams or venue</div><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></div>
+  <table>
+    <tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">1 upcoming match</th></tr>
+    <tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td style="text-align:right"><span class="chip g">Our match</span></td></tr>
+  </table>
+</div>
+<div class="panel">
+  <div class="grp">Schedule</div>
+  <div class="item"><div class="ic"></div><div><b>Add Match</b><span>Create one fixture for this league and season.</span></div></div>
+  <div class="item"><div class="ic"></div><div><b>Import Schedule</b><span>Upload an Excel or CSV file, or type the fixtures into the import table.</span></div></div>
+  <hr><div class="grp">Teams</div>
+  <div class="item"><div class="ic"></div><div><b>Add Team</b><span>Link one of your teams, add an opponent, or copy teams from another season.</span></div></div>
+  <hr><div class="grp">Playing conditions</div>
+  <div class="item"><div class="ic"></div><div><b>Edit Conditions</b><span>Overs, points, bonus points and notes for this league and season.</span></div></div>
+  <div class="item"><div class="ic"></div><div><b>Conditions PDF</b><span>Download or share the playing conditions document.</span></div></div>
+  <hr><div class="grp">League</div>
+  <div class="item"><div class="ic"></div><div><b>Edit League Details</b><span>Name, format, age rules, contacts and links.</span></div></div>
+  <div class="item"><div class="ic"></div><div><b>Share League</b><span>Schedule, results, teams or conditions as a PDF, poster, calendar or message.</span></div></div>
+  <div class="item"><div class="ic"></div><div><b>Duplicate League</b><span>Start next season from this league's setup.</span></div></div>
+  <div class="item"><div class="ic"></div><div><b>Import History (2)</b><span>See, resume or delete earlier imports.</span></div></div>
+</div></div>
+
+<h2>An empty tab still says what to do</h2>
+<p class="note">Because the tab rows have no buttons, an empty state carries its own action (this is the one place a lone button in the content is right). It opens the same options as the Manage panel.</p>
+<div class="frame d"><div class="pad">
+  <div class="tabs" style="margin-top:0"><span class="tab">Schedule</span><span class="tab on">Teams</span><span class="tab">Conditions</span></div>
+  <div class="empty">No teams in this league yet for 2026/2027.<br><button class="btn c">+ Add Team</button></div>
+</div></div>
+
+<h2>Phone (375 px): the same options in a bottom sheet</h2>
+<p class="note">Manage League is a full-width filled button under the title; it opens a bottom sheet with 44 px rows, groups and descriptions. Tab rows are button-free, so the phone header is shorter too.</p>
+<div class="row">
+<div class="frame p"><div class="pad">
+  <div class="back">← Back</div>
+  <div class="titlerow"><div class="logo">TV</div><div class="tblock"><div class="title">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span> <span class="chip g">Active</span></div></div></div>
+  <div style="margin-bottom:8px"><span class="pill">2026/2027 ⌄</span></div>
+  <button class="btn c" style="width:100%;justify-content:center;margin-bottom:8px">Manage League</button>
+  <div class="figs"><div class="fig"><b>7</b>Teams</div><div class="fig"><b>5 of 6</b>Played</div></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Cond.</span></div>
+  <div class="card"><div class="l1"><span>Sat, 31 Oct · 10:00</span><span class="chip g">Our match</span></div><div class="l2">Irene Villagers 1 v CBC 1</div></div>
+</div></div>
+<div class="frame p"><div class="pad" style="height:100%;position:relative">
+  <div class="back">← Back</div><div class="titlerow"><div class="logo">TV</div><div class="title">TVL Division 1 T20</div></div>
+  <div class="scrim"></div>
+  <div class="sheet"><div class="handle"></div>
+    <div class="grp">Schedule</div>
+    <div class="item"><div class="ic"></div><div><b>Add Match</b><span>Create one fixture.</span></div></div>
+    <div class="item"><div class="ic"></div><div><b>Import Schedule</b><span>Upload a file or type fixtures.</span></div></div>
+    <div class="grp">Teams</div>
+    <div class="item"><div class="ic"></div><div><b>Add Team</b><span>Ours, an opponent, or copy.</span></div></div>
+    <div class="grp">Playing conditions</div>
+    <div class="item"><div class="ic"></div><div><b>Edit Conditions</b><span>Overs, points, notes.</span></div></div>
+    <div class="grp">League</div>
+    <div class="item"><div class="ic"></div><div><b>Edit League Details</b><span>Name, rules, contacts.</span></div></div>
+    <div class="item"><div class="ic"></div><div><b>Share League</b><span>PDF, poster, calendar, message.</span></div></div>
+  </div></div></div>
+</div>
+
+<h2>Notes and decisions this implies</h2>
+<p class="ink"><b>1.</b> Add Match becomes two clicks (Manage League, then Add Match). You said a schedule is mostly set up once, so I think that is fine; the empty Schedule tab also shows its own Import Schedule and Add Match actions. <b>2.</b> Edit schedule (Phase 2) would be one more item in the Schedule group. <b>3.</b> This is a pattern, not just a league page: a detail page with many actions gets one Manage button (Manage Team, Manage Season, ...), and Edit stays a menu item. Pages with a single obvious action (list pages: Add X) keep that one button. <b>4.</b> The tab row can still carry a tab-specific control later if one proves too hidden (for example, Share on Conditions), but the default is no buttons.</p>
+</body>
+</html>

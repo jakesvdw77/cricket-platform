@@ -1,9 +1,9 @@
-import { Avatar, Box, Button as MuiButton, ListSubheader, MenuItem, Stack, ToggleButton, Typography } from '@mui/material'
+import { Box, Button as MuiButton, ListSubheader, MenuItem, Stack, ToggleButton, Typography } from '@mui/material'
+import { LogoAvatar } from '../LogoAvatar'
 import { Link as RouterLink } from 'react-router-dom'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
-import { avatarSx } from '../RecordCard'
 import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 import { sectionPath } from '../../utils/sectionPath'
@@ -36,6 +36,10 @@ export interface MatchSideFieldsProps {
   errors: SideErrors
   onChange: (patch: Partial<SideState>) => void
   teamOptions: Team[]
+  // Our teams offered in the League team picker (default: teamOptions).
+  leagueOwnTeams?: Team[]
+  // Shown on the typed opponent name when it equals the other side's team.
+  nameConflict?: string
   // The club's sections: each of my teams is listed under its section, and the chosen team's section is shown beneath the box.
   sections?: Section[]
   narrowedByAffiliation: boolean
@@ -59,6 +63,8 @@ export function MatchSideFields({
   errors,
   onChange,
   teamOptions,
+  leagueOwnTeams = teamOptions,
+  nameConflict,
   sections = [],
   narrowedByAffiliation,
   leagueTeams,
@@ -184,8 +190,8 @@ export function MatchSideFields({
             SelectProps={{ MenuProps: { slotProps: { paper: { sx: { maxHeight: 360 } } } } }}
           >
             {[
-              teamOptions.length > 0 && <ListSubheader key="our-header">Our teams</ListSubheader>,
-              ...teamOptions.map((team) => (
+              leagueOwnTeams.length > 0 && <ListSubheader key="our-header">Our teams</ListSubheader>,
+              ...leagueOwnTeams.map((team) => (
                 <MenuItem key={`${OUR_PREFIX}${team.id}`} value={`${OUR_PREFIX}${team.id}`}>
                   <OptionRow name={team.name} logoUrl={team.logoUrl} />
                 </MenuItem>
@@ -217,8 +223,8 @@ export function MatchSideFields({
                 No league teams registered for this league and season.
               </Typography>
               {leagueId && (
-                <MuiButton size="small" variant="outlined" component={RouterLink} to={`/manage/fixtures/leagues/${leagueId}/edit?tab=teams`}>
-                  Open the league&apos;s Teams tab
+                <MuiButton size="small" variant="outlined" component={RouterLink} to={`/manage/fixtures/leagues/${leagueId}/teams`}>
+                  Open the league&apos;s Teams
                 </MuiButton>
               )}
             </Stack>
@@ -232,8 +238,8 @@ export function MatchSideFields({
             label={`${label} opponent name`}
             value={value.teamName}
             onChange={(event) => onChange({ teamName: event.target.value })}
-            error={Boolean(errors.name)}
-            helperText={errors.name ?? 'e.g. Riverside Occasionals'}
+            error={Boolean(errors.name || nameConflict)}
+            helperText={errors.name ?? nameConflict ?? 'e.g. Riverside Occasionals'}
           />
           <MediaUpload
             label="Logo"
@@ -251,9 +257,9 @@ export function MatchSideFields({
 function OptionRow({ name, logoUrl, abbreviation }: { name: string; logoUrl: string | null; abbreviation?: string | null }) {
   return (
     <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
-      <Avatar src={logoUrl ?? undefined} variant="rounded" aria-hidden sx={avatarSx(28, '0.65rem')}>
+      <LogoAvatar src={logoUrl} variant="rounded" aria-hidden size={28} fontSize="0.65rem">
         {initialsFromName(abbreviation || name)}
-      </Avatar>
+      </LogoAvatar>
       <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         {name}
       </Typography>

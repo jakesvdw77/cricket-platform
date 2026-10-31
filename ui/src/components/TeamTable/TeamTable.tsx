@@ -1,10 +1,11 @@
-import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { LogoAvatar } from '../LogoAvatar'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
-import { avatarSx, badgeSx } from '../RecordCard'
+import { badgeSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 import { zebraTint } from '../../utils/zebraTint'
 import type { Team } from '../../api/teamApi'
@@ -70,9 +71,9 @@ function TeamRow({ row }: { row: TeamTableRow }) {
       }}
     >
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-        <Avatar src={team.logoUrl ?? undefined} variant="rounded" sx={{ ...avatarSx(36, '0.8125rem'), flex: 'none' }}>
+        <LogoAvatar src={team.logoUrl} variant="rounded" size={36} fontSize="0.8125rem">
           {initialsFromName(team.name)}
-        </Avatar>
+        </LogoAvatar>
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           <Typography variant="body2" fontWeight={600} noWrap component="div">
             {/* Stretched link over the whole row (docs/specs/059): the row is position: relative. */}

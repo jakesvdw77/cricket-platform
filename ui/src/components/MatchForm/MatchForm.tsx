@@ -20,6 +20,10 @@ import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 import { useLeagueDatesHint } from '../../hooks/useLeagueDatesHint'
 import { currentSeasonId } from '../../utils/currentSeason'
+import { buildLeagueSideOptions, excludeOtherSide, isSameTeam } from '../../utils/matchSideOptions'
+import type { SideIdentity } from '../../utils/matchSideOptions'
+
+const SELF_PLAY_MESSAGE = 'A team cannot play itself'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see MatchFormPage), same pattern as LEAGUE_FORM_ID/SEASON_FORM_ID.
@@ -152,7 +156,7 @@ export function validateMatchLink(value: string): string | null {
   return null
 }
 
-function validate(values: FormState): FormErrors {
+function validate(values: FormState, selfPlay = false): FormErrors {
   const errors: FormErrors = {}
 
   if (values.home.mode === 'team' && !values.home.teamId) {
@@ -172,6 +176,14 @@ function validate(values: FormState): FormErrors {
   }
   if (values.away.mode === 'leagueTeam' && !values.away.leagueTeamId) {
     errors.awayLeagueTeamId = 'Choose an away league team'
+  }
+  // A team cannot play itself (the server refuses it too): the typed name is where it can be fixed; a picked side whose
+  // choice equals the other (an edit loaded that way) is flagged on its own picker.
+  if (selfPlay) {
+    if (values.home.mode === 'external') errors.homeTeamName = SELF_PLAY_MESSAGE
+    if (values.away.mode === 'external') errors.awayTeamName = SELF_PLAY_MESSAGE
+    if (values.home.mode === 'team' && values.away.mode !== 'external') errors.awayTeamId = errors.awayTeamId ?? SELF_PLAY_MESSAGE
+    if (values.home.mode === 'leagueTeam' && values.away.mode !== 'external') errors.awayLeagueTeamId = errors.awayLeagueTeamId ?? SELF_PLAY_MESSAGE
   }
   if (!values.seasonId) {
     errors.seasonId = 'Season is required'
@@ -302,15 +314,36 @@ export function MatchForm({
   // Never hides a side's own already-selected team, even if it falls outside the narrowed set
   // (editing a match from before this narrowing existed, or a since-removed affiliation) — only
   // narrows what's offered for a NEW pick, never silently discards existing form state.
-  const homeTeamOptions = useMemo(
-    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.home.teamId)),
-    [teams, affiliatedTeamIds, values.home.teamId],
-  )
-  const awayTeamOptions = useMemo(
-    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.away.teamId)),
-    [teams, affiliatedTeamIds, values.away.teamId],
-  )
+  const narrowedTeams = (selectedId: string) =>
+    !affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === selectedId)
   const narrowedByAffiliation = affiliatedTeamIds !== null
+
+  // A team cannot play itself: what each side currently is, compared by identity (own team id, league team id, or name).
+  const identityOf = (side: SideState): SideIdentity => {
+    if (side.mode === 'team') {
+      return { teamId: side.teamId, name: teams.find((t) => t.id === side.teamId)?.name }
+    }
+    if (side.mode === 'leagueTeam') {
+      return { leagueTeamId: side.leagueTeamId, name: leagueTeams.find((t) => t.id === side.leagueTeamId)?.name ?? side.teamName }
+    }
+    return { name: side.teamName }
+  }
+  const homeIdentity = identityOf(values.home)
+  const awayIdentity = identityOf(values.away)
+  const selfPlay = isSameTeam(homeIdentity, awayIdentity)
+  // A self-play error from an earlier submit goes away as soon as the sides differ.
+  const live = (message: string | undefined) => (message === SELF_PLAY_MESSAGE && !selfPlay ? undefined : message)
+  // Per side: My team (the affiliation narrowing) and the League team picker (our teams plus the league's, both default lists
+  // for a league match), each without the other side's team.
+  const sideOptions = (side: SideState, other: SideIdentity) => ({
+    teamOptions: excludeOtherSide(narrowedTeams(side.teamId), other, 'team', side.teamId),
+    ...(() => {
+      const built = buildLeagueSideOptions(teams, affiliatedTeamIds, leagueTeams, other, { teamId: side.teamId, leagueTeamId: side.leagueTeamId })
+      return { leagueOwnTeams: built.own as Team[], leagueTeamChoices: built.league as LeagueTeam[] }
+    })(),
+  })
+  const homeOptions = sideOptions(values.home, awayIdentity)
+  const awayOptions = sideOptions(values.away, homeIdentity)
 
   const handleTextChange = (field: 'scoringUrl' | 'streamingUrl') => (event: ChangeEvent<HTMLInputElement>) => {
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
@@ -318,7 +351,7 @@ export function MatchForm({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const validationErrors = validate(values)
+    const validationErrors = validate(values, selfPlay)
     setErrors(validationErrors)
 
     if (Object.keys(validationErrors).length > 0 || dateOutsideLeague) {
@@ -456,12 +489,14 @@ export function MatchForm({
           <MatchSideFields
             label="Home"
             value={values.home}
-            errors={{ team: errors.homeTeamId, name: errors.homeTeamName, leagueTeam: errors.homeLeagueTeamId }}
+            errors={{ team: live(errors.homeTeamId), name: live(errors.homeTeamName), leagueTeam: live(errors.homeLeagueTeamId) }}
             onChange={(patch) => updateSide('home', patch)}
-            teamOptions={homeTeamOptions}
+            teamOptions={homeOptions.teamOptions}
+            leagueOwnTeams={homeOptions.leagueOwnTeams}
+            nameConflict={selfPlay ? SELF_PLAY_MESSAGE : undefined}
             sections={sections}
             narrowedByAffiliation={narrowedByAffiliation}
-            leagueTeams={leagueTeams}
+            leagueTeams={homeOptions.leagueTeamChoices}
             canUseLeagueTeams={canUseLeagueTeams}
             hasScope={hasScope}
             leagueId={values.leagueId}
@@ -471,12 +506,14 @@ export function MatchForm({
           <MatchSideFields
             label="Away"
             value={values.away}
-            errors={{ team: errors.awayTeamId, name: errors.awayTeamName, leagueTeam: errors.awayLeagueTeamId }}
+            errors={{ team: live(errors.awayTeamId), name: live(errors.awayTeamName), leagueTeam: live(errors.awayLeagueTeamId) }}
             onChange={(patch) => updateSide('away', patch)}
-            teamOptions={awayTeamOptions}
+            teamOptions={awayOptions.teamOptions}
+            leagueOwnTeams={awayOptions.leagueOwnTeams}
+            nameConflict={selfPlay ? SELF_PLAY_MESSAGE : undefined}
             sections={sections}
             narrowedByAffiliation={narrowedByAffiliation}
-            leagueTeams={leagueTeams}
+            leagueTeams={awayOptions.leagueTeamChoices}
             canUseLeagueTeams={canUseLeagueTeams}
             hasScope={hasScope}
             leagueId={values.leagueId}

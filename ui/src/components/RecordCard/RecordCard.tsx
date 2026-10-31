@@ -1,6 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
 import {
-  Avatar,
   ButtonBase,
   Box,
   Card as MuiCard,
@@ -17,7 +16,8 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { BRAND, GOLD_DISC_GRADIENT } from '../../brandTokens'
+import { avatarSx } from './avatarSx'
+import { LogoAvatar } from '../LogoAvatar'
 import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
 import { Button, compactButtonSx } from '../Button'
 
@@ -125,6 +125,9 @@ export interface RecordCardFooterButton {
 
 export interface RecordCardProps {
   title: string
+  // docs/standards/page-anatomy.md section 4: opt-in flat look (no shadow, hairline border); a viewTo card lifts on hover as its click
+  // cue. Omitted, the raised card is unchanged.
+  flat?: boolean
   avatar?: RecordCardAvatar
   badge?: RecordCardBadge
   // docs/specs/040-announce-team.md: up to a few more badges coexisting with the single `badge`
@@ -214,26 +217,7 @@ export interface RecordCardProps {
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
-// The shared avatar treatment. docs/specs/120 Decisions 9 and 19: a gold disc (a radial from the light to the solid gold)
-// with dark green initials in the display face, for every avatar, whatever the club's colour (it was the solid
-// `primary.main` and white text). A photo or logo is unchanged (it covers the disc). `size` covers both list-card and
-// detail-header avatars alike (56px for a record's own primary avatar), `fontSize` defaults to the size that pairs with a
-// 56px avatar; smaller avatar contexts (icon grids, logo rows, the account menu) pass their own existing fontSize
-// explicitly. A caller that wants a muted look overrides `bgcolor` and sets `backgroundImage: 'none'`.
-export function avatarSx(size: number, fontSize?: string) {
-  return {
-    width: size,
-    height: size,
-    flex: 'none' as const,
-    fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay,
-    fontSize: fontSize ?? '1.125rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    bgcolor: BRAND.gold,
-    backgroundImage: GOLD_DISC_GRADIENT,
-    color: BRAND.green900,
-  }
-}
+export { avatarSx }
 
 // 'neutral' and 'noPoll' are the outlined tones; every other tone is a filled chip.
 function isOutlinedTone(tone: RecordCardBadgeTone) {
@@ -320,6 +304,7 @@ function tintedBadgeSx(
 
 export function RecordCard({
   title,
+  flat = false,
   avatar,
   badge,
   badges,
@@ -391,7 +376,8 @@ export function RecordCard({
     <MuiCard
       sx={{
         bgcolor: 'background.paper',
-        boxShadow: 2,
+        boxShadow: flat ? 0 : 2,
+        ...(flat && { border: 1, borderColor: 'divider' }),
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -406,6 +392,7 @@ export function RecordCard({
           outline: '1px solid transparent',
           '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
         }),
+        ...(viewTo && flat && { outline: 'none', transition: 'box-shadow 0.15s ease, border-color 0.15s ease', '&:hover': { boxShadow: 6, borderColor: 'primary.main' } }),
       }}
     >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
@@ -423,13 +410,9 @@ export function RecordCard({
           >
             {avatar?.element}
             {avatar && !avatar.element && (
-              <Avatar
-                src={avatar.imageUrl ?? undefined}
-                variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'}
-                sx={avatarSx(56)}
-              >
+              <LogoAvatar src={avatar.imageUrl} variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'} size={56} kind={avatar.shape === 'rounded' ? 'record' : 'person'}>
                 {avatar.fallback}
-              </Avatar>
+              </LogoAvatar>
             )}
             {viewTo ? (
               // The heading (h3) stays the outer element so this card keeps exactly the same

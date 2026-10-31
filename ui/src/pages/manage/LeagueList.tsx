@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
-import { Box, Link, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Box, Link, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
+import { SortLink } from '../../components/ContentControlsLine'
 import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../components/ToolbarCard'
 import { PageCounters } from '../../components/PageCounters'
 import type { PageCounterItem } from '../../components/PageCounters'
 import { getLeaguesSummary, leaguesSummaryKey, listLeagues, LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
@@ -18,10 +20,13 @@ import type { LeagueFormat, LeagueListFocus } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
-import { cardGridSx } from '../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
+import { AddCard } from '../../components/AddCard'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
 import type { League } from '../../api/leagueApi'
+import { DuplicateLeagueDialog } from './leagues/DuplicateLeagueDialog'
 import { LeagueCard } from './leagues/LeagueCard'
 import { LeagueTable } from './leagues/LeagueTable'
 
@@ -53,6 +58,11 @@ function noMatchDescription(term: string, format: string): string {
 export default function LeagueList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  // docs/specs/127: Add League returns to this list.
+  const addLeaguePath = withReturnTo('/manage/fixtures/leagues/new', currentOrigin(location), 'Leagues')
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [search, setSearch] = useState('')
   const [sortAsc, setSortAsc] = useState(true)
   const [focus, setFocus] = useState<LeagueListFocus | null>(null)
@@ -60,6 +70,8 @@ export default function LeagueList() {
   const [view, setView] = useListViewPreference('leagueList:view')
   // docs/specs/122-league-sharing.md: the one Share League dialog of the page, opened from a card or a row.
   const [shareLeague, setShareLeague] = useState<League | null>(null)
+  // docs/specs/096: the one Duplicate League dialog of the page, opened from a row's or card's Actions menu.
+  const [duplicateLeague, setDuplicateLeague] = useState<League | null>(null)
   // docs/specs/071: Format is client-side but persisted per club; 091 persists the chosen season with it.
   const [{ format, seasonId: savedSeasonId }, setFilters] = usePersistedListFilters(`leagueList:filters:${clubId}`, {
     format: '',
@@ -175,6 +187,96 @@ export default function LeagueList() {
   const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show inactive" />
   const sortLink = <SortLink label={sortAsc ? 'Name, A to Z' : 'Name, Z to A'} onToggle={() => setSortAsc((current) => !current)} />
 
+  const bar = (
+    <FilterBar
+          density="compact"
+          bare
+          inCard
+          viewControlsInline
+          extraSelects={[
+            {
+              key: 'format',
+              label: 'Format',
+              allLabel: 'All formats',
+              options: FORMATS.map((value) => ({ value, label: LEAGUE_FORMAT_LABELS[value] })),
+              value: format,
+              onChange: (value) => setFilters({ format: value }),
+            },
+          ]}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name"
+          extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
+          // Desktop order (page-anatomy section 3): switches, then Sort, then the Cards | List toggle last. A phone sheet: toggle first.
+          secondaryControls={(placement) => (placement === 'row' ? <ToolbarToggleChip pressed={showInactive} onChange={setShowInactive} label="Show inactive" /> : inactiveToggle)}
+          viewControls={
+            phone ? (
+              <>
+                <Box sx={{ width: '100%' }}>
+                  <ListViewToggle value={view} onChange={setView} fullWidth />
+                </Box>
+                {focus && (
+                  <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 36 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Quick filter: <b>{FOCUS_LABELS[focus]}</b>
+                    </Typography>
+                    <Link component="button" type="button" underline="hover" onClick={() => setFocus(null)} sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                      Clear
+                    </Link>
+                  </Box>
+                )}
+                {sortLink}
+              </>
+            ) : (
+              <>
+                <ToolbarSortButton
+                  value={sortAsc ? 'asc' : 'desc'}
+                  onChange={(next) => setSortAsc(next === 'asc')}
+                  options={[{ value: 'asc', label: 'Name, A to Z' }, { value: 'desc', label: 'Name, Z to A' }]}
+                />
+                <ListViewToggle value={view} onChange={setView} variant="toolbar" />
+              </>
+            )
+          }
+          onClearAll={() => {
+            setFilters({ format: '' })
+            setFocus(null)
+          }}
+        />
+  )
+  // The message for an empty result. In List view it replaces the rows INSIDE the fused card, so the toolbar never remounts.
+  const emptyState = (() => {
+    if (visibleLeagues.length > 0) {
+      return null
+    }
+    if (visibleLeagues.length === 0 && hasLeagues && isFiltering) {
+      return (
+        <EmptyState
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
+          title="No matching leagues"
+          description={focus && !isSearching && format === '' ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : noMatchDescription(search.trim(), format)}
+        />
+      )
+    }
+    if (!hasLeagues && !isFiltering && !showInactive) {
+      return (
+        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." />
+      )
+    }
+    if (!hasLeagues && (isFiltering || showInactive)) {
+      return (
+        <EmptyState
+          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
+          title={focus ? 'No matching leagues' : 'No league available'}
+          description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
+        />
+      )
+    }
+    return null
+  })()
+  // List view: the bar is fused into the table's card in every state (rows or the empty message). Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
       <ManageScreenHeader
@@ -190,92 +292,29 @@ export default function LeagueList() {
             />
           ) : undefined
         }
-        action={<Button size="compact" onClick={() => navigate('/manage/fixtures/leagues/new')}>Add League</Button>}
+        action={<Button size="compact" onClick={() => navigate(addLeaguePath)}>Add League</Button>}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
 
-      <FilterBar
-        density="compact"
-        extraSelects={[
-          {
-            key: 'format',
-            label: 'Format',
-            allLabel: 'All formats',
-            options: FORMATS.map((value) => ({ value, label: LEAGUE_FORMAT_LABELS[value] })),
-            value: format,
-            onChange: (value) => setFilters({ format: value }),
-          },
-        ]}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by name"
-        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
-        viewControls={
-          <>
-            <Box sx={{ width: '100%' }}>
-              <ListViewToggle value={view} onChange={setView} fullWidth />
-            </Box>
-            {focus && (
-              <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 36 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Quick filter: <b>{FOCUS_LABELS[focus]}</b>
-                </Typography>
-                <Link component="button" type="button" underline="hover" onClick={() => setFocus(null)} sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
-                  Clear
-                </Link>
-              </Box>
-            )}
-            {inactiveToggle}
-            {sortLink}
-          </>
-        }
-        onClearAll={() => {
-          setFilters({ format: '' })
-          setFocus(null)
-        }}
-      />
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      {!fused && <ToolbarCard>{bar}</ToolbarCard>}
 
-      <ContentControlsLine
-        scope={`Showing ${visibleLeagues.length} ${visibleLeagues.length === 1 ? 'league' : 'leagues'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={
-          <>
-            <ListViewToggle value={view} onChange={setView} />
-            {inactiveToggle}
-          </>
-        }
-      />
+      {view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} onShare={setShareLeague} onDuplicate={setDuplicateLeague} toolbar={bar} empty={emptyState} />}
 
-      {visibleLeagues.length > 0 && view === 'list' && <LeagueTable leagues={visibleLeagues} seasonId={seasonId || undefined} onShare={setShareLeague} />}
+      {view === 'cards' ? emptyState : null}
 
-      {visibleLeagues.length > 0 && view === 'cards' && (
-        <Box sx={cardGridSx}>
+      {view === 'cards' && (
+        <Box sx={dynamicCardGridSx}>
           {visibleLeagues.map((league) => (
-            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} />
+            <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} onDuplicate={setDuplicateLeague} />
           ))}
+          {/* The grid ends with a dashed Add card (same route as the page's Add League button); with no cards it is the only one. */}
+          <AddCard label="Add League" to={addLeaguePath} testId="add-league-card" />
         </Box>
       )}
 
-      {visibleLeagues.length === 0 && hasLeagues && isFiltering && (
-        <EmptyState
-          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
-          title="No matching leagues"
-          description={focus && !isSearching && format === '' ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : noMatchDescription(search.trim(), format)}
-        />
-      )}
-
-      {!hasLeagues && !isFiltering && !showInactive && (
-        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." />
-      )}
-
-      {!hasLeagues && (isFiltering || showInactive) && (
-        <EmptyState
-          icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
-          title={focus ? 'No matching leagues' : 'No league available'}
-          description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
-        />
-      )}
+      </Box>
 
       {clubId && shareLeague && (
         <ShareLeagueDialog
@@ -285,6 +324,17 @@ export default function LeagueList() {
           league={shareLeague}
           seasonId={seasonId || null}
           preselected={['DETAILS', 'SCHEDULE']}
+        />
+      )}
+
+      {clubId && duplicateLeague && (
+        <DuplicateLeagueDialog
+          open
+          clubId={clubId}
+          league={{ id: duplicateLeague.id, name: duplicateLeague.name }}
+          seasons={seasons}
+          defaultSeasonId={seasonId}
+          onClose={() => setDuplicateLeague(null)}
         />
       )}
     </Box>

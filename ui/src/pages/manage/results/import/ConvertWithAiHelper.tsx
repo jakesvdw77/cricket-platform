@@ -3,32 +3,7 @@ import { Box, Typography } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import { Button } from '../../../../components/Button'
-
-// Copies text, falling back to a hidden textarea where the async clipboard is unavailable (an insecure page, an old browser).
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // fall through to the textarea route
-  }
-  try {
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.position = 'fixed'
-    area.style.opacity = '0'
-    document.body.appendChild(area)
-    area.select()
-    const done = document.execCommand('copy')
-    document.body.removeChild(area)
-    return done
-  } catch {
-    return false
-  }
-}
+import { copyText } from '../../../../utils/copyText'
 
 // docs/specs/104-match-results-import-adaptors.md: the Other tab on the Source step, "Convert it with your own AI". The
 // platform sends nothing to any AI: this is only the descriptor's `conversionPrompt`, which the manager copies into their own

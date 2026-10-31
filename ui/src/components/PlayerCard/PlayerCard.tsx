@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { LogoAvatar } from '../LogoAvatar'
 import type { MouseEvent, ReactNode } from 'react'
 import {
-  Avatar,
   Box,
   ButtonBase,
   Card as MuiCard,
@@ -22,7 +22,7 @@ import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlin
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import TagOutlinedIcon from '@mui/icons-material/TagOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
-import { avatarSx, badgeSx } from '../RecordCard'
+import { badgeSx } from '../RecordCard'
 import { cardTitleSx } from '../../theme'
 import { DetailLine } from '../DetailLine'
 import { PlayerStatusMenu } from '../PlayerStatusMenu'
@@ -115,9 +115,9 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
     >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-          <Avatar src={playerAvatarSrc(player.photoUrl, player.gender)} variant="circular" sx={avatarSx(56)}>
+          <LogoAvatar src={playerAvatarSrc(player.photoUrl, player.gender)} variant="circular" size={56} kind="person" keepTile={!player.photoUrl}>
             {initialsFromName(name)}
-          </Avatar>
+          </LogoAvatar>
           <Typography
             variant="subtitle1"
             component="h3"

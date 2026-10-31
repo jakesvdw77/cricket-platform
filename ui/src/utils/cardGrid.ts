@@ -25,3 +25,17 @@ export const pollCardGridSx = {
   ...cardGridSx,
   gridTemplateColumns: POLL_CARD_GRID_TEMPLATE_COLUMNS,
 } as const
+
+// docs/standards/page-anatomy.md section 6: an opt-in grid that fills the row. auto-fit with a 340px floor stretches the tracks (and so the
+// cards) to share the width with no empty slot at the right; each card is capped at 560px (left aligned) so one or two cards never become
+// giant bars; the min() keeps a phone to one column. Used by the Leagues list first.
+export const DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS = 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))'
+export const DYNAMIC_CARD_MAX_WIDTH = 560
+
+export const dynamicCardGridSx = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS,
+  alignItems: 'stretch',
+  '& > *': { maxWidth: DYNAMIC_CARD_MAX_WIDTH, width: '100%', justifySelf: 'start' },
+} as const

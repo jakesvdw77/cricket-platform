@@ -1,3 +1,4 @@
+import type { AgeReference } from '../api/leagueApi'
 // docs/specs/110-league-age-cutoff-day-and-month.md: a league's age cut-off is a day and month with no year, and
 // the server judges ages on that day in the calendar year the league starts. These helpers hold the pure rules the
 // form and the league page share; the server stays authoritative.
@@ -42,4 +43,13 @@ export function cutoffError(month: number | null, day: number | null): CutoffErr
 export function formatReferenceDate(iso: string): string {
   const [year, month, day] = iso.split('-').map(Number)
   return `${day} ${MONTH_SHORT[month - 1]} ${year}`
+}
+
+// The wording for a looked-up reference date: the source phrase ("the cut-off", "the league's start date") and the date.
+// docs/specs/111: with no cut-off, the league's start is its entered season dates, else the day the league starts.
+export function ageReferenceWording(data: AgeReference): { date: string; source: string; sentence: string } {
+  const leagueStart = data.leagueStartSource === 'LEAGUE_SEASON_DATES' ? "the league's start date" : 'the day the league starts'
+  const source = data.source === 'CUTOFF' ? 'the cut-off' : leagueStart
+  const date = formatReferenceDate(data.referenceDate)
+  return { date, source, sentence: `Ages are judged on ${date} (${source})` }
 }

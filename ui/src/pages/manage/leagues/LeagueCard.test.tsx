@@ -48,11 +48,11 @@ function LocationProbe() {
   return <div data-testid="location">{location.pathname}</div>
 }
 
-function renderCard(league: League, seasonId?: string) {
+function renderCard(league: League, seasonId?: string, entry = '/list') {
   return render(
-    <MemoryRouter initialEntries={['/list']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route path="/list" element={<LeagueCard league={league} seasonId={seasonId} />} />
+        <Route path={entry.split('?')[0]} element={<LeagueCard league={league} seasonId={seasonId} />} />
         <Route path="*" element={<div>Elsewhere</div>} />
       </Routes>
       <LocationProbe />
@@ -73,6 +73,14 @@ function chipLabels(): string[] {
 const BASE = '/manage/fixtures/leagues/league-1'
 
 describe('LeagueCard', () => {
+  it('is a flat card with the hairline border (no shadow)', () => {
+    const { container } = renderCard(makeLeague())
+
+    const card = container.querySelector('.MuiCard-root') as HTMLElement
+    expect(getComputedStyle(card).boxShadow).toBe('none')
+    expect(getComputedStyle(card).borderStyle).toBe('solid')
+  })
+
   // docs/specs/096-duplicate-league.md: the entry point is the league page header and the edit page, not the card.
   it('has no Duplicate control', () => {
     renderCard(makeLeague())
@@ -88,7 +96,7 @@ describe('LeagueCard', () => {
 
       const heading = screen.getByRole('heading', { level: 3 })
       expect(heading).toHaveTextContent('A very long league name that needs to wrap over more than one line')
-      expect(within(heading).getByRole('link')).toHaveAttribute('href', `${BASE}/schedule`)
+      expect(within(heading).getByRole('link')).toHaveAttribute('href', expect.stringContaining(`${BASE}/schedule`))
     })
 
     it('shows the format then Active, and no team count or season badge', () => {
@@ -315,35 +323,60 @@ describe('LeagueCard', () => {
     })
   })
 
-  describe('footer and card click', () => {
-    it('renders Schedule, Teams, Conditions and Edit in that order, and no Playing Conditions action', () => {
+  describe('actions kebab and card click', () => {
+    it('has no footer action bar: the kebab is the card\'s only button', () => {
       renderCard(makeLeague({ currentSeasonPlayingConditionsUrl: '/media/pc.pdf' }))
 
-      const labels = ['Schedule', 'Teams', 'Conditions', 'Edit'].map((name) => screen.getByRole('button', { name }))
-      for (let i = 0; i < labels.length - 1; i += 1) {
-        expect(labels[i].compareDocumentPosition(labels[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      for (const name of ['Schedule', 'Teams', 'Playing Conditions', 'Edit', 'Share']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
       }
-      expect(screen.queryByRole('button', { name: 'Playing Conditions' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button')).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Actions for Riverside Premier League' })).toBeInTheDocument()
     })
 
-    it.each([
-      ['Schedule', `${BASE}/schedule`],
-      ['Teams', `${BASE}/teams`],
-      ['Conditions', `${BASE}/conditions`],
-      ['Edit', `${BASE}/edit`],
-    ])('the %s button navigates to %s', async (name, path) => {
+    it('lists the old footer destinations in the kebab, in order, as links', async () => {
+      const user = userEvent.setup()
+      renderCard(makeLeague(), 'season-9')
+
+      await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
+      const items = screen.getAllByRole('menuitem')
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Open League',
+        'Open Schedule',
+        'Open Teams',
+        'Open Playing Conditions',
+        'Edit League Details',
+        'Add Match',
+        'Import Schedule',
+      ])
+      expect(items[1]).toHaveAttribute('href', expect.stringContaining(`${BASE}/schedule?seasonId=season-9`))
+      expect(items[2]).toHaveAttribute('href', expect.stringContaining(`${BASE}/teams?seasonId=season-9`))
+      expect(items[3]).toHaveAttribute('href', expect.stringContaining(`${BASE}/conditions?seasonId=season-9`))
+      expect(items[4]).toHaveAttribute('href', expect.stringContaining(`${BASE}/edit?seasonId=season-9`))
+    })
+
+    it('disables Add Match and Import Schedule with their reasons when there is no season or the league is inactive', async () => {
       const user = userEvent.setup()
       renderCard(makeLeague())
-
-      await user.click(screen.getByRole('button', { name }))
-
-      expect(screen.getByTestId('location')).toHaveTextContent(path)
+      await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
+      expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveTextContent('Create a season first')
     })
 
-    it('keeps Conditions enabled even with no conditions or PDF', () => {
-      renderCard(makeLeague({ currentSeasonPlayingConditionsUrl: null }))
+    it('disables Import Schedule for an inactive league', async () => {
+      const user = userEvent.setup()
+      renderCard(makeLeague({ active: false }), 'season-9')
+      await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
+      expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveTextContent('League is inactive')
+      expect(screen.getByRole('menuitem', { name: /Add Match/ })).not.toHaveAttribute('aria-disabled', 'true')
+    })
 
-      expect(screen.getByRole('button', { name: 'Conditions' })).toBeEnabled()
+    it('the kebab opens a menu without navigating the card', async () => {
+      const user = userEvent.setup()
+      renderCard(makeLeague())
+      await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).not.toHaveTextContent(`${BASE}/schedule`)
     })
 
     it('opens the Schedule when the card title link is clicked', async () => {
@@ -357,13 +390,28 @@ describe('LeagueCard', () => {
   })
 
   describe('chosen season', () => {
-    it('carries the season into the Schedule, Teams and Conditions links but not Edit', async () => {
-      const user = userEvent.setup()
+    it('carries the season into the title link', () => {
       renderCard(makeLeague(), 'season-9')
 
-      expect(within(screen.getByRole('heading', { level: 3 })).getByRole('link')).toHaveAttribute('href', `${BASE}/schedule?seasonId=season-9`)
-      await user.click(screen.getByRole('button', { name: 'Teams' }))
-      expect(screen.getByTestId('location')).toHaveTextContent(`${BASE}/teams`)
+      expect(within(screen.getByRole('heading', { level: 3 })).getByRole('link')).toHaveAttribute('href', expect.stringContaining(`${BASE}/schedule?seasonId=season-9`))
+    })
+  })
+
+  // docs/specs/127-return-navigation.md: every destination returns to the Leagues list.
+  describe('return navigation (127)', () => {
+    const returnOf = (href: string | null) => {
+      const params = new URLSearchParams((href ?? '').split('?')[1])
+      return { to: params.get('returnTo'), label: params.get('returnLabel') }
+    }
+
+    it('the card link and every navigating menu item carry the list as the origin, labelled "Leagues"', async () => {
+      const user = userEvent.setup()
+      renderCard(makeLeague(), 'season-9', '/manage/fixtures/leagues')
+      const origin = { to: '/manage/fixtures/leagues', label: 'Leagues' }
+
+      expect(returnOf(within(screen.getByRole('heading', { level: 3 })).getByRole('link').getAttribute('href'))).toEqual(origin)
+      await user.click(screen.getByRole('button', { name: /^Actions for / }))
+      for (const item of screen.getAllByRole('menuitem')) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
     })
   })
 })

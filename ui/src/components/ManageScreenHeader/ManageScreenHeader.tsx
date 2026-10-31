@@ -4,6 +4,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink } from 'react-router-dom'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { pageTitleSx } from '../../theme'
+import { useBackLink } from '../../hooks/useReturnTo'
 
 export interface ManageScreenHeaderProps {
   title: string
@@ -36,7 +37,9 @@ export interface ManageScreenHeaderProps {
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle, subtitle, titleAdornment }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo: defaultBackTo, backLabel: defaultBackLabel = 'Back', action, middle, subtitle, titleAdornment }: ManageScreenHeaderProps) {
+  // docs/specs/127: a valid returnTo in the address overrides the page's own default Back (and shows one where there was none).
+  const { to: backTo, label: backLabel } = useBackLink(defaultBackTo, defaultBackLabel)
   const titleNode = (
     <Typography variant="h5" component="h1" sx={pageTitleSx}>
       {title}

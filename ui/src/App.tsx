@@ -64,6 +64,8 @@ import MatchList from './pages/manage/MatchList'
 import ResultCapturePage from './pages/manage/results/ResultCapturePage'
 import ResultDetailPage from './pages/manage/results/ResultDetailPage'
 import ResultImportPage from './pages/manage/results/import/ResultImportPage'
+import ImportResumePage from './pages/manage/imports/ImportResumePage'
+import LeagueScheduleImportPage from './pages/manage/leagueImport/LeagueScheduleImportPage'
 import ResultList from './pages/manage/results/ResultList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
@@ -255,6 +257,9 @@ function App() {
                 <Route path="conditions" element={<LeagueConditionsView />} />
               </Route>
               <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueEditRoute />} />
+              {/* docs/specs/098-league-schedule-import.md: the schedule import wizard, an absolute sibling of the edit route
+                  (schedule is a child of the league view layout above, so the wizard must not nest in it). */}
+              <Route path="fixtures/leagues/:leagueId/schedule/import" element={<LeagueScheduleImportPage />} />
               {/* docs/specs/054-league-contacts.md: a league's named contacts, one level deeper
                   than fixtures/leagues/:leagueId/edit — no standalone list route, the list itself
                   is embedded in LeagueFormPage's Contacts tab and surfaced as avatars in the
@@ -284,6 +289,8 @@ function App() {
               <Route path="results/import" element={<ResultImportPage />} />
               <Route path="results/:matchId" element={<ResultDetailPage />} />
               <Route path="results/:matchId/capture" element={<ResultCapturePage />} />
+              {/* docs/specs/097-import-framework.md: the generic resume route; opens any import batch in the right step. */}
+              <Route path="imports/:batchId" element={<ImportResumePage />} />
               {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
               <Route path="leaderboards" element={<LeaderboardsPage />} />
               {/* docs/specs/119 Part 3: Access - Managers tab (placeholder) and Player accounts tab. */}

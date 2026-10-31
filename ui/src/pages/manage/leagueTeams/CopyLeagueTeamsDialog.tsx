@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { LogoAvatar } from '../../../components/LogoAvatar'
 import {
   Alert,
-  Avatar,
   Box,
   Checkbox,
   Chip,
@@ -18,7 +18,6 @@ import { useTheme } from '@mui/material/styles'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
-import { avatarSx } from '../../../components/RecordCard'
 import { listLeagues } from '../../../api/leagueApi'
 import { listSeasons } from '../../../api/seasonApi'
 import { leagueTeamsQueryKey, listLeagueTeams } from '../../../api/leagueTeamApi'
@@ -216,9 +215,9 @@ export function CopyLeagueTeamsDialog({
                       onChange={() => toggle(team.id)}
                       inputProps={{ 'aria-label': team.name }}
                     />
-                    <Avatar src={team.logoUrl ?? undefined} variant="rounded" sx={avatarSx(32, '0.75rem')}>
+                    <LogoAvatar src={team.logoUrl} variant="rounded" size={32} fontSize="0.75rem">
                       {initialsFromName(team.abbreviation || team.name)}
-                    </Avatar>
+                    </LogoAvatar>
                     <Typography
                       variant="body2"
                       fontWeight={duplicate ? 400 : 600}

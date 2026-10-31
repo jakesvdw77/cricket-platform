@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { SocialLinksRow } from './SocialLinksRow'
 
@@ -58,5 +59,26 @@ describe('SocialLinksRow', () => {
     expect(links[0]).toHaveAttribute('href', 'https://league.example.com')
     expect(links[0].querySelector('[data-testid="LanguageOutlinedIcon"]')).toBeInTheDocument()
     expect(links[1]).toHaveAccessibleName('Facebook')
+  })
+
+  it('renders an inline icon and text link per network when variant="labelled"', () => {
+    render(<SocialLinksRow links={[{ platform: 'facebook', url: 'https://facebook.com/cl' }, { platform: 'x', url: 'https://x.com/cl' }]} variant="labelled" />)
+    const link = screen.getByRole('link', { name: 'Facebook' })
+    expect(link).toHaveTextContent('Facebook')
+    expect(link).toHaveAttribute('href', 'https://facebook.com/cl')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener')
+    expect(screen.getByRole('link', { name: 'X' })).toHaveTextContent('X')
+  })
+
+  it('renders round buttons with a tooltip, new-tab link and noopener when variant="round"', async () => {
+    render(<SocialLinksRow links={[{ platform: 'facebook', url: 'https://facebook.com/cricketlegend' }]} variant="round" />)
+
+    const link = screen.getByRole('link', { name: 'Facebook' })
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener')
+    expect(link).toHaveStyle({ borderStyle: 'solid' })
+    await userEvent.hover(link)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Facebook')
   })
 })

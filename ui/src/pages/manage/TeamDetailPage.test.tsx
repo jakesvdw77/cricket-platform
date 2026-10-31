@@ -534,6 +534,24 @@ describe('TeamDetailPage', () => {
     expect(backLink).toHaveAttribute('href', '/manage/sections/section-1/teams')
   })
 
+  // docs/specs/127-return-navigation.md
+  it('the back link goes to the origin, named by the returnLabel, when the page was opened with a returnTo', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    const origin = '/manage/fixtures/leagues/league-1/teams?seasonId=season-1'
+
+    renderPage(`/manage/sections/section-1/teams/team-1?returnTo=${encodeURIComponent(origin)}&returnLabel=${encodeURIComponent('TVL teams')}`, 'test-club-id')
+
+    expect(await screen.findByRole('link', { name: 'Back to TVL teams' })).toHaveAttribute('href', origin)
+  })
+
+  it('the back link ignores an external returnTo', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?returnTo=%2F%2Fevil.example', 'test-club-id')
+
+    expect(await screen.findByRole('link', { name: /Back to Teams/ })).toHaveAttribute('href', '/manage/teams')
+  })
+
   it('the header "Edit team" and Squad "Add player" actions both target the edit route', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 

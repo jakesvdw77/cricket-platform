@@ -65,4 +65,10 @@ public interface LeagueTeamRepository extends JpaRepository<LeagueTeam, UUID> {
 
     /** docs/specs/123: the active league teams of a set of leagues in one season, in one round trip (unsorted). */
     List<LeagueTeam> findByLeagueIdInAndSeasonIdAndActiveTrue(Collection<UUID> leagueIds, UUID seasonId);
+
+    /** docs/specs/098: this league's league teams in every season except {@code seasonId} (copy candidates). */
+    List<LeagueTeam> findByLeagueIdAndSeasonIdNot(UUID leagueId, UUID seasonId);
+
+    /** docs/specs/098: the league teams of the given leagues in every season (the club's other leagues, copy candidates). */
+    List<LeagueTeam> findByLeagueIdIn(Collection<UUID> leagueIds);
 }

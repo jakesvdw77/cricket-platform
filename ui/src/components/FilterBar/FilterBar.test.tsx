@@ -356,3 +356,113 @@ describe('FilterBar extra selects (docs/specs/091)', () => {
     expect(await screen.findByRole('combobox', { name: 'Format' })).toBeInTheDocument()
   })
 })
+
+// docs/specs/126: the calmer league Schedule tab's control bar.
+describe('FilterBar bare and inline view controls (docs/specs/126)', () => {
+  const controls = <label>Only ours<input type="checkbox" /></label>
+
+  it('keeps the card and the sheet-only view controls by default on desktop', () => {
+    setPhone(false)
+    render(<FilterBar {...props({ viewControls: controls })} />)
+    expect(screen.queryByTestId('filter-bar-bare')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('filter-bar-inline-controls')).not.toBeInTheDocument()
+  })
+
+  it('bare drops the card chrome on desktop but keeps the fields', () => {
+    setPhone(false)
+    render(<FilterBar {...props({ bare: true })} />)
+    const wrapper = screen.getByTestId('filter-bar-bare')
+    expect(getComputedStyle(wrapper).boxShadow).not.toContain('rgba')
+    expect(getComputedStyle(wrapper).borderStyle).not.toBe('solid')
+    expect(within(wrapper).getByLabelText('Team')).toBeInTheDocument()
+    expect(within(wrapper).getByLabelText('Search')).toBeInTheDocument()
+  })
+
+  it('bare has no floating labels: the fields show their value text and keep an accessible name', () => {
+    setPhone(false)
+    const { container } = render(<FilterBar {...props({ bare: true, extraSelects: [{ key: 'format', label: 'Format', allLabel: 'All formats', options: [{ value: 'T20', label: 'T20' }], value: '', onChange: vi.fn() }] })} />)
+    expect(container.querySelector('label')).toBeNull()
+    expect(container.querySelector('legend span')?.textContent ?? '').not.toMatch(/\w/)
+    expect(screen.getByLabelText('Team')).toHaveTextContent('All teams')
+    expect(screen.getByLabelText('Format')).toHaveTextContent('Format: All formats')
+    expect(screen.getByLabelText('Search')).toBeInTheDocument()
+  })
+
+  it('the boxed bar keeps its floating labels', () => {
+    setPhone(false)
+    const { container } = render(<FilterBar {...props()} />)
+    expect(container.querySelectorAll('label').length).toBeGreaterThan(0)
+  })
+
+  it('viewControlsInline renders the controls once, at the end of the field row on desktop', () => {
+    setPhone(false)
+    render(<FilterBar {...props({ viewControls: controls, viewControlsInline: true, bare: true })} />)
+    const row = screen.getByTestId('filter-bar-fields')
+    const inline = within(row).getByTestId('filter-bar-inline-controls')
+    expect(screen.getAllByText('Only ours')).toHaveLength(1)
+    expect(inline.previousElementSibling).toContainElement(screen.getByLabelText('Search'))
+    expect(inline.nextElementSibling).toBeNull()
+  })
+
+  it('on a phone, inline controls stay in the Filters sheet and the bar is unchanged', async () => {
+    setPhone(true)
+    render(<FilterBar {...props({ viewControls: controls, viewControlsInline: true, bare: true })} />)
+    expect(screen.queryByTestId('filter-bar-inline-controls')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    expect(await screen.findByText('Only ours')).toBeInTheDocument()
+  })
+})
+
+
+// docs/standards/page-anatomy.md section 3: switches left of the Sort + toggle pair; the switches fold into the sheet at tablet width.
+describe('FilterBar secondary controls (switches) and the pair', () => {
+  const switches = <label>Only ours<input type="checkbox" /></label>
+  const pair = <><button type="button">Sort</button><button type="button">Cards</button></>
+  const setTablet = () => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('1199') && !query.includes('599'),
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+  }
+
+  it('on desktop the row ends with the switches, then Sort, then the toggle last', () => {
+    setPhone(false)
+    render(<FilterBar {...props({ bare: true, viewControlsInline: true, secondaryControls: switches, viewControls: pair })} />)
+    const inline = screen.getByTestId('filter-bar-inline-controls')
+    expect(Array.from(inline.children).map((child) => child.textContent)).toEqual(['Only ours', 'Sort', 'Cards'])
+    expect(screen.queryByRole('button', { name: 'Filters' })).not.toBeInTheDocument()
+  })
+
+  it('at tablet width the switches fold into a Filters sheet and the pair stays in the row', async () => {
+    setTablet()
+    render(<FilterBar {...props({ bare: true, viewControlsInline: true, secondaryControls: switches, viewControls: pair })} />)
+    const inline = screen.getByTestId('filter-bar-inline-controls')
+    expect(within(inline).queryByText('Only ours')).not.toBeInTheDocument()
+    expect(Array.from(inline.children).map((child) => child.textContent)).toEqual(['Filters', 'Sort', 'Cards'])
+    await userEvent.click(within(inline).getByRole('button', { name: 'Filters' }))
+    expect(await screen.findByText('Only ours')).toBeInTheDocument()
+    expect(screen.queryByTestId('filter-sheet-fields')?.textContent ?? '').not.toContain('Sort')
+  })
+
+  it('on a phone the sheet holds the pair first, then the switches', async () => {
+    setPhone(true)
+    render(<FilterBar {...props({ bare: true, viewControlsInline: true, secondaryControls: switches, viewControls: pair })} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const sheet = await screen.findByTestId('filter-sheet-fields')
+    const text = sheet.textContent ?? ''
+    expect(text.indexOf('Sort')).toBeLessThan(text.indexOf('Only ours'))
+  })
+
+  it('inCard drops the phone bar card chrome', () => {
+    setPhone(true)
+    render(<FilterBar {...props({ bare: true, inCard: true })} />)
+    const filters = screen.getByRole('button', { name: 'Filters' })
+    expect(getComputedStyle(filters.parentElement as HTMLElement).borderWidth).toMatch(/^0/)
+  })
+})

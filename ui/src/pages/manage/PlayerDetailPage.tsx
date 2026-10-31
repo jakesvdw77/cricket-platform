@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { LogoAvatar } from '../../components/LogoAvatar'
 import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -12,7 +13,7 @@ import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
-import { avatarSx, badgeSx } from '../../components/RecordCard'
+import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
 import { PlayerStatusMenu } from '../../components/PlayerStatusMenu'
 import { EmptyState } from '../../components/EmptyState'
@@ -136,17 +137,20 @@ export default function PlayerDetailPage() {
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
           <Stack direction="row" alignItems="center" spacing={{ xs: 1.75, md: 2 }} sx={{ minWidth: 0 }}>
-            <Avatar
+            <LogoAvatar
               src={playerAvatarSrc(player.photoUrl, player.gender)}
               variant="circular"
+              size={80}
+              kind="person"
+              keepTile={!player.photoUrl}
+              fontSize="1.6rem"
               sx={(theme) => ({
-                ...avatarSx(80, '1.6rem'),
                 boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.18)}`,
                 [theme.breakpoints.down('md')]: { width: 72, height: 72, fontSize: '1.4rem' },
               })}
             >
               {initialsFromName(fullName(player))}
-            </Avatar>
+            </LogoAvatar>
             <Stack spacing={1} sx={{ minWidth: 0 }}>
               <Typography
                 variant="h4"

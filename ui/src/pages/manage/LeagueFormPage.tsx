@@ -1,33 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Alert, Button as MuiButton, Stack, Typography } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { LeagueAgeReferenceLine } from '../../components/LeagueAgeReferenceLine'
 import { Button, compactButtonSx } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
-import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
 import type { LeagueContent } from '../../utils/share/leagueShareFormats'
 import { DuplicateLeagueDialog } from './leagues/DuplicateLeagueDialog'
 import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
 import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
-import { LeagueEditTeamsTab } from './leagueEdit/LeagueEditTeamsTab'
-import { LeagueEditScheduleTab } from './leagueEdit/LeagueEditScheduleTab'
 import { LeagueSeasonDatesBlock } from './leagueEdit/LeagueSeasonDatesBlock'
 import { LeagueEditConditionsTab } from './leagueEdit/LeagueEditConditionsTab'
 import { LeagueEditContactsTab } from './leagueEdit/LeagueEditContactsTab'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
-import { listTeamsForClub } from '../../api/teamApi'
-import type { Team } from '../../api/teamApi'
 import { listAllMatches } from '../../api/matchApi'
-import { listLeagueAffiliations, createLeagueAffiliation } from '../../api/leagueAffiliationApi'
 import {
   getPlayingConditions,
   uploadPlayingConditions,
@@ -39,12 +34,15 @@ import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
 import { resolvePlayingConditionsPayload } from '../../utils/playingConditions'
 
-// docs/specs/029-league-management.md and docs/specs/095-league-edit-gold-standard.md: the standard list/create/update CRUD
-// anatomy, extended in edit mode with a tab strip (?tab=details|teams|schedule|conditions|contacts), each tab in its own
-// file under ./leagueEdit. This page keeps the page-level queries, the season state, the Details save and deactivate
-// mutations and the three dialogs the tabs open.
+// docs/specs/029-league-management.md, docs/specs/095-league-edit-gold-standard.md and docs/specs/128-league-edit-revamp.md: the
+// standard list/create/update CRUD anatomy, extended in edit mode with a tab strip (?tab=details|branding|conditions|contacts),
+// each tab in its own file under ./leagueEdit. Details and Branding are two views of ONE LeagueForm (one state, one Save).
+// Teams and Schedule are managed on the league page, not here. This page keeps the page-level queries, the season state, the
+// league save and deactivate mutations and the dialogs the tabs open.
 // The tabs whose content is scoped to a season, so the header Season pill shows on them only.
-const SEASON_TABS: readonly string[] = ['teams', 'schedule', 'conditions']
+const SEASON_TABS: readonly string[] = ['details', 'conditions']
+// The tabs that are views of the league form, and carry its Cancel, Save, Duplicate and status footer.
+const LEAGUE_FORM_TABS: readonly string[] = ['details', 'branding']
 
 export default function LeagueFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
@@ -59,9 +57,15 @@ export default function LeagueFormPage() {
   const activeTab = isEdit ? resolveLeagueEditTab(searchParams.get('tab')) : 'details'
   const seasonParam = searchParams.get('seasonId')
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
-  const [linkOpen, setLinkOpen] = useState(false)
-  // docs/specs/122-league-sharing.md: the one Share League dialog; the Schedule tab opens it on Schedule, the Conditions tab on
-  // Playing conditions.
+  // docs/specs/127: Back and Save return to where the page was opened from (default: the Leagues list); Cancel (edit) defaults to the
+  // league page with the season.
+  const afterSave = useAfterSave('/manage/fixtures/leagues')
+  const cancelSeason = selectedSeasonId || seasonParam
+  const cancelLink = useBackLink(
+    isEdit && leagueId ? `/manage/fixtures/leagues/${leagueId}/schedule${cancelSeason ? `?seasonId=${encodeURIComponent(cancelSeason)}` : ''}` : '/manage/fixtures/leagues',
+    'Cancel',
+  )
+  // docs/specs/122-league-sharing.md: the one Share League dialog; the Conditions tab opens it on Playing Conditions.
   const [sharePreselected, setSharePreselected] = useState<LeagueContent[] | null>(null)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   // docs/specs/096-duplicate-league.md: the success notice a Duplicate league navigation carries in router state. Read once
@@ -93,18 +97,6 @@ export default function LeagueFormPage() {
     enabled: Boolean(clubId) && isEdit,
   })
 
-  const teamsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams'],
-    queryFn: () => listTeamsForClub(clubId as string),
-    enabled: Boolean(clubId) && isEdit,
-  })
-
-  const affiliationsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'],
-    queryFn: () => listLeagueAffiliations(clubId as string, leagueId as string),
-    enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
-  })
-
   // docs/specs/054-league-contacts.md: the Contacts tab's own contact list, a league's contacts
   // are a small, bounded collection, deliberately not paginated (same as listSponsorContacts).
   const contactsQuery = useQuery({
@@ -113,10 +105,7 @@ export default function LeagueFormPage() {
     enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
   })
 
-  // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
-  // list, rendered by LeagueFixturesTable (see LeagueEditScheduleTab), reuses the existing
-  // listAllMatches (docs/specs/072-league-view-pages.md: every page of the season, not just the first
-  // 20) filter combination, no new endpoint.
+  // The season's matches, for the season dates row's "Use First and Last Match" (every page of the season, docs/specs/072).
   const matchesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'matches', selectedSeasonId],
     queryFn: () => listAllMatches(clubId as string, { leagueId: leagueId as string, seasonId: selectedSeasonId }),
@@ -153,16 +142,6 @@ export default function LeagueFormPage() {
 
   const seasons = useMemo(() => seasonsQuery.data ?? [], [seasonsQuery.data])
 
-  const teamsById = useMemo(() => {
-    const map = new Map<string, Team>()
-    ;(teamsQuery.data ?? []).forEach((team) => map.set(team.id, team))
-    return map
-  }, [teamsQuery.data])
-
-  const affiliationsForSeason = (affiliationsQuery.data ?? []).filter(
-    (affiliation) => affiliation.seasonId === selectedSeasonId,
-  )
-
   // docs/specs/051-league-schedule-sharing.md: same seasonLabel derivation as
   // the league Schedule view (LeagueScheduleView.tsx), neither host page previously computed a plain season label string.
   const seasonLabel = useMemo(
@@ -182,23 +161,6 @@ export default function LeagueFormPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey }),
   })
 
-  const affiliatedTeamIds = new Set(affiliationsForSeason.map((affiliation) => affiliation.teamId))
-  const linkableTeams: Team[] = (teamsQuery.data ?? []).filter(
-    (team) => team.active && !affiliatedTeamIds.has(team.id),
-  )
-
-  const invalidateAffiliations = () =>
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'] })
-
-  const linkMutation = useMutation({
-    mutationFn: (teamId: string) =>
-      createLeagueAffiliation(clubId as string, leagueId as string, teamId, selectedSeasonId),
-    onSuccess: () => {
-      invalidateAffiliations()
-      setLinkOpen(false)
-    },
-  })
-
   const saveMutation = useMutation({
     mutationFn: (payload: LeaguePayload) => {
       if (isEdit && leagueId) {
@@ -208,7 +170,7 @@ export default function LeagueFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues'] })
-      navigate('/manage/fixtures/leagues')
+      afterSave()
     },
   })
 
@@ -279,7 +241,7 @@ export default function LeagueFormPage() {
           ) : undefined
         }
         actions={
-          activeTab === 'details' ? (
+          LEAGUE_FORM_TABS.includes(activeTab) ? (
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               {saveMutation.isError && (
                 <Typography variant="body2" color="error.main">
@@ -288,12 +250,12 @@ export default function LeagueFormPage() {
               )}
 
               {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
-              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined" size="small" sx={compactButtonSx}>
+              <MuiButton component={RouterLink} to={cancelLink.to ?? '/manage/fixtures/leagues'} variant="outlined" size="small" sx={compactButtonSx}>
                 Cancel
               </MuiButton>
 
               <Button size="compact" type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
+                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create League'}
               </Button>
 
               {/* docs/specs/096: Duplicate league sits beside the status toggle, edit mode only. */}
@@ -304,7 +266,7 @@ export default function LeagueFormPage() {
                   startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
                   onClick={() => setDuplicateOpen(true)}
                 >
-                  Duplicate league
+                  Duplicate League
                 </Button>
               )}
 
@@ -316,32 +278,31 @@ export default function LeagueFormPage() {
           ) : undefined
         }
       >
-        {/* docs/specs/110: the date ages are judged on this season, from the server. Sits above the form it describes. */}
-        {isEdit && activeTab === 'details' && league && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            <LeagueAgeReferenceLine
-              clubId={clubId}
-              leagueId={league.id}
-              seasonId={selectedSeasonId}
-              hasAgeLimit={league.minAge != null || league.maxAge != null}
-            />
-          </Box>
-        )}
-
-        {/* docs/specs/111: Details has no header pill, so the block carries its own Season select, sharing the page's selected season. */}
+        {/* docs/specs/128: the season dates row opens the Details card; the header pill chooses the season. */}
         {isEdit && activeTab === 'details' && seasons.length > 0 && selectedSeasonId && (
           <LeagueSeasonDatesBlock
             clubId={clubId}
             leagueId={leagueId as string}
             seasonId={selectedSeasonId}
             seasonLabel={seasonLabel}
-            seasons={seasons}
-            onSeasonChange={setSelectedSeasonId}
+            matches={matchesQuery.data}
           />
         )}
 
-        {activeTab === 'details' && (
+        {(activeTab === 'details' || activeTab === 'branding') && (
           <LeagueForm
+            visibleSection={isEdit ? (activeTab as 'details' | 'branding') : undefined}
+            ageReference={
+              isEdit && league ? (
+                // docs/specs/110: the date ages are judged on this season, from the server, directly under the age fields.
+                <LeagueAgeReferenceLine
+                  clubId={clubId}
+                  leagueId={league.id}
+                  seasonId={selectedSeasonId}
+                  hasAgeLimit={league.minAge != null || league.maxAge != null}
+                />
+              ) : undefined
+            }
             initialValues={
               league
                 ? {
@@ -361,44 +322,6 @@ export default function LeagueFormPage() {
                 : undefined
             }
             onSubmit={(payload) => saveMutation.mutate(payload)}
-          />
-        )}
-
-        {/* docs/specs/111: when the league runs in the chosen season, above the season-scoped tabs (the header pill picks the season). */}
-        {isEdit && SEASON_TABS.includes(activeTab) && seasons.length > 0 && selectedSeasonId && (
-          <LeagueSeasonDatesBlock
-            clubId={clubId}
-            leagueId={leagueId as string}
-            seasonId={selectedSeasonId}
-            seasonLabel={seasonLabel}
-          />
-        )}
-
-        {isEdit && activeTab === 'teams' && (
-          <LeagueEditTeamsTab
-            clubId={clubId}
-            leagueId={leagueId as string}
-            hasSeasons={seasons.length > 0}
-            selectedSeasonId={selectedSeasonId}
-            seasonLabel={seasonLabel}
-            contextLabel={`${league?.name ?? ''} · ${seasonLabel}`}
-            affiliationsForSeason={affiliationsForSeason}
-            teamsById={teamsById}
-            onAddTeam={() => setLinkOpen(true)}
-            onUnlinked={invalidateAffiliations}
-          />
-        )}
-
-        {isEdit && activeTab === 'schedule' && (
-          <LeagueEditScheduleTab
-            leagueId={leagueId as string}
-            hasSeasons={seasons.length > 0}
-            selectedSeasonId={selectedSeasonId}
-            seasonLabel={seasonLabel}
-            matches={matchesQuery.data ?? []}
-            matchesLoading={matchesQuery.isLoading}
-            teamsById={teamsById}
-            onShare={() => setSharePreselected(['SCHEDULE'])}
           />
         )}
 
@@ -433,21 +356,6 @@ export default function LeagueFormPage() {
           <LeagueEditContactsTab leagueId={leagueId as string} contacts={contactsQuery.data ?? []} />
         )}
       </RecordFormScreen>
-
-      {isEdit && (
-        <LinkExistingRecordDialog<Team>
-          open={linkOpen}
-          onClose={() => setLinkOpen(false)}
-          title="Affiliate a team for this season"
-          candidates={linkableTeams}
-          loading={teamsQuery.isFetching}
-          getOptionLabel={(option) => option.name}
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          searchLabel="Search teams"
-          searchPlaceholder="Search by name"
-          onLink={(option) => linkMutation.mutate(option.id)}
-        />
-      )}
 
       {isEdit && league && sharePreselected && (
         <ShareLeagueDialog

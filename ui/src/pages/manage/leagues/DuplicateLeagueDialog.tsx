@@ -109,7 +109,8 @@ export function DuplicateLeagueDialog({ open, clubId, league, seasons, defaultSe
       {
         onSuccess: (response) => {
           const seasonId = seasonIds[0] ?? defaultSeasonId
-          const search = `?tab=teams${seasonId ? `&seasonId=${seasonId}` : ''}`
+          // Edit League has no Teams tab any more (docs/specs/128): the copy opens on Details with its notice.
+          const search = seasonId ? `?seasonId=${seasonId}` : ''
           onClose()
           navigate(`/manage/fixtures/leagues/${response.leagueId}/edit${search}`, {
             state: { notice: duplicateLeagueNotice(response) },

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Box,
@@ -36,6 +36,7 @@ import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
 import { TeamLogo } from './matches/TeamLogo'
 import { logoFor } from './matches/teamLogoHelpers'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { selectTeamPath } from './teamSelection/selectionLinks'
 import {
   badgeFor,
@@ -209,14 +210,16 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const homeShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'home' })
   const awayShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'away' })
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
+  // docs/specs/127: Back and Delete return to where the page was opened from (default: the Matches list).
+  const back = useBackLink(MATCHES_PATH, 'Back to Matches')
+  const afterDelete = useAfterSave(MATCHES_PATH)
   const invalidateMatches = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
   // The same calls and invalidation as the Edit page's Deactivate / Reactivate (MatchFormPage).
   const deactivate = useMutation({ mutationFn: () => deactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
   const reactivate = useMutation({ mutationFn: () => reactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
   const deleteFlow = useDeleteMatchDialog(clubId, () => {
     queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', match.id] })
-    navigate(MATCHES_PATH, { state: { notice: 'Match deleted.' } })
+    afterDelete({ state: { notice: 'Match deleted.' } })
   })
   const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(overlay, teamsById))
 
@@ -258,14 +261,14 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
           >
             <MuiButton
               component={RouterLink}
-              to={MATCHES_PATH}
+              to={back.to ?? MATCHES_PATH}
               variant="text"
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
               sx={{ ml: -1, color: 'text.secondary' }}
             >
-              Back to Matches
+              {back.label}
             </MuiButton>
 
             {/* Scoring and Watch live (only when the match has the link; below the actions on a phone) and the primary Edit. */}

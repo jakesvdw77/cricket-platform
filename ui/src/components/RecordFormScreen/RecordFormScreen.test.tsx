@@ -225,4 +225,20 @@ describe('RecordFormScreen', () => {
 
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
+
+  // docs/specs/127-return-navigation.md
+  it('uses a valid returnTo for the Back label and target, and the default without one', () => {
+    const view = (entry: string) => (
+      <MemoryRouter initialEntries={[entry]}>
+        <RecordFormScreen title="Add Match" backTo="/manage/fixtures/matches" backLabel="Back to Matches" actions={<button type="button">Save</button>}>
+          <div>Field content</div>
+        </RecordFormScreen>
+      </MemoryRouter>
+    )
+    const first = render(view('/manage/fixtures/matches/new?returnTo=%2Fmanage%2Ffixtures%2Fleagues%2Fl-1%2Fschedule%3FseasonId%3Ds-1&returnLabel=TVL%20schedule'))
+    expect(screen.getByRole('link', { name: 'Back to TVL schedule' })).toHaveAttribute('href', '/manage/fixtures/leagues/l-1/schedule?seasonId=s-1')
+    first.unmount()
+    render(view('/manage/fixtures/matches/new'))
+    expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
+  })
 })

@@ -39,7 +39,7 @@ export function AccountShell({
   const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
-  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12) } }
+  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, bgcolor: 'transparent', '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12), backgroundImage: 'none' } }
   return (
     <PageBackdrop>
       <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>

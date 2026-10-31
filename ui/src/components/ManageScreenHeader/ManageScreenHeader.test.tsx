@@ -158,4 +158,38 @@ describe('ManageScreenHeader', () => {
     expect(screen.getByRole('button', { name: 'Season' })).toBeInTheDocument()
     expect(screen.getByTestId('header-subtitle')).toHaveTextContent('Showing: all')
   })
+
+  // docs/specs/127-return-navigation.md
+  describe('returnTo', () => {
+    const ENTRY = '/manage/x?returnTo=%2Fmanage%2Ffixtures%2Fleagues%2Fl-1%2Fschedule%3FseasonId%3Ds-1&returnLabel=TVL%20Division%201%20T20%20schedule'
+
+    it('overrides the page default Back with "Back to {label}" and the origin', () => {
+      render(
+        <MemoryRouter initialEntries={[ENTRY]}>
+          <ManageScreenHeader title="Club Contacts" backTo="/manage" backLabel="Back to Dashboard" />
+        </MemoryRouter>,
+      )
+      const back = screen.getByRole('link', { name: 'Back to TVL Division 1 T20 schedule' })
+      expect(back).toHaveAttribute('href', '/manage/fixtures/leagues/l-1/schedule?seasonId=s-1')
+    })
+
+    it('shows a Back even where the page passes none', () => {
+      render(
+        <MemoryRouter initialEntries={[ENTRY]}>
+          <ManageScreenHeader title="Club Sponsors" />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('link', { name: 'Back to TVL Division 1 T20 schedule' })).toBeInTheDocument()
+    })
+
+    it('ignores an external returnTo and keeps the default Back', () => {
+      render(
+        <MemoryRouter initialEntries={['/manage/x?returnTo=https%3A%2F%2Fevil.example&returnLabel=Evil']}>
+          <ManageScreenHeader title="Club Contacts" backTo="/manage" backLabel="Back to Dashboard" />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('link', { name: 'Back to Dashboard' })).toHaveAttribute('href', '/manage')
+      expect(screen.queryByText(/Evil/)).not.toBeInTheDocument()
+    })
+  })
 })

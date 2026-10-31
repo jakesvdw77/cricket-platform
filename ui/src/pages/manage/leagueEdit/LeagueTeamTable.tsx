@@ -1,10 +1,10 @@
-import { Avatar, Box, Chip, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { Box, Chip, Typography } from '@mui/material'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
-import { avatarSx, badgeSx } from '../../../components/RecordCard'
+import { badgeSx } from '../../../components/RecordCard'
+import { LogoAvatar } from '../../../components/LogoAvatar'
 import { RowActions } from '../../../components/RowActions'
 import type { LeagueTeam } from '../../../api/leagueTeamApi'
 import { initialsFromName } from '../../../utils/initials'
@@ -39,21 +39,15 @@ function LeagueTeamRow({ team, onEdit, onToggleActive, onRemove, togglePending }
   return (
     <Box role="row" data-testid="league-team-row" data-inactive={active ? undefined : 'true'} sx={bodyRowSx(COLUMNS)}>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, ...mutedSx }}>
-        <Avatar
-          src={logoUrl ?? undefined}
+        <LogoAvatar
+          src={logoUrl}
           variant="rounded"
-          sx={{
-            ...avatarSx(32, '0.7rem'),
-            borderRadius: 1,
-            backgroundImage: 'none',
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-            color: 'primary.main',
-            border: 1,
-            borderColor: 'divider',
-          }}
+          size={32}
+          fontSize="0.7rem"
+          sx={{ borderRadius: 1 }}
         >
           {abbreviation || initialsFromName(name)}
-        </Avatar>
+        </LogoAvatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="body2" fontWeight={600} noWrap component="div" data-testid="league-team-name">
             {name}

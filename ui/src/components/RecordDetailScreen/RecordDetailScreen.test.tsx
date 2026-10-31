@@ -344,4 +344,18 @@ describe('DetailFieldGrid', () => {
     expect(screen.getByText('Field one')).toBeInTheDocument()
     expect(screen.getByText('Field two')).toBeInTheDocument()
   })
+
+  // docs/specs/127-return-navigation.md
+  it('uses a valid returnTo for the Back label and target, and the default without one', () => {
+    const view = (entry: string) => (
+      <MemoryRouter initialEntries={[entry]}>
+        <RecordDetailScreen title="Jane Smith" backTo="/manage/players" backLabel="Back to Players" editTo="/manage/players/p-1/edit" sections={[]} />
+      </MemoryRouter>
+    )
+    const first = render(view('/manage/players/p-1?returnTo=%2Fmanage%2Fsections%2Fs-1%2Fteams&returnLabel=Teams'))
+    expect(screen.getByRole('link', { name: 'Back to Teams' })).toHaveAttribute('href', '/manage/sections/s-1/teams')
+    first.unmount()
+    render(view('/manage/players/p-1'))
+    expect(screen.getByRole('link', { name: 'Back to Players' })).toHaveAttribute('href', '/manage/players')
+  })
 })

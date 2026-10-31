@@ -57,7 +57,7 @@ Principle 4 is written for the schedule; for any other import the same rule appl
 - **No automatic or scheduled imports, no sync with external systems** (CricClubs and similar stay deferred, `050`).
 - **No bulk "overwrite" of existing records.** The framework supports a per-record **opt-in update** of named attributes (principle 8), never a blanket replace, and never a delete-and-recreate. Which attributes a type may update is that type's decision.
 - **No general-purpose delete of imported records outside the batch.** The only hard delete this spec introduces is "delete import" through the batch.
-- **No generic spreadsheet editor in the browser.** Fixes are made by excluding rows, choosing resolutions and acknowledging warnings, or by correcting the file and uploading again.
+- **No generic spreadsheet editor in the browser.** A type may declare editable columns (`125-editable-import-rows.md`); fixes are made by editing those values, excluding rows, choosing resolutions and acknowledging warnings, or by correcting the file and uploading again.
 - **No cross-club import** and no platform-level import UI in v1 (`/manage` only; `platform_admin` already passes `canAdministerClub`).
 
 ## User Stories

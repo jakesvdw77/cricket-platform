@@ -261,12 +261,11 @@ describe('LeagueForm', () => {
   // docs/specs/110: the cut-off is a day and month, filled with 31 December when an age limit is first entered.
   describe('age cut-off (docs/specs/110)', () => {
     const HELPER =
-      'Ages are judged on this day in the year the league starts. Leave empty to judge ages on the day the league starts (for example a winter league).'
+      'Ages are judged on the cut-off day in the year the league starts. Leave it empty to judge ages on the day the league starts.'
 
     it('shows the helper text and opens the Add form with 31 December', () => {
       renderLeagueForm({ onSubmit: vi.fn() })
       expect(screen.getByText(HELPER)).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'Age cut-off (day and month)' })).toBeInTheDocument()
       expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('December')
       expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent('31')
     })
@@ -407,6 +406,49 @@ describe('LeagueForm', () => {
       await chooseOption(user, CUTOFF_DAY, 'Not set')
       await user.click(screen.getByRole('button', { name: 'Submit' }))
       expect(onSubmit.mock.calls[1][0]).toMatchObject({ ageCutoffMonth: null, ageCutoffDay: null })
+    })
+  })
+
+  // docs/specs/128: Details and Branding are two views of the one form.
+  describe('visibleSection (docs/specs/128)', () => {
+    it('shows only Details on the details section but keeps Branding mounted and hidden', () => {
+      renderLeagueForm({ onSubmit: vi.fn(), visibleSection: 'details', initialValues: populatedValues })
+      expect(screen.getByRole('heading', { level: 2, name: 'Basic info' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Branding and social' })).not.toBeInTheDocument()
+      expect(screen.getByDisplayValue('https://facebook.com/riverside-league')).toBeInTheDocument()
+    })
+
+    it('shows only Branding on the branding section but keeps Details mounted and hidden', () => {
+      renderLeagueForm({ onSubmit: vi.fn(), visibleSection: 'branding', initialValues: populatedValues })
+      expect(screen.getByRole('heading', { level: 2, name: 'Branding and social' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Basic info' })).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toHaveValue('Existing League')
+    })
+
+    it('keeps edits made on one section when switching and posts everything in one submit', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      const { rerender } = render(
+        <>
+          <LeagueForm onSubmit={onSubmit} visibleSection="details" initialValues={populatedValues} />
+          <button type="submit" form={LEAGUE_FORM_ID}>Submit</button>
+        </>,
+      )
+      await user.clear(screen.getByLabelText('Name'))
+      await user.type(screen.getByLabelText('Name'), 'Renamed League')
+      rerender(
+        <>
+          <LeagueForm onSubmit={onSubmit} visibleSection="branding" initialValues={populatedValues} />
+          <button type="submit" form={LEAGUE_FORM_ID}>Submit</button>
+        </>,
+      )
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Renamed League', logoUrl: '/media/managed/league-logo.png' }))
+    })
+
+    it('renders the age reference node under the age fields', () => {
+      renderLeagueForm({ onSubmit: vi.fn(), ageReference: <p data-testid="ref">Ages judged on 31 December 2026</p> })
+      expect(screen.getByTestId('ref')).toBeInTheDocument()
     })
   })
 })

@@ -26,6 +26,9 @@ export interface SectionTreeSelectProps {
   // Shown as the trigger's display value when value is null and allowClear is true. Defaults to
   // "All sections".
   allLabel?: string
+  // docs/standards/page-anatomy.md: false drops the floating label (the flat filter bar); the field shows its value text only and keeps
+  // `label` as its accessible name. Default true.
+  floatingLabel?: boolean
 }
 
 // A Select-shaped trigger field that opens a real SectionTree (not a flat list) in a Popover —
@@ -43,6 +46,7 @@ export function SectionTreeSelect({
   helperText,
   allowClear = false,
   allLabel = 'All sections',
+  floatingLabel = true,
 }: SectionTreeSelectProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const open = Boolean(anchorEl)
@@ -73,7 +77,9 @@ export function SectionTreeSelect({
   return (
     <>
       <Input
-        label={label}
+        label={floatingLabel ? label : ''}
+        InputLabelProps={floatingLabel ? undefined : { shrink: false }}
+        inputProps={floatingLabel ? undefined : { 'aria-label': label }}
         value={displayValue}
         error={error}
         helperText={helperText}

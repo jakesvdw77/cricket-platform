@@ -42,9 +42,12 @@ export const hubGoldButton = {
 export const hubOutlineButton = {
   color: HUB.gold,
   borderColor: HUB.gold,
+  // Owner rule 2026-10-30: outlined buttons are white-filled app-wide, EXCEPT on this dark console where they stay transparent.
+  bgcolor: 'transparent',
   borderRadius: '4px',
   alignSelf: 'flex-start',
-  '&:hover': { borderColor: HUB.gold, bgcolor: alpha(HUB.gold, 0.12) },
+  '&:hover': { borderColor: HUB.gold, bgcolor: alpha(HUB.gold, 0.12), backgroundImage: 'none' },
+  '&.Mui-disabled': { bgcolor: 'transparent' },
   '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
 } as const
 
@@ -65,7 +68,7 @@ export const darkFieldSx = {
   '& .MuiSelect-icon': { color: HUB.cream },
   '& .MuiCheckbox-root': { color: HUB.muted },
   '& .MuiCheckbox-root.Mui-checked': { color: HUB.gold },
-  '& .MuiButton-outlined': { color: HUB.gold, borderColor: HUB.gold },
+  '& .MuiButton-outlined': { color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', '&:hover': { bgcolor: alpha(HUB.gold, 0.12), backgroundImage: 'none' }, '&.Mui-disabled': { bgcolor: 'transparent' } },
   '& .MuiInputBase-input:focus-visible, & .MuiCheckbox-root.Mui-focusVisible': { outline: 'none' },
 } as const
 

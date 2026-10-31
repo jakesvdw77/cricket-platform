@@ -227,6 +227,7 @@ function renderPage(initialPath: string, clubId?: string) {
 }
 
 const PATH = '/manage/fixtures/matches/match-1'
+const SCHEDULE_ORIGIN = '/manage/fixtures/leagues/league-1/schedule?seasonId=season-1'
 
 async function renderLoaded(match = makeMatch()) {
   getMatch.mockResolvedValueOnce(match)
@@ -255,6 +256,26 @@ describe('MatchDetailPage', () => {
     renderPage(PATH, 'test-club-id')
 
     expect(await screen.findByText("Couldn't load this match")).toBeInTheDocument()
+  })
+
+  // docs/specs/127-return-navigation.md
+  describe('Back', () => {
+    it('goes to the Matches list by default', async () => {
+      await renderLoaded()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
+    })
+
+    it('goes to the origin, named by the returnLabel, when the page was opened with a returnTo', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      renderPage(`${PATH}?returnTo=${encodeURIComponent(SCHEDULE_ORIGIN)}&returnLabel=TVL%20schedule`, 'test-club-id')
+      expect(await screen.findByRole('link', { name: 'Back to TVL schedule' })).toHaveAttribute('href', SCHEDULE_ORIGIN)
+    })
+
+    it('ignores an external returnTo', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      renderPage(`${PATH}?returnTo=https%3A%2F%2Fevil.example&returnLabel=Evil`, 'test-club-id')
+      expect(await screen.findByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
+    })
   })
 
   describe('header rows', () => {
@@ -823,6 +844,22 @@ describe('MatchDetailPage', () => {
 
       await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
       expect(await screen.findByText(/At: \/manage\/fixtures\/matches/)).toHaveTextContent('Notice: Match deleted.')
+    })
+
+    // docs/specs/127-return-navigation.md
+    it('Delete returns to the origin with the notice when the page was opened with a returnTo', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch({ deletable: true }))
+      renderPage(`${PATH}?returnTo=${encodeURIComponent(SCHEDULE_ORIGIN)}&returnLabel=TVL%20schedule`, 'test-club-id')
+      await screen.findByRole('heading', { level: 1 })
+
+      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Delete' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      const at = await screen.findByText(/At: \/manage\/fixtures\/leagues\/league-1\/schedule/)
+      expect(at).toHaveTextContent(`At: ${SCHEDULE_ORIGIN}`)
+      expect(at).toHaveTextContent('Notice: Match deleted.')
     })
 
     it('Delete is disabled with the explanation when something is recorded against the match', async () => {

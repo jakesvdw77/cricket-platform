@@ -1,4 +1,4 @@
-import { createTheme, darken, getContrastRatio } from '@mui/material/styles'
+import { alpha, createTheme, darken, getContrastRatio } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { BRAND, CHROME, FONT_BODY, FONT_DISPLAY, GROUND_GRADIENT } from './brandTokens'
 
@@ -69,6 +69,12 @@ export const baseTheme: Theme = createTheme({
       // readable shade (contained buttons keep the club colour as a fill).
       styleOverrides: {
         textPrimary: ({ theme }) => ({ color: readablePrimary(theme, 'text') }),
+        // Owner rule (2026-10-30): a secondary (outlined) button is a WHITE-filled button, not a transparent one, so it reads the same on
+        // the cream page wash as on a white card. The hover tint is layered as an image so the base stays solid white.
+        outlined: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          '&:hover': { backgroundImage: `linear-gradient(${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.primary.main, 0.08)})`, backgroundColor: theme.palette.background.paper },
+        }),
         outlinedPrimary: ({ theme }) => ({ color: readablePrimary(theme, 'text'), borderColor: readablePrimary(theme, 'edge') }),
       },
     },
