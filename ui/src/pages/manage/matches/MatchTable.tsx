@@ -1,9 +1,9 @@
-import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { Link as RouterLink } from 'react-router-dom'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
+import type { ReactNode } from 'react'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import { badgeSx } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import { useCountdown } from '../../../components/Countdown'
@@ -12,43 +12,47 @@ import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
 import { initialsFromName } from '../../../utils/initials'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { zebraTint } from '../../../utils/zebraTint'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { MatchRowMenu } from './MatchRowMenu'
 import { announcedBadges, badgeFor, matchLeagueValue, pollBadgeFor, selectionRows, sideName } from './matchCardHelpers'
 
 export interface MatchTableProps {
+  clubId: string
   matches: Match[]
   teamsById: Map<string, Team>
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
-  // Where a row opens the match; absent (the squad picker) = the rows are not links.
+  // Where a row opens the match; absent = the rows are not links. The list is carried as the origin (docs/specs/127).
   viewTo?: (match: Match) => string
-  // docs/specs/109-delete-empty-match.md: when given, the table gains a narrow actions column and a match the server marks
-  // `deletable` shows Delete in it. Absent (the other users of the table) = no column, unchanged.
-  onDelete?: (target: { id: string; name: string }) => void
+  // docs/specs/130 and page-anatomy section 3: the page's filter bar. Given, the table renders ONE card: this toolbar, a hairline,
+  // then the header and rows. Omitted, the table is its own flat card.
+  toolbar?: ReactNode
+  // With a toolbar and no rows: this message replaces the table inside the same card, so the toolbar never remounts.
+  empty?: ReactNode
 }
 
 const NOT_ON_FILE = '–'
 
-// Desktop: When, Match, Selection, Announced, Poll, chevron. A phone keeps Match (with the time under the names),
-// Picked and the chevron.
+// Desktop: When, Match, Selection, Announced, Poll, Status, actions. A phone has no Status column (the chips sit under the name); it keeps Match (with the time under the names), Picked and
+// the actions button. No chevron: the whole row is the link.
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 32px',
-  sm: '150px minmax(220px, 2fr) 170px minmax(130px, 1fr) 110px 32px',
+  xs: 'minmax(0, 1fr) 54px 44px',
+  sm: '150px minmax(220px, 2fr) 170px minmax(130px, 1fr) 110px 130px 44px',
 }
-
-// The actions column (spec 109) is one 44 px target wide.
-const columnsFor = (withActions: boolean) =>
-  withActions ? { xs: `${COLUMNS.xs} 44px`, sm: `${COLUMNS.sm} 44px` } : COLUMNS
 
 const gridSx = {
   display: 'grid',
+  gridTemplateColumns: COLUMNS,
   alignItems: 'center',
   columnGap: { xs: 0.75, sm: 1.5 },
   px: 1.5,
 } as const
-const gridFor = (withActions: boolean) => ({ ...gridSx, gridTemplateColumns: columnsFor(withActions) })
+
+// clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
 
 const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
 const phoneOnly = { display: { xs: 'block', sm: 'none' } } as const
@@ -69,19 +73,19 @@ function StatusChip({ badge, height = 22 }: { badge: RecordCardBadge; height?: n
 }
 
 function MatchRow({
+  clubId,
   match,
   teamsById,
   leaguesById,
   seasonsById,
   viewTo,
-  onDelete,
 }: {
+  clubId: string
   match: Match
   teamsById: Map<string, Team>
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
   viewTo?: string
-  onDelete?: MatchTableProps['onDelete']
 }) {
   const home = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
@@ -129,10 +133,10 @@ function MatchRow({
       data-testid="match-row"
       data-tone={soon ? 'warning' : 'neutral'}
       sx={{
-        ...gridFor(Boolean(onDelete)),
+        ...gridSx,
         position: 'relative',
         minHeight: { xs: 60, sm: 56 },
-        '&:nth-of-type(odd)': { bgcolor: zebraTint },
+        '&:nth-of-type(even)': { bgcolor: zebraTint },
         ...(viewTo ? { '&:hover': { bgcolor: hoverTint } } : {}),
         '&:focus-within': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
       }}
@@ -154,8 +158,13 @@ function MatchRow({
             {formatMatchDateTime(match.matchDate)}
             {countdownText ? ` · ${countdownText}` : ''}
           </Typography>
-          {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 20, fontSize: '0.6875rem', alignSelf: 'flex-start' }} />}
-          {resultBadge && <Chip size="small" label={resultBadge.label} data-testid="match-row-result" sx={{ ...badgeSx(resultBadge.tone), height: 20, fontSize: '0.6875rem', alignSelf: 'flex-start' }} />}
+          {/* A phone has no Status column: the chips stay under the name. */}
+          {(inactive || resultBadge) && (
+            <Box data-testid="match-row-phone-status" sx={{ ...phoneOnly, display: { xs: 'flex', sm: 'none' }, flexWrap: 'wrap', gap: 0.5 }}>
+              {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 20, fontSize: '0.6875rem' }} />}
+              {resultBadge && <Chip size="small" label={resultBadge.label} sx={{ ...badgeSx(resultBadge.tone), height: 20, fontSize: '0.6875rem' }} />}
+            </Box>
+          )}
         </Box>
       </Box>
       {/* Cells are placed by DOM order on a desktop (When first); the phone grid hides it. */}
@@ -199,58 +208,39 @@ function MatchRow({
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="match-row-poll">
         <StatusChip badge={poll} />
       </Box>
-      <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
-        <ChevronRightOutlinedIcon fontSize="small" />
+      <Box role="cell" sx={{ ...desktopOnly, display: { xs: 'none', sm: 'flex' }, alignItems: 'center', justifyContent: 'center', gap: 0.5, whiteSpace: 'nowrap' }} {...DESKTOP_ONLY} data-testid="match-row-status">
+        {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 22, fontSize: '0.75rem' }} />}
+        {resultBadge && <Chip size="small" label={resultBadge.label} data-testid="match-row-result" sx={{ ...badgeSx(resultBadge.tone), height: 22, fontSize: '0.75rem' }} />}
+        {!inactive && !resultBadge && (
+          <Typography variant="body2" color="text.secondary">
+            {NOT_ON_FILE}
+          </Typography>
+        )}
       </Box>
-      {onDelete && (
-        <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
-          {match.deletable === true && (
-            <IconButton
-              aria-label={`Delete match ${home} v ${away}`}
-              title="Delete"
-              onClick={(event) => {
-                // Sits above the row's stretched link, so pressing it never opens the match.
-                event.stopPropagation()
-                onDelete({ id: match.id, name: `${home} v ${away}` })
-              }}
-              sx={{ position: 'relative', zIndex: 1, width: 44, height: 44, color: 'error.main' }}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          )}
-        </Box>
-      )}
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: 'primary.main' }}>
+        <MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-row-actions" />
+      </Box>
     </Box>
   )
 }
 
-// docs/specs/089 (C): the list view of the Matches page, built like PlayerTable (docs/specs/088 F): one bordered panel
-// with a header row that sticks to the top of the scrolling page and zebra rows; the whole row opens the match. A
-// phone keeps Match (the time under the names), Picked and the chevron.
-export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewTo, onDelete }: MatchTableProps) {
-  return (
-    <Box
-      role="table"
-      aria-label="Matches"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        boxShadow: 2,
-        // clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
-        overflow: 'clip',
-      }}
-    >
+// docs/specs/089 (C), revamped by docs/specs/130: the list view of the Matches page, built like SeasonTable and LeagueTable: one flat
+// card with a tinted header row that sticks to the top of the scrolling page and zebra rows (the first white, the second tinted);
+// the whole row opens the match and the last cell is the row's kebab. A phone keeps Match (the time under the names), Picked and
+// the kebab.
+export function MatchTable({ clubId, matches, teamsById, leaguesById, seasonsById, viewTo, toolbar, empty }: MatchTableProps) {
+  const location = useLocation()
+  const table = (
+    <Box role="table" aria-label="Matches" sx={toolbar ? undefined : cardSx}>
       <Box
         role="row"
         sx={{
-          ...gridFor(Boolean(onDelete)),
+          ...gridSx,
           position: 'sticky',
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
           fontSize: { xs: '0.6875rem', sm: '0.75rem' },
@@ -268,22 +258,31 @@ export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewT
         </Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Announced</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Poll</Box>
-        <Box role="columnheader" aria-label="Open" />
-        {onDelete && <Box role="columnheader" aria-label="Actions" />}
+        <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'center' }} {...DESKTOP_ONLY}>Status</Box>
+        <Box role="columnheader" aria-label="Actions" />
       </Box>
       <Box role="rowgroup">
         {matches.map((match) => (
           <MatchRow
             key={match.id}
+            clubId={clubId}
             match={match}
             teamsById={teamsById}
             leaguesById={leaguesById}
             seasonsById={seasonsById}
-            viewTo={viewTo ? viewTo(match) : undefined}
-            onDelete={onDelete}
+            viewTo={viewTo ? withReturnTo(viewTo(match), currentOrigin(location), 'Matches') : undefined}
           />
         ))}
       </Box>
     </Box>
   )
+  if (toolbar) {
+    return (
+      <Box data-testid="matches-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {matches.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return table
 }

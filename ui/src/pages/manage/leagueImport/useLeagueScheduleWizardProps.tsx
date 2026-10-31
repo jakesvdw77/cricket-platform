@@ -29,8 +29,8 @@ import { SCOPE_MODE_HELP, SCOPE_MODE_LABELS, TEMPLATE_SCOPE_LABELS, describeSche
 export type ImportConsumerWizardProps = Omit<ImportWizardProps, 'clubId' | 'type' | 'scope' | 'batchId' | 'onBatchChange'>
 
 const COLUMNS: NonNullable<ImportWizardProps['columns']> = [
-  { id: 'date', header: 'Date' },
-  { id: 'time', header: 'Start time' },
+  { id: 'date', header: 'Date', minWidth: 110 },
+  { id: 'time', header: 'Start Time', minWidth: 84 },
   { id: 'home', header: 'Home team' },
   { id: 'away', header: 'Away team' },
   { id: 'venue', header: 'Venue' },

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,15 +18,9 @@ const listMatchSides = vi.fn()
 const listPolls = vi.fn()
 const getMatchSquad = vi.fn()
 const generateTeamSheetPdf = vi.fn()
-const deactivateMatch = vi.fn()
-const reactivateMatch = vi.fn()
-const deleteMatch = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
-  deactivateMatch: (clubId: string, matchId: string) => deactivateMatch(clubId, matchId),
-  reactivateMatch: (clubId: string, matchId: string) => reactivateMatch(clubId, matchId),
-  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
 }))
 
 vi.mock('../../api/teamApi', () => ({
@@ -189,20 +183,11 @@ beforeEach(() => {
   listPolls.mockResolvedValue([])
   getMatchSquad.mockResolvedValue(UNCOVERED)
   generateTeamSheetPdf.mockResolvedValue('blob:team-sheet')
-  deactivateMatch.mockResolvedValue(makeMatch({ active: false }))
-  reactivateMatch.mockResolvedValue(makeMatch())
-  deleteMatch.mockResolvedValue(undefined)
 })
 
 function LocationProbe() {
   const location = useLocation()
-  const notice = (location.state as { notice?: string } | null)?.notice
-  return (
-    <div>
-      At: {location.pathname + location.search}
-      {notice && <span>Notice: {notice}</span>}
-    </div>
-  )
+  return <div>At: {location.pathname + location.search}</div>
 }
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -235,12 +220,19 @@ async function renderLoaded(match = makeMatch()) {
   return screen.findByRole('heading', { level: 1 })
 }
 
-// The Availability button waits for the polls and coverage queries to settle.
-async function availabilityButton() {
-  const button = await screen.findByRole('button', { name: 'Open availability' })
-  await waitFor(() => expect(button).toBeEnabled())
-  return button
+const valueOf = (id: string) => within(screen.getByTestId(id)).getByTestId('page-counter-value')
+const RETURN = 'returnTo=%2Fmanage%2Ffixtures%2Fmatches%2Fmatch-1&returnLabel=1st+XI+v+2nd+XI'
+
+// Opens the one Manage Match menu. Pass the availability item id to also wait for the polls and coverage queries to settle.
+async function openManage(user: ReturnType<typeof userEvent.setup>, settledItemId?: string) {
+  await user.click(await screen.findByRole('button', { name: 'Manage Match' }))
+  const menu = await screen.findByRole('menu', { name: 'Manage Match' })
+  if (settledItemId) {
+    await waitFor(() => expect(within(menu).getByTestId(`manage-item-${settledItemId}`)).not.toHaveAttribute('aria-disabled', 'true'))
+  }
+  return menu
 }
+const itemTitles = (menu: HTMLElement) => within(menu).getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent)
 
 describe('MatchDetailPage', () => {
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {
@@ -279,47 +271,62 @@ describe('MatchDetailPage', () => {
   })
 
   describe('header rows', () => {
-    it('lays out the Back row with the header controls, the title row, the key figures and the team cards in DOM order', async () => {
+    it('lays out Back alone, the title row with the one Manage Match menu, the key figures and the team panels in DOM order', async () => {
       await renderLoaded()
 
       const back = screen.getByRole('link', { name: /back to matches/i })
       const topRow = screen.getByTestId('match-header-top-row')
       const titleRow = screen.getByTestId('match-header-title-row')
-      const actions = screen.getByTestId('match-header-buttons')
+      const actions = screen.getByTestId('match-header-actions')
       const figures = screen.getByTestId('match-key-figures')
       const cards = screen.getByTestId('match-team-cards')
 
       expect(back).toHaveAttribute('href', '/manage/fixtures/matches')
       expect(topRow).toContainElement(back)
-      expect(topRow).toContainElement(actions)
-      expect(titleRow).not.toContainElement(actions)
+      expect(within(topRow).getAllByRole('link')).toHaveLength(1)
+      expect(within(topRow).queryByRole('button')).not.toBeInTheDocument()
+      expect(titleRow).toContainElement(actions)
+      expect(within(actions).getByRole('button', { name: 'Manage Match' })).toBeInTheDocument()
       const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
       expect(follows(topRow, titleRow)).toBe(true)
       expect(follows(titleRow, figures)).toBe(true)
       expect(follows(figures, cards)).toBe(true)
     })
 
-    it('puts the filled primary Edit on the Back row, linking to the edit route', async () => {
-      await renderLoaded()
+    it('has ONE filled Manage Match button and no separate Edit, Capture Result or More button', async () => {
+      await renderLoaded(makeMatch({ matchDate: '2099-06-01T14:30:00Z' }))
 
-      const topRow = screen.getByTestId('match-header-top-row')
-      const edit = within(topRow).getByRole('link', { name: /^edit$/i })
-      expect(edit).toHaveAttribute('href', '/manage/fixtures/matches/match-1/edit')
-      expect(edit.className).toContain('MuiButton-contained')
+      const manage = screen.getByRole('button', { name: 'Manage Match' })
+      expect(manage.className).toContain('MuiButton-contained')
+      expect(screen.getAllByRole('button', { name: /^manage/i })).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /^edit$/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /capture result/i })).not.toBeInTheDocument()
     })
 
     it('has no announced or poll badges in the header', async () => {
       listPolls.mockResolvedValue([makePoll({ open: true })])
       await renderLoaded()
 
-      await screen.findByTestId('match-figure-poll-value')
-      expect(screen.queryByLabelText('Match badges')).not.toBeInTheDocument()
+      await screen.findByTestId('match-figure-poll')
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('Open'))
       expect(within(screen.getByTestId('match-header-title-row')).queryByText(/Announced|Poll open|No poll/)).not.toBeInTheDocument()
+    })
+
+    it('shows the match season as a pill beside the title', async () => {
+      listSeasons.mockResolvedValue([{ id: 'season-1', label: '2026/27' }])
+      await renderLoaded()
+      expect(await screen.findByTestId('match-season-pill')).toHaveTextContent('2026/27')
     })
 
     it('keeps the heading accessible name as the plain "Home vs Away"', async () => {
       await renderLoaded()
       expect(screen.getByRole('heading', { level: 1, name: '1st XI vs 2nd XI' })).toBeInTheDocument()
+    })
+
+    it('keeps the record name capitals (no uppercase transform)', async () => {
+      await renderLoaded()
+      expect(window.getComputedStyle(screen.getByRole('heading', { level: 1 })).textTransform).toBe('none')
     })
   })
 
@@ -361,41 +368,42 @@ describe('MatchDetailPage', () => {
       listPolls.mockReturnValue(new Promise((resolve) => { resolvePolls = resolve }))
       await renderLoaded()
 
-      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
-      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
+      expect(valueOf('match-figure-poll')).toHaveTextContent('–')
+      const menu = await openManage(userEvent.setup())
+      expect(within(menu).getByTestId('manage-item-availability')).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByText('Polls are still loading')).toBeInTheDocument()
 
       resolvePolls([])
-      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None'))
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('None'))
     })
 
     it('shows the poll as Open for an open squad poll', async () => {
       listPolls.mockResolvedValue([makePoll({ open: true })])
       await renderLoaded()
-      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('Open'))
     })
 
     it('shows the poll as Closed for a closed squad poll', async () => {
       listPolls.mockResolvedValue([makePoll({ open: false })])
       await renderLoaded()
-      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Closed'))
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('Closed'))
     })
 
     it('counts a group poll once when it covers both own sides', async () => {
       getMatchSquad.mockResolvedValue(COVERED)
       await renderLoaded()
 
-      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
-      const button = await availabilityButton()
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('Open'))
       const user = userEvent.setup()
-      await user.click(button)
-      // one poll: navigates straight, no menu
-      expect(await screen.findByText('At: /manage/availability/group/round-1')).toBeInTheDocument()
+      await user.click(within(await openManage(user, 'availability')).getByTestId('manage-item-availability'))
+      // one poll: navigates straight, no extra choice
+      expect(await screen.findByText(`At: /manage/availability/group/round-1?${RETURN}`)).toBeInTheDocument()
     })
 
     it('shows the poll as Open for a derby with two polls where either is open', async () => {
       listPolls.mockResolvedValue([makePoll({ id: 'p1', teamId: 'team-1', open: false }), makePoll({ id: 'p2', teamId: 'team-2', open: true })])
       await renderLoaded()
-      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
+      await waitFor(() => expect(valueOf('match-figure-poll')).toHaveTextContent('Open'))
     })
   })
 
@@ -423,8 +431,8 @@ describe('MatchDetailPage', () => {
       await renderLoaded()
 
       await waitFor(() => expect(listPolls).toHaveBeenCalled())
-      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
-      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
+      expect(within(await openManage(userEvent.setup())).getByTestId('manage-item-availability')).toHaveAttribute('aria-disabled', 'true')
+      expect(valueOf('match-figure-poll')).toHaveTextContent('–')
     })
 
     it('treats a failed match-squad coverage query as not ready', async () => {
@@ -432,8 +440,8 @@ describe('MatchDetailPage', () => {
       await renderLoaded()
 
       await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
-      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
-      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
+      expect(within(await openManage(userEvent.setup())).getByTestId('manage-item-availability')).toHaveAttribute('aria-disabled', 'true')
+      expect(valueOf('match-figure-poll')).toHaveTextContent('–')
     })
   })
 
@@ -480,8 +488,8 @@ describe('MatchDetailPage', () => {
 
       expect(await screen.findByText('Premier League')).toBeInTheDocument()
       expect(screen.getByText('League · 2026/27')).toBeInTheDocument()
-      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
-      expect(screen.getByTestId('match-figure-starts-value')).toBeInTheDocument()
+      expect(valueOf('match-figure-venue')).toHaveTextContent('Riverside Oval')
+      expect(valueOf('match-figure-starts')).toBeInTheDocument()
     })
 
     // docs/specs/099-fields-directory.md
@@ -489,9 +497,11 @@ describe('MatchDetailPage', () => {
       await renderLoaded(makeMatch({ playingAreaId: 'field-1', playingAreaName: 'Riverside Oval', playingAreaVerificationStatus: 'UNVERIFIED' }))
 
       const tile = screen.getByTestId('match-figure-venue')
-      expect(tile).toHaveAttribute('href', '/manage/fixtures/fields/field-1')
+      // The one clickable figure; it carries this page as its origin.
+      expect(tile).toHaveAttribute('href', `/manage/fixtures/fields/field-1?${RETURN}`)
+      expect(screen.getByTestId('match-key-figures').querySelectorAll('a')).toHaveLength(1)
       expect(tile).toHaveTextContent('Field · Unverified')
-      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+      expect(valueOf('match-figure-venue')).toHaveTextContent('Riverside Oval')
     })
 
     it('leaves the Venue tile unlinked for a match with only the old venue text', async () => {
@@ -504,14 +514,14 @@ describe('MatchDetailPage', () => {
     it('shows TBC for no venue and Friendly for a match with no league', async () => {
       await renderLoaded(makeMatch({ venue: null }))
 
-      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('TBC')
-      expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('Friendly')
+      expect(valueOf('match-figure-venue')).toHaveTextContent('TBC')
+      expect(valueOf('match-figure-league')).toHaveTextContent('Friendly')
     })
 
     it('shows the poll state in the key figures: None with no poll, Open with an open one', async () => {
       await renderLoaded()
-      expect(await screen.findByText('No poll yet')).toBeInTheDocument()
-      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None')
+      expect(await screen.findByText('No Poll Yet')).toBeInTheDocument()
+      expect(valueOf('match-figure-poll')).toHaveTextContent('None')
     })
 
     it('shows Scoring and Watch live only when set, in a new tab with noopener', async () => {
@@ -541,57 +551,80 @@ describe('MatchDetailPage', () => {
   })
 
   describe('team actions and availability', () => {
-    it('Availability opens the prefilled New poll flow with no poll', async () => {
+    it('Open Availability opens the prefilled New poll flow with no poll', async () => {
       const user = userEvent.setup()
       await renderLoaded()
 
-      await user.click(await availabilityButton())
+      await user.click(within(await openManage(user, 'availability')).getByTestId('manage-item-availability'))
 
       expect(
-        await screen.findByText('At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1'),
+        await screen.findByText(`At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1&${RETURN}`),
       ).toBeInTheDocument()
     })
 
-    it('Availability opens the squad Responses page for one squad poll', async () => {
+    it('Open Availability opens the squad Responses page for one squad poll', async () => {
       const user = userEvent.setup()
       listPolls.mockResolvedValue([makePoll({ id: 'poll-7' })])
       await renderLoaded()
 
-      await user.click(await availabilityButton())
+      await user.click(within(await openManage(user, 'availability')).getByTestId('manage-item-availability'))
 
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-7')).toBeInTheDocument()
+      expect(await screen.findByText(`At: /manage/availability/squad/match-1/poll-7?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('Availability opens a menu for two polls, each option opening its Responses page', async () => {
+    it('Open Availability lists one item per poll for two polls, each opening its Responses page', async () => {
       const user = userEvent.setup()
       listPolls.mockResolvedValue([makePoll({ id: 'p1', teamId: 'team-1' }), makePoll({ id: 'p2', teamId: 'team-2' })])
       await renderLoaded()
 
-      await user.click(await availabilityButton())
-
-      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-        '1st XI · Home poll',
-        '2nd XI · Away poll',
+      const menu = await openManage(user, 'availability-0')
+      expect(itemTitles(menu).filter((title) => title?.startsWith('Open Availability'))).toEqual([
+        'Open Availability: 1st XI · Home poll',
+        'Open Availability: 2nd XI · Away poll',
       ])
-      await user.click(within(menu).getByRole('menuitem', { name: '2nd XI · Away poll' }))
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/p2')).toBeInTheDocument()
+      await user.click(within(menu).getByTestId('manage-item-availability-1'))
+      expect(await screen.findByText(`At: /manage/availability/squad/match-1/p2?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('Select team on each own side card links to that side\'s Select team page', async () => {
+    it('puts Edit Match first and Share Team Sheet last in Manage Match', async () => {
+      const user = userEvent.setup()
+      await renderLoaded()
+
+      const menu = await openManage(user)
+      const titles = itemTitles(menu)
+      expect(titles[0]).toBe('Edit Match')
+      expect(titles[titles.length - 1]).toBe('Share Team Sheet: 2nd XI')
+      expect(within(menu).getByTestId('manage-item-edit-match')).toHaveAttribute('href', `/manage/fixtures/matches/match-1/edit?${RETURN}`)
+    })
+
+    it('has one Select Team item per own side, each linking to that side\'s Select Team page', async () => {
+      const user = userEvent.setup()
+      listMatchSides.mockResolvedValue([makeSide({ id: 'side-away', teamId: 'team-2' })])
+      await renderLoaded()
+
+      await screen.findByTestId('match-team-card-home')
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Share team sheet for 2nd XI' })).toBeInTheDocument())
+      const menu = await openManage(user)
+      await waitFor(() =>
+        expect(within(menu).getByTestId('manage-item-select-team-away')).toHaveAttribute('href', `/manage/team-selection/matches/match-1/sides/side-away?${RETURN}`),
+      )
+      expect(within(menu).getByText('Select Team: 1st XI')).toBeInTheDocument()
+      expect(within(menu).getByTestId('manage-item-select-team-home')).toHaveAttribute('href', `/manage/team-selection/matches/match-1/sides/home?${RETURN}`)
+    })
+
+    it('Select Team inside each own side panel links to that side\'s Select Team page, with the origin', async () => {
       listMatchSides.mockResolvedValue([makeSide({ id: 'side-away', teamId: 'team-2' })])
       await renderLoaded()
 
       const home = await screen.findByTestId('match-team-card-home')
       const away = screen.getByTestId('match-team-card-away')
-      expect(within(home).getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/manage/team-selection/matches/match-1/sides/home')
+      expect(within(home).getByRole('link', { name: 'Select Team' })).toHaveAttribute('href', `/manage/team-selection/matches/match-1/sides/home?${RETURN}`)
       await waitFor(() =>
-        expect(within(away).getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/manage/team-selection/matches/match-1/sides/side-away'),
+        expect(within(away).getByRole('link', { name: 'Select Team' })).toHaveAttribute('href', `/manage/team-selection/matches/match-1/sides/side-away?${RETURN}`),
       )
-      expect(within(screen.getByTestId('match-header-buttons')).queryByRole('link', { name: 'Select team' })).not.toBeInTheDocument()
     })
 
-    it('has no Select team, Share team sheet or Availability button in the header any more', async () => {
+    it('has no Select Team, Share or Availability control in the top row', async () => {
       await renderLoaded()
       const header = screen.getByTestId('match-header-top-row')
       for (const name of [/select team/i, /share/i, /availability/i]) {
@@ -600,46 +633,13 @@ describe('MatchDetailPage', () => {
       }
     })
 
-    it('Open availability on the poll tile opens the prefilled New poll flow with no poll', async () => {
-      const user = userEvent.setup()
+    it('has no lone Open Availability button on the Poll figure', async () => {
       await renderLoaded()
-
-      const button = await availabilityButton()
-      expect(screen.getByTestId('match-figure-poll')).toContainElement(button)
-      await user.click(button)
-
-      expect(
-        await screen.findByText('At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1'),
-      ).toBeInTheDocument()
+      await screen.findByTestId('match-figure-poll')
+      expect(within(screen.getByTestId('match-figure-poll')).queryByRole('button')).not.toBeInTheDocument()
     })
 
-    it('Open availability opens the squad Responses page for one squad poll', async () => {
-      const user = userEvent.setup()
-      listPolls.mockResolvedValue([makePoll({ id: 'poll-7' })])
-      await renderLoaded()
-
-      await user.click(await availabilityButton())
-
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-7')).toBeInTheDocument()
-    })
-
-    it('Open availability opens a menu for two polls, each option opening its Responses page', async () => {
-      const user = userEvent.setup()
-      listPolls.mockResolvedValue([makePoll({ id: 'p1', teamId: 'team-1' }), makePoll({ id: 'p2', teamId: 'team-2' })])
-      await renderLoaded()
-
-      await user.click(await availabilityButton())
-
-      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-        '1st XI · Home poll',
-        '2nd XI · Away poll',
-      ])
-      await user.click(within(menu).getByRole('menuitem', { name: '2nd XI · Away poll' }))
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/p2')).toBeInTheDocument()
-    })
-
-    it('Share team sheet on a card opens the dialog on that side and prints through the shared hook', async () => {
+    it('Share Team Sheet on a panel opens the dialog on that side and prints through the shared hook', async () => {
       const user = userEvent.setup()
       const open = vi.spyOn(window, 'open').mockReturnValue(null)
       listMatchSides.mockResolvedValue([
@@ -659,7 +659,7 @@ describe('MatchDetailPage', () => {
       open.mockRestore()
     })
 
-    it('Share team sheet on the away card is scoped to the away side', async () => {
+    it('Share Team Sheet: 2nd XI in Manage Match is scoped to the away side', async () => {
       const user = userEvent.setup()
       const open = vi.spyOn(window, 'open').mockReturnValue(null)
       listMatchSides.mockResolvedValue([
@@ -667,9 +667,8 @@ describe('MatchDetailPage', () => {
       ])
       await renderLoaded()
 
-      const away = await screen.findByTestId('match-team-card-away')
-      expect(within(screen.getByTestId('match-team-card-home')).getByRole('button', { name: 'Share team sheet for 1st XI' })).toBeInTheDocument()
-      await user.click(within(away).getByRole('button', { name: 'Share team sheet for 2nd XI' }))
+      await screen.findByTestId('match-team-card-away')
+      await user.click(within(await openManage(user)).getByTestId('manage-item-share-team-sheet-away'))
 
       expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
       await user.click(await screen.findByRole('button', { name: 'Print 2nd XI' }))
@@ -679,217 +678,118 @@ describe('MatchDetailPage', () => {
       open.mockRestore()
     })
 
-    it('puts the team actions only on the own side when the opponent is not the club\'s', async () => {
+    it('puts the team actions only on the own side, with plain item names, when the opponent is not the club\'s', async () => {
+      const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside' }))
       renderPage(PATH, 'test-club-id')
 
       const home = await screen.findByTestId('match-team-card-home')
-      expect(within(home).getByRole('link', { name: 'Select team' })).toBeInTheDocument()
+      expect(within(home).getByRole('link', { name: 'Select Team' })).toBeInTheDocument()
       expect(within(home).getByRole('button', { name: /Share team sheet/ })).toBeEnabled()
       expect(screen.queryByTestId('match-team-card-away')).not.toBeInTheDocument()
-      expect(screen.getAllByRole('link', { name: 'Select team' })).toHaveLength(1)
+      const menu = await openManage(user)
+      expect(within(menu).getByText('Select Team')).toBeInTheDocument()
+      expect(within(menu).getByText('Share Team Sheet')).toBeInTheDocument()
     })
 
-    it('disables Open availability with the reason when neither side is a club team, and shows no team actions', async () => {
+    it('disables the team items and Open Availability with the reason when neither side is a club team', async () => {
+      const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(
         makeMatch({ homeTeamId: null, homeTeamName: 'A', awayTeamId: null, awayTeamName: 'B' }),
       )
       renderPage(PATH, 'test-club-id')
       await screen.findByRole('heading', { level: 1 })
 
-      const button = screen.getByRole('button', { name: 'Open availability' })
-      expect(button).toBeDisabled()
-      expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
-      expect(screen.queryByRole('link', { name: 'Select team' })).not.toBeInTheDocument()
+      const menu = await openManage(user)
+      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+        expect(within(menu).getByTestId(`manage-item-${id}`)).toHaveAttribute('aria-disabled', 'true')
+      }
+      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(3)
+      expect(screen.queryByRole('link', { name: /Select Team/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Share team sheet/ })).not.toBeInTheDocument()
     })
   })
 
-  describe('header: Result menu', () => {
+  describe('Manage Match: result actions', () => {
     const PAST = '2020-06-01T14:30:00Z'
     const FUTURE = '2099-06-01T14:30:00Z'
 
-    it('opens a Result menu with Capture result and Import result for a started match with no result', async () => {
+    it('offers Capture Result and Import Result for a started match with no result', async () => {
       const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: PAST }))
 
-      const header = screen.getByTestId('match-header-buttons')
-      expect(screen.queryByRole('link', { name: 'Capture result' })).not.toBeInTheDocument()
-      await user.click(within(header).getByRole('button', { name: /^Result/ }))
-
-      const menu = await screen.findByRole('menu', { name: 'Result actions' })
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Capture result', 'Import result'])
-      await user.click(within(menu).getByRole('menuitem', { name: 'Import result' }))
-      expect(await screen.findByText('At: /manage/results/import?matchId=match-1')).toBeInTheDocument()
+      const menu = await openManage(user)
+      expect(itemTitles(menu)).toEqual(expect.arrayContaining(['Capture Result', 'Import Result']))
+      await user.click(within(menu).getByTestId('manage-item-import-result'))
+      expect(await screen.findByText(`At: /manage/results/import?matchId=match-1&${RETURN}`)).toBeInTheDocument()
     })
 
-    it('Capture result in the menu goes to the capture page', async () => {
+    it('Capture Result goes to the capture page', async () => {
       const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: PAST }))
 
-      await user.click(within(screen.getByTestId('match-header-buttons')).getByRole('button', { name: /^Result/ }))
-      await user.click(await screen.findByRole('menuitem', { name: 'Capture result' }))
-      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
+      await user.click(within(await openManage(user)).getByTestId('manage-item-result'))
+      expect(await screen.findByText(`At: /manage/results/match-1/capture?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('shows Continue result and Import result in the menu for a draft', async () => {
+    it('shows Continue Result and Import Result for a draft', async () => {
       const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: PAST, resultStatus: 'DRAFT' }))
 
-      await user.click(within(screen.getByTestId('match-header-buttons')).getByRole('button', { name: /^Result/ }))
-      const menu = await screen.findByRole('menu', { name: 'Result actions' })
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Continue result', 'Import result'])
+      expect(itemTitles(await openManage(user))).toEqual(expect.arrayContaining(['Continue Result', 'Import Result']))
     })
 
-    it('replaces the menu with a plain View result button once a result is published', async () => {
+    it('shows View Result, and no Import Result, once a result is published', async () => {
+      const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: PAST, resultStatus: 'PUBLISHED' }))
 
-      const header = screen.getByTestId('match-header-buttons')
-      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
-      expect(within(header).getByRole('link', { name: 'View result' })).toHaveAttribute('href', '/manage/results/match-1')
+      const menu = await openManage(user)
+      expect(within(menu).getByTestId('manage-item-result')).toHaveAttribute('href', `/manage/results/match-1?${RETURN}`)
+      expect(within(menu).getByText('View Result')).toBeInTheDocument()
+      expect(within(menu).queryByTestId('manage-item-import-result')).not.toBeInTheDocument()
     })
 
-    it('shows just a plain Capture result button before the match has started (no import yet)', async () => {
+    it('shows Capture Result but no Import Result before the match has started', async () => {
+      const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: FUTURE }))
 
-      const header = screen.getByTestId('match-header-buttons')
-      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
-      expect(within(header).getByRole('link', { name: 'Capture result' })).toHaveAttribute('href', '/manage/results/match-1/capture')
+      const menu = await openManage(user)
+      expect(within(menu).getByText('Capture Result')).toBeInTheDocument()
+      expect(within(menu).queryByTestId('manage-item-import-result')).not.toBeInTheDocument()
     })
 
     it('offers no result action at all for an inactive match without a result', async () => {
+      const user = userEvent.setup()
       await renderLoaded(makeMatch({ matchDate: PAST, active: false }))
 
-      const header = screen.getByTestId('match-header-buttons')
-      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
-      expect(within(header).queryByRole('link', { name: /result/i })).not.toBeInTheDocument()
-      expect(within(header).getByRole('link', { name: 'Edit' })).toBeInTheDocument()
+      const menu = await openManage(user)
+      expect(within(menu).queryByTestId('manage-item-result')).not.toBeInTheDocument()
+      expect(within(menu).queryByTestId('manage-item-import-result')).not.toBeInTheDocument()
+      expect(within(menu).getByTestId('manage-item-edit-match')).toBeInTheDocument()
     })
   })
 
-  describe('header: More menu', () => {
-    const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
-      await user.click(screen.getByRole('button', { name: 'More actions' }))
-      return screen.findByRole('menu', { name: 'More actions' })
-    }
-
-    it('offers Deactivate and Delete for an active match', async () => {
+  // docs/standards/page-anatomy.md 6b and docs/specs/130: Deactivate, Reactivate and Delete are on the edit page (MatchFormPage), not here.
+  describe('Manage Match: record status actions', () => {
+    it('has no Deactivate, Reactivate or Delete item for an active or an inactive match', async () => {
       const user = userEvent.setup()
       await renderLoaded(makeMatch({ deletable: true }))
-
-      const menu = await openMore(user)
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Deactivate', 'Delete'])
+      const menu = await openManage(user)
+      for (const name of [/deactivate/i, /reactivate/i, /delete/i]) {
+        expect(within(menu).queryByRole('menuitem', { name })).not.toBeInTheDocument()
+      }
     })
 
-    it('Deactivate asks for confirmation, then deactivates and refreshes the match', async () => {
-      const user = userEvent.setup()
-      await renderLoaded(makeMatch())
-      getMatch.mockResolvedValue(makeMatch({ active: false }))
-
-      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
-      expect(deactivateMatch).not.toHaveBeenCalled()
-      await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
-
-      await waitFor(() => expect(deactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
-      expect(await screen.findByTestId('match-inactive-badge')).toBeInTheDocument()
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    })
-
-    it('cancelling the Deactivate confirmation changes nothing', async () => {
-      const user = userEvent.setup()
-      await renderLoaded(makeMatch())
-
-      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
-      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-
-      expect(deactivateMatch).not.toHaveBeenCalled()
-    })
-
-    it('shows Reactivate for an inactive match and reactivates after confirmation', async () => {
-      const user = userEvent.setup()
+    it('still shows the Inactive badge for an inactive match', async () => {
       await renderLoaded(makeMatch({ active: false }))
-
-      const menu = await openMore(user)
-      expect(within(menu).queryByRole('menuitem', { name: 'Deactivate' })).not.toBeInTheDocument()
-      await user.click(within(menu).getByRole('menuitem', { name: 'Reactivate' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Reactivate this match?' })
-      await user.click(within(dialog).getByRole('button', { name: 'Reactivate' }))
-
-      await waitFor(() => expect(reactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
-    })
-
-    it('keeps the dialog open with the reason when the call fails', async () => {
-      const user = userEvent.setup()
-      deactivateMatch.mockRejectedValueOnce(new Error('boom'))
-      await renderLoaded(makeMatch())
-
-      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
-      await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
-
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Something went wrong')
-    })
-
-    it('Delete is enabled for a deletable match: confirms, deletes and goes to the Matches list with the notice', async () => {
-      const user = userEvent.setup()
-      await renderLoaded(makeMatch({ deletable: true }))
-
-      const item = within(await openMore(user)).getByRole('menuitem', { name: 'Delete' })
-      expect(item).not.toHaveAttribute('aria-disabled', 'true')
-      await user.click(item)
-      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
-      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
-
-      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
-      expect(await screen.findByText(/At: \/manage\/fixtures\/matches/)).toHaveTextContent('Notice: Match deleted.')
-    })
-
-    // docs/specs/127-return-navigation.md
-    it('Delete returns to the origin with the notice when the page was opened with a returnTo', async () => {
-      const user = userEvent.setup()
-      getMatch.mockResolvedValueOnce(makeMatch({ deletable: true }))
-      renderPage(`${PATH}?returnTo=${encodeURIComponent(SCHEDULE_ORIGIN)}&returnLabel=TVL%20schedule`, 'test-club-id')
-      await screen.findByRole('heading', { level: 1 })
-
-      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Delete' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
-      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
-
-      const at = await screen.findByText(/At: \/manage\/fixtures\/leagues\/league-1\/schedule/)
-      expect(at).toHaveTextContent(`At: ${SCHEDULE_ORIGIN}`)
-      expect(at).toHaveTextContent('Notice: Match deleted.')
-    })
-
-    it('Delete is disabled with the explanation when something is recorded against the match', async () => {
-      const user = userEvent.setup()
-      await renderLoaded(makeMatch({ deletable: false }))
-
-      const item = within(await openMore(user)).getByRole('menuitem', { name: /^Delete/ })
-      expect(item).toHaveAttribute('aria-disabled', 'true')
-      expect(item).not.toHaveClass('Mui-disabled')
-      expect(item).toHaveAttribute('tabindex')
-      const reason = 'A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.'
-      expect(item).toHaveAccessibleDescription(reason)
-      expect(screen.getByText(reason)).toBeVisible()
-      expect(window.getComputedStyle(screen.getByText(reason)).opacity).not.toBe('0.38')
-      fireEvent.click(item)
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(deleteMatch).not.toHaveBeenCalled()
-    })
-
-    it('treats a match with no deletable flag as not deletable', async () => {
-      const user = userEvent.setup()
-      await renderLoaded(makeMatch())
-      expect(within(await openMore(user)).getByRole('menuitem', { name: /^Delete/ })).toHaveAttribute('aria-disabled', 'true')
+      expect(await screen.findByTestId('match-inactive-badge')).toHaveTextContent('Inactive')
     })
   })
 
   describe('removed sections', () => {
     it('has no Details card and no Availability section', async () => {
       await renderLoaded()
-      await availabilityButton()
+      await screen.findByRole('button', { name: 'Manage Match' })
 
       expect(screen.queryByRole('heading', { name: 'Availability' })).not.toBeInTheDocument()
       expect(screen.queryByText(/No availability poll open for/)).not.toBeInTheDocument()
@@ -1014,15 +914,15 @@ describe('MatchDetailPage', () => {
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
-    it('shows "No players selected yet." with a Select team link when nothing is picked', async () => {
+    it('shows "No players selected yet." with a Select Team link when nothing is picked', async () => {
       getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside' }))
       renderPage(PATH, 'test-club-id')
 
       const card = await screen.findByTestId('match-team-card-home')
       expect(await within(card).findByText('No players selected yet.')).toBeInTheDocument()
-      expect(within(card).getByRole('link', { name: 'Select team' })).toHaveAttribute(
+      expect(within(card).getByRole('link', { name: 'Select Team' })).toHaveAttribute(
         'href',
-        '/manage/team-selection/matches/match-1/sides/home',
+        '/manage/team-selection/matches/match-1/sides/home?returnTo=%2Fmanage%2Ffixtures%2Fmatches%2Fmatch-1&returnLabel=1st+XI+v+Riverside',
       )
     })
 

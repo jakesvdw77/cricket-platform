@@ -170,7 +170,7 @@ describe('MatchFormPage', () => {
     await user.click(screen.getByLabelText('Away team'))
     await user.click(await screen.findByRole('option', { name: '2nd XI' }))
     setDateTime('Match date & time', '2026-06-01T14:30')
-    await user.click(screen.getByRole('button', { name: 'Create match' }))
+    await user.click(screen.getByRole('button', { name: 'Create Match' }))
 
     expect(createMatch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Match List Page')).toBeInTheDocument()
@@ -243,7 +243,7 @@ describe('MatchFormPage', () => {
       renderPage('/manage/fixtures/matches/match-1/edit?leagueId=league-1&seasonId=season-2', 'test-club-id')
 
       expect(await screen.findByText('Edit Match')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       // The query string's leagueId=league-1/seasonId=season-2 never leak into the submitted
       // payload — the match's own leagueId (null) and seasonId (season-1) win instead.
@@ -266,7 +266,7 @@ describe('MatchFormPage', () => {
       expect(screen.queryByRole('tab')).not.toBeInTheDocument()
       expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
     })
 
@@ -279,47 +279,36 @@ describe('MatchFormPage', () => {
       expect(screen.queryByRole('button', { name: 'Availability' })).not.toBeInTheDocument()
     })
 
-    it('create mode: renders no Select team link and no tabs', async () => {
+    it('create mode: renders no Select Team link and no tabs', async () => {
       renderPage('/manage/fixtures/matches/new', 'test-club-id')
 
       expect(await screen.findByText('Add Match')).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'Select team' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Select Team' })).not.toBeInTheDocument()
       expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     })
 
-    it('Select team links to the Select team page, home side first', async () => {
+    // docs/specs/130: the loose Select Team button left the title row (it is in Manage Match on the match page).
+    it('edit mode: has no Select Team button or link on the title row', async () => {
       getMatch.mockResolvedValue(makeMatch())
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      expect(screen.getByRole('link', { name: 'Select team' })).toHaveAttribute(
-        'href',
-        '/manage/team-selection/matches/match-1/sides/home',
-      )
+      expect(screen.queryByRole('link', { name: /select team/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /select team/i })).not.toBeInTheDocument()
     })
 
-    it('Select team links to the away side when only the away side is a team', async () => {
-      getMatch.mockResolvedValue(makeMatch({ homeTeamId: null, homeTeamName: 'Them' }))
+    it('edit mode: the footer reads Cancel, Save Changes, Deactivate, Delete (Delete disabled with its reason)', async () => {
+      getMatch.mockResolvedValue(makeMatch({ deletable: false }))
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      expect(screen.getByRole('link', { name: 'Select team' })).toHaveAttribute(
-        'href',
-        '/manage/team-selection/matches/match-1/sides/away',
-      )
-    })
-
-    it('Select team is disabled with the reason when neither side is a team', async () => {
-      getMatch.mockResolvedValue(makeMatch({ homeTeamId: null, homeTeamName: 'A', awayTeamId: null, awayTeamName: 'B' }))
-
-      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-      await screen.findByText('Edit Match')
-      const button = screen.getByRole('button', { name: 'Select team' })
-      expect(button).toBeDisabled()
-      expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
+      const footer = screen.getByRole('button', { name: 'Save Changes' }).parentElement as HTMLElement
+      const labels = Array.from(footer.querySelectorAll('a, button')).map((node) => node.textContent?.trim())
+      expect(labels).toEqual(['Cancel', 'Save Changes', 'Deactivate', 'Delete'])
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Save Changes' }).className).toContain('MuiButton-contained')
     })
 
     it('?tab=availability and ?tab=availability&side=away stay on Details', async () => {
@@ -350,7 +339,7 @@ describe('MatchFormPage', () => {
       expect(screen.getByTestId('field-unverified-alert')).toBeInTheDocument()
       expect(screen.queryByTestId('legacy-venue')).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       expect(updateMatch).toHaveBeenCalledWith('test-club-id', 'match-1', expect.objectContaining({ playingAreaId: 'field-7', venue: 'Away Park' }))
     })
@@ -366,7 +355,7 @@ describe('MatchFormPage', () => {
       expect(screen.getByLabelText('Field (optional)')).toHaveValue('')
       expect(screen.getByTestId('legacy-venue')).toHaveTextContent('Current venue: Riverside Oval')
 
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       expect(updateMatch).toHaveBeenCalledWith('test-club-id', 'match-1', expect.objectContaining({ playingAreaId: null, venue: 'Riverside Oval' }))
     })
@@ -378,7 +367,7 @@ describe('MatchFormPage', () => {
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       expect(await screen.findByTestId('field-rejected-alert')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       expect(updateMatch).not.toHaveBeenCalled()
     })
@@ -430,7 +419,7 @@ describe('MatchFormPage', () => {
       await screen.findByText('Edit Match')
       expect(screen.getByLabelText('Scoring link (optional)')).toHaveValue('https://cricclubs.com/matches/1')
       expect(screen.getByLabelText('Streaming link (optional)')).toHaveValue('https://pitchvision.example/live')
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       await waitFor(() =>
         expect(updateMatch).toHaveBeenCalledWith(
@@ -458,7 +447,7 @@ describe('MatchFormPage', () => {
       await user.click(screen.getByLabelText('Away team'))
       await user.click(await screen.findByRole('option', { name: '2nd XI' }))
       setDateTime('Match date & time', when)
-      await user.click(screen.getByRole('button', { name: 'Create match' }))
+      await user.click(screen.getByRole('button', { name: 'Create Match' }))
     }
 
     it('shows "Back to {label}" and sends Back and Cancel to the origin', async () => {
@@ -514,7 +503,7 @@ describe('MatchFormPage', () => {
       updateMatch.mockResolvedValueOnce(makeMatch())
       renderPage(`/manage/fixtures/matches/match-1/edit?returnTo=${encodeURIComponent(SCHEDULE)}&returnLabel=TVL%20schedule`, 'test-club-id')
       await screen.findByText('Edit Match')
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
       expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
     })
 

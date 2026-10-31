@@ -23,6 +23,9 @@ type Story = StoryObj<typeof InfoCard>
 
 export const Default: Story = {}
 
+// docs/specs/129: the explicit flat look (hairline, no shadow).
+export const Flat: Story = { args: { flat: true } }
+
 export const WithNote: Story = { args: { note: 'More coming soon' } }
 
 export const WithHeaderAction: Story = {

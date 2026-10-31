@@ -56,6 +56,9 @@ export const WithHeaderAction: Story = {
   },
 }
 
+// docs/specs/129: the compact flat card of the Season form.
+export const Compact: Story = { args: { ...Default.args, compact: true } }
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
 // proves the single-column-at-xs / two-column-from-md field grid reflow described in the spec.
 export const MobileViewport: Story = {

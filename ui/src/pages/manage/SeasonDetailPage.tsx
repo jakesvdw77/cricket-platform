@@ -1,25 +1,29 @@
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import HourglassBottomOutlinedIcon from '@mui/icons-material/HourglassBottomOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined'
 import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { DetailFieldGrid, DetailFieldRow } from '../../components/RecordDetailScreen'
+import { compactButtonSx } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { InfoCard } from '../../components/InfoCard'
-import { KeyFigureTile } from '../../components/KeyFigureTile'
+import { ManageMenu } from '../../components/ManageMenu'
+import { PageCounters } from '../../components/PageCounters'
+import type { PageCounterItem } from '../../components/PageCounters'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { SelectionGauge } from '../../components/SelectionGauge'
 import { badgeSx } from '../../components/RecordCard'
 import { getSeasonsSummary, listSeasons, seasonsSummaryKey } from '../../api/seasonApi'
+import { useBackLink } from '../../hooks/useReturnTo'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
+import { pageTitleSx } from '../../theme'
 import {
   formatSeasonDate,
   localToday,
@@ -37,6 +41,8 @@ const STATUS_LABELS = { current: 'Current', upcoming: 'Upcoming', past: 'Past', 
 // equal-height InfoCards), read-only counterpart to SeasonFormPage.tsx. No single-season GET exists, so the season is found
 // in the club's list as before; the Matches figure and "In this season" counts come from the seasons summary.
 export default function SeasonDetailPage() {
+  const location = useLocation()
+  const back = useBackLink(SEASONS_PATH, 'Back to Seasons')
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { seasonId } = useParams<{ seasonId?: string }>()
 
@@ -83,61 +89,89 @@ export default function SeasonDetailPage() {
   const figure = (value: number | undefined) => (summaryReady && value !== undefined ? String(value) : NOT_ON_FILE)
   const isEmpty = summaryReady && summary!.leagueCount === 0 && summary!.teamsEntered === 0 && summary!.matchCount === 0
 
+  // docs/specs/127: every link that leaves the page carries the page as its origin, labelled "{season} season".
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), `${season.label} season`.slice(0, 60))
+  const editPath = leaveTo(`${SEASONS_PATH}/${season.id}/edit`)
+  // Both lists open on their own saved filters; they do not read a season from the address.
+  const leaguesPath = leaveTo('/manage/fixtures/leagues')
+  const matchesPath = leaveTo('/manage/fixtures/matches')
+
+  // docs/specs/129: ONE filled Manage Season menu (no Share: seasons have no share content).
+  const manageMenu = (
+    <ManageMenu
+      label="Manage Season"
+      testId="manage-season"
+      fixedWidth
+      groups={[
+        {
+          id: 'season',
+          heading: 'Season',
+          items: [
+            { id: 'edit-season', title: 'Edit Season', description: 'Label, start and end dates, and status.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
+            { id: 'view-leagues', title: 'View Leagues', description: 'Open the Leagues list.', icon: <EmojiEventsOutlinedIcon fontSize="small" />, to: leaguesPath },
+            { id: 'view-matches', title: 'View Matches', description: 'Open the Matches list.', icon: <EventOutlinedIcon fontSize="small" />, to: matchesPath },
+          ],
+        },
+      ]}
+    />
+  )
+
+  // Four STATIC compact counters (page-anatomy section 2): no icons, no FILTER tag, no pointer.
+  const counters: PageCounterItem[] = [
+    { id: 'starts', testId: 'season-figure-starts', value: formatSeasonDate(season.startDate), label: 'Starts' },
+    { id: 'ends', testId: 'season-figure-ends', value: formatSeasonDate(season.endDate), label: 'Ends' },
+    { id: 'length', testId: 'season-figure-length', value: seasonLength(season), label: 'Length' },
+    { id: 'matches', testId: 'season-figure-matches', value: figure(summary?.matchCount), label: 'Matches' },
+  ]
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+          {/* Top row: only the quiet Back link (page-anatomy section 1). */}
+          <Box data-testid="season-header-top-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
             <MuiButton
               component={RouterLink}
-              to={SEASONS_PATH}
+              to={back.to ?? SEASONS_PATH}
               variant="text"
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
+              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
-              Back to Seasons
-            </MuiButton>
-            <MuiButton
-              component={RouterLink}
-              to={`${SEASONS_PATH}/${season.id}/edit`}
-              variant="contained"
-              startIcon={<EditOutlinedIcon fontSize="small" />}
-            >
-              Edit
+              {back.label}
             </MuiButton>
           </Box>
 
-          <Stack spacing={1} sx={{ minWidth: 0 }}>
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-            >
-              {season.label}
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Season badges">
-              <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} />
-            </Stack>
-          </Stack>
+          {/* Title row: the season label with its one status badge inline, then the one filled Manage Season menu. */}
+          <Box data-testid="season-header-title-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 1.5, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.25, rowGap: 0.5, minWidth: 0, flex: '1 1 auto' }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ ...pageTitleSx, fontSize: { xs: 26, md: 32 }, lineHeight: 1.1, letterSpacing: '0.02em', textTransform: 'none', overflowWrap: 'anywhere' }}
+              >
+                {season.label}
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Season badges" sx={{ flex: 'none' }}>
+                <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} />
+              </Stack>
+            </Box>
+            <Box data-testid="season-header-actions" sx={{ display: 'flex', flex: { xs: '1 1 100%', sm: 'none' }, ml: { sm: 'auto' } }}>
+              {manageMenu}
+            </Box>
+          </Box>
         </Stack>
       </PageHeaderBand>
 
-      <Box
-        data-testid="season-key-figures"
-        sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
-      >
-        <KeyFigureTile testId="season-figure-starts" icon={<EventOutlinedIcon />} value={formatSeasonDate(season.startDate)} label="Starts" textValue />
-        <KeyFigureTile testId="season-figure-ends" icon={<EventAvailableOutlinedIcon />} value={formatSeasonDate(season.endDate)} label="Ends" textValue />
-        <KeyFigureTile testId="season-figure-length" icon={<HourglassBottomOutlinedIcon />} value={seasonLength(season)} label="Length" textValue />
-        <KeyFigureTile testId="season-figure-matches" icon={<SportsCricketOutlinedIcon />} value={figure(summary?.matchCount)} label="Matches" />
+      <Box data-testid="season-key-figures">
+        <PageCounters items={counters} density="compact" />
       </Box>
 
       {progress && (
         <Box
           data-testid="season-progress"
-          sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1, px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 } }}
+          sx={{ bgcolor: 'background.paper', borderRadius: 1, border: 1, borderColor: 'divider', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 } }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <TodayOutlinedIcon fontSize="small" sx={{ color: 'primary.dark' }} />
@@ -157,28 +191,28 @@ export default function SeasonDetailPage() {
         </Box>
       )}
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
-        <InfoCard testId="season-dates-card" title="Dates" icon={<EventOutlinedIcon />}>
+      <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+        <InfoCard flat testId="season-dates-card" title="Dates" icon={<EventOutlinedIcon />}>
           <DetailFieldGrid>
             <DetailFieldRow icon={<LabelOutlinedIcon />} label="Label" value={season.label} />
-            <DetailFieldRow icon={<EventOutlinedIcon />} label="Start date" value={formatSeasonDate(season.startDate)} />
-            <DetailFieldRow icon={<EventAvailableOutlinedIcon />} label="End date" value={formatSeasonDate(season.endDate)} />
+            <DetailFieldRow icon={<EventOutlinedIcon />} label="Start Date" value={formatSeasonDate(season.startDate)} />
+            <DetailFieldRow icon={<EventAvailableOutlinedIcon />} label="End Date" value={formatSeasonDate(season.endDate)} />
             <DetailFieldRow icon={<FlagOutlinedIcon />} label="Status" value={STATUS_LABELS[status]} />
           </DetailFieldGrid>
         </InfoCard>
 
         <InfoCard
+          flat
           testId="season-contents-card"
-          title="In this season"
+          title="In This Season"
           icon={<EmojiEventsOutlinedIcon />}
           actions={
-            // Both pages open on their own saved filters; they do not read a season from the address.
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <MuiButton component={RouterLink} to="/manage/fixtures/leagues" variant="outlined" startIcon={<EmojiEventsOutlinedIcon fontSize="small" />}>
-                View leagues
+              <MuiButton component={RouterLink} to={leaguesPath} variant="outlined" sx={compactButtonSx}>
+                View Leagues
               </MuiButton>
-              <MuiButton component={RouterLink} to="/manage/fixtures/matches" variant="outlined" startIcon={<SportsCricketOutlinedIcon fontSize="small" />}>
-                View matches
+              <MuiButton component={RouterLink} to={matchesPath} variant="outlined" sx={compactButtonSx}>
+                View Matches
               </MuiButton>
             </Stack>
           }
@@ -190,7 +224,7 @@ export default function SeasonDetailPage() {
           ) : (
             <DetailFieldGrid>
               <DetailFieldRow icon={<EmojiEventsOutlinedIcon />} label="Leagues" value={figure(summary?.leagueCount)} />
-              <DetailFieldRow icon={<GroupsOutlinedIcon />} label="Teams entered" value={figure(summary?.teamsEntered)} />
+              <DetailFieldRow icon={<GroupsOutlinedIcon />} label="Teams Entered" value={figure(summary?.teamsEntered)} />
             </DetailFieldGrid>
           )}
         </InfoCard>

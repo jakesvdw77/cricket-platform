@@ -378,7 +378,7 @@ describe('LeagueScheduleView', () => {
       const origin = { to: `${SCHEDULE_PATH}?seasonId=season-1`, label: 'Internal League schedule' }
       expect(returnOf(within(row).getByRole('link', { name: '1st XI vs Riverside Occasionals' }).getAttribute('href'))).toEqual(origin)
       await user.click(within(row).getByRole('button', { name: /^Actions for/ }))
-      for (const item of screen.getAllByRole('menuitem')) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
+      for (const item of screen.getAllByRole('menuitem').filter((entry) => entry.hasAttribute('href'))) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
     })
 
     it('the empty state Add Match carries the schedule as its origin', async () => {

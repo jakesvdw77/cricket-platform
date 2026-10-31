@@ -312,6 +312,77 @@ class LeagueScheduleImportIntegrationTest {
                 .isEqualTo(LocalDate.of(2031, 6, 5));
     }
 
+    @Test
+    void extendLeagueDatesClearsTheErrorOnATypedInRowWhoseTeamsAreNotYetResolved() {
+        leagueSeasonRepository.save(LeagueSeason.builder().leagueId(league.getId()).seasonId(w.season().getId())
+                .startDate(LocalDate.of(2031, 6, 5)).endDate(LocalDate.of(2031, 6, 30)).build());
+        ImportBatchDto blank = importService.startBlank(admin, clubId, TYPE, scope(ImportScopeMode.ALL), ZONE);
+        RowValues added = new RowValues(1001, Map.of("date", SUN1, "time", "08:00", "home", "Villagers 1", "away", "Police 1", "venue", "Brits Oval"));
+        Map<String, Object> extend = Map.of("extendLeagueDates", true);
+
+        // teams not resolved yet: the date error must already be gone, only the team errors remain
+        ImportBatchDto unresolved = save(blank, decisions(null, null, extend, false, null, List.of(added), null));
+        assertThat(unresolved.issues()).extracting("code").doesNotContain("DATE_OUTSIDE_LEAGUE_DATES").contains("TEAM_UNRESOLVED");
+
+        // without the option the error is there
+        ImportBatchDto without = save(unresolved, decisions(null, null, null, false, null, List.of(added), null));
+        assertThat(without.issues()).extracting("code").contains("DATE_OUTSIDE_LEAGUE_DATES");
+
+        // an excluded row does not widen the range
+        ImportBatchDto excluded = save(without, new ImportDecisionsDto(List.of(1001), null, null, null, false, null, extend, null, List.of(added)));
+        assertThat(excluded.plannedChanges()).extracting("entityType").doesNotContain("LEAGUE_SEASON");
+
+        ImportBatchDto c = confirmable(excluded, decisions(ourPolice(), null, extend, false, null, List.of(added), null));
+        assertThat(c.plannedChanges()).extracting("entityType").contains("LEAGUE_SEASON");
+        commit(c);
+        assertThat(leagueSeasonRepository.findByLeagueIdAndSeasonId(league.getId(), w.season().getId()).orElseThrow().getStartDate())
+                .isEqualTo(LocalDate.of(2031, 6, 1));
+    }
+
+    @Test
+    void extendLeagueDatesClearsTheErrorOnAFileRowWhoseTeamsAreNotYetResolved() {
+        leagueSeasonRepository.save(LeagueSeason.builder().leagueId(league.getId()).seasonId(w.season().getId())
+                .startDate(LocalDate.of(2031, 6, 5)).endDate(LocalDate.of(2031, 6, 30)).build());
+        ImportBatchDto p = preview(ImportScopeMode.ALL, row(SUN1, "08:00", "Villagers 1", "Police 1", "Brits Oval"));
+        ImportBatchDto s = save(p, decisions(null, null, Map.of("extendLeagueDates", true), false, null, null, null));
+        assertThat(s.issues()).extracting("code").doesNotContain("DATE_OUTSIDE_LEAGUE_DATES");
+    }
+
+    @Test
+    void extendLeagueDatesWidensTheEndForATypedInRowAfterTheLeagueEndWithUnresolvedTeams() {
+        leagueSeasonRepository.save(LeagueSeason.builder().leagueId(league.getId()).seasonId(w.season().getId())
+                .startDate(LocalDate.of(2031, 6, 5)).endDate(LocalDate.of(2031, 6, 20)).build());
+        ImportBatchDto blank = importService.startBlank(admin, clubId, TYPE, scope(ImportScopeMode.ALL), ZONE);
+        RowValues added = new RowValues(1001, Map.of("date", "2031-06-29", "time", "08:00", "home", "Brits", "away", "Harlequins", "venue", "Laudium"));
+        ImportBatchDto s = save(blank, decisions(null, null, Map.of("extendLeagueDates", true), false, null, List.of(added), null));
+        assertThat(s.issues()).extracting("code").doesNotContain("DATE_OUTSIDE_LEAGUE_DATES");
+    }
+
+    @Test
+    void extendLeagueDatesAppliesInOursOnlyModeToATypedInRowWithOneUnresolvedTeam() {
+        leagueSeasonRepository.save(LeagueSeason.builder().leagueId(league.getId()).seasonId(w.season().getId())
+                .startDate(LocalDate.of(2031, 6, 5)).endDate(LocalDate.of(2031, 6, 20)).build());
+        ImportBatchDto blank = importService.startBlank(admin, clubId, TYPE, scope(ImportScopeMode.OURS_ONLY), ZONE);
+        RowValues added = new RowValues(1001, Map.of("date", "2031-06-29", "time", "08:00", "home", "Villagers 1", "away", "Harlequins", "venue", "Laudium"));
+        ImportDecisionsDto d = decisions(List.of(link("Villagers 1", "OWN_TEAM", w.seniors1().getId())), null, Map.of("extendLeagueDates", true), false, null, List.of(added), null);
+        ImportBatchDto s = save(blank, d);
+        assertThat(s.issues()).extracting("code").doesNotContain("DATE_OUTSIDE_LEAGUE_DATES");
+    }
+
+    @Test
+    void extendLeagueDatesCountsADifferingRowButNotAnIdenticalOne() {
+        leagueSeasonRepository.save(LeagueSeason.builder().leagueId(league.getId()).seasonId(w.season().getId())
+                .startDate(LocalDate.of(2031, 6, 5)).endDate(LocalDate.of(2031, 6, 30)).build());
+        manualMatch(SUN1, "08:00", "POLICE 1");
+        Map<String, Object> extend = Map.of("extendLeagueDates", true);
+        ImportBatchDto identical = save(preview(ImportScopeMode.ALL, row(SUN1, "08:00", "Villagers 1", "Police 1", "Brits Oval")),
+                decisions(ourPolice(), null, extend, false, null, null, null));
+        assertThat(identical.plannedChanges()).extracting("entityType").doesNotContain("LEAGUE_SEASON");
+        ImportBatchDto differs = save(preview(ImportScopeMode.ALL, row(SUN1, "09:30", "Villagers 1", "Police 1", "Brits Oval")),
+                decisions(ourPolice(), null, extend, false, null, null, null));
+        assertThat(differs.issues()).extracting("code").doesNotContain("DATE_OUTSIDE_LEAGUE_DATES");
+    }
+
     // ---- typed-in import (spec 125, migration 059) ----
 
     @Test

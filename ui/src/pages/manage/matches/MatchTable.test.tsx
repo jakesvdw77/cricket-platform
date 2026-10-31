@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,11 +13,13 @@ const teams = makeTeams(makeTeam('team-1', '1st XI'), makeTeam('team-2', '2nd XI
 const leagues = new Map([['league-1', { id: 'league-1', name: 'TVL Division 1' } as League]])
 const seasons = new Map([['season-1', { id: 'season-1', label: '2026/27' } as Season]])
 
-function renderTable(matches: Match[], viewTo?: (match: Match) => string, onDelete?: (target: { id: string; name: string }) => void) {
+function renderTable(matches: Match[], viewTo?: (match: Match) => string, extra: Partial<Parameters<typeof MatchTable>[0]> = {}) {
   return render(
-    <MemoryRouter>
-      <MatchTable matches={matches} teamsById={teams} leaguesById={leagues} seasonsById={seasons} viewTo={viewTo} onDelete={onDelete} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={['/manage/fixtures/matches']}>
+        <MatchTable clubId="club-1" matches={matches} teamsById={teams} leaguesById={leagues} seasonsById={seasons} viewTo={viewTo} {...extra} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -30,7 +33,7 @@ describe('MatchTable', () => {
   it('renders a header row and one row per match, with the teams and the league and season under them', () => {
     renderTable([makeMatch({ id: 'm1', leagueId: 'league-1', matchDate: '2026-10-15T07:15:00' }), makeMatch({ id: 'm2', matchDate: '2026-10-16T07:15:00' })])
     expect(screen.getByRole('table', { name: 'Matches' })).toBeInTheDocument()
-    for (const name of ['When', 'Match', 'Announced', 'Poll']) {
+    for (const name of ['When', 'Match', 'Announced', 'Poll', 'Status', 'Actions']) {
       expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
     }
     expect(screen.getAllByTestId('match-row')).toHaveLength(2)
@@ -96,7 +99,7 @@ describe('MatchTable', () => {
   it('keeps the desktop-only columns marked so a phone can drop them', () => {
     renderTable([makeMatch({ matchDate: '2026-10-15T07:15:00' })])
     const row = screen.getByTestId('match-row')
-    for (const id of ['match-row-when', 'match-row-announced', 'match-row-poll']) {
+    for (const id of ['match-row-when', 'match-row-announced', 'match-row-poll', 'match-row-status']) {
       expect(within(row).getByTestId(id)).toHaveAttribute('data-desktop-only', 'true')
     }
     expect(within(row).getByTestId('match-row-selection')).not.toHaveAttribute('data-desktop-only')
@@ -105,42 +108,63 @@ describe('MatchTable', () => {
 
   it('links the whole row to the match, and renders no link without a viewTo', () => {
     const { unmount } = renderTable([makeMatch({ id: 'm1', matchDate: '2026-10-15T07:15:00' })], (match) => `/manage/fixtures/matches/${match.id}`)
-    expect(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute('href', '/manage/fixtures/matches/m1')
+    expect(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute('href', '/manage/fixtures/matches/m1?returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches')
     unmount()
 
     renderTable([makeMatch({ id: 'm1', matchDate: '2026-10-15T07:15:00' })])
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('marks an inactive match', () => {
+  it('marks an inactive match in its Status cell', () => {
     renderTable([makeMatch({ active: false, matchDate: '2026-10-15T07:15:00' })])
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(within(screen.getByTestId('match-row-status')).getByText('Inactive')).toBeInTheDocument()
   })
 
-  // docs/specs/109-delete-empty-match.md
-  describe('Delete', () => {
-    it('shows Delete only on a deletable row, and hands the match name to the handler', () => {
-      const onDelete = vi.fn()
-      renderTable([makeMatch({ id: 'm1', deletable: true }), makeMatch({ id: 'm2', deletable: false })], undefined, onDelete)
-      const buttons = screen.getAllByRole('button', { name: 'Delete match 1st XI v Riverside Occasionals' })
-      expect(buttons).toHaveLength(1)
-      buttons[0].click()
-      expect(onDelete).toHaveBeenCalledWith({ id: 'm1', name: '1st XI v Riverside Occasionals' })
-    })
+  // Owner request 2026-10-31: the status chip is its own centred, non-wrapping column, so a row is one line plus the league line.
+  it('puts the status chip in its own centred Status column, not under the league line, and keeps it under the name on a phone', () => {
+    renderTable([makeMatch({ matchDate: '2026-10-09T08:00:00', resultStatus: 'PUBLISHED' }), makeMatch({ id: 'plain', matchDate: '2026-10-15T07:15:00' })])
+    const [done, plain] = screen.getAllByTestId('match-row')
+    const status = within(done).getByTestId('match-row-status')
+    expect(status).toHaveTextContent('Completed')
+    expect(status).toHaveAttribute('data-desktop-only', 'true')
+    expect(window.getComputedStyle(status).justifyContent).toBe('center')
+    expect(window.getComputedStyle(status).whiteSpace).toBe('nowrap')
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
+    // Nothing to show: a dash. On a phone the chips stay under the name.
+    expect(within(plain).getByTestId('match-row-status')).toHaveTextContent('–')
+    expect(within(done).getByTestId('match-row-phone-status')).toHaveTextContent('Completed')
+    expect(within(plain).queryByTestId('match-row-phone-status')).not.toBeInTheDocument()
+  })
 
-    it('shows no Delete and no actions column without a handler', () => {
-      renderTable([makeMatch({ deletable: true })])
-      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
-      expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument()
-    })
+  it('is flat, with no chevron, no Delete column and one actions kebab per row that never opens the row', () => {
+    renderTable([makeMatch({ id: 'm1', deletable: true }), makeMatch({ id: 'm2' })], (match) => `/manage/fixtures/matches/${match.id}`)
+    const table = screen.getByRole('table', { name: 'Matches' })
+    expect(window.getComputedStyle(table).boxShadow).toBe('none')
+    expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
+    expect(table.querySelector('[data-testid="ChevronRightOutlinedIcon"]')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Actions for 1st XI v Riverside Occasionals' })).toHaveLength(2)
+    const press = vi.fn()
+    document.addEventListener('click', press)
+    screen.getAllByRole('button', { name: /^Actions for/ })[0].click()
+    document.removeEventListener('click', press)
+    expect(press).not.toHaveBeenCalled()
+  })
 
-    it('does not follow the row link when pressed', () => {
-      renderTable([makeMatch({ id: 'm1', deletable: true })], (match) => `/matches/${match.id}`, vi.fn())
-      const press = vi.fn()
-      document.addEventListener('click', press)
-      screen.getByRole('button', { name: /^Delete match/ }).click()
-      document.removeEventListener('click', press)
-      expect(press).not.toHaveBeenCalled()
-    })
+  it('tints the second row, not the first (zebra parity), under a tinted header', () => {
+    renderTable([makeMatch({ id: 'a' }), makeMatch({ id: 'b' })])
+    const [first, second] = screen.getAllByTestId('match-row')
+    expect(window.getComputedStyle(second).backgroundColor).not.toBe(window.getComputedStyle(first).backgroundColor)
+  })
+
+  it('with a toolbar renders ONE card holding it, and shows the empty message in place of the table', () => {
+    const { unmount } = renderTable([makeMatch({ id: 'a' })], undefined, { toolbar: <div>bar</div> })
+    const card = screen.getByTestId('matches-fused-card')
+    expect(card).toHaveTextContent('bar')
+    expect(card).toContainElement(screen.getByRole('table', { name: 'Matches' }))
+    unmount()
+    renderTable([], undefined, { toolbar: <div>bar</div>, empty: <p>Nothing here</p> })
+    expect(screen.getByText('bar')).toBeInTheDocument()
+    expect(screen.getByText('Nothing here')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 })

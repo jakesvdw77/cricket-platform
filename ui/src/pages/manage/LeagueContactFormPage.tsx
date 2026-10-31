@@ -1,5 +1,6 @@
 import { Stack, Typography } from '@mui/material'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
+import { useAfterSave } from '../../hooks/useReturnTo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueContactForm, LEAGUE_CONTACT_FORM_ID } from '../../components/LeagueContactForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -27,7 +28,7 @@ export default function LeagueContactFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId, contactId } = useParams<{ leagueId: string; contactId?: string }>()
   const isEdit = Boolean(contactId)
-  const navigate = useNavigate()
+  const afterSave = useAfterSave(`/manage/fixtures/leagues/${leagueId}/edit?tab=contacts`)
   const queryClient = useQueryClient()
 
   const {
@@ -50,7 +51,7 @@ export default function LeagueContactFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'] })
-      navigate(`/manage/fixtures/leagues/${leagueId}/edit?tab=contacts`)
+      afterSave()
     },
   })
 

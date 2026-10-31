@@ -40,6 +40,8 @@ export interface DocumentSelectProps extends DocumentUploadCommonProps {
   disabled?: boolean
   // Shown at the right end of the caption row (stacked under it on a phone), for example a quiet secondary action.
   helperAction?: ReactNode
+  // A tighter drop zone (about half the height) for a page that must fit one screen.
+  compact?: boolean
 }
 
 export interface DocumentUploadModeProps extends DocumentUploadCommonProps {
@@ -101,7 +103,7 @@ export function DocumentUpload(props: DocumentUploadProps) {
   return props.mode === 'select' ? <SelectDocument {...props} /> : <UploadDocument {...props} />
 }
 
-function SelectDocument({ label, accept, maxBytes, helperText, helperAction, file, onFileChange, disabled = false }: DocumentSelectProps) {
+function SelectDocument({ label, accept, maxBytes, helperText, helperAction, file, onFileChange, disabled = false, compact = false }: DocumentSelectProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -128,7 +130,7 @@ function SelectDocument({ label, accept, maxBytes, helperText, helperAction, fil
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.5 : 0.75 }}>
       <Box
         onDragOver={(event) => {
           event.preventDefault()
@@ -140,7 +142,8 @@ function SelectDocument({ label, accept, maxBytes, helperText, helperAction, fil
           display: 'flex',
           alignItems: 'center',
           gap: 1.75,
-          p: { xs: 1.5, sm: 2.5 },
+          p: compact ? { xs: 1, sm: 1 } : { xs: 1.5, sm: 2.5 },
+          px: compact ? { xs: 1.5, sm: 2 } : undefined,
           border: 2,
           borderStyle: 'dashed',
           borderColor: error ? 'error.main' : 'primary.main',

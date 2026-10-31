@@ -126,7 +126,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     renderBlock()
     await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
     expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
-    expect(screen.getByText('Season dates for 2026/2027')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Season dates' })).toBeInTheDocument()
   })
 
   it('shows the two buttons at the same compact height, Use First and Last Match as the white secondary', async () => {

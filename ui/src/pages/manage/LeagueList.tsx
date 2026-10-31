@@ -292,7 +292,7 @@ export default function LeagueList() {
             />
           ) : undefined
         }
-        action={<Button size="compact" onClick={() => navigate(addLeaguePath)}>Add League</Button>}
+        action={<Button size="compact" onClick={() => navigate(addLeaguePath)} sx={{ flex: 'none' }}>Add League</Button>}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}

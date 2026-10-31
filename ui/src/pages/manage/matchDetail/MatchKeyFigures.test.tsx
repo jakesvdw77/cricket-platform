@@ -1,11 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchKeyFigures } from './MatchKeyFigures'
 import type { MatchPoll } from '../../../api/matchApi'
 
 const NOW = new Date('2026-10-09T12:00:00')
+const valueOf = (id: string) => within(screen.getByTestId(id)).getByTestId('page-counter-value')
 const base = {
   venue: 'Riverside Oval',
   leagueName: 'TVL Division 1 T20',
@@ -15,6 +15,12 @@ const base = {
   pollClosesAt: null as string | null,
 }
 const squadPoll = (open: boolean): MatchPoll => ({ type: 'SQUAD', teamId: 't1', pollId: 'p1', roundId: null, open })
+const renderFigures = (props: Partial<Parameters<typeof MatchKeyFigures>[0]> & { matchDate: string }) =>
+  render(
+    <MemoryRouter>
+      <MatchKeyFigures {...base} {...props} />
+    </MemoryRouter>,
+  )
 
 describe('MatchKeyFigures', () => {
   beforeEach(() => {
@@ -23,119 +29,92 @@ describe('MatchKeyFigures', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it('shows the venue, league with season, and the start as neutral when it is days away', () => {
-    render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
-    expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
-    expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('TVL Division 1 T20')
+  it('shows the venue, league with season and the countdown as four static compact counters with no button', () => {
+    renderFigures({ matchDate: '2026-10-15T07:15:00' })
+    expect(valueOf('match-figure-venue')).toHaveTextContent('Riverside Oval')
+    expect(valueOf('match-figure-league')).toHaveTextContent('TVL Division 1 T20')
     expect(screen.getByText('League · 2026/2027')).toBeInTheDocument()
-    expect(screen.getByTestId('match-figure-starts')).toHaveAttribute('data-tone', 'neutral')
     expect(screen.getByText(/in 5 days/)).toBeInTheDocument()
+    expect(screen.getByTestId('match-key-figures').querySelectorAll('button')).toHaveLength(0)
+    expect(screen.getByTestId('match-key-figures').querySelectorAll('a')).toHaveLength(0)
+    expect(screen.queryByText('filter')).not.toBeInTheDocument()
   })
 
-  it('turns the Starts tile amber within 24 hours', () => {
-    render(<MatchKeyFigures {...base} matchDate="2026-10-09T18:00:00" />)
-    expect(screen.getByTestId('match-figure-starts')).toHaveAttribute('data-tone', 'warning')
+  it('turns the Starts counter amber within 24 hours', () => {
+    const { unmount } = renderFigures({ matchDate: '2026-10-15T07:15:00' })
+    const calm = getComputedStyle(valueOf('match-figure-starts')).color
+    unmount()
+    renderFigures({ matchDate: '2026-10-09T18:00:00' })
+    expect(getComputedStyle(valueOf('match-figure-starts')).color).not.toBe(calm)
   })
 
-  it('says Played once the match has started, with no countdown', () => {
-    render(<MatchKeyFigures {...base} matchDate="2026-10-09T08:00:00" resultStatus="PUBLISHED" />)
+  it('says Played once the result is published, and Awaiting Result when it has started without one, with no countdown', () => {
+    const { unmount } = renderFigures({ matchDate: '2026-10-09T08:00:00', resultStatus: 'PUBLISHED' })
     expect(screen.getByText(/^Played/)).toBeInTheDocument()
-    expect(screen.getByTestId('match-figure-starts')).toHaveAttribute('data-tone', 'neutral')
+    unmount()
+    renderFigures({ matchDate: '2026-10-09T08:00:00' })
+    expect(screen.getByText(/^Awaiting Result/)).toBeInTheDocument()
   })
 
   it('shows TBC for no venue and Friendly for no league', () => {
-    render(<MatchKeyFigures {...base} venue={null} leagueName={null} matchDate="2026-10-15T07:15:00" />)
-    expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('TBC')
-    expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('Friendly')
+    renderFigures({ venue: null, leagueName: null, matchDate: '2026-10-15T07:15:00' })
+    expect(valueOf('match-figure-venue')).toHaveTextContent('TBC')
+    expect(valueOf('match-figure-league')).toHaveTextContent('Friendly')
   })
 
-  // docs/specs/099-fields-directory.md: with a field the tile is the Field tile - a link, with the verification flag.
-  describe('Field tile', () => {
-    const renderWithField = (status: 'VERIFIED' | 'UNVERIFIED' | 'REJECTED' | null) =>
-      render(
-        <MemoryRouter>
-          <MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" playingAreaId="field-1" playingAreaVerificationStatus={status} />
-        </MemoryRouter>,
-      )
+  // docs/specs/099-fields-directory.md and 130: with a field the Venue counter is the one clickable card.
+  describe('Field counter', () => {
+    const renderWithField = (status: 'VERIFIED' | 'UNVERIFIED' | 'REJECTED' | null, fieldTo?: string) =>
+      renderFigures({ matchDate: '2026-10-15T07:15:00', playingAreaId: 'field-1', playingAreaVerificationStatus: status, fieldTo })
 
-    it('links to the field page and is captioned Field for a verified field, with no warning tone', () => {
+    it('links to the field page and is captioned Field for a verified field', () => {
       renderWithField('VERIFIED')
-      const tile = screen.getByTestId('match-figure-venue')
-      expect(tile).toHaveAttribute('href', '/manage/fixtures/fields/field-1')
-      expect(tile).toHaveAttribute('data-tone', 'neutral')
+      expect(screen.getByTestId('match-figure-venue')).toHaveAttribute('href', '/manage/fixtures/fields/field-1')
       expect(screen.getByText('Field')).toBeInTheDocument()
-      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+      expect(valueOf('match-figure-venue')).toHaveTextContent('Riverside Oval')
     })
 
-    it('flags an unverified field in the caption and turns amber', () => {
-      renderWithField('UNVERIFIED')
+    it('carries the page as origin when given the link', () => {
+      renderWithField('VERIFIED', '/manage/fixtures/fields/field-1?returnTo=%2Fmanage%2Ffixtures%2Fmatches%2Fm1')
+      expect(screen.getByTestId('match-figure-venue')).toHaveAttribute('href', expect.stringContaining('returnTo='))
+    })
+
+    it('flags an unverified or rejected field in the caption', () => {
+      const { unmount } = renderWithField('UNVERIFIED')
       expect(screen.getByText('Field · Unverified')).toBeInTheDocument()
-      expect(screen.getByTestId('match-figure-venue')).toHaveAttribute('data-tone', 'warning')
-    })
-
-    it('flags a rejected field', () => {
+      unmount()
       renderWithField('REJECTED')
       expect(screen.getByText('Field · Rejected')).toBeInTheDocument()
     })
 
-    it('stays a plain Venue tile, not a link, when the match has no field', () => {
-      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
+    it('stays a plain static Venue card when the match has no field', () => {
+      renderFigures({ matchDate: '2026-10-15T07:15:00' })
       expect(screen.getByText('Venue')).toBeInTheDocument()
       expect(screen.getByTestId('match-figure-venue')).not.toHaveAttribute('href')
     })
   })
 
   it('shows the poll as None, Open (with its close time) and Closed', () => {
-    const { rerender } = render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
-    expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None')
-    expect(screen.getByText('No poll yet')).toBeInTheDocument()
+    const { unmount } = renderFigures({ matchDate: '2026-10-15T07:15:00' })
+    expect(valueOf('match-figure-poll')).toHaveTextContent('None')
+    expect(screen.getByText('No Poll Yet')).toBeInTheDocument()
+    unmount()
 
-    rerender(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" polls={[squadPoll(true)]} pollClosesAt="2026-10-14T18:00:00" />)
-    expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open')
+    const open = renderFigures({ matchDate: '2026-10-15T07:15:00', polls: [squadPoll(true)], pollClosesAt: '2026-10-14T18:00:00' })
+    expect(valueOf('match-figure-poll')).toHaveTextContent('Open')
     expect(screen.getByText(/^Closes /)).toBeInTheDocument()
+    open.unmount()
 
-    rerender(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" polls={[squadPoll(true)]} />)
-    expect(screen.getByText('1 poll')).toBeInTheDocument()
+    const noClose = renderFigures({ matchDate: '2026-10-15T07:15:00', polls: [squadPoll(true)] })
+    expect(screen.getByText('1 Poll')).toBeInTheDocument()
+    noClose.unmount()
 
-    rerender(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" polls={[squadPoll(false)]} />)
-    expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Closed')
+    renderFigures({ matchDate: '2026-10-15T07:15:00', polls: [squadPoll(false)] })
+    expect(valueOf('match-figure-poll')).toHaveTextContent('Closed')
   })
 
   it('shows a dash for the poll until the polls have loaded', () => {
-    render(<MatchKeyFigures {...base} pollsReady={false} matchDate="2026-10-15T07:15:00" />)
-    expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
-  })
-
-  // docs/specs/089 (Match page actions, 2026-10-16): Open availability lives on the poll tile.
-  describe('Open availability', () => {
-    it('is a button inside the poll tile that calls the handler', async () => {
-      vi.useRealTimers()
-      const onOpenAvailability = vi.fn()
-      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={onOpenAvailability} />)
-
-      const button = within(screen.getByTestId('match-figure-poll')).getByRole('button', { name: 'Open availability' })
-      await userEvent.setup().click(button)
-      expect(onOpenAvailability).toHaveBeenCalledTimes(1)
-    })
-
-    it('is absent without a handler, and disabled with the reason as a tooltip and visible caption when told so', () => {
-      const { unmount } = render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
-      expect(screen.queryByRole('button', { name: 'Open availability' })).not.toBeInTheDocument()
-      unmount()
-
-      render(
-        <MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={vi.fn()} availabilityDisabled availabilityDisabledReason="No team" />,
-      )
-      const button = screen.getByRole('button', { name: 'Open availability' })
-      expect(button).toBeDisabled()
-      expect(button.closest('span[title]')).toHaveAttribute('title', 'No team')
-      expect(screen.getByText('No team')).toBeVisible()
-      expect(button).toHaveAccessibleDescription('No team')
-    })
-
-    it('is on the poll tile only', () => {
-      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={vi.fn()} />)
-      expect(screen.getAllByRole('button')).toHaveLength(1)
-    })
+    renderFigures({ pollsReady: false, matchDate: '2026-10-15T07:15:00' })
+    expect(valueOf('match-figure-poll')).toHaveTextContent('–')
   })
 })

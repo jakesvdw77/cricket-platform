@@ -35,10 +35,10 @@ export function LeagueRowMenu({ league, seasonId, onShare, onDuplicate, testId =
   const importReason = importScheduleDisabledReason({ hasSeason: Boolean(seasonId), leagueActive: league.active })
   const items: ManageMenuItem[] = [
     { id: 'open', title: 'Open League', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/schedule${search}`) },
+    { id: 'edit', title: 'Edit League Details', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit${search}`) },
     { id: 'open-schedule', title: 'Open Schedule', icon: <EventOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/schedule${search}`) },
     { id: 'open-teams', title: 'Open Teams', icon: <GroupsOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/teams${search}`) },
     { id: 'open-conditions', title: 'Open Playing Conditions', icon: <DescriptionOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/conditions${search}`) },
-    { id: 'edit', title: 'Edit League Details', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit${search}`) },
     {
       id: 'add-match',
       title: 'Add Match',

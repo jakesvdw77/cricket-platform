@@ -38,4 +38,9 @@ export const dynamicCardGridSx = {
   gridTemplateColumns: DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS,
   alignItems: 'stretch',
   '& > *': { maxWidth: DYNAMIC_CARD_MAX_WIDTH, width: '100%', justifySelf: 'start' },
+  // With only a few cards the grid itself is no wider than that many capped cards, so the tracks never outgrow the cap and no gap opens
+  // between a card and the dashed Add card (1 child: the Add card alone; 2: one card and Add; and so on).
+  '&:has(> :last-child:nth-child(1))': { maxWidth: DYNAMIC_CARD_MAX_WIDTH },
+  '&:has(> :last-child:nth-child(2))': { maxWidth: 2 * DYNAMIC_CARD_MAX_WIDTH + 16 },
+  '&:has(> :last-child:nth-child(3))': { maxWidth: 3 * DYNAMIC_CARD_MAX_WIDTH + 32 },
 } as const

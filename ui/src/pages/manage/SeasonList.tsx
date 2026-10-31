@@ -1,21 +1,26 @@
 import { useMemo, useState } from 'react'
-import { Box, Link, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Box, Link, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine, SortMenu } from '../../components/ContentControlsLine'
+import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
+import { AddCard } from '../../components/AddCard'
+import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../components/ToolbarCard'
 import { PageCounters } from '../../components/PageCounters'
 import type { PageCounterItem } from '../../components/PageCounters'
 import { getSeasonsSummary, listSeasons, seasonsSummaryKey } from '../../api/seasonApi'
 import type { Season, SeasonSummary } from '../../api/seasonApi'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
-import { cardGridSx } from '../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { matchesSeasonFocus, seasonCounters } from '../../utils/seasonCounters'
 import type { SeasonFocus } from '../../utils/seasonCounters'
 import { localToday } from '../../utils/seasonStatus'
@@ -25,8 +30,8 @@ import { SeasonTable } from './seasons/SeasonTable'
 type SeasonSort = 'newest' | 'oldest' | 'name'
 
 const SORT_OPTIONS: (SortMenuOption & { value: SeasonSort })[] = [
-  { value: 'newest', label: 'Newest first', linkLabel: 'newest first' },
-  { value: 'oldest', label: 'Oldest first', linkLabel: 'oldest first' },
+  { value: 'newest', label: 'Newest First', linkLabel: 'newest first' },
+  { value: 'oldest', label: 'Oldest First', linkLabel: 'oldest first' },
   { value: 'name', label: 'Name, A to Z', linkLabel: 'A to Z' },
 ]
 
@@ -63,6 +68,11 @@ function compareSeasons(sort: SeasonSort): (a: Season, b: Season) => number {
 export default function SeasonList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  // docs/specs/127: Add Season returns to this list.
+  const addSeasonPath = withReturnTo('/manage/fixtures/seasons/new', currentOrigin(location), 'Seasons')
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SeasonSort>('newest')
   const [focus, setFocus] = useState<SeasonFocus | null>(null)
@@ -134,7 +144,6 @@ export default function SeasonList() {
     )
   }
 
-  const addSeason = () => navigate('/manage/fixtures/seasons/new')
   const hasSeasons = seasons.length > 0
   const isSearching = search.trim().length > 0
   const toggleFocus = (next: SeasonFocus) => setFocus((current) => (current === next ? null : next))
@@ -157,44 +166,48 @@ export default function SeasonList() {
     filterCounter('inactive', counters.inactive, counters.inactive, { tone: counters.inactive > 0 ? 'warning' : 'default' }),
   ]
 
-  const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show inactive" />
-  const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={(value) => setSort(value as SeasonSort)} />
-
   const emptyState = (() => {
+    if (visibleSeasons.length > 0) {
+      return null
+    }
+    const icon = <BrandIcon name="nav/season-cricket" size={48} />
     if (!hasSeasons) {
-      return (
-        <EmptyState
-          title="No seasons yet"
-          description="Create your club's first season to get started."
-          action={<Button size="compact" onClick={addSeason}>Add Season</Button>}
-        />
-      )
+      return <EmptyState icon={icon} title="No seasons yet" description="Create your club's first season to get started." />
     }
     if (isSearching) {
-      return <EmptyState title="No matching seasons" description={`No seasons match "${search.trim()}". Try a different search.`} />
+      return <EmptyState icon={icon} title="No matching seasons" description={`No seasons match "${search.trim()}". Try a different search.`} />
     }
     if (focus === 'inactive') {
-      return <EmptyState title="No inactive seasons" description="Every season is in use." />
+      return <EmptyState icon={icon} title="No inactive seasons" description="Every season is in use." />
     }
     if (focus) {
-      return <EmptyState title="No matching seasons" description={`No seasons are ${FOCUS_LABELS[focus].toLowerCase()}.`} />
+      return <EmptyState icon={icon} title="No matching seasons" description={`No seasons are ${FOCUS_LABELS[focus].toLowerCase()}.`} />
     }
-    return <EmptyState title="No matching seasons" description="Every season here is inactive. Turn on Show inactive to see them." />
+    return <EmptyState icon={icon} title="No matching seasons" description="Every season here is inactive. Turn on Show Inactive to see them." />
   })()
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={addSeason}>Add Season</Button>} />
+  const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={(value) => setSort(value as SeasonSort)} />
 
-      <PageCounters density="compact" items={counterItems} />
-
-      <FilterBar
-        density="compact"
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by label"
-        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
-        viewControls={
+  const bar = (
+    <FilterBar
+      density="compact"
+      bare
+      inCard
+      viewControlsInline
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by label"
+      extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
+      // Desktop order (page-anatomy section 3): switches, then Sort, then the Cards | List toggle last. A phone sheet: toggle first.
+      secondaryControls={(placement) =>
+        placement === 'row' ? (
+          <ToolbarToggleChip pressed={showInactive} onChange={setShowInactive} label="Show Inactive" />
+        ) : (
+          <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show Inactive" />
+        )
+      }
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
@@ -209,35 +222,48 @@ export default function SeasonList() {
                 </Link>
               </Box>
             )}
-            {inactiveToggle}
             {sortLink}
           </>
-        }
-        onClearAll={() => setFocus(null)}
-      />
-
-      <ContentControlsLine
-        scope={`Showing ${visibleSeasons.length} ${visibleSeasons.length === 1 ? 'season' : 'seasons'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={
+        ) : (
           <>
-            <ListViewToggle value={view} onChange={setView} />
-            {inactiveToggle}
+            <ToolbarSortButton
+              value={sort}
+              onChange={(value) => setSort(value as SeasonSort)}
+              options={SORT_OPTIONS.map(({ value, label }) => ({ value, label }))}
+            />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
           </>
-        }
-      />
+        )
+      }
+      onClearAll={() => setFocus(null)}
+    />
+  )
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
 
-      {visibleSeasons.length > 0 && view === 'list' && <SeasonTable seasons={visibleSeasons} summaries={summaries} today={today} />}
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={() => navigate(addSeasonPath)} sx={{ flex: 'none' }}>Add Season</Button>} />
 
-      {visibleSeasons.length > 0 && view === 'cards' && (
-        <Box sx={cardGridSx}>
-          {visibleSeasons.map((season) => (
-            <SeasonCard key={season.id} season={season} summary={summaries?.[season.id] ?? null} today={today} />
-          ))}
-        </Box>
-      )}
+      <PageCounters density="compact" items={counterItems} />
 
-      {visibleSeasons.length === 0 && emptyState}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+        {!fused && <ToolbarCard>{bar}</ToolbarCard>}
+
+        {view === 'list' && <SeasonTable seasons={visibleSeasons} summaries={summaries} today={today} toolbar={bar} empty={emptyState} />}
+
+        {view === 'cards' ? emptyState : null}
+
+        {view === 'cards' && (
+          <Box sx={dynamicCardGridSx}>
+            {visibleSeasons.map((season) => (
+              <SeasonCard key={season.id} season={season} summary={summaries?.[season.id] ?? null} today={today} />
+            ))}
+            {/* The grid ends with a dashed Add card (same route as the page's Add Season button); with no cards it is the only one. */}
+            <AddCard label="Add Season" to={addSeasonPath} testId="add-season-card" />
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }

@@ -23,8 +23,8 @@ export function ExtendLeagueDatesControl({ decisions, issues, setOptions, disabl
   return (
     <Tooltip title="Widen this league's start and end dates so these matches fit. You confirm the change on the next step.">
       <span>
-        <Button size="compact" variant="ghost" disabled={disabled} onClick={() => setOptions({ [EXTEND_LEAGUE_DATES_OPTION]: true })} sx={touch}>
-          Extend league dates
+        <Button size="compact" variant="secondary" disabled={disabled} onClick={() => setOptions({ [EXTEND_LEAGUE_DATES_OPTION]: true })} sx={touch}>
+          Extend League Dates
         </Button>
       </span>
     </Tooltip>

@@ -1,38 +1,51 @@
 import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { avatarSx, badgeSx } from '../../../components/RecordCard'
-import { RowActions } from '../../../components/RowActions'
+import { ManageMenu } from '../../../components/ManageMenu'
 import type { LeagueContact } from '../../../api/leagueContactApi'
 import { LeagueEditPanel } from './LeagueEditPanel'
 import { initialsFromName } from '../../../utils/initials'
+import { withReturnTo } from '../../../utils/returnTo'
 import { badgeFor, fullName } from '../../../utils/leagueContact'
 import { DESKTOP_ONLY, bodyRowSx, desktopOnly, headerRowSx } from './leagueEditRowStyles'
 
 export interface LeagueContactRowsProps {
   leagueId: string
   contacts: LeagueContact[]
+  // The season chosen on the edit page; kept in the origin so Back returns to the Contacts tab on the same season.
+  seasonId?: string
 }
+
+// docs/specs/127: the Contacts tab of this league (tab and season) is the origin of every link that leaves it.
+function contactsOrigin(leagueId: string, seasonId?: string): string {
+  const params = new URLSearchParams({ tab: 'contacts' })
+  if (seasonId) params.set('seasonId', seasonId)
+  return `/manage/fixtures/leagues/${leagueId}/edit?${params.toString()}`
+}
+
+const ORIGIN_LABEL = 'League contacts'
 
 const NOT_ON_FILE = '-'
 
 // Desktop: Name (avatar, name, badge), Role, Email, Phone, row actions. A phone keeps the name with the role under it, a
-// chevron that opens the contact and the three-dot menu.
+// three-dot menu (no chevron: the whole row is the link).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 20px 44px',
-  sm: 'minmax(200px, 1.6fr) minmax(120px, 1fr) minmax(180px, 1.5fr) minmax(130px, 1fr) 80px',
+  xs: 'minmax(0, 1fr) 44px',
+  sm: 'minmax(200px, 1.6fr) minmax(120px, 1fr) minmax(180px, 1.5fr) minmax(130px, 1fr) 44px',
 }
 
-function ContactRow({ leagueId, contact }: { leagueId: string; contact: LeagueContact }) {
+function ContactRow({ leagueId, contact, seasonId }: { leagueId: string; contact: LeagueContact; seasonId?: string }) {
   const name = fullName(contact)
   const badge = badgeFor(contact)
-  const viewTo = `/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}`
-  const editTo = `${viewTo}/edit`
+  const origin = contactsOrigin(leagueId, seasonId)
+  const baseTo = `/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}`
+  const viewTo = withReturnTo(baseTo, origin, ORIGIN_LABEL)
+  const editTo = withReturnTo(`${baseTo}/edit`, origin, ORIGIN_LABEL)
 
   return (
     <Box
@@ -74,15 +87,22 @@ function ContactRow({ leagueId, contact }: { leagueId: string; contact: LeagueCo
       <Typography role="cell" variant="body2" noWrap sx={desktopOnly} {...DESKTOP_ONLY} data-testid="league-contact-phone">
         {contact.contact.phone || NOT_ON_FILE}
       </Typography>
-      <Box role="cell" aria-hidden sx={{ display: { xs: 'flex', sm: 'none' }, justifyContent: 'center', color: 'primary.main' }}>
-        <ChevronRightOutlinedIcon fontSize="small" />
-      </Box>
       <Box role="cell" sx={{ display: 'flex', justifyContent: 'flex-end', position: 'relative' }}>
-        <RowActions
-          label={name}
-          actions={[
-            { id: 'view', label: 'View', icon: <VisibilityOutlinedIcon fontSize="small" />, to: viewTo },
-            { id: 'edit', label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+        {/* page-anatomy section 6: ONE actions kebab per row, never per-row icon buttons. */}
+        <ManageMenu
+          trigger="kebab"
+          dense
+          label={`Actions for ${name}`}
+          testId={`league-contact-actions-${contact.id}`}
+          groups={[
+            {
+              id: 'actions',
+              heading: 'Actions',
+              items: [
+                { id: 'view', title: 'View Contact', icon: <VisibilityOutlinedIcon fontSize="small" />, to: viewTo },
+                { id: 'edit', title: 'Edit Contact', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+              ],
+            },
           ]}
         />
       </Box>
@@ -93,7 +113,7 @@ function ContactRow({ leagueId, contact }: { leagueId: string; contact: LeagueCo
 // docs/specs/095-league-edit-gold-standard.md: the Contacts tab of Edit League. One bordered panel in the InfoCard heading
 // look (32 px solid icon tile, uppercase heading with the count) with the one filled Add contact button in its header and
 // flush zebra rows below. Presentational: the page passes the league's contacts.
-export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps) {
+export function LeagueContactRows({ leagueId, contacts, seasonId }: LeagueContactRowsProps) {
   const navigate = useNavigate()
 
   return (
@@ -105,7 +125,7 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
         <Button
           size="compact"
           startIcon={<AddIcon fontSize="small" />}
-          onClick={() => navigate(`/manage/fixtures/leagues/${leagueId}/contacts/new`)}
+          onClick={() => navigate(withReturnTo(`/manage/fixtures/leagues/${leagueId}/contacts/new`, contactsOrigin(leagueId, seasonId), ORIGIN_LABEL))}
           sx={{ flex: 'none' }}
         >
           Add Contact
@@ -130,7 +150,7 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
           </Box>
           <Box role="rowgroup">
             {contacts.map((contact) => (
-              <ContactRow key={contact.id} leagueId={leagueId} contact={contact} />
+              <ContactRow key={contact.id} leagueId={leagueId} contact={contact} seasonId={seasonId} />
             ))}
           </Box>
         </Box>

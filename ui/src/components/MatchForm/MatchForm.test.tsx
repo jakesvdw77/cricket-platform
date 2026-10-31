@@ -754,9 +754,9 @@ describe('MatchForm links', () => {
     expect(screen.queryByText(/^Optional\./)).not.toBeInTheDocument()
   })
 
-  it('lays the form out as Match details and Teams sections with a panel per side', () => {
+  it('lays the form out as Match Details and Teams sections with a panel per side', () => {
     renderMatchForm()
-    expect(screen.getByRole('heading', { name: 'Match details' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Match Details' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Teams' })).toBeInTheDocument()
     expect(screen.getByTestId('match-side-home')).toBeInTheDocument()
     expect(screen.getByTestId('match-side-away')).toBeInTheDocument()

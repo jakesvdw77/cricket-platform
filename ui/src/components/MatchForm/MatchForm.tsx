@@ -4,6 +4,7 @@ import { Alert, Box, MenuItem, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
+import { compactFieldSx } from '../../utils/compactFieldSx'
 import { FieldPicker } from '../FieldPicker'
 import type { FieldPickerValue } from '../FieldPicker'
 import { Input } from '../Input'
@@ -383,12 +384,12 @@ export function MatchForm({
 
   return (
     <Box component="form" id={MATCH_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
-      {/* docs/specs/089 (B): one full-width block - "Match details" over a three-column grid, then "Teams" over the two
+      {/* docs/specs/089 (B): one full-width block - "Match Details" over a three-column grid, then "Teams" over the two
           side panels, so a new match fits one desktop screen. Helper text is gone: "(optional)" sits in the label and
           the URL examples are placeholders; validation errors still show under the field. */}
-      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <FormSectionHeading icon={<InfoOutlinedIcon />} title="Match details" />
-        <Box sx={{ display: 'grid', gap: { xs: 2, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <FormSectionHeading compact icon={<InfoOutlinedIcon />} title="Match Details" />
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }, ...compactFieldSx }}>
           <Input
             select
             label="Season"
@@ -484,8 +485,8 @@ export function MatchForm({
           </Alert>
         )}
 
-        <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title="Teams" />
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
+        <FormSectionHeading compact icon={<SportsCricketOutlinedIcon />} title="Teams" />
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start', ...compactFieldSx }}>
           <MatchSideFields
             label="Home"
             value={values.home}

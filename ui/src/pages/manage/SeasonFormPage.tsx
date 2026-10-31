@@ -1,10 +1,11 @@
 import { Button as MuiButton, Stack, Typography } from '@mui/material'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SeasonForm, SEASON_FORM_ID } from '../../components/SeasonForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button, compactButtonSx } from '../../components/Button'
-import { CompactSwitch } from '../../components/CompactSwitch'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { EmptyState } from '../../components/EmptyState'
 import { listSeasons, createSeason, updateSeason, deactivateSeason, reactivateSeason } from '../../api/seasonApi'
 import type { SeasonPayload } from '../../api/seasonApi'
@@ -18,7 +19,9 @@ export default function SeasonFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { seasonId } = useParams<{ seasonId?: string }>()
   const isEdit = Boolean(seasonId)
-  const navigate = useNavigate()
+  // docs/specs/127 and 129: Back, Cancel, Save and Deactivate/Reactivate go to the origin when there is one, else the Seasons list.
+  const afterSave = useAfterSave('/manage/fixtures/seasons')
+  const cancelLink = useBackLink('/manage/fixtures/seasons', 'Cancel')
   const queryClient = useQueryClient()
 
   const {
@@ -41,14 +44,17 @@ export default function SeasonFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'seasons'] })
-      navigate('/manage/fixtures/seasons')
+      afterSave()
     },
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from SeasonList.tsx's own
   // SeasonCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
   // bar instead of the list card's footer.
-  const invalidateSeasons = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'seasons'] })
+  const invalidateSeasons = () => {
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'seasons'] })
+    afterSave()
+  }
 
   const deactivate = useMutation({
     mutationFn: () => deactivateSeason(clubId as string, seasonId as string),
@@ -85,17 +91,9 @@ export default function SeasonFormPage() {
       title={isEdit ? 'Edit Season' : 'Add Season'}
       backTo="/manage/fixtures/seasons"
       backLabel="Back to Seasons"
+      compact
       actions={
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {isEdit && season && (
-            <CompactSwitch
-              label="Active"
-              checked={season.active}
-              disabled={toggle.isPending}
-              onChange={(checked) => (checked ? reactivate : deactivate).mutate()}
-            />
-          )}
-
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           {(saveMutation.isError || toggle.isError) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(
@@ -105,13 +103,16 @@ export default function SeasonFormPage() {
             </Typography>
           )}
 
-          <MuiButton component={RouterLink} to="/manage/fixtures/seasons" variant="outlined" sx={compactButtonSx}>
+          <MuiButton component={RouterLink} to={cancelLink.to ?? '/manage/fixtures/seasons'} variant="outlined" size="small" sx={compactButtonSx}>
             Cancel
           </MuiButton>
 
           <Button size="compact" type="submit" form={SEASON_FORM_ID} disabled={saveMutation.isPending}>
-            {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create season'}
+            {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Season'}
           </Button>
+
+          {/* docs/specs/038 and 129: Deactivate / Reactivate sits in the footer, edit mode only. */}
+          {isEdit && season && <RecordStatusToggle active={season.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />}
         </Stack>
       }
     >

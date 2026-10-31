@@ -241,4 +241,16 @@ describe('RecordFormScreen', () => {
     render(view('/manage/fixtures/matches/new'))
     expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
   })
+
+  it('draws a flat hairline card when compact is set', () => {
+    render(
+      <MemoryRouter>
+        <RecordFormScreen title="Edit Season" backTo="/x" backLabel="Back to X" compact actions={<button type="button">Save</button>}>
+          <div>Field content</div>
+        </RecordFormScreen>
+      </MemoryRouter>
+    )
+    const card = screen.getByText('Field content').parentElement?.parentElement as HTMLElement
+    expect(getComputedStyle(card).boxShadow).toBe('none')
+  })
 })

@@ -31,9 +31,9 @@ function LocationProbe() {
 
 function renderCard(season: Season, summary: SeasonSummary | null = SUMMARY) {
   return render(
-    <MemoryRouter initialEntries={['/list']}>
+    <MemoryRouter initialEntries={['/manage/fixtures/seasons']}>
       <Routes>
-        <Route path="/list" element={<SeasonCard season={season} summary={summary} today={TODAY} />} />
+        <Route path="/manage/fixtures/seasons" element={<SeasonCard season={season} summary={summary} today={TODAY} />} />
         <Route path="*" element={<div>Elsewhere</div>} />
       </Routes>
       <LocationProbe />
@@ -51,7 +51,7 @@ describe('SeasonCard', () => {
 
     const heading = screen.getByRole('heading', { level: 3 })
     expect(heading).toHaveTextContent('2026/27')
-    expect(within(heading).getByRole('link')).toHaveAttribute('href', '/manage/fixtures/seasons/season-1')
+    expect(within(heading).getByRole('link')).toHaveAttribute('href', expect.stringMatching(/^\/manage\/fixtures\/seasons\/season-1\?returnTo=.*returnLabel=Seasons/))
     expect(chipLabels()).toEqual(['Current'])
     expect(screen.getByTestId('season-dates')).toHaveTextContent('1 Sep 2026 to 31 Mar 2027 · 7 months')
   })
@@ -120,25 +120,26 @@ describe('SeasonCard', () => {
     }
   })
 
-  it('has Matches, Leagues and Edit in the footer', async () => {
-    const user = userEvent.setup()
+  it('has no footer bar and one kebab in the corner', () => {
     renderCard(makeSeason())
 
-    expect(screen.getByRole('button', { name: 'Matches' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Leagues' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/seasons/season-1/edit')
+    expect(screen.queryByRole('button', { name: 'Matches' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Leagues' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Actions for 2026/27' })).toHaveLength(1)
   })
 
-  it('goes to the Leagues and Matches lists from the footer', async () => {
+  it('opens Open Season, Edit Season, Open Leagues and Open Matches from the kebab, each carrying returnTo', async () => {
     const user = userEvent.setup()
-    const { unmount } = renderCard(makeSeason())
-    await user.click(screen.getByRole('button', { name: 'Leagues' }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/leagues')
-    unmount()
-
     renderCard(makeSeason())
-    await user.click(screen.getByRole('button', { name: 'Matches' }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches')
+
+    await user.click(screen.getByRole('button', { name: 'Actions for 2026/27' }))
+    const titles = screen.getAllByRole('menuitem').map((item) => item.textContent)
+    expect(titles).toEqual(['Open Season', 'Edit Season', 'Open Leagues', 'Open Matches'])
+    expect(screen.getByRole('menuitem', { name: 'Edit Season' })).toHaveAttribute('href', expect.stringContaining('returnTo=%2Fmanage%2Ffixtures%2Fseasons'))
+    expect(screen.getByRole('menuitem', { name: 'Edit Season' })).toHaveAttribute('href', expect.stringContaining('returnLabel=Seasons'))
+
+    await user.click(screen.getByRole('menuitem', { name: 'Open Leagues' }))
+    expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/leagues')
   })
 })

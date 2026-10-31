@@ -36,16 +36,16 @@ describe('SeasonForm', () => {
     renderSeasonForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Label'), '2026')
-    await user.type(screen.getByLabelText('Start date'), '2026-12-31')
-    await user.type(screen.getByLabelText('End date'), '2026-01-01')
+    await user.type(screen.getByLabelText('Start Date'), '2026-12-31')
+    await user.type(screen.getByLabelText('End Date'), '2026-01-01')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     const error = await screen.findByText('Start date must be on or before end date')
     expect(error).toBeInTheDocument()
-    // Inline under End date only.
-    expect(screen.getByLabelText('End date')).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Start date')).not.toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('End date')).toHaveAttribute('aria-describedby', error.id)
+    // Inline under End Date only.
+    expect(screen.getByLabelText('End Date')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Start Date')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('End Date')).toHaveAttribute('aria-describedby', error.id)
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
@@ -55,8 +55,8 @@ describe('SeasonForm', () => {
     renderSeasonForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Label'), '2026')
-    await user.type(screen.getByLabelText('Start date'), '2026-01-01')
-    await user.type(screen.getByLabelText('End date'), '2026-12-31')
+    await user.type(screen.getByLabelText('Start Date'), '2026-01-01')
+    await user.type(screen.getByLabelText('End Date'), '2026-12-31')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -64,13 +64,13 @@ describe('SeasonForm', () => {
     expect(payload).toEqual({ label: '2026', startDate: '2026-01-01', endDate: '2026-12-31' })
   })
 
-  it('renders the "Season dates" section with three fields and no helper text', () => {
+  it('renders the "Season Dates" section with three fields and no helper text', () => {
     renderSeasonForm({ onSubmit: vi.fn() })
 
-    expect(screen.getByText('Season dates')).toBeInTheDocument()
+    expect(screen.getByText('Season Dates')).toBeInTheDocument()
     expect(screen.getByLabelText('Label')).toBeInTheDocument()
-    expect(screen.getByLabelText('Start date')).toBeInTheDocument()
-    expect(screen.getByLabelText('End date')).toBeInTheDocument()
+    expect(screen.getByLabelText('Start Date')).toBeInTheDocument()
+    expect(screen.getByLabelText('End Date')).toBeInTheDocument()
     expect(screen.queryByText('e.g. 2026')).not.toBeInTheDocument()
   })
 
@@ -81,7 +81,7 @@ describe('SeasonForm', () => {
     })
 
     expect(screen.getByLabelText('Label')).toHaveValue('2025')
-    expect(screen.getByLabelText('Start date')).toHaveValue('2025-01-01')
-    expect(screen.getByLabelText('End date')).toHaveValue('2025-12-31')
+    expect(screen.getByLabelText('Start Date')).toHaveValue('2025-01-01')
+    expect(screen.getByLabelText('End Date')).toHaveValue('2025-12-31')
   })
 })

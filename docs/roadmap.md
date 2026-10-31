@@ -373,6 +373,15 @@ Full reasoning is in the spec's "Later" list and Rollout Notes; this is the inde
 - Found while building: a share-context read for section-scoped managers, who cannot read leagues, sections, sponsors or the club profile (the junior lock fails safe to on and logos are skipped).
 - Found while building: rename the `Initials only` code identifiers (`initialsOnly`, `initialsOnlyDefault`, `ShareInitialsControl`) to first-name-initials in a later clean-up.
 
+## Deferred by `131`: Match sharing
+
+Spec written 2026-10-31 (not built). Still open:
+
+- **Umpires and officials:** store umpires per match, then show them on the Fixture Card and Team Sheet (spec `131` data gap).
+- **Picture gallery:** a stored club image library for poster pictures, replacing the per-share upload.
+- **Weather:** store latitude and longitude on `PlayingArea` (v1 parses the field's map URL in the browser; short links give no forecast), and a backend proxy with caching if Open-Meteo traffic grows.
+- **AI-generated layouts and wording**, and a public match page and link.
+
 ## Deferred by `122`, `123` and `124`: League sharing, Player Hub leagues, balls per over and free hit
 
 Built on `feat/leagues-completion` (2026-10-28). Still open:

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageCounters, counterColumns } from './PageCounters'
 import type { PageCounterItem } from './PageCounters'
@@ -329,5 +330,21 @@ describe('PageCounters info icon and testId', () => {
     expect(card.tagName).not.toBe('BUTTON')
     expect(screen.getByTestId('league-figure-xi-info')).toBeInTheDocument()
     expect(screen.queryByTestId('page-counter-xi-marker')).not.toBeInTheDocument()
+  })
+
+  // docs/specs/130: an optional `to` makes one plain card a real link, with no marker and no pressed state.
+  it('renders a card with `to` as a link without a marker or aria-pressed, even at zero', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <PageCounters density="compact" items={[{ id: 'venue', testId: 'venue-card', value: 0, label: 'Venue', to: '/manage/fixtures/fields/f1' }, { id: 'b', value: 2, label: 'Plain' }]} />
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+    const card = screen.getByTestId('venue-card')
+    expect(card).toHaveAttribute('href', '/manage/fixtures/fields/f1')
+    expect(card).not.toHaveAttribute('aria-pressed')
+    expect(screen.queryByTestId('page-counter-venue-marker')).not.toBeInTheDocument()
+    expect(screen.getByTestId('page-counter-b').tagName).not.toBe('A')
   })
 })

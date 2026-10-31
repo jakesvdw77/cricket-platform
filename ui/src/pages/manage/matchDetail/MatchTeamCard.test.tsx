@@ -47,23 +47,37 @@ describe('MatchTeamCard', () => {
     expect(screen.getByText('0 of 12 picked')).toBeInTheDocument()
   })
 
-  // docs/specs/089 (Match page actions, 2026-10-16): the team actions sit at the foot of the card, whatever the selection.
-  it('has one Select team link in the action row, empty selection or not', () => {
+  // docs/specs/130: the team actions are text-only outlined buttons in the panel's header row, whatever the selection.
+  it('has one Select Team link in the header row, empty selection or not', () => {
     renderCard()
-    expect(screen.getAllByRole('link', { name: 'Select team' })).toHaveLength(1)
-    expect(screen.getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/edit?tab=playing-xi')
-    expect(screen.getByRole('group', { name: 'Team actions' })).toContainElement(screen.getByRole('link', { name: 'Select team' }))
+    expect(screen.getAllByRole('link', { name: 'Select Team' })).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Select Team' })).toHaveAttribute('href', '/edit?tab=playing-xi')
+    expect(screen.getByRole('group', { name: 'Team actions' })).toContainElement(screen.getByRole('link', { name: 'Select Team' }))
+    // Header row, before the Playing XI block: nothing is left at the foot of the panel.
+    const group = screen.getByRole('group', { name: 'Team actions' })
+    expect(group.compareDocumentPosition(screen.getByText('Playing XI')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('shows Share team sheet only when it is given a handler, and calls it', async () => {
+  it('shows Share Team Sheet only when it is given a handler, carrying the share icon, and calls it', async () => {
     const onShare = vi.fn()
     const { unmount } = renderCard()
     expect(screen.queryByRole('button', { name: /share team sheet/i })).not.toBeInTheDocument()
     unmount()
 
     renderCard({ onShare })
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Share team sheet for 1st XI' }))
+    const button = screen.getByRole('button', { name: 'Share team sheet for 1st XI' })
+    expect(button).toHaveTextContent('Share Team Sheet')
+    expect(button.querySelector('svg')).not.toBeNull()
+    // Select Team is text only.
+    expect(screen.getByRole('link', { name: 'Select Team' }).querySelector('svg')).toBeNull()
+    await userEvent.setup().click(button)
     expect(onShare).toHaveBeenCalledTimes(1)
+  })
+
+  it('is a flat panel: a hairline and no shadow', () => {
+    renderCard()
+    const panel = screen.getByTestId('card')
+    expect(getComputedStyle(panel).boxShadow).toBe('none')
   })
 
   it('shows the picked count and no bar for a match with no league', () => {

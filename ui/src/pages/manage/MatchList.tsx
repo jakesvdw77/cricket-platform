@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Link, Stack, Typography } from '@mui/material'
+import { Alert, Box, Link, Stack, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
+import { SortMenu } from '../../components/ContentControlsLine'
+import type { SortMenuOption } from '../../components/ContentControlsLine'
+import { AddCard } from '../../components/AddCard'
+import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../components/ToolbarCard'
 import { PageCounters } from '../../components/PageCounters'
 import type { PageCounterItem } from '../../components/PageCounters'
 import { getMatchesSummary, listMatches, listMatchFilterOptions, matchesSummaryKey } from '../../api/matchApi'
@@ -24,21 +29,19 @@ import { listSections } from '../../api/sectionApi'
 import { listPlayingAreas, playingAreasKey } from '../../api/playingAreaApi'
 import { MatchCard } from './matches/MatchCard'
 import { MatchTable } from './matches/MatchTable'
-import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
-import { cardGridSx } from '../../utils/cardGrid'
-import { scopeFilterText } from '../../utils/availabilityScope'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { announcedBadges, badgeFor, sideName } from './matches/matchCardHelpers'
 
-// docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first — index
-// 0 (the default) is ascending. docs/specs/087: the order is switched by the quiet SortLink on the
-// content line (in the Filters sheet on a phone), as on the Polls page.
-// In-memory only (resets on a full page reload) — see the upcomingOnly state in MatchList below.
+// docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first. docs/specs/130: the order is the toolbar's
+// Sort button (a menu on a phone), as on the Seasons page.
+// In-memory only (resets on a full page reload) - see the upcomingOnly state in MatchList below.
 let restoreShowPastOnReturn = false
 
-const SORT_OPTIONS = [
-  { value: 'matchDate,asc', label: 'Match date (soonest first)' },
-  { value: 'matchDate,desc', label: 'Match date (latest first)' },
+const SORT_OPTIONS: (SortMenuOption & { value: string })[] = [
+  { value: 'matchDate,asc', label: 'Soonest First', linkLabel: 'soonest first' },
+  { value: 'matchDate,desc', label: 'Latest First', linkLabel: 'latest first' },
 ]
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -46,9 +49,9 @@ const SEARCH_DEBOUNCE_MS = 300
 // docs/specs/087-matches-polls-alignment.md: the Matches quick filters behind the counters, named as the chip, the
 // scope text and the phone sheet's Quick filter row show them.
 const FOCUS_LABELS: Record<MatchListFocus, string> = {
-  'this-week': 'This week',
-  'not-announced': 'Teams not announced',
-  'no-poll': 'Without a poll',
+  'this-week': 'This Week',
+  'not-announced': 'Teams Not Announced',
+  'no-poll': 'Without A Poll',
 }
 
 // Re-exported for MatchDetailPage.tsx (docs/specs/036) and the tests: the helpers moved to
@@ -63,11 +66,8 @@ export interface MatchListProps {
   backTo?: string
   backLabel?: string
   createLabel?: string
-  editTo?: (matchId: string) => string
   // docs/specs/036-view-first-record-detail-screens.md: defaults to MatchDetailPage's own route —
-  // every card's primary action becomes "View" (editTo is then only reachable via that view
-  // screen's own Edit action). SquadPicker.tsx passes `null` to opt out entirely and keep its own
-  // "jump straight to the Playing XI tab" editTo shortcut as this list's primary action instead.
+  // every card and row opens the match; `null` makes them not links.
   viewTo?: ((matchId: string) => string) | null
   onCreate?: () => void
 }
@@ -80,7 +80,6 @@ export default function MatchList({
   backTo,
   backLabel,
   createLabel = 'Add Match',
-  editTo = (matchId: string) => `/manage/fixtures/matches/${matchId}/edit`,
   viewTo = (matchId: string) => `/manage/fixtures/matches/${matchId}`,
   onCreate,
 }: MatchListProps) {
@@ -98,8 +97,10 @@ export default function MatchList({
       navigate(location.pathname + location.search, { replace: true, state: null })
     }
   }, [location, navigate])
-  // docs/specs/109: one confirm dialog for Delete on a card or a row; success shows the same notice the Match page's delete does.
-  const { request: requestDelete, dialog: deleteDialog } = useDeleteMatchDialog(clubId ?? '', () => setNotice('Match deleted.'))
+  // docs/specs/127: Add Match returns to this list.
+  const addMatchPath = withReturnTo('/manage/fixtures/matches/new', currentOrigin(location), 'Matches')
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -355,13 +356,6 @@ export default function MatchList({
 
   const hasMatches = data.content.length > 0
   const isSearching = debouncedSearch.length > 0
-  const seasonLabel = seasonId ? seasonsById.get(seasonId)?.label : undefined
-  const scope = [
-    scopeFilterText({ sections: sections ?? [], sectionId, leagues: leagues ?? [], leagueId, teams: filterableTeams, teamId }),
-    seasonLabel,
-  ]
-    .filter(Boolean)
-    .join(' · ')
   // Choosing the active counter again turns its filter off; choosing another replaces it.
   const toggleFocus = (next: MatchListFocus) => setFocus((current) => (current === next ? null : next))
   const summary = summaryQuery.data
@@ -370,7 +364,7 @@ export default function MatchList({
         {
           id: 'shown',
           value: summary.matchesShown,
-          label: upcomingOnly ? 'Upcoming matches' : 'Matches shown',
+          label: upcomingOnly ? 'Upcoming Matches' : 'Matches Shown',
           shortLabel: upcomingOnly ? 'Upcoming' : 'Shown',
           kind: 'filter',
           active: focus === null,
@@ -390,7 +384,7 @@ export default function MatchList({
           id: 'not-announced',
           value: summary.teamsNotAnnounced,
           label: FOCUS_LABELS['not-announced'],
-          shortLabel: 'Not announced',
+          shortLabel: 'Not Announced',
           tone: summary.teamsNotAnnounced > 0 ? 'warning' : 'default',
           kind: 'filter',
           active: focus === 'not-announced',
@@ -401,7 +395,7 @@ export default function MatchList({
           id: 'no-poll',
           value: summary.withoutPoll,
           label: FOCUS_LABELS['no-poll'],
-          shortLabel: 'No poll',
+          shortLabel: 'No Poll',
           tone: summary.withoutPoll > 0 ? 'warning' : 'default',
           kind: 'filter',
           active: focus === 'no-poll',
@@ -411,78 +405,74 @@ export default function MatchList({
       ]
     : []
   const showCounters = !summaryQuery.isError && (summaryQuery.isPending || Boolean(summary))
-  const pastToggle = <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label={seasonId ? 'View entire season' : 'View all seasons'} />
-  const sortLink = (
-    <SortLink
-      label={sort === 'matchDate,asc' ? 'soonest first' : 'latest first'}
-      onToggle={() => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc')}
-    />
-  )
+  const pastLabel = seasonId ? 'View Entire Season' : 'View All Seasons'
+  const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title={title}
-        backTo={backTo}
-        backLabel={backLabel}
-        // docs/specs/087: the scope of the list under the title when a filter is set, as on Availability.
-        subtitle={scope ? `Showing: ${scope}` : undefined}
-        // docs/specs/089: Season is a small pill beside the title, not a toolbar field - it rarely changes.
-        titleAdornment={
-          <HeaderSeasonSelect
-            seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
-            value={seasonId}
-            onChange={setSeasonId}
-          />
-        }
-        action={
-          <Button size="compact" onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
+  const emptyState = (() => {
+    if (hasMatches) {
+      return null
+    }
+    const icon = <BrandIcon name="nav/upcoming-matches" size={48} />
+    if (isSearching) {
+      return <EmptyState icon={icon} title="No matching matches" description={`No matches match "${debouncedSearch}". Try a different search.`} />
+    }
+    return (
+      <EmptyState
+        icon={icon}
+        title={upcomingOnly ? 'No upcoming matches' : 'No matches yet'}
+        description={
+          upcomingOnly
+            ? 'Nothing scheduled ahead. Turn on "View Entire Season" to see earlier fixtures, or schedule a new one.'
+            : "Schedule your club's first match to get started."
         }
       />
+    )
+  })()
 
-      {notice && (
-        <Alert severity="success" onClose={() => setNotice(null)}>
-          {notice}
-        </Alert>
-      )}
-
-      {/* docs/specs/087-matches-polls-alignment.md (B): the Polls toolbar - the shared FilterBar (League,
-          Section, Team and search; Season is the pill in the header, 089; Team arrives with its backend param in the counters slice) and a content
-          line with the scope text, the sort link and the Show past matches switch. On a phone the switch and
-          the sort link move into the FilterBar sheet. */}
-      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
-
-      <FilterBar
-        density="compact"
-        leagues={filterableLeagues}
-        sections={filterableSections}
-        teams={filterableTeams}
-        leagueId={leagueId}
-        sectionId={sectionId}
-        teamId={teamId}
-        onLeagueChange={setLeagueId}
-        onSectionChange={setSectionId}
-        onTeamChange={setTeamId}
-        searchValue={search}
-        onSearchChange={setSearch}
-        extraSelects={
-          ownFields && ownFields.content.length > 0
-            ? [
-                {
-                  key: 'field',
-                  label: 'Field',
-                  allLabel: 'All fields',
-                  options: ownFields.content.map((field) => ({ value: field.id, label: field.name })),
-                  value: playingAreaId ?? '',
-                  onChange: (value: string) => setPlayingAreaId(value || null),
-                },
-              ]
-            : []
-        }
-        searchPlaceholder="Search by opponent or team name"
-        searchOptions={searchSuggestions}
-        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
-        viewControls={
+  const bar = (
+    <FilterBar
+      density="compact"
+      bare
+      inCard
+      viewControlsInline
+      leagues={filterableLeagues}
+      sections={filterableSections}
+      teams={filterableTeams}
+      leagueId={leagueId}
+      sectionId={sectionId}
+      teamId={teamId}
+      onLeagueChange={setLeagueId}
+      onSectionChange={setSectionId}
+      onTeamChange={setTeamId}
+      searchValue={search}
+      onSearchChange={setSearch}
+      extraSelects={
+        ownFields && ownFields.content.length > 0
+          ? [
+              {
+                key: 'field',
+                label: 'Field',
+                allLabel: 'All fields',
+                options: ownFields.content.map((field) => ({ value: field.id, label: field.name })),
+                value: playingAreaId ?? '',
+                onChange: (value: string) => setPlayingAreaId(value || null),
+              },
+            ]
+          : []
+      }
+      searchPlaceholder="Search by opponent or team name"
+      searchOptions={searchSuggestions}
+      extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
+      // Desktop order (page-anatomy section 3): the season toggle, then Sort, then the Cards | List toggle last. A phone sheet: toggle first.
+      secondaryControls={(placement) =>
+        placement === 'row' ? (
+          <ToolbarToggleChip pressed={!upcomingOnly} onChange={(pressed) => setUpcomingOnly(!pressed)} label={pastLabel} />
+        ) : (
+          <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label={pastLabel} />
+        )
+      }
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
@@ -497,76 +487,90 @@ export default function MatchList({
                 </Link>
               </Box>
             )}
-            {pastToggle}
             {sortLink}
           </>
-        }
-        onClearAll={() => {
-          setLeagueId(null)
-          setSectionId(null)
-          setTeamId(null)
-          setPlayingAreaId(null)
-          setFocus(null)
-        }}
-      />
-
-      <ContentControlsLine
-        scope={`Showing ${data.totalElements} ${upcomingOnly ? 'upcoming ' : ''}${data.totalElements === 1 ? 'match' : 'matches'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={
+        ) : (
           <>
-            <ListViewToggle value={view} onChange={setView} />
-            {pastToggle}
+            <ToolbarSortButton value={sort} onChange={setSort} options={SORT_OPTIONS.map(({ value, label }) => ({ value, label }))} />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
           </>
+        )
+      }
+      onClearAll={() => {
+        setLeagueId(null)
+        setSectionId(null)
+        setTeamId(null)
+        setPlayingAreaId(null)
+        setFocus(null)
+      }}
+    />
+  )
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader
+        title={title}
+        backTo={backTo}
+        backLabel={backLabel}
+        // docs/specs/089: Season is a small pill beside the title, not a toolbar field - it rarely changes.
+        titleAdornment={
+          <HeaderSeasonSelect
+            seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
+            value={seasonId}
+            onChange={setSeasonId}
+          />
+        }
+        action={
+          <Button size="compact" onClick={onCreate ?? (() => navigate(addMatchPath))} sx={{ flex: 'none' }}>{createLabel}</Button>
         }
       />
 
-      {hasMatches && view === 'list' && (
-        <MatchTable
-          matches={data.content}
-          teamsById={teamsById}
-          leaguesById={leaguesById}
-          seasonsById={seasonsById}
-          viewTo={viewTo ? (match) => viewTo(match.id) : undefined}
-          onDelete={requestDelete}
-        />
+      {notice && (
+        <Alert severity="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
       )}
 
-      {hasMatches && view === 'cards' && (
-        <Box sx={cardGridSx}>
-          {data.content.map((match) => (
-            <MatchCard
-              key={match.id}
-              clubId={clubId}
-              match={match}
-              teamsById={teamsById}
-              leaguesById={leaguesById}
-              seasonsById={seasonsById}
-              editTo={editTo(match.id)}
-              viewTo={viewTo ? viewTo(match.id) : undefined}
-              onDelete={requestDelete}
-            />
-          ))}
-        </Box>
-      )}
+      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
 
-      {!hasMatches && isSearching && (
-        <EmptyState
-          title="No matching matches"
-          description={`No matches match "${debouncedSearch}". Try a different search.`}
-        />
-      )}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+        {!fused && <ToolbarCard>{bar}</ToolbarCard>}
 
-      {!hasMatches && !isSearching && (
-        <EmptyState
-          title={upcomingOnly ? 'No upcoming matches' : 'No matches yet'}
-          description={
-            upcomingOnly
-              ? 'Nothing scheduled ahead. Turn on "View entire season" to see earlier fixtures, or schedule a new one.'
-              : "Schedule your club's first match to get started."
-          }
-        />
-      )}
+        {view === 'list' && (
+          <MatchTable
+            clubId={clubId}
+            matches={data.content}
+            teamsById={teamsById}
+            leaguesById={leaguesById}
+            seasonsById={seasonsById}
+            viewTo={viewTo ? (match) => viewTo(match.id) : undefined}
+            toolbar={bar}
+            empty={emptyState}
+          />
+        )}
+
+        {view === 'cards' ? emptyState : null}
+
+        {view === 'cards' && (
+          <Box sx={dynamicCardGridSx}>
+            {data.content.map((match) => (
+              <MatchCard
+                key={match.id}
+                clubId={clubId}
+                match={match}
+                teamsById={teamsById}
+                leaguesById={leaguesById}
+                seasonsById={seasonsById}
+                viewTo={viewTo ? viewTo(match.id) : undefined}
+              />
+            ))}
+            {/* The grid ends with a dashed Add card (same route as the page's Add Match button); with no cards it is the only one. */}
+            <AddCard label="Add Match" to={onCreate ? undefined : addMatchPath} onClick={onCreate} testId="add-match-card" />
+          </Box>
+        )}
+      </Box>
 
       {hasMatches && data.totalPages > 1 && (
         <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
@@ -586,7 +590,6 @@ export default function MatchList({
           </Button>
         </Stack>
       )}
-      {deleteDialog}
     </Box>
   )
 }

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MatchTable } from './MatchTable'
 import { groupPoll, makeMatch, makeTeam, makeTeams, squadPoll } from './matchTestUtils'
 import type { League } from '../../../api/leagueApi'
@@ -15,7 +16,9 @@ const meta: Meta<typeof MatchTable> = {
   title: 'Pages/Manage/MatchTable',
   component: MatchTable,
   parameters: { layout: 'padded' },
+  decorators: [(StoryComponent) => <QueryClientProvider client={new QueryClient()}><StoryComponent /></QueryClientProvider>],
   args: {
+    clubId: 'club-1',
     teamsById: teams,
     leaguesById: leagues,
     seasonsById: seasons,
@@ -26,7 +29,7 @@ export default meta
 
 type Story = StoryObj<typeof MatchTable>
 
-// docs/specs/089 (C): zebra rows; the second starts within 24 hours (amber); a derby shows both sides' picked counts.
+// docs/specs/089 (C), 130: flat card, Status column, one kebab per row; zebra rows; the second starts within 24 hours (amber); a derby shows both sides' picked counts.
 export const Default: Story = {
   args: {
     matches: [

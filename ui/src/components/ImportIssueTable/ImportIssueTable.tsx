@@ -11,6 +11,7 @@ import type { ImportBatch, ImportDecisions, ImportEditableColumn, ImportIssue, I
 import { zebraTint } from '../../utils/zebraTint'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
+import { ToolbarCard } from '../ToolbarCard'
 import { PageCounters } from '../PageCounters'
 import { isAddedRowNumber, pendingResolutionRows, pickOf, resolutionFor } from '../../utils/importDecisions'
 import { ImportPendingChip, ImportRowChip } from './ImportChips'
@@ -26,6 +27,8 @@ export interface ImportColumn {
   header: string
   // Defaults to the row's value under `id`.
   render?: (row: ImportRow) => ReactNode
+  // A column that must not wrap (a date, a time): its cells stay on one line at least this wide, so the Reason column wraps instead.
+  minWidth?: number
 }
 
 export interface ImportIssueTableProps {
@@ -60,6 +63,8 @@ export interface ImportIssueTableProps {
   toolbarExtra?: ReactNode
   // Shown when the batch has no rows at all.
   emptyLabel?: string
+  // The wizard's Back / Next row: drawn inside the rows card, under a hairline, so the step reads as one surface.
+  footer?: ReactNode
   // Type-ahead suggestions for editable columns (key = column key), from the consumer; typing a value not listed is still accepted.
   columnOptions?: ImportColumnOptions
   // How the inputs of an edited row are grouped and ordered (for example notes behind an Add note button); omitted, declared order.
@@ -169,10 +174,14 @@ interface RowViewProps extends EditingProps {
   pendingLabel: string
   wording: Omit<PendingWording, 'proposals' | 'decisions'>
   testId: string
+  // The main rows list is one flat card: this toolbar (with Add Row at its right end), the table, then this footer.
+  framed?: boolean
+  toolbar?: ReactNode
+  footer?: ReactNode
 }
 
 // One page of rows (50) from the rows endpoint, filtered by the server; the table on a desktop, stacked cards below md.
-function RowsView({ clubId, batch, decisions, columns, status, outcome, editable, onToggleExclude, onToggleUpdate, disabled, pendingRows, pendingLabel, wording, testId, editableColumns = [], onEditRow, onAddRow, onRemoveRow, onResetRow, emptyLabel, columnOptions, editLayout }: RowViewProps) {
+function RowsView({ clubId, batch, decisions, columns, status, outcome, editable, onToggleExclude, onToggleUpdate, disabled, pendingRows, pendingLabel, wording, testId, editableColumns = [], onEditRow, onAddRow, onRemoveRow, onResetRow, emptyLabel, columnOptions, editLayout, framed = false, toolbar, footer }: RowViewProps) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
   const [page, setPage] = useState(0)
@@ -349,12 +358,12 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
     )
   }
   const originChip = (row: ImportRow) =>
-    row.origin === 'EDITED' || row.origin === 'ADDED' ? <Chip size="small" variant="outlined" color="info" label={row.origin === 'EDITED' ? 'Edited' : 'Added'} sx={{ fontWeight: 600, flex: 'none', mt: 0.5 }} /> : null
+    row.origin === 'EDITED' || row.origin === 'ADDED' ? <Chip size="small" variant="outlined" color="info" label={row.origin === 'EDITED' ? 'Edited' : 'Manually Added'} sx={{ fontWeight: 600, flex: 'none', mt: 0.5 }} /> : null
   const addButton = (position: 'top' | 'bottom') =>
     canEdit && (
       <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-start' } }}>
         <Button size="compact" variant="secondary" startIcon={<AddIcon />} disabled={disabled || draft !== null} data-focus-key={`add-${position}`} onClick={() => startDraft(position)} sx={{ minHeight: { xs: 44, md: 32 }, flex: { xs: 1, sm: 'none' } }}>
-          Add row
+          Add Row
         </Button>
       </Box>
     )
@@ -364,10 +373,35 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
     ) : null
   const rowKeys = (row: ImportRow) => (isEditing(row) ? { onKeyDown: editKeyHandler(() => saveEdit(row), () => cancelEdit(row.rowNumber)) } : {})
 
+  const headerRow = (
+    <TableRow>
+      {[{ header: 'Row', minWidth: 64 }, { header: 'Status', minWidth: 96 }, ...cols, { header: 'Reason', minWidth: 180 }, { header: '' }].map((column, index) => (
+        <TableCell key={`${column.header}-${index}`} sx={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', whiteSpace: 'nowrap', minWidth: column.minWidth }}>
+          {column.header}
+        </TableCell>
+      ))}
+    </TableRow>
+  )
   let body: ReactNode
   const noRowsAtAll = canEdit && totalElements === 0 && importCount(batch, 'rows') === 0
   if (content.length === 0) {
-    body = <Typography variant="body2" color="text.secondary" sx={{ py: 1.5 }}>{noRowsAtAll ? emptyLabel : 'No rows match this view.'}</Typography>
+    const message = noRowsAtAll ? emptyLabel : 'No rows match this view.'
+    if (framed && !phone) {
+      body = (
+        <Table size="small" aria-label="Import rows">
+          <TableHead>{headerRow}</TableHead>
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={cols.length + 4} align="center" sx={{ py: 3, borderBottom: 0 }}>
+                <Typography variant="body2" color="text.secondary">{message}</Typography>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      )
+    } else {
+      body = <Typography variant="body2" color="text.secondary" sx={{ py: framed ? 3 : 1.5, px: framed ? 1.5 : 0, textAlign: framed ? 'center' : 'left' }}>{message}</Typography>
+    }
   } else if (phone) {
     body = (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -406,17 +440,9 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
     )
   } else {
     body = (
-      <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
+      <TableContainer sx={framed ? undefined : { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
         <Table size="small" aria-label="Import rows">
-          <TableHead>
-            <TableRow>
-              {['Row', 'Status', ...cols.map((column) => column.header), 'Reason', ''].map((header, index) => (
-                <TableCell key={`${header}-${index}`} sx={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                  {header}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
+          <TableHead>{headerRow}</TableHead>
           <TableBody>
             {content.map((row, index) => {
               const excluded = decisions.excludedRows.includes(row.rowNumber)
@@ -424,15 +450,15 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
               const reason = reasonFor(row, issues, excluded, pending ? { ...wording, proposals: batch.proposals ?? [], decisions } : null)
               return (
                 <TableRow key={row.rowNumber} data-testid={`import-row-${row.rowNumber}`} {...rowKeys(row)} sx={(t) => ({ verticalAlign: 'top', opacity: excluded ? 0.7 : 1, bgcolor: index % 2 === 1 ? zebraTint(t) : undefined })}>
-                  <TableCell>{rowLabelOf(row.rowNumber)}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 64 }}>{rowLabelOf(row.rowNumber)}</TableCell>
+                  <TableCell sx={{ minWidth: 96 }}>
                     {pending && !excluded ? <ImportPendingChip label={pendingLabel} /> : <ImportRowChip row={row} />}
                     <Box>{originChip(row)}</Box>
                   </TableCell>
                   {isEditing(row) ? (
                     <TableCell colSpan={cols.length}>{editFields(row)}</TableCell>
                   ) : (
-                    cols.map((column) => <TableCell key={column.id}>{cell(row, column)}</TableCell>)
+                    cols.map((column) => <TableCell key={column.id} sx={column.minWidth ? { whiteSpace: 'nowrap', minWidth: column.minWidth } : undefined}>{cell(row, column)}</TableCell>)
                   )}
                   <TableCell title={reason.title} sx={{ color: toneColor[reason.tone], minWidth: 180 }}>{reason.text}</TableCell>
                   <TableCell align="right">{actions(row)}</TableCell>
@@ -445,6 +471,37 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
     )
   }
 
+  const countRow = (totalElements > 0 || totalPages > 1) && (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', ...(framed ? { px: 1.5, py: 1, borderTop: 1, borderColor: 'divider' } : {}) }}>
+      <Typography variant="caption" color="text.secondary" role="status">
+        Showing {from} to {to} of {totalElements} rows
+      </Typography>
+      {totalPages > 1 && (
+        <Pagination count={totalPages} page={page + 1} size="small" onChange={(_event, next) => setPage(next - 1)} disabled={rowsQuery.isFetching} />
+      )}
+    </Box>
+  )
+
+  if (framed) {
+    const drafts = (position: 'top' | 'bottom') => draft?.position === position && <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>{draftForm(position)}</Box>
+    return (
+      <Box ref={rootRef} data-testid={testId} sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+        <ToolbarCard fused>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: 1 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0 }}>{toolbar}</Box>
+            {addButton('top')}
+          </Box>
+        </ToolbarCard>
+        {drafts('top')}
+        {body}
+        {drafts('bottom')}
+        {content.length > 0 && canEdit && <Box sx={{ p: 1, borderTop: 1, borderColor: 'divider' }}>{addButton('bottom')}</Box>}
+        {countRow}
+        {footer && <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider' }}>{footer}</Box>}
+      </Box>
+    )
+  }
+
   return (
     <Box ref={rootRef} data-testid={testId} sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
       {addButton('top')}
@@ -452,14 +509,7 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
       {body}
       {draftForm('bottom')}
       {content.length > 0 && addButton('bottom')}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
-        <Typography variant="caption" color="text.secondary" role="status">
-          Showing {from} to {to} of {totalElements} rows
-        </Typography>
-        {totalPages > 1 && (
-          <Pagination count={totalPages} page={page + 1} size="small" onChange={(_event, next) => setPage(next - 1)} disabled={rowsQuery.isFetching} />
-        )}
-      </Box>
+      {countRow}
     </Box>
   )
 }
@@ -467,7 +517,7 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
 // docs/specs/097-import-framework.md, Validate step ("Check rows"): counters that double as filters (Warnings, Errors), a
 // Problems only switch, the rows (a zebra table, cards on a phone) and an expandable "Skipped, not ours (N)" section. Rows come
 // only from the paginated rows endpoint, 50 per page, filtered by the server (status, outcome); nothing is sliced here.
-export function ImportIssueTable({ clubId, batch, decisions, columns, onToggleExclude, onToggleUpdate, disabled = false, deferredCodes = [], pendingLabel = DEFAULT_PENDING_LABEL, pendingLinkedLabel = DEFAULT_LINKED_LABEL, pendingUnmatchedLabel = DEFAULT_UNMATCHED_LABEL, pendingCreatedLabel = DEFAULT_CREATED_LABEL, candidateBadge, editableColumns, onEditRow, onAddRow, onRemoveRow, onResetRow, emptyLabel = DEFAULT_EMPTY_LABEL, columnOptions, editLayout, toolbarExtra }: ImportIssueTableProps) {
+export function ImportIssueTable({ clubId, batch, decisions, columns, onToggleExclude, onToggleUpdate, disabled = false, deferredCodes = [], pendingLabel = DEFAULT_PENDING_LABEL, pendingLinkedLabel = DEFAULT_LINKED_LABEL, pendingUnmatchedLabel = DEFAULT_UNMATCHED_LABEL, pendingCreatedLabel = DEFAULT_CREATED_LABEL, candidateBadge, editableColumns, onEditRow, onAddRow, onRemoveRow, onResetRow, emptyLabel = DEFAULT_EMPTY_LABEL, columnOptions, editLayout, toolbarExtra, footer }: ImportIssueTableProps) {
   const [counterFilter, setCounterFilter] = useState<CounterFilter>(null)
   const [problemsOnly, setProblemsOnly] = useState(false)
   const [skippedOpen, setSkippedOpen] = useState(false)
@@ -482,7 +532,7 @@ export function ImportIssueTable({ clubId, batch, decisions, columns, onToggleEx
   const viewKey = status.join(',')
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
       <PageCounters
         items={[
           { id: 'rows', value: importCount(batch, 'rows'), label: 'Rows' },
@@ -492,10 +542,6 @@ export function ImportIssueTable({ clubId, batch, decisions, columns, onToggleEx
           ...(skipped > 0 ? [{ id: 'skipped', value: skipped, label: 'Skipped, not ours', shortLabel: 'Not ours' }] : []),
         ]}
       />
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between', gap: 1 }}>
-        <CompactSwitch checked={problemsOnly} onChange={setProblemsOnly} label="Problems only" disabled={counterFilter !== null} />
-        {toolbarExtra && <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>{toolbarExtra}</Box>}
-      </Box>
       <RowsView
         key={viewKey}
         clubId={clubId}
@@ -511,6 +557,14 @@ export function ImportIssueTable({ clubId, batch, decisions, columns, onToggleEx
         pendingLabel={pendingLabel}
         wording={wording}
         testId="import-rows"
+        framed
+        footer={footer}
+        toolbar={
+          <>
+            <CompactSwitch checked={problemsOnly} onChange={setProblemsOnly} label="Problems only" disabled={counterFilter !== null} />
+            {toolbarExtra}
+          </>
+        }
         editableColumns={editableColumns}
         onEditRow={onEditRow}
         onAddRow={onAddRow}

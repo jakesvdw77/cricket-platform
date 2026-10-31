@@ -3,6 +3,7 @@ package com.cricketlegend.service.support.schedule;
 import com.cricketlegend.domain.ImportBatch;
 import com.cricketlegend.domain.ImportBatchEntity;
 import com.cricketlegend.domain.ImportEntityAction;
+import com.cricketlegend.domain.ImportOutcome;
 import com.cricketlegend.domain.ImportResolutionKind;
 import com.cricketlegend.domain.ImportRowAction;
 import com.cricketlegend.domain.ImportScopeMode;
@@ -371,7 +372,7 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
                 var in = inputByRow.get(r.rowNumber());
                 if (in != null && in.date() != null && in.date().ok()
                         && r.issueCodes().contains(ScheduleRule.DATE_OUTSIDE_LEAGUE_DATES.name())
-                        && (r.action() == ImportRowAction.CREATE || r.action() == ImportRowAction.UPDATE)) {
+                        && widensLeagueDates(r)) {
                     LocalDate d = in.date().date();
                     lo = lo == null || d.isBefore(lo) ? d : lo;
                     hi = hi == null || d.isAfter(hi) ? d : hi;
@@ -383,6 +384,18 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
                 leagueWidened == null ? leagueOriginal : leagueWidened, scope, decisions, existing, meta);
         LeagueScheduleValidator.Result result = LeagueScheduleValidator.validate(inputs, ctx);
         return finish(rows, teams, zone, inputs, result, existing, sides, leagueOriginal, leagueWidened);
+    }
+
+    /**
+     * A row with a date outside the league dates widens them unless the user excluded it or it is skipped as a
+     * duplicate or identical row. Rows still being fixed (unresolved teams, other errors) count: the date does not
+     * depend on them, and waiting for them to become CREATE would leave the error in place for good.
+     */
+    private static boolean widensLeagueDates(RowResult r) {
+        if (r.action() == ImportRowAction.EXCLUDED) {
+            return false;
+        }
+        return r.action() != ImportRowAction.SKIP || r.outcome() == ImportOutcome.DIFFERS;
     }
 
     private Context context(ImportScopeMode mode, ZoneId zone, UUID leagueId, UUID seasonId, Teams teams,
@@ -852,20 +865,9 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
         // 1b. the league dates, widened before any match is created (never narrowed)
         if (eval.leagueWidened() != null) {
             LeagueSeasonDatesDto live = leagueSeasonDatesService.get(clubId, leagueId, seasonId);
-            LocalDate lo = null;
-            LocalDate hi = null;
-            for (MatchPlan m : plan.creates()) {
-                LocalDate d = ServerClock.localDate(m.result().start());
-                lo = lo == null || d.isBefore(lo) ? d : lo;
-                hi = hi == null || d.isAfter(hi) ? d : hi;
-            }
-            for (UpdatePlan u : plan.updates()) {
-                if (u.timeChanges()) {
-                    LocalDate d = ServerClock.localDate(u.newStart());
-                    lo = lo == null || d.isBefore(lo) ? d : lo;
-                    hi = hi == null || d.isAfter(hi) ? d : hi;
-                }
-            }
+            // the same range the preview computed, so the confirmed result matches what was shown
+            LocalDate lo = eval.leagueWidened().start();
+            LocalDate hi = eval.leagueWidened().end();
             DateRange target = widen(new DateRange(live.startDate(), live.endDate()), lo, hi);
             if (target != null) {
                 leagueSeasonDatesService.update(clubId, leagueId, seasonId,

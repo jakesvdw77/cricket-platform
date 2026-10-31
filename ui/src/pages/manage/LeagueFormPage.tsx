@@ -353,7 +353,7 @@ export default function LeagueFormPage() {
         )}
 
         {isEdit && activeTab === 'contacts' && (
-          <LeagueEditContactsTab leagueId={leagueId as string} contacts={contactsQuery.data ?? []} />
+          <LeagueEditContactsTab leagueId={leagueId as string} contacts={contactsQuery.data ?? []} seasonId={selectedSeasonId || undefined} />
         )}
       </RecordFormScreen>
 

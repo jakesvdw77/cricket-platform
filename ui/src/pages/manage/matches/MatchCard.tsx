@@ -1,16 +1,7 @@
-import { Box, Chip, IconButton } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import { Chip } from '@mui/material'
+import { useLocation } from 'react-router-dom'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
-import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
-import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
@@ -21,21 +12,18 @@ import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { formatMatchDateTime } from '../availability/pollHelpers'
-import { resultActionFor, resultBadgeFor, resultImportActionFor, resultStateOf } from './matchResultHelpers'
+import { resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { MatchRowMenu } from './MatchRowMenu'
 import { SelectionBlock } from './SelectionBlock'
-import { useAvailabilityNavigation } from './useAvailabilityNavigation'
-import { useTeamSheetShare } from './useTeamSheetShare'
 import {
   announcedBadges,
   badgeFor,
   matchLeagueValue,
-  NO_CLUB_TEAM_REASON,
   pollBadgeFor,
-  pollDestination,
   selectionRows,
   sideName,
-  withPlayingXiTab,
 } from './matchCardHelpers'
 
 export interface MatchCardProps {
@@ -44,39 +32,19 @@ export interface MatchCardProps {
   teamsById: Map<string, Team>
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
-  editTo: string
-  // docs/specs/036: when present the whole card links to the match view. SquadPicker.tsx
-  // deliberately passes `undefined` (via MatchList's own `viewTo={null}`).
+  // docs/specs/036: when present the whole card links to the match view (with the list as its origin, docs/specs/127).
   viewTo?: string
-  // docs/specs/109-delete-empty-match.md: when given, a match the server marks `deletable` shows Delete top right.
-  // Optional so every other use of the card (the Overview page) is unchanged.
-  onDelete?: (target: { id: string; name: string }) => void
 }
 
-// docs/specs/069-match-card-redesign.md: one RecordCard per match, built like the availability poll
-// card - icon-over-caption footer (Edit / Select / Availability / Share), colour-coded badges, stacked
-// details and a Selection block. Deactivate/Reactivate lives on the edit screen (038).
-// docs/specs/075: the Poll button is now Availability (a derby's two polls open a small menu), and
-// the scoring/streaming links show as an icon row.
-// docs/specs/087: aligned with the poll card - the brand match icon on its tile, badges in a row under the
-// header, "League · Season" as the subtitle, a "Starts" strip with a live countdown (amber within 24 hours of
-// kickoff; "Played" once it has started), one Venue line, and zebra Selection rows.
-export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, editTo, viewTo, onDelete }: MatchCardProps) {
-  const navigate = useNavigate()
-
+// docs/specs/069-match-card-redesign.md, revamped by docs/specs/130: one flat RecordCard per match, the brand match icon on its
+// tile, colour-coded badges, "League · Season" as the subtitle, a "Starts" strip with a live countdown (amber within 24 hours
+// of kickoff; "Played" once it has a published result), one Venue line and the Selection block. ONE Actions kebab in the corner
+// holds every action (no footer bar, no icon cluster). Deactivate/Reactivate and Delete live on the edit screen (038, 109).
+export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, viewTo }: MatchCardProps) {
+  const location = useLocation()
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
-  const canDelete = Boolean(onDelete) && match.deletable === true
-
-  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
-  const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(match, teamsById))
-
-  // docs/specs/037-match-improvements.md item 2: a match with no club team side has no
-  // Playing XI to pick, poll or share (029) — those footer buttons are disabled with an explanation.
-  // Same definition of "club team" as the Selection block: a side whose picked count is non-null.
-  const hasClubSide = selectionRows(match, teamsById).length > 0
-  const disabledProps = hasClubSide ? {} : { disabled: true, title: NO_CLUB_TEAM_REASON }
 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
   // The strip reads the kickoff: a countdown and the amber tone before it, "Played" (neutral, no countdown) after.
@@ -86,8 +54,6 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const resultState = resultStateOf(match)
   const played = resultState === 'published'
   const started = kickoff.stage === 'expired'
-  const resultAction = resultActionFor(match)
-  const importAction = resultImportActionFor(match)
   const resultBadge = resultBadgeFor(match)
 
   const inactive = badgeFor(match)
@@ -99,109 +65,22 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   ]
 
   return (
-    <>
-      <RecordCard
-        title={title}
-        titleWrap
-        titleLines={3}
-        badgesBelow
-        description={leagueValue || undefined}
-        // docs/specs/109: Delete sits top right, beside the scoring/streaming links, only on a deletable match.
-        headerActions={
-          match.scoringUrl || match.streamingUrl || canDelete ? (
-            <Box data-testid="match-links-row" sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {match.scoringUrl && (
-                <IconButton
-                  component="a"
-                  href={match.scoringUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  aria-label="Scoring"
-                  title="Scoring"
-                  sx={{ color: 'primary.dark' }}
-                >
-                  <ScoreboardOutlinedIcon fontSize="small" />
-                </IconButton>
-              )}
-              {match.streamingUrl && (
-                <IconButton
-                  component="a"
-                  href={match.streamingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  aria-label="Watch live"
-                  title="Watch live"
-                  sx={{ color: 'primary.dark' }}
-                >
-                  <LiveTvOutlinedIcon fontSize="small" />
-                </IconButton>
-              )}
-              {canDelete && (
-                <IconButton
-                  aria-label={`Delete match ${homeTeamName} v ${awayTeamName}`}
-                  title="Delete match"
-                  onClick={() => onDelete?.({ id: match.id, name: `${homeTeamName} v ${awayTeamName}` })}
-                  sx={{ width: 44, height: 44, color: 'error.main' }}
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              )}
-            </Box>
-          ) : undefined
-        }
-        // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
-        // each side is the 56px avatar box).
-        avatar={{ element: <BrandIcon name="nav/upcoming-matches" size={48} padding={4} /> }}
-        badges={badges}
-        viewTo={viewTo}
-        footerButtons={[
-          {
-            label: 'Edit',
-            icon: <EditOutlinedIcon fontSize="small" />,
-            onClick: () => navigate(editTo),
-          },
-          {
-            label: 'Select',
-            icon: <GroupsOutlinedIcon fontSize="small" />,
-            onClick: () => navigate(withPlayingXiTab(editTo)),
-            ...disabledProps,
-          },
-          {
-            label: 'Availability',
-            icon: <EventAvailableOutlinedIcon fontSize="small" />,
-            onClick: openAvailability,
-            ...disabledProps,
-          },
-          {
-            label: 'Share',
-            icon: <ShareOutlinedIcon fontSize="small" />,
-            onClick: openShare,
-            ...disabledProps,
-          },
-          ...(resultAction
-            ? [
-                {
-                  label: resultAction.caption,
-                  ariaLabel: resultAction.label,
-                  icon: <SportsScoreOutlinedIcon fontSize="small" />,
-                  onClick: () => navigate(resultAction.to),
-                },
-              ]
-            : []),
-          ...(importAction
-            ? [
-                {
-                  label: importAction.caption,
-                  ariaLabel: importAction.label,
-                  icon: <UploadFileOutlinedIcon fontSize="small" />,
-                  onClick: () => navigate(importAction.to),
-                },
-              ]
-            : []),
-        ]}
-      >
+    <RecordCard
+      flat
+      title={title}
+      titleWrap
+      titleLines={3}
+      badgesBelow
+      description={leagueValue || undefined}
+      headerActions={<MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-card-actions" />}
+      // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
+      // each side is the 56px avatar box).
+      avatar={{ element: <BrandIcon name="nav/upcoming-matches" size={48} padding={4} /> }}
+      badges={badges}
+      viewTo={viewTo ? withReturnTo(viewTo, currentOrigin(location), 'Matches') : undefined}
+      // No footer action bar (page-anatomy section 6): the kebab in the corner holds every action.
+      footerActions={null}
+    >
         <CardTimeStrip
           testId="match-time-strip"
           tone={!started && !played && kickoff.warn ? 'warning' : 'neutral'}
@@ -230,9 +109,6 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           />
         )}
         <SelectionBlock rows={selectionRows(match, teamsById)} />
-      </RecordCard>
-      {menu}
-      {shareDialog}
-    </>
+    </RecordCard>
   )
 }

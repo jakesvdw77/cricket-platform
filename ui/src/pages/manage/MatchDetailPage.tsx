@@ -1,20 +1,22 @@
 import { useMemo } from 'react'
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Box,
-  Button as MuiButton,
-  Chip,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Link as RouterLink, useLocation, useOutletContext, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
+import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { badgeSx } from '../../components/RecordCard'
+import { compactButtonSx } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
+import { ManageMenu } from '../../components/ManageMenu'
+import type { ManageMenuItem } from '../../components/ManageMenu'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
-import { deactivateMatch, getMatch, reactivateMatch } from '../../api/matchApi'
+import { getMatch } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -30,13 +32,13 @@ import { getMatchSquad } from '../../api/matchSquadApi'
 import { resultActionFor, resultBadgeFor, resultImportActionFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
-import { MatchHeaderActions } from './matchDetail/MatchHeaderActions'
-import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
-import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
+import { availabilityMenuItems, titleCase } from './matches/MatchRowMenu'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
 import { TeamLogo } from './matches/TeamLogo'
 import { logoFor } from './matches/teamLogoHelpers'
-import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
+import { useBackLink } from '../../hooks/useReturnTo'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
+import { pageTitleSx } from '../../theme'
 import { selectTeamPath } from './teamSelection/selectionLinks'
 import {
   badgeFor,
@@ -209,27 +211,20 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
   const homeShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'home' })
   const awayShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'away' })
-  const queryClient = useQueryClient()
-  // docs/specs/127: Back and Delete return to where the page was opened from (default: the Matches list).
+  // docs/specs/127 and 130: Back returns to where the page was opened from (default: the Matches list); every link that leaves the page
+  // carries this page as its origin, labelled "{Home} v {Away}" (at most 60 characters).
+  const location = useLocation()
   const back = useBackLink(MATCHES_PATH, 'Back to Matches')
-  const afterDelete = useAfterSave(MATCHES_PATH)
-  const invalidateMatches = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
-  // The same calls and invalidation as the Edit page's Deactivate / Reactivate (MatchFormPage).
-  const deactivate = useMutation({ mutationFn: () => deactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
-  const reactivate = useMutation({ mutationFn: () => reactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
-  const deleteFlow = useDeleteMatchDialog(clubId, () => {
-    queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', match.id] })
-    afterDelete({ state: { notice: 'Match deleted.' } })
-  })
-  const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(overlay, teamsById))
 
   const homeName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeName} vs ${awayName}`
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), `${homeName} v ${awayName}`.slice(0, 60))
 
   const inactive = badgeFor(match)
   const resultBadge = resultBadgeFor(match)
-  const resultActions = [resultActionFor(match), resultImportActionFor(match)].filter((action) => action !== null)
+  const resultAction = resultActionFor(match)
+  const importAction = resultImportActionFor(match)
 
   const logos = [
     logoFor(match.homeTeamId, match.homeTeamLogoUrl, homeName, teamsById),
@@ -240,25 +235,74 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   // docs/specs/076-team-selection.md section 7: a league match's M is each side's own
   // limits.maxSelected (a 12th man counts); a match with no league keeps 075's rule (no bar).
   const hasLeague = Boolean(match.leagueId)
-  const editTo = `${MATCHES_PATH}/${match.id}/edit`
+  const editTo = leaveTo(`${MATCHES_PATH}/${match.id}/edit`)
   // The one open squad poll's scheduled close, when there is exactly one (group polls carry none): the Poll tile's caption.
   const openScheduled = (pollsQuery.data ?? []).filter((poll) => poll.open && poll.scheduledCloseAt)
   const pollClosesAt = openScheduled.length === 1 ? openScheduled[0].scheduledCloseAt : null
   const leagueName = match.leagueId ? (leaguesById.get(match.leagueId)?.name ?? null) : null
   const seasonLabel = seasonsById.get(match.seasonId)?.label ?? null
 
-  // docs/specs/089 (A, revised; Match page actions, 2026-10-16): Top row: Back on the left, Scoring and Watch live (when set)
-  // and the three header controls (Result menu, Edit, More) on the right. Title row: the title (a logo before each team that
-  // has one). Select team and Share team sheet sit on the team cards, Open availability on the poll tile. No header badges: each team card shows its own Announced chip and the strip shows the poll; only
-  // Inactive stays. Then the key-figure strip and one team card per own side.
+  const destination = pollDestination(overlay, teamsById)
+  const availabilityReason = noOwnTeam ? NO_CLUB_TEAM_REASON : !pollsReady ? 'Polls are still loading' : null
+  const sideName2 = (entry: OwnSide) => (entry.side === 'home' ? homeName : awayName)
+  const perSide = own.length > 1
+  const shareFor = (entry: OwnSide) => (entry.side === 'home' ? homeShare : awayShare)
+
+  // docs/specs/130 and page-anatomy sections 1 and 8: ONE filled Manage Match menu with everything you can do to the match, Share last.
+  // Deactivate, Reactivate and Delete are on the edit page (6b, 109). An action that cannot apply says why.
+  const selectItems: ManageMenuItem[] = noOwnTeam
+    ? [{ id: 'select-team', title: 'Select Team', description: 'Pick the Playing XI.', icon: <GroupsOutlinedIcon fontSize="small" />, disabled: true, reason: NO_CLUB_TEAM_REASON }]
+    : own.map((entry) => ({
+        id: perSide ? `select-team-${entry.side}` : 'select-team',
+        title: perSide ? `Select Team: ${sideName2(entry)}` : 'Select Team',
+        description: 'Pick the Playing XI.',
+        icon: <GroupsOutlinedIcon fontSize="small" />,
+        to: leaveTo(selectTeamPath(match.id, (entry.side === 'home' ? homeSide : awaySide)?.id ?? null, entry.side === 'home')),
+      }))
+  const shareItems: ManageMenuItem[] = noOwnTeam
+    ? [{ id: 'share-team-sheet', title: 'Share Team Sheet', description: 'The team sheet as a PDF or message.', icon: <ShareOutlinedIcon fontSize="small" />, disabled: true, reason: NO_CLUB_TEAM_REASON }]
+    : own.map((entry) => ({
+        id: perSide ? `share-team-sheet-${entry.side}` : 'share-team-sheet',
+        title: perSide ? `Share Team Sheet: ${sideName2(entry)}` : 'Share Team Sheet',
+        description: 'The team sheet as a PDF or message.',
+        icon: <ShareOutlinedIcon fontSize="small" />,
+        onClick: shareFor(entry).openShare,
+      }))
+  const manageMenu = (
+    <ManageMenu
+      label="Manage Match"
+      testId="manage-match"
+      fixedWidth
+      groups={[
+        {
+          id: 'match',
+          heading: 'Match',
+          items: [
+            { id: 'edit-match', title: 'Edit Match', description: 'Teams, league, season, date, venue and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+            ...(resultAction
+              ? [{ id: 'result', title: titleCase(resultAction.label), description: 'The scorecard and result.', icon: <SportsScoreOutlinedIcon fontSize="small" />, to: leaveTo(resultAction.to) }]
+              : []),
+            ...(importAction
+              ? [{ id: 'import-result', title: titleCase(importAction.label), description: 'Import the scorecard from a file.', icon: <UploadFileOutlinedIcon fontSize="small" />, to: leaveTo(importAction.to) }]
+              : []),
+            ...selectItems,
+            ...availabilityMenuItems(destination, leaveTo, availabilityReason, 'Ask the players if they can play.'),
+            ...shareItems,
+          ],
+        },
+      ]}
+    />
+  )
+
+  // docs/specs/089, revamped by docs/specs/130 (skeleton as the season page, docs/standards/page-anatomy.md section 1): Back alone on the top
+  // row; the title row holds the team logos and "Home vs Away" as the record name, its badges inline, the match's Season pill and the one filled Manage Match
+  // menu; Scoring and Watch Live are inline links under the title. Then four static figures and one flat panel per own team.
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          <Box
-            data-testid="match-header-top-row"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
-          >
+          {/* Top row: only the quiet Back link (page-anatomy section 1). */}
+          <Box data-testid="match-header-top-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
             <MuiButton
               component={RouterLink}
               to={back.to ?? MATCHES_PATH}
@@ -266,98 +310,66 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               color="inherit"
               size="small"
               startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
+              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
             >
               {back.label}
             </MuiButton>
+          </Box>
 
-            {/* Scoring and Watch live (only when the match has the link; below the actions on a phone) and the primary Edit. */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, flex: '0 1 auto', width: { xs: '100%', md: 'auto' } }} data-testid="match-header-links">
-              {match.scoringUrl && (
-                <MuiButton
-                  component="a"
-                  href={match.scoringUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  aria-label="Scoring link"
-                  startIcon={<ScoreboardOutlinedIcon fontSize="small" />}
-                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-                >
-                  Scoring
-                </MuiButton>
-              )}
-              {match.streamingUrl && (
-                <MuiButton
-                  component="a"
-                  href={match.streamingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  aria-label="Watch live link"
-                  startIcon={<LiveTvOutlinedIcon fontSize="small" />}
-                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-                >
-                  Watch live
-                </MuiButton>
-              )}
-              <MatchHeaderActions
-                resultActions={resultActions}
-                editTo={editTo}
-                active={match.active}
-                onToggleActive={() => (match.active ? deactivate : reactivate).mutateAsync()}
-                deletable={match.deletable === true}
-                onDelete={() => deleteFlow.request({ id: match.id, name: `${homeName} v ${awayName}` })}
-              />
+          <Box data-testid="match-header-title-row" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 1.5, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.25, rowGap: 0.5, minWidth: 0, flex: '1 1 auto' }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                aria-label={title}
+                sx={{
+                  ...pageTitleSx,
+                  fontSize: { xs: 26, md: 32 },
+                  lineHeight: 1.1,
+                  letterSpacing: '0.02em',
+                  textTransform: 'none',
+                  overflowWrap: 'anywhere',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  columnGap: { xs: 1, md: 1.25 },
+                  rowGap: 0.5,
+                  minWidth: 0,
+                }}
+              >
+                {logos[0].src && <TeamLogo logo={logos[0]} testId="match-logo-home" />}
+                <span>{homeName}</span>
+                <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.1rem' } }}>
+                  vs
+                </Box>
+                {logos[1].src && <TeamLogo logo={logos[1]} testId="match-logo-away" />}
+                <span>{awayName}</span>
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" aria-label="Match badges" sx={{ flex: 'none' }}>
+                {inactive && <Chip size="small" label={inactive.label} sx={badgeSx(inactive.tone)} data-testid="match-inactive-badge" />}
+                {resultBadge && <Chip size="small" label={resultBadge.label} sx={badgeSx(resultBadge.tone)} data-testid="match-result-badge" />}
+                {seasonLabel && <Chip size="small" variant="outlined" label={seasonLabel} data-testid="match-season-pill" />}
+              </Stack>
+            </Box>
+            <Box data-testid="match-header-actions" sx={{ display: 'flex', flex: { xs: '1 1 100%', sm: 'none' }, ml: { sm: 'auto' } }}>
+              {manageMenu}
             </Box>
           </Box>
 
-          <Box
-            data-testid="match-header-title-row"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
-          >
-            <Typography
-              variant="h4"
-              component="h1"
-              aria-label={title}
-              sx={{
-                fontWeight: 700,
-                lineHeight: 1.2,
-                fontSize: { xs: '1.4rem', md: '1.75rem' },
-                overflowWrap: 'anywhere',
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                columnGap: { xs: 1, md: 1.5 },
-                rowGap: 0.5,
-                flex: '1 1 320px',
-                minWidth: 0,
-              }}
-            >
-              {logos[0].src && <TeamLogo logo={logos[0]} testId="match-logo-home" />}
-              <span>{homeName}</span>
-              <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                vs
-              </Box>
-              {logos[1].src && <TeamLogo logo={logos[1]} testId="match-logo-away" />}
-              <span>{awayName}</span>
-              {inactive && <Chip size="small" label={inactive.label} sx={badgeSx(inactive.tone)} data-testid="match-inactive-badge" />}
-              {resultBadge && <Chip size="small" label={resultBadge.label} sx={badgeSx(resultBadge.tone)} data-testid="match-result-badge" />}
-            </Typography>
-          </Box>
-
-          {/* A phone has no room for the links beside Edit: they follow the actions. */}
+          {/* Scoring and Watch Live (only when the match has the link): inline links under the title, on every width. */}
           {(match.scoringUrl || match.streamingUrl) && (
-            <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            <Box data-testid="match-header-links" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5 }}>
               {match.scoringUrl && (
-                <MuiButton component="a" href={match.scoringUrl} target="_blank" rel="noopener noreferrer" variant="outlined" startIcon={<ScoreboardOutlinedIcon fontSize="small" />}>
+                <MuiLink href={match.scoringUrl} target="_blank" rel="noopener noreferrer" aria-label="Scoring link" underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600, fontSize: '0.875rem' }}>
+                  <ScoreboardOutlinedIcon fontSize="small" />
                   Scoring
-                </MuiButton>
+                </MuiLink>
               )}
               {match.streamingUrl && (
-                <MuiButton component="a" href={match.streamingUrl} target="_blank" rel="noopener noreferrer" variant="outlined" startIcon={<LiveTvOutlinedIcon fontSize="small" />}>
-                  Watch live
-                </MuiButton>
+                <MuiLink href={match.streamingUrl} target="_blank" rel="noopener noreferrer" aria-label="Watch live link" underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600, fontSize: '0.875rem' }}>
+                  <LiveTvOutlinedIcon fontSize="small" />
+                  Watch Live
+                </MuiLink>
               )}
             </Box>
           )}
@@ -369,15 +381,13 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         venue={match.venue}
         playingAreaId={match.playingAreaId}
         playingAreaVerificationStatus={match.playingAreaVerificationStatus}
+        fieldTo={match.playingAreaId ? leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`) : undefined}
         leagueName={leagueName}
         seasonLabel={seasonLabel}
         pollsReady={pollsReady}
         polls={overlay.polls}
         pollClosesAt={pollClosesAt}
         resultStatus={match.resultStatus}
-        onOpenAvailability={openAvailability}
-        availabilityDisabled={noOwnTeam || !pollsReady}
-        availabilityDisabledReason={noOwnTeam ? NO_CLUB_TEAM_REASON : undefined}
       />
 
       {own.length === 0 ? (
@@ -389,10 +399,9 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
           data-testid="match-team-cards"
           sx={{
             display: 'grid',
-            gap: 2,
-            alignItems: 'start',
-            gridTemplateColumns:
-              own.length === 1 ? 'minmax(0, 640px)' : 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))',
+            gap: { xs: 1.5, md: 2 },
+            alignItems: 'stretch',
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: own.length === 1 ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))' },
           }}
         >
           {own.map((entry) => {
@@ -402,7 +411,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               <MatchTeamCard
                 key={entry.side}
                 testId={`match-team-card-${entry.side}`}
-                teamName={entry.side === 'home' ? homeName : awayName}
+                teamName={sideName2(entry)}
                 sideLabel={entry.side === 'home' ? 'Home' : 'Away'}
                 side={side}
                 squad={squadQuery.data ?? []}
@@ -410,18 +419,16 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 announcedReady={sidesReady}
                 sidesReady={sidesReady}
                 playingXiSize={hasLeague ? (side?.limits?.maxSelected ?? null) : null}
-                selectTo={selectTeamPath(match.id, side?.id ?? null, entry.side === 'home')}
-                onShare={entry.side === 'home' ? homeShare.openShare : awayShare.openShare}
+                selectTo={leaveTo(selectTeamPath(match.id, side?.id ?? null, entry.side === 'home'))}
+                onShare={shareFor(entry).openShare}
               />
             )
           })}
         </Box>
       )}
 
-      {menu}
       {homeShare.shareDialog}
       {awayShare.shareDialog}
-      {deleteFlow.dialog}
     </Box>
   )
 }

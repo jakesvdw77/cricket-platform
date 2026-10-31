@@ -33,7 +33,6 @@ const meta: Meta<typeof MatchCard> = {
     teamsById: teams,
     leaguesById: leagues,
     seasonsById: seasons,
-    editTo: '/manage/fixtures/matches/match-1/edit',
     viewTo: '/manage/fixtures/matches/match-1',
   },
 }
@@ -98,10 +97,4 @@ export const LongTitle: Story = {
       venue: 'North Eastwood Recreation Ground, Willow Lane Annexe',
     }),
   },
-}
-
-// docs/specs/109-delete-empty-match.md: a match with nothing recorded against it (`deletable`) shows a Delete icon top right,
-// in the error colour, when the page passes a handler.
-export const Deletable: Story = {
-  args: { match: makeMatch({ matchDate: fromNow(120 * HOUR), deletable: true }), onDelete: () => undefined },
 }

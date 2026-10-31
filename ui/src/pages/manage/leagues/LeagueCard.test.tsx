@@ -342,17 +342,17 @@ describe('LeagueCard', () => {
       const items = screen.getAllByRole('menuitem')
       expect(items.map((item) => item.textContent)).toEqual([
         'Open League',
+        'Edit League Details',
         'Open Schedule',
         'Open Teams',
         'Open Playing Conditions',
-        'Edit League Details',
         'Add Match',
         'Import Schedule',
       ])
-      expect(items[1]).toHaveAttribute('href', expect.stringContaining(`${BASE}/schedule?seasonId=season-9`))
-      expect(items[2]).toHaveAttribute('href', expect.stringContaining(`${BASE}/teams?seasonId=season-9`))
-      expect(items[3]).toHaveAttribute('href', expect.stringContaining(`${BASE}/conditions?seasonId=season-9`))
-      expect(items[4]).toHaveAttribute('href', expect.stringContaining(`${BASE}/edit?seasonId=season-9`))
+      expect(items[1]).toHaveAttribute('href', expect.stringContaining(`${BASE}/edit?seasonId=season-9`))
+      expect(items[2]).toHaveAttribute('href', expect.stringContaining(`${BASE}/schedule?seasonId=season-9`))
+      expect(items[3]).toHaveAttribute('href', expect.stringContaining(`${BASE}/teams?seasonId=season-9`))
+      expect(items[4]).toHaveAttribute('href', expect.stringContaining(`${BASE}/conditions?seasonId=season-9`))
     })
 
     it('disables Add Match and Import Schedule with their reasons when there is no season or the league is inactive', async () => {

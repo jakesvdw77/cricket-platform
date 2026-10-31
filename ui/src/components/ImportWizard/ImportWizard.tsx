@@ -354,7 +354,7 @@ export function ImportWizard({ clubId, type: typeName, scope: baseScope, title, 
   const showGeneralProblem = problem !== null && active.id !== 'upload' && active.id !== 'review'
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2.5 }, minWidth: 0 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
       <ManageScreenHeader
         title={title}
         subtitle={<Typography component="span" sx={{ fontWeight: 600 }}>Importing into: {scopeLabel}</Typography>}
@@ -368,7 +368,7 @@ export function ImportWizard({ clubId, type: typeName, scope: baseScope, title, 
               </Button>
             )}
             <Button size="compact" variant="secondary" startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)} sx={{ minHeight: { xs: 44, md: 32 } }}>
-              Import history
+              Import History
             </Button>
           </Box>
         }

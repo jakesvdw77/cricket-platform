@@ -41,7 +41,7 @@ describe('ImportIssueTable, editing rows (spec 125)', () => {
     renderTable({ editable: false })
     await screen.findByTestId('import-row-44')
     expect(screen.queryByRole('button', { name: /edit row/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add row' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add Row' })).not.toBeInTheDocument()
   })
 
   it('saves only the changed keys in one call, and Cancel sends nothing', async () => {
@@ -89,12 +89,12 @@ describe('ImportIssueTable, editing rows (spec 125)', () => {
     const decisions = withAddedRow(emptyImportDecisions(), { rowNumber: 1001, values: { home: 'A', away: 'B' } })
     const handlers = renderTable({ decisions, batch: sampleBatch({ decisions }) })
     const added = await screen.findByTestId('import-row-1001')
-    expect(within(added).getByText('Added')).toBeInTheDocument()
+    expect(within(added).getByText('Manually Added')).toBeInTheDocument()
     expect(within(added).queryByRole('button', { name: /exclude/i })).not.toBeInTheDocument()
     fireEvent.click(within(added).getByRole('button', { name: 'Remove row New 1' }))
     expect(handlers.onRemoveRow).toHaveBeenCalledWith(1001)
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add row' })[1])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[1])
     expect(screen.getByLabelText('Date, row new')).toHaveValue('2026-10-04')
     fireEvent.change(screen.getByLabelText('Home team, row new'), { target: { value: 'CBC U13' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -115,7 +115,7 @@ describe('ImportIssueTable, editing rows (spec 125)', () => {
   it('shows the empty state of a batch with no rows', async () => {
     renderTable({ rows: [], batch: sampleBatch({ counts: { rows: 0 }, issues: [], proposals: [] }) })
     expect(await screen.findByText('No rows yet. Add the first match.')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Add row' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Add Row' })).toHaveLength(1)
   })
 
   describe('choosing a team from the list (amendment 2026-10-30)', () => {
