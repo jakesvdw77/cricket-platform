@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { Box, Tooltip, Typography } from '@mui/material'
+import { Box, Divider, Tooltip, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
@@ -9,6 +9,7 @@ import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
 import { CompactSwitch } from '../CompactSwitch'
 import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
+import { compactFieldSx } from '../../utils/compactFieldSx'
 import { resolveEffectiveMaxOversPerBowler } from '../../utils/playingConditions'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 
@@ -60,9 +61,9 @@ type FormErrors = Partial<
 
 const POINTS_FIELDS: { field: PointsField; label: string }[] = [
   { field: 'pointsForWin', label: 'Points for win' },
-  { field: 'pointsForLoss', label: 'Points for loss' },
   { field: 'pointsForDraw', label: 'Points for draw' },
   { field: 'pointsForNoResult', label: 'Points for no result' },
+  { field: 'pointsForLoss', label: 'Points for loss' },
   { field: 'pointsForForfeitWin', label: 'Points for forfeit win' },
 ]
 
@@ -161,7 +162,10 @@ function validate(values: FormState): FormErrors {
   return errors
 }
 
-const fieldGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }
+const fieldGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 1.25 }
+const switchGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 1.25, rowGap: 0.5 }
+// Every switch row is the same 36 px high on desktop (44 px on a phone, from CompactSwitch), so the switches line up.
+const switchRowSx = { display: 'flex', alignItems: 'center', gap: 1.5, minHeight: { xs: 44, md: 36 }, minWidth: 0 }
 
 // docs/specs/052 (fields, validation, payload) restyled by docs/specs/095: FormSectionHeading sections (Innings, Points, Bonus
 // points, Notes) in a three-column grid from md. There is no Save button in here: the tab's footer owns it and submits this
@@ -253,7 +257,12 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
           inputProps={{ min: 1 }}
         />
       </FieldWithInfo>
-      <Box sx={{ gridColumn: '1 / -1' }}>
+    </>
+  )
+
+  const switches = (
+    <>
+      <Box sx={switchRowSx}>
         <CompactSwitch
           checked={values.limitBallsPerOver}
           onChange={(checked) =>
@@ -261,48 +270,35 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
           }
           label="Limit balls per over"
         />
+        {values.limitBallsPerOver && (
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: 260 }}>
+            <FieldWithInfo
+              info="The over ends after this many balls, wides and no balls included."
+              infoLabel="About maximum balls per over"
+            >
+              <Input
+                label="Maximum balls per over"
+                type="number"
+                placeholder="e.g. 8"
+                InputLabelProps={placeholderLabel}
+                value={values.maxBallsPerOver}
+                onChange={handleChange('maxBallsPerOver')}
+                error={Boolean(errors.maxBallsPerOver)}
+                helperText={errors.maxBallsPerOver}
+                inputProps={{ min: 1, max: 20 }}
+              />
+            </FieldWithInfo>
+          </Box>
+        )}
       </Box>
-      {values.limitBallsPerOver && (
-        <FieldWithInfo
-          info="The over ends after this many balls, wides and no balls included."
-          infoLabel="About maximum balls per over"
-        >
-          <Input
-            label="Maximum balls per over"
-            type="number"
-            placeholder="e.g. 8"
-            InputLabelProps={placeholderLabel}
-            value={values.maxBallsPerOver}
-            onChange={handleChange('maxBallsPerOver')}
-            error={Boolean(errors.maxBallsPerOver)}
-            helperText={errors.maxBallsPerOver}
-            inputProps={{ min: 1, max: 20 }}
-          />
-        </FieldWithInfo>
-      )}
-      <Box sx={{ gridColumn: '1 / -1' }}>
+      <Box sx={switchRowSx}>
         <CompactSwitch
           checked={values.freeHitOnNoBall}
           onChange={(checked) => setValues((prev) => ({ ...prev, freeHitOnNoBall: checked }))}
           label="Free hit after a no ball"
         />
       </Box>
-      <Box sx={{ gridColumn: '1 / -1' }}>
-        <FieldWithInfo
-          multiline
-          info="Optional: free text for circle/leg-side clauses too varied to model as fields"
-          infoLabel="About fielding restrictions notes"
-        >
-          <Input
-            label="Fielding restrictions notes"
-            value={values.fieldingRestrictionsNotes}
-            onChange={handleChange('fieldingRestrictionsNotes')}
-            multiline
-            minRows={2}
-          />
-        </FieldWithInfo>
-      </Box>
-      <Box sx={{ gridColumn: '1 / -1' }}>
+      <Box sx={switchRowSx}>
         <CompactSwitch
           checked={values.allowSubstitutions}
           onChange={(checked) => setValues((prev) => ({ ...prev, allowSubstitutions: checked }))}
@@ -319,13 +315,28 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
       id={PLAYING_CONDITIONS_FORM_ID}
       onSubmit={handleSubmit}
       noValidate
-      sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...compactFieldSx }}
     >
-      <FormSectionHeading icon={<TimerOutlinedIcon />} title="Innings" />
+      <FormSectionHeading compact icon={<TimerOutlinedIcon />} title="Innings" />
       <Box sx={fieldGridSx}>{innings}</Box>
+      <Box sx={switchGridSx}>{switches}</Box>
+      <FieldWithInfo
+        multiline
+        info="Optional: free text for circle/leg-side clauses too varied to model as fields"
+        infoLabel="About fielding restrictions notes"
+      >
+        <Input
+          label="Fielding restrictions notes"
+          value={values.fieldingRestrictionsNotes}
+          onChange={handleChange('fieldingRestrictionsNotes')}
+          multiline
+          minRows={2}
+        />
+      </FieldWithInfo>
 
-      <FormSectionHeading icon={<EmojiEventsOutlinedIcon />} title="Points" />
-      <Box sx={fieldGridSx}>
+      <Divider />
+      <FormSectionHeading compact icon={<EmojiEventsOutlinedIcon />} title="Points" />
+      <Box sx={{ ...fieldGridSx, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
         {POINTS_FIELDS.map(({ field, label }) => (
           <Input
             key={field}
@@ -340,9 +351,10 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
         ))}
       </Box>
 
-      <FormSectionHeading icon={<StarOutlineOutlinedIcon />} title="Bonus points" />
+      <Divider />
+      <FormSectionHeading compact icon={<StarOutlineOutlinedIcon />} title="Bonus points" />
       <Box sx={fieldGridSx}>
-        <Box sx={{ gridColumn: '1 / -1' }}>
+        <Box sx={switchRowSx}>
           <CompactSwitch
             checked={values.bonusPointsEnabled}
             onChange={(checked) => setValues((prev) => ({ ...prev, bonusPointsEnabled: checked }))}
@@ -386,14 +398,15 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
         </Typography>
       )}
 
-      <FormSectionHeading icon={<NotesOutlinedIcon />} title="Notes" />
+      <Divider />
+      <FormSectionHeading compact icon={<NotesOutlinedIcon />} title="Notes" />
       <FieldWithInfo multiline info="Optional: anything club-specific that doesn't fit the fields above" infoLabel="About additional notes">
         <Input
           label="Additional notes"
           value={values.additionalNotes}
           onChange={handleChange('additionalNotes')}
           multiline
-          minRows={2}
+          minRows={3}
         />
       </FieldWithInfo>
     </Box>

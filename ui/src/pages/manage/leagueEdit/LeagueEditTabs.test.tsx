@@ -21,23 +21,21 @@ function renderTabs(path: string) {
 }
 
 describe('LeagueEditTabs', () => {
-  it('is a tablist of the five tabs in order, in sentence case', () => {
+  it('is a tablist of the four tabs in order', () => {
     renderTabs('/edit')
 
     expect(screen.getByRole('tablist')).toBeInTheDocument()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Details',
-      'Teams',
-      'Schedule',
-      'Playing conditions',
+      'Branding',
+      'Playing Conditions',
       'Contacts',
     ])
   })
 
   it.each([
-    ['teams', 'Teams'],
-    ['schedule', 'Schedule'],
-    ['conditions', 'Playing conditions'],
+    ['branding', 'Branding'],
+    ['conditions', 'Playing Conditions'],
     ['contacts', 'Contacts'],
     ['details', 'Details'],
   ])('selects the %s tab from ?tab=', (value, label) => {
@@ -59,10 +57,15 @@ describe('LeagueEditTabs', () => {
     const user = userEvent.setup()
     renderTabs('/edit?seasonId=season-2')
 
-    await user.click(screen.getByRole('tab', { name: 'Teams' }))
+    await user.click(screen.getByRole('tab', { name: 'Branding' }))
 
-    expect(screen.getByTestId('where')).toHaveTextContent('?seasonId=season-2&tab=teams|REPLACE')
-    expect(screen.getByRole('tab', { name: 'Teams' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('where')).toHaveTextContent('?seasonId=season-2&tab=branding|REPLACE')
+    expect(screen.getByRole('tab', { name: 'Branding' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('opens Details for the retired teams and schedule tabs', () => {
+    renderTabs('/edit?tab=teams')
+    expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('resolveLeagueEditTab maps unknown values to details', () => {

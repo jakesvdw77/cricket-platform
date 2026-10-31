@@ -5,6 +5,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { ContentCard } from '../ContentCard'
 import { pageTitleSx } from '../../theme'
+import { useBackLink } from '../../hooks/useReturnTo'
 
 export interface RecordFormScreenProps {
   title: string
@@ -26,7 +27,9 @@ export interface RecordFormScreenProps {
 // column at xs, two columns from md — consuming forms wrap single-value fields one-per-cell
 // and full-width fields, e.g. description, in a Box with gridColumn: '1 / -1'), then an
 // actions bar below a divider for Save/Cancel/Retire-style buttons.
-export function RecordFormScreen({ title, backTo, backLabel, actions, tabs, headerAction, children }: RecordFormScreenProps) {
+export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defaultBackLabel, actions, tabs, headerAction, children }: RecordFormScreenProps) {
+  // docs/specs/127: a valid returnTo in the address overrides the page's own default Back.
+  const { to: backTo = defaultBackTo, label: backLabel } = useBackLink(defaultBackTo, defaultBackLabel)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeaderBand>

@@ -69,7 +69,7 @@ public final class PlayerNameMatcher {
                 && withinTolerance(canonicalSurname(typedLast), canonicalSurname(storedLast));
     }
 
-    static boolean withinTolerance(String a, String b) {
+    public static boolean withinTolerance(String a, String b) {
         if (a.isEmpty() || b.isEmpty()) {
             return false;
         }
@@ -79,7 +79,7 @@ public final class PlayerNameMatcher {
     }
 
     /** Levenshtein distance; stops early with {@code limit + 1} when the length gap alone exceeds it. */
-    static int editDistance(String a, String b, int limit) {
+    public static int editDistance(String a, String b, int limit) {
         if (Math.abs(a.length() - b.length()) > limit) {
             return limit + 1;
         }

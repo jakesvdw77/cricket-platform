@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptyPage, makeLeague, makeSeason, renderLeagueView } from './leagueViewTestUtils'
 
-// docs/specs/122-league-sharing.md (Entry points): the Playing conditions tab opens the Share League dialog with Playing
-// conditions ticked, the league view header's button is labelled "Share" (not "Share schedule") and ticks Schedule on every tab.
+// docs/specs/122-league-sharing.md (Entry points): the league view's Manage League panel offers "Share League" (not "Share schedule"), ticking Schedule on every tab
+// except Conditions, which ticks Playing conditions.
 // The dialog itself is covered by ShareLeagueDialog.test.tsx; here it is a stub that shows what it was opened with.
 vi.mock('../../../components/ShareLeagueDialog', () => ({
   ShareLeagueDialog: (props: { open: boolean; preselected: string[]; seasonId?: string | null; league: { name: string } }) =>
@@ -67,30 +67,44 @@ beforeEach(() => {
 const PATH = '/manage/fixtures/leagues/league-1'
 
 describe('league view Share entry points', () => {
-  it('labels the header button "Share" with no "Share schedule" anywhere', async () => {
+  it('offers "Share League" in the Manage League panel, with no "Share schedule" and no header Share button', async () => {
     renderLeagueView(`${PATH}/schedule`)
 
-    expect((await screen.findAllByRole('button', { name: 'Share' })).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('button', { name: /Share schedule/i })).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Manage League' }))
+
+    expect(screen.getByRole('menuitem', { name: /Share League/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Share schedule/i)).not.toBeInTheDocument()
   })
 
-  it.each(['schedule', 'teams', 'conditions'])('the header Share on the %s tab opens the dialog with Schedule ticked and the selected season', async (tab) => {
+  it.each([
+    ['schedule', 'SCHEDULE'],
+    ['teams', 'SCHEDULE'],
+    ['conditions', 'CONDITIONS'],
+  ])('Share League on the %s tab opens the dialog with %s ticked and the selected season', async (tab, ticked) => {
     renderLeagueView(`${PATH}/${tab}`)
 
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Share' }))[0])
+    await userEvent.click(await screen.findByRole('button', { name: 'Manage League' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Share League/ }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Share league stub' })
-    expect(dialog).toHaveAttribute('data-preselected', 'SCHEDULE')
+    expect(dialog).toHaveAttribute('data-preselected', ticked)
     expect(dialog).toHaveAttribute('data-season', 'season-1')
     expect(dialog).toHaveTextContent('Internal League')
   })
 
-  it('the Playing conditions tab Share opens the dialog with only Playing conditions ticked', async () => {
-    renderLeagueView(`${PATH}/conditions`)
-    await screen.findByText('Playing conditions for 2026')
+  it.each([
+    ['schedule', 'Manage Schedule', /Share Schedule/, 'SCHEDULE'],
+    ['teams', 'Manage Teams', /Share Teams/, 'TEAMS'],
+    ['conditions', 'Manage Playing Conditions', /Share Playing Conditions/, 'CONDITIONS'],
+  ])('the %s tab menu share item opens the dialog with only %s ticked', async (tab, label, item, ticked) => {
+    renderLeagueView(`${PATH}/${tab}`)
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Share' }).at(-1) as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: label }))
+    await userEvent.click(screen.getByRole('menuitem', { name: item }))
 
-    expect(await screen.findByRole('dialog', { name: 'Share league stub' })).toHaveAttribute('data-preselected', 'CONDITIONS')
+    const dialog = await screen.findByRole('dialog', { name: 'Share league stub' })
+    expect(dialog).toHaveAttribute('data-preselected', ticked)
+    expect(dialog).toHaveAttribute('data-season', 'season-1')
   })
 })

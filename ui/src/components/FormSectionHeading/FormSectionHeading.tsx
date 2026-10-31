@@ -5,18 +5,21 @@ export interface FormSectionHeadingProps {
   // A 20 px MUI outlined icon, drawn on the solid-green tile.
   icon: ReactNode
   title: string
+  // docs/specs/128: a tighter heading for dense edit cards (24 px tile, 16 px icon). Default off, so other forms are unchanged.
+  compact?: boolean
 }
 
 // docs/specs/089 (the compact Add/Edit match form) and docs/specs/091 (the league form): the icon-tile heading of a form
 // section - the same solid-green 32 px tile and uppercase title the detail-page cards use.
-export function FormSectionHeading({ icon, title }: FormSectionHeadingProps) {
+export function FormSectionHeading({ icon, title, compact = false }: FormSectionHeadingProps) {
+  const tile = compact ? 24 : 32
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: compact ? 1 : 1.25 }}>
       <Box
         aria-hidden
         sx={{
-          width: 32,
-          height: 32,
+          width: tile,
+          height: tile,
           flex: 'none',
           borderRadius: 1,
           bgcolor: 'primary.main',
@@ -24,7 +27,7 @@ export function FormSectionHeading({ icon, title }: FormSectionHeadingProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          '& svg': { fontSize: 20 },
+          '& svg': { fontSize: compact ? 16 : 20 },
         }}
       >
         {icon}

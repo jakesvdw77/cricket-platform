@@ -1,6 +1,8 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MANAGE_BUTTON_WIDTH } from '../../../components/ManageMenu'
+import { clearViewport, setPhone } from '../../../test/accountTestUtils'
 import {
   emptyPage,
   makeAffiliation,
@@ -75,6 +77,18 @@ beforeEach(() => {
 
 const LEAGUE_PATH = '/manage/fixtures/leagues/league-1'
 
+afterEach(() => clearViewport())
+
+// docs/specs/127-return-navigation.md: the origin and label carried in an href.
+function returnOf(href: string | null) {
+  const params = new URLSearchParams((href ?? '').split('?')[1])
+  return { to: params.get('returnTo'), label: params.get('returnLabel') }
+}
+
+async function openManage(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'Manage League' }))
+}
+
 function following(first: Element, second: Element) {
   return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)
 }
@@ -111,7 +125,7 @@ describe('LeagueViewLayout', () => {
       mocks.listSeasons.mockResolvedValue([makeSeason()])
     })
 
-    it('shows the cut-off date for a league with an age limit', async () => {
+    it('puts the cut-off date in the Playing XI info tooltip for a league with an age limit', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ maxAge: 15, ageCutoffMonth: 12, ageCutoffDay: 31 })])
       mocks.getLeagueAgeReference.mockResolvedValue({
         referenceDate: '2026-12-31',
@@ -122,11 +136,14 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await screen.findByTestId('league-age-reference')).toHaveTextContent('Ages are judged on 31 Dec 2026 (the cut-off)')
+      const info = await screen.findByTestId('league-figure-xi-info')
+      expect(screen.getByTestId('league-figure-xi')).toContainElement(info)
+      expect(screen.queryByText(/Ages judged on/)).not.toBeInTheDocument()
+      expect(screen.getByTestId('league-figure-xi-info')).toHaveAttribute('aria-label', 'Ages are judged on 31 Dec 2026 (the cut-off)')
       expect(mocks.getLeagueAgeReference).toHaveBeenCalledWith('test-club-id', 'league-1', expect.any(String))
     })
 
-    it('shows the league start day when the league has no cut-off', async () => {
+    it('puts the league start day in the info tooltip when the league has no cut-off', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ minAge: 12 })])
       mocks.getLeagueAgeReference.mockResolvedValue({
         referenceDate: '2027-07-14',
@@ -137,29 +154,27 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await screen.findByTestId('league-age-reference')).toHaveTextContent(
-        'Ages are judged on 14 Jul 2027 (the day the league starts)',
-      )
+      expect(await screen.findByTestId('league-figure-xi-info')).toHaveAttribute('aria-label', 'Ages are judged on 14 Jul 2027 (the day the league starts)')
     })
 
-    it('shows no line, and makes no lookup, for a league with no age limit', async () => {
+    it('shows no info icon, and makes no lookup, for a league with no age limit', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague()])
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByTestId('league-key-figures')
-      expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('league-figure-xi-info')).not.toBeInTheDocument()
       expect(mocks.getLeagueAgeReference).not.toHaveBeenCalled()
     })
 
-    it('shows no line when the lookup fails', async () => {
+    it('shows no info icon when the lookup fails', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ maxAge: 15 })])
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByTestId('league-key-figures')
       await waitFor(() => expect(mocks.getLeagueAgeReference).toHaveBeenCalled())
-      expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('league-figure-xi-info')).not.toBeInTheDocument()
     })
   })
 
@@ -199,14 +214,14 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
-      expect(screen.queryByText(/^Showing \d+ teams/)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Search teams')).not.toBeInTheDocument()
       expect(screen.queryByText(/^Playing conditions for/)).not.toBeInTheDocument()
     })
 
     it('renders only the Teams section on /teams', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams`)
 
-      expect(await screen.findByText('Showing 0 teams · 2026')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
       expect(screen.queryByText(/^Playing conditions for/)).not.toBeInTheDocument()
     })
@@ -216,7 +231,7 @@ describe('LeagueViewLayout', () => {
 
       expect(await screen.findByText('Playing conditions for 2026')).toBeInTheDocument()
       expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
-      expect(screen.queryByText(/^Showing \d+ teams/)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Search teams')).not.toBeInTheDocument()
     })
 
     it('still resolves /:id/edit and /:id/contacts/:contactId/edit to their own pages', async () => {
@@ -236,7 +251,7 @@ describe('LeagueViewLayout', () => {
       mocks.listSeasons.mockResolvedValue([makeSeason()])
     })
 
-    it('lays the rows out in order: Back with the Season pill, Share and Edit; logo, name and badges; contacts and links; the strip', async () => {
+    it('lays the rows out in order: Back; logo, name with badges, the Season pill and Manage League on the title row, the contacts line under the name; the strip', async () => {
       mocks.listLeagues.mockResolvedValue([
         makeLeague({
           format: 'T20',
@@ -252,50 +267,78 @@ describe('LeagueViewLayout', () => {
       const topRow = screen.getByTestId('league-header-top-row')
       const titleRow = screen.getByTestId('league-header-title-row')
       const back = within(topRow).getByRole('link', { name: 'Back to Leagues' })
-      const season = within(topRow).getByRole('button', { name: 'Season' })
-      const share = within(topRow).getByRole('button', { name: 'Share' })
-      const duplicate = within(topRow).getByRole('button', { name: 'Duplicate league' })
-      const edit = within(topRow).getByRole('link', { name: 'Edit' })
+      const season = within(titleRow).getByRole('button', { name: 'Season' })
+      const manage = within(titleRow).getByRole('button', { name: 'Manage League' })
       const people = screen.getByTestId('league-header-contact-people')
       const links = screen.getByTestId('league-header-links-row')
       const strip = screen.getByTestId('league-key-figures')
 
-      expect(following(back, season)).toBe(true)
-      expect(following(season, share)).toBe(true)
-      expect(following(share, duplicate)).toBe(true)
-      expect(following(duplicate, edit)).toBe(true)
+      expect(following(back, heading)).toBe(true)
+      expect(following(heading, manage)).toBe(true)
+      // The top row holds only Back; Manage League is the one button on the title row, right-aligned after the badges and Season pill.
+      expect(within(topRow).queryAllByRole('button')).toHaveLength(0)
+      expect(screen.queryByRole('link', { name: 'Edit League' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Actions' })).not.toBeInTheDocument()
+      expect(getComputedStyle(screen.getByTestId('league-header-actions')).marginLeft).toBe('auto')
+      expect(within(topRow).queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+      expect(following(within(titleRow).getByLabelText('League badges'), season)).toBe(true)
       expect(following(topRow, titleRow)).toBe(true)
       expect(within(titleRow).getByRole('heading', { name: 'Internal League' })).toBe(heading)
       expect(within(titleRow).getByLabelText('League badges')).toBeInTheDocument()
-      expect(following(titleRow, people)).toBe(true)
+      // The contacts line sits inside the title block, directly under the name and badges, with the social icon inline at its end.
+      const contactsLine = screen.getByTestId('league-header-contacts-line')
+      expect(titleRow).toContainElement(contactsLine)
+      expect(following(heading, contactsLine)).toBe(true)
       expect(following(people, links)).toBe(true)
-      expect(following(links, strip)).toBe(true)
+      expect(following(links, screen.getByTestId('league-header-social'))).toBe(true)
+      expect(contactsLine).toContainElement(screen.getByTestId('league-header-social'))
+      expect(following(titleRow, strip)).toBe(true)
     })
 
-    it('shows Edit as the filled primary button on the top row, and lets the name wrap', async () => {
+    it('shows Manage League as the filled (contained) button with a caret and no leading icon, and lets the name wrap', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       const heading = await screen.findByRole('heading', { name: 'Internal League' })
-      const topRow = screen.getByTestId('league-header-top-row')
-      const edit = within(topRow).getByRole('link', { name: 'Edit' })
+      const manage = within(screen.getByTestId('league-header-title-row')).getByRole('button', { name: 'Manage League' })
 
-      expect(edit.className).toContain('MuiButton-contained')
-      expect(within(topRow).getByRole('button', { name: 'Duplicate league' }).className).toContain('MuiButton-outlined')
+      expect(manage.className).toContain('MuiButton-contained')
+      expect(manage.querySelector('.MuiButton-startIcon')).toBeNull()
+      expect(manage.querySelector('svg[data-testid="ArrowDropDownIcon"]')).not.toBeNull()
       expect(getComputedStyle(heading).overflowWrap).toBe('anywhere')
       expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis')
     })
 
-    it('shares the top row between Back (left) and the Season pill, Share and Edit (right)', async () => {
+    it('styles the league name in the display face at the list title size but keeps its capitals', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      const heading = await screen.findByRole('heading', { name: 'Internal League' })
+      const style = getComputedStyle(heading)
+      expect(style.textTransform).toBe('none')
+      expect(style.fontWeight).toBe('700')
+      expect(style.fontFamily).toContain('Barlow Condensed')
+    })
+
+    it('keeps only Back on the top row, with the Season pill and Manage League on the title row', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
       const topRow = screen.getByTestId('league-header-top-row')
 
-      expect(getComputedStyle(topRow).justifyContent).toBe('space-between')
-      expect(getComputedStyle(topRow).flexWrap).toBe('wrap')
-      expect(within(topRow).getByRole('button', { name: 'Season' })).toBeInTheDocument()
-      expect(within(topRow).getByRole('button', { name: 'Share' })).toBeInTheDocument()
+      expect(within(topRow).getByRole('link', { name: 'Back to Leagues' })).toBeInTheDocument()
+      expect(within(topRow).queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('league-header-title-row')).getByRole('button', { name: 'Season' })).toBeInTheDocument()
+      expect(within(screen.getByTestId('league-header-title-row')).getByRole('button', { name: 'Manage League' })).toBeInTheDocument()
       expect(screen.queryByLabelText('League badges', { selector: '[data-testid="league-header-top-row"] *' })).not.toBeInTheDocument()
+    })
+
+    it('puts the badges on the title line, in the same row as the name', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ format: 'T20' })])
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      const heading = await screen.findByRole('heading', { name: 'Internal League' })
+      const badges = screen.getByLabelText('League badges')
+      expect(heading.parentElement).toContainElement(badges)
+      expect(getComputedStyle(heading.parentElement as HTMLElement).flexWrap).toBe('wrap')
     })
 
     it.each(['schedule', 'teams', 'conditions'])(
@@ -310,68 +353,91 @@ describe('LeagueViewLayout', () => {
       },
     )
 
-    it('points Edit at the league edit route, carrying the selected season', async () => {
+    it('points Edit League Details at the league edit route, carrying the selected season', async () => {
+      const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute(
-        'href',
-        `${LEAGUE_PATH}/edit?tab=schedule&seasonId=season-1`,
-      )
+      await openManage(user)
+      expect(screen.getByRole('menuitem', { name: /Edit League Details/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/edit?seasonId=season-1`))
     })
 
     it.each([
-      ['schedule', 'schedule'],
-      ['teams', 'teams'],
-      ['conditions', 'conditions'],
-    ])('opens the %s edit tab from the %s view', async (view, tab) => {
+      ['schedule', ''],
+      ['teams', ''],
+      ['conditions', 'tab=conditions&'],
+    ])('opens the edit tab for the %s view (Details unless Playing Conditions)', async (view, tab) => {
+      const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/${view}`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute(
-        'href',
-        `${LEAGUE_PATH}/edit?tab=${tab}&seasonId=season-1`,
-      )
+      await openManage(user)
+      expect(screen.getByRole('menuitem', { name: /Edit League Details/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/edit?${tab}seasonId=season-1`))
     })
 
-    it('Create match opens the Add match form with the league and the selected season preselected', async () => {
-      const user = userEvent.setup()
+    it('no longer has Create match, Share, Duplicate League, Edit League or Actions as page buttons (they are Manage League options)', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      await user.click(await screen.findByRole('button', { name: 'Create match' }))
-
-      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1')
+      await screen.findByRole('heading', { name: 'Internal League' })
+      for (const name of ['Create match', 'Share', 'Duplicate League', 'Actions', 'Add Match']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+      }
+      expect(screen.queryByRole('link', { name: 'Edit League' })).not.toBeInTheDocument()
     })
 
-    it('Create match carries a season chosen with ?seasonId=', async () => {
+    it('shows only a white Manage Teams menu button in the tab actions area on the Teams tab when the season has teams', async () => {
+      mocks.listLeagueTeams.mockResolvedValue([makeLeagueTeam()])
+      renderLeagueView(`${LEAGUE_PATH}/teams`)
+
+      const actions = await screen.findByTestId('league-tab-actions')
+      await waitFor(() => expect(actions).not.toBeEmptyDOMElement())
+      expect(within(actions).getAllByRole('button')).toHaveLength(1)
+      expect(within(actions).getByRole('button', { name: 'Manage Teams' }).className).toContain('MuiButton-outlined')
+      expect(screen.queryByRole('link', { name: 'Add match' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit conditions' })).not.toBeInTheDocument()
+    })
+
+    it.each([
+      ['schedule', 'Manage Schedule', ['Add Match', 'Import Schedule', 'Share Schedule']],
+      ['teams', 'Manage Teams', ['Add Team', 'Copy Teams', 'Share Teams']],
+      ['conditions', 'Manage Playing Conditions', ['Edit Playing Conditions', 'Share Playing Conditions', 'View Document']],
+    ])('the %s tab menu "%s" lists its items in order, Share never first', async (tab, label, expected) => {
       const user = userEvent.setup()
-      mocks.listSeasons.mockResolvedValue([makeSeason(), makeSeason({ id: 'season-2', label: '2027' })])
-      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-2`)
+      renderLeagueView(`${LEAGUE_PATH}/${tab}`)
 
-      await user.click(await screen.findByRole('button', { name: 'Create match' }))
-
-      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-2')
+      await user.click(await screen.findByRole('button', { name: label }))
+      const names = screen.getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent)
+      expect(names).toEqual(expected)
     })
 
-    it('disables Create match while the league has no season', async () => {
-      mocks.listSeasons.mockResolvedValue([])
-      renderLeagueView(`${LEAGUE_PATH}/teams`)
+    it('gives Manage League and the tab-row Manage button the same fixed width, from one shared constant', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/conditions`)
 
-      expect(await screen.findByRole('button', { name: 'Create match' })).toBeDisabled()
+      const league = await screen.findByRole('button', { name: 'Manage League' })
+      const tab = await screen.findByRole('button', { name: 'Manage Playing Conditions' })
+      expect(MANAGE_BUTTON_WIDTH).toBe(220)
+      expect(getComputedStyle(league).width).toBe(`${MANAGE_BUTTON_WIDTH}px`)
+      expect(getComputedStyle(tab).width).toBe(`${MANAGE_BUTTON_WIDTH}px`)
+      expect(league.className).toContain('MuiButton-contained')
+      expect(tab.className).toContain('MuiButton-outlined')
     })
 
-    it('drops seasonId from the Edit link when no season exists, keeping the tab', async () => {
+    it('drops seasonId from the Edit League Details link when no season exists, keeping the tab', async () => {
+      const user = userEvent.setup()
       mocks.listSeasons.mockResolvedValue([])
 
       renderLeagueView(`${LEAGUE_PATH}/teams`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?tab=teams`)
+      await openManage(user)
+      expect(screen.getByRole('menuitem', { name: /Edit League Details/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/edit`))
     })
 
     it('carries a season chosen with ?seasonId= to the edit route', async () => {
+      const user = userEvent.setup()
       mocks.listSeasons.mockResolvedValue([makeSeason(), makeSeason({ id: 'season-2', label: '2027' })])
 
       renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-2`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?tab=schedule&seasonId=season-2`)
+      await openManage(user)
+      expect(screen.getByRole('menuitem', { name: /Edit League Details/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/edit?seasonId=season-2`))
     })
 
     it('renders the format badge only when the league has a format, and never a team count or season badge', async () => {
@@ -398,7 +464,7 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      await waitFor(() => expect(screen.getByTestId('league-figure-teams-value')).toHaveTextContent('3'))
+      await waitFor(() => expect(within(screen.getByTestId('league-figure-teams')).getByTestId('page-counter-value')).toHaveTextContent('3'))
       expect(screen.queryByText(/99/)).not.toBeInTheDocument()
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
     })
@@ -421,27 +487,133 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      await waitFor(() => expect(screen.getByTestId('league-figure-played-value')).toHaveTextContent('12 of 56'))
+      await waitFor(() => expect(within(screen.getByTestId('league-figure-played')).getByTestId('page-counter-value')).toHaveTextContent('12 of 56'))
       expect(mocks.listLeagues).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-1' })
-      expect(screen.getByTestId('league-figure-xi-value')).toHaveTextContent('11')
-      expect(screen.getByText('Playing XI · age 40–any')).toBeInTheDocument()
+      expect(within(screen.getByTestId('league-figure-xi')).getByTestId('page-counter-value')).toHaveTextContent('11')
+      expect(screen.getByText('Playing XI · age 40-any')).toBeInTheDocument()
     })
 
-    it('opens the Share League dialog from the header on any tab', async () => {
+    it('the Manage League panel lists league-wide options only, Share last', async () => {
       const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await openManage(user)
+
+      const names = screen.getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent)
+      expect(names).toEqual(['Edit League Details', 'Duplicate League', 'Import History', 'Share League'])
+    })
+
+    it('has no edit pencil in the Back row, and Manage League stays the only filled button of the header', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(screen.queryByTestId('league-edit-corner')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit league details' })).not.toBeInTheDocument()
+      const headerFilled = (id: string) => Array.from(screen.getByTestId(id).querySelectorAll('.MuiButton-contained')).map((el) => el.textContent)
+      expect(headerFilled('league-header-top-row')).toEqual([])
+      expect(headerFilled('league-header-title-row')).toEqual(['Manage League'])
+    })
+
+    it('follows the badges directly with the Season pill in the title row', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
+
+      const badges = await screen.findByLabelText('League badges')
+      const pill = within(screen.getByTestId('league-header-title-row')).getByRole('button', { name: 'Season' })
+      expect(following(badges, pill)).toBe(true)
+    })
+
+    it('drops the tile behind the league logo only once it has loaded, and keeps the soft green tint without one', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ logoUrl: '/media/logo.png' })])
+      const { unmount } = renderLeagueView(`${LEAGUE_PATH}/schedule`)
+      const img = await screen.findByRole('img')
+      const avatar = img.closest('.MuiAvatar-root') as HTMLElement
+      expect(getComputedStyle(avatar).backgroundImage).toBe('none')
+      expect(getComputedStyle(avatar).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      fireEvent.load(img)
+      expect(getComputedStyle(avatar).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+      expect(getComputedStyle(avatar).backgroundImage).not.toContain('gradient')
+      unmount()
+      mocks.listLeagues.mockResolvedValue([makeLeague({ logoUrl: null })])
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+      await screen.findByRole('heading', { name: 'Internal League' })
+      const tile = getComputedStyle(document.querySelector('.MuiAvatar-root') as HTMLElement)
+      expect(tile.backgroundImage).toBe('none')
+      expect(tile.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    })
+
+    it('links Add Match and Import Schedule (Manage Schedule) to the prefilled Match form and the import wizard, and Edit League Details to the edit page', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await user.click(await screen.findByRole('button', { name: 'Manage Schedule' }))
+
+      expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
+      expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/schedule/import?seasonId=season-1&from=view`))
+    })
+
+    it('disables Import Schedule for an inactive league, with the reason', async () => {
+      const user = userEvent.setup()
+      mocks.listLeagues.mockResolvedValue([makeLeague({ active: false })])
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await user.click(await screen.findByRole('button', { name: 'Manage Schedule' }))
+
+      const item = screen.getByRole('menuitem', { name: /Import Schedule/ })
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(item).toHaveTextContent('League is inactive')
+    })
+
+    it('opens the Add Team chooser from Manage Teams', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
+
+      await user.click(await screen.findByRole('button', { name: 'Manage Teams' }))
+      await user.click(screen.getByRole('menuitem', { name: /Add Team/ }))
+
+      expect(await screen.findByRole('dialog', { name: 'Add a team' })).toBeInTheDocument()
+    })
+
+    it('still opens the chooser once for a legacy ?add=team link, and removes the parameter', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1&add=team`)
+
+      expect(await screen.findByRole('dialog', { name: 'Add a team' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('location').textContent).not.toContain('add='))
+    })
+
+    it('opens the season PDF from View Document only when it has one', async () => {
+      const user = userEvent.setup()
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+      mocks.getPlayingConditions.mockResolvedValue({ documentUrl: '/media/rules.pdf' })
       renderLeagueView(`${LEAGUE_PATH}/conditions`)
 
-      await user.click((await screen.findAllByRole('button', { name: 'Share' }))[0])
+      await user.click(await screen.findByRole('button', { name: 'Manage Playing Conditions' }))
+      await waitFor(() => expect(screen.getByRole('menuitem', { name: /View Document/ })).not.toHaveAttribute('aria-disabled', 'true'))
+      await user.click(screen.getByRole('menuitem', { name: /View Document/ }))
 
-      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      await waitFor(() => expect(openSpy).toHaveBeenCalledWith('/media/rules.pdf', '_blank', 'noopener'))
+      openSpy.mockRestore()
     })
 
-    // docs/specs/096-duplicate-league.md: the header action works from every tab.
-    it.each(['schedule', 'teams', 'conditions'])('opens the Duplicate league dialog from the header on the %s tab', async (tab) => {
+    it.each(['schedule', 'teams', 'conditions'])('opens the Share League dialog from Manage League on the %s tab, and returns focus to the button', async (tab) => {
       const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/${tab}`)
 
-      await user.click(await screen.findByRole('button', { name: 'Duplicate league' }))
+      await openManage(user)
+      await user.click(screen.getByRole('menuitem', { name: /Share League/ }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Manage League' })).toHaveFocus())
+    })
+
+    // docs/specs/096-duplicate-league.md: the action works from every tab (in the Manage League panel, docs/specs/126).
+    it.each(['schedule', 'teams', 'conditions'])('opens the Duplicate league dialog from Manage League on the %s tab', async (tab) => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/${tab}`)
+
+      await openManage(user)
+      await user.click(screen.getByRole('menuitem', { name: /Duplicate League/ }))
 
       const dialog = await screen.findByRole('dialog')
       expect(within(dialog).getByRole('heading', { name: 'Duplicate league' })).toBeInTheDocument()
@@ -450,6 +622,46 @@ describe('LeagueViewLayout', () => {
 
       await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('opens the import history panel from Manage League', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/teams`)
+
+      await openManage(user)
+      await user.click(screen.getByRole('menuitem', { name: /Import History/ }))
+
+      expect(await screen.findByRole('button', { name: 'Close import history' })).toBeInTheDocument()
+    })
+
+    it('disables the season options with "Create a season first" while the league has no season', async () => {
+      const user = userEvent.setup()
+      mocks.listSeasons.mockResolvedValue([])
+      renderLeagueView(`${LEAGUE_PATH}/teams`)
+
+      await openManage(user)
+
+      const item = screen.getByRole('menuitem', { name: /Import History/ })
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(item).toHaveTextContent('Create a season first')
+    })
+
+    it('on a phone: a full-width Manage League button under the title opens a bottom sheet, the Season pill on the title row', async () => {
+      const user = userEvent.setup()
+      setPhone(true)
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      const topRow = screen.getByTestId('league-header-top-row')
+      const titleRow = screen.getByTestId('league-header-title-row')
+      const manage = screen.getByRole('button', { name: 'Manage League' })
+      expect(topRow).not.toContainElement(manage)
+      expect(within(titleRow).getByRole('button', { name: 'Season' })).toBeInTheDocument()
+      expect(following(titleRow, manage)).toBe(true)
+      expect(getComputedStyle(manage).width).toBe('100%')
+      await user.click(manage)
+      expect(document.querySelector('.MuiDrawer-paper')).toHaveAttribute('aria-label', 'Manage League')
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThan(2)
     })
 
     it('hides the Season select when the club has no seasons', async () => {
@@ -463,7 +675,7 @@ describe('LeagueViewLayout', () => {
   })
 
   describe('contact section', () => {
-    it('shows only the set phone, email and website as tel:, mailto: and external links, then the social icons in their own slot', async () => {
+    it('shows only the set phone, email and website as tel:, mailto: and external links, then the social icons inline at the end of the same line', async () => {
       mocks.listLeagues.mockResolvedValue([
         makeLeague({
           phone: '+27 21 555 0199',
@@ -494,6 +706,8 @@ describe('LeagueViewLayout', () => {
       expect(following(website, social)).toBe(true)
       // The links and the social icons share one wrapping line (docs/specs/091).
       expect(screen.getByTestId('league-header-contacts-line')).toContainElement(social)
+      // The social link is an inline text item like the others, not a round button.
+      expect(within(social).getByRole('link', { name: 'Facebook' })).toHaveTextContent('Facebook')
       expect(getComputedStyle(screen.getByTestId('league-header-contacts-line')).flexWrap).toBe('wrap')
     })
 
@@ -622,7 +836,7 @@ describe('LeagueViewLayout', () => {
     it('defaults to the season pickDefaultSeasonId chooses, without writing it to the URL', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams`)
 
-      expect(await screen.findByText('Showing 0 teams · 2021')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2021')
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams`)
     })
@@ -630,7 +844,7 @@ describe('LeagueViewLayout', () => {
     it('honours a valid ?seasonId=', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
 
-      expect(await screen.findByText('Showing 0 teams · 2020')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2020')
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
     })
@@ -638,19 +852,19 @@ describe('LeagueViewLayout', () => {
     it('silently falls back to the default for an invalid ?seasonId=', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=not-a-season`)
 
-      expect(await screen.findByText('Showing 0 teams · 2021')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=not-a-season`)
     })
 
     it('writes a user change to ?seasonId= with replace and re-scopes the view', async () => {
       const user = userEvent.setup()
       renderLeagueView(['/manage/fixtures/leagues', `${LEAGUE_PATH}/teams`])
-      await screen.findByText('Showing 0 teams · 2021')
+      await screen.findByPlaceholderText('Search teams')
 
       await user.click(screen.getByRole('button', { name: 'Season' }))
       await user.click(await screen.findByRole('option', { name: '2020' }))
 
-      expect(await screen.findByText('Showing 0 teams · 2020')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=season-1`)
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
 
@@ -672,13 +886,13 @@ describe('LeagueViewLayout', () => {
       await screen.findByText('No fixtures yet')
       expect(screen.getByRole('tab', { name: 'Schedule' })).toHaveAttribute('href', `${LEAGUE_PATH}/schedule?seasonId=season-2`)
       expect(screen.getByRole('tab', { name: 'Teams' })).toHaveAttribute('href', `${LEAGUE_PATH}/teams?seasonId=season-2`)
-      expect(screen.getByRole('tab', { name: 'Conditions' })).toHaveAttribute('href', `${LEAGUE_PATH}/conditions?seasonId=season-2`)
+      expect(screen.getByRole('tab', { name: 'Playing Conditions' })).toHaveAttribute('href', `${LEAGUE_PATH}/conditions?seasonId=season-2`)
     })
 
     it.each([
       ['schedule', 'Schedule'],
       ['teams', 'Teams'],
-      ['conditions', 'Conditions'],
+      ['conditions', 'Playing Conditions'],
     ])('marks only %s as the active view', async (view, name) => {
       renderLeagueView(`${LEAGUE_PATH}/${view}`)
 
@@ -694,7 +908,7 @@ describe('LeagueViewLayout', () => {
 
       await user.click(screen.getByRole('tab', { name: 'Teams' }))
 
-      expect(await screen.findByText('Showing 0 teams · 2027')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search teams')).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Internal League' })).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=season-2`)
     })
@@ -712,6 +926,53 @@ describe('LeagueViewLayout', () => {
 
       await screen.findByText('No fixtures yet')
       expect(document.querySelector('.MuiTabs-scroller')).toHaveStyle({ overflowX: 'auto' })
+    })
+  })
+
+  // docs/specs/127-return-navigation.md
+  describe('return navigation (127)', () => {
+    beforeEach(() => {
+      mocks.listLeagues.mockResolvedValue([makeLeague()])
+      mocks.listSeasons.mockResolvedValue([makeSeason(), makeSeason({ id: 'season-2', label: '2027' })])
+    })
+
+    it.each(['schedule', 'teams', 'conditions'])(
+      'the %s view: links that leave the page carry it (tab and season) as the origin, labelled by the tab',
+      async (view) => {
+        mocks.listSeasons.mockResolvedValue([makeSeason(), makeSeason({ id: 'season-2', label: '2027' })])
+        const user = userEvent.setup()
+        renderLeagueView(`${LEAGUE_PATH}/${view}?seasonId=season-2`)
+
+        const origin = { to: `${LEAGUE_PATH}/${view}?seasonId=season-2`, label: `Internal League ${view}` }
+        await openManage(user)
+        expect(returnOf(screen.getByRole('menuitem', { name: /Edit League Details/ }).getAttribute('href'))).toEqual(origin)
+        await user.keyboard('{Escape}')
+        const tabLabel = { schedule: 'Manage Schedule', teams: 'Manage Teams', conditions: 'Manage Playing Conditions' }[view] as string
+        await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+        await user.click(screen.getByRole('button', { name: tabLabel }))
+        const linkNames = { schedule: [/Add Match/, /Import Schedule/], teams: [], conditions: [/Edit Playing Conditions/] }[view] as RegExp[]
+        for (const name of linkNames) {
+          const tabOrigin = view === 'conditions' ? { ...origin, label: 'Internal League playing conditions' } : origin
+          expect(returnOf(screen.getByRole('menuitem', { name }).getAttribute('href'))).toEqual(tabOrigin)
+        }
+      },
+    )
+
+    it('Back reads "Back to {label}" and goes to the origin when the league page was opened with a returnTo, and the tabs keep it', async () => {
+      renderLeagueView(`${LEAGUE_PATH}/schedule?returnTo=${encodeURIComponent('/manage/fixtures/leagues')}&returnLabel=Leagues`)
+
+      const back = await screen.findByRole('link', { name: 'Back to Leagues' })
+      expect(back).toHaveAttribute('href', '/manage/fixtures/leagues')
+      expect(screen.getByRole('tab', { name: 'Teams' }).getAttribute('href')).toContain('returnTo=')
+    })
+
+    it('does not copy its own returnTo forward to the pages it opens', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-1&returnTo=${encodeURIComponent('/manage/fixtures/leagues')}&returnLabel=Leagues`)
+
+      await user.click(await screen.findByRole('button', { name: 'Manage Schedule' }))
+      const href = screen.getByRole('menuitem', { name: /Add Match/ }).getAttribute('href')
+      expect(new URLSearchParams((href ?? '').split('?')[1]).getAll('returnTo')).toEqual([`${LEAGUE_PATH}/schedule?seasonId=season-1`])
     })
   })
 })

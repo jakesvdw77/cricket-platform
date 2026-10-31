@@ -58,24 +58,27 @@ beforeEach(() => {
 
 const CONDITIONS_PATH = '/manage/fixtures/leagues/league-1/conditions'
 
+// docs/specs/127-return-navigation.md: the origin and label carried in an href.
+function returnOf(href: string | null) {
+  const params = new URLSearchParams((href ?? '').split('?')[1])
+  return { to: params.get('returnTo'), label: params.get('returnLabel') }
+}
+
 describe('LeagueConditionsView', () => {
   beforeEach(() => {
     mocks.listLeagues.mockResolvedValue([makeLeague()])
     mocks.listSeasons.mockResolvedValue([makeSeason()])
   })
 
-  it('renders the empty copy and a Share button when nothing is set for the season', async () => {
+  it('renders the empty copy when nothing is set for the season', async () => {
     renderLeagueView(CONDITIONS_PATH)
 
     expect(await screen.findByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Share' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Playing Conditions.pdf' })).not.toBeInTheDocument()
     expect(mocks.getPlayingConditions).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1')
   })
 
-  it('renders every row, including bonus rows, and a "Playing Conditions.pdf" button opening the stored URL', async () => {
-    const user = userEvent.setup()
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('renders every row, including bonus rows, without showing the stored file name', async () => {
     mocks.getPlayingConditions.mockResolvedValue(
       makePlayingConditions({
         documentUrl: '/media/2f6a1c9e-rules.pdf',
@@ -101,16 +104,12 @@ describe('LeagueConditionsView', () => {
     expect(screen.getByText('No DLS below 5 overs a side.')).toBeInTheDocument()
     expect(screen.queryByText('No Playing Conditions set for this season yet.')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Playing Conditions.pdf' }))
-    expect(openSpy).toHaveBeenCalledWith('/media/2f6a1c9e-rules.pdf', '_blank', 'noopener')
-    // The stored uuid-prefixed file name is never shown.
+    // The stored uuid-prefixed file name is never shown, and the PDF is a Manage League option, not a tab button.
     expect(screen.queryByText(/2f6a1c9e/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'View full document' })).not.toBeInTheDocument()
-
-    openSpy.mockRestore()
+    expect(screen.queryByRole('button', { name: 'Playing Conditions.pdf' })).not.toBeInTheDocument()
   })
 
-  it('omits the bonus rows, shows the "(auto)" hint and hides the PDF button when bonus points are off and no PDF is uploaded', async () => {
+  it('omits the bonus rows, shows the "(auto)" hint when bonus points are off', async () => {
     mocks.getPlayingConditions.mockResolvedValue(
       makePlayingConditions({ maxOversPerBowler: null, bonusPointsEnabled: false, documentUrl: null }),
     )
@@ -123,29 +122,40 @@ describe('LeagueConditionsView', () => {
     expect(screen.queryByRole('button', { name: 'Playing Conditions.pdf' })).not.toBeInTheDocument()
   })
 
-  it('shows just the PDF button and the empty copy when a document exists with no structured fields', async () => {
+  it('shows the empty copy when a document exists with no structured fields', async () => {
     mocks.getPlayingConditions.mockResolvedValue(
       makePlayingConditions({ documentUrl: '/media/only-a-pdf.pdf', uploadedAt: '2026-02-01T09:00:00Z', maxOversPerInnings: null }),
     )
 
     renderLeagueView(CONDITIONS_PATH)
 
-    expect(await screen.findByRole('button', { name: 'Playing Conditions.pdf' })).toBeInTheDocument()
-    expect(screen.getByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
   })
 
-  it('opens the Share League dialog from the Share button', async () => {
-    const user = userEvent.setup()
-
+  it('has one white Manage Playing Conditions menu on the tab row: Edit, Share, View Document in that order', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions({ documentUrl: 'https://example.test/pc.pdf' }))
     renderLeagueView(CONDITIONS_PATH)
 
     await screen.findByText('Playing conditions for 2026')
-    expect(screen.queryByText('Share league')).not.toBeInTheDocument()
+    const actions = screen.getByTestId('league-tab-actions')
+    const trigger = within(actions).getByRole('button', { name: 'Manage Playing Conditions' })
+    expect(trigger.className).toContain('MuiButton-outlined')
+    expect(within(actions).getAllByRole('button')).toHaveLength(1)
+    await userEvent.click(trigger)
+    const items = (await screen.findAllByRole('menuitem')).map((item) => item.querySelector('span')?.textContent)
+    expect(items).toEqual(['Edit Playing Conditions', 'Share Playing Conditions', 'View Document'])
+    expect(screen.getByRole('menuitem', { name: /Edit Playing Conditions/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/leagues/league-1/edit?tab=conditions&seasonId=season-1'))
+  })
 
-    // The header's Share comes first, the tab's own Share last.
-    await user.click(screen.getAllByRole('button', { name: 'Share' }).at(-1) as HTMLElement)
+  it('disables View Document with "No PDF uploaded" when the season has none', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions({ documentUrl: null }))
+    renderLeagueView(CONDITIONS_PATH)
 
-    expect(await screen.findByText('Share league')).toBeInTheDocument()
+    await screen.findByText('Playing conditions for 2026')
+    await userEvent.click(within(screen.getByTestId('league-tab-actions')).getByRole('button', { name: 'Manage Playing Conditions' }))
+    const item = await screen.findByRole('menuitem', { name: /View Document/ })
+    expect(item).toHaveAttribute('aria-disabled', 'true')
+    expect(item).toHaveTextContent('No PDF uploaded')
   })
 
   // docs/specs/091 (C): icon-tile section cards, the two top ones the same height.
@@ -199,5 +209,16 @@ describe('LeagueConditionsView', () => {
     const next = await screen.findByTestId('conditions-innings')
     expect(await within(next).findByText('At most 8, wides and no balls included')).toBeInTheDocument()
     expect(within(next).getByText('Free hit after a no ball').nextSibling).toHaveTextContent('No')
+  })
+
+  // docs/specs/127-return-navigation.md
+  it('Edit Conditions carries the Conditions tab (with the season) as its origin', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions())
+    renderLeagueView(`${CONDITIONS_PATH}`)
+
+    await screen.findByText('Playing conditions for 2026')
+    await userEvent.click(within(screen.getByTestId('league-tab-actions')).getByRole('button', { name: 'Manage Playing Conditions' }))
+    const edit = await screen.findByRole('menuitem', { name: /Edit Playing Conditions/ })
+    expect(returnOf(edit.getAttribute('href'))).toEqual({ to: CONDITIONS_PATH, label: 'Internal League playing conditions' })
   })
 })

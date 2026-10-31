@@ -1,0 +1,103 @@
+{
+  "rejected": null,
+  "rows": [
+    {
+      "rowNumber": 2,
+      "date": "13-Sept-26",
+      "time": "8.00",
+      "home": "Home 0",
+      "away": "Away 0",
+      "venue": "Field 0"
+    },
+    {
+      "rowNumber": 3,
+      "date": "13 September 2026",
+      "time": "14h30",
+      "home": "Home 1",
+      "away": "Away 1",
+      "venue": "Field 1"
+    },
+    {
+      "rowNumber": 4,
+      "date": "13/9/26",
+      "time": "2:30 pm",
+      "home": "Home 2",
+      "away": "Away 2",
+      "venue": "Field 2"
+    },
+    {
+      "rowNumber": 5,
+      "date": "Sun 13 Sep 2026",
+      "time": "08:00:00",
+      "home": "Home 3",
+      "away": "Away 3",
+      "venue": "Field 3"
+    },
+    {
+      "rowNumber": 6,
+      "date": "2026-09-13",
+      "time": "11:15",
+      "home": "Home 4",
+      "away": "Away 4",
+      "venue": "Field 4"
+    },
+    {
+      "rowNumber": 7,
+      "date": "13.09.2026",
+      "time": "9:05",
+      "home": "Home 5",
+      "away": "Away 5",
+      "venue": "Field 5"
+    },
+    {
+      "rowNumber": 8,
+      "date": "September 13, 2026",
+      "time": "10:00",
+      "home": "Home 6",
+      "away": "Away 6",
+      "venue": "Field 6"
+    },
+    {
+      "rowNumber": 9,
+      "date": "13th of September 2026",
+      "time": "12:00",
+      "home": "Home 7",
+      "away": "Away 7",
+      "venue": "Field 7"
+    },
+    {
+      "rowNumber": 10,
+      "date": "46278",
+      "time": "07:30",
+      "home": "Home 8",
+      "away": "Away 8",
+      "venue": "Field 8"
+    }
+  ],
+  "isoDates": {
+    "2": "2026-09-13",
+    "3": "2026-09-13",
+    "4": "2026-09-13",
+    "5": "2026-09-13",
+    "6": "2026-09-13",
+    "7": "2026-09-13",
+    "8": "2026-09-13",
+    "9": "2026-09-13",
+    "10": "2026-09-13"
+  },
+  "times": {
+    "2": "08:00",
+    "3": "14:30",
+    "4": "14:30",
+    "5": "08:00",
+    "6": "11:15",
+    "7": "09:05",
+    "8": "10:00",
+    "9": "12:00",
+    "10": "07:30"
+  },
+  "rowCodes": null,
+  "fileCodes": null,
+  "candidates": [],
+  "proposals": {}
+}

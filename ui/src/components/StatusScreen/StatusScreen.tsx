@@ -52,7 +52,7 @@ const DEFAULT_ACTIONS: Record<StatusKind, { primary: StatusAction | null; second
 }
 
 const goldSx = { bgcolor: BRAND.gold, color: BRAND.ink, '&:hover': { bgcolor: BRAND.goldLight } }
-const outlineSx = { color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12) } }
+const outlineSx = { color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, bgcolor: 'transparent', '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12), backgroundImage: 'none' } }
 
 function ActionButton({ action, primary }: { action: StatusAction; primary: boolean }) {
   return (

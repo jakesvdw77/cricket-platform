@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League page: calmer Schedule tab (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--gold:#E8B83D;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:40px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:960px;font-size:14px;margin:0 0 14px}
+.note b{color:var(--ink900)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden}
+.frame.d{width:1180px}.frame.p{width:375px}
+.pad{padding:14px 20px}.p .pad{padding:12px}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.p .btn{height:44px}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 14px;border:1px solid var(--cardLine);border-radius:16px;background:#fff;font-size:13.5px;font-weight:600;color:var(--green800)}
+.p .pill{height:44px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.back{font-size:13.5px;font-weight:600;color:var(--green800)}
+.titlerow{display:flex;gap:14px;align-items:center;margin:12px 0 6px}
+.logo{width:56px;height:56px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font:700 22px var(--display);color:var(--green900);flex:none}
+.p .logo{width:44px;height:44px}
+.title{font-family:var(--display);font-size:34px;font-weight:700;color:var(--green900);line-height:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p .title{font-size:26px}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);border:1px solid var(--cardLine);background:#fff}
+.chip.g{background:#dbe9de;color:var(--green800);border-color:#bcd4c1}
+.contacts{font-size:13px;color:var(--inkMuted);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
+.tile{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.tile i{width:32px;height:32px;border-radius:8px;background:var(--tint);flex:none}
+.tile b{font:700 20px var(--display);display:block;line-height:1}.tile span{font-size:12px;color:var(--inkMuted)}
+/* calmer strip */
+.strip{background:#fff;border:1px solid var(--cardLine);border-radius:8px;display:grid;grid-template-columns:repeat(4,1fr);margin:12px 0}
+.p .strip{grid-template-columns:1fr 1fr}
+.strip div{padding:9px 14px;display:flex;align-items:baseline;gap:8px;border-left:1px solid var(--cardLine);font-size:13px;color:var(--inkMuted);white-space:nowrap}
+.strip div:first-child{border-left:0}
+.p .strip div:nth-child(odd){border-left:0}.p .strip div:nth-child(n+3){border-top:1px solid var(--cardLine)}
+.strip b{font:700 19px var(--display);color:var(--green900)}
+.tabs{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;border-bottom:1px solid var(--cardLine);margin:8px 0 12px;flex-wrap:wrap}
+.tabset{display:flex;gap:6px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.tabs .acts{padding-bottom:8px}
+.filter{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:8px;display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-bottom:10px}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.bar{display:grid;grid-template-columns:260px 1fr auto auto;gap:10px;align-items:center;margin:0 0 10px}
+.p .bar{grid-template-columns:auto 1fr}
+.line{display:flex;justify-content:space-between;font-size:13.5px;color:var(--inkMuted);margin:6px 0 10px}
+.sw{display:inline-flex;align-items:center;gap:6px;color:var(--ink900);font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:8px 10px;border-bottom:1px solid #edf0e9}
+tr:nth-child(even) td{background:#f8faf6}
+td small{display:block;color:var(--inkMuted);font-size:12px}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:var(--tint);flex:none;font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--green800)}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.card .l1{display:flex;justify-content:space-between;font-size:12.5px;color:var(--inkMuted)}
+.card .l2{font-weight:600;margin:3px 0}
+.card .l3{font-size:12.5px;color:var(--inkMuted)}
+.ic{width:15px;height:15px;fill:currentColor;vertical-align:-3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tag{display:inline-block;background:#fff4d6;border:1px dashed #b7791f;border-radius:6px;padding:2px 8px;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>League page: calmer Schedule tab</h1>
+<p class="lede">Same content and actions, fewer bands and fewer heavy boxes. Changes: repeats dropped; one control bar instead of three rows; the filter box loses its card; the key figures become one slim strip; Edit league becomes the white secondary so Add match is the only filled button.</p>
+
+<h2>Before (now)</h2>
+<p class="note">Eight bands before the data, three heavy white boxes, controls spread over three rows, two filled buttons, and the season shown three times.</p>
+<div class="frame d"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">Actions ⌄</button><button class="btn c">Edit league</button></div></div>
+  <div class="titlerow"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span> <span class="chip g">Active</span></div></div></div>
+  <div class="contacts" style="justify-content:space-between"><span>SJ Van Der Westhuizen &nbsp; 0834699756 &nbsp; jakesvdw77@gmail.com &nbsp; https://cricclubs.com/TVL</span><span>f</span></div>
+  <div class="tiles">
+    <div class="tile"><i></i><div><b>7</b><span>Teams this season</span></div></div>
+    <div class="tile"><i></i><div><b>5 of 6</b><span>Matches played</span></div></div>
+    <div class="tile"><i></i><div><b>Sat, 31 Oct</b><span>Next 10:00, in 13 h 40 min</span></div></div>
+    <div class="tile"><i></i><div><b>12</b><span>Playing XI, age 40-any<br>Ages judged on 13 Sep 2026</span></div></div>
+  </div>
+  <div class="tabs"><div class="tabset"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div><div class="acts"><button class="btn o">Import schedule</button><button class="btn c">+ Add match</button></div></div>
+  <div class="filter"><div class="field">Team: All teams</div><div class="field">Search teams or venue</div></div>
+  <div class="line"><span>Showing 1 upcoming match · 2026/2027</span><span class="acts"><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></span></div>
+  <table><tr><th>When</th><th>Home</th><th>Away</th><th>Venue</th><th></th></tr><tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td><span class="chip g">Our match</span></td></tr></table>
+</div></div>
+
+<h2>After (calmer)</h2>
+<p class="note"><b>1. One control bar:</b> Team, Search and the two switches on a single flat row (no white box, no separate line); the count moves into the table's own header row. <b>2. Quiet chrome:</b> the four key-figure cards become one slim strip with thin dividers; the age reference is an info icon with a tooltip, not a third line. <b>3. One filled button:</b> Edit league is white (secondary); Add match is the only filled green button on the page. <b>4. Repeats gone:</b> no season text in the count line; contacts sit directly under the title with the Facebook icon inline, not at the far edge.</p>
+<div class="frame d"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">Actions ⌄</button><button class="btn c">Edit league</button></div></div>
+  <div class="titlerow" style="margin-bottom:2px"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20 <span class="chip">T20</span><span class="chip g">Active</span></div>
+    <div class="contacts" style="margin-top:6px"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>jakesvdw77@gmail.com</span><span>cricclubs.com/TVL</span><span>f</span></div></div></div>
+  <div class="strip">
+    <div><b>7</b>teams</div><div><b>5 of 6</b>matches played</div><div><b>Sat, 31 Oct</b>next, 10:00, in 13 h 40 min</div><div><b>12</b>Playing XI · age 40-any ⓘ</div>
+  </div>
+  <div class="tabs"><div class="tabset"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div><div class="acts"><button class="btn o">Import schedule</button><button class="btn c">+ Add match</button></div></div>
+  <div class="bar"><div class="field">Team: All teams ⌄</div><div class="field">Search teams or venue</div><span class="sw">Only our matches <i></i></span><span class="sw">View entire season <i></i></span></div>
+  <table>
+    <tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">1 upcoming match</th></tr>
+    <tr><td>Sat, 31 Oct<small>10:00</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td style="text-align:right"><span class="chip g">Our match</span></td></tr>
+  </table>
+</div></div>
+<p class="note" style="margin-top:8px">Bands before the data: top row, title with contacts, strip, tabs with actions, control bar, then the table. Heavy white boxes: the strip and the table only. The filter fields are plain controls on the page wash.</p>
+
+<h2>Phone (375 px), calmer</h2>
+<p class="note">Strip is two across and thin; tabs scroll; the two tab actions share one row at 44 px; filters stay in the existing Filters sheet (the Filters button and Search share one row, switches live in the sheet as today); the count sits above the cards.</p>
+<div class="row">
+<div class="frame p"><div class="pad">
+  <div class="top"><span class="back">← Back</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">⋮</button></div></div>
+  <div class="titlerow"><div class="logo">TV</div><div><div class="title" style="gap:6px">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span> <span class="chip g">Active</span></div></div></div>
+  <button class="btn c" style="width:100%;justify-content:center;margin-bottom:8px">Edit league</button>
+  <div class="contacts" style="margin-bottom:8px"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>f</span></div>
+  <div class="strip"><div><b>7</b>teams</div><div><b>5 of 6</b>played</div><div style="grid-column:span 2"><b>Sat, 31 Oct</b>next, 10:00 · <b style="font-size:16px">12</b> XI ⓘ</div></div>
+  <div class="tabs"><div class="tabset"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Cond.</span></div></div>
+  <div class="two" style="margin:0 0 8px"><button class="btn o" style="justify-content:center">Import</button><button class="btn c" style="justify-content:center">+ Add match</button></div>
+  <div class="bar"><button class="btn o">Filters</button><div class="field">Search teams or venue</div></div>
+  <div class="line"><span>1 upcoming match</span></div>
+  <div class="card"><div class="l1"><span>Sat, 31 Oct · 10:00</span><span class="chip g">Our match</span></div><div class="l2">Irene Villagers 1 v CBC 1</div><div class="l3">Laudium</div></div>
+</div></div>
+</div>
+</body>
+</html>

@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Box, FormHelperText, IconButton, InputAdornment } from '@mui/material'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import { Box, FormHelperText } from '@mui/material'
 import { Input } from '../Input'
-import { isCompleteTime, sanitiseTimeText, stepTime, STEP_MINUTES } from '../../utils/timeInput'
+import { TimeField } from '../TimeField'
+import { isCompleteTime } from '../../utils/timeInput'
 
 export interface DateTimeFieldProps {
   label: string
@@ -62,18 +61,6 @@ export function DateTimeField({
     }
   }
 
-  const step = (direction: 1 | -1) => update({ ...draft, time: stepTime(draft.time, direction) })
-  // Small stacked arrows, 18 px tall each, so the pair fits the 40 px input. Their hit areas extend sideways only. The arrows are a
-  // convenience: the accessible routes are typing the time and the ArrowUp / ArrowDown keys.
-  const arrowSx = {
-    position: 'relative',
-    width: 28,
-    height: 18,
-    p: 0,
-    borderRadius: 0.5,
-    '&::after': { content: '""', position: 'absolute', top: 0, bottom: 0, left: -8, right: -8 },
-  } as const
-
   const helperId = helperText ? `${testId ?? label.replace(/\W+/g, '-')}-helper` : undefined
   // Both boxes keep the standard Input height so the pair lines up with the neighbouring fields; the labels float on the border.
   const shrink = { shrink: true }
@@ -92,36 +79,15 @@ export function DateTimeField({
           required={required}
           inputProps={{ 'aria-label': `${label} (date)`, min: min?.slice(0, 10), max: max?.slice(0, 10) }}
         />
-        <Input
+        <TimeField
           label="Time"
-          InputLabelProps={shrink}
+          ariaLabel={`${label} (time)`}
+          arrowLabel={label}
           value={draft.time}
-          onChange={(event) => update({ ...draft, time: sanitiseTimeText(event.target.value) })}
+          onChange={(next) => update({ ...draft, time: next })}
           error={error}
           disabled={disabled}
           required={required}
-          placeholder="HH:MM"
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-              event.preventDefault()
-              step(event.key === 'ArrowUp' ? 1 : -1)
-            }
-          }}
-          inputProps={{ 'aria-label': `${label} (time)`, inputMode: 'numeric', maxLength: 5, autoComplete: 'off' }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end" sx={{ ml: 0, mr: -0.5 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <IconButton size="small" tabIndex={-1} aria-label={`${label}: ${STEP_MINUTES} minutes later`} disabled={disabled} onClick={() => step(1)} sx={arrowSx}>
-                    <KeyboardArrowUpIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" tabIndex={-1} aria-label={`${label}: ${STEP_MINUTES} minutes earlier`} disabled={disabled} onClick={() => step(-1)} sx={arrowSx}>
-                    <KeyboardArrowDownIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </InputAdornment>
-            ),
-          }}
         />
       </Box>
       {helperText && (

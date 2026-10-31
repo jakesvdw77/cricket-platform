@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League edit revamp (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green700:#14633F;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:34px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:960px;font-size:14px;margin:0 0 12px}
+.note b{color:var(--ink900)}
+.frame{width:1100px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd))}
+.pad{padding:16px 20px}
+.back{font-size:13.5px;font-weight:600;color:#0F5132;margin-bottom:8px}
+.titlerow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.logo{width:44px;height:44px;border-radius:9px;background:rgba(20,99,63,.14);display:flex;align-items:center;justify-content:center;font:700 16px var(--display);color:#0F5132}
+.title{font-family:var(--display);font-size:32px;font-weight:700;color:var(--green900)}
+.pill{display:inline-flex;align-items:center;height:30px;padding:0 12px;border:1px solid #8fb09b;border-radius:15px;background:#fff;font-size:13px;font-weight:700;color:#0F5132}
+.tabs{display:flex;border-bottom:1px solid var(--cardLine);margin-bottom:14px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:14px 16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sec{display:flex;align-items:center;gap:8px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--green900);margin:14px 0 8px;padding-top:12px;border-top:1px solid #edf0e9}
+.sec:first-child{margin-top:0;border-top:0;padding-top:0}
+.sec i{width:22px;height:22px;border-radius:6px;background:var(--tint);display:inline-block}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.f{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13px;color:var(--ink900);background:#fff;position:relative}
+.f small{position:absolute;top:-8px;left:8px;background:#fff;padding:0 4px;font-size:11px;color:var(--inkMuted)}
+.f.tall{height:64px;align-items:flex-start;padding-top:10px;color:var(--inkMuted)}
+.sw{display:flex;align-items:center;gap:8px;height:36px;font-size:13px}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;flex:none}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.sw.on i{background:var(--green700)}.sw.on i:after{left:16px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);display:inline-flex;align-items:center;border:1px solid transparent;white-space:nowrap}
+.btn.c{background:var(--green700);color:#fff}.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.dates{background:#f5f8f3;border:1px solid #e1e8dc;border-radius:8px;padding:10px 12px;margin-bottom:14px}
+.dates .lbl{font-size:12.5px;color:var(--inkMuted);margin-bottom:8px}
+.age{font-size:12px;color:var(--inkMuted);margin-top:6px}
+.tag{display:inline-block;background:#fff4d6;border:1px dashed #b7791f;border-radius:6px;padding:2px 8px;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>League edit page revamp</h1>
+<p class="note">Tabs become <b>Details, Branding, Playing Conditions, Contacts</b> (Teams and Schedule removed: the league page covers them). The Season pill sits once, beside the title, only on tabs that depend on it. Everything is 36 px controls on a tight grid.</p>
+
+<h2>Details (Season pill shown: it carries the season dates)</h2>
+<div class="frame"><div class="pad">
+  <div class="back">← Back to TVL Division 1 T20 schedule</div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">Edit League</span><span class="pill">2026/2027 ⌄</span></div>
+  <div class="tabs"><span class="tab on">Details</span><span class="tab">Branding</span><span class="tab">Playing Conditions</span><span class="tab">Contacts</span></div>
+  <div class="card">
+    <div class="dates"><div class="lbl">Season dates for 2026/2027</div>
+      <div class="row"><div class="f" style="width:170px"><small>Start date</small>2026/09/01</div><div class="f" style="width:170px"><small>End date</small>2027/06/30</div><span class="btn o">Use First and Last Match</span><span class="btn c">Save Season Dates</span></div></div>
+    <div class="sec"><i></i>Basic info</div>
+    <div class="g3"><div class="f"><small>Name</small>TVL Division 1 T20</div><div class="f"><small>Format</small>T20 ⌄</div><div class="f"><small>Playing XI size</small>12</div>
+      <div class="f"><small>Min age (optional)</small>-</div><div class="f"><small>Max age (optional)</small>-</div><div class="f"><small>Cut-off (optional)</small>31 December ⌄</div></div>
+    <div class="age">Ages are judged on 31 Dec 2026 (the cut-off).</div>
+    <div class="sec"><i></i>Contact</div>
+    <div class="g3"><div class="f"><small>Phone (optional)</small>0834699756</div><div class="f"><small>Website (optional)</small>https://cricclubs.com/TVL</div><div class="f"><small>Email (optional)</small>jakesvdw77@gmail.com</div></div>
+    <div class="foot"><span class="btn o">Deactivate</span><span class="row"><span class="btn o">Cancel</span><span class="btn c">Save Changes</span></span></div>
+  </div>
+</div></div>
+
+<h2>Branding (new tab; Season pill hidden)</h2>
+<div class="frame"><div class="pad">
+  <div class="back">← Back to TVL Division 1 T20 schedule</div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">Edit League</span></div>
+  <div class="tabs"><span class="tab">Details</span><span class="tab on">Branding</span><span class="tab">Playing Conditions</span><span class="tab">Contacts</span></div>
+  <div class="card">
+    <div class="sec"><i></i>Logo</div>
+    <div class="row"><div class="logo" style="width:72px;height:72px">TV</div><span class="btn o">Upload Logo</span><span class="btn o">Remove</span></div>
+    <div class="sec"><i></i>Social links</div>
+    <div class="g3"><div class="f"><small>Network</small>Facebook ⌄</div><div class="f" style="grid-column:span 2"><small>Address</small>https://facebook.com/tvl</div></div>
+    <div style="margin-top:8px"><span class="btn o">Add Link</span></div>
+    <div class="foot"><span></span><span class="row"><span class="btn o">Cancel</span><span class="btn c">Save Changes</span></span></div>
+  </div>
+</div></div>
+
+<h2>Playing Conditions (Season pill shown)</h2>
+<p class="note">Numbers in one row; every switch on the same 36 px level in a two-column grid; sections separated by a hairline, not large gaps.</p>
+<div class="frame"><div class="pad">
+  <div class="back">← Back to TVL Division 1 T20 schedule</div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">Edit League</span><span class="pill">2026/2027 ⌄</span></div>
+  <div class="tabs"><span class="tab">Details</span><span class="tab">Branding</span><span class="tab on">Playing Conditions</span><span class="tab">Contacts</span></div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px"><span style="font-size:13px;color:var(--inkMuted)">Playing conditions for 2026/2027</span><span class="row"><span class="btn o">Upload PDF</span><span class="btn o">Share</span></span></div>
+    <div class="sec"><i></i>Innings</div>
+    <div class="g3"><div class="f"><small>Max overs per innings</small>40</div><div class="f"><small>Powerplay overs</small>8</div><div class="f"><small>Max overs per bowler</small>-</div></div>
+    <div class="g2" style="margin-top:6px"><div class="sw"><i></i>Limit balls per over</div><div class="sw on"><i></i>Free hit after a no ball</div>
+      <div class="sw"><i></i>Allow substitutions (twelfth man may fully bat or bowl)</div><div></div></div>
+    <div class="f tall" style="margin-top:6px"><small>Fielding restrictions notes</small>Two lines</div>
+    <div class="sec"><i></i>Points</div>
+    <div class="g4"><div class="f"><small>Win</small>4</div><div class="f"><small>Tie</small>2</div><div class="f"><small>No result</small>2</div><div class="f"><small>Loss</small>0</div></div>
+    <div class="sec"><i></i>Bonus points</div>
+    <div class="row"><div class="sw on" style="width:200px"><i></i>Enable bonus points</div><div class="f" style="width:220px"><small>Early-chase overs threshold</small>30</div><div class="f" style="width:220px"><small>Bowling restriction %</small>60</div></div>
+    <div class="sec"><i></i>Notes</div>
+    <div class="f tall" style="height:72px"><small>Additional notes</small>Three lines</div>
+    <div class="foot"><span style="font-size:12.5px;color:#b0402e"></span><span class="row"><span class="btn o">Cancel</span><span class="btn c">Save Playing Conditions</span></span></div>
+  </div>
+</div></div>
+</body>
+</html>

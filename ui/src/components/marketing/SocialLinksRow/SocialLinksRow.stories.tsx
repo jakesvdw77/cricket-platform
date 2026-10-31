@@ -37,3 +37,7 @@ export const OnDarkSurface: Story = {
 export const WithWebsiteFirst: Story = {
   args: { links: [{ platform: 'website', url: 'https://cricketlegend.example.com' }, ...links] },
 }
+
+export const Round: Story = {
+  args: { links: [...links], variant: 'round' },
+}

@@ -1,12 +1,8 @@
+import { useLocation } from 'react-router-dom'
 import { Box, Stack, Typography, alpha } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
 import { BrandIcon } from '../../../components/BrandIcon'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
@@ -14,8 +10,10 @@ import { SelectionGauge } from '../../../components/SelectionGauge'
 import { SocialLinksRow } from '../../../components/marketing/SocialLinksRow'
 import type { SocialLink } from '../../../components/marketing/SocialLinksRow'
 import type { League } from '../../../api/leagueApi'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { formatMatchDateTime } from '../availability/pollHelpers'
 import { leagueBadges } from './leagueBadges'
+import { LeagueRowMenu } from './LeagueRowMenu'
 import { LeagueTeamAvatars } from './LeagueTeamAvatars'
 
 export function leagueSocialLinks(league: League): SocialLink[] {
@@ -24,7 +22,7 @@ export function leagueSocialLinks(league: League): SocialLink[] {
 
 // docs/specs/091-leagues-gold-standard.md (B): one RecordCard per league, built like the match and poll cards - the
 // format and Active badges under the title, the website and social icons in the corner, a Next match strip (amber within
-// 24 hours of the kickoff), a Matches played gauge, every team of the season and an icon-over-caption footer. The whole
+// 24 hours of the kickoff), a Matches played gauge, every team of the season and one Actions kebab in the corner (no footer bar). The whole
 // card opens the Schedule for the chosen season. Deactivate/Reactivate lives on the edit screen (038).
 // Why an active league shows under "Setup needed" (the backend's LeagueListRow.needsAttention): no teams entered, no
 // matches scheduled in the season. Empty for an inactive league or one that is fully set up.
@@ -45,14 +43,15 @@ export function leagueSetupReasons(league: League): string[] {
 export interface LeagueCardProps {
   league: League
   seasonId?: string
-  // docs/specs/122-league-sharing.md: opens the Share League dialog (the page owns it); absent, the card has no Share button.
+  // The card's Actions menu (page-anatomy section 6, top-right corner): the page owns the dialogs. An absent handler leaves its item out.
   onShare?: (league: League) => void
+  onDuplicate?: (league: League) => void
 }
 
-export function LeagueCard({ league, seasonId, onShare }: LeagueCardProps) {
-  const navigate = useNavigate()
-  const search = seasonId ? `?seasonId=${seasonId}` : ''
+export function LeagueCard({ league, seasonId, onShare, onDuplicate }: LeagueCardProps) {
+  const location = useLocation()
   const base = `/manage/fixtures/leagues/${league.id}`
+  const search = seasonId ? `?seasonId=${seasonId}` : ''
   const teams = league.teams ?? []
   const matchCount = league.matchCount ?? 0
   const playedCount = league.playedCount ?? 0
@@ -62,6 +61,7 @@ export function LeagueCard({ league, seasonId, onShare }: LeagueCardProps) {
 
   return (
     <RecordCard
+      flat
       title={league.name}
       titleWrap
       badgesBelow
@@ -69,24 +69,19 @@ export function LeagueCard({ league, seasonId, onShare }: LeagueCardProps) {
       badges={leagueBadges(league)}
       // position: relative paints the links above the card's stretched link (059).
       headerActions={
-        links.length > 0 ? (
-          <Box data-testid="league-social-links" sx={{ position: 'relative' }}>
-            <SocialLinksRow links={links} size="small" />
-          </Box>
-        ) : undefined
+        // Desktop: the icon hit areas shrink from 32 to 26 px and the gaps go, so the corner icons sit close together (phones keep 44 px targets).
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0 }, '& .MuiIconButton-root': { width: { md: 26 }, height: { md: 26 } } }}>
+          {links.length > 0 && (
+            <Box data-testid="league-social-links" sx={{ position: 'relative' }}>
+              <SocialLinksRow links={links} size="small" />
+            </Box>
+          )}
+          <LeagueRowMenu league={league} seasonId={seasonId} onShare={onShare} onDuplicate={onDuplicate} testId="league-card-actions" />
+        </Box>
       }
-      viewTo={`${base}/schedule${search}`}
-      footerButtons={[
-        { label: 'Schedule', icon: <EventOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/schedule${search}`) },
-        { label: 'Teams', icon: <GroupsOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/teams${search}`) },
-        {
-          label: 'Conditions',
-          icon: <DescriptionOutlinedIcon fontSize="small" />,
-          onClick: () => navigate(`${base}/conditions${search}`),
-        },
-        ...(onShare ? [{ label: 'Share', ariaLabel: `Share ${league.name}`, icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare(league) }] : []),
-        { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/edit`) },
-      ]}
+      viewTo={withReturnTo(`${base}/schedule${search}`, currentOrigin(location), 'Leagues')}
+      // No footer action bar (page-anatomy section 6): the kebab in the corner holds every action.
+      footerActions={null}
     >
       {setupReasons.length > 0 && (
         <Stack

@@ -244,7 +244,7 @@ describe('DuplicateLeagueDialog', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent(
-        '/manage/fixtures/leagues/new-1/edit?tab=teams&seasonId=season-2',
+        '/manage/fixtures/leagues/new-1/edit?seasonId=season-2',
       ),
     )
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'leagues'] })
@@ -263,7 +263,7 @@ describe('DuplicateLeagueDialog', () => {
     await user.click(submit())
 
     await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/leagues/new-1/edit?tab=teams'),
+      expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/leagues/new-1/edit'),
     )
     expect(screen.getByTestId('location')).not.toHaveTextContent('seasonId')
     expect(JSON.parse(screen.getByTestId('state').textContent as string)).toEqual({

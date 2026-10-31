@@ -108,7 +108,7 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
           onClick={() => navigate(`/manage/fixtures/leagues/${leagueId}/contacts/new`)}
           sx={{ flex: 'none' }}
         >
-          Add contact
+          Add Contact
         </Button>
       }
     >

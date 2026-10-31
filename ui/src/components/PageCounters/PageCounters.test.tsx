@@ -119,7 +119,7 @@ describe('PageCounters', () => {
       expect(getComputedStyle(screen.getByText('Open polls')).textOverflow).toBe('ellipsis')
     })
 
-    it('keeps markers, aria-pressed, the zero rule and the hidden hint', () => {
+    it('keeps the chevron, aria-pressed, the zero rule and the hidden hint', () => {
       renderCounters(
         [
           { ...items[0], kind: 'filter', onSelect: vi.fn(), hint: 'Tap to filter', active: true },
@@ -131,9 +131,10 @@ describe('PageCounters', () => {
       )
 
       expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('filter')
+      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
+      expect(screen.queryByText(/^filter$/i)).not.toBeInTheDocument()
       expect(screen.getByTestId('page-counter-b-marker')).toHaveTextContent('›')
-      expect(getComputedStyle(screen.getByTestId('page-counter-a-marker')).top).toBe('50%')
+      expect(getComputedStyle(screen.getByTestId('page-counter-b-marker')).top).toBe('50%')
       expect(screen.getByText('See who')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Zero/ })).not.toBeInTheDocument()
     })
@@ -148,12 +149,13 @@ describe('PageCounters', () => {
   })
 
   describe('counter kinds and the zero rule (084)', () => {
-    it('defaults to a filter counter: a toggle button with a "filter" tag and aria-pressed', () => {
+    it('defaults to a filter counter: a toggle button with aria-pressed and no tag', () => {
       renderCounters([{ ...items[0], onSelect: vi.fn() }])
 
       expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('filter')
-      expect(screen.getByTestId('page-counter-a-marker')).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
+      expect(screen.queryByText(/^filter$/i)).not.toBeInTheDocument()
+      expect(screen.getByRole('button')).toHaveStyle({ cursor: 'pointer' })
     })
 
     it('a drill-down counter is a plain button with a chevron and no aria-pressed, even when active', async () => {
@@ -308,5 +310,24 @@ describe('counterColumns', () => {
 
   it('never goes beyond six columns', () => {
     expect(counterColumns(9).lg).toBe('repeat(6, 1fr)')
+  })
+})
+
+describe('PageCounters info icon and testId', () => {
+  it('shows a keyboard-focusable info icon after the label whose tooltip sentence is its accessible name', () => {
+    renderCounters([{ id: 'xi', value: 11, label: 'Playing XI', info: 'Ages are judged on 13 Sep 2026' }, { id: 'b', value: 2, label: 'Other' }], false, 'compact')
+    const info = screen.getByTestId('page-counter-xi-info')
+    expect(info).toHaveAttribute('aria-label', 'Ages are judged on 13 Sep 2026')
+    expect(info).toHaveAttribute('tabindex', '0')
+    expect(screen.getByTestId('page-counter-xi')).toContainElement(info)
+    expect(screen.queryByTestId('page-counter-b-info')).not.toBeInTheDocument()
+  })
+
+  it('uses a given testId for the card and its info icon, and is still a plain card without onSelect', () => {
+    renderCounters([{ id: 'xi', testId: 'league-figure-xi', value: 11, label: 'Playing XI', info: 'Why' }], false, 'compact')
+    const card = screen.getByTestId('league-figure-xi')
+    expect(card.tagName).not.toBe('BUTTON')
+    expect(screen.getByTestId('league-figure-xi-info')).toBeInTheDocument()
+    expect(screen.queryByTestId('page-counter-xi-marker')).not.toBeInTheDocument()
   })
 })

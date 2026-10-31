@@ -1,3 +1,4 @@
+import { TOOLBAR_CONTROL_HEIGHT, TOOLBAR_CONTROL_RADIUS } from '../../components/ToolbarCard/toolbarControlSx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueList from './LeagueList'
 import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
-import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
+import { DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 
 const listLeagues = vi.fn()
 const getLeaguesSummary = vi.fn()
@@ -131,6 +132,21 @@ describe('LeagueList', () => {
 
     expect(screen.queryByText('No league available')).not.toBeInTheDocument()
     expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+  })
+
+  it('has no "Showing" line, no FILTER tag and no count text', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-3', name: 'Table League' })])
+    localStorage.setItem('leagueList:view', 'list')
+
+    renderList('test-club-id')
+
+    expect(await screen.findByRole('table', { name: 'Leagues' })).toBeInTheDocument()
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^filter$/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('leagues-count')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^1 leagues?$/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('filter-bar-bare')).toBeInTheDocument()
+    expect(within(screen.getByTestId('filter-bar-inline-controls')).getByRole('button', { name: 'List' })).toBeInTheDocument()
   })
 
   it('renders an error state when the fetch fails', async () => {
@@ -272,7 +288,9 @@ describe('LeagueList', () => {
       await screen.findByText('Internal League')
       expect(lastListParams()).toEqual(expect.objectContaining({ includeInactive: false }))
 
-      await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+      expect(screen.getByRole('button', { name: /show inactive/i })).toHaveAttribute('aria-pressed', 'false')
+      await user.click(screen.getByRole('button', { name: /show inactive/i }))
+      expect(screen.getByRole('button', { name: /show inactive/i })).toHaveAttribute('aria-pressed', 'true')
       await waitFor(() => expect(lastListParams().includeInactive).toBeUndefined())
       expect(getLeaguesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: undefined }))
     })
@@ -289,31 +307,54 @@ describe('LeagueList', () => {
       renderList('test-club-id')
 
       await screen.findByText('Active One')
-      await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+      await user.click(screen.getByRole('button', { name: /show inactive/i }))
       expect(await screen.findByText('Retired One')).toBeInTheDocument()
       expect(screen.getByText('Inactive')).toBeInTheDocument()
     })
 
-    it('lays the cards out with the shared cardGridSx template', async () => {
+    it('lays the cards out with the dynamic fill-the-width grid', async () => {
       listLeagues.mockResolvedValue([makeLeague()])
 
       renderList('test-club-id')
 
       const heading = await screen.findByRole('heading', { name: 'Internal League' })
       const grid = heading.closest('.MuiCard-root')?.parentElement as HTMLElement
-      expect(grid).toHaveStyle({ display: 'grid', gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS })
+      expect(grid).toHaveStyle({ display: 'grid', gridTemplateColumns: DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS, gap: '16px' })
     })
 
-    it('links the card to the league Schedule for the chosen season and opens the edit screen from the footer', async () => {
+    it('links the card to the league Schedule for the chosen season and opens the edit screen from the Actions kebab', async () => {
       const user = userEvent.setup()
       listLeagues.mockResolvedValue([makeLeague({ id: 'league-7' })])
 
       renderList('test-club-id')
 
       const titleLink = await screen.findByRole('link', { name: 'Internal League' })
-      expect(titleLink).toHaveAttribute('href', '/manage/fixtures/leagues/league-7/schedule?seasonId=season-2026')
-      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(titleLink).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/leagues/league-7/schedule?seasonId=season-2026'))
+      await user.click(screen.getByRole('button', { name: 'Actions for Internal League' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Edit League Details' }))
       expect(await screen.findByText('Edit League Page')).toBeInTheDocument()
+    })
+
+    it('ends the cards grid with a dashed Add League card linking to the add route', async () => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'a', name: 'Alpha' }), makeLeague({ id: 'b', name: 'Beta' })])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Alpha' })
+      const add = screen.getByTestId('add-league-card')
+      // docs/specs/127: Add League returns to this list.
+      expect(add).toHaveAttribute('href', '/manage/fixtures/leagues/new?returnTo=%2Fmanage%2Ffixtures%2Fleagues&returnLabel=Leagues')
+      expect(add).toHaveTextContent('Add League')
+      expect(add.parentElement?.lastElementChild).toBe(add)
+    })
+
+    it('shows the Add League card with the empty message when no card matches', async () => {
+      listLeagues.mockResolvedValue([])
+
+      renderList('test-club-id')
+
+      expect(await screen.findByTestId('add-league-card')).toBeInTheDocument()
+      expect(screen.getByText('No league available')).toBeInTheDocument()
     })
 
     it('never renders a Deactivate/Reactivate button on the card', async () => {
@@ -327,7 +368,7 @@ describe('LeagueList', () => {
   })
 
   describe('toolbar', () => {
-    it('filters by the search term (name) and sorts A to Z, reversible with the sort link', async () => {
+    it('filters by the search term (name) and sorts A to Z, reversible from the Sort menu', async () => {
       const user = userEvent.setup()
       listLeagues.mockResolvedValue([
         makeLeague({ id: 'league-1', name: 'Bravo League' }),
@@ -340,7 +381,8 @@ describe('LeagueList', () => {
       const names = () => screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
       expect(names()).toEqual(['Alpha League', 'Bravo League'])
 
-      await user.click(screen.getByRole('button', { name: /name, a to z/i }))
+      await user.click(screen.getByRole('button', { name: /sort: name, a to z/i }))
+      await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
       expect(names()).toEqual(['Bravo League', 'Alpha League'])
 
       await user.type(screen.getByLabelText('Search'), 'alpha')
@@ -413,8 +455,10 @@ describe('LeagueList', () => {
       const table = await screen.findByRole('table', { name: 'Leagues' })
       expect(within(table).getByRole('link', { name: 'Table League' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/leagues/league-3/schedule?seasonId=season-2026',
+        expect.stringContaining('/manage/fixtures/leagues/league-3/schedule?seasonId=season-2026&returnTo=%2Fmanage%2Ffixtures%2Fleagues&returnLabel=Leagues'),
       )
+      // docs/specs/127: a table row carries no chevron; the whole row is the link.
+      expect(within(table).queryByTestId('ChevronRightOutlinedIcon')).not.toBeInTheDocument()
       expect(localStorage.getItem('leagueList:view')).toBe('list')
       unmount()
 
@@ -423,6 +467,88 @@ describe('LeagueList', () => {
 
       await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
       await waitFor(() => expect(screen.queryByRole('table', { name: 'Leagues' })).not.toBeInTheDocument())
+    })
+  })
+
+  describe('toolbar card (page-anatomy section 3)', () => {
+    it('List view fuses the toolbar into the table card: toolbar, then table', async () => {
+      localStorage.setItem('leagueList:view', 'list')
+      listLeagues.mockResolvedValue([makeLeague()])
+      renderList('test-club-id')
+
+      const card = await screen.findByTestId('leagues-fused-card')
+      expect(within(card).getByTestId('toolbar-card-fused')).toContainElement(screen.getByLabelText('Search'))
+      expect(within(card).getByRole('table', { name: 'Leagues' })).toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-card')).not.toBeInTheDocument()
+    })
+
+    it('Cards view keeps a standalone toolbar card, also over its empty state', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([makeLeague()])
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      const standalone = screen.getByTestId('toolbar-card')
+      expect(standalone).toContainElement(screen.getByLabelText('Search'))
+      expect(screen.queryByTestId('leagues-fused-card')).not.toBeInTheDocument()
+
+      const input = screen.getByLabelText('Search')
+      await user.type(input, 'zzz')
+      expect(await screen.findByText('No matching leagues')).toBeInTheDocument()
+      expect(screen.getByLabelText('Search')).toBe(input)
+      expect(input).toHaveFocus()
+      expect(screen.getByTestId('toolbar-card')).toContainElement(input)
+    })
+
+    it('List view keeps the fused card when nothing matches: the message replaces the rows and the search keeps focus', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('leagueList:view', 'list')
+      listLeagues.mockResolvedValue([makeLeague({ name: 'Riverside League' })])
+      renderList('test-club-id')
+
+      await screen.findByRole('table', { name: 'Leagues' })
+      const input = screen.getByLabelText('Search')
+      await user.type(input, 'zzz')
+
+      expect(await screen.findByText('No matching leagues')).toBeInTheDocument()
+      const card = screen.getByTestId('leagues-fused-card')
+      expect(within(card).getByText('No matching leagues')).toBeInTheDocument()
+      expect(within(card).queryByRole('table', { name: 'Leagues' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-card')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Search')).toBe(input)
+      expect(document.activeElement).toBe(input)
+      expect(input).toHaveValue('zzz')
+    })
+
+    it('every toolbar control (Format, search, Show inactive, Sort, Cards | List) shares the 36 px toolbar helper', async () => {
+      listLeagues.mockResolvedValue([makeLeague()])
+      renderList('test-club-id')
+      await screen.findByText('Internal League')
+
+    const toolbar = screen.getByTestId('toolbar-card')
+    const fields = Array.from(toolbar.querySelectorAll('.MuiOutlinedInput-root'))
+    expect(fields.length).toBeGreaterThan(0)
+    for (const field of fields) expect(getComputedStyle(field).height).toBe(`${TOOLBAR_CONTROL_HEIGHT}px`)
+    const controls = [...Array.from(toolbar.querySelectorAll('[role="group"]')), ...Array.from(toolbar.querySelectorAll('button[aria-haspopup="menu"], button[aria-pressed]:not(.MuiToggleButton-root)'))]
+    expect(controls.length).toBeGreaterThan(0)
+    for (const control of controls) {
+      const style = getComputedStyle(control)
+      expect(style.height).toBe(`${TOOLBAR_CONTROL_HEIGHT}px`)
+      expect(style.borderRadius).toBe(TOOLBAR_CONTROL_RADIUS)
+    }
+    })
+
+    it('the toolbar row ends with Show inactive, then Sort, then the Cards | List toggle last', async () => {
+      listLeagues.mockResolvedValue([makeLeague()])
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      const inline = screen.getByTestId('filter-bar-inline-controls')
+      const labels = Array.from(inline.children).map((child) => child.textContent ?? '')
+      expect(labels[0]).toMatch(/Show inactive/)
+      expect(labels[1]).toMatch(/Sort: Name, A to Z/)
+      expect(labels[2]).toMatch(/Cards.*List/)
+      expect(labels).toHaveLength(3)
     })
   })
 

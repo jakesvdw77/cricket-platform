@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League page: actions and schedule edit mode (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;--ok:#2f7d4f;--tint:#e3ece3;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:44px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:940px;font-size:14px;margin:0 0 14px}
+.note b{color:var(--ink900)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;position:relative}
+.frame.d{width:1180px}
+.frame.p{width:375px}
+.pad{padding:14px 20px}
+.p .pad{padding:12px}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.p .btn{height:44px}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.btn.t{background:transparent;color:var(--green700)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border:1px solid var(--cardLine);border-radius:16px;background:#fff;font-size:13.5px;font-weight:600;color:var(--green800)}
+.p .pill{height:44px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.back{font-size:13.5px;font-weight:600;color:var(--green800)}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.titlerow{display:flex;gap:14px;align-items:center;margin:14px 0 6px}
+.logo{width:56px;height:56px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font:700 22px var(--display);color:var(--green900);flex:none}
+.p .logo{width:44px;height:44px;font-size:18px}
+.title{font-family:var(--display);font-size:34px;font-weight:700;color:var(--green900);line-height:1}
+.p .title{font-size:26px}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font-size:12px;font-weight:600;border:1px solid var(--cardLine);background:#fff;margin-right:6px}
+.chip.g{background:#dbe9de;color:var(--green800);border-color:#bcd4c1}
+.chip.w{color:var(--warning);border-color:var(--warning)}
+.chip.i{color:var(--info);border-color:var(--info)}
+.contacts{font-size:13px;color:var(--inkMuted);display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 12px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:10px 0 12px}
+.p .tiles{grid-template-columns:repeat(2,1fr);gap:8px}
+.tile{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.tile i{width:32px;height:32px;border-radius:8px;background:var(--tint);flex:none}
+.tile b{font:700 20px var(--display);display:block;line-height:1}.tile span{font-size:12px;color:var(--inkMuted)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--cardLine);margin:8px 0 12px}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.filter{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:8px;display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-bottom:10px}
+.p .filter{grid-template-columns:1fr}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:38px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px;font-size:13.5px;color:var(--inkMuted)}
+.sw{display:inline-flex;align-items:center;gap:6px;margin-right:6px;color:var(--ink900)}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.sw.on i{background:var(--green700)}.sw.on i:after{left:16px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--cardLine);font-size:13.5px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 10px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:8px 10px;border-bottom:1px solid #edf0e9;vertical-align:middle}
+tr:nth-child(even) td{background:#f8faf6}
+td small{display:block;color:var(--inkMuted);font-size:12px}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:var(--tint);flex:none;font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--green800)}
+.menu{position:absolute;right:20px;top:58px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:0 8px 24px rgba(6,36,26,.18);width:230px;padding:6px;z-index:5}
+.p .menu{right:12px;top:100px}
+.menu div{padding:9px 10px;border-radius:6px;font-size:14px;display:flex;gap:10px;align-items:center}
+.menu div:hover{background:var(--tint)}
+.menu hr{border:0;border-top:1px solid var(--cardLine);margin:4px 0}
+.editbar{background:#fff;border:1px solid var(--green700);border-left:5px solid var(--green700);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px}
+.editbar b{font-family:var(--display);font-size:20px;color:var(--green900)}
+.inp{height:30px;border:1px solid var(--green700);border-radius:5px;padding:0 8px;display:inline-flex;align-items:center;min-width:90px;background:#fff;font-size:13px;box-shadow:0 0 0 2px rgba(20,99,63,.12)}
+.was{font-size:11.5px;color:var(--inkMuted);text-decoration:line-through;display:block}
+tr.added td{background:#f3f8ee !important}
+tr.removed td{background:#faf0ee !important;color:#8a8f8b}
+tr.removed td .team{text-decoration:line-through}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.card .l1{display:flex;justify-content:space-between;font-size:12.5px;color:var(--inkMuted)}
+.card .l2{font-weight:600;margin:3px 0}
+.card .l3{font-size:12.5px;color:var(--inkMuted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.noterow{font-size:13px;color:var(--inkMuted);margin:2px 0 14px}
+.mark{background:#fff4d6;border:1px dashed var(--warning);border-radius:6px;padding:8px 12px;font-size:13px;margin:10px 0;max-width:940px}
+.ic{width:16px;height:16px;fill:currentColor;flex:none}.menu .ic{width:18px;height:18px;margin-right:2px}
+</style>
+</head>
+<body>
+<h1>League page: one place for actions, and an edit mode</h1>
+<p class="lede">Proposal for spec 126. The page follows the standard detail page (Back, page-level actions on the right of the top row, title, key figures, tabs, each tab with its own toolbar line). Page-level actions are few; everything about the schedule lives in the Schedule tab's toolbar; schedule editing becomes a mode of the same page, using the import's row editor, checks and confirmation. Layout rule applied: no control alone in its own row.</p>
+
+<!-- ========== A: view mode, desktop ========== -->
+<h2>A. View mode (Schedule tab), desktop</h2>
+<p class="note"><b>Top row:</b> Back on the left; <b>Actions</b> menu and the filled <b>Edit league</b> on the right; the Season pill sits beside the title. <b>Schedule toolbar:</b> the scope text on the left; on the right the two switches, then Import schedule (outlined) and <b>Edit schedule</b> (the tab's one filled button). Imports (history) moves into the Actions menu and the Import dialog's own header, so no stray text button remains. Create match is now "Add match" inside Edit schedule.</p>
+<div class="frame d">
+  <div class="pad">
+    <div class="top">
+      <span class="back">← Back to Leagues</span>
+      <div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o">Actions ⌄</button><button class="btn c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit league</button></div>
+    </div>
+    <div class="titlerow"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span><span class="chip g">Active</span></div></div></div>
+    <div class="contacts"><span>SJ Van Der Westhuizen</span><span>0834699756</span><span>jakesvdw77@gmail.com</span><span>https://cricclubs.com/TVL</span></div>
+    <div class="tiles">
+      <div class="tile"><i></i><div><b>7</b><span>Teams this season</span></div></div>
+      <div class="tile"><i></i><div><b>5 of 6</b><span>Matches played</span></div></div>
+      <div class="tile"><i></i><div><b>Sat, 31 Oct</b><span>Next 10:00, in 14 h 24 min</span></div></div>
+      <div class="tile"><i></i><div><b>12</b><span>Playing XI, age 40-any</span></div></div>
+    </div>
+    <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Conditions</span></div>
+    <div class="filter"><div class="field">Team: All teams</div><div class="field">Search teams or venue</div></div>
+    <div class="toolbar">
+      <span>Showing 6 matches · 2026/2027</span>
+      <div class="acts"><span class="sw">Only our matches<i></i></span><span class="sw on">View entire season<i></i></span><button class="btn o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6.01h2.01V18h1.98v-4.01H14L11 11l-3 2.99z"/></svg> Import schedule</button><button class="btn c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit schedule</button></div>
+    </div>
+    <table>
+      <tr><th style="width:110px">When</th><th>Home</th><th>Away</th><th>Venue</th><th></th><th style="width:30px"></th></tr>
+      <tr><td>Sun, 13 Sept<small>11:05</small></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>CV</i>CBCOB Vetarans</div></td><td>-</td><td><span class="chip g">Our match</span></td><td>›</td></tr>
+      <tr><td>Sun, 4 Oct<small>10:00</small></td><td><div class="team"><i>L2</i>Laudium 2 XI Stars</div></td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td>-</td><td><span class="chip g">Our match</span></td><td>›</td></tr>
+      <tr><td>Tue, 6 Oct<small>09:30</small></td><td><div class="team"><i>PO</i>Police</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>TBC</td><td></td><td></td></tr>
+      <tr><td>Sat, 24 Oct<small>09:30</small></td><td><div class="team"><i>IO</i>IRENE O11</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>-</td><td><span class="chip g">Our match</span></td><td>›</td></tr>
+    </table>
+  </div>
+  <div class="menu">
+    <div><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Duplicate league</div>
+    <div><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/></svg> Share league…</div>
+    <hr>
+    <div><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg> Import history (2)</div>
+  </div>
+</div>
+<p class="note" style="margin-top:8px"><b>Actions menu</b> (shown open above): Duplicate league, Share league (the Share dialog already lets you choose schedule, results, conditions, teams), Import history. Other tabs add nothing to this menu. <b>Naming:</b> the top filled button says <b>Edit league</b> (details, teams, conditions, contacts: the existing edit page) so it is not confused with <b>Edit schedule</b>.</p>
+
+<!-- ========== B: other tabs toolbar pattern ========== -->
+<h2>B. Same pattern on the other tabs</h2>
+<p class="note">Each tab's actions sit on that tab's content line, right-aligned, one filled button at most. The top row never changes between tabs.</p>
+<div class="frame d"><div class="pad">
+  <div class="toolbar" style="margin:0"><span><b style="color:var(--ink900)">Teams</b> · 7 this season</span><div class="acts"><button class="btn o">Copy teams</button><button class="btn c">+ Add league team</button></div></div>
+  <div class="toolbar" style="margin:12px 0 0"><span><b style="color:var(--ink900)">Conditions</b></span><div class="acts"><button class="btn o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/></svg> Share</button><button class="btn c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit conditions</button></div></div>
+</div></div>
+
+<!-- ========== C: edit mode desktop ========== -->
+<h2>C. Edit schedule mode, desktop</h2>
+<p class="note"><b>Edit schedule</b> turns the toolbar into an edit bar and the table into the editable table (the import's row editor: date, start time, home, away, venue; team lists limited to this league, the other side excluded, same checks). Nothing is saved until <b>Review and save</b>, which shows the same Review as the import (what will be added, changed and removed, warnings to tick) and then saves in one go. Top row and tabs stay; other tabs are disabled while editing. <b>Discard</b> leaves with no changes.</p>
+<div class="frame d">
+  <div class="pad">
+    <div class="top">
+      <span class="back">← Back to Leagues</span>
+      <div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o" disabled style="opacity:.5">Actions ⌄</button><button class="btn c" disabled style="opacity:.5"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit league</button></div>
+    </div>
+    <div class="titlerow" style="margin-bottom:0"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20</div></div></div>
+    <div class="tabs"><span class="tab on">Schedule</span><span class="tab" style="opacity:.5">Teams</span><span class="tab" style="opacity:.5">Conditions</span></div>
+    <div class="editbar">
+      <div><b>Editing schedule</b> <span class="chip i" style="margin-left:8px">3 changes</span><span class="chip" style="margin-left:2px">1 added · 1 changed · 1 removed</span></div>
+      <div class="acts"><button class="btn t">+ Add match</button><button class="btn o">Discard</button><button class="btn c">Review and save</button></div>
+    </div>
+    <div class="acts" style="margin:0 0 8px;font-size:13px;color:var(--inkMuted)"><span class="sw">Possible duplicates: within 14 days ⌄</span></div>
+    <table>
+      <tr><th style="width:130px">Date</th><th style="width:90px">Start time</th><th>Home</th><th>Away</th><th>Venue</th><th style="width:150px"></th></tr>
+      <tr><td>Sun, 13 Sept</td><td>11:05</td><td><div class="team"><i>IV</i>Irene Villagers 1</div></td><td><div class="team"><i>CV</i>CBCOB Vetarans</div></td><td>-</td><td><button class="btn t sm">Edit</button><button class="btn t sm">Remove</button></td></tr>
+      <tr><td colspan="6" style="background:#f3f8ee;padding:10px">
+        <b style="font-size:12.5px">Editing Sun, 4 Oct</b>
+        <div class="acts" style="margin-top:8px">
+          <span class="inp">2026-10-04</span><span class="inp" style="min-width:70px">10:00 ⌃⌄</span><span class="inp" style="min-width:170px">Laudium 2 XI Stars ⌄</span><span class="inp" style="min-width:170px">Irene Villagers 1 ⌄</span><span class="inp" style="min-width:150px">Hofmeyer Park ⌄</span>
+          <button class="btn t sm">+ Add note</button><button class="btn c sm">Save row</button><button class="btn o sm">Cancel</button>
+        </div>
+      </td></tr>
+      <tr><td>Tue, 6 Oct<span class="was">09:30</span></td><td>10:15<span class="was">09:30</span></td><td><div class="team"><i>PO</i>Police</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>TBC</td><td><span class="chip i">Changed</span><button class="btn t sm">Edit</button></td></tr>
+      <tr class="added"><td>Sat, 7 Nov</td><td>09:00</td><td><div class="team"><i>HA</i>Harlequins</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>Laudium</td><td><span class="chip g">Added</span><button class="btn t sm">Remove</button></td></tr>
+      <tr class="removed"><td>Sat, 24 Oct<small>09:30</small></td><td>09:30</td><td><div class="team"><i>IO</i>IRENE O11</div></td><td><div class="team"><i>C1</i>CBC 1</div></td><td>-</td><td><span class="chip w">Will be removed</span><button class="btn t sm">Undo</button></td></tr>
+    </table>
+  </div>
+</div>
+<div class="mark"><b>Decisions this implies (please confirm):</b> (1) A match that already has a poll, selection, announced team or result cannot be removed here (the same blockers as deleting an import); its Remove is disabled with the reason, and Deactivate stays on the match page. (2) A time change on a match with a poll or selection is blocked or warned exactly as the import's Update rules. (3) Matches from other leagues are never shown here. (4) "Add match" here replaces the header's "Create match"; the full Match form stays reachable from a row's chevron for everything else (playing area, links, notes).</div>
+
+<!-- ========== D: phone ========== -->
+<h2>D. Phone (375 px)</h2>
+<p class="note">Top row: Back, then Actions (icon button with a menu) and Edit league (icon plus text). Schedule toolbar: the two switches in the Filters sheet as today; the two actions side by side, equal width, 44 px. Edit mode: rows become cards; a row opens an editing card with stacked fields; a sticky bar at the bottom holds "3 changes", Discard and Review and save.</p>
+<div class="row">
+<div class="frame p"><div class="pad">
+  <div class="top"><span class="back">← Back</span><div class="acts"><span class="pill">2026/2027 ⌄</span><button class="btn o" style="padding:0 12px">⋮</button></div></div>
+  <div class="titlerow"><div class="logo">TV</div><div><div class="title">TVL Division 1 T20</div><div style="margin-top:6px"><span class="chip">T20</span><span class="chip g">Active</span></div></div></div>
+  <button class="btn c" style="width:100%;justify-content:center;margin:6px 0 10px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit league</button>
+  <div class="tiles"><div class="tile"><i></i><div><b>7</b><span>Teams</span></div></div><div class="tile"><i></i><div><b>5 of 6</b><span>Played</span></div></div></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Cond.</span></div>
+  <div class="two" style="margin-bottom:8px"><button class="btn o" style="justify-content:center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6.01h2.01V18h1.98v-4.01H14L11 11l-3 2.99z"/></svg> Import</button><button class="btn c" style="justify-content:center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg> Edit schedule</button></div>
+  <div class="card"><div class="l1"><span>Tue, 6 Oct · 09:30</span><span class="chip g" style="margin:0">Our match</span></div><div class="l2">Police v CBC 1</div><div class="l3">TBC</div></div>
+  <div class="card"><div class="l1"><span>Sat, 24 Oct · 09:30</span></div><div class="l2">IRENE O11 v CBC 1</div><div class="l3">Laudium</div></div>
+</div></div>
+<div class="frame p" style="min-height:560px"><div class="pad">
+  <div class="editbar" style="margin-top:0"><div><b>Editing schedule</b></div><span class="chip i" style="margin:0">3 changes</span></div>
+  <div class="card" style="border-color:var(--green700)"><div class="l1"><b style="color:var(--ink900)">Editing Sun, 4 Oct</b></div>
+    <div style="display:grid;gap:8px;margin-top:8px"><span class="inp" style="height:44px">2026-10-04</span><span class="inp" style="height:44px">10:00 ⌃⌄</span><span class="inp" style="height:44px">Laudium 2 XI Stars ⌄</span><span class="inp" style="height:44px">Irene Villagers 1 ⌄</span><span class="inp" style="height:44px">Hofmeyer Park ⌄</span>
+    <button class="btn t" style="justify-content:flex-start">+ Add note</button>
+    <div class="two"><button class="btn c" style="justify-content:center">Save row</button><button class="btn o" style="justify-content:center">Cancel</button></div></div></div>
+  <div class="card" style="background:#f3f8ee"><div class="l1"><span>Sat, 7 Nov · 09:00</span><span class="chip g" style="margin:0">Added</span></div><div class="l2">Harlequins v CBC 1</div></div>
+  <div class="card" style="background:#faf0ee"><div class="l1"><span>Sat, 24 Oct · 09:30</span><span class="chip w" style="margin:0">Will be removed</span></div><div class="l2" style="text-decoration:line-through">IRENE O11 v CBC 1</div></div>
+  <div style="position:sticky;bottom:0;background:#fff;border-top:1px solid var(--cardLine);margin:16px -12px -12px;padding:10px 12px;display:grid;gap:8px"><button class="btn c" style="justify-content:center">Review and save (3)</button><div class="two"><button class="btn t" style="justify-content:center">+ Add match</button><button class="btn o" style="justify-content:center">Discard</button></div></div>
+</div></div>
+</div>
+
+<h2>What this changes, in words</h2>
+<p class="note">1. The league page top row shrinks from five buttons to three (Actions, Edit league; the Season pill moves beside the title). 2. Every schedule action (Import, Edit, Add) sits in the Schedule tab's toolbar; Teams and Conditions keep theirs. 3. The league edit page loses its Schedule tab (it links to Edit schedule on this page). 4. Edit schedule reuses the import's row editor, validation and Review, so there is one way to change matches in bulk, and import and editing are two entrances to the same checks. 5. Nothing is saved until Review and save.</p>
+</body>
+</html>

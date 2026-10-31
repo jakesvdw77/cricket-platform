@@ -157,6 +157,27 @@
             <version>3.0.4</version>
         </dependency>
 
+        <!-- Apache POI (xlsx read and template write) and Apache Commons CSV (csv read and template write): the import
+             framework, docs/specs/097. Used only by service.support readers/writers; formulas are never evaluated and
+             ZipSecureFile limits are on. Versions pinned here on purpose (spec 097 Open Question 6). -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.13.0</version>
+        </dependency>
+        <!-- POI 5.4 needs a newer commons-io than the one Liquibase brings in (2.16.1); pinned so POI does not run
+             against an older API than it was built for. -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.19.0</version>
+        </dependency>
+
         <!-- ArchUnit — layering rules, backend.md / Enforcement -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>

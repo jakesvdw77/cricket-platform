@@ -108,6 +108,36 @@ public class LeagueTeamServiceImpl implements LeagueTeamService {
 
     @Override
     @Transactional
+    public List<LeagueTeamDto> createAll(
+            UUID clubId, UUID leagueId, UUID seasonId, List<CreateLeagueTeamRequest> requests) {
+        validateLeagueAndSeason(clubId, leagueId, seasonId);
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        Set<String> takenNames = new HashSet<>();
+        for (LeagueTeam existing : leagueTeamRepository.findByLeagueAndSeason(leagueId, seasonId)) {
+            takenNames.add(nameKey(existing.getName()));
+        }
+        List<LeagueTeam> toCreate = new ArrayList<>();
+        for (CreateLeagueTeamRequest request : requests) {
+            String name = requireName(request.name());
+            if (!takenNames.add(nameKey(name))) {
+                throw duplicateName(name);
+            }
+            toCreate.add(LeagueTeam.builder()
+                    .leagueId(leagueId)
+                    .seasonId(seasonId)
+                    .name(name)
+                    .abbreviation(blankToNull(request.abbreviation()))
+                    .logoUrl(blankToNull(request.logoUrl()))
+                    .active(true)
+                    .build());
+        }
+        return leagueTeamRepository.saveAll(toCreate).stream().map(t -> toDto(t, 0L)).toList();
+    }
+
+    @Override
+    @Transactional
     public LeagueTeamDto update(
             UUID clubId, UUID leagueId, UUID seasonId, UUID leagueTeamId, UpdateLeagueTeamRequest request) {
         validateLeagueAndSeason(clubId, leagueId, seasonId);

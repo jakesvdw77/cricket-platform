@@ -1,9 +1,10 @@
 import { Box, Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
-import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button, compactButtonSx } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
@@ -43,7 +44,9 @@ export default function MatchFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId?: string }>()
   const isEdit = Boolean(matchId)
-  const navigate = useNavigate()
+  // docs/specs/127: Back (in the header), Cancel, Save and Delete return to where the page was opened from; defaults as before.
+  const afterSave = useAfterSave('/manage/fixtures/matches')
+  const cancelLink = useBackLink(isEdit && matchId ? `/manage/fixtures/matches/${matchId}` : '/manage/fixtures/matches', 'Cancel')
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
 
@@ -62,9 +65,10 @@ export default function MatchFormPage() {
       }
       return createMatch(clubId as string, payload)
     },
-    onSuccess: () => {
+    onSuccess: (_saved, payload) => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
-      navigate('/manage/fixtures/matches')
+      // A past match would be hidden by the league Schedule's upcoming-only default, so that origin is opened with showAll=1.
+      afterSave({ showAll: Boolean(payload.matchDate) && new Date(payload.matchDate).getTime() < Date.now() })
     },
   })
 
@@ -83,7 +87,7 @@ export default function MatchFormPage() {
   // The confirm-and-delete flow is shared with the result import (hooks/useDeleteMatchDialog).
   const deleteFlow = useDeleteMatchDialog(clubId ?? '', () => {
     queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
-    navigate('/manage/fixtures/matches', { state: { notice: 'Match deleted.' } })
+    afterSave({ state: { notice: 'Match deleted.' } })
   })
 
   const reactivate = useMutation({
@@ -163,7 +167,7 @@ export default function MatchFormPage() {
           )}
 
           {/* docs/specs/089 (B): Cancel goes back to the match (edit) or the list (add), without saving. */}
-          <MuiButton component={RouterLink} to={isEdit && match ? `/manage/fixtures/matches/${match.id}` : '/manage/fixtures/matches'} variant="outlined" sx={compactButtonSx}>
+          <MuiButton component={RouterLink} to={cancelLink.to ?? '/manage/fixtures/matches'} variant="outlined" sx={compactButtonSx}>
             Cancel
           </MuiButton>
 

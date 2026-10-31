@@ -48,6 +48,7 @@ import com.cricketlegend.service.support.ServerClock;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -593,6 +594,109 @@ public class MatchServiceImpl implements MatchService {
                 .build();
 
         return toDto(matchRepository.save(match));
+    }
+
+    @Override
+    @Transactional
+    public List<MatchDto> createBatch(Authentication authentication, UUID clubId, List<CreateMatchRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        // Shared lookups, once. Per-item checks below read these maps (the persistence context holds the rest).
+        Set<UUID> leagueIds = new HashSet<>();
+        Set<UUID> seasonIds = new HashSet<>();
+        Set<UUID> teamIds = new HashSet<>();
+        Set<UUID> leagueTeamIds = new HashSet<>();
+        for (CreateMatchRequest request : requests) {
+            if (request.leagueId() != null) {
+                leagueIds.add(request.leagueId());
+            }
+            if (request.seasonId() != null) {
+                seasonIds.add(request.seasonId());
+            }
+            addIfSet(teamIds, request.homeTeamId());
+            addIfSet(teamIds, request.awayTeamId());
+            addIfSet(leagueTeamIds, request.homeLeagueTeamId());
+            addIfSet(leagueTeamIds, request.awayLeagueTeamId());
+        }
+        for (UUID leagueId : leagueIds) {
+            LeagueSeasonAccessValidation.assertLeagueBelongsToClub(leagueRepository, leagueId, clubId);
+        }
+        for (UUID seasonId : seasonIds) {
+            LeagueSeasonAccessValidation.assertSeasonBelongsToClub(seasonRepository, seasonId, clubId);
+        }
+        Map<UUID, Team> teamsById = new HashMap<>();
+        teamRepository.findAllById(teamIds).forEach(t -> teamsById.put(t.getId(), t));
+        leagueTeamRepository.findAllById(leagueTeamIds); // loaded into the persistence context for resolveLeagueTeam
+        Map<String, List<Instant>> datesByLeagueSeason = new HashMap<>();
+
+        List<Match> matches = new ArrayList<>(requests.size());
+        for (CreateMatchRequest request : requests) {
+            String scoringUrl = validateLink(request.scoringUrl(), "scoringUrl");
+            String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
+            validateSides(
+                    request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
+                    request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
+            validateLogoOnlyWithName(
+                    request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
+                    request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
+            if (request.seasonId() == null) {
+                throw new ValidationException("seasonId is required");
+            }
+            datesByLeagueSeason
+                    .computeIfAbsent(request.leagueId() + "|" + request.seasonId(), k -> new ArrayList<>())
+                    .add(request.matchDate());
+            for (UUID teamId : new UUID[] {request.homeTeamId(), request.awayTeamId()}) {
+                if (teamId != null && !teamsById.containsKey(teamId)) {
+                    throw new NotFoundException("Team not found: " + teamId);
+                }
+            }
+            LeagueTeam homeLeagueTeam = resolveLeagueTeam(
+                    clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
+                    request.awayLeagueTeamId(), null, "home");
+            LeagueTeam awayLeagueTeam = resolveLeagueTeam(
+                    clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
+                    request.homeLeagueTeamId(), null, "away");
+            accessService.assertCanAdministerAnySection(
+                    authentication,
+                    clubId,
+                    accessService.resolveMatchSectionIds(clubId, request.homeTeamId(), request.awayTeamId(), teamsById));
+            PlayingArea field = resolveField(request.playingAreaId());
+            matches.add(Match.builder()
+                    .clubId(clubId)
+                    .homeTeamId(request.homeTeamId())
+                    .homeTeamName(sideName(homeLeagueTeam, request.homeTeamName()))
+                    .awayTeamId(request.awayTeamId())
+                    .awayTeamName(sideName(awayLeagueTeam, request.awayTeamName()))
+                    .homeLeagueTeamId(request.homeLeagueTeamId())
+                    .awayLeagueTeamId(request.awayLeagueTeamId())
+                    .homeTeamLogoUrl(sideLogo(homeLeagueTeam, request.homeTeamLogoUrl()))
+                    .awayTeamLogoUrl(sideLogo(awayLeagueTeam, request.awayTeamLogoUrl()))
+                    .leagueId(request.leagueId())
+                    .seasonId(request.seasonId())
+                    .matchDate(request.matchDate())
+                    .venue(venueFor(field, request.venue()))
+                    .playingAreaId(field == null ? null : field.getId())
+                    .scoringUrl(scoringUrl)
+                    .streamingUrl(streamingUrl)
+                    .active(true)
+                    .build());
+        }
+        // docs/specs/111-league-season-dates.md, once per league season (the dates are read once).
+        for (CreateMatchRequest request : requests) {
+            String key = request.leagueId() + "|" + request.seasonId();
+            List<Instant> dates = datesByLeagueSeason.remove(key);
+            if (dates != null) {
+                leagueSeasonDates.assertAllWithin(request.leagueId(), request.seasonId(), dates);
+            }
+        }
+        return toDtos(matchRepository.saveAll(matches));
+    }
+
+    private static void addIfSet(Set<UUID> ids, UUID id) {
+        if (id != null) {
+            ids.add(id);
+        }
     }
 
     @Override

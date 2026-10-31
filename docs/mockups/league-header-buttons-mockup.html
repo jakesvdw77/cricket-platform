@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League header buttons (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green700:#14633F;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:34px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:900px;font-size:14px;margin:0 0 12px}
+.frame{width:1100px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd))}
+.pad{padding:14px 20px 4px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.back{font-size:13.5px;font-weight:600;color:#0F5132}
+.titlerow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.logo{width:44px;height:44px;border-radius:9px;background:rgba(20,99,63,.14);display:flex;align-items:center;justify-content:center;font:700 16px var(--display);color:#0F5132}
+.title{font-family:var(--display);font-size:32px;font-weight:700;color:var(--green900)}
+.pill{display:inline-flex;align-items:center;height:30px;padding:0 12px;border:1px solid #8fb09b;border-radius:15px;background:#fff;font-size:13px;font-weight:700;color:#0F5132}
+.right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);display:inline-flex;align-items:center;border:1px solid transparent;white-space:nowrap}
+.btn.c{background:var(--green700);color:#fff}.btn.o{background:#fff;color:var(--green700);border-color:var(--green700)}
+.btn.sq{width:32px;padding:0;justify-content:center}
+.tabs{display:flex;align-items:center;border-bottom:1px solid var(--cardLine)}
+.tab{padding:10px 14px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted)}
+.tab.on{color:var(--green700);border-bottom:3px solid var(--green700);margin-bottom:-1px}
+.tabs .btn{margin-left:auto}
+.cap{font-size:12.5px;color:var(--inkMuted);margin:6px 20px 10px}
+</style>
+</head>
+<body>
+<h1>League header buttons</h1>
+<p class="note">Today the right edge has three controls on three levels: the corner pencil, Manage League and the tab's button. Two ways to calm it.</p>
+
+<h2>Now</h2>
+<div class="frame"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span><span class="btn o sq">✎</span></div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">TVL Division 1 T20</span><span class="pill">2026/2027 ⌄</span><span class="right"><span class="btn c">Manage League ▾</span></span></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Playing Conditions</span><span class="btn o">Import Schedule</span></div>
+</div></div>
+
+<h2>Option 1: pencil beside Manage League (recommended)</h2>
+<p class="note">Back stands alone on the top row. The title row carries the two page actions, same height, one right edge. The tab row keeps its one tab button.</p>
+<div class="frame"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span></div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">TVL Division 1 T20</span><span class="pill">2026/2027 ⌄</span><span class="right"><span class="btn o sq">✎</span><span class="btn c">Manage League ▾</span></span></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Playing Conditions</span><span class="btn o">Import Schedule</span></div>
+</div></div>
+
+<h2>Option 2: no pencil</h2>
+<p class="note">Edit League Details is the first item in the Manage League menu (one extra click). One page action, one tab action.</p>
+<div class="frame"><div class="pad">
+  <div class="top"><span class="back">← Back to Leagues</span></div>
+  <div class="titlerow"><div class="logo">TV</div><span class="title">TVL Division 1 T20</span><span class="pill">2026/2027 ⌄</span><span class="right"><span class="btn c">Manage League ▾</span></span></div>
+  <div class="tabs"><span class="tab on">Schedule</span><span class="tab">Teams</span><span class="tab">Playing Conditions</span><span class="btn o">Import Schedule</span></div>
+</div></div>
+</body>
+</html>

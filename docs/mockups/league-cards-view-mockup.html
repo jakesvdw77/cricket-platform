@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cards view with the toolbar card (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green700:#14633F;--amber:#b7791f;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+  --raise:0 1px 3px rgba(6,36,26,.16),0 1px 2px rgba(6,36,26,.10);--lift:0 4px 12px rgba(6,36,26,.20)}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:34px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:940px;font-size:14px;margin:0 0 12px}
+.note b{color:var(--ink900)}
+.frame{width:1180px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd))}
+.pad{padding:16px 20px}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.t{font-family:var(--display);font-size:36px;font-weight:700;letter-spacing:.05em;color:var(--green900);text-transform:uppercase}
+.pill{display:inline-flex;align-items:center;height:30px;padding:0 12px;border:1px solid #8fb09b;border-radius:15px;background:#fff;font-size:13px;font-weight:700;color:#0F5132}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);display:inline-flex;align-items:center;background:var(--green700);color:#fff;margin-left:auto}
+.figs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
+.fig{height:44px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);white-space:nowrap;overflow:hidden}
+.fig b{font:700 22px var(--display);color:var(--green900);letter-spacing:0}
+.toolbar{background:#fff;border:1px solid var(--cardLine);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:210px 1fr auto auto auto;gap:10px;align-items:center;margin-bottom:16px}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.sort{font-weight:600;font-size:13.5px;color:var(--green700);white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:#fff}
+.seg span{padding:0 12px;height:34px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--inkMuted);border-left:1px solid var(--cardLine)}
+.seg span:first-child{border-left:0}.seg .on{background:var(--tint);color:#0F5132}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.lc{background:#fff;border:1px solid var(--cardLine);border-radius:10px;padding:14px 16px}
+.raised .lc{box-shadow:var(--raise)}
+.flat .lc:hover{box-shadow:var(--lift);border-color:#b9c9bd}
+.lc .top{display:flex;align-items:center;gap:12px}
+.logo{width:52px;height:52px;border-radius:10px;background:rgba(20,99,63,.14);display:flex;align-items:center;justify-content:center;font:700 18px var(--display);color:#0F5132;flex:none}
+.lc .name{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--green900);line-height:1.05}
+.chips{margin:10px 0 12px}
+.chip{display:inline-flex;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);align-items:center;border:1px solid var(--cardLine);background:#fff;margin-right:6px}
+.chip.g{background:#dbe9de;color:#0F5132;border-color:#bcd4c1}.chip.v{background:#ece9f7;color:#4b3f8f;border-color:#cfc8ea}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;color:var(--inkMuted);border-top:1px solid #edf0e9;padding-top:10px}
+.stats b{display:block;font:700 18px var(--display);color:var(--green900)}
+.bar{height:6px;border-radius:3px;background:#e3e8e1;margin-top:6px}.bar i{display:block;height:6px;border-radius:3px;background:var(--green700)}
+.empty{background:#fff;border:1px dashed var(--cardLine);border-radius:8px;padding:30px;text-align:center;color:var(--inkMuted);font-size:14px}
+</style>
+</head>
+<body>
+<h1>Cards view with the toolbar card</h1>
+<p class="note">Leagues list, Cards view. The toolbar is its own flat white card; the count line is gone; the cards follow after one 16 px gap. Two treatments of the league cards are shown so you can judge them against the toolbar and the figure cards.</p>
+
+<h2>A. Flat league cards, lift on hover (the standard we agreed)</h2>
+<p class="note">Figure cards are the only raised things. The toolbar and the league cards are flat white with the thin border; a card lifts a little when the pointer is over it (hover the middle card).</p>
+<div class="frame flat"><div class="pad">
+  <div class="head"><span class="t">Leagues</span><span class="pill">2026/2027 ⌄</span><span class="btn">Add League</span></div>
+  <div class="figs"><div class="fig"><b>3</b>Active leagues</div><div class="fig"><b>10</b>Teams entered</div><div class="fig"><b>24</b>Players</div><div class="fig"><b>2</b>Seasons</div><div class="fig"><b>1</b>Matches this week</div><div class="fig"><b style="color:var(--amber)">1</b>Setup needed</div></div>
+  <div class="toolbar"><div class="field">Format: All formats ⌄</div><div class="field">Search by name</div><span class="sw">Show inactive <i></i></span><span class="sort">Name, A to Z ↕</span><span class="seg"><span class="on">Cards</span><span>List</span></span></div>
+  <div class="grid">
+    <div class="lc"><div class="top"><div class="logo">DL</div><div class="name">Diamond League U15 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>2</b>Teams</div><div><b>-</b>Next match</div><div><b>3 of 3</b>Played<div class="bar"><i style="width:100%"></i></div></div></div></div>
+    <div class="lc" style="box-shadow:var(--lift);border-color:#b9c9bd"><div class="top"><div class="logo">TV</div><div class="name">TVL Division 1 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>7</b>Teams</div><div><b style="color:var(--amber);font-size:15px">Sat, 31 Oct</b>Next match</div><div><b>5 of 6</b>Played<div class="bar"><i style="width:83%"></i></div></div></div></div>
+    <div class="lc"><div class="top"><div class="logo">TV</div><div class="name">TVL Division 2 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>1</b>Teams</div><div><b>-</b>Next match</div><div><b>-</b>Played</div></div></div>
+  </div>
+</div></div>
+
+<h2>B. Raised league cards (as the cards are today)</h2>
+<p class="note">Same page with the cards left raised. Compare how much more is raised on the page: the six figure cards plus three big cards.</p>
+<div class="frame raised"><div class="pad">
+  <div class="head"><span class="t">Leagues</span><span class="pill">2026/2027 ⌄</span><span class="btn">Add League</span></div>
+  <div class="figs"><div class="fig"><b>3</b>Active leagues</div><div class="fig"><b>10</b>Teams entered</div><div class="fig"><b>24</b>Players</div><div class="fig"><b>2</b>Seasons</div><div class="fig"><b>1</b>Matches this week</div><div class="fig"><b style="color:var(--amber)">1</b>Setup needed</div></div>
+  <div class="toolbar"><div class="field">Format: All formats ⌄</div><div class="field">Search by name</div><span class="sw">Show inactive <i></i></span><span class="sort">Name, A to Z ↕</span><span class="seg"><span class="on">Cards</span><span>List</span></span></div>
+  <div class="grid">
+    <div class="lc"><div class="top"><div class="logo">DL</div><div class="name">Diamond League U15 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>2</b>Teams</div><div><b>-</b>Next match</div><div><b>3 of 3</b>Played<div class="bar"><i style="width:100%"></i></div></div></div></div>
+    <div class="lc"><div class="top"><div class="logo">TV</div><div class="name">TVL Division 1 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>7</b>Teams</div><div><b style="color:var(--amber);font-size:15px">Sat, 31 Oct</b>Next match</div><div><b>5 of 6</b>Played<div class="bar"><i style="width:83%"></i></div></div></div></div>
+    <div class="lc"><div class="top"><div class="logo">TV</div><div class="name">TVL Division 2 T20</div></div><div class="chips"><span class="chip v">T20</span><span class="chip g">Active</span></div><div class="stats"><div><b>1</b>Teams</div><div><b>-</b>Next match</div><div><b>-</b>Played</div></div></div>
+  </div>
+</div></div>
+
+<h2>C. Empty result in Cards view</h2>
+<div class="frame flat"><div class="pad">
+  <div class="toolbar"><div class="field">Format: T20 ⌄</div><div class="field">Search by name</div><span class="sw">Show inactive <i></i></span><span class="sort">Name, A to Z ↕</span><span class="seg"><span class="on">Cards</span><span>List</span></span></div>
+  <div class="empty">No leagues match these filters.</div>
+</div></div>
+<p class="note" style="margin-top:10px"><b>My read:</b> A is calmer. The page then has one set of raised elements (the figures), and the cards still feel clickable through the hover lift. B works too but stacks nine raised blocks on one screen.</p>
+</body>
+</html>

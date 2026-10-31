@@ -119,6 +119,17 @@ function MatchListStub() {
   )
 }
 
+function ScheduleStub() {
+  const location = useLocation()
+  const notice = (location.state as { notice?: string } | null)?.notice
+  return (
+    <div>
+      League Schedule Page<span data-testid="schedule-at">{location.pathname + location.search}</span>
+      <span data-testid="schedule-notice">{notice}</span>
+    </div>
+  )
+}
+
 function renderPage(initialPath: string, clubId?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -129,6 +140,7 @@ function renderPage(initialPath: string, clubId?: string) {
             <Route path="matches" element={<MatchListStub />} />
             <Route path="matches/new" element={<MatchFormPage />} />
             <Route path="matches/:matchId/edit" element={<MatchFormPage />} />
+            <Route path="leagues/:leagueId/schedule" element={<ScheduleStub />} />
           </Route>
           <Route path="*" element={<LocationProbe />} />
         </Routes>
@@ -433,6 +445,92 @@ describe('MatchFormPage', () => {
     })
 
   // docs/specs/109-delete-empty-match.md
+  // docs/specs/127-return-navigation.md: Back, Cancel, Save and Delete return to where the page was opened from.
+  describe('return navigation (127)', () => {
+    const SCHEDULE = '/manage/fixtures/leagues/league-1/schedule?seasonId=season-1'
+    const WITH_ORIGIN = `/manage/fixtures/matches/new?returnTo=${encodeURIComponent(SCHEDULE)}&returnLabel=${encodeURIComponent('TVL schedule')}`
+
+    async function fillAndCreate(user: ReturnType<typeof userEvent.setup>, when: string) {
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2026' }))
+      await user.click(screen.getByLabelText('Home team'))
+      await user.click(await screen.findByRole('option', { name: '1st XI' }))
+      await user.click(screen.getByLabelText('Away team'))
+      await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+      setDateTime('Match date & time', when)
+      await user.click(screen.getByRole('button', { name: 'Create match' }))
+    }
+
+    it('shows "Back to {label}" and sends Back and Cancel to the origin', async () => {
+      renderPage(WITH_ORIGIN, 'test-club-id')
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to TVL schedule' })).toHaveAttribute('href', SCHEDULE)
+      expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', SCHEDULE)
+    })
+
+    it('keeps "Back to Matches" and the Matches list for Cancel without a returnTo', async () => {
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
+    })
+
+    it('ignores an external returnTo', async () => {
+      renderPage('/manage/fixtures/matches/new?returnTo=https%3A%2F%2Fevil.example&returnLabel=Evil', 'test-club-id')
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to Matches' })).toHaveAttribute('href', '/manage/fixtures/matches')
+      expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/matches')
+    })
+
+    it('Cancel on the edit page returns to the origin instead of the match', async () => {
+      getMatch.mockResolvedValue(makeMatch())
+      renderPage(`/manage/fixtures/matches/match-1/edit?returnTo=${encodeURIComponent(SCHEDULE)}&returnLabel=TVL%20schedule`, 'test-club-id')
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', SCHEDULE)
+    })
+
+    it('Save of a past match returns to the league Schedule with showAll=1', async () => {
+      const user = userEvent.setup()
+      createMatch.mockResolvedValueOnce(makeMatch())
+      renderPage(WITH_ORIGIN, 'test-club-id')
+      await screen.findByText('Add Match')
+      await fillAndCreate(user, '2026-06-01T14:30')
+      expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
+      expect(screen.getByTestId('schedule-at')).toHaveTextContent('/manage/fixtures/leagues/league-1/schedule?seasonId=season-1&showAll=1')
+    })
+
+    it('Save of a future match returns to the origin unchanged', async () => {
+      const user = userEvent.setup()
+      createMatch.mockResolvedValueOnce(makeMatch())
+      renderPage(WITH_ORIGIN, 'test-club-id')
+      await screen.findByText('Add Match')
+      await fillAndCreate(user, '2099-06-01T14:30')
+      expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
+      expect(screen.getByTestId('schedule-at')).toHaveTextContent(/^\/manage\/fixtures\/leagues\/league-1\/schedule\?seasonId=season-1$/)
+    })
+
+    it('Save on the edit page returns to the origin', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch())
+      updateMatch.mockResolvedValueOnce(makeMatch())
+      renderPage(`/manage/fixtures/matches/match-1/edit?returnTo=${encodeURIComponent(SCHEDULE)}&returnLabel=TVL%20schedule`, 'test-club-id')
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
+    })
+
+    it('Delete returns to the origin with the same notice', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ deletable: true }))
+      deleteMatch.mockResolvedValueOnce(undefined)
+      renderPage(`/manage/fixtures/matches/match-1/edit?returnTo=${encodeURIComponent(SCHEDULE)}&returnLabel=TVL%20schedule`, 'test-club-id')
+      await user.click(await screen.findByRole('button', { name: 'Delete' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
+      expect(screen.getByTestId('schedule-notice')).toHaveTextContent('Match deleted.')
+    })
+  })
+
   describe('Delete (109)', () => {
     it('shows a disabled Delete when the match has something recorded against it', async () => {
       getMatch.mockResolvedValue(makeMatch({ deletable: false }))

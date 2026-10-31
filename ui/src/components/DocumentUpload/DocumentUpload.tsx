@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { Box, CircularProgress, Stack, Typography } from '@mui/material'
@@ -37,6 +38,8 @@ export interface DocumentSelectProps extends DocumentUploadCommonProps {
   file: File | null
   onFileChange: (file: File | null) => void
   disabled?: boolean
+  // Shown at the right end of the caption row (stacked under it on a phone), for example a quiet secondary action.
+  helperAction?: ReactNode
 }
 
 export interface DocumentUploadModeProps extends DocumentUploadCommonProps {
@@ -98,7 +101,7 @@ export function DocumentUpload(props: DocumentUploadProps) {
   return props.mode === 'select' ? <SelectDocument {...props} /> : <UploadDocument {...props} />
 }
 
-function SelectDocument({ label, accept, maxBytes, helperText, file, onFileChange, disabled = false }: DocumentSelectProps) {
+function SelectDocument({ label, accept, maxBytes, helperText, helperAction, file, onFileChange, disabled = false }: DocumentSelectProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -172,9 +175,12 @@ function SelectDocument({ label, accept, maxBytes, helperText, file, onFileChang
         aria-label={`${label} file`}
         onChange={onChange}
       />
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', gap: 1 }}>
       <Typography variant="caption" color={error ? 'error.main' : 'text.secondary'} role={error ? 'alert' : undefined}>
         {error ?? helperText ?? `${accept ? acceptLabel(accept) : ALLOWED_TYPES_LABEL}${maxBytes !== undefined ? `, up to ${formatBytes(maxBytes)}` : ''}. Drop a file here or choose one.`}
       </Typography>
+        {helperAction}
+      </Box>
     </Box>
   )
 }

@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { RecordCard } from './RecordCard'
+import { RecordCard, avatarSx } from './RecordCard'
 import { baseTheme } from '../../theme'
 
 describe('RecordCard', () => {
@@ -847,5 +847,28 @@ describe('RecordCard', () => {
       expect(button).toHaveAttribute('title', 'Tip')
       expect(button.parentElement).not.toHaveAttribute('title')
     })
+  })
+})
+
+describe('avatarSx', () => {
+  it('uses the soft green tint for a record', () => {
+    const sx = avatarSx(40, undefined, { kind: 'record' }) as Record<string, unknown>
+    expect(sx.backgroundImage).toBe('none')
+    expect(sx.color).toBe('primary.dark')
+  })
+
+  it('keeps the gold tile by default', () => {
+    const sx = avatarSx(40) as Record<string, unknown>
+    expect(sx.backgroundImage).toContain('gradient')
+    expect(sx.bgcolor).toBeTruthy()
+    expect(sx.bgcolor).not.toBe('transparent')
+  })
+
+  it('has no tile and contains the image when hasImage is set', () => {
+    const sx = avatarSx(40, '0.75rem', { hasImage: true }) as Record<string, unknown>
+    expect(sx.width).toBe(40)
+    expect(sx.bgcolor).toBe('transparent')
+    expect(sx.backgroundImage).toBe('none')
+    expect(sx['& img']).toEqual({ objectFit: 'contain' })
   })
 })

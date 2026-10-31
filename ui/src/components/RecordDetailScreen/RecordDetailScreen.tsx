@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
-import { Avatar, Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
+import { LogoAvatar } from '../LogoAvatar'
+import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import type { RecordCardAvatar, RecordCardBadge } from '../RecordCard'
-import { avatarSx } from '../RecordCard'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { ContentCard } from '../ContentCard'
 import { pageTitleSx } from '../../theme'
+import { useBackLink } from '../../hooks/useReturnTo'
 
 export interface RecordDetailScreenSection {
   // Omitted entirely for a single-section page (Season/Club Contact/Sponsor Contact/Sponsor) —
@@ -56,8 +57,8 @@ export interface RecordDetailScreenProps {
 // button lives on the edit form this screen's Edit action leads to, not here.
 export function RecordDetailScreen({
   title,
-  backTo,
-  backLabel,
+  backTo: defaultBackTo,
+  backLabel: defaultBackLabel,
   avatar,
   badge,
   secondaryActions,
@@ -66,6 +67,8 @@ export function RecordDetailScreen({
   headerNote,
   sections,
 }: RecordDetailScreenProps) {
+  // docs/specs/127: a valid returnTo in the address overrides the page's own default Back.
+  const { to: backTo = defaultBackTo, label: backLabel } = useBackLink(defaultBackTo, defaultBackLabel)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeaderBand>
@@ -91,13 +94,9 @@ export function RecordDetailScreen({
         >
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
             {avatar && (
-              <Avatar
-                src={avatar.imageUrl ?? undefined}
-                variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'}
-                sx={avatarSx(56)}
-              >
+              <LogoAvatar src={avatar.imageUrl} variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'} size={56} kind={avatar.shape === 'rounded' ? 'record' : 'person'}>
                 {avatar.fallback}
-              </Avatar>
+              </LogoAvatar>
             )}
             <Stack spacing={0.5} sx={{ minWidth: 0 }}>
               <Typography variant="h5" component="h1" noWrap sx={pageTitleSx}>

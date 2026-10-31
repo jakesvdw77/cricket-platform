@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { LogoAvatar } from '../LogoAvatar'
 import type { ReactNode } from 'react'
-import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
-import { avatarSx, badgeSx } from '../RecordCard'
+import { badgeSx } from '../RecordCard'
 import { PlayerStatusMenu } from '../PlayerStatusMenu'
 import { playerAvatarSrc } from '../BrandIcon'
 import { initialsFromName } from '../../utils/initials'
@@ -111,13 +112,17 @@ function PlayerRow({
       }}
     >
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-        <Avatar
+        <LogoAvatar
           src={playerAvatarSrc(player.photoUrl, player.gender)}
           variant="circular"
-          sx={{ ...avatarSx(32, '0.75rem'), width: { xs: 40, sm: 32 }, height: { xs: 40, sm: 32 } }}
+          size={32}
+          kind="person"
+          keepTile={!player.photoUrl}
+          fontSize="0.75rem"
+          sx={{ width: { xs: 40, sm: 32 }, height: { xs: 40, sm: 32 } }}
         >
           {initialsFromName(name)}
-        </Avatar>
+        </LogoAvatar>
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           <Typography variant="body2" fontWeight={600} noWrap component="div">
             {/* Stretched link over the whole row (docs/specs/059): the row is position: relative, so a click anywhere

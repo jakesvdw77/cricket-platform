@@ -60,6 +60,44 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /**
+     * docs/specs/097-import-framework.md: a commit refused because the data changed carries the freshly stored review
+     * state as a {@code batch} property. Wins over the generic {@link ConflictException} handler.
+     */
+    @ExceptionHandler(ImportBatchStateException.class)
+    ProblemDetail handleImportBatchState(ImportBatchStateException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        if (ex.getBatch() != null) {
+            problem.setProperty("batch", ex.getBatch());
+        }
+        return problem;
+    }
+
+    /**
+     * docs/specs/097-import-framework.md: a refused import deletion carries the {@code blockers} that stopped it. Wins
+     * over the generic {@link ConflictException} handler.
+     */
+    @ExceptionHandler(ImportDeletionBlockedException.class)
+    ProblemDetail handleImportDeletionBlocked(ImportDeletionBlockedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("blockers", ex.getBlockers());
+        return problem;
+    }
+
+    /**
+     * docs/specs/097-import-framework.md: a commit whose live re-validation found errors or unacknowledged warnings
+     * carries the {@code issues} and the fresh {@code batch}. Wins over the generic {@link ValidationException} handler.
+     */
+    @ExceptionHandler(ImportValidationFailedException.class)
+    ProblemDetail handleImportValidationFailed(ImportValidationFailedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setProperty("issues", ex.getIssues());
+        if (ex.getBatch() != null) {
+            problem.setProperty("batch", ex.getBatch());
+        }
+        return problem;
+    }
+
     /** 077: the single generic verify failure, with the tries left on the key. */
     @ExceptionHandler(PublicVerificationFailedException.class)
     ProblemDetail handlePublicVerificationFailed(PublicVerificationFailedException ex) {

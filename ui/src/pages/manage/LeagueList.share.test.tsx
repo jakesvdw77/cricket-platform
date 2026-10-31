@@ -129,7 +129,8 @@ describe('LeagueList Share', () => {
     listLeagues.mockResolvedValue([makeLeague({ name: 'Card League' })])
     renderList('test-club-id')
 
-    await user.click(await screen.findByRole('button', { name: 'Share Card League' }))
+    await user.click(await screen.findByRole('button', { name: 'Actions for Card League' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Share League' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Share league stub' })
     expect(dialog).toHaveAttribute('data-preselected', 'DETAILS,SCHEDULE')
@@ -149,7 +150,8 @@ describe('LeagueList Share', () => {
     await screen.findByText('First League')
     await user.click(screen.getAllByRole('button', { name: 'List' })[0])
     const table = await screen.findByRole('table', { name: 'Leagues' })
-    await user.click(within(table).getByRole('button', { name: 'Share Second League' }))
+    await user.click(within(table).getByRole('button', { name: 'Actions for Second League' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Share League' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Share league stub' })
     expect(dialog).toHaveAttribute('data-preselected', 'DETAILS,SCHEDULE')

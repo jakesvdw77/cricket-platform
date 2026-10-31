@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert } from '@mui/material'
+import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { isAxiosError } from 'axios'
 import type { LeagueTeam } from '../../../api/leagueTeamApi'
 import { errorDetail } from '../../../utils/errorDetail'
@@ -33,6 +34,7 @@ const isDuplicateName = (error: unknown) => isAxiosError(error) && error.respons
 export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel, targetTeams, announceAdded = false }: UseLeagueTeamActionsOptions) {
   const [editing, setEditing] = useState<LeagueTeam | 'new' | null>(null)
   const [copyOpen, setCopyOpen] = useState(false)
+  const [removing, setRemoving] = useState<LeagueTeam | null>(null)
   const [feedback, setFeedback] = useState<LeagueTeamFeedback | null>(null)
   const [feedbackSeasonId, setFeedbackSeasonId] = useState(seasonId)
 
@@ -45,6 +47,45 @@ export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel,
   const mutations = useLeagueTeamMutations(clubId, leagueId, seasonId)
   const { create, update, copy } = mutations
   const saveMutation = editing && editing !== 'new' ? update : create
+
+  // Deactivate or reactivate one team; a failure shows in the inline Alert.
+  const toggleActive = (team: LeagueTeam) => {
+    setFeedback(null)
+    const mutation = team.active ? mutations.deactivate : mutations.reactivate
+    mutation.mutate(team.id, {
+      onError: (error) => setFeedback({ severity: 'error', message: errorDetail(error, 'Something went wrong. Please try again.') }),
+    })
+  }
+
+  // Remove asks first (the confirm below): a team used by matches is deactivated instead of deleted, and the dialog says so.
+  const handleRemove = () => {
+    if (!removing) {
+      return
+    }
+    const team = removing
+    mutations.remove.mutate(team.id, {
+      onSuccess: (result) => {
+        setRemoving(null)
+        setFeedback(
+          result.outcome === 'DELETED'
+            ? { severity: 'success', message: `${team.name} was deleted.` }
+            : { severity: 'info', message: `${team.name} is used by matches, so it was deactivated instead.` },
+        )
+      },
+      onError: (error) => {
+        setRemoving(null)
+        setFeedback({ severity: 'error', message: errorDetail(error, 'Something went wrong removing this team.') })
+      },
+    })
+  }
+
+  const removeDescription = removing
+    ? removing.referencedByMatchCount > 0
+      ? `${removing.name} is used in ${removing.referencedByMatchCount} ${
+          removing.referencedByMatchCount === 1 ? 'match' : 'matches'
+        }, so it will be deactivated instead of deleted.`
+      : `This permanently deletes ${removing.name} from this league and season.`
+    : ''
 
   const closeForm = () => {
     create.reset()
@@ -69,6 +110,17 @@ export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel,
 
   const dialogs: ReactNode = (
     <>
+      <ConfirmDialog
+        open={removing !== null}
+        title={removing ? (removing.referencedByMatchCount > 0 ? `Deactivate ${removing.name}?` : `Delete ${removing.name}?`) : ''}
+        description={removeDescription}
+        confirmLabel={removing && removing.referencedByMatchCount > 0 ? 'Deactivate' : 'Delete'}
+        pendingLabel="Removing..."
+        destructive
+        pending={mutations.remove.isPending}
+        onConfirm={handleRemove}
+        onClose={() => setRemoving(null)}
+      />
       {editing && (
         <LeagueTeamFormDialog
           open
@@ -130,6 +182,9 @@ export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel,
     openAdd: () => setEditing('new'),
     openEdit: (team: LeagueTeam) => setEditing(team),
     openCopy: () => setCopyOpen(true),
+    toggleActive,
+    askRemove: setRemoving,
+    togglePending: mutations.deactivate.isPending || mutations.reactivate.isPending,
     dialogs,
     feedbackAlert,
   }

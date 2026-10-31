@@ -17,12 +17,16 @@ function serverError(status: number, detail: string) {
   return new AxiosError('failed', String(status), undefined, undefined, { status, data: { detail } } as never)
 }
 
-function renderBlock(seasonId = 'season-1') {
+function m(matchDate: string, active = true) {
+  return { id: matchDate, matchDate, active } as never
+}
+
+function renderBlock(seasonId = 'season-1', matches?: unknown[]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const invalidate = vi.spyOn(client, 'invalidateQueries')
   render(
     <QueryClientProvider client={client}>
-      <LeagueSeasonDatesBlock clubId="club-1" leagueId="league-1" seasonId={seasonId} seasonLabel="2026/2027" />
+      <LeagueSeasonDatesBlock clubId="club-1" leagueId="league-1" seasonId={seasonId} seasonLabel="2026/2027" matches={matches as never} />
     </QueryClientProvider>,
   )
   return { invalidate }
@@ -51,7 +55,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     renderBlock()
     expect(await screen.findByTestId('season-dates-banner')).toHaveTextContent('Set the start and end date for 2026/2027.')
 
-    await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+    await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
     expect(screen.getByText('Start date is required')).toBeInTheDocument()
     expect(screen.getByText('End date is required')).toBeInTheDocument()
     expect(putLeagueSeasonDates).not.toHaveBeenCalled()
@@ -64,7 +68,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     fireEvent.change(start(), { target: { value: '2027-08-01' } })
 
     expect(screen.getByText('Start date must be on or before the end date')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+    await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
     expect(putLeagueSeasonDates).not.toHaveBeenCalled()
   })
 
@@ -77,7 +81,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
 
     fireEvent.change(start(), { target: { value: '2026-09-01' } })
     fireEvent.change(end(), { target: { value: '2027-07-31' } })
-    await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+    await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
 
     await waitFor(() =>
       expect(putLeagueSeasonDates).toHaveBeenCalledWith('club-1', 'league-1', 'season-1', {
@@ -97,7 +101,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     renderBlock()
     await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
     fireEvent.change(end(), { target: { value: '2027-01-01' } })
-    await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+    await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
   })
@@ -107,7 +111,7 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     putLeagueSeasonDates.mockRejectedValue(serverError(400, 'The start date must not be after the end date.'))
     renderBlock()
     await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
-    await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+    await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The start date must not be after the end date.')
   })
@@ -118,33 +122,57 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     expect(getLeagueSeasonDates).toHaveBeenCalledWith('club-1', 'league-1', 'season-2')
   })
 
-  it('shows its own Season select when given seasons, and reports a change', async () => {
-    const user = userEvent.setup()
-    const onSeasonChange = vi.fn()
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={client}>
-        <LeagueSeasonDatesBlock
-          clubId="club-1"
-          leagueId="league-1"
-          seasonId="season-1"
-          seasonLabel="2026"
-          seasons={[
-            { id: 'season-1', label: '2026' },
-            { id: 'season-2', label: '2027' },
-          ]}
-          onSeasonChange={onSeasonChange}
-        />
-      </QueryClientProvider>,
-    )
-    await user.click(screen.getByRole('combobox', { name: 'Season' }))
-    await user.click(await screen.findByRole('option', { name: '2027' }))
-    expect(onSeasonChange).toHaveBeenCalledWith('season-2')
-  })
-
-  it('has no Season select without seasons', async () => {
+  it('has no Season select (the header pill chooses the season) and names the season', async () => {
     renderBlock()
     await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
     expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
+    expect(screen.getByText('Season dates for 2026/2027')).toBeInTheDocument()
+  })
+
+  it('shows the two buttons at the same compact height, Use First and Last Match as the white secondary', async () => {
+    renderBlock('season-1', [m(new Date(2026, 9, 6).toISOString())])
+    await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
+    const useBtn = screen.getByRole('button', { name: 'Use First and Last Match' })
+    const saveBtn = screen.getByRole('button', { name: 'Save Season Dates' })
+    expect(useBtn).toHaveClass('MuiButton-outlined')
+    expect(saveBtn).toHaveClass('MuiButton-contained')
+    expect(useBtn.className).toContain('MuiButton-sizeSmall')
+    expect(saveBtn.className).toContain('MuiButton-sizeSmall')
+  })
+
+  describe('Use First and Last Match', () => {
+    const btn = () => screen.getByRole('button', { name: 'Use First and Last Match' })
+
+    it('fills the fields from the earliest and latest active match, without saving, and the note clears on edit', async () => {
+      const user = userEvent.setup()
+      getLeagueSeasonDates.mockResolvedValue(null)
+      // 23:30 local must keep its local date (no UTC slicing); the inactive match is ignored.
+      const late = new Date(2027, 2, 29, 23, 30).toISOString()
+      const early = new Date(2026, 9, 6, 0, 15).toISOString()
+      renderBlock('season-1', [m(late), m(early), m(new Date(2025, 0, 1).toISOString(), false)])
+      expect(await screen.findByTestId('season-dates-banner')).toHaveTextContent('or use the first and last match')
+      await user.click(btn())
+      expect(start()).toHaveValue('2026-10-06')
+      expect(end()).toHaveValue('2027-03-29')
+      expect(screen.getByTestId('season-dates-range-note')).toHaveTextContent('From 6 Oct 2026 to 29 Mar 2027, 2 matches')
+      expect(putLeagueSeasonDates).not.toHaveBeenCalled()
+      fireEvent.change(end(), { target: { value: '2027-04-01' } })
+      expect(screen.queryByTestId('season-dates-range-note')).not.toBeInTheDocument()
+    })
+
+    it('is disabled with no active matches', async () => {
+      renderBlock('season-1', [m(new Date(2026, 9, 6).toISOString(), false)])
+      await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
+      expect(btn()).toBeDisabled()
+    })
+
+    it('stays available when dates are already saved', async () => {
+      const user = userEvent.setup()
+      renderBlock('season-1', [m(new Date(2026, 9, 6).toISOString())])
+      await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
+      await user.click(btn())
+      expect(start()).toHaveValue('2026-10-06')
+      expect(end()).toHaveValue('2026-10-06')
+    })
   })
 })

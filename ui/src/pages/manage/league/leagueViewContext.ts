@@ -5,6 +5,7 @@ import type { Team } from '../../../api/teamApi'
 import type { LeagueAffiliation } from '../../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../../api/leagueTeamApi'
 import type { Match } from '../../../api/matchApi'
+import type { LeagueContent } from '../../../utils/share/leagueShareFormats'
 
 // docs/specs/072-league-view-pages.md section 2: what LeagueViewLayout owns and hands to the three
 // views through its <Outlet context>. `clubId` is forwarded because a nested Outlet context
@@ -26,6 +27,11 @@ export interface LeagueViewContext {
   // Share schedule dialog.
   matches: Match[]
   isLoadingMatches: boolean
+  // docs/specs/126: the element on the tab strip row a view portals its action buttons into (see LeagueTabActions); absent
+  // when the view renders without the layout.
+  tabActionsTarget?: HTMLElement | null
+  // The layout owns the Share League dialog; a tab's Share item opens it with that tab's content ticked. Absent without the layout.
+  openShare?: (content: LeagueContent[]) => void
 }
 
 export function useLeagueView(): LeagueViewContext {

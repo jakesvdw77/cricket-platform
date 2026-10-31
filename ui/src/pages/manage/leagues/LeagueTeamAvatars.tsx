@@ -1,6 +1,6 @@
-import { Avatar, Box, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
+import { LogoAvatar } from '../../../components/LogoAvatar'
 import { alpha } from '@mui/material/styles'
-import { avatarSx } from '../../../components/RecordCard'
 import type { LeagueSeasonTeam } from '../../../api/leagueApi'
 import { initialsFromName } from '../../../utils/initials'
 
@@ -29,14 +29,15 @@ export function LeagueTeamAvatars({ teams }: { teams: LeagueSeasonTeam[] | null 
             aria-label={team.name}
             sx={{ width: 46, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}
           >
-            <Avatar
-              src={team.logoUrl ?? undefined}
+            <LogoAvatar
+              src={team.logoUrl}
               alt=""
-              sx={
+              size={34}
+              fontSize="0.75rem"
+              fallbackSx={
                 team.own
-                  ? avatarSx(34, '0.75rem')
+                  ? undefined
                   : {
-                      ...avatarSx(34, '0.75rem'),
                       backgroundImage: 'none',
                       bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
                       color: 'primary.dark',
@@ -46,7 +47,7 @@ export function LeagueTeamAvatars({ teams }: { teams: LeagueSeasonTeam[] | null 
               }
             >
               {caption}
-            </Avatar>
+            </LogoAvatar>
             <Typography
               component="span"
               sx={{

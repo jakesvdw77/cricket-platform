@@ -1,4 +1,6 @@
-import { IconButton, Stack } from '@mui/material'
+import { Box, IconButton, Link as MuiLink, Stack, Tooltip } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import { readablePrimary } from '../../../theme'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import InstagramIcon from '@mui/icons-material/Instagram'
 import XIcon from '@mui/icons-material/X'
@@ -39,6 +41,10 @@ export interface SocialLink {
 export interface SocialLinksRowProps {
   links: SocialLink[]
   size?: 'small' | 'medium'
+  // 'round' (docs/standards/design-system.md, League page): a 32 px white circle with a 1 px green edge, a tooltip with the network
+  // name and a 44 px touch area below md. Default 'plain' is unchanged.
+  // 'labelled': an inline contact item per link, a 16 px icon then the network name as a text link (the League page contacts line).
+  variant?: 'plain' | 'round' | 'labelled'
 }
 
 // Partial by design — only the platforms with a real @mui/icons-material icon get an entry here.
@@ -66,15 +72,58 @@ const LABELS: Partial<Record<SocialPlatform, string>> = {
   website: 'Website',
 }
 
-export function SocialLinksRow({ links, size = 'medium' }: SocialLinksRowProps) {
+const roundSx = {
+  position: 'relative',
+  width: { xs: 44, md: 32 },
+  height: { xs: 44, md: 32 },
+  p: 0,
+  border: 1,
+  borderColor: (theme) => readablePrimary(theme, 'edge'),
+  color: (theme) => readablePrimary(theme, 'text'),
+  bgcolor: 'background.paper',
+  '& svg': { fontSize: 18 },
+  '&:hover': {
+    bgcolor: 'background.paper',
+    backgroundImage: (theme) => `linear-gradient(${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.primary.main, 0.08)})`,
+  },
+  '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+} as const
+
+export function SocialLinksRow({ links, size = 'medium', variant = 'plain' }: SocialLinksRowProps) {
+  const round = variant === 'round'
+  if (variant === 'labelled') {
+    return (
+      <Box data-testid="social-links-labelled" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.75 }}>
+        {links.map(({ platform, url }) => {
+          const Icon = ICONS[platform as SocialPlatform] ?? LinkIcon
+          const label = LABELS[platform as SocialPlatform] ?? platform
+          return (
+            <Box key={platform} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+              <Icon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              <MuiLink
+                href={url}
+                target="_blank"
+                rel="noopener"
+                underline="hover"
+                aria-label={label}
+                sx={{ fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere', '&.Mui-focusVisible, &:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 } }}
+              >
+                {label}
+              </MuiLink>
+            </Box>
+          )
+        })}
+      </Box>
+    )
+  }
   return (
-    <Stack direction="row" spacing={0.5}>
+    <Stack direction="row" spacing={round ? 1 : 0.5} alignItems="center">
       {links.map(({ platform, url }) => {
         const Icon = ICONS[platform as SocialPlatform] ?? LinkIcon
         const label = LABELS[platform as SocialPlatform] ?? platform
-        return (
+        const button = (
           <IconButton
-            key={platform}
+            key={round ? undefined : platform}
             component="a"
             href={url}
             target="_blank"
@@ -82,9 +131,17 @@ export function SocialLinksRow({ links, size = 'medium' }: SocialLinksRowProps) 
             aria-label={label}
             color="inherit"
             size={size}
+            sx={round ? roundSx : undefined}
           >
             <Icon fontSize="small" />
           </IconButton>
+        )
+        return round ? (
+          <Tooltip key={platform} title={label}>
+            {button}
+          </Tooltip>
+        ) : (
+          button
         )
       })}
     </Stack>

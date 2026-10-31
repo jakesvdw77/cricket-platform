@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flat filter bar: breaking the dead space (mockup)</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green700:#14633F;--amber:#b7791f;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--tint:#e3ece3;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+  --raise:0 1px 3px rgba(6,36,26,.16),0 1px 2px rgba(6,36,26,.10)}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:26px;margin:34px 0 4px;color:#0F5132}
+.note{color:var(--inkMuted);max-width:940px;font-size:14px;margin:0 0 12px}
+.note b{color:var(--ink900)}
+.frame{width:1180px;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd))}
+.pad{padding:16px 20px}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.t{font-family:var(--display);font-size:36px;font-weight:700;letter-spacing:.05em;color:var(--green900);text-transform:uppercase}
+.pill{display:inline-flex;align-items:center;height:30px;padding:0 12px;border:1px solid #8fb09b;border-radius:15px;background:#fff;font-size:13px;font-weight:700;color:#0F5132}
+.btn{height:32px;padding:0 12px;border-radius:6px;font:600 13.5px/1 var(--body);display:inline-flex;align-items:center;border:1px solid transparent;background:var(--green700);color:#fff;margin-left:auto}
+.figs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
+.fig{height:44px;background:#fff;border:1px solid var(--cardLine);border-radius:8px;box-shadow:var(--raise);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);white-space:nowrap;overflow:hidden}
+.fig b{font:700 22px var(--display);color:var(--green900);letter-spacing:0}
+.bar{display:grid;grid-template-columns:210px 1fr auto auto auto;gap:10px;align-items:center}
+.field{border:1px solid var(--cardLine);border-radius:6px;height:36px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;color:var(--inkMuted);background:#fff}
+.sort{font-weight:600;font-size:13.5px;color:var(--green700);white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:#fff}
+.seg span{padding:0 12px;height:34px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--inkMuted);border-left:1px solid var(--cardLine)}
+.seg span:first-child{border-left:0}.seg .on{background:var(--tint);color:#0F5132}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap}
+.sw i{width:30px;height:16px;border-radius:8px;background:#b9c3bb;position:relative;display:inline-block}
+.sw i:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:13.5px}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:8px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMuted);padding:9px 12px;background:#f1f4ee;border-bottom:1px solid var(--cardLine)}
+td{padding:11px 12px;border-bottom:1px solid #edf0e9}
+tr:nth-child(even) td{background:#f8faf6}
+.team{display:flex;gap:8px;align-items:center;font-weight:600}
+.team i{width:28px;height:28px;border-radius:7px;background:rgba(20,99,63,.14);font:600 11px var(--body);display:flex;align-items:center;justify-content:center;font-style:normal;color:#0F5132}
+.chip{display:inline-flex;height:22px;padding:0 9px;border-radius:11px;font:600 12px var(--body);align-items:center;background:#dbe9de;color:#0F5132;border:1px solid #bcd4c1}
+.rule{border:0;border-top:1px solid var(--cardLine);margin:12px 0 12px}
+.tool{padding:10px 12px;border-bottom:1px solid var(--cardLine);background:#fff}
+</style>
+</head>
+<body>
+<h1>Breaking the dead space around the flat filter bar</h1>
+<p class="note">Leagues list, three ways. Same content in all three; only the treatment of the filter row differs.</p>
+
+<h2>Now: a floating row on the page wash</h2>
+<p class="note">Nothing anchors the row, so the gaps above and below it read as empty space.</p>
+<div class="frame"><div class="pad">
+  <div class="head"><span class="t">Leagues</span><span class="pill">2026/2027 ⌄</span><span class="btn">Add League</span></div>
+  <div class="figs"><div class="fig"><b>3</b>Active leagues</div><div class="fig"><b>10</b>Teams entered</div><div class="fig"><b>24</b>Players</div><div class="fig"><b>2</b>Seasons</div><div class="fig"><b>1</b>Matches this week</div><div class="fig"><b style="color:var(--amber)">1</b>Setup needed</div></div>
+  <div class="bar"><div class="field">Format: All formats ⌄</div><div class="field">Search by name</div><span class="sort">Name, A to Z ↕</span><span class="seg"><span>Cards</span><span class="on">List</span></span><span class="sw">Show inactive <i></i></span></div>
+  <div style="height:12px"></div>
+  <div class="card"><table><tr><th>League</th><th>Format</th><th>Teams</th><th>Next match</th><th>Matches played</th><th>Status</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">3 leagues</th></tr>
+  <tr><td><div class="team"><i>DL</i>Diamond League U15 T20</div></td><td><span class="chip">T20</span></td><td>2</td><td>-</td><td>3 of 3</td><td><span class="chip">Active</span></td><td></td></tr>
+  <tr><td><div class="team"><i>TV</i>TVL Division 1 T20</div></td><td><span class="chip">T20</span></td><td>7</td><td>Sat, 31 Oct</td><td>5 of 6</td><td><span class="chip">Active</span></td><td></td></tr></table></div>
+</div></div>
+
+<h2>Option 1: a hairline under the bar</h2>
+<p class="note">A thin rule in the same style as the one under the tab row. It closes the controls as a band and gives the eye an edge. Smallest change.</p>
+<div class="frame"><div class="pad">
+  <div class="head"><span class="t">Leagues</span><span class="pill">2026/2027 ⌄</span><span class="btn">Add League</span></div>
+  <div class="figs"><div class="fig"><b>3</b>Active leagues</div><div class="fig"><b>10</b>Teams entered</div><div class="fig"><b>24</b>Players</div><div class="fig"><b>2</b>Seasons</div><div class="fig"><b>1</b>Matches this week</div><div class="fig"><b style="color:var(--amber)">1</b>Setup needed</div></div>
+  <div class="bar"><div class="field">Format: All formats ⌄</div><div class="field">Search by name</div><span class="sort">Name, A to Z ↕</span><span class="seg"><span>Cards</span><span class="on">List</span></span><span class="sw">Show inactive <i></i></span></div>
+  <hr class="rule">
+  <div class="card"><table><tr><th>League</th><th>Format</th><th>Teams</th><th>Next match</th><th>Matches played</th><th>Status</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">3 leagues</th></tr>
+  <tr><td><div class="team"><i>DL</i>Diamond League U15 T20</div></td><td><span class="chip">T20</span></td><td>2</td><td>-</td><td>3 of 3</td><td><span class="chip">Active</span></td><td></td></tr>
+  <tr><td><div class="team"><i>TV</i>TVL Division 1 T20</div></td><td><span class="chip">T20</span></td><td>7</td><td>Sat, 31 Oct</td><td>5 of 6</td><td><span class="chip">Active</span></td><td></td></tr></table></div>
+</div></div>
+
+<h2>Option 2: the bar becomes the table's own toolbar</h2>
+<p class="note">One flat white card: the controls row on top, a hairline, then the column headers and rows. No floating row at all; the same pattern a data table normally has. The cost is that the card holds controls, and pages showing cards or an empty state need their own version.</p>
+<div class="frame"><div class="pad">
+  <div class="head"><span class="t">Leagues</span><span class="pill">2026/2027 ⌄</span><span class="btn">Add League</span></div>
+  <div class="figs"><div class="fig"><b>3</b>Active leagues</div><div class="fig"><b>10</b>Teams entered</div><div class="fig"><b>24</b>Players</div><div class="fig"><b>2</b>Seasons</div><div class="fig"><b>1</b>Matches this week</div><div class="fig"><b style="color:var(--amber)">1</b>Setup needed</div></div>
+  <div class="card" style="overflow:hidden">
+    <div class="tool"><div class="bar"><div class="field" style="background:#fff">Format: All formats ⌄</div><div class="field">Search by name</div><span class="sort">Name, A to Z ↕</span><span class="seg"><span>Cards</span><span class="on">List</span></span><span class="sw">Show inactive <i></i></span></div></div>
+    <table><tr><th>League</th><th>Format</th><th>Teams</th><th>Next match</th><th>Matches played</th><th>Status</th><th style="text-align:right;text-transform:none;letter-spacing:0;font-weight:500">3 leagues</th></tr>
+    <tr><td><div class="team"><i>DL</i>Diamond League U15 T20</div></td><td><span class="chip">T20</span></td><td>2</td><td>-</td><td>3 of 3</td><td><span class="chip">Active</span></td><td></td></tr>
+    <tr><td><div class="team"><i>TV</i>TVL Division 1 T20</div></td><td><span class="chip">T20</span></td><td>7</td><td>Sat, 31 Oct</td><td>5 of 6</td><td><span class="chip">Active</span></td><td></td></tr></table>
+  </div>
+</div></div>
+<p class="note" style="margin-top:12px"><b>My read:</b> option 1 is the quickest win and keeps every page's structure the same. Option 2 looks the most finished on table pages, but it needs a separate answer for card grids and for empty states, so I would only choose it if option 1 still looks loose.</p>
+</body>
+</html>

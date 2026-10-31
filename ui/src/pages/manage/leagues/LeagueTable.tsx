@@ -1,32 +1,40 @@
+import type { ReactNode } from 'react'
 import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { Link as RouterLink } from 'react-router-dom'
-import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import { Button } from '../../../components/Button'
 import { badgeSx } from '../../../components/RecordCard'
 import { useCountdown } from '../../../components/Countdown'
 import { LEAGUE_FORMAT_LABELS } from '../../../api/leagueApi'
 import type { League } from '../../../api/leagueApi'
+import { ToolbarCard } from '../../../components/ToolbarCard'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { zebraTint } from '../../../utils/zebraTint'
 import { formatMatchDateTime } from '../availability/pollHelpers'
+import { LeagueRowMenu } from './LeagueRowMenu'
 
 export interface LeagueTableProps {
   leagues: League[]
   // The chosen season, carried into the league page.
   seasonId?: string
-  // docs/specs/122-league-sharing.md: opens the Share League dialog (the page owns it); absent, rows have no Share action.
+  // The row's Actions menu (page-anatomy section 6): the page owns the dialogs. An absent handler leaves its item out.
   onShare?: (league: League) => void
+  onDuplicate?: (league: League) => void
+  // docs/standards/page-anatomy.md section 3: the page's filter bar. Given, the table renders ONE card: this toolbar row, a hairline, then the
+  // header and rows (the table has no outer border of its own). Omitted, as before.
+  toolbar?: ReactNode
+  // With a toolbar and no rows: this message replaces the table inside the same card, so the toolbar never remounts.
+  empty?: ReactNode
 }
 
 const NOT_ON_FILE = '–'
 
-// Desktop: League, Format, Teams, Next match, Matches played, Status, chevron. A phone keeps League, Played and the chevron.
+// Desktop: League, Format, Teams, Next match, Matches played, Status, actions. A phone keeps League, Played and the actions button.
+// No chevron: the whole row is the link (hover tint and pointer are the cue).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 64px 84px',
-  sm: 'minmax(220px, 2fr) 90px 70px minmax(170px, 1.2fr) minmax(190px, 1.3fr) 100px 112px',
+  xs: 'minmax(0, 1fr) 64px 44px',
+  sm: 'minmax(220px, 2fr) 90px 70px minmax(170px, 1.2fr) minmax(190px, 1.3fr) minmax(110px, 0.7fr) 44px',
 }
 
 const gridSx = {
@@ -41,9 +49,12 @@ const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
 // Marks those cells for assistive tooling and tests (jsdom does not evaluate responsive CSS).
 const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
 
+// clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
+
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
-function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: string; onShare?: (league: League) => void }) {
+function LeagueRow({ league, seasonId, onShare, onDuplicate }: { league: League; seasonId?: string; onShare?: (league: League) => void; onDuplicate?: (league: League) => void }) {
   const next = useCountdown(league.nextMatchDate)
   const soon = next.stage !== 'none' && next.stage !== 'expired' && next.warn
   const matchCount = league.matchCount ?? 0
@@ -51,7 +62,8 @@ function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: s
   const teamCount = league.teams?.length ?? 0
   const percent = matchCount > 0 ? Math.min(100, (playedCount / matchCount) * 100) : 0
   const countdownText = next.stage === 'none' ? '' : next.stage === 'expired' ? 'Starting now' : `in ${next.text}`
-  const to = `/manage/fixtures/leagues/${league.id}/schedule${seasonId ? `?seasonId=${seasonId}` : ''}`
+  const location = useLocation()
+  const to = withReturnTo(`/manage/fixtures/leagues/${league.id}/schedule${seasonId ? `?seasonId=${seasonId}` : ''}`, currentOrigin(location), 'Leagues')
 
   return (
     <Box
@@ -62,7 +74,7 @@ function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: s
         ...gridSx,
         position: 'relative',
         minHeight: { xs: 60, sm: 56 },
-        '&:nth-of-type(odd)': { bgcolor: zebraTint },
+        '&:nth-of-type(even)': { bgcolor: zebraTint },
         '&:hover': { bgcolor: hoverTint },
         '&:focus-within': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
       }}
@@ -111,40 +123,32 @@ function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: s
           </Typography>
         )}
       </Box>
-      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }} data-testid="league-row-played">
+      <Box role="cell" sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-end', sm: 'stretch' }, gap: 0.5, minWidth: 0 }} data-testid="league-row-played">
         {matchCount === 0 ? (
-          <Typography variant="caption" color="text.secondary">
-            {NOT_ON_FILE}
-          </Typography>
+          <>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{NOT_ON_FILE}</Box>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} {...DESKTOP_ONLY}>No matches scheduled</Box>
+            </Typography>
+            <Box sx={{ ...desktopOnly, height: 6, borderRadius: 3, bgcolor: 'grey.200', border: 1, borderStyle: 'dashed', borderColor: 'divider' }} {...DESKTOP_ONLY} />
+          </>
         ) : (
           <>
-            <Box sx={{ ...desktopOnly, flex: 1, height: 6, borderRadius: 3, bgcolor: 'grey.300', overflow: 'hidden' }} {...DESKTOP_ONLY}>
-              <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: 'primary.main' }} />
-            </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1.2 }}>
               <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{`${playedCount}/${matchCount}`}</Box>
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} {...DESKTOP_ONLY}>{`${playedCount} of ${matchCount}`}</Box>
             </Typography>
+            <Box sx={{ ...desktopOnly, height: 6, borderRadius: 3, bgcolor: 'grey.300', overflow: 'hidden' }} {...DESKTOP_ONLY}>
+              <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: 'primary.main' }} />
+            </Box>
           </>
         )}
       </Box>
-      <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="league-row-status">
+      <Box role="cell" sx={{ ...desktopOnly, textAlign: 'center' }} {...DESKTOP_ONLY} data-testid="league-row-status">
         <Chip size="small" label={league.active ? 'Active' : 'Inactive'} sx={{ ...badgeSx(league.active ? 'active' : 'muted'), height: 22, fontSize: '0.75rem' }} />
       </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, color: 'primary.main' }}>
-        {onShare && (
-          // position: relative paints the button above the row's stretched link, so it never navigates.
-          <Button
-            size="compact"
-            variant="secondary"
-            aria-label={`Share ${league.name}`}
-            title="Share"
-            onClick={() => onShare(league)}
-            sx={{ position: 'relative', zIndex: 1, minHeight: 28, height: 28, minWidth: { xs: 44, md: 28 }, p: 0, '& .MuiButton-startIcon': { m: 0 } }}
-            startIcon={<ShareOutlinedIcon />}
-          />
-        )}
-        <ChevronRightOutlinedIcon fontSize="small" aria-hidden />
+        <LeagueRowMenu league={league} seasonId={seasonId} onShare={onShare} onDuplicate={onDuplicate} testId="league-row-actions" />
       </Box>
     </Box>
   )
@@ -152,21 +156,13 @@ function LeagueRow({ league, seasonId, onShare }: { league: League; seasonId?: s
 
 // docs/specs/091-leagues-gold-standard.md (A): the list view of the Leagues page, built like PlayerTable, MatchTable and
 // PollTable: one bordered panel with a header row that sticks to the top of the scrolling page and zebra rows; the whole
-// row opens the league's Schedule for the chosen season. A phone keeps League, Played and the chevron.
-export function LeagueTable({ leagues, seasonId, onShare }: LeagueTableProps) {
-  return (
+// row opens the league's Schedule for the chosen season. A phone keeps League, Played and the actions button.
+export function LeagueTable({ leagues, seasonId, onShare, onDuplicate, toolbar, empty }: LeagueTableProps) {
+  const table = (
     <Box
       role="table"
       aria-label="Leagues"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        boxShadow: 2,
-        // clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
-        overflow: 'clip',
-      }}
+      sx={toolbar ? undefined : cardSx}
     >
       <Box
         role="row"
@@ -176,7 +172,7 @@ export function LeagueTable({ leagues, seasonId, onShare }: LeagueTableProps) {
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
           fontSize: { xs: '0.6875rem', sm: '0.75rem' },
@@ -194,14 +190,27 @@ export function LeagueTable({ leagues, seasonId, onShare }: LeagueTableProps) {
           <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Played</Box>
           <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} {...DESKTOP_ONLY}>Matches played</Box>
         </Box>
-        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Status</Box>
-        <Box role="columnheader" aria-label="Open" />
+        <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'center' }} {...DESKTOP_ONLY}>Status</Box>
+        <Box role="columnheader" aria-label="Actions" />
       </Box>
       <Box role="rowgroup">
         {leagues.map((league) => (
-          <LeagueRow key={league.id} league={league} seasonId={seasonId} onShare={onShare} />
+          <LeagueRow key={league.id} league={league} seasonId={seasonId} onShare={onShare} onDuplicate={onDuplicate} />
         ))}
       </Box>
     </Box>
+  )
+  if (toolbar) {
+    return (
+      <Box data-testid="leagues-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {leagues.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return (
+    <>
+      {table}
+    </>
   )
 }

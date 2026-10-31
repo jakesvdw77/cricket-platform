@@ -16,13 +16,15 @@ export interface BottomSheetProps {
   aboveDialogs?: boolean
   // docs/specs/120: 'dark' is the platform chrome look (the phone Menu sheet); 'light' (default) is every other sheet, unchanged.
   tone?: 'light' | 'dark'
+  // Called once the sheet has finished sliding out (a menu runs the chosen item's action then, so focus is back first).
+  onExited?: () => void
   children: ReactNode
 }
 
 // The phone bottom sheet shared by MenuSheet (079) and FilterBar (083): a SwipeableDrawer from the
 // bottom, so Escape, focus trap, backdrop tap and swipe-down all come with it. Rounded top corners,
 // a drag handle, an optional title row. Like any SwipeableDrawer it stays mounted (hidden) while closed.
-export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabel, aboveDialogs, tone = 'light', children }: BottomSheetProps) {
+export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabel, aboveDialogs, tone = 'light', onExited, children }: BottomSheetProps) {
   const dark = tone === 'dark'
   return (
     <SwipeableDrawer
@@ -31,6 +33,7 @@ export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabe
       onOpen={onOpen}
       onClose={onClose}
       disableDiscovery
+      SlideProps={onExited ? { onExited } : undefined}
       sx={aboveDialogs ? { zIndex: (theme) => theme.zIndex.modal + 1 } : undefined}
       PaperProps={{
         'aria-label': ariaLabel,

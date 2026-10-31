@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
+import { LogoAvatar } from '../../components/LogoAvatar'
 import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import { useBackLink } from '../../hooks/useReturnTo'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
@@ -24,7 +26,7 @@ import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
-import { avatarSx, badgeSx } from '../../components/RecordCard'
+import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
 import { listTeamsForClub } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
@@ -70,9 +72,9 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <Avatar src={playerAvatarSrc(member.photoUrl, member.gender)} variant="circular" sx={avatarSx(40, '0.8125rem')}>
+        <LogoAvatar src={playerAvatarSrc(member.photoUrl, member.gender)} variant="circular" size={40} fontSize="0.8125rem" kind="person" keepTile={!member.photoUrl}>
           {initialsFromName(playerName)}
-        </Avatar>
+        </LogoAvatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="body2" fontWeight={600} noWrap>
             {/* Stretched-link, same pattern as RecordCard.tsx (position: static on the link
@@ -118,6 +120,8 @@ export default function TeamDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   const fromSection = searchParams.get('from') === 'section'
+  // docs/specs/127: a returnTo in the address overrides the default Back.
+  const back = useBackLink(fromSection ? `/manage/sections/${sectionId}/teams` : '/manage/teams', 'Back to Teams')
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
 
@@ -226,8 +230,8 @@ export default function TeamDetailPage() {
     )
   }
 
-  const backTo = fromSection ? `/manage/sections/${sectionId}/teams` : '/manage/teams'
-  const backLabel = 'Back to Teams'
+  const backTo = back.to ?? '/manage/teams'
+  const backLabel = back.label
   const editTo = `/manage/sections/${sectionId}/teams/${team.id}/edit`
 
   // Sorted by name regardless of the server's own row order, so the grid does not visibly reshuffle.
@@ -286,13 +290,14 @@ export default function TeamDetailPage() {
 
           {/* Title row: logo tile and name (wraps), then the section and status chips under it. */}
           <Box data-testid="team-header-title-row" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-            <Avatar
-              src={team.logoUrl ?? undefined}
+            <LogoAvatar
+              src={team.logoUrl}
               variant="rounded"
-              sx={{ ...avatarSx(64), width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
+              size={64}
+              sx={{ width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
             >
               {initialsFromName(team.name)}
-            </Avatar>
+            </LogoAvatar>
             <Stack spacing={1} sx={{ minWidth: 0 }}>
               <Typography
                 variant="h4"

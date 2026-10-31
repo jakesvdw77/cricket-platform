@@ -11,6 +11,7 @@ import { Input } from '../Input'
 import { SectionTreeSelect } from '../SectionTreeSelect'
 import type { Section } from '../../api/sectionApi'
 import { compactFieldsSx, filterPanelSxFor } from '../../utils/filterPanel'
+import { toolbarControlSx, toolbarFieldsSx } from '../ToolbarCard/toolbarControlSx'
 import type { ToolbarDensity } from '../../utils/filterPanel'
 import { sectionPathLabel } from '../../utils/availabilityScope'
 
@@ -18,6 +19,24 @@ import { sectionPathLabel } from '../../utils/availabilityScope'
 // Section's "All sections", so every field looks alike. The "All" row is the empty value: it is never a chip
 // and never counts as an active filter.
 const allValueSelectProps = { InputLabelProps: { shrink: true }, SelectProps: { displayEmpty: true } }
+
+// docs/standards/page-anatomy.md section 3: in the flat (bare) desktop bar a floating label sat half on the page wash and half on the
+// field's white fill, which read as a patch. The flat bar therefore has no floating label: the field shows its value text only
+// ("All teams", "Format: All formats") and keeps its accessible name through aria-label.
+function flatSelectProps(label: string, prefixValue: boolean, options: { value: string; text: string }[]) {
+  return {
+    label: '',
+    InputLabelProps: { shrink: false },
+    SelectProps: {
+      displayEmpty: true,
+      SelectDisplayProps: { 'aria-label': label },
+      renderValue: (value: unknown) => {
+        const text = options.find((option) => option.value === String(value ?? ''))?.text ?? ''
+        return prefixValue ? `${label}: ${text}` : text
+      },
+    },
+  }
+}
 
 export interface FilterBarOption {
   id: string
@@ -73,7 +92,8 @@ export interface FilterBarProps {
   // Typing and picking a suggestion both flow through `onSearchChange`. Omitted, a plain input as before.
   searchOptions?: string[]
   // The view's own controls (toggles, sort link): rendered inside the Filters sheet on a phone. On
-  // desktop the page shows them on the line above its content (ContentControlsLine), not here.
+  // desktop the page shows them on the line above its content (ContentControlsLine), not here, unless
+  // `viewControlsInline` puts them at the end of the field row.
   viewControls?: ReactNode
   extraChips?: FilterBarChip[]
   // Clears the filters (the sheet's "Clear all").
@@ -81,6 +101,19 @@ export interface FilterBarProps {
   // docs/specs/085 (I): 'compact' (the Availability pages) has an 8 px panel padding and gap and 36 px fields on
   // desktop; 'comfortable' (default) is the original look. The phone toolbar keeps its tap heights in both.
   density?: ToolbarDensity
+  // docs/specs/126 (calmer league Schedule tab): on desktop, no card chrome (no border, fill, shadow or padding): the fields sit
+  // flat on the page wash, each field keeping its own white fill. Omitted, the card is unchanged. A phone keeps its card.
+  bare?: boolean
+  // docs/specs/126: on desktop, render `viewControls` at the right end of the field row (selects, search, then the controls) instead
+  // of leaving them to the page's ContentControlsLine. A phone still shows them in the Filters sheet. Omitted, unchanged.
+  viewControlsInline?: boolean
+  // docs/standards/page-anatomy.md section 3: the switches (Show inactive, Only our matches ...) that sit left of `viewControls` (Sort and the
+  // Cards | List toggle, a pair that stays at the far right). With `viewControlsInline`: inline from lg; at tablet width (sm to lg) they fold
+  // into a Filters sheet while the pair stays in the row; on a phone the sheet holds `viewControls` then these. Omitted, unchanged.
+  // A function is called with where it renders ('row' or 'sheet') so a page can use toolbar chips in the row and its usual switches in the sheet.
+  secondaryControls?: ReactNode | ((placement: 'row' | 'sheet') => ReactNode)
+  // The bar sits inside a `ToolbarCard`, which owns the card chrome: the phone bar then has no card of its own.
+  inCard?: boolean
 }
 
 // docs/specs/083-availability-filters-and-toolbars.md: the one toolbar of the Availability views.
@@ -111,10 +144,19 @@ export function FilterBar({
   extraChips = [],
   onClearAll,
   density = 'comfortable',
+  bare = false,
+  viewControlsInline = false,
+  secondaryControls,
+  inCard = false,
 }: FilterBarProps) {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [sheetOpen, setSheetOpen] = useState(false)
+  const secondaryFor = (placement: 'row' | 'sheet') => (typeof secondaryControls === 'function' ? secondaryControls(placement) : secondaryControls)
+  const isNarrow = useMediaQuery(theme.breakpoints.down('lg'), { noSsr: true })
+  const flatBar = bare && !isPhone
+  // Tablet width: the switches leave the row for the Filters sheet (the sheet then holds only them, the fields stay in the row).
+  const tabletFold = viewControlsInline && !isPhone && isNarrow && Boolean(secondaryControls)
 
   const chips: FilterBarChip[] = []
   if (leagueId && onLeagueChange) {
@@ -159,13 +201,20 @@ export function FilterBar({
 
   // In the desktop row each field shares the width (flex basis); in the sheet's column it is just full width,
   // as a flex basis there would become a height.
+  const inlineControls = viewControlsInline && Boolean(viewControls || secondaryControls)
   const fieldsFor = (inSheet: boolean) => {
-    const fieldSx = inSheet ? { minWidth: 0 } : { flex: '1 1 160px', minWidth: 0 }
+    const flat = flatBar && !inSheet
+    // Inline controls: the selects keep a fixed-ish width and the search takes the rest.
+    const fieldSx = inSheet ? { minWidth: 0 } : inlineControls ? { flex: '0 1 260px', minWidth: 0 } : { flex: '1 1 160px', minWidth: 0 }
     return (
     <>
       {leagues && onLeagueChange && (
         <Box sx={fieldSx}>
-          <Input select label="League" {...allValueSelectProps} value={leagueId ?? ''} onChange={(event) => onLeagueChange(event.target.value || null)}>
+          <Input
+            select
+            label="League"
+            {...(flat ? flatSelectProps('League', false, [{ value: '', text: 'All leagues' }, ...leagues.map((league) => ({ value: league.id, text: league.name }))]) : allValueSelectProps)}
+            value={leagueId ?? ''} onChange={(event) => onLeagueChange(event.target.value || null)}>
             <MenuItem value="">All leagues</MenuItem>
             {leagues.map((league) => (
               <MenuItem key={league.id} value={league.id}>
@@ -177,7 +226,11 @@ export function FilterBar({
       )}
       {seasons && onSeasonChange && (
         <Box sx={fieldSx}>
-          <Input select label="Season" {...allValueSelectProps} value={seasonId ?? ''} onChange={(event) => onSeasonChange(event.target.value || null)}>
+          <Input
+            select
+            label="Season"
+            {...(flat ? flatSelectProps('Season', false, [{ value: '', text: seasonAllLabel }, ...seasons.map((season) => ({ value: season.id, text: season.name }))]) : allValueSelectProps)}
+            value={seasonId ?? ''} onChange={(event) => onSeasonChange(event.target.value || null)}>
             <MenuItem value="">{seasonAllLabel}</MenuItem>
             {seasons.map((season) => (
               <MenuItem key={season.id} value={season.id}>
@@ -189,12 +242,16 @@ export function FilterBar({
       )}
       {sections && onSectionChange && (
         <Box sx={fieldSx}>
-          <SectionTreeSelect label="Section" sections={sections} value={sectionId} onChange={onSectionChange} allowClear />
+          <SectionTreeSelect label="Section" sections={sections} value={sectionId} onChange={onSectionChange} allowClear floatingLabel={!flat} />
         </Box>
       )}
       {teams && onTeamChange && (
         <Box sx={fieldSx}>
-          <Input select label="Team" {...allValueSelectProps} value={teamId ?? ''} onChange={(event) => onTeamChange(event.target.value || null)}>
+          <Input
+            select
+            label="Team"
+            {...(flat ? flatSelectProps('Team', false, [{ value: '', text: teamAllLabel }, ...teams.map((team) => ({ value: team.id, text: team.name }))]) : allValueSelectProps)}
+            value={teamId ?? ''} onChange={(event) => onTeamChange(event.target.value || null)}>
             <MenuItem value="">{teamAllLabel}</MenuItem>
             {teams.map((team) => (
               <MenuItem key={team.id} value={team.id}>
@@ -209,7 +266,9 @@ export function FilterBar({
           <Input
             select
             label={select.label}
-            {...allValueSelectProps}
+            {...(flat
+              ? flatSelectProps(select.label, true, [{ value: '', text: select.allLabel }, ...select.options.map((option) => ({ value: option.value, text: option.label }))])
+              : allValueSelectProps)}
             value={select.value}
             onChange={(event) => select.onChange(event.target.value)}
           >
@@ -244,15 +303,19 @@ export function FilterBar({
         renderInput={(params) => (
           <Input
             {...params}
-            label="Search"
+            label={flatBar ? '' : 'Search'}
+            InputLabelProps={{ ...params.InputLabelProps, ...(flatBar && { shrink: false }) }}
             placeholder={searchPlaceholder}
             InputProps={{ ...params.InputProps, startAdornment: searchAdornment }}
+            inputProps={{ ...params.inputProps, ...(flatBar && { 'aria-label': 'Search' }) }}
           />
         )}
       />
     ) : (
       <Input
-        label="Search"
+        label={flatBar ? '' : 'Search'}
+        InputLabelProps={flatBar ? { shrink: false } : undefined}
+        inputProps={flatBar ? { 'aria-label': 'Search' } : undefined}
         placeholder={searchPlaceholder}
         value={searchValue}
         onChange={(event) => onSearchChange(event.target.value)}
@@ -260,15 +323,68 @@ export function FilterBar({
       />
     ))
 
+  const sheet = (
+    <BottomSheet
+        open={sheetOpen}
+        onOpen={() => setSheetOpen(true)}
+        onClose={() => setSheetOpen(false)}
+        ariaLabel="Filters"
+        title="Filters"
+      >
+        <Box data-testid="filter-sheet-fields" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
+          {!tabletFold && fieldsFor(true)}
+          {!tabletFold && viewControls && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: { xs: 44, sm: 28 } }}>
+              {viewControls}
+            </Box>
+          )}
+          {secondaryControls && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: { xs: 44, sm: 28 } }}>
+              {secondaryFor('sheet')}
+            </Box>
+          )}
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+          <MuiButton variant="text" onClick={onClearAll} sx={{ ...compactButtonSx, fontWeight: 700 }}>
+            Clear all
+          </MuiButton>
+          <Button size="compact" onClick={() => setSheetOpen(false)}>Done</Button>
+        </Box>
+      </BottomSheet>
+  )
+
   if (!isPhone) {
     return (
-      <Box sx={filterPanelSxFor(density)}>
+      <Box sx={bare ? undefined : filterPanelSxFor(density)} data-testid={bare ? 'filter-bar-bare' : undefined}>
+        {tabletFold && sheet}
         <Box
           data-testid="filter-bar-fields"
-          sx={[{ display: 'flex', flexWrap: 'wrap', gap: density === 'compact' ? 1 : 2 }, ...(density === 'compact' ? [compactFieldsSx] : [])]}
+          sx={[
+            { display: 'flex', flexWrap: 'wrap', gap: density === 'compact' ? 1 : 2, ...(inlineControls && { alignItems: 'center' }) },
+            ...(density === 'compact' ? [compactFieldsSx] : []),
+            ...(bare ? [toolbarFieldsSx] : []),
+          ]}
         >
           {fieldsFor(false)}
-          {search && <Box sx={{ flex: '2 1 220px', minWidth: 0 }}>{search}</Box>}
+          {search && <Box sx={{ flex: inlineControls ? '1 1 220px' : '2 1 220px', minWidth: 0 }}>{search}</Box>}
+          {inlineControls && (
+            <Box data-testid="filter-bar-inline-controls" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5, flex: 'none', ml: 'auto' }}>
+              {tabletFold && (
+                <MuiButton
+                  variant="outlined"
+                  aria-haspopup="dialog"
+                  aria-expanded={sheetOpen}
+                  startIcon={<FilterListIcon fontSize="small" />}
+                  onClick={() => setSheetOpen(true)}
+                  sx={{ ...compactButtonSx, ...toolbarControlSx, flex: '0 0 auto', '&:hover': { bgcolor: 'background.paper', borderColor: 'divider' } }}
+                >
+                  Filters
+                </MuiButton>
+              )}
+              {!tabletFold && secondaryFor('row')}
+              {viewControls}
+            </Box>
+          )}
         </Box>
       </Box>
     )
@@ -276,7 +392,7 @@ export function FilterBar({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Box sx={[filterPanelSxFor(density) as object, { flexDirection: 'row', alignItems: 'center', gap: 1, p: 1 }]}>
+      <Box sx={[filterPanelSxFor(density) as object, { flexDirection: 'row', alignItems: 'center', gap: 1, p: 1 }, ...(inCard ? [{ p: 0, border: 0, boxShadow: 0, bgcolor: 'transparent' }] : [])]}>
         {search && <Box sx={{ flex: 1, minWidth: 0 }}>{search}</Box>}
         <MuiButton
           variant="outlined"
@@ -322,28 +438,7 @@ export function FilterBar({
         </Box>
       )}
 
-      <BottomSheet
-        open={sheetOpen}
-        onOpen={() => setSheetOpen(true)}
-        onClose={() => setSheetOpen(false)}
-        ariaLabel="Filters"
-        title="Filters"
-      >
-        <Box data-testid="filter-sheet-fields" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
-          {fieldsFor(true)}
-          {viewControls && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: { xs: 44, sm: 28 } }}>
-              {viewControls}
-            </Box>
-          )}
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-          <MuiButton variant="text" onClick={onClearAll} sx={{ ...compactButtonSx, fontWeight: 700 }}>
-            Clear all
-          </MuiButton>
-          <Button size="compact" onClick={() => setSheetOpen(false)}>Done</Button>
-        </Box>
-      </BottomSheet>
+      {sheet}
     </Box>
   )
 }

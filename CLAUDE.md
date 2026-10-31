@@ -22,6 +22,7 @@ Cricket Legend Platform — a multi-club cricket management system: Spring Boot 
 5. **Tests are a build gate.** A PR missing the test tier its change type requires (`docs/standards/testing.md`) fails CI. No "add tests later."
 6. **Standards live in files, not in your head.** This file plus `docs/standards/*.md` are the only source of truth.
 7. **Autonomy is earned per layer.** Agents implement freely inside a layer whose contract the spec already fixed. They don't redefine the contract without a human approving a spec change first.
+8. **Every manager page follows `docs/standards/page-anatomy.md`.** Page skeleton, figure cards, filter toolbar, Manage menus (Share last, one width), row kebabs, return navigation, labels and the consistency rule are decided once there, with dates. Read it before designing or changing any page; when the owner decides something new, record it there in the same change. Never invent a one-off layout.
 
 ## Tech stack
 
@@ -52,6 +53,7 @@ project-root/
 │   └── standards/
 │       ├── backend.md
 │       ├── frontend.md
+│       ├── page-anatomy.md
 │       ├── design-system.md
 │       └── testing.md
 ├── .claude/

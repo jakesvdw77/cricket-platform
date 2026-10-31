@@ -215,6 +215,14 @@ public interface MatchService {
      */
     MatchDto create(Authentication authentication, UUID clubId, CreateMatchRequest request);
 
+    /**
+     * docs/specs/098: creates several matches in one transaction, in request order (the schedule import). Every item is
+     * validated exactly as {@link #create} (sides, logos, league and season of the club, league-season dates, league
+     * team rules, the section access check) but the shared lookups (league, season, league-season dates, league teams,
+     * own teams) are read once, not once per item. One refused item rolls the whole batch back.
+     */
+    List<MatchDto> createBatch(Authentication authentication, UUID clubId, List<CreateMatchRequest> requests);
+
     /** Same validation as {@link #create}. */
     MatchDto update(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchRequest request);
 

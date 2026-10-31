@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { LogoAvatar } from '../LogoAvatar'
 import type { ReactNode } from 'react'
-import { Avatar, Box, ButtonBase, Stack, Typography } from '@mui/material'
+import { Box, ButtonBase, Stack, Typography } from '@mui/material'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
@@ -8,7 +9,7 @@ import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import { avatarSx, RecordCard } from '../RecordCard'
+import { RecordCard } from '../RecordCard'
 import type { RecordCardBadge } from '../RecordCard'
 import { DetailLine } from '../DetailLine'
 import { KeyFigureTile } from '../KeyFigureTile'
@@ -131,9 +132,9 @@ export function TeamCard({
                   aria-label={`${sponsor.name} — Sponsor`}
                   sx={{ borderRadius: 1 }}
                 >
-                  <Avatar src={sponsor.logoUrl ?? undefined} variant="rounded" sx={avatarSx(28, '0.6875rem')}>
+                  <LogoAvatar src={sponsor.logoUrl} variant="rounded" size={28} fontSize="0.6875rem">
                     {initialsFromName(sponsor.name)}
-                  </Avatar>
+                  </LogoAvatar>
                 </ButtonBase>
               ))}
             </Stack>

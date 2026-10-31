@@ -85,14 +85,6 @@ describe('LeagueTable', () => {
     expect(within(none).getByTestId('league-row-teams')).toHaveTextContent('–')
   })
 
-  // docs/specs/096-duplicate-league.md: no row-level Duplicate; it lives on the league page header and the edit page.
-  it('has no Duplicate control', () => {
-    renderTable([makeLeague(), makeLeague({ id: 'league-2', name: 'Vets League' })])
-
-    expect(screen.queryByText(/duplicate/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /duplicate/i })).not.toBeInTheDocument()
-  })
-
   it('shows Inactive for a retired league', () => {
     renderTable([makeLeague({ active: false })])
     expect(screen.getByTestId('league-row-status')).toHaveTextContent('Inactive')
@@ -116,5 +108,57 @@ describe('LeagueTable', () => {
       'href',
       '/manage/fixtures/leagues/league-9/schedule?seasonId=season-2',
     )
+  })
+
+  it('is flat with a hairline and shows no count text', () => {
+    renderTable([makeLeague()])
+    expect(screen.queryByTestId('leagues-count')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^\d+ leagues?$/)).not.toBeInTheDocument()
+    expect(getComputedStyle(screen.getByRole('table', { name: 'Leagues' })).boxShadow).toBe('none')
+  })
+
+  it('tints the header and starts the zebra on white: first row white, second tinted', () => {
+    renderTable([makeLeague(), makeLeague({ id: 'league-2', name: 'Vets League' })])
+
+    const header = screen.getAllByRole('row')[0]
+    const [first, second] = screen.getAllByTestId('league-row')
+    const bg = (el: HTMLElement) => getComputedStyle(el).backgroundColor
+    expect(bg(header)).not.toBe('rgba(0, 0, 0, 0)')
+    expect(bg(first)).not.toBe(bg(header))
+    expect(bg(second)).toBe(bg(header))
+  })
+
+  it('without a toolbar the table is its own bordered card', () => {
+    renderTable([makeLeague()])
+    expect(screen.queryByTestId('leagues-fused-card')).not.toBeInTheDocument()
+    expect(getComputedStyle(screen.getByRole('table', { name: 'Leagues' })).borderStyle).toBe('solid')
+  })
+
+  it('with a toolbar, ONE card holds the toolbar, a hairline, then the table, which has no outer border', () => {
+    render(
+      <MemoryRouter>
+        <LeagueTable leagues={[makeLeague()]} toolbar={<div>Bar</div>} />
+      </MemoryRouter>,
+    )
+    const card = screen.getByTestId('leagues-fused-card')
+    const toolbar = within(card).getByTestId('toolbar-card-fused')
+    const table = within(card).getByRole('table', { name: 'Leagues' })
+    expect(toolbar).toHaveTextContent('Bar')
+    expect(toolbar.nextElementSibling).toBe(table)
+    expect(getComputedStyle(toolbar).borderBottomStyle).toBe('solid')
+    expect(getComputedStyle(card).borderStyle).toBe('solid')
+    expect(getComputedStyle(table).borderStyle).not.toBe('solid')
+  })
+
+  it('with a toolbar and no rows, the empty message replaces the table inside the same card', () => {
+    render(
+      <MemoryRouter>
+        <LeagueTable leagues={[]} toolbar={<div>Bar</div>} empty={<p>Nothing here</p>} />
+      </MemoryRouter>,
+    )
+    const card = screen.getByTestId('leagues-fused-card')
+    expect(within(card).getByTestId('toolbar-card-fused')).toHaveTextContent('Bar')
+    expect(within(card).getByText('Nothing here')).toBeInTheDocument()
+    expect(within(card).queryByRole('table')).not.toBeInTheDocument()
   })
 })
