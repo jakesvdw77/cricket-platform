@@ -19,7 +19,7 @@ function renderMenu(match = makeMatch()) {
 }
 
 describe('MatchRowMenu', () => {
-  it('is one kebab named for the match, with Open Match and Edit Match first and Share Team Sheet last', async () => {
+  it('is one kebab named for the match, with Open Match and Edit Match first and Share Match last', async () => {
     const user = userEvent.setup()
     renderMenu()
 
@@ -27,7 +27,8 @@ describe('MatchRowMenu', () => {
     const items = within(await screen.findByRole('menu')).getAllByRole('menuitem')
     expect(items[0]).toHaveTextContent('Open Match')
     expect(items[1]).toHaveTextContent('Edit Match')
-    expect(items[items.length - 1]).toHaveTextContent('Share Team Sheet')
+    expect(items[items.length - 2]).toHaveTextContent('Share Team Sheet')
+    expect(items[items.length - 1]).toHaveTextContent('Share Match')
   })
 
   it('titleCase capitalises each word of a result label', () => {

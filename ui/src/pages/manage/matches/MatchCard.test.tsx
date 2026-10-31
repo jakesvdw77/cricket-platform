@@ -319,18 +319,18 @@ describe('MatchCard', () => {
       expect(window.getComputedStyle(screen.getByRole('heading', { name: '1st XI vs Riverside Occasionals' }).closest('.MuiCard-root') as HTMLElement).boxShadow).toBe('none')
     })
 
-    it('lists the items in order for a match that has not started, with Share Team Sheet last', async () => {
+    it('lists the items in order for a match that has not started, with Share Match last', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: future() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Team Sheet'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Team Sheet', 'Share Match'])
     })
 
     it('adds Import Result after the result action once the match has started', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: past() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Team Sheet'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Team Sheet', 'Share Match'])
     })
 
     it('offers Continue Result for a draft and View Result (and no Import) for a published result', async () => {
@@ -451,9 +451,19 @@ describe('MatchCard', () => {
 
       await user.click(within(await openMenu(user)).getByTestId('manage-item-share-team-sheet'))
 
-      expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
+      expect(await screen.findByText('Share match')).toBeInTheDocument()
       expect(listMatchSides).toHaveBeenCalledWith('club-1', 'match-1')
       expect(listSquad).toHaveBeenCalledWith('club-1', 'team-1', 'season-1')
+    })
+
+    it('Share Match opens the same dialog on What To Share, with no content ticked', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch())
+
+      await user.click(within(await openMenu(user)).getByTestId('manage-item-share-match'))
+
+      expect(await screen.findByText('Share match')).toBeInTheDocument()
+      expect(await screen.findByRole('radiogroup', { name: 'What to share' })).toBeInTheDocument()
     })
 
     it('never follows the card link when the kebab is pressed', async () => {

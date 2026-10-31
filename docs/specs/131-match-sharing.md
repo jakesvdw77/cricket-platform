@@ -187,6 +187,8 @@ Per `docs/standards/testing.md`; build first, tests after the owner's check (wor
 8. **Fun facts about the opposition:** yes, platform-team opposition only, and juniors by initials only.
 9. **Weather:** added (Open-Meteo forecast, browser-only, forecast range only, never a guess); backend proxy is Later.
 
+10. **Weather coordinates (owner, 2026-10-31):** resolve in this order: (1) latitude and longitude parsed from the field's `mapUrl` (`@lat,lng`, `!3d!4d`, `?q=lat,lng`); (2) when there are none (short maps links, or no map URL, as in the dev data), geocode the field's address city with province or state and country when present through Open-Meteo's free geocoding API (`https://geocoding-api.open-meteo.com/v1/search`, no key), cached by React Query for a long stale time keyed by the place string; (3) when neither resolves, no weather (never a guess). This settles Open question 2: parsing plus geocoding now, stored coordinates still the later backend follow-up.
+
 ## Open Questions
 
 1. **TV summary for matches:** the owner is unsure. Kept for Fixture Card, Countdown and Team Selection; decide at the mockup stage whether it earns its place.

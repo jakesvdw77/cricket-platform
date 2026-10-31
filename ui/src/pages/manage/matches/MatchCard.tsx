@@ -6,6 +6,9 @@ import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { DetailLine } from '../../../components/DetailLine'
+import { WeatherBadge } from '../../../components/WeatherBadge'
+import { useMatchFieldWeather } from '../../../hooks/useMatchWeather'
+import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import { badgeSx, RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import type { Match } from '../../../api/matchApi'
@@ -41,6 +44,8 @@ export interface MatchCardProps {
 // of kickoff; "Played" once it has a published result), one Venue line and the Selection block. ONE Actions kebab in the corner
 // holds every action (no footer bar, no icon cluster). Deactivate/Reactivate and Delete live on the edit screen (038, 109).
 export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, viewTo }: MatchCardProps) {
+  // docs/specs/131 (Weather): the forecast within 7 days at a field with a usable place; nothing otherwise.
+  const weather = useMatchFieldWeather(clubId, match)
   const location = useLocation()
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
@@ -108,6 +113,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             }
           />
         )}
+        {weather.summary && <DetailLine icon={<CloudOutlinedIcon fontSize="small" />} label="Forecast" value={<WeatherBadge summary={weather.summary} variant="compact" testId="match-card-weather" />} />}
         <SelectionBlock rows={selectionRows(match, teamsById)} />
     </RecordCard>
   )

@@ -90,6 +90,8 @@ export function MatchTeamCard({
             <MuiButton
               variant="outlined"
               onClick={onShare}
+              disabled={sidesReady && nothingSelected}
+              aria-describedby={sidesReady && nothingSelected ? `${testId}-share-reason` : undefined}
               aria-label={`Share team sheet for ${teamName}`}
               startIcon={<ShareOutlinedIcon fontSize="small" />}
               sx={compactButtonSx}
@@ -99,6 +101,11 @@ export function MatchTeamCard({
           )}
         </Box>
       </Box>
+      {onShare && sidesReady && nothingSelected && (
+        <Typography id={`${testId}-share-reason`} variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+          Select the team first to share the team sheet.
+        </Typography>
+      )}
 
       {sidesReady && (
         <Stack spacing={1}>

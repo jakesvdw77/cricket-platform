@@ -152,6 +152,17 @@ class ClubShareSettingsServiceImplTest {
     }
 
     @Test
+    void aMatchContentTypeStoresItsOwnFormats() {
+        ClubProfile existing = profileWith("{}");
+        existingProfile(existing);
+
+        ShareSettingsDto result = service.put(
+                clubId, new ShareSettingsDto(false, Map.of("MATCH", List.of("TV", "FACEBOOK"))), true);
+
+        assertThat(result.disabledFormats()).containsExactly(Map.entry("MATCH", List.of("FACEBOOK", "TV")));
+    }
+
+    @Test
     void anEmptyListForAContentTypeClearsIt() {
         ClubProfile existing = profileWith("{\"RESULT\":[\"TV\"]}");
         existingProfile(existing);

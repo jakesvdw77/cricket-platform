@@ -7,6 +7,7 @@ export function useFakeTeamSheetShare(args: UseTeamSheetShareArgs): TeamSheetSha
   const [open, setOpen] = useState(false)
   return {
     openShare: () => setOpen(true),
+    openShareFor: () => setOpen(true),
     shareDialog: open ? <div data-testid="share-dialog" data-match-id={args.match.id} data-scope={args.initialScope} /> : null,
   }
 }

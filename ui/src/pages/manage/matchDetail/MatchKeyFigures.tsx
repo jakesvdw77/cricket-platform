@@ -6,6 +6,8 @@ import type { MatchResultStatus } from '../../../api/matchResultApi'
 import type { MatchPoll } from '../../../api/matchApi'
 import type { FieldVerificationStatus } from '../../../api/playingAreaApi'
 import { formatMatchDateTime } from '../availability/pollHelpers'
+import { WeatherBadge } from '../../../components/WeatherBadge'
+import type { WeatherSummary } from '../../../utils/weather/wmo'
 
 export interface MatchKeyFiguresProps {
   matchDate: string
@@ -26,6 +28,8 @@ export interface MatchKeyFiguresProps {
   resultStatus?: MatchResultStatus | null
   // docs/specs/130: the field's page opens with the match page as its origin (docs/specs/127). Omitted, the card links to the plain path.
   fieldTo?: string
+  // docs/specs/131: the forecast for the match day (within 7 days, a field with a usable place). Omitted or null shows nothing.
+  weather?: WeatherSummary | null
 }
 
 const NOT_KNOWN = '–'
@@ -51,7 +55,7 @@ function pollCaption(polls: MatchPoll[], closesAt: string | null): string {
 // live countdown, amber within 24 hours, "Played" once it has a published result), where, in which league and season, and the poll -
 // as four static compact PageCounters cards (no icons, no lone button; Open Availability is in Manage Match). The Venue card is a
 // link to the field's page when the match has a field.
-export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus, fieldTo }: MatchKeyFiguresProps) {
+export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus, fieldTo, weather }: MatchKeyFiguresProps) {
   const kickoff = useCountdown(matchDate)
   const started = kickoff.stage === 'expired'
   const played = resultStatus === 'PUBLISHED'
@@ -93,6 +97,11 @@ export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVe
   return (
     <Box data-testid="match-key-figures">
       <PageCounters items={counters} density="compact" />
+      {weather && !played && (
+        <Box sx={{ mt: 1 }}>
+          <WeatherBadge summary={weather} testId="match-figure-weather" />
+        </Box>
+      )}
     </Box>
   )
 }

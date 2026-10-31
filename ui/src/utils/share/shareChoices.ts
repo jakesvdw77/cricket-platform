@@ -7,6 +7,8 @@ import type {
 } from './leagueShareFormats'
 import { LEAGUE_CONTENTS, LEAGUE_FACEBOOK_TEMPLATES, LEAGUE_SHARE_FORMATS, LEAGUE_WHATSAPP_TEMPLATES } from './leagueShareFormats'
 import type { TeamsChoice } from './shareResultData'
+import type { MatchContent, MatchFacebookTemplate, MatchLayout, MatchSideChoice, MatchWhatsAppTemplate } from './matchShareFormats'
+import { MATCH_CONTENTS, MATCH_FACEBOOK_TEMPLATES, MATCH_LAYOUTS, MATCH_SIDE_CHOICES, MATCH_WHATSAPP_TEMPLATES } from './matchShareFormats'
 
 // docs/specs/114-share-result.md (Browser storage): the manager's remembered choices, one object per club in
 // localStorage under shareChoicesKey. Only the type, the defaults and a pure sanitiser live here; reading and writing go
@@ -46,6 +48,17 @@ export type LeagueShareChoices = {
   }
 }
 
+// docs/specs/131-match-sharing.md (Data Model Changes): the match branch. The uploaded picture and edited text are never part of it.
+export type MatchShareChoices = {
+  content: MatchContent | null
+  format: ShareFormat | null
+  side: MatchSideChoice
+  layout: MatchLayout
+  imageSize: ImageSize
+  templates: { pdf: PdfTemplate; image: ImageTemplate; tv: TvTemplate; whatsapp: MatchWhatsAppTemplate; facebook: MatchFacebookTemplate }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean; emoji: boolean; hashtags: boolean }
+}
+
 // A type alias (not an interface) so it satisfies usePersistedListFilters' Record<string, unknown>.
 export type ShareChoices = {
   // The last format used (highlighted on opening); null before the first use.
@@ -75,6 +88,7 @@ export type ShareChoices = {
   // The user's own First names as initials choice for non-junior matches; null means never chosen (the club default applies).
   initialsOnly: boolean | null
   league: LeagueShareChoices
+  match: MatchShareChoices
 }
 
 export const DEFAULT_SHARE_CHOICES: ShareChoices = {
@@ -99,6 +113,15 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     format: null,
     templates: { pdf: 'CLUB', whatsapp: 'SHORT', facebook: 'FULL_POST' },
     include: { whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: true } },
+  },
+  match: {
+    content: null,
+    format: null,
+    side: 'OURS',
+    layout: 'SIDE_BY_SIDE',
+    imageSize: 'PORTRAIT',
+    templates: { pdf: 'CLUB', image: 'CLUB_GREEN', tv: 'BROADCAST', whatsapp: 'SHORT', facebook: 'ANNOUNCEMENT' },
+    include: { marks: true, venueAndDate: true, weather: true, picture: true, emoji: true, hashtags: true },
   },
 }
 
@@ -149,6 +172,8 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
   const league = isRecord(raw.league) ? raw.league : {}
   const leagueTemplates = isRecord(league.templates) ? league.templates : {}
   const leagueInclude = isRecord(league.include) ? league.include : {}
+  const match = isRecord(raw.match) ? raw.match : {}
+  const matchTemplates = isRecord(match.templates) ? match.templates : {}
   return {
     format: typeof raw.format === 'string' && (SHARE_FORMATS as string[]).includes(raw.format) ? (raw.format as ShareFormat) : null,
     templates: {
@@ -185,6 +210,21 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
         facebook: pickBooleans(leagueInclude.facebook, d.league.include.facebook),
         results: pickBooleans(leagueInclude.results, d.league.include.results),
       },
+    },
+    match: {
+      content: typeof match.content === 'string' && (MATCH_CONTENTS as string[]).includes(match.content) ? (match.content as MatchContent) : null,
+      format: typeof match.format === 'string' && (SHARE_FORMATS as string[]).includes(match.format) ? (match.format as ShareFormat) : null,
+      side: pickEnum(match.side, MATCH_SIDE_CHOICES, d.match.side),
+      layout: pickEnum(match.layout, MATCH_LAYOUTS, d.match.layout),
+      imageSize: pickEnum(match.imageSize, IMAGE_SIZES, d.match.imageSize),
+      templates: {
+        pdf: pickEnum(matchTemplates.pdf, PDF_TEMPLATES, d.match.templates.pdf),
+        image: pickEnum(matchTemplates.image, IMAGE_TEMPLATES, d.match.templates.image),
+        tv: pickEnum(matchTemplates.tv, TV_TEMPLATES, d.match.templates.tv),
+        whatsapp: pickEnum(matchTemplates.whatsapp, MATCH_WHATSAPP_TEMPLATES, d.match.templates.whatsapp),
+        facebook: pickEnum(matchTemplates.facebook, MATCH_FACEBOOK_TEMPLATES, d.match.templates.facebook),
+      },
+      include: pickBooleans(match.include, d.match.include),
     },
   }
 }

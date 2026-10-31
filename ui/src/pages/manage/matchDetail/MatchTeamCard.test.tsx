@@ -64,7 +64,7 @@ describe('MatchTeamCard', () => {
     expect(screen.queryByRole('button', { name: /share team sheet/i })).not.toBeInTheDocument()
     unmount()
 
-    renderCard({ onShare })
+    renderCard({ onShare, side: side({ players: [{ playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' }] }) })
     const button = screen.getByRole('button', { name: 'Share team sheet for 1st XI' })
     expect(button).toHaveTextContent('Share Team Sheet')
     expect(button.querySelector('svg')).not.toBeNull()
@@ -72,6 +72,13 @@ describe('MatchTeamCard', () => {
     expect(screen.getByRole('link', { name: 'Select Team' }).querySelector('svg')).toBeNull()
     await userEvent.setup().click(button)
     expect(onShare).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables Share Team Sheet with a visible reason until a team is selected', () => {
+    renderCard({ onShare: vi.fn() })
+    const button = screen.getByRole('button', { name: 'Share team sheet for 1st XI' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription('Select the team first to share the team sheet.')
   })
 
   it('is a flat panel: a hairline and no shadow', () => {

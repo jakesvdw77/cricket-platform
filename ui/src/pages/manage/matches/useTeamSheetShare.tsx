@@ -1,22 +1,23 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { TeamSheetCommunicationDialog } from '../../../components/TeamSheetCommunicationDialog'
-import type { TeamSheetPrintScope } from '../../../components/TeamSheetCommunicationDialog'
+import { Backdrop, CircularProgress, Typography } from '@mui/material'
+import { ShareMatchDialog } from '../../../components/ShareMatchDialog'
+import { ShareResultDialog } from '../../../components/ShareResultDialog'
+import { getMatchResult, resultKeys } from '../../../api/matchResultApi'
+import type { MatchContent } from '../../../utils/share/matchShareFormats'
 import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
 import { listMatchSides } from '../../../api/matchSideApi'
 import { listSquad } from '../../../api/teamSquadApi'
-import { matchFields } from '../../../utils/matchRecordFields'
-import { generateTeamSheetPdf } from '../../../utils/teamSheetPdf'
-import type { TeamSheetSide } from '../../../utils/teamSheetPdf'
+import type { TeamSheetSide } from '../../../utils/teamSheetSide'
 import { sideName } from './matchCardHelpers'
 
 // A lightweight stand-in Team for a free-text opponent side (no real Team record exists) — only
-// `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by teamSheetPdf.ts/
-// TeamSheetCommunicationDialog, both of which prefer `teamName` for display anyway.
+// `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by the retired team sheet PDF/
+// the share model, which prefers `teamName` for display anyway.
 function placeholderTeam(clubId: string, name: string): Team {
   return {
     id: '',
@@ -34,6 +35,15 @@ function placeholderTeam(clubId: string, name: string): Team {
   }
 }
 
+// A match page or card side: the home or the away team of the match.
+export type TeamSheetScope = 'home' | 'away'
+
+export interface ShareOpenOptions {
+  content?: MatchContent
+  // The side a team panel or Team selection row is about; mapped to Our Side or Opposition.
+  scope?: TeamSheetScope
+}
+
 export interface UseTeamSheetShareArgs {
   clubId: string
   match: Match
@@ -41,15 +51,21 @@ export interface UseTeamSheetShareArgs {
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
   // Start the dialog on one side (the Team selection pages share a single announced side).
-  initialScope?: TeamSheetPrintScope
+  initialScope?: TeamSheetScope
+  // Start the dialog on one content (Team Sheet from a team panel).
+  initialContent?: MatchContent
 }
 
 export interface TeamSheetShare {
+  // Opens the Share Match dialog with the hook's own initial content and side (safe as an onClick handler).
   openShare: () => void
+  // Opens it with a content and side chosen at the click (a team panel's Team Sheet button).
+  openShareFor: (options: ShareOpenOptions) => void
   shareDialog: ReactNode
 }
 
-// docs/specs/030-team-sheet-communication.md, extracted by docs/specs/075-match-view-and-edit.md:
+// docs/specs/131-match-sharing.md: renders ShareMatchDialog (it replaced TeamSheetCommunicationDialog, docs/specs/030 and 039); a match with
+// a published result hands over to ShareResultDialog. Extracted by docs/specs/075-match-view-and-edit.md:
 // the Team Sheet data-fetching and dialog wiring shared by the match card and the Match View page.
 // The data-fetching lives in the host (the codebase's presentational-dialog convention). Every
 // query is `enabled: dialogOpen` so nothing fires until the admin actually opens the dialog; the
@@ -61,8 +77,11 @@ export function useTeamSheetShare({
   leaguesById,
   seasonsById,
   initialScope,
+  initialContent,
 }: UseTeamSheetShareArgs): TeamSheetShare {
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [options, setOptions] = useState<ShareOpenOptions>({ content: initialContent, scope: initialScope })
+  const published = match.resultStatus === 'PUBLISHED'
 
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
@@ -110,29 +129,45 @@ export function useTeamSheetShare({
     },
   ]
 
-  const subtitle = matchFields(match, leaguesById, seasonsById)
-    .map((field) => String(field.value))
-    .join(' · ')
+  const resultQuery = useQuery({
+    queryKey: resultKeys.detail(clubId, match.id),
+    queryFn: () => getMatchResult(clubId, match.id),
+    enabled: dialogOpen && published,
+    retry: false,
+  })
 
-  const handlePrint = async (scope: TeamSheetPrintScope) => {
-    const filteredSides =
-      scope === 'both' ? teamSheetSides : scope === 'home' ? [teamSheetSides[0]] : [teamSheetSides[1]]
-    const url = await generateTeamSheetPdf(match, filteredSides, subtitle)
-    window.open(url, '_blank')
+  const leagueName = match.leagueId ? (leaguesById.get(match.leagueId)?.name ?? null) : null
+  const seasonLabel = seasonsById.get(match.seasonId)?.label ?? null
+
+  const open = (next: ShareOpenOptions) => {
+    setOptions(next)
+    setDialogOpen(true)
   }
 
-  const shareDialog = (
-    <TeamSheetCommunicationDialog
+  const shareDialog = published ? (
+    dialogOpen && resultQuery.data ? (
+      <ShareResultDialog open onClose={() => setDialogOpen(false)} clubId={clubId} match={match} result={resultQuery.data} teamsById={teamsById} />
+    ) : (
+      <Backdrop open={dialogOpen && !resultQuery.isError} sx={{ zIndex: (theme) => theme.zIndex.modal, flexDirection: 'column', gap: 1.5, color: 'common.white' }} onClick={() => setDialogOpen(false)}>
+        <CircularProgress color="inherit" size={28} />
+        <Typography role="status">Opening the result share</Typography>
+      </Backdrop>
+    )
+  ) : (
+    <ShareMatchDialog
       open={dialogOpen}
       onClose={() => setDialogOpen(false)}
+      clubId={clubId}
       match={match}
+      teamsById={teamsById}
       sides={teamSheetSides}
       sidesLoading={Boolean(sidesLoading)}
-      onPrint={handlePrint}
-      subtitle={subtitle}
-      initialScope={initialScope}
+      leagueName={leagueName}
+      seasonLabel={seasonLabel}
+      initialContent={options.content}
+      initialScope={options.scope}
     />
   )
 
-  return { openShare: () => setDialogOpen(true), shareDialog }
+  return { openShare: () => open({ content: initialContent, scope: initialScope }), openShareFor: open, shareDialog }
 }

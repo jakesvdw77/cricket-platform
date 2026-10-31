@@ -62,7 +62,7 @@ export function availabilityMenuItems(
 
 // docs/specs/130 and docs/standards/page-anatomy.md section 6: the ONE actions button of a match row or card, a dense kebab menu.
 // Deactivate, Reactivate and Delete stay on the edit page (038, 109). Scoring and Watch Live open the match's own links in a new
-// tab. Share Team Sheet is last. The button never navigates the row it sits in.
+// tab. Share Match is last (docs/specs/131). The button never navigates the row it sits in.
 export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsById, testId = 'match-actions' }: MatchRowMenuProps) {
   const location = useLocation()
   const base = `${MATCHES_PATH}/${match.id}`
@@ -70,7 +70,7 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
   const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   // docs/specs/127: every destination returns to the list the menu is on.
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Matches')
-  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
+  const { openShare, openShareFor, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
 
   const hasOwnTeam = ownSides(match).length > 0
   const noTeamReason = hasOwnTeam ? null : NO_CLUB_TEAM_REASON
@@ -101,10 +101,12 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
       id: 'share-team-sheet',
       title: 'Share Team Sheet',
       icon: <ShareOutlinedIcon fontSize="small" />,
-      onClick: openShare,
+      onClick: () => openShareFor({ content: 'TEAM_SHEET' }),
       disabled: !hasOwnTeam,
       reason: NO_CLUB_TEAM_REASON,
     },
+    // docs/specs/131: Share Match is last (page-anatomy section 6b); a played match hands over to the result share.
+    { id: 'share-match', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: openShare },
   ]
   return (
     <>
