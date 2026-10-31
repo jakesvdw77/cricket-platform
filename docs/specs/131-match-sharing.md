@@ -1,7 +1,7 @@
 # 131: Match Sharing
 
 **Depends on:** `114-share-result.md` (the dialog shell, format screens, preview stage, delivery by capability, `shareName`, `isJuniorMatch`, remembered choices, `WhatsAppSendActions`, `ShareSettingsDto`), `122-league-sharing.md` (the multi-step "What to share, Format, Preview" dialog, content-by-format table, club format switches, `ShareCore`), `030-team-sheet-communication.md` and `039-team-sheet-whatsapp-text.md` (the dialog this replaces), `130-matches-pages-revamp.md` (the row kebab and Manage Match menu this plugs into), `076`/`093` (team selection, the selected XI, captain and wicketkeeper), `099` (Field Directory, `PlayingArea`), `100`/`101` (results, sides), `103`, `116`, `117` (player and team statistics, form, milestones), `051` (poster generator precedent), `docs/standards/page-anatomy.md`, `design-system.md`.
-**Status:** draft (2026-10-31), owner decisions folded in. No code is written by this spec.
+**Status:** approved 2026-10-31 (owner approved the mockups in `docs/mockups/match-sharing-mockup.html`; TV summary for matches stays as proposed: Fixture Card, Countdown, Team Selection). Building.
 
 ## Problem & Goals
 
