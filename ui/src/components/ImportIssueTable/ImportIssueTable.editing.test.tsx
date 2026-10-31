@@ -81,7 +81,7 @@ describe('ImportIssueTable, editing rows (spec 125)', () => {
     expect(within(row).getByText('Edited')).toBeInTheDocument()
     expect(within(row).getByText('was: 09:00')).toBeInTheDocument()
     fireEvent.click(within(row).getByRole('button', { name: 'Edit row 44' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Reset to file values' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to File Values' }))
     expect(handlers.onResetRow).toHaveBeenCalledWith(44)
   })
 

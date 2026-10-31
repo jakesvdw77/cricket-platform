@@ -106,7 +106,7 @@ describe('ImportWizard', () => {
 
   it('starts on Upload with no batch', async () => {
     renderWizard({}, null)
-    expect(await screen.findByRole('button', { name: 'Upload and check rows' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Upload and Check Rows' })).toBeDisabled()
   })
 })
 
@@ -170,14 +170,14 @@ describe('ImportWizard, team steps only when in doubt (spec 125 amendment)', () 
   const settled = () => sampleBatch({ scopeMode: 'ALL', issues: [], counts: { ...sampleBatch().counts, errors: 0, warnings: 0 }, proposals: [exactTeam('Irene Villagers 2', 't-9'), exactTeam('Hilton', 't-8')] })
   const stepNames = () => within(screen.getByRole('list', { name: 'Steps' })).getAllByRole('button').map((step) => step.getAttribute('aria-label'))
 
-  it('goes from Check rows straight to Review when every name is settled, and Change teams opens the team step on demand', async () => {
+  it('goes from Check rows straight to Review when every name is settled, and Change Teams opens the team step on demand', async () => {
     renderWizard({ batch: settled() })
     await screen.findByTestId('import-row-14', undefined, { timeout: 10000 })
     expect(stepNames()).toEqual(['Step 1: Upload (done)', 'Step 2: Check rows', 'Step 3: Review'])
     expect(screen.getByText('Step 2 of 3: Check rows')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByTestId('team-summary')).toHaveTextContent('Names: 2 matched, 0 new')
-    fireEvent.click(screen.getByRole('button', { name: 'Change teams' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Change Teams' }))
     expect(await screen.findByTestId('resolver-progress')).toHaveTextContent('2 of 2 names resolved')
     expect(stepNames()).toEqual(['Step 1: Upload (done)', 'Step 2: Check rows (done)', 'Step 3: Match teams', 'Step 4: Review'])
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))

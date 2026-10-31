@@ -6,7 +6,7 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 
 ## 1. Page skeleton (top to bottom)
 1. **Top row.** Back alone on the left, quiet. **Decided 2026-10-30.**
-2. **Title row.** Logo or avatar if the record has one, the title, the format/status badges inline, then the **Season pill beside the title** on the left (every season-scoped page, lists and detail pages alike). **The page-level actions sit on this same row, right-aligned: the Actions menu (white secondary) then the page's one filled primary (Edit X or Add X), rightmost.** They wrap under the title on a narrow screen and take the full width on a phone. Nothing else is on the title row's right. **Decided 2026-10-30** (the list pages already work this way; the detail pages move over as they are reviewed). Contacts and links sit directly under the title as inline items (icon then text), never on a row of their own. **Decided.**
+2. **Title row.** Logo or avatar if the record has one, the title, the format/status badges inline, then the **Season pill beside the title** on the left (every season-scoped page, lists and detail pages alike). **The page-level actions sit on this same row, right-aligned: ONE filled "Manage <thing>" menu button (section 8; the old separate Actions menu is gone), or on list pages the filled Add X.** They wrap under the title on a narrow screen and take the full width on a phone. Nothing else is on the title row's right. **Decided 2026-10-30** (the list pages already work this way; the detail pages move over as they are reviewed). Contacts and links sit directly under the title as inline items (icon then text), never on a row of their own. **Decided.**
 3. **Figures** (if the page has any): one row of figure cards, section 2.
 4. **Tabs** (if the page has them): the tab names on the left; that tab's own actions right-aligned on the same row (they wrap to a row under the tabs on a phone, equal width, 44 px). **Decided.**
 5. **Filter bar:** flat, section 3.
@@ -41,7 +41,8 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 - **Compact 32 px buttons in toolbars and cards; 44 px touch targets below `md`** (the compact button keeps a 44 px touch area). **Decided.**
 - **Labels use Title Case** ("Import Schedule", "Add Match", "Edit League", "Share League...", "Import History (2)"). Body text and headings stay sentence case. **Decided 2026-10-30.**
 - **No lone control in its own row** (see `design-system.md`, "Layout density"): put it in the toolbar, on the row of its neighbours, inside its card or in a menu; stacking is for phones. **Decided.**
-- Secondary and rare page actions go in the **Actions menu** (Duplicate, Share, Import history, and so on), not as separate top-row buttons. **Decided.**
+- Secondary and rare page actions go in the page's **Manage menu** (title row: "Manage <thing>", filled; each tab's own actions: white "Manage <Tab>", Share last, one width, see section 8), not as separate buttons. A page without tabs uses the same menu pattern. **Decided 2026-10-31** (replaces the old Actions menu rule).
+- **Consistency over cleverness (owner, 2026-10-31):** the same job is done the same way on every page: same menu names and item order (actions first, Share last, Share opens the dialog with that page's content ticked), same button width on one edge, same label wording app-wide ("Playing Conditions", never a shortened name), no one-off layouts. If a page needs something the standard does not cover, ask and record the decision here before building.
 - Leading icons on buttons: **Open** (the league page uses them on Import Schedule, Add Match, Edit League; list pages use none). Ask once when reviewing the lists.
 
 ## 6. Tables and lists
@@ -51,6 +52,9 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 - **Card views fill the width and carry no footer bar (Decided 2026-10-30, applied first on Leagues).** The Cards grid fills the available width (`dynamicCardGridSx`: `repeat(auto-fit, minmax(340px, 1fr))`, cards capped at about 560 px and left aligned, 16 px gap, one column on a phone) and ends with a dashed `AddCard` ("Add League") where the user may add; in an empty or filtered-out Cards view it sits under the toolbar card with the empty message. A record card has no footer action bar: its actions are in the kebab (the card keeps its social icons in the header, left of the kebab).
 
 - **Table rows carry no chevron (Decided 2026-10-31, owner).** The whole row is the link: the cue is the hover tint and the pointer, and the row's accessible name stays on the stretched link. The kebab stays at the right end of the row. Applied first on the Leagues list and the league Schedule table; other tables drop the visible open-chevron when their page is reviewed.
+
+## 6a. Logos and avatars (Decided 2026-10-30)
+- Use `components/LogoAvatar` for record logos: no tile behind a loaded image; the record fallback (no image or load failure) is a soft green tint tile with initials. Person avatars keep the gold fallback; the signed-in user's account avatar keeps gold.
 
 ## 7. Forms inside a page (edit modes)
 Editing is a mode of the page, not a different screen, and uses the same row editor, checks and Review as the import (`docs/specs/126`). Nothing is saved before an explicit, server-enforced confirmation.
@@ -68,7 +72,7 @@ Editing is a mode of the page, not a different screen, and uses the same row edi
 - **Vertical rhythm:** 16 px between bands on desktop, 12 px on a phone.
 - **Badges:** format and Active chips inline beside the title, then the Season pill.
 - **Figures:** the Matches counter card as static compact `PageCounters` (no icons, no FILTER tag, no pointer); an explanatory sentence is an info icon (`PageCounterItem.info`). The old icon-tile strip and the `?look=classic` comparison switch were removed (owner chose this look).
-- **One Add button.** When "Add" has several kinds, the tab or page shows **one** Add button that opens a chooser dialog with large tiles and a short explanation for each (Teams tab: Our team, Opponent team, Copy teams). No separate Copy or Add-variant buttons beside it.
+- **One Add button.** When "Add" has several kinds, the tab or page shows **one** Add button that opens a chooser dialog with large tiles and a short explanation for each (Teams tab: Our Team, Opponent Team, Copy Teams). No separate Copy or Add-variant buttons beside it.
 - **Social links** are inline contact items like the others on the line: the small brand icon then the network name as a text link ("Facebook"), same size and colour as the website link (`SocialLinksRow variant="labelled"`). The round-button variant was tried and rejected (owner: "looks silly").
 
 **Proposed, applied on the league page for owner review, not yet Decided:**
@@ -115,11 +119,11 @@ Update the status as each page is brought in line. "Reviewed" means differences 
 | Overview | Not reviewed | |
 | Player stats / Team stats / Leaderboards | Not reviewed | Different title style; stat tiles with icons |
 | Club profile | Not reviewed | h5 title, not the page title style |
-| Import wizard and import history | Not reviewed | |
+| Import wizard and import history | Built and standards-reviewed (branch `feat/097-098-import-framework-and-schedule-import`, specs 097, 098, 125) | Owner hand-check pending |
 
 ## 10. Per-page review checklist
 Copy into the PR description for each page.
-- [ ] Top row: Back alone. Title row: Actions menu and one filled primary right-aligned on the title row.
+- [ ] Top row: Back alone. Title row: one filled Manage <thing> menu button right-aligned (or Add X on a list page); no separate Actions menu.
 - [ ] Season pill beside the title (season-scoped pages).
 - [ ] Title row: badges inline; contacts under the title, social links as icon plus name items on that line.
 - [ ] Figure cards are the Matches counter card; no icons; no "FILTER" tag; pointer, hover and selected ring on clickable ones.

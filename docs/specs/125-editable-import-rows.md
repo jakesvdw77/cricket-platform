@@ -1,6 +1,6 @@
 # 125: Editable import rows and starting without a file
 
-**Status:** draft for the owner's approval (2026-10-30). Amends `097-import-framework.md` (one non-goal and the file-only start) and extends `098-league-schedule-import.md`; nothing else in either spec changes.
+**Status:** approved by the owner in chat (2026-10-30), built. Amends `097-import-framework.md` (one non-goal and the file-only start) and extends `098-league-schedule-import.md`; nothing else in either spec changes.
 **Depends on:** `097-import-framework.md` (batch, decisions, token, digest, wizard), `098-league-schedule-import.md` (first consumer), `docs/standards/backend.md`, `docs/standards/frontend.md`, `docs/standards/design-system.md`.
 
 ## Problem & Goals

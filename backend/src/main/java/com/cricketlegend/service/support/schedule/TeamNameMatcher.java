@@ -401,7 +401,46 @@ public class TeamNameMatcher {
         if (c.acronym() != null && initials(s).contains(c.acronym())) {
             return new Base(92, List.of(c.acronym() + " = initials of " + s.displayBase()));
         }
+        String embedded = embeddedAcronym(s, c);
+        if (embedded == null) {
+            embedded = embeddedAcronym(c, s);
+        }
+        if (embedded != null) {
+            return new Base(92, List.of(embedded));
+        }
         return fuzzy(s, c, joinedS, joinedC);
+    }
+
+    /**
+     * An acronym token inside a multi-word name (spec 098 rule 3): {@code PHSOB VETERANS} against {@code Pretoria High
+     * School Old Boys Veterans}. The words around the capital-letter token must equal the full name's words around a run
+     * of words whose initials are the token. Returns the reason, or null. The team number is judged by the caller.
+     */
+    private static String embeddedAcronym(Form written, Form full) {
+        List<String> w = written.base();
+        List<String> f = full.base();
+        if (w.size() < 2 || f.size() <= w.size()) {
+            return null;
+        }
+        Set<String> capitals = Form.rawCapitals(written.raw());
+        for (int i = 0; i < w.size(); i++) {
+            String token = w.get(i);
+            if (!token.matches("[A-Z]{3,8}") || !capitals.contains(token)) {
+                continue;
+            }
+            List<String> before = w.subList(0, i);
+            List<String> after = w.subList(i + 1, w.size());
+            int midEnd = f.size() - after.size();
+            if (midEnd <= before.size() || !f.subList(0, before.size()).equals(before)
+                    || !f.subList(midEnd, f.size()).equals(after)) {
+                continue;
+            }
+            List<String> middle = f.subList(before.size(), midEnd);
+            if (token.equals(initialsOf(middle))) {
+                return token + " = initials of " + String.join(" ", middle) + " (in " + written.displayBase() + ")";
+            }
+        }
+        return null;
     }
 
     private static List<String> synonymReasons(Form s, Form c) {

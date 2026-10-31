@@ -211,7 +211,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 ## Deferred by `126`: League page actions and edit mode
 
 - **Teams tab toolbar variant.** Spec 126's mockup shows Copy teams and Add league team on a toolbar line; Phase 1 left the Teams tab as built (actions in each panel's header, per "Layout density"). Build the toolbar version only if the owner asks.
-- **An Actions menu for the team and match pages.** `components/ActionsMenu` exists; `MatchHeaderActions` and the team page still build their own menus.
+- **An Actions menu for the team and match pages.** `components/ActionsMenu` was deleted (superseded by `components/ManageMenu`, `docs/standards/page-anatomy.md` section 8); `MatchHeaderActions` and the team page still build their own menus and should move to `ManageMenu`.
 - **Phase 2, Edit schedule mode** (replaces the Schedule toolbar's Add match): planned separately after the owner's hand-check of Phase 1.
 
 ## Deferred by `096`: Duplicate league

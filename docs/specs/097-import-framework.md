@@ -1,7 +1,7 @@
 # 097: Import Framework
 
 **Depends on:** `029-league-management.md` (`League`, `Season`, `Match`, `LeagueAffiliation`), `070-league-teams.md` (per league and season `LeagueTeam`, the `lower(name)` uniqueness index, the explicit-checklist copy pattern this framework generalises), `050-league-schedule-and-fixtures.md` (its Non-goal "no bulk fixture import" is what `098` lifts), `051` (Full Schedule PDF, poster and calendar shares, read-only here), `095-league-edit-gold-standard.md` (the Schedule tab entry point), `docs/standards/*.md` (backend layering, exceptions, pagination, frontend anatomy, design system). `096` (duplicate league, confirm and result patterns) is **not present in `docs/specs/` on this branch**; the confirm/result patterns here were taken from the code instead (`ConfirmDialog`, `CopyLeagueTeamsDialog`, the `RemoveLeagueTeamResponse` outcome style). If `096` merges with a conflicting pattern, reconcile in review.
-**Status:** approved (open questions resolved with their defaults, 2026-10-10); not planned or built. First consumer: `098-league-schedule-import.md`.
+**Status:** approved (open questions resolved with their defaults, 2026-10-10); built on branch `feat/097-098-import-framework-and-schedule-import` (2026-10-31). First consumer: `098-league-schedule-import.md`.
 
 ## Problem & Goals
 

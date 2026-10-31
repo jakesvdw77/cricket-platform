@@ -44,8 +44,8 @@ function renderUploadStep(context: ImportStepContext) {
         startingBlank={context.startingBlank}
       />
       <WizardFooter
-        primary={{ label: context.uploading ? 'Checking the file...' : 'Upload and check rows', onClick: context.onUpload, disabled: !context.file || context.uploading || context.startingBlank }}
-        secondary={batch ? { label: 'Keep the current check', onClick: context.onSkipUpload, disabled: context.uploading } : undefined}
+        primary={{ label: context.uploading ? 'Checking the File...' : 'Upload and Check Rows', onClick: context.onUpload, disabled: !context.file || context.uploading || context.startingBlank }}
+        secondary={batch ? { label: 'Keep the Current Check', onClick: context.onSkipUpload, disabled: context.uploading } : undefined}
         note="Nothing is saved at this step."
       />
     </Box>

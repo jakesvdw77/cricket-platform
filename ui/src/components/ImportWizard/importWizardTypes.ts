@@ -95,7 +95,7 @@ export interface ImportStepContext {
   confirming: boolean
   onConfirm: () => void
 
-  // Review's "Change teams" / "Change our teams": open a team step that was skipped because nothing was in doubt.
+  // Review's "Change Teams" / "Change our teams": open a team step that was skipped because nothing was in doubt.
   onChangeTeams?: () => void
   onChangeOurs?: () => void
   onBack: () => void
@@ -106,7 +106,7 @@ export interface ImportStepContext {
 }
 
 // What decides whether a step is in the flow. `current` is the step on screen (null when asking what comes next): a step the user is
-// on stays in the flow until they leave it, so settling its last name does not make it vanish under them, and Change teams can open it.
+// on stays in the flow until they leave it, so settling its last name does not make it vanish under them, and Change Teams can open it.
 export type ImportStepAppliesContext = Pick<ImportStepContext, 'type' | 'scope' | 'batch' | 'decisions' | 'notOurs'> & { current: ImportStepId | null }
 
 export interface ImportStepRegistration {

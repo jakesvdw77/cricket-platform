@@ -47,6 +47,7 @@ import com.cricketlegend.service.support.EffectiveImport;
 import com.cricketlegend.service.support.ImportBatchFailureRecorder;
 import com.cricketlegend.service.support.ImportConfirmationToken;
 import com.cricketlegend.service.support.ImportDigest;
+import com.cricketlegend.service.support.ImportEvaluation;
 import com.cricketlegend.service.support.ImportFile;
 import com.cricketlegend.service.support.ImportFileSniffer;
 import com.cricketlegend.service.support.ImportHandlerRegistry;
@@ -231,7 +232,7 @@ public class ImportServiceImpl implements ImportService {
             throw new ImportFileRejectedException("The file has more than 1,000 data rows. Split it into smaller files.");
         }
         ImportDecisionsDto decisions = ImportDecisionsDto.empty();
-        Evaluation evaluation = evaluate(handler, type, parsed, scope, decisions, zone.getId());
+        ImportEvaluation evaluation = evaluate(handler, type, parsed, scope, decisions, zone.getId());
 
         String fileSha = digests.sha256(file.content());
         String rowsSha = digests.rows(parsed.rows());
@@ -260,7 +261,7 @@ public class ImportServiceImpl implements ImportService {
 
         ParsedImport parsed = new ParsedImport(List.of(), List.of(), Map.of("timeZone", zone.getId()));
         ImportDecisionsDto decisions = ImportDecisionsDto.empty();
-        Evaluation evaluation = evaluate(handler, type, parsed, scope, decisions, zone.getId());
+        ImportEvaluation evaluation = evaluate(handler, type, parsed, scope, decisions, zone.getId());
         return newBatch(handler, userId, scope, scopeKey, zone, ImportSource.MANUAL, BLANK_FILE_NAME,
                 digests.sha256(new byte[0]), digests.rows(List.of()), 0, evaluation, List.of(), parsed, null, decisions);
     }
@@ -276,7 +277,7 @@ public class ImportServiceImpl implements ImportService {
             String fileSha,
             String rowsSha,
             long fileSize,
-            Evaluation evaluation,
+            ImportEvaluation evaluation,
             List<ImportRowDto> fileRows,
             ParsedImport parsed,
             String earlier,
@@ -377,7 +378,7 @@ public class ImportServiceImpl implements ImportService {
         ImportScope scope = scopeOf(batch);
         ImportDecisionsDto decisions = request.decisions();
         ParsedImport parsed = parsedOf(handler, stored, decisions);
-        Evaluation evaluation = evaluate(handler, batch.getType(), parsed, scope, decisions, batch.getTimeZone());
+        ImportEvaluation evaluation = evaluate(handler, batch.getType(), parsed, scope, decisions, batch.getTimeZone());
         // Spec 125: a name an edit made vanish keeps no resolution; the cleaned decisions are what is stored and signed.
         ImportDecisionsDto pruned = pruneUnused(decisions, evaluation.proposals());
         if (pruned != decisions) {
@@ -450,7 +451,7 @@ public class ImportServiceImpl implements ImportService {
 
         // Live re-validation, including record identity: data may have changed since the preview.
         ParsedImport parsed = parsedOf(handler, stored, decisions);
-        Evaluation live = evaluate(handler, batch.getType(), parsed, scope, decisions, batch.getTimeZone());
+        ImportEvaluation live = evaluate(handler, batch.getType(), parsed, scope, decisions, batch.getTimeZone());
         Set<Integer> excluded = ImportReview.excluded(decisions);
         List<ImportIssueDto> blocking = new ArrayList<>(ImportReview.blockingErrors(live.issues(), excluded));
         blocking.addAll(ImportReview.unacknowledgedWarnings(live.issues(), decisions, excluded));
@@ -502,24 +503,25 @@ public class ImportServiceImpl implements ImportService {
         ImportBatch batch = batches.findByIdAndClubIdForUpdate(batchId, clubId)
                 .orElseThrow(ImportBatchNotFoundException::new);
         UUID userId = currentUserId(authentication);
-        switch (batch.getStatus()) {
-            case DISCARDED -> {
-                return toDto(batch, null, null, null, null);
-            }
-            case PREVIEW -> {
-                requireCreator(batch, userId);
-                batch.setStatus(ImportBatchStatus.DISCARDED);
-                batch.setPayload(null);
-                batch.setConfirmationDigest(null);
-                batch.setTokenIssuedAt(null);
-                ImportBatch saved = batches.save(batch);
-                log.info("Import discarded: batch {} club {}", saved.getId(), clubId);
-                return toDto(saved, null, null, null, null);
-            }
-            case COMMITTED -> throw new ImportBatchStateException(
-                    "This import has already been committed. Delete it instead if it was a mistake.");
-            default -> throw new ImportBatchStateException("This import can no longer be discarded.");
+        ImportBatchStatus status = batch.getStatus();
+        if (status == ImportBatchStatus.DISCARDED) {
+            return toDto(batch, null, null, null, null);
         }
+        if (status == ImportBatchStatus.COMMITTED) {
+            throw new ImportBatchStateException(
+                    "This import has already been committed. Delete it instead if it was a mistake.");
+        }
+        if (status != ImportBatchStatus.PREVIEW) {
+            throw new ImportBatchStateException("This import can no longer be discarded.");
+        }
+        requireCreator(batch, userId);
+        batch.setStatus(ImportBatchStatus.DISCARDED);
+        batch.setPayload(null);
+        batch.setConfirmationDigest(null);
+        batch.setTokenIssuedAt(null);
+        ImportBatch saved = batches.save(batch);
+        log.info("Import discarded: batch {} club {}", saved.getId(), clubId);
+        return toDto(saved, null, null, null, null);
     }
 
     // ---- deletion ----
@@ -577,17 +579,8 @@ public class ImportServiceImpl implements ImportService {
 
     // ---- evaluation ----
 
-    private record Evaluation(
-            List<ImportRowDto> rows,
-            List<ImportIssueDto> issues,
-            List<ReferenceProposalDto> proposals,
-            List<PlannedChangeDto> planned,
-            Map<String, Object> counts,
-            EffectiveImport effective) {
-    }
-
     /** Validates with the decisions applied, applies exclusions and, when nothing blocks, lists the planned changes. */
-    private Evaluation evaluate(
+    private ImportEvaluation evaluate(
             ImportTypeHandler handler,
             String type,
             ParsedImport parsed,
@@ -601,17 +594,17 @@ public class ImportServiceImpl implements ImportService {
         boolean blocked = !ImportReview.blockingErrors(result.issues(), ImportReview.excluded(decisions)).isEmpty();
         List<PlannedChangeDto> planned = blocked ? List.of() : handler.plannedChanges(effective);
         List<ReferenceProposalDto> proposals = handler.propose(parsed, scope);
-        return new Evaluation(rows, result.issues(), proposals, planned, ImportReview.counts(rows, planned), effective);
+        return new ImportEvaluation(rows, result.issues(), proposals, planned, ImportReview.counts(rows, planned), effective);
     }
 
     private ImportPayload payloadOf(
-            Evaluation evaluation, List<ImportRowDto> fileRows, ParsedImport parsed, String earlierImportWarning) {
+            ImportEvaluation evaluation, List<ImportRowDto> fileRows, ParsedImport parsed, String earlierImportWarning) {
         return new ImportPayload(evaluation.rows(), fileRows, evaluation.issues(), evaluation.proposals(), evaluation.planned(),
                 parsed.fileWarnings(), parsed.meta(), earlierImportWarning);
     }
 
     private void applyEvaluation(
-            ImportBatch batch, Evaluation evaluation, List<ImportRowDto> fileRows, ParsedImport parsed, String earlier) {
+            ImportBatch batch, ImportEvaluation evaluation, List<ImportRowDto> fileRows, ParsedImport parsed, String earlier) {
         batch.setPayload(json.toMap(payloadOf(evaluation, fileRows, parsed, earlier)));
         batch.setCounts(evaluation.counts());
         batch.setRevision(batch.getRevision() + 1);
@@ -622,7 +615,7 @@ public class ImportServiceImpl implements ImportService {
 
     /** Stores the freshly validated state (new revision, no token) and returns it for the 400 or 409 body. */
     private ImportBatchDto refreshAfterConflict(
-            ImportBatch batch, Evaluation live, List<ImportRowDto> fileRows, ParsedImport parsed, String earlier) {
+            ImportBatch batch, ImportEvaluation live, List<ImportRowDto> fileRows, ParsedImport parsed, String earlier) {
         applyEvaluation(batch, live, fileRows, parsed, earlier);
         ImportBatch saved = batches.save(batch);
         return toDto(saved, payloadOf(live, fileRows, parsed, earlier), firstPage(live.rows()), null, null);

@@ -1,6 +1,6 @@
 # 127: Return navigation ("go back to where I came from")
 
-**Status:** draft for the owner's approval (2026-10-31). First applied to the Leagues pages (the owner wants Leagues 100% before any other page); the same rule then moves across the application page by page.
+**Status:** approved by the owner in chat (2026-10-31), built. First applied to the Leagues pages (the owner wants Leagues 100% before any other page); the same rule then moves across the application page by page.
 **Depends on:** `docs/standards/page-anatomy.md` (page skeleton, Back on the top row), `docs/standards/frontend.md`, `126-league-page-actions-and-edit-mode.md` (Manage League menu, row menus), `docs/standards/design-system.md`.
 
 ## Problem & Goals

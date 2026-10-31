@@ -1,6 +1,6 @@
 # 126: League page actions, and a schedule edit mode
 
-**Status:** draft for the owner's approval (2026-10-30). Mockup approved in principle by the owner ("looks good", one-line fixes applied): `docs/mockups/league-page-actions-and-edit-mode-mockup.html`. Builds in two phases (see Rollout).
+**Status:** Phase 1 approved by the owner and built; Phase 2 (edit-schedule mode, edit-session endpoint) NOT built. Mockup approved in principle by the owner ("looks good", one-line fixes applied): `docs/mockups/league-page-actions-and-edit-mode-mockup.html`. Builds in two phases (see Rollout).
 **Depends on:** `091-leagues-gold-standard.md` and `095-league-edit-gold-standard.md` (the league page and the league edit page), `122-league-sharing.md` (Share League dialog), `097`, `098` and `125` (import framework, schedule import, editable rows), `docs/standards/design-system.md` (record detail page, buttons, "Layout density"), `docs/standards/frontend.md`.
 
 ## Problem & Goals
@@ -24,12 +24,13 @@ The league page has drifted from the standard detail page: five buttons of mixed
 - As a club admin, I am told when a match cannot be removed or have its time changed because it has a poll, selection, announced team or result.
 
 ## Page layout (view mode)
-- **Top row:** Back on the left; on the right the Season pill, an **Actions** menu and the filled **Edit league** (the existing edit page). The Actions menu holds **Duplicate league**, **Share league...** (opens the Share League dialog) and **Import history (n)**. On a phone the Season pill and an Actions icon button share the row and Edit league is a full-width button under the title.
-- **Amendment 2026-10-31:** the menus below were reworked: no corner pencil; Manage League is league-wide only; each tab has a white Manage Schedule, Manage Teams or Manage Playing Conditions menu with Share last. See `docs/standards/page-anatomy.md` section 8.
+- **Top row:** Back alone on the left.
+- **Title row (as built, `docs/standards/page-anatomy.md` sections 1, 5 and 8):** logo, name, format and Active badges, the Season pill, then ONE filled **Manage League** menu button on the right (full width under the title on a phone). It is league-wide only: **Edit League Details**, **Duplicate League**, **Import History (n)**, **Share League** (Share last). There is no corner edit pencil and no separate Actions menu.
+- **Tab rows (as built):** each tab has at most one white secondary menu button with a caret, same fixed width as Manage League, Share always last: **Manage Schedule** (Add Match, Import Schedule, Share Schedule), **Manage Teams** (Add Team, Copy Teams, Share Teams), **Manage Playing Conditions** (Edit Playing Conditions, Share Playing Conditions, View Document). Each Share item opens the Share League dialog with only that tab's content ticked.
 - **Header content:** title, format and Active badges, the contacts and links line, the key-figure strip, then the tabs (unchanged).
-- **Schedule tab toolbar line:** the scope text ("Showing 6 matches . 2026/2027") on the left; on the right the **Only our matches** and **View entire season** switches, an outlined **Import schedule** and the filled **Edit schedule**. The header's **Create match** button is removed (see Edit mode, Add match, and the row chevron which still opens the full Match form).
-- **Teams and Conditions tabs:** their actions sit on their own toolbar lines, right-aligned, one filled button at most (Teams: outlined **Copy teams**, filled **Add league team**; Conditions: outlined **Share**, filled **Edit conditions**). The top row never changes between tabs.
-- **League edit page:** its Schedule tab no longer carries Share, Import and Add match; it shows a short panel pointing to **Edit schedule** on the league page (the same entry opens edit mode directly via `?edit=schedule`).
+- **Schedule tab:** the filters and switches sit in the table's own toolbar; its actions are in **Manage Schedule** (Phase 2 adds Edit Schedule). The header's Create match button is removed (Add Match is in Manage Schedule).
+- **Teams and Conditions tabs:** **Manage Teams** and **Manage Playing Conditions** as above; the top row never changes between tabs.
+- **League edit page:** superseded by `128-*`: it holds settings only, with no Teams or Schedule tabs (old `?tab=teams` and `?tab=schedule` open Details); the "Open schedule" pointer panel was never needed.
 
 ## Edit schedule mode
 - **Entering:** **Edit schedule** switches the Schedule tab into edit mode (route `/manage/fixtures/leagues/:leagueId/schedule?seasonId=&edit=1`, so it survives a reload). The top row stays but Actions and Edit league are disabled, the other tabs are disabled, and the toolbar line becomes an **edit bar**: "Editing schedule", a chip "3 changes" with a breakdown (added, changed, removed), **Add match**, **Discard** and the filled **Review and save**.
@@ -51,13 +52,13 @@ Phase 1 has none. Phase 2 is additive on the `097` endpoints: `POST /imports/LEA
 Written after the owner's hand-check, per the standing rule. Phase 1: component tests for the top row and Actions menu (items, Share dialog opens, history opens, phone layout), the tab toolbars (one filled button, order), removal of Create match, the edit page pointer panel, and white-filled secondary buttons. Phase 2: backend unit and integration tests for the edit-session batch (preload, update rules and blockers, delete rules, all-or-nothing commit, token refused after an edit, re-validation, other club and section manager refused), handler tests for UPDATE and DELETE outcomes, UI tests for the edit bar, row states, Review and Discard, and an end-to-end golden path (skipped in CI until Keycloak).
 
 ## Acceptance Criteria
-1. The league page top row holds only the Season pill, Actions and Edit league on every tab; no other page-level button appears there.
-2. Schedule actions (Import schedule, Edit schedule) sit on the Schedule toolbar line; Teams and Conditions keep their own toolbar actions; no control sits alone in its own row on desktop.
+1. The league page top row holds only Back; the title row holds the Season pill and ONE filled Manage League button (Edit League Details, Duplicate League, Import History, Share League), identical on every tab; no corner pencil and no other page-level button.
+2. Each tab has one white Manage Schedule, Manage Teams or Manage Playing Conditions button (equal width to Manage League, Share last) on the tab row; no control sits alone in its own row on desktop.
 3. Create match is gone from the top row; every route to the Match form that existed still works (row chevron, Add match in edit mode).
 4. Secondary buttons render white-filled, on the page wash and on cards.
 5. (Phase 2) Edit schedule changes, adds and removes matches through one reviewed, server-confirmed save; blocked changes explain why; nothing is written before the confirmation.
 
 ## Rollout Notes
-- **Phase 1 (layout):** top row, Actions menu, tab toolbars, removal of the header Create match, the edit page pointer panel, `design-system.md` update (record detail page and buttons). UI only, no backend.
+- **Phase 1 (layout), built:** Manage League and per-tab Manage menus, removal of the header Create match, `design-system.md` update. UI only, no backend. Phase 2 is NOT built.
 - **Phase 2 (Edit schedule mode):** the edit-session batch, handler UPDATE and DELETE outcomes, the edit bar, row states, Review and Discard. Largest part; planned separately after Phase 1 is hand-checked.
 - `docs/roadmap.md`: add the leftovers when approved (stats tab toolbars, an Actions menu for other record pages).

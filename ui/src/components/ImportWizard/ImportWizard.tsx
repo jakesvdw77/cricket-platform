@@ -57,7 +57,7 @@ export interface ImportWizardProps {
   createOptions?: ResolverCreateOptions
   // List the weak (below 70) candidates behind a button.
   collapseLowCandidates?: boolean
-  // The Confirm button's wording, from the batch ("Confirm and create 6 teams and 90 matches").
+  // The Confirm button's wording, from the batch ("Confirm and Create 6 Teams and 90 matches").
   confirmLabelFor?: (batch: ImportBatch) => string
   // Issue codes that a later step clears, so Check rows lists them as pending and does not block on them.
   deferredCodes?: string[]
@@ -325,15 +325,15 @@ export function ImportWizard({ clubId, type: typeName, scope: baseScope, title, 
   if (typesQuery.isPending || (initialBatchId !== null && batchQuery.isPending && batch === null)) {
     body = <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress size={24} aria-label="Loading the import" /></Box>
   } else if (typesQuery.isError || !type) {
-    body = <EmptyState title="This import is not available" description="We could not find this kind of import for your club." action={<Button size="compact" onClick={() => void typesQuery.refetch()}>Try again</Button>} />
+    body = <EmptyState title="This import is not available" description="We could not find this kind of import for your club." action={<Button size="compact" onClick={() => void typesQuery.refetch()}>Try Again</Button>} />
   } else if (batchId && batchQuery.isError && !batch) {
-    body = <EmptyState title="We could not open this import" description="It may have been removed, or it belongs to another club." action={<Button size="compact" onClick={startAgain}>Start a new import</Button>} />
+    body = <EmptyState title="We could not open this import" description="It may have been removed, or it belongs to another club." action={<Button size="compact" onClick={startAgain}>Start a New Import</Button>} />
   } else if (batch && (batch.status === 'DISCARDED' || batch.status === 'EXPIRED')) {
     body = (
       <EmptyState
         title={batch.status === 'EXPIRED' ? 'This import has expired' : 'This import was discarded'}
         description="Nothing was imported. Upload the file again to start a new import."
-        action={<Button size="compact" onClick={startAgain}>Start a new import</Button>}
+        action={<Button size="compact" onClick={startAgain}>Start a New Import</Button>}
       />
     )
   } else if (active.id !== 'upload' && !batch) {

@@ -97,8 +97,8 @@ export function scheduleConfirmLabel(planned: PlannedChange[] | null): string {
   const teams = created.filter((change) => change.entityType === 'LEAGUE_TEAM').length
   const matches = created.filter((change) => change.entityType === 'MATCH').length
   const part = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
-  if (teams > 0 && matches > 0) return `Confirm and create ${part(teams, 'team', 'teams')} and ${part(matches, 'match', 'matches')}`
-  if (matches > 0) return `Confirm and create ${part(matches, 'match', 'matches')}`
-  if (teams > 0) return `Confirm and create ${part(teams, 'team', 'teams')}`
-  return 'Confirm and import'
+  if (teams > 0 && matches > 0) return `Confirm and Create ${part(teams, 'Team', 'Teams')} and ${part(matches, 'Match', 'Matches')}`
+  if (matches > 0) return `Confirm and Create ${part(matches, 'Match', 'Matches')}`
+  if (teams > 0) return `Confirm and Create ${part(teams, 'Team', 'Teams')}`
+  return 'Confirm and Import'
 }

@@ -214,7 +214,7 @@ function RowsView({ clubId, batch, decisions, columns, status, outcome, editable
   if (rowsQuery.isPending) return <CircularProgress size={22} aria-label="Loading rows" sx={{ alignSelf: 'center', m: 2 }} />
   if (rowsQuery.isError) {
     return (
-      <Alert severity="error" action={<Button size="compact" variant="ghost" onClick={() => void rowsQuery.refetch()}>Try again</Button>}>
+      <Alert severity="error" action={<Button size="compact" variant="ghost" onClick={() => void rowsQuery.refetch()}>Try Again</Button>}>
         We could not load the rows.
       </Alert>
     )

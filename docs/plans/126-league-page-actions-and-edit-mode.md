@@ -1,5 +1,7 @@
 # Plan 126 (Phase 1): League page layout
 
+> **Superseded in part (2026-10-31):** the Actions menu (`ActionsMenu`, now deleted) became the filled Manage League `ManageMenu` plus white per-tab Manage menus (`docs/standards/page-anatomy.md` section 8); the "Open schedule" pointer panel on the edit page and the edit page's Teams and Schedule tabs were removed by spec 128. Items below that describe them are superseded.
+
 Implements Phase 1 of `docs/specs/126-league-page-actions-and-edit-mode.md` (draft, mockup `docs/mockups/league-page-actions-and-edit-mode-mockup.html` approved in principle by the owner). UI only, no backend, no migration. Phase 2 (Edit schedule mode) is planned separately after the owner has seen Phase 1. Branch: `feat/097-098-import-framework-and-schedule-import` (uncommitted work continues here).
 
 ## Context

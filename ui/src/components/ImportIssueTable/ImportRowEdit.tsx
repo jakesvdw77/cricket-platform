@@ -154,7 +154,7 @@ export function EditActions({ onSave, onCancel, onReset, disabled }: { onSave: (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 0.5, justifyContent: 'flex-end', mt: { xs: 1, md: 0 } }}>
       <Button size="compact" disabled={disabled} onClick={onSave} sx={sx}>Save</Button>
       <Button size="compact" variant="secondary" onClick={onCancel} sx={sx}>Cancel</Button>
-      {onReset && <Button size="compact" variant="ghost" disabled={disabled} onClick={onReset} sx={sx}>Reset to file values</Button>}
+      {onReset && <Button size="compact" variant="ghost" disabled={disabled} onClick={onReset} sx={sx}>Reset to File Values</Button>}
     </Box>
   )
 }

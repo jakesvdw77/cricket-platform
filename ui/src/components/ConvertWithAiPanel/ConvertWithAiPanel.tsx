@@ -67,7 +67,7 @@ export function ConvertWithAiPanel({ prompt, loading = false, error = false, onR
       </Box>
       {loading && <CircularProgress size={20} aria-label="Loading the prompt" />}
       {error && (
-        <Alert severity="error" action={onRetry ? <Button size="compact" variant="ghost" onClick={onRetry}>Try again</Button> : undefined}>
+        <Alert severity="error" action={onRetry ? <Button size="compact" variant="ghost" onClick={onRetry}>Try Again</Button> : undefined}>
           We could not load the prompt.
         </Alert>
       )}

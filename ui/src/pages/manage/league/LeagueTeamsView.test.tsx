@@ -371,7 +371,7 @@ describe('LeagueTeamsView', () => {
       ])
 
       await openManageTeams(user, 'Add Team')
-      await user.click(await screen.findByRole('button', { name: /Our team/ }))
+      await user.click(await screen.findByRole('button', { name: /Our Team/ }))
       await user.click(await screen.findByRole('combobox', { name: 'Search teams' }))
       expect(await screen.findByRole('option', { name: '2nd XI' })).toBeInTheDocument()
       expect(screen.queryByRole('option', { name: '1st XI' })).not.toBeInTheDocument()
@@ -395,7 +395,7 @@ describe('LeagueTeamsView', () => {
       ])
 
       await openManageTeams(user, 'Add Team')
-      await user.click(await screen.findByRole('button', { name: /Opponent team/ }))
+      await user.click(await screen.findByRole('button', { name: /Opponent Team/ }))
       await user.type(await screen.findByLabelText(/Team name/), 'Police')
       await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -412,7 +412,7 @@ describe('LeagueTeamsView', () => {
 
       renderLeagueView(TEAMS_PATH)
       await openManageTeams(user, 'Add Team')
-      await user.click(await screen.findByRole('button', { name: /Opponent team/ }))
+      await user.click(await screen.findByRole('button', { name: /Opponent Team/ }))
       await user.type(await screen.findByLabelText(/Team name/), 'Police')
       await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -425,7 +425,7 @@ describe('LeagueTeamsView', () => {
 
       renderLeagueView(TEAMS_PATH)
       await openManageTeams(user, 'Add Team')
-      await user.click(await screen.findByRole('button', { name: /Copy teams/ }))
+      await user.click(await screen.findByRole('button', { name: /Copy Teams/ }))
 
       expect(await screen.findByText('Copy league teams')).toBeInTheDocument()
       expect(screen.queryByRole('dialog', { name: 'Add a team' })).not.toBeInTheDocument()

@@ -152,7 +152,7 @@ public class ImportController {
             Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID batchId,
-            @RequestBody CommitImportRequest request) {
+            @Valid @RequestBody CommitImportRequest request) {
         return ResponseEntity.ok(importService.commit(authentication, clubId, batchId, request));
     }
 
@@ -187,7 +187,7 @@ public class ImportController {
             Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID batchId,
-            @RequestBody DeleteImportRequest request) {
+            @Valid @RequestBody DeleteImportRequest request) {
         return ResponseEntity.ok(importService.delete(authentication, clubId, batchId, request));
     }
 

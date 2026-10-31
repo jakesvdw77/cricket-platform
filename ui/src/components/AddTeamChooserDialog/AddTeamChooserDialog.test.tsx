@@ -10,34 +10,34 @@ function setup(extra: { copyDisabledReason?: string } = {}) {
 }
 
 describe('AddTeamChooserDialog', () => {
-  it('is titled "Add a team" with an Our team and an Opponent team tile', () => {
+  it('is titled "Add a team" with an Our Team and an Opponent Team tile', () => {
     setup()
     expect(screen.getByRole('dialog', { name: 'Add a team' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Our team/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Opponent team/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Our Team/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Opponent Team/ })).toBeInTheDocument()
   })
 
   it('calls the matching handler for each tile', async () => {
     const user = userEvent.setup()
     const handlers = setup()
-    await user.click(screen.getByRole('button', { name: /Our team/ }))
+    await user.click(screen.getByRole('button', { name: /Our Team/ }))
     expect(handlers.onChooseOwn).toHaveBeenCalledTimes(1)
-    await user.click(screen.getByRole('button', { name: /Opponent team/ }))
+    await user.click(screen.getByRole('button', { name: /Opponent Team/ }))
     expect(handlers.onChooseOpponent).toHaveBeenCalledTimes(1)
-    await user.click(screen.getByRole('button', { name: /Copy teams/ }))
+    await user.click(screen.getByRole('button', { name: /Copy Teams/ }))
     expect(handlers.onChooseCopy).toHaveBeenCalledTimes(1)
   })
 
   it('offers three tiles, each with an explanation', () => {
     setup()
-    expect(screen.getByRole('button', { name: /Copy teams.*another league or season/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Copy Teams.*another league or season/ })).toBeEnabled()
     expect(screen.getByText("One of your club's teams playing in this league this season.")).toBeInTheDocument()
     expect(screen.getByText('A team you play against. It is only used in this league and season.')).toBeInTheDocument()
   })
 
-  it('disables Copy teams with the reason when there is no season', async () => {
+  it('disables Copy Teams with the reason when there is no season', async () => {
     const handlers = setup({ copyDisabledReason: 'Pick a season first.' })
-    const tile = screen.getByRole('button', { name: /Copy teams/ })
+    const tile = screen.getByRole('button', { name: /Copy Teams/ })
     expect(tile).toBeDisabled()
     expect(tile).toHaveTextContent('Pick a season first.')
     expect(handlers.onChooseCopy).not.toHaveBeenCalled()
@@ -46,7 +46,7 @@ describe('AddTeamChooserDialog', () => {
   it('can be chosen from the keyboard', async () => {
     const user = userEvent.setup()
     const handlers = setup()
-    screen.getByRole('button', { name: /Opponent team/ }).focus()
+    screen.getByRole('button', { name: /Opponent Team/ }).focus()
     await user.keyboard('{Enter}')
     expect(handlers.onChooseOpponent).toHaveBeenCalledTimes(1)
   })

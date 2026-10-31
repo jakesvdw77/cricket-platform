@@ -29,7 +29,7 @@ export interface ImportConfirmPanelProps {
   describeChange?: (change: PlannedChange) => DescribedChange
   // Plural names of the entity types for the list headings ({ MATCH: 'Matches' }); default: the type, tidied.
   entityLabels?: Record<string, string>
-  // Spec 125 amendment: a quiet "Teams: 10 matched, 2 new" line with a "Change teams" action that opens the team step; omitted, no line.
+  // Spec 125 amendment: a quiet "Teams: 10 matched, 2 new" line with a "Change Teams" action that opens the team step; omitted, no line.
   teamSummary?: { matched: number; created: number } | null
   teamsLabel?: string
   onChangeTeams?: () => void
@@ -101,7 +101,7 @@ function ChangeList({ heading, changes, describe, tone }: { heading: string; cha
 // docs/specs/097-import-framework.md, Review step: the counts, everything that will be created or updated, the warnings grouped
 // by kind each with its own tick, an Alert saying nothing has been saved yet, and the primary Confirm button, disabled with the
 // reason beside it until there are no errors and every warning is acknowledged. The button is full width and sticky on a phone.
-export function ImportConfirmPanel({ batch, decisions, onDecisionsChange, describeChange = defaultDescribe, entityLabels = {}, teamSummary, teamsLabel = 'Teams', onChangeTeams, changeOursLabel = 'our teams', onChangeOurs, onBack, onConfirm, saving = false, confirming = false, confirmLabel = 'Confirm and import', errorMessage }: ImportConfirmPanelProps) {
+export function ImportConfirmPanel({ batch, decisions, onDecisionsChange, describeChange = defaultDescribe, entityLabels = {}, teamSummary, teamsLabel = 'Teams', onChangeTeams, changeOursLabel = 'our teams', onChangeOurs, onBack, onConfirm, saving = false, confirming = false, confirmLabel = 'Confirm and Import', errorMessage }: ImportConfirmPanelProps) {
   const issues = batch.issues ?? []
   const planned = batch.plannedChanges ?? []
   const created = planned.filter((change) => change.action === 'CREATED')
@@ -140,7 +140,7 @@ export function ImportConfirmPanel({ batch, decisions, onDecisionsChange, descri
       {teamSummary && (
         <Box data-testid="team-summary" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1 }}>
           <Typography variant="body2" color="text.secondary">{teamsLabel}: {teamSummary.matched} matched, {teamSummary.created} new</Typography>
-          {onChangeTeams && <Button size="compact" variant="ghost" disabled={saving || confirming} onClick={onChangeTeams} sx={{ minHeight: { xs: 44, md: 32 } }}>Change teams</Button>}
+          {onChangeTeams && <Button size="compact" variant="ghost" disabled={saving || confirming} onClick={onChangeTeams} sx={{ minHeight: { xs: 44, md: 32 } }}>Change Teams</Button>}
           {onChangeOurs && <Button size="compact" variant="ghost" disabled={saving || confirming} onClick={onChangeOurs} sx={{ minHeight: { xs: 44, md: 32 } }}>{`Change ${changeOursLabel.toLowerCase()}`}</Button>}
         </Box>
       )}

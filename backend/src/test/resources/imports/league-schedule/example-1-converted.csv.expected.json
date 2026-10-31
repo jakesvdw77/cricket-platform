@@ -1,0 +1,174 @@
+{
+  "rejected": null,
+  "rows": [
+    {
+      "rowNumber": 2,
+      "date": "2026-09-13",
+      "time": "08:00",
+      "home": "IRENE VILLAGERS 1",
+      "away": "BRITS VETERANS 1",
+      "venue": "BRITS OVAL"
+    },
+    {
+      "rowNumber": 3,
+      "date": "2026-09-13",
+      "time": "11:00",
+      "home": "PHSOB VETERANS 1",
+      "away": "CBCOB VETERANS 1",
+      "venue": "IRENE COUNTRY CLUB"
+    },
+    {
+      "rowNumber": 4,
+      "date": "2026-09-13",
+      "time": "08:00",
+      "home": "PRETORIA 1",
+      "away": "SINOVILLE 1",
+      "venue": "PRETORIA A"
+    },
+    {
+      "rowNumber": 5,
+      "date": "2026-09-13",
+      "time": "14:30",
+      "home": "POLICE 1",
+      "away": "LAUDIUM 1",
+      "venue": "HOFMEYER PARK A"
+    },
+    {
+      "rowNumber": 6,
+      "date": "2026-09-13",
+      "time": "08:00",
+      "home": "POLICE 2",
+      "away": "LAUDIUM 2",
+      "venue": "ALOE PARK"
+    },
+    {
+      "rowNumber": 7,
+      "date": "2026-09-20",
+      "time": "08:00",
+      "home": "IRENE VILLAGERS 1",
+      "away": "PHSOB VETERANS 1",
+      "venue": "BRITS OVAL"
+    },
+    {
+      "rowNumber": 8,
+      "date": "2026-09-20",
+      "time": "11:00",
+      "home": "BRITS VETERANS 1",
+      "away": "CBCOB VETERANS 1",
+      "venue": "BRITS OVAL"
+    },
+    {
+      "rowNumber": 9,
+      "date": "2026-09-20",
+      "time": "08:00",
+      "home": "PRETORIA 1",
+      "away": "POLICE 1",
+      "venue": "PRETORIA A"
+    },
+    {
+      "rowNumber": 10,
+      "date": "2026-09-20",
+      "time": "10:00",
+      "home": "SINOVILLE 1",
+      "away": "LAUDIUM 1",
+      "venue": "ALOE PARK"
+    },
+    {
+      "rowNumber": 11,
+      "date": "2026-09-20",
+      "time": "14:00",
+      "home": "POLICE 2",
+      "away": "LAUDIUM 2",
+      "venue": "LAUDIUM OVAL"
+    },
+    {
+      "rowNumber": 12,
+      "date": "2026-09-27",
+      "time": "08:00",
+      "home": "IRENE VILLAGERS 1",
+      "away": "CBCOB VETERANS 1",
+      "venue": "IRENE COUNTRY CLUB"
+    },
+    {
+      "rowNumber": 13,
+      "date": "2026-09-27",
+      "time": "14:30",
+      "home": "BRITS VETERANS 1",
+      "away": "PHSOB VETERANS 1",
+      "venue": "BRITS OVAL"
+    },
+    {
+      "rowNumber": 14,
+      "date": "2026-09-27",
+      "time": "10:00",
+      "home": "PRETORIA 1",
+      "away": "LAUDIUM 1",
+      "venue": "PRETORIA A"
+    },
+    {
+      "rowNumber": 15,
+      "date": "2026-09-27",
+      "time": "08:00",
+      "home": "SINOVILLE 1",
+      "away": "POLICE 2",
+      "venue": "ALOE PARK"
+    },
+    {
+      "rowNumber": 16,
+      "date": "2026-09-27",
+      "time": "11:00",
+      "home": "POLICE 1",
+      "away": "LAUDIUM 2",
+      "venue": "HOFMEYER PARK A"
+    }
+  ],
+  "rowCodes": {},
+  "fileCodes": [],
+  "candidates": [
+    "Irene Villagers 1",
+    "Brits Vets 1",
+    "Police 1",
+    "Police 2",
+    "Laudium 1",
+    "Laudium 2",
+    "Pretoria"
+  ],
+  "proposals": {
+    "IRENE VILLAGERS 1": {
+      "target": "Irene Villagers 1",
+      "confidence": 100,
+      "preselected": true
+    },
+    "BRITS VETERANS 1": {
+      "target": "Brits Vets 1",
+      "confidence": 95,
+      "preselected": false
+    },
+    "POLICE 1": {
+      "target": "Police 1",
+      "confidence": 100,
+      "preselected": true
+    },
+    "POLICE 2": {
+      "target": "Police 2",
+      "confidence": 100,
+      "preselected": true
+    },
+    "LAUDIUM 1": {
+      "target": "Laudium 1",
+      "confidence": 100,
+      "preselected": true
+    },
+    "LAUDIUM 2": {
+      "target": "Laudium 2",
+      "confidence": 100,
+      "preselected": true
+    },
+    "PRETORIA 1": {
+      "target": "Pretoria",
+      "confidence": 75,
+      "preselected": false
+    },
+    "SINOVILLE 1": null
+  }
+}

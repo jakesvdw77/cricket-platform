@@ -75,20 +75,20 @@ export function AddTeamChooserDialog({ open, onClose, onChooseOwn, onChooseOppon
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
         <ChoiceTile
           icon={<GroupsOutlinedIcon color="primary" />}
-          label="Our team"
+          label="Our Team"
           description="One of your club's teams playing in this league this season."
           onClick={onChooseOwn}
         />
         <ChoiceTile
           icon={<SportsCricketOutlinedIcon color="primary" />}
-          label="Opponent team"
+          label="Opponent Team"
           description="A team you play against. It is only used in this league and season."
           onClick={onChooseOpponent}
         />
         {onChooseCopy && (
           <ChoiceTile
             icon={<ContentCopyOutlinedIcon color="primary" />}
-            label="Copy teams"
+            label="Copy Teams"
             description={copyDisabledReason ? `Bring league teams across from another league or season. ${copyDisabledReason}` : 'Bring league teams across from another league or season.'}
             onClick={onChooseCopy}
             disabled={Boolean(copyDisabledReason)}

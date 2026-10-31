@@ -1,0 +1,48 @@
+{
+  "rejected": null,
+  "rows": [
+    {
+      "rowNumber": 2,
+      "date": "2026-09-13",
+      "time": "08:00",
+      "home": "POLICE 1",
+      "away": "LAUDIUM 1",
+      "venue": "HOFMEYER PARK A"
+    },
+    {
+      "rowNumber": 3,
+      "date": "2026-09-13",
+      "time": "08:00",
+      "home": "LAUDIUM 1",
+      "away": "POLICE 1",
+      "venue": "HOFMEYER PARK A"
+    },
+    {
+      "rowNumber": 4,
+      "date": "2026-09-20",
+      "time": "08:00",
+      "home": "POLICE 1",
+      "away": "LAUDIUM 1",
+      "venue": "HOFMEYER PARK A"
+    },
+    {
+      "rowNumber": 5,
+      "date": "2026-09-20",
+      "time": "11:00",
+      "home": "POLICE 1",
+      "away": "LAUDIUM 1",
+      "venue": "HOFMEYER PARK A"
+    }
+  ],
+  "rowCodes": {
+    "3": [
+      "DUPLICATE_ROW_IN_FILE"
+    ],
+    "5": [
+      "CONFLICTING_ROW_IN_FILE"
+    ]
+  },
+  "fileCodes": [],
+  "candidates": [],
+  "proposals": {}
+}

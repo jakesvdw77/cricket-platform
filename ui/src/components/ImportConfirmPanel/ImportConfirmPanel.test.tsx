@@ -21,14 +21,14 @@ describe('ImportConfirmPanel', () => {
 
   it('keeps Confirm disabled with the reason while errors remain', () => {
     render(<Harness batch={sampleBatch()} />)
-    expect(screen.getByRole('button', { name: 'Confirm and import' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Confirm and Import' })).toBeDisabled()
     expect(screen.getByText('Fix or exclude 2 errors to continue.')).toBeInTheDocument()
   })
 
   it('needs every warning ticked before Confirm is allowed', () => {
     const onConfirm = vi.fn()
     render(<Harness batch={confirmableBatch()} onConfirm={onConfirm} />)
-    const confirm = screen.getByRole('button', { name: 'Confirm and import' })
+    const confirm = screen.getByRole('button', { name: 'Confirm and Import' })
     expect(confirm).toBeDisabled()
     expect(screen.getByText('Acknowledge 2 warnings to continue.')).toBeInTheDocument()
     for (const tick of screen.getAllByRole('checkbox')) fireEvent.click(tick)
@@ -40,14 +40,14 @@ describe('ImportConfirmPanel', () => {
   it('waits for the token even when everything is ticked', () => {
     render(<Harness batch={confirmableBatch({ confirmationToken: null })} />)
     for (const tick of screen.getAllByRole('checkbox')) fireEvent.click(tick)
-    expect(screen.getByRole('button', { name: 'Confirm and import' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Confirm and Import' })).toBeDisabled()
   })
 
-  it('shows the quiet teams line and a Change teams action only when given', () => {
+  it('shows the quiet teams line and a Change Teams action only when given', () => {
     const onChangeTeams = vi.fn()
     const { rerender } = render(<ImportConfirmPanel batch={confirmableBatch()} decisions={emptyImportDecisions()} onDecisionsChange={() => undefined} onBack={() => undefined} onConfirm={() => undefined} teamSummary={{ matched: 10, created: 2 }} teamsLabel="Teams" onChangeTeams={onChangeTeams} />)
     expect(screen.getByTestId('team-summary')).toHaveTextContent('Teams: 10 matched, 2 new')
-    fireEvent.click(screen.getByRole('button', { name: 'Change teams' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Change Teams' }))
     expect(onChangeTeams).toHaveBeenCalledTimes(1)
     rerender(<ImportConfirmPanel batch={confirmableBatch()} decisions={emptyImportDecisions()} onDecisionsChange={() => undefined} onBack={() => undefined} onConfirm={() => undefined} />)
     expect(screen.queryByTestId('team-summary')).not.toBeInTheDocument()

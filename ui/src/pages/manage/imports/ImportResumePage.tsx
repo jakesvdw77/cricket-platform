@@ -27,7 +27,7 @@ export default function ImportResumePage() {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress size={24} aria-label="Loading the import" /></Box>
   }
   if (batchQuery.isError || !batchQuery.data) {
-    return <EmptyState title="We could not open this import" description="It may have been removed, or it belongs to another club." action={<Button size="compact" onClick={() => void batchQuery.refetch()}>Try again</Button>} />
+    return <EmptyState title="We could not open this import" description="It may have been removed, or it belongs to another club." action={<Button size="compact" onClick={() => void batchQuery.refetch()}>Try Again</Button>} />
   }
 
   const batch = batchQuery.data
