@@ -49,7 +49,10 @@ const MODE_HELP: Record<ImportScopeMode, string> = {
 }
 const FORMAT_LABELS: Record<string, string> = { xlsx: 'Excel', csv: 'CSV' }
 
-const sectionSx = { display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 3 }, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1 } as const
+const sectionSx = { display: 'flex', flexDirection: 'column', gap: 1, p: { xs: 1.5, md: 2 }, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1, minWidth: 0 } as const
+const headingSx = { fontSize: '0.9375rem', fontWeight: 700 } as const
+const rowSx = { display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', alignItems: { xs: 'stretch', sm: 'center' }, columnGap: 2, rowGap: 1, minWidth: 0 } as const
+const touch = { minHeight: { xs: 44, md: 32 } }
 
 // docs/specs/097-import-framework.md, step 1 (Upload): the template download (with the lookup-sheet choice when the type has an
 // "ours" notion), the import scope choice, the drop zone with its limits and any file-level error.
@@ -64,63 +67,66 @@ export function ImportUploadStep({ clubId, type, scope, onScopeChange, file, onF
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      <Box component="section" aria-labelledby="import-template-heading" sx={sectionSx}>
-        <Typography id="import-template-heading" component="h2" sx={{ fontSize: '1rem', fontWeight: 700 }}>1. Download the template</Typography>
-        <Typography variant="body2" color="text.secondary">Fill it in, or ask an AI to convert your own file into it, then upload it below.</Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: type.supportsOursScope ? '1fr 1fr' : '1fr' }, gap: { xs: 2, md: 3 }, alignItems: 'start', pt: 0.5 }}>
-          {type.supportsOursScope && (
-            <Box role="group" aria-labelledby="import-template-scope-label" sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-              <Typography variant="subtitle2" id="import-template-scope-label" sx={{ fontWeight: 700 }}>Lists in the template</Typography>
-              <CompactToggleGroup<ImportTemplateScope> value={templateScope} onChange={(next) => onScopeChange({ templateScope: next })} ariaLabel="What the template's lists contain" fullWidthOnPhone>
-                {(Object.keys(templateScopeLabels) as ImportTemplateScope[]).map((option) => (
-                  <ToggleButton key={option} value={option} aria-label={templateScopeLabels[option]}>{templateScopeLabels[option]}</ToggleButton>
-                ))}
-              </CompactToggleGroup>
-              <Typography variant="body2" color="text.secondary">{templateScopeHelp[templateScope]}</Typography>
-            </Box>
-          )}
-          <Box role="group" aria-labelledby="import-template-download-label" sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <Typography variant="subtitle2" id="import-template-download-label" sx={{ fontWeight: 700 }}>Download</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: `repeat(${Math.max(type.formats.length, 1)}, minmax(0, 1fr))` }, gap: { xs: 1, sm: 1.5 } }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: type.supportsOursScope ? '3fr 2fr' : '1fr' }, gap: 2, alignItems: 'stretch' }}>
+        <Box component="section" aria-labelledby="import-template-heading" sx={sectionSx}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 1.5 }}>
+            <Typography id="import-template-heading" component="h2" sx={headingSx}>1. Download the template</Typography>
+            <Typography variant="caption" color="text.secondary">Fill it in, or ask an AI to convert your file into it.</Typography>
+          </Box>
+          <Box sx={rowSx}>
+            {type.supportsOursScope && (
+              <Box role="group" aria-labelledby="import-template-scope-label" sx={{ display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 1, minWidth: 0 }}>
+                <Typography variant="caption" id="import-template-scope-label" sx={{ fontWeight: 700 }}>Lists in the template</Typography>
+                <CompactToggleGroup<ImportTemplateScope> value={templateScope} onChange={(next) => onScopeChange({ templateScope: next })} ariaLabel="What the template's lists contain" fullWidthOnPhone>
+                  {(Object.keys(templateScopeLabels) as ImportTemplateScope[]).map((option) => (
+                    <ToggleButton key={option} value={option} aria-label={templateScopeLabels[option]}>{templateScopeLabels[option]}</ToggleButton>
+                  ))}
+                </CompactToggleGroup>
+              </Box>
+            )}
+            <Box role="group" aria-labelledby="import-template-download-label" sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, minWidth: 0 }}>
+              <Typography variant="caption" id="import-template-download-label" sx={{ fontWeight: 700 }}>Download</Typography>
               {type.formats.map((format) => (
-                <Button key={format} size="compact" variant="secondary" startIcon={<FileDownloadOutlinedIcon />} disabled={template.isPending} onClick={() => template.mutate(format)} sx={{ minHeight: { xs: 44, md: 32 } }}>
+                <Button key={format} size="compact" variant="secondary" startIcon={<FileDownloadOutlinedIcon />} disabled={template.isPending} onClick={() => template.mutate(format)} sx={touch}>
                   {FORMAT_LABELS[format] ?? format.toUpperCase()} template
                 </Button>
               ))}
             </Box>
           </Box>
+          {type.supportsOursScope && <Typography variant="caption" color="text.secondary">{templateScopeHelp[templateScope]}</Typography>}
+          {template.isError && <Alert severity="error">{importErrorMessage(template.error, 'We could not download the template.')}</Alert>}
         </Box>
-        {template.isError && <Alert severity="error">{importErrorMessage(template.error, 'We could not download the template.')}</Alert>}
-      </Box>
 
-      {type.supportsOursScope && (
-        <Box component="section" aria-labelledby="import-scope-heading" sx={sectionSx}>
-          <Typography id="import-scope-heading" component="h2" sx={{ fontSize: '1rem', fontWeight: 700 }}>2. What to import</Typography>
-          <CompactToggleGroup<ImportScopeMode> value={scopeMode} onChange={(next) => onScopeChange({ scopeMode: next })} ariaLabel="What to import" fullWidthOnPhone>
-            {(Object.keys(scopeModeLabels) as ImportScopeMode[]).map((option) => (
-              <ToggleButton key={option} value={option} aria-label={scopeModeLabels[option]}>{scopeModeLabels[option]}</ToggleButton>
-            ))}
-          </CompactToggleGroup>
-          <Typography variant="body2" color="text.secondary">{scopeModeHelp[scopeMode]}</Typography>
-        </Box>
-      )}
+        {type.supportsOursScope && (
+          <Box component="section" aria-labelledby="import-scope-heading" sx={sectionSx}>
+            <Typography id="import-scope-heading" component="h2" sx={headingSx}>2. What to import</Typography>
+            <CompactToggleGroup<ImportScopeMode> value={scopeMode} onChange={(next) => onScopeChange({ scopeMode: next })} ariaLabel="What to import" fullWidthOnPhone>
+              {(Object.keys(scopeModeLabels) as ImportScopeMode[]).map((option) => (
+                <ToggleButton key={option} value={option} aria-label={scopeModeLabels[option]}>{scopeModeLabels[option]}</ToggleButton>
+              ))}
+            </CompactToggleGroup>
+            <Typography variant="caption" color="text.secondary">{scopeModeHelp[scopeMode]}</Typography>
+          </Box>
+        )}
+      </Box>
 
       {extras}
 
       <Box component="section" aria-labelledby="import-file-heading" sx={sectionSx}>
-        <Typography id="import-file-heading" component="h2" sx={{ fontSize: '1rem', fontWeight: 700 }}>{type.supportsOursScope ? '3. Upload your file' : '2. Upload your file'}</Typography>
+        <Typography id="import-file-heading" component="h2" sx={headingSx}>{type.supportsOursScope ? '3. Upload your file' : '2. Upload your file'}</Typography>
         {earlierImportWarning && <Alert severity="warning">{earlierImportWarning}</Alert>}
         <DocumentUpload
           mode="select"
           label="Import file"
           accept={['.xlsx', '.csv']}
           maxBytes={type.limits.maxFileBytes}
-          helperText={`Excel (.xlsx) or CSV, up to ${formatBytes(type.limits.maxFileBytes)} and ${type.limits.maxRows.toLocaleString('en-GB')} rows. Drop a file here or choose one.`}
+          helperText={`Excel (.xlsx) or CSV, up to ${formatBytes(type.limits.maxFileBytes)} and ${type.limits.maxRows.toLocaleString('en-GB')} rows.`}
           file={file}
           onFileChange={onFileChange}
           disabled={uploading || startingBlank}
+          compact
           helperAction={onStartBlank && (
-            <Button size="compact" variant="ghost" startIcon={<EditOutlinedIcon />} disabled={uploading || startingBlank} onClick={onStartBlank} sx={{ minHeight: { xs: 44, md: 32 }, color: 'primary.main', flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
+            <Button size="compact" variant="ghost" startIcon={<EditOutlinedIcon />} disabled={uploading || startingBlank} onClick={onStartBlank} sx={{ ...touch, color: 'primary.main', flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
               {startingBlank ? 'Starting...' : `No file? ${startBlankLabel}`}
             </Button>
           )}

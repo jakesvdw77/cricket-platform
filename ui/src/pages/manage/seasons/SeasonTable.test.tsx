@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { SeasonTable } from './SeasonTable'
@@ -28,7 +29,7 @@ const SUMMARIES: Record<string, SeasonSummary> = {
 
 function renderTable(seasons: Season[], summaries: Record<string, SeasonSummary> | null = SUMMARIES) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/manage/fixtures/seasons']}>
       <SeasonTable seasons={seasons} summaries={summaries} today={TODAY} />
     </MemoryRouter>,
   )
@@ -80,8 +81,37 @@ describe('SeasonTable', () => {
     expect(within(row).getByTestId('season-row-phone-status')).toHaveTextContent('Current')
   })
 
-  it('links the whole row to the season', () => {
+  it('links the whole row to the season, carrying the list as its origin', () => {
     renderTable([makeSeason({ id: 'season-9' })])
-    expect(screen.getByRole('link', { name: '2026/27' })).toHaveAttribute('href', '/manage/fixtures/seasons/season-9')
+    const href = screen.getByRole('link', { name: '2026/27' }).getAttribute('href') ?? ''
+    expect(href).toContain('/manage/fixtures/seasons/season-9')
+    expect(href).toContain('returnLabel=Seasons')
+  })
+
+  it('has no chevron and no Open column, and one kebab per row', () => {
+    renderTable([makeSeason(), makeSeason({ id: 'season-2', label: '2025/26' })])
+    expect(document.querySelector('[data-testid="ChevronRightOutlinedIcon"]')).toBeNull()
+    expect(screen.queryByRole('columnheader', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actions for 2026/27' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actions for 2025/26' })).toBeInTheDocument()
+  })
+
+  it('opens the kebab without navigating the row', async () => {
+    const user = userEvent.setup()
+    renderTable([makeSeason()])
+    await user.click(screen.getByRole('button', { name: 'Actions for 2026/27' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Season', 'Edit Season', 'Open Leagues', 'Open Matches'])
+  })
+
+  it('renders the toolbar inside one fused card and the empty message in place of the rows', () => {
+    render(
+      <MemoryRouter>
+        <SeasonTable seasons={[]} summaries={null} today={TODAY} toolbar={<input aria-label="Search" />} empty={<p>No matching seasons</p>} />
+      </MemoryRouter>,
+    )
+    const card = screen.getByTestId('seasons-fused-card')
+    expect(within(card).getByLabelText('Search')).toBeInTheDocument()
+    expect(within(card).getByText('No matching seasons')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 })

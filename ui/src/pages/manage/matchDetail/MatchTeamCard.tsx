@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button as MuiButton, Card as MuiCard, Chip, Stack, Typography } from '@mui/material'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import { compactButtonSx } from '../../../components/Button'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { badgeSx } from '../../../components/RecordCard'
@@ -21,14 +21,15 @@ export interface MatchTeamCardProps {
   sidesReady: boolean
   // A league match's limit (a 12th man counts); null for a match with no league (no bar).
   playingXiSize: number | null
-  // The Edit page's Playing XI tab for this match.
+  // The Select Team page of this side (docs/specs/130: a text-only outlined button in the panel's header row).
   selectTo: string
-  // Opens the team sheet dialog on this side. Omitted, the card has no Share button.
+  // Opens the team sheet dialog on this side. Omitted, the panel has no Share Team Sheet button.
   onShare?: () => void
 }
 
-// docs/specs/089 (A): one own side on the match page - a solid-green icon-tile heading, the announced chip, the selection
-// progress and the Playing XI as compact zebra rows (docs/specs/075/076 content, restyled).
+// docs/specs/089 (A), revamped by docs/specs/130: one own side on the match page, a FLAT panel (hairline, no shadow) of equal height
+// beside its sibling - a solid-green icon-tile heading with Select Team and Share Team Sheet (text-only outlined, compact) in the
+// header row, the announced chip, the selection progress and the Playing XI as compact zebra rows (docs/specs/075/076 content).
 export function MatchTeamCard({
   testId,
   teamName,
@@ -51,7 +52,7 @@ export function MatchTeamCard({
     <MuiCard
       variant="outlined"
       data-testid={testId}
-      sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, minWidth: 0, bgcolor: 'background.paper', boxShadow: 2, p: { xs: 2, md: 2.5 } }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, minWidth: 0, height: '100%', bgcolor: 'background.paper', boxShadow: 0, borderColor: 'divider', p: { xs: 2, md: 2.5 } }}
     >
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
@@ -79,6 +80,23 @@ export function MatchTeamCard({
           >
             {`${teamName} · ${sideLabel}`}
           </Typography>
+        </Box>
+        {/* docs/specs/130: the team actions sit in the panel's header row on the right, text only (Share carries the share icon). */}
+        <Box role="group" aria-label="Team actions" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <MuiButton component={RouterLink} to={selectTo} variant="outlined" sx={compactButtonSx}>
+            Select Team
+          </MuiButton>
+          {onShare && (
+            <MuiButton
+              variant="outlined"
+              onClick={onShare}
+              aria-label={`Share team sheet for ${teamName}`}
+              startIcon={<ShareOutlinedIcon fontSize="small" />}
+              sx={compactButtonSx}
+            >
+              Share Team Sheet
+            </MuiButton>
+          )}
         </Box>
       </Box>
 
@@ -122,30 +140,6 @@ export function MatchTeamCard({
             wicketKeeperPlayerId={side?.wicketKeeperPlayerId ?? null}
             twelfthManPlayerId={side?.twelfthManPlayerId ?? null}
           />
-        )}
-      </Box>
-
-      {/* docs/specs/089 (Match page actions, 2026-10-16): the team actions act on this side, at the foot of its card. */}
-      <Box role="group" aria-label="Team actions" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 'auto' }}>
-        <MuiButton
-          component={RouterLink}
-          to={selectTo}
-          variant="outlined"
-          startIcon={<GroupsOutlinedIcon fontSize="small" />}
-          sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, justifyContent: 'center' }}
-        >
-          Select team
-        </MuiButton>
-        {onShare && (
-          <MuiButton
-            variant="outlined"
-            onClick={onShare}
-            aria-label={`Share team sheet for ${teamName}`}
-            startIcon={<ShareOutlinedIcon fontSize="small" />}
-            sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, justifyContent: 'center' }}
-          >
-            Share team sheet
-          </MuiButton>
         )}
       </Box>
     </MuiCard>

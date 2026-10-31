@@ -18,6 +18,8 @@ export interface RecordFormScreenProps {
   // docs/specs/075-match-view-and-edit.md: optional control right-aligned on the title row (e.g. the
   // Match edit page's Availability button). Omitted, the markup is unchanged.
   headerAction?: ReactNode
+  // docs/specs/129 and page-anatomy section 4: a compact flat card (hairline, no shadow, tighter padding and gaps). Omitted, unchanged.
+  compact?: boolean
   children: ReactNode
 }
 
@@ -27,11 +29,11 @@ export interface RecordFormScreenProps {
 // column at xs, two columns from md — consuming forms wrap single-value fields one-per-cell
 // and full-width fields, e.g. description, in a Box with gridColumn: '1 / -1'), then an
 // actions bar below a divider for Save/Cancel/Retire-style buttons.
-export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defaultBackLabel, actions, tabs, headerAction, children }: RecordFormScreenProps) {
+export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defaultBackLabel, actions, tabs, headerAction, compact = false, children }: RecordFormScreenProps) {
   // docs/specs/127: a valid returnTo in the address overrides the page's own default Back.
   const { to: backTo = defaultBackTo, label: backLabel } = useBackLink(defaultBackTo, defaultBackLabel)
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? { xs: 1.5, md: 2 } : 3 }}>
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}
@@ -49,10 +51,10 @@ export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defa
             data-testid="record-form-title-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
           >
-            <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, minWidth: 0 }}>
+            <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, minWidth: 0, flex: 1 }}>
               {title}
             </Typography>
-            <Box sx={{ flex: 'none' }}>{headerAction}</Box>
+            <Box sx={{ flex: 'none', ml: 'auto' }}>{headerAction}</Box>
           </Box>
         ) : (
           <Typography variant="h5" component="h1" sx={pageTitleSx}>
@@ -63,12 +65,12 @@ export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defa
 
       {tabs ? <Box sx={{ minWidth: 0 }}>{tabs}</Box> : null}
 
-      <ContentCard>
+      <ContentCard sx={compact ? { boxShadow: 0, border: 1, borderColor: 'divider', p: { xs: 2, md: 2.5 } } : undefined}>
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-            gap: 3,
+            gap: compact ? 2 : 3,
           }}
         >
           {children}
@@ -80,8 +82,9 @@ export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defa
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'flex-end',
-              gap: 2,
-              pt: 3,
+              gap: compact ? 1 : 2,
+              pt: compact ? 2 : 3,
+              mt: compact ? 2 : 0,
               borderTop: 1,
               borderColor: 'divider',
             }}

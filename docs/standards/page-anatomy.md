@@ -6,7 +6,7 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 
 ## 1. Page skeleton (top to bottom)
 1. **Top row.** Back alone on the left, quiet. **Decided 2026-10-30.**
-2. **Title row.** Logo or avatar if the record has one, the title, the format/status badges inline, then the **Season pill beside the title** on the left (every season-scoped page, lists and detail pages alike). **The page-level actions sit on this same row, right-aligned: ONE filled "Manage <thing>" menu button (section 8; the old separate Actions menu is gone), or on list pages the filled Add X.** They wrap under the title on a narrow screen and take the full width on a phone. Nothing else is on the title row's right. **Decided 2026-10-30** (the list pages already work this way; the detail pages move over as they are reviewed). Contacts and links sit directly under the title as inline items (icon then text), never on a row of their own. **Decided.**
+2. **Title row.** Logo or avatar if the record has one, the title, the format/status badges inline, then the **Season pill beside the title** on the left (every season-scoped page, lists and detail pages alike). **Edit pages are the exception (Decided 2026-10-31): there the Season pill is right-aligned at the right end of the title row, where page actions sit** (`RecordFormScreen` `headerAction`); the league VIEW page keeps the pill beside the title. **The page-level actions sit on this same row, right-aligned: ONE filled "Manage <thing>" menu button (section 8; the old separate Actions menu is gone), or on list pages the filled Add X.** They wrap under the title on a narrow screen and take the full width on a phone. Nothing else is on the title row's right. **Decided 2026-10-30** (the list pages already work this way; the detail pages move over as they are reviewed). Contacts and links sit directly under the title as inline items (icon then text), never on a row of their own. **Decided.**
 3. **Figures** (if the page has any): one row of figure cards, section 2.
 4. **Tabs** (if the page has them): the tab names on the left; that tab's own actions right-aligned on the same row (they wrap to a row under the tabs on a phone, equal width, 44 px). **Decided.**
 5. **Filter bar:** flat, section 3.
@@ -37,7 +37,7 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 
 ## 5. Buttons and labels
 - **Secondary = outlined = white-filled with the green edge**, readable on the cream wash and on cards. Text and ghost buttons stay transparent. Dark console screens (Player Hub, landing, status screens) keep their own transparent outline look. **Decided 2026-10-30.**
-- **One filled button per band** (top row, tab row, dialog footer). Edit on a detail page is filled and rightmost. **Decided.**
+- **One filled button per band** (top row, tab row, dialog footer). Edit on a detail page is a filled button only when the page has no Manage menu; a page with a Manage menu lists Edit as its first item (section 8, 2026-10-31). **Decided.**
 - **Compact 32 px buttons in toolbars and cards; 44 px touch targets below `md`** (the compact button keeps a 44 px touch area). **Decided.**
 - **Labels use Title Case** ("Import Schedule", "Add Match", "Edit League", "Share League...", "Import History (2)"). Body text and headings stay sentence case. **Decided 2026-10-30.**
 - **No lone control in its own row** (see `design-system.md`, "Layout density"): put it in the toolbar, on the row of its neighbours, inside its card or in a menu; stacking is for phones. **Decided.**
@@ -55,6 +55,21 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 
 ## 6a. Logos and avatars (Decided 2026-10-30)
 - Use `components/LogoAvatar` for record logos: no tile behind a loaded image; the record fallback (no image or load failure) is a soft green tint tile with initials. Person avatars keep the gold fallback; the signed-in user's account avatar keeps gold.
+
+## 6b. Defaults for any record list and detail page (derived from Leagues and Seasons, 2026-10-31)
+Written after the Seasons pages were built from these docs alone (`docs/specs/129`), so the next section needs no guessing. Applied as the working default; the owner can veto any line, which then changes here.
+- **Season pill:** only on pages whose content depends on the season (lists and detail pages of league, team, match and similar). Seasons list, Season page and Season form have none. On an edit page with no pill the right side of the title row is empty.
+- **Row and card kebab, in this order:** Open <Record> first, then Edit <Record> (Title Case, no "Details" suffix on non-league records), then the record's own opens (for example Open Leagues, Open Matches), then record actions (Add, Import), Share last when the record has shareable content, Duplicate. An inactive record shows the same items. Deactivate and Reactivate live on the record's edit page, not in the kebab.
+- **Detail page header:** Back alone on the top row; title row = logo or icon tile, name (own capitals), ONE status badge (a record with a single derived status shows that one) inline, then ONE filled "Manage <Record>" menu on the right at `MANAGE_BUTTON_WIDTH` (full width on a phone). Edit is its first item. A card on the page may repeat a navigation as a text-only outlined button inside its own card.
+- **Detail figures:** static compact counter cards, no icons; a text value (a date, "7 months") is allowed; the same figure may repeat in an info card only when it is the page's headline. A progress or timeline panel is a flat card with a hairline.
+- **Info cards:** flat with a hairline (`InfoCard flat`); in-card stat tiles stay as they are until a page review replaces them.
+- **Edit page footer:** Cancel (white), Save Changes (filled; "Create <Record>" on add), then Deactivate or Reactivate with the shared `RecordStatusToggle` styling (no confirmation dialog, like League edit); no Active switch. After Save or Deactivate/Reactivate the page returns through `useAfterSave`. The default Back of an edit page is the list unless a `returnTo` is present.
+- **Empty states:** no action button inside the message when the page's Add button or Add card is visible; the icon is the section's BrandIcon.
+- **Sort labels:** options are Title Case ("Newest First", "Oldest First"); alphabetical stays "Name, A to Z".
+- **Return navigation:** links to a list page carry `returnTo` even before that list reads it; origin labels are the page name ("Seasons") or "{record} {tab or page}" ("{season} season", "TVL schedule").
+- **Detail header is built inline per page** until a third record page needs it; extract a shared component then.
+- **Row-menu file:** `pages/manage/<record>s/<Record>RowMenu.tsx`, mirroring `leagues/LeagueRowMenu.tsx`.
+- **Record cards with their own tint tiles** keep the card title in `cardTitleSx` (uppercase) until the card is reviewed; the page title keeps its own capitals.
 
 ## 7. Forms inside a page (edit modes)
 Editing is a mode of the page, not a different screen, and uses the same row editor, checks and Review as the import (`docs/specs/126`). Nothing is saved before an explicit, server-enforced confirmation.
@@ -107,11 +122,13 @@ Update the status as each page is brought in line. "Reviewed" means differences 
 | League page (Schedule, Teams, Conditions) | In progress | Decisions in section 8 applied (title, rhythm, badges, counter cards, one Add button, round social buttons, Season pill beside the title); icons middle path proposed (the comparison switch is removed); the icon rule is still open; return navigation (section 7a) on every link that leaves the page; table rows have no chevron; kebab Actions menus on Schedule rows (Open Match, Edit Match: our matches only, as the Matches list has no row menu) and Teams tiles (our team: Open Team, Remove from League; league team: Edit League Team, Deactivate or Reactivate, Remove) |
 | League edit | In progress | Revamped per `docs/specs/128` (built, pending the owner's browser check): four tabs (Details, Branding, Playing Conditions, Contacts), Season pill on Details and Playing Conditions only, season dates row at the top of Details, 36 px compact fields, tidy Playing Conditions grid; Back, Cancel and Save honour `returnTo` (2026-10-31) |
 | Leagues list | In progress | Applied: FILTER tag removed app-wide (pointer, hover lift, green ring instead); flat filter bar (`bare` + `viewControlsInline`, no floating labels in the flat bar); flat table and flat cards (hairline, hover lift); toolbar fused into the table card (standalone toolbar card over Cards and empty states); no count text; return navigation (section 7a): every destination carries the list as `returnTo`; table rows have no chevron; one kebab Actions menu per row and card (Open League, Open Schedule, Open Teams, Open Conditions, Edit League Details, Add Match, Import Schedule, Share League, Duplicate League); the old Share icon and the card footer bar are gone; dynamic Cards grid with a dashed Add League card |
-| Matches list | Not reviewed | Reference for the counter card; filter bar boxed |
-| Match page | Not reviewed | Icon tiles; 44 px header controls; up to six top-row controls |
+| Matches list | In progress | Revamped per `docs/specs/130` (built 2026-10-31, owner hand-check pending): fused toolbar (View Entire Season, Sort, Cards or List last), compact filter counters, no count text, flat table with its own centred Status column and no chevron or Delete column, flat cards with no footer bar, one kebab per row and card (Open Match, Edit Match, Select Team, Open Availability, result actions, Scoring, Watch Live, Share Team Sheet last), dynamic grid with a dashed Add Match card; Delete, Deactivate and Reactivate only on the edit page; `returnTo` on every leaving link |
+| Match page | In progress | Revamped per `docs/specs/130` (built 2026-10-31, owner hand-check pending): Back alone, the title with its badges and the Season pill, ONE filled Manage Match menu (Edit Match, result actions, Select Team and Share Team Sheet per own side, Open Availability), Scoring and Watch Live as inline links, four static compact counters (the Venue card links to the field), flat team panels with Select Team and Share Team Sheet in their header row; `returnTo` on every leaving link |
+| Match edit | In progress | Compact flat card (`RecordFormScreen compact`), Match Details and Teams sections with 36 px fields, footer Cancel, Save Changes (Create Match on add), Deactivate or Reactivate, Delete (disabled with its reason); no Season pill (the season is a form field); Back, Cancel, Save and Delete honour `returnTo` (built, owner hand-check pending) |
 | Players list / Player page | Not reviewed | |
 | Teams list / Team page | Not reviewed | Team page has the Season pill top-right |
-| Seasons list / Season page | Not reviewed | Season page has a separate progress card |
+| Seasons list / Season page | In progress | Revamped per `docs/specs/129` (built 2026-10-31, owner hand-check pending): list has the fused toolbar (Show Inactive, Sort, Cards or List last), compact filter counters, no count text, one kebab per row and card (Open Season, Edit Season, Open Leagues, Open Matches), no chevron, flat cards and a dashed Add Season card; season page has Back alone, the title with one status badge and ONE filled Manage Season menu (Edit Season, View Leagues, View Matches), four static compact counters, a flat progress panel and flat info cards; `returnTo` on every leaving link; no Season pill |
+| Season edit | In progress | Compact flat card (`RecordFormScreen compact`), Season Dates on three columns, footer Cancel, Save Changes (Create Season on add), Deactivate or Reactivate; Back, Cancel, Save and Deactivate or Reactivate honour `returnTo` (built, owner hand-check pending) |
 | Fields list / Field page | Not reviewed | Field page has five tiles |
 | Availability (Polls, Players, Cover) | Not reviewed | Segmented view switch in the header |
 | Results list | Not reviewed | Three top-row actions |
@@ -124,7 +141,7 @@ Update the status as each page is brought in line. "Reviewed" means differences 
 ## 10. Per-page review checklist
 Copy into the PR description for each page.
 - [ ] Top row: Back alone. Title row: one filled Manage <thing> menu button right-aligned (or Add X on a list page); no separate Actions menu.
-- [ ] Season pill beside the title (season-scoped pages).
+- [ ] Season pill beside the title (season-scoped pages); on edit pages right-aligned on the title row.
 - [ ] Title row: badges inline; contacts under the title, social links as icon plus name items on that line.
 - [ ] Figure cards are the Matches counter card; no icons; no "FILTER" tag; pointer, hover and selected ring on clickable ones.
 - [ ] Tabs: that tab's actions on the tab row.

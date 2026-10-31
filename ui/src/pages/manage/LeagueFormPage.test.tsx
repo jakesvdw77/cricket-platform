@@ -516,12 +516,11 @@ describe('LeagueFormPage', () => {
       expect(await screen.findByTestId('league-season-dates')).toBeInTheDocument()
       await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-2'))
       expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
-      expect(screen.getByText('Season dates for 2025')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Season dates' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Season' }))
       await user.click(await screen.findByRole('option', { name: '2024' }))
       await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
-      expect(await screen.findByText('Season dates for 2024')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Save Season Dates' }))
       await waitFor(() =>
@@ -927,13 +926,14 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Contacts' }))
 
-      expect(await screen.findByRole('link', { name: 'View Jane Smith' })).toHaveAttribute(
+      await user.click(await screen.findByRole('button', { name: 'Actions for Jane Smith' }))
+      expect(screen.getByRole('menuitem', { name: 'View Contact' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/leagues/league-1/contacts/contact-1',
+        expect.stringMatching(/^\/manage\/fixtures\/leagues\/league\-1\/contacts\/contact\-1\?returnTo=.*tab%3Dcontacts.*returnLabel=League\+contacts/),
       )
-      expect(screen.getByRole('link', { name: 'Edit Jane Smith' })).toHaveAttribute(
+      expect(screen.getByRole('menuitem', { name: 'Edit Contact' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/leagues/league-1/contacts/contact-1/edit',
+        expect.stringMatching(/^\/manage\/fixtures\/leagues\/league\-1\/contacts\/contact\-1\/edit\?returnTo=.*tab%3Dcontacts.*returnLabel=League\+contacts/),
       )
     })
 

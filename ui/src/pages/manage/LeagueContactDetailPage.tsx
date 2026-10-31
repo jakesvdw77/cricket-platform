@@ -54,7 +54,7 @@ export default function LeagueContactDetailPage() {
   return (
     <RecordDetailScreen
       title={fullName(contact)}
-      backTo={`/manage/fixtures/leagues/${leagueId}`}
+      backTo={`/manage/fixtures/leagues/${leagueId}/edit?tab=contacts`}
       backLabel="Back to League"
       avatar={{ fallback: initialsFromName(fullName(contact)), shape: 'circular' }}
       badge={badgeFor(contact)}

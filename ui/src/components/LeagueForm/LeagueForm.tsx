@@ -239,7 +239,10 @@ export function LeagueForm({ initialValues, onSubmit, visibleSection, ageReferen
           helperText={errors.maxPlayingXiSize}
           inputProps={{ min: 1 }}
         />
+      </Box>
 
+      {/* The age rule on one row: four columns from md, two from sm, one on a phone. */}
+      <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
         <Input
           label="Min age (optional)"
           type="number"

@@ -194,8 +194,13 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
     <Dialog open={open} onClose={onClose} fullScreen={phone} fullWidth
       maxWidth={false}
       aria-labelledby="share-league-title"
-      // Near full screen on a desktop (full screen on a phone), so a PDF page or poster is shown large; the footer stays pinned.
-      PaperProps={{ sx: { width: { sm: '96vw' }, maxWidth: { sm: '96vw' }, height: { sm: '96vh' }, maxHeight: { sm: '96vh' } } }}
+      // Full screen on a phone. From sm the choice steps are a card capped at 720 px wide that sizes to its content (never above
+      // 90vh); the preview step stays near full screen so a PDF page or poster is shown large. The footer stays pinned.
+      PaperProps={{
+        sx: step === 'screen'
+          ? { width: { sm: '96vw' }, maxWidth: { sm: '96vw' }, height: { sm: '96vh' }, maxHeight: { sm: '96vh' } }
+          : { width: { sm: '100%' }, maxWidth: { sm: 720 }, height: { sm: 'auto' }, maxHeight: { sm: '90vh' } },
+      }}
     >
       <DialogTitle id="share-league-title" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pr: 1 }}>
         <Box component="span">Share league</Box>

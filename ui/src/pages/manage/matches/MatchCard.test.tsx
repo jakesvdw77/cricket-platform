@@ -21,7 +21,8 @@ vi.mock('../../../api/teamSquadApi', () => ({
   listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
 }))
 
-const EDIT = '/manage/fixtures/matches/match-1/edit'
+const LIST = '/manage/fixtures/matches'
+const RETURN = 'returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches'
 const teams = makeTeams(makeTeam('team-1', '1st XI', 'sec-1'), makeTeam('team-2', '2nd XI', 'sec-2'))
 const league = { id: 'league-1', name: 'Premier League' } as League
 const season = { id: 'season-1', label: '2026/27' } as Season
@@ -31,14 +32,14 @@ function LocationProbe() {
   return <div>At: {location.pathname + location.search}</div>
 }
 
-function renderCard(match: Match, props: { viewTo?: string; editTo?: string; withLeague?: boolean; withSeason?: boolean; onDelete?: (target: { id: string; name: string }) => void } = {}) {
+function renderCard(match: Match, props: { viewTo?: string; withLeague?: boolean; withSeason?: boolean } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/list']}>
+      <MemoryRouter initialEntries={[LIST]}>
         <Routes>
           <Route
-            path="/list"
+            path={LIST}
             element={
               <MatchCard
                 clubId="club-1"
@@ -46,9 +47,7 @@ function renderCard(match: Match, props: { viewTo?: string; editTo?: string; wit
                 teamsById={teams}
                 leaguesById={new Map(props.withLeague ? [[league.id, league]] : [])}
                 seasonsById={new Map(props.withSeason === false ? [] : [[season.id, season]])}
-                editTo={props.editTo ?? EDIT}
                 viewTo={props.viewTo}
-                onDelete={props.onDelete}
               />
             }
           />
@@ -72,7 +71,7 @@ describe('MatchCard', () => {
     expect(screen.getByRole('heading', { name: '1st XI vs Riverside Occasionals' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/matches/match-1',
+      `/manage/fixtures/matches/match-1?${RETURN}`,
     )
   })
 
@@ -248,71 +247,17 @@ describe('MatchCard', () => {
   // docs/specs/100-match-results-core.md, Match integration: the card reads the real result state, not the date.
   describe('result state (docs/specs/100)', () => {
     const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000 + 30_000).toISOString()
-    const resultButton = (name: string) => screen.getByRole('button', { name })
 
-    it('offers Capture result and no result badge when the match has none', async () => {
-      const user = userEvent.setup()
-      renderCard(makeMatch({ resultStatus: 'NONE' }))
-
+    it('shows no result badge when the match has none, and a draft or published match shows its badge', () => {
+      const { unmount } = renderCard(makeMatch({ resultStatus: 'NONE' }))
       expect(screen.queryByText('Completed')).not.toBeInTheDocument()
       expect(screen.queryByText('Result draft')).not.toBeInTheDocument()
-      await user.click(resultButton('Capture result'))
-      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
-    })
-
-    it('treats a match with no resultStatus like one with none', () => {
-      renderCard(makeMatch())
-
-      expect(resultButton('Capture result')).toBeInTheDocument()
-    })
-
-    it('offers Continue result with an amber Result draft badge for a draft', async () => {
-      const user = userEvent.setup()
-      renderCard(makeMatch({ resultStatus: 'DRAFT' }))
-
+      unmount()
+      const draft = renderCard(makeMatch({ resultStatus: 'DRAFT' }))
       expect(screen.getByText('Result draft')).toBeInTheDocument()
-      expect(screen.queryByText('Completed')).not.toBeInTheDocument()
-      await user.click(resultButton('Continue result'))
-      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
-    })
-
-    it('offers View result with a Completed badge for a published result', async () => {
-      const user = userEvent.setup()
+      draft.unmount()
       renderCard(makeMatch({ resultStatus: 'PUBLISHED', matchDate: inHours(-48) }))
-
       expect(screen.getByText('Completed')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Capture result' })).not.toBeInTheDocument()
-      await user.click(resultButton('View result'))
-      expect(await screen.findByText('At: /manage/results/match-1')).toBeInTheDocument()
-    })
-
-    // docs/specs/104: Import result opens the import wizard with this match chosen; only for a match that has started.
-    it('offers Import for a started match without a published result, and opens the wizard for this match', async () => {
-      const user = userEvent.setup()
-      renderCard(makeMatch({ resultStatus: 'NONE', matchDate: inHours(-48) }))
-
-      await user.click(resultButton('Import result'))
-      expect(await screen.findByText('At: /manage/results/import?matchId=match-1')).toBeInTheDocument()
-    })
-
-    it('offers no Import before the match starts, once a result is published, or for an inactive match', () => {
-      const { unmount } = renderCard(makeMatch({ resultStatus: 'NONE', matchDate: inHours(48) }))
-      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
-      unmount()
-      const published = renderCard(makeMatch({ resultStatus: 'PUBLISHED', matchDate: inHours(-48) }))
-      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
-      published.unmount()
-      renderCard(makeMatch({ active: false, resultStatus: 'NONE', matchDate: inHours(-48) }))
-      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
-    })
-
-    it('offers no capture action for an inactive match, but still shows a published result', () => {
-      const { unmount } = renderCard(makeMatch({ active: false, resultStatus: 'NONE' }))
-      expect(screen.queryByRole('button', { name: /result/i })).not.toBeInTheDocument()
-      unmount()
-
-      renderCard(makeMatch({ active: false, resultStatus: 'PUBLISHED' }))
-      expect(resultButton('View result')).toBeInTheDocument()
     })
 
     it('says Awaiting result, not Played, for a started match without a published result', () => {
@@ -354,221 +299,169 @@ describe('MatchCard', () => {
     })
   })
 
-  describe('links row (docs/specs/075)', () => {
-    it('renders no row and no extra divider when neither link is set', () => {
-      renderCard(makeMatch())
+  // docs/specs/130 and page-anatomy section 6: flat card, no footer bar or icon cluster, ONE Actions kebab.
+  describe('actions kebab (docs/specs/130)', () => {
+    const KEBAB = 'Actions for 1st XI v Riverside Occasionals'
+    const past = () => new Date(Date.now() - 48 * 3_600_000).toISOString()
+    const future = () => new Date(Date.now() + 48 * 3_600_000).toISOString()
+    const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: KEBAB }))
+      return screen.findByRole('menu', { name: KEBAB })
+    }
+    const titles = (menu: HTMLElement) => within(menu).getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent)
 
-      expect(screen.queryByTestId('match-links-row')).not.toBeInTheDocument()
+    it('is a flat card with no footer bar, no icon cluster and exactly one button', () => {
+      renderCard(makeMatch({ scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2', deletable: true }))
+
+      expect(screen.getAllByRole('button')).toHaveLength(1)
       expect(screen.queryByRole('link', { name: 'Scoring' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'Watch live' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument()
+      expect(window.getComputedStyle(screen.getByRole('heading', { name: '1st XI vs Riverside Occasionals' }).closest('.MuiCard-root') as HTMLElement).boxShadow).toBe('none')
     })
 
-    it('renders only the set icon, opening in a new tab with noopener', () => {
-      renderCard(makeMatch({ scoringUrl: 'https://cricclubs.com/matches/1' }))
-
-      const scoring = screen.getByRole('link', { name: 'Scoring' })
-      expect(scoring).toHaveAttribute('href', 'https://cricclubs.com/matches/1')
-      expect(scoring).toHaveAttribute('title', 'Scoring')
-      expect(scoring).toHaveAttribute('target', '_blank')
-      expect(scoring.getAttribute('rel')).toContain('noopener')
-      expect(screen.queryByRole('link', { name: 'Watch live' })).not.toBeInTheDocument()
-    })
-
-    it('renders both icons and sits above the stretched title link', async () => {
+    it('lists the items in order for a match that has not started, with Share Team Sheet last', async () => {
       const user = userEvent.setup()
-      renderCard(
-        makeMatch({ scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2' }),
-        { viewTo: '/manage/fixtures/matches/match-1' },
-      )
+      renderCard(makeMatch({ matchDate: future() }))
 
-      const row = screen.getByTestId('match-links-row')
-      // the header wrapper (RecordCard headerActions) carries position: relative, above the stretched link
-      expect(row.parentElement).toHaveStyle({ position: 'relative' })
-      expect(within(row).getByRole('link', { name: 'Watch live' })).toHaveAttribute('href', 'https://t.example/2')
-      expect(within(row).getByRole('link', { name: 'Scoring' })).toHaveAttribute('href', 'https://s.example/1')
-
-      // clicking an icon never navigates the card (the link opens in a new tab)
-      await user.click(within(row).getByRole('link', { name: 'Scoring' }))
-      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('footer', () => {
-    it('renders Edit, Select, Availability, Share buttons in that order, then the result actions', () => {
-      // A match that has not started yet, so no Import (docs/specs/104) is offered; the started case follows.
-      renderCard(makeMatch({ matchDate: new Date(Date.now() + 48 * 3_600_000).toISOString() }))
-
-      const footer = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement
-      const names = within(footer)
-        .getAllByRole('button')
-        .map((button) => button.getAttribute('aria-label'))
-      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Team Sheet'])
     })
 
-    it('adds Import result after Capture result once the match has started (docs/specs/104)', () => {
-      renderCard(makeMatch({ matchDate: new Date(Date.now() - 48 * 3_600_000).toISOString() }))
-
-      const footer = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement
-      const names = within(footer)
-        .getAllByRole('button')
-        .map((button) => button.getAttribute('aria-label'))
-      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result', 'Import result'])
-    })
-
-    it('Edit navigates to the edit route', async () => {
+    it('adds Import Result after the result action once the match has started', async () => {
       const user = userEvent.setup()
-      renderCard(makeMatch())
+      renderCard(makeMatch({ matchDate: past() }))
 
-      await user.click(screen.getByRole('button', { name: 'Edit' }))
-
-      expect(await screen.findByText(`At: ${EDIT}`)).toBeInTheDocument()
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Team Sheet'])
     })
 
-    it('Select navigates to the Playing XI tab, without duplicating an existing tab param', async () => {
+    it('offers Continue Result for a draft and View Result (and no Import) for a published result', async () => {
       const user = userEvent.setup()
-      const { unmount } = renderCard(makeMatch())
-      await user.click(screen.getByRole('button', { name: 'Select' }))
-      expect(await screen.findByText(`At: ${EDIT}?tab=playing-xi`)).toBeInTheDocument()
-      unmount()
+      const draft = renderCard(makeMatch({ matchDate: past(), resultStatus: 'DRAFT' }))
+      expect(titles(await openMenu(user))).toEqual(expect.arrayContaining(['Continue Result', 'Import Result']))
+      draft.unmount()
 
-      renderCard(makeMatch(), { editTo: `${EDIT}?tab=playing-xi` })
-      await user.click(screen.getByRole('button', { name: 'Select' }))
-      expect(await screen.findByText(`At: ${EDIT}?tab=playing-xi`)).toBeInTheDocument()
+      renderCard(makeMatch({ matchDate: past(), resultStatus: 'PUBLISHED' }))
+      const menu = await openMenu(user)
+      expect(titles(menu)).toContain('View Result')
+      expect(titles(menu)).not.toContain('Import Result')
     })
 
-    it('Availability opens the prefilled New poll flow when there is no poll', async () => {
+    it('has Scoring and Watch Live items only when the match has the links, opening them in a new tab', async () => {
+      const user = userEvent.setup()
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      renderCard(makeMatch({ matchDate: future(), scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2' }))
+
+      const menu = await openMenu(user)
+      expect(titles(menu)).toEqual(expect.arrayContaining(['Scoring', 'Watch Live']))
+      await user.click(within(menu).getByTestId('manage-item-scoring'))
+      expect(open).toHaveBeenCalledWith('https://s.example/1', '_blank', 'noopener,noreferrer')
+      open.mockRestore()
+    })
+
+    it('has no Scoring or Watch Live item without the links, and no Deactivate or Delete item', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ deletable: true }))
+
+      const menu = await openMenu(user)
+      for (const name of ['Scoring', 'Watch Live', 'Deactivate', 'Reactivate', 'Delete']) {
+        expect(titles(menu)).not.toContain(name)
+      }
+    })
+
+    it('every destination carries the list as its origin', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ matchDate: future() }))
+
+      const menu = await openMenu(user)
+      expect(within(menu).getByTestId('manage-item-open')).toHaveAttribute('href', `/manage/fixtures/matches/match-1?${RETURN}`)
+      expect(within(menu).getByTestId('manage-item-edit')).toHaveAttribute('href', `/manage/fixtures/matches/match-1/edit?${RETURN}`)
+      expect(within(menu).getByTestId('manage-item-select-team')).toHaveAttribute('href', `/manage/team-selection/matches/match-1/sides/home?${RETURN}`)
+      expect(within(menu).getByTestId('manage-item-result')).toHaveAttribute('href', `/manage/results/match-1/capture?${RETURN}`)
+    })
+
+    it('Open Availability opens the prefilled New poll flow when there is no poll', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch())
 
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
+      await user.click(within(await openMenu(user)).getByTestId('manage-item-availability'))
 
       expect(
-        await screen.findByText('At: /manage/availability/new?type=group&sectionId=sec-1&matchId=match-1'),
+        await screen.findByText(`At: /manage/availability/new?type=group&sectionId=sec-1&matchId=match-1&${RETURN}`),
       ).toBeInTheDocument()
     })
 
-    it('Availability opens the squad Responses page for one squad poll', async () => {
+    it('Open Availability opens the squad or group Responses page for one poll', async () => {
       const user = userEvent.setup()
-      renderCard(makeMatch({ polls: [squadPoll({ pollId: 'poll-5' })] }))
+      const squad = renderCard(makeMatch({ polls: [squadPoll({ pollId: 'poll-5' })] }))
+      await user.click(within(await openMenu(user)).getByTestId('manage-item-availability'))
+      expect(await screen.findByText(`At: /manage/availability/squad/match-1/poll-5?${RETURN}`)).toBeInTheDocument()
+      squad.unmount()
 
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
-
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-5')).toBeInTheDocument()
-    })
-
-    it('Availability opens the group Responses page for one group poll', async () => {
-      const user = userEvent.setup()
       renderCard(makeMatch({ polls: [groupPoll({ roundId: 'round-9' })] }))
-
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
-
-      expect(await screen.findByText('At: /manage/availability/group/round-9')).toBeInTheDocument()
+      await user.click(within(await openMenu(user)).getByTestId('manage-item-availability'))
+      expect(await screen.findByText(`At: /manage/availability/group/round-9?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('Availability opens a menu for two polls and each option opens its Responses page', async () => {
+    it('lists one named Open Availability item per poll for a derby with two polls', async () => {
       const user = userEvent.setup()
-      const derby = makeMatch({
-        awayTeamId: 'team-2',
-        awayTeamName: null,
-        awayPickedCount: 0,
-        polls: [squadPoll(), squadPoll({ pollId: 'poll-2', teamId: 'team-2' })],
-      })
-      const { unmount } = renderCard(derby)
+      renderCard(
+        makeMatch({
+          awayTeamId: 'team-2',
+          awayTeamName: null,
+          awayPickedCount: 0,
+          polls: [squadPoll(), squadPoll({ pollId: 'poll-2', teamId: 'team-2' })],
+        }),
+      )
 
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
-      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-        '1st XI · Home poll',
-        '2nd XI · Away poll',
+      await user.click(screen.getByRole('button', { name: 'Actions for 1st XI v 2nd XI' }))
+      const menu = await screen.findByRole('menu')
+      expect(titles(menu).filter((title) => title?.startsWith('Open Availability'))).toEqual([
+        'Open Availability: 1st XI · Home poll',
+        'Open Availability: 2nd XI · Away poll',
       ])
-      await user.click(within(menu).getByRole('menuitem', { name: '2nd XI · Away poll' }))
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-2')).toBeInTheDocument()
-      unmount()
-
-      renderCard(derby)
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
-      await user.click(await screen.findByRole('menuitem', { name: '1st XI · Home poll' }))
-      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
+      await user.click(within(menu).getByTestId('manage-item-availability-1'))
+      expect(await screen.findByText(`At: /manage/availability/squad/match-1/poll-2?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('does not open a menu for one or no poll', async () => {
+    it('disables Select Team, Open Availability and Share Team Sheet with the reason when neither side is a club team, keeping Edit Match', async () => {
       const user = userEvent.setup()
-      renderCard(makeMatch({ polls: [squadPoll({ pollId: 'poll-5' })] }))
-      await user.click(screen.getByRole('button', { name: 'Availability' }))
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    })
-
-    it('disables Select, Availability and Share with an explanatory title when neither side is a club team, keeping Edit enabled', () => {
       renderCard(makeMatch({ homeTeamId: null, homeTeamName: 'A', homePickedCount: null }))
 
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
-      for (const name of ['Select', 'Availability', 'Share']) {
-        const button = screen.getByRole('button', { name })
-        expect(button).toBeDisabled()
-        expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
+      const menu = await user.click(screen.getByRole('button', { name: 'Actions for A v Riverside Occasionals' })).then(() => screen.findByRole('menu'))
+      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+        expect(within(menu).getByTestId(`manage-item-${id}`)).toHaveAttribute('aria-disabled', 'true')
       }
+      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(3)
+      expect(within(menu).getByTestId('manage-item-edit')).not.toHaveAttribute('aria-disabled', 'true')
     })
 
-    it('treats another club\'s team (null picked count) plus a free-text side as no club team: disabled, with the note', () => {
-      renderCard(makeMatch({ homeTeamId: 'other-club-team', homePickedCount: null }))
-
-      for (const name of ['Select', 'Availability', 'Share']) {
-        const button = screen.getByRole('button', { name })
-        expect(button).toBeDisabled()
-        expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
-      }
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
-      expect(screen.getByText('Neither side is one of your teams, so there is nobody to pick.')).toBeInTheDocument()
-    })
-
-    it('enables Select, Availability and Share for a club side with zero picked', () => {
+    it('enables the team items for a club side with zero picked', async () => {
+      const user = userEvent.setup()
       renderCard(makeMatch({ homePickedCount: 0 }))
 
-      for (const name of ['Select', 'Availability', 'Share']) {
-        expect(screen.getByRole('button', { name })).toBeEnabled()
+      const menu = await openMenu(user)
+      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+        expect(within(menu).getByTestId(`manage-item-${id}`)).not.toHaveAttribute('aria-disabled', 'true')
       }
     })
 
-    it('enables Select, Availability and Share when a club team is playing', () => {
-      renderCard(makeMatch())
-
-      for (const name of ['Select', 'Availability', 'Share']) {
-        expect(screen.getByRole('button', { name })).toBeEnabled()
-      }
-    })
-
-    it('Share opens the Team Sheet dialog and fetches the sides and squads only then', async () => {
+    it('Share Team Sheet opens the dialog and fetches the sides and squads only then', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch())
       expect(listMatchSides).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: 'Share' }))
+      await user.click(within(await openMenu(user)).getByTestId('manage-item-share-team-sheet'))
 
       expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
       expect(listMatchSides).toHaveBeenCalledWith('club-1', 'match-1')
       expect(listSquad).toHaveBeenCalledWith('club-1', 'team-1', 'season-1')
     })
-  })
 
-  // docs/specs/109-delete-empty-match.md: Delete only on a deletable match, and only where the page passes the handler.
-  describe('Delete', () => {
-    it('shows Delete (top right) for a deletable match when a handler is given, and hands the match name to it without navigating', async () => {
+    it('never follows the card link when the kebab is pressed', async () => {
       const user = userEvent.setup()
-      const onDelete = vi.fn()
-      renderCard(makeMatch({ id: 'match-7', deletable: true }), { viewTo: '/manage/fixtures/matches/match-7', onDelete })
-      await user.click(screen.getByRole('button', { name: 'Delete match 1st XI v Riverside Occasionals' }))
-      expect(onDelete).toHaveBeenCalledWith({ id: 'match-7', name: '1st XI v Riverside Occasionals' })
-      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument() // still on the list, no navigation
-    })
+      renderCard(makeMatch(), { viewTo: '/manage/fixtures/matches/match-1' })
 
-    it('hides Delete when the match is not deletable', () => {
-      renderCard(makeMatch({ deletable: false }), { onDelete: vi.fn() })
-      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
-    })
-
-    it('hides Delete when no handler is given', () => {
-      renderCard(makeMatch({ deletable: true }))
-      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
+      await openMenu(user)
+      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
     })
   })
 })

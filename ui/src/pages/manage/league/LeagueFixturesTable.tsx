@@ -3,6 +3,7 @@ import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { alpha, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { ManageMenu } from '../../../components/ManageMenu'
@@ -186,6 +187,8 @@ function FixtureRow({ match, teamsById, originLabel }: { match: Match; teamsById
                 items: [
                   { id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) },
                   { id: 'edit', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
+                  // Share is always last (page-anatomy section 8). The match share itself is built with the Matches review; until then the item is disabled.
+                  { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, disabled: true, reason: 'Sharing a match is coming soon' },
                 ],
               },
             ]}

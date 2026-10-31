@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchList from './MatchList'
-import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
+import { DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 import type { Match } from '../../api/matchApi'
 import type { Page } from '../../api/productApi'
 
@@ -16,14 +16,12 @@ const listLeagues = vi.fn()
 const listSeasons = vi.fn()
 const listSections = vi.fn()
 const listPlayingAreas = vi.fn()
-const deleteMatch = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
   listMatchFilterOptions: (clubId: string, params: unknown) => listMatchFilterOptions(clubId, params),
   getMatchesSummary: (clubId: string, filters: unknown) => getMatchesSummary(clubId, filters),
   matchesSummaryKey: (clubId: string, filters: unknown) => ['managed-club', clubId, 'matches', 'summary', filters],
-  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
   deactivateMatch: vi.fn(),
   reactivateMatch: vi.fn(),
 }))
@@ -115,11 +113,6 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
-function EditMatchPageStub() {
-  const location = useLocation()
-  return <div>Edit Match Page: {location.pathname + location.search}</div>
-}
-
 function renderPage(clubId?: string, entry: string | { pathname: string; state: unknown } = '/manage/fixtures/matches') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -139,43 +132,22 @@ function renderPage(clubId?: string, entry: string | { pathname: string; state: 
 }
 
 describe('MatchList', () => {
-  // docs/specs/109-delete-empty-match.md: Delete from the list, in both views, through the one shared confirm dialog.
+  // docs/specs/130 and page-anatomy 6b: Delete is not on the list (kebab or icon); it stays on the edit page (109).
   describe.each([['cards'], ['list']])('Delete in the %s view', (view) => {
     beforeEach(() => {
       localStorage.setItem('matchList:view', view)
     })
 
-    it('shows Delete only on a deletable match', async () => {
-      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true }), makeMatch({ id: 'match-2', deletable: false })]))
-      renderPage('test-club-id')
-      expect(await screen.findAllByRole('button', { name: /^Delete match/ })).toHaveLength(1)
-    })
-
-    it('asks first, does not open the match, deletes on confirm and shows the notice', async () => {
+    it('has no Delete button and no Delete, Deactivate or Reactivate kebab item, even on a deletable match', async () => {
       const user = userEvent.setup()
-      deleteMatch.mockResolvedValue(undefined)
       listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true })]))
       renderPage('test-club-id')
-      await user.click(await screen.findByRole('button', { name: /^Delete match/ }))
-      const dialog = await screen.findByRole('dialog')
-      expect(within(dialog).getByText('Delete this match?')).toBeInTheDocument()
-      expect(screen.queryByText('Match Detail Page')).not.toBeInTheDocument()
-      expect(deleteMatch).not.toHaveBeenCalled()
-      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
-      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
-      expect(await screen.findByText('Match deleted.')).toBeInTheDocument()
-    })
-
-    it('shows the server message in the dialog on a 409 and keeps the match', async () => {
-      const user = userEvent.setup()
-      deleteMatch.mockRejectedValue({ isAxiosError: true, response: { status: 409, data: { detail: 'This match has a draft result. Deactivate it instead.' } } })
-      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true })]))
-      renderPage('test-club-id')
-      await user.click(await screen.findByRole('button', { name: /^Delete match/ }))
-      const dialog = await screen.findByRole('dialog')
-      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('This match has a draft result. Deactivate it instead.')
-      expect(screen.queryByText('Match deleted.')).not.toBeInTheDocument()
+      await user.click(await screen.findByRole('button', { name: /^Actions for/ }))
+      const menu = await screen.findByRole('menu')
+      for (const name of [/delete/i, /deactivate/i, /reactivate/i]) {
+        expect(within(menu).queryByRole('menuitem', { name })).not.toBeInTheDocument()
+      }
+      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
     })
   })
 
@@ -199,7 +171,7 @@ describe('MatchList', () => {
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
   })
 
-  it('lays the cards out in an auto-fill grid (min 340px, capped at 100%) with stretched equal heights', async () => {
+  it('lays the cards out on the dynamic grid with stretched equal heights, ending with a dashed Add Match card carrying returnTo', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 
     renderPage('test-club-id')
@@ -208,9 +180,12 @@ describe('MatchList', () => {
     const grid = heading.closest('.MuiCard-root')?.parentElement as HTMLElement
     expect(grid).toHaveStyle({
       display: 'grid',
-      gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS,
+      gridTemplateColumns: DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS,
       alignItems: 'stretch',
     })
+    const add = screen.getByTestId('add-match-card')
+    expect(grid.lastElementChild).toBe(add)
+    expect(add).toHaveAttribute('href', expect.stringMatching(/^\/manage\/fixtures\/matches\/new\?returnTo=.*returnLabel=Matches/))
   })
 
   // docs/specs/089 (D): Season moved out of the toolbar into a pill beside the title.
@@ -278,7 +253,7 @@ describe('MatchList', () => {
 
       await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
-      expect(screen.getByLabelText(/view (entire season|all seasons)/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /view (entire season|all seasons)/i })).toBeInTheDocument()
 
       await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
       await waitFor(() => expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument())
@@ -320,10 +295,8 @@ describe('MatchList', () => {
     expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
   })
 
-  // docs/specs/041-list-screen-header-actions.md: MatchList's default viewTo AND editTo are both
-  // real routes, so its card is the one existing call site where RecordCard's revised
-  // View+Edit-together rendering is actually reachable today.
-  it('renders a title link to the match view route and a footer Edit button on a card', async () => {
+  // docs/specs/130: the card title opens the match with the list as its origin; the kebab holds the actions and never navigates the card.
+  it('renders a title link to the match view route carrying returnTo, and one Actions kebab instead of a footer', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1' })]))
 
     renderPage('test-club-id')
@@ -331,20 +304,15 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/matches/match-1',
+      '/manage/fixtures/matches/match-1?returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches',
     )
-    // Edit is now an icon-over-caption footer button (docs/specs/069), not a link.
-    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
+    for (const name of ['Edit', 'Select', 'Availability', 'Share']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+    expect(screen.getByRole('button', { name: 'Actions for 1st XI v Riverside Occasionals' })).toBeEnabled()
   })
 
-  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
-  // card title is the click target. Extends the href-only assertion above with a real
-  // click-through, confirming the title link still resolves to the same route the old View button
-  // targeted, and Edit still navigates independently — a good regression case here specifically
-  // because this card also carries a four-button footer (Edit, Select, Availability, Share), the
-  // exact scenario the stacking-order fix must not break.
-  it('clicking the card title navigates to the match view route, and Edit still navigates to the edit route', async () => {
+  it('clicking the card title opens the match, and the kebab Edit Match item opens the edit page', async () => {
     const user = userEvent.setup()
     listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1' })]))
 
@@ -356,7 +324,8 @@ describe('MatchList', () => {
 
     renderPage('test-club-id')
     await screen.findByText('1st XI vs Riverside Occasionals')
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: /^Actions for/ }))
+    await user.click(await screen.findByTestId('manage-item-edit'))
     expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
   })
 
@@ -370,12 +339,12 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true }))
 
-    await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
+    await user.click(screen.getByRole('button', { name: /view (entire season|all seasons)/i }))
     await waitFor(() =>
       expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: false })),
     )
 
-    await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
+    await user.click(screen.getByRole('button', { name: /view (entire season|all seasons)/i }))
     await waitFor(() =>
       expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true })),
     )
@@ -392,37 +361,61 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,asc' }))
     // docs/specs/087: the quiet sort link reads the CURRENT order and reverses it on click.
-    expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sort: soonest first/i })).toBeInTheDocument()
   })
 
-  // docs/specs/087-matches-polls-alignment.md (B)
-  describe('Polls-style toolbar (087)', () => {
-    it('shows the scope text on the content line, and the sort link reverses the order via the backend sort param', async () => {
+  // docs/specs/087-matches-polls-alignment.md (B), revamped by docs/specs/130
+  describe('toolbar (087, 130)', () => {
+    it('shows no count text, and the Sort button reverses the order via the backend sort param', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch(), makeMatch({ id: 'match-2' })]))
 
       renderPage('test-club-id')
 
       await screen.findAllByText('1st XI vs Riverside Occasionals')
-      expect(screen.getByText(/Showing 2 upcoming matches/)).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
+      expect(screen.queryByText('FILTER')).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: /soonest first/i }))
+      await user.click(screen.getByRole('button', { name: /sort: soonest first/i }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Latest First' }))
       await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,desc' })))
-      expect(await screen.findByRole('button', { name: /latest first/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /sort: latest first/i })).toBeInTheDocument()
     })
 
-    it('reads "Showing N matches" once past matches are included, and singular for one', async () => {
+    it('orders the toolbar View Entire Season, Sort, then Cards | List last', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      renderPage('test-club-id')
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      const toggle = screen.getByRole('button', { name: /view (entire season|all seasons)/i })
+      const sort = screen.getByRole('button', { name: /sort: soonest first/i })
+      const cards = screen.getAllByRole('button', { name: 'Cards' })[0]
+      expect(toggle.compareDocumentPosition(sort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(sort.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('puts the toolbar inside the table card in List view and in its own card in Cards view', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
-
       renderPage('test-club-id')
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(screen.queryByTestId('matches-fused-card')).not.toBeInTheDocument()
 
-      expect(await screen.findByText(/Showing 1 upcoming match/)).toBeInTheDocument()
-      await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
-      expect(await screen.findByText(/^Showing 1 match(?!es)/)).toBeInTheDocument()
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      const fused = await screen.findByTestId('matches-fused-card')
+      expect(within(fused).getByLabelText('Search')).toBeInTheDocument()
     })
 
-    it('on a phone shows search and a Filters button, with View entire season and the sort link inside the sheet', async () => {
+    it('shows the empty message with no action button, keeping the dashed Add card, and the toolbar stays mounted', async () => {
+      listMatches.mockResolvedValue(makePage([]))
+      renderPage('test-club-id')
+      expect(await screen.findByText('No upcoming matches')).toBeInTheDocument()
+      expect(screen.getByText(/Turn on "View Entire Season"/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Add Match' })).toHaveLength(1)
+      expect(screen.getByTestId('add-match-card')).toBeInTheDocument()
+      expect(screen.getByLabelText('Search')).toBeInTheDocument()
+    })
+
+    it('on a phone shows search and a Filters button, with View Entire Season and the sort link inside the sheet', async () => {
       const user = userEvent.setup()
       window.matchMedia = ((query: string) => ({
         matches: query.includes('max-width'),
@@ -440,7 +433,7 @@ describe('MatchList', () => {
         renderPage('test-club-id')
 
         await screen.findByText('1st XI vs Riverside Occasionals')
-        expect(screen.getByText(/Showing 1 upcoming match/)).toBeInTheDocument()
+        expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
         expect(screen.queryByRole('checkbox', { name: /view (entire season|all seasons)/i })).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: /soonest first/i })).not.toBeInTheDocument()
 
@@ -452,7 +445,7 @@ describe('MatchList', () => {
       }
     })
 
-    it('names the chosen section and season under the title', async () => {
+    it('shows no scope line under the title for a chosen section and season', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
       listSeasons.mockResolvedValue([
@@ -463,32 +456,34 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       await screen.findByText('1st XI vs Riverside Occasionals')
-      expect(screen.queryByText(/^Showing: /)).not.toBeInTheDocument()
-
       await user.click(screen.getByLabelText('Section'))
       await user.click(within(screen.getByRole('treeitem', { name: 'Men' })).getByText('Men'))
-      await user.click(screen.getByLabelText('Season'))
+      await user.click(screen.getByRole('button', { name: 'Season' }))
       await user.click(await screen.findByRole('option', { name: '2026/27' }))
 
-      expect(await screen.findByText('Showing: Men · 2026/27')).toBeInTheDocument()
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1', seasonId: 'season-1' })))
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
   })
 
-  // docs/specs/037-match-improvements.md item 2
-  describe('Select shortcut', () => {
-    it('navigates to the edit route\'s Playing XI tab when the match has a real-Team side', async () => {
+  // docs/specs/037-match-improvements.md item 2, now the kebab's Select Team item (docs/specs/130)
+  describe('Select Team item', () => {
+    it('links to the Select Team page of the club side, with the list as origin', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValueOnce(makePage([makeMatch({ homeTeamId: 'team-1' })]))
 
       renderPage('test-club-id')
 
       await screen.findByText('1st XI vs Riverside Occasionals')
-      await user.click(screen.getByRole('button', { name: 'Select' }))
-
-      expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /^Actions for/ }))
+      expect(await screen.findByTestId('manage-item-select-team')).toHaveAttribute(
+        'href',
+        '/manage/team-selection/matches/match-1/sides/home?returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches',
+      )
     })
 
-    it('is disabled with an explanatory title for a match with no real-Team side on either end', async () => {
+    it('is disabled with the reason for a match with no real-Team side on either end', async () => {
+      const user = userEvent.setup()
       listMatches.mockResolvedValueOnce(
         makePage([makeMatch({ homeTeamId: null, homeTeamName: 'Home Occasionals', awayTeamId: null, awayTeamName: 'Away Occasionals' })]),
       )
@@ -496,39 +491,10 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       await screen.findByText('Home Occasionals vs Away Occasionals')
-      const select = screen.getByRole('button', { name: 'Select' })
-      expect(select).toBeDisabled()
-      expect(select.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
-    })
-
-    // docs/specs/037-match-improvements.md item 2: SquadPicker.tsx (029) passes its own `editTo`
-    // that already ends in `?tab=playing-xi` — confirms the query string is never doubled up into
-    // an unparseable `?tab=playing-xi?tab=playing-xi`.
-    it('appends rather than duplicates the query string when editTo already carries one (SquadPicker\'s own editTo shape)', async () => {
-      const user = userEvent.setup()
-      listMatches.mockResolvedValueOnce(makePage([makeMatch({ homeTeamId: 'team-1' })]))
-
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/manage/fixtures/matches']}>
-            <Routes>
-              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
-                <Route
-                  path="matches"
-                  element={<MatchList editTo={(matchId) => `/manage/fixtures/matches/${matchId}/edit?tab=playing-xi`} viewTo={null} />}
-                />
-                <Route path="matches/:matchId/edit" element={<EditMatchPageStub />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </QueryClientProvider>,
-      )
-
-      await screen.findByText('1st XI vs Riverside Occasionals')
-      await user.click(screen.getByRole('button', { name: 'Select' }))
-
-      expect(await screen.findByText('Edit Match Page: /manage/fixtures/matches/match-1/edit?tab=playing-xi')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /^Actions for/ }))
+      const item = await screen.findByTestId('manage-item-select-team')
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(within(item).getByText('None of your teams is playing in this match')).toBeInTheDocument()
     })
   })
 
@@ -561,7 +527,7 @@ describe('MatchList', () => {
 
     renderPage('test-club-id')
 
-    expect(await screen.findByText('Inactive')).toBeInTheDocument()
+    expect((await screen.findAllByText('Inactive')).length).toBeGreaterThan(0)
   })
 
   // docs/specs/040-announce-team.md
@@ -632,14 +598,15 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       await screen.findByText('Home Occasionals vs Away Occasionals')
-      expect(screen.queryByText(/Announced/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^(Announced|Not announced)$/)).not.toBeInTheDocument()
     })
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. The
   // footer is Edit / Select / Poll / Share (docs/specs/069).
-  it('never renders a Deactivate/Reactivate button on the card, while Edit/Select/Availability/Share remain', async () => {
+  it('never renders a Deactivate/Reactivate button on the card, while the kebab holds Edit, Select, Availability and Share', async () => {
+    const user = userEvent.setup()
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
 
     renderPage('test-club-id')
@@ -647,8 +614,9 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
-    for (const name of ['Edit', 'Select', 'Availability', 'Share']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Actions for/ }))
+    for (const id of ['edit', 'select-team', 'availability', 'share-team-sheet']) {
+      expect(await screen.findByTestId(`manage-item-${id}`)).toBeInTheDocument()
     }
   })
 
@@ -980,10 +948,10 @@ describe('MatchList', () => {
       await screen.findByText('1st XI vs Riverside Occasionals')
       await screen.findByTestId('page-counter-shown')
       expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
-      expect(within(counter('shown')).getByText('Upcoming matches')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Upcoming Matches')).toBeInTheDocument()
       expect(within(counter('this-week')).getByText('3')).toBeInTheDocument()
-      expect(within(counter('not-announced')).getByText('Teams not announced')).toBeInTheDocument()
-      expect(within(counter('no-poll')).getByText('Without a poll')).toBeInTheDocument()
+      expect(within(counter('not-announced')).getByText('Teams Not Announced')).toBeInTheDocument()
+      expect(within(counter('no-poll')).getByText('Without A Poll')).toBeInTheDocument()
       const valueColour = (id: string) => getComputedStyle(within(counter(id)).getByTestId('page-counter-value')).color
       expect(valueColour('not-announced')).not.toBe(valueColour('this-week'))
       expect(valueColour('no-poll')).toBe(valueColour('not-announced'))
@@ -999,17 +967,17 @@ describe('MatchList', () => {
 
       await screen.findByTestId('page-counter-shown')
       expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: false }))
-      expect(within(counter('shown')).getByText('Upcoming matches')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Upcoming Matches')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
+      await user.click(screen.getByRole('button', { name: /view (entire season|all seasons)/i }))
 
       await waitFor(() =>
         expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
       )
-      expect(await within(counter('shown')).findByText('Matches shown')).toBeInTheDocument()
+      expect(await within(counter('shown')).findByText('Matches Shown')).toBeInTheDocument()
     })
 
-    it('choosing a counter sends the backend focus, names it in a chip and the scope text, and marks the counter pressed', async () => {
+    it('choosing a counter sends the backend focus, and marks the counter pressed', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
 
@@ -1023,7 +991,7 @@ describe('MatchList', () => {
       )
       expect(counter('not-announced')).toHaveAttribute('aria-pressed', 'true')
       expect(counter('shown')).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByText(/Showing 1 upcoming match · Teams not announced/)).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
       // the counters keep describing the list's filters, not the quick filter
       expect(getMatchesSummary).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focus: expect.anything() }))
     })
@@ -1075,7 +1043,7 @@ describe('MatchList', () => {
       expect(screen.queryByTestId('page-counter-shown')).not.toBeInTheDocument()
     })
 
-    it('the Team field narrows the list and the counters through the backend teamId, and names the team under the title', async () => {
+    it('the Team field narrows the list and the counters through the backend teamId, and shows no scope line', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
       listTeamsForClub.mockResolvedValue([
@@ -1095,7 +1063,7 @@ describe('MatchList', () => {
       await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' })))
       expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' }))
       expect(listMatchFilterOptions).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' }))
-      expect(await screen.findByText('Showing: 1st XI')).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
 
     it('never saves the team or the quick filter with the persisted Section, League and Season filters', async () => {
@@ -1134,11 +1102,11 @@ describe('MatchList', () => {
 
         await screen.findByTestId('page-counter-not-announced')
         // the phone shows the short label; the full name stays accessible
-        expect(within(counter('not-announced')).getByText('Not announced')).toBeInTheDocument()
-        await user.click(screen.getByRole('button', { name: '4 Teams not announced' }))
+        expect(within(counter('not-announced')).getByText('Not Announced')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: '4 Teams Not Announced' }))
 
         expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Remove filter Teams not announced' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove filter Teams Not Announced' })).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
         expect(await screen.findByText(/Quick filter:/)).toBeInTheDocument()

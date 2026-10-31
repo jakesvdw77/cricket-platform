@@ -1,6 +1,7 @@
 import { alpha, Box, ButtonBase, Card as MuiCard, Skeleton, Tooltip, Typography, useMediaQuery } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { useTheme } from '@mui/material/styles'
+import { Link as RouterLink } from 'react-router-dom'
 import type { Theme } from '@mui/material'
 import { compactCardSx, compactValueSx, keyFigureCardSx, keyFigureValueSx, selectableCardSx } from './keyFigureStyle'
 
@@ -26,6 +27,8 @@ export interface PageCounterItem {
   info?: string
   // Overrides the card's data-testid (`page-counter-${id}`) and names the info icon `${testId}-info`.
   testId?: string
+  // docs/specs/130: the card is a real link (a plain card that opens something, e.g. the match's field). No marker, no pressed state.
+  to?: string
 }
 
 export interface PageCountersProps {
@@ -72,6 +75,7 @@ const activeOutline = (theme: Theme) => `2px solid ${alpha(theme.palette.primary
 
 // A counter with nothing behind it (figure 0) is a plain card, except the one the list is currently filtered to.
 function isInteractive(item: PageCounterItem) {
+  if (item.to) return true
   if (!item.onSelect) return false
   // 0, "0" and "0 / 24" are zero; "10 / 24" and "0.5" are not.
   const zero = /^0(\s*\/.*)?$/.test(String(item.value).trim())
@@ -169,10 +173,10 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
         isInteractive(item) ? (
           <ButtonBase
             key={item.id}
-            onClick={item.onSelect}
+            {...(item.to ? { component: RouterLink, to: item.to } : { onClick: item.onSelect })}
             // A shortened label must not shorten the accessible name: value and full label.
             aria-label={item.shortLabel ? `${item.value} ${item.label}` : undefined}
-            aria-pressed={(item.kind ?? 'filter') !== 'drill' ? Boolean(item.active) : undefined}
+            aria-pressed={!item.to && (item.kind ?? 'filter') !== 'drill' ? Boolean(item.active) : undefined}
             data-testid={item.testId ?? `page-counter-${item.id}`}
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({

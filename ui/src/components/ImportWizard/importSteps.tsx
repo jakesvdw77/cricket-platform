@@ -60,16 +60,19 @@ function renderRowsStep(context: ImportStepContext) {
   const editing = context.type.editable && context.type.editableColumns?.length
     ? { editableColumns: context.type.editableColumns, onEditRow: context.onEditRow, onAddRow: context.onAddRow, onRemoveRow: context.onRemoveRow, onResetRow: context.onResetRow, emptyLabel: context.labels.emptyRowsLabel }
     : {}
+  const rowsFooter = (
+    <WizardFooter
+      inlineNote
+      back={{ label: 'Back', onClick: context.onBack }}
+      primary={{ label: 'Next', onClick: context.onNext, disabled: errors > 0 || context.saving }}
+      note={errors > 0 ? <Box component="span" sx={{ color: 'error.main' }}>Fix or exclude {plural(errors, 'error', 'errors')} to continue.</Box> : 'Nothing is saved at this step.'}
+    />
+  )
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
       {batch.earlierImportWarning && <Alert severity="warning">{batch.earlierImportWarning}</Alert>}
       {(batch.fileWarnings ?? []).map((warning) => <Alert key={warning} severity="warning">{warning}</Alert>)}
-      <ImportIssueTable clubId={context.clubId} batch={batch} decisions={decisions} columns={context.columns} onToggleExclude={context.onToggleExclude} onToggleUpdate={context.onToggleUpdate} disabled={context.saving} deferredCodes={context.deferredCodes} columnOptions={context.columnOptions} editLayout={context.editLayout} pendingLabel={context.labels.pendingRowsLabel} pendingLinkedLabel={context.labels.pendingLinkedLabel} pendingUnmatchedLabel={context.labels.pendingUnmatchedLabel} pendingCreatedLabel={context.labels.pendingCreatedLabel} candidateBadge={context.candidateBadge} toolbarExtra={context.checkSettings} {...editing} />
-      <WizardFooter
-        back={{ label: 'Back', onClick: context.onBack }}
-        primary={{ label: 'Next', onClick: context.onNext, disabled: errors > 0 || context.saving }}
-        note={errors > 0 ? <Box component="span" sx={{ color: 'error.main' }}>Fix or exclude {plural(errors, 'error', 'errors')} to continue.</Box> : 'Nothing is saved at this step.'}
-      />
+      <ImportIssueTable clubId={context.clubId} batch={batch} decisions={decisions} columns={context.columns} onToggleExclude={context.onToggleExclude} onToggleUpdate={context.onToggleUpdate} disabled={context.saving} deferredCodes={context.deferredCodes} columnOptions={context.columnOptions} editLayout={context.editLayout} pendingLabel={context.labels.pendingRowsLabel} pendingLinkedLabel={context.labels.pendingLinkedLabel} pendingUnmatchedLabel={context.labels.pendingUnmatchedLabel} pendingCreatedLabel={context.labels.pendingCreatedLabel} candidateBadge={context.candidateBadge} toolbarExtra={context.checkSettings} footer={rowsFooter} {...editing} />
     </Box>
   )
 }

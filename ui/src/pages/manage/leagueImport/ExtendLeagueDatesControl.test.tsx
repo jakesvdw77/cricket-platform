@@ -15,12 +15,12 @@ function renderControl(issues: ImportIssue[], options: Record<string, unknown> =
 describe('ExtendLeagueDatesControl', () => {
   it('shows nothing without a DATE_OUTSIDE_LEAGUE_DATES issue', () => {
     renderControl([issue('DATE_OUTSIDE_SEASON')])
-    expect(screen.queryByRole('button', { name: 'Extend league dates' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Extend League Dates' })).not.toBeInTheDocument()
   })
 
   it('saves one options update when pressed', () => {
     const setOptions = renderControl([issue('DATE_OUTSIDE_LEAGUE_DATES')])
-    fireEvent.click(screen.getByRole('button', { name: 'Extend league dates' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Extend League Dates' }))
     expect(setOptions).toHaveBeenCalledTimes(1)
     expect(setOptions).toHaveBeenCalledWith({ extendLeagueDates: true })
   })

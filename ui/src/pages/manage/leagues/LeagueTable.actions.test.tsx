@@ -59,10 +59,10 @@ describe('LeagueTable Actions kebab', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Actions for Vets League' }))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Open League',
+      'Edit League Details',
       'Open Schedule',
       'Open Teams',
       'Open Playing Conditions',
-      'Edit League Details',
       'Add Match',
       'Import Schedule',
     ])

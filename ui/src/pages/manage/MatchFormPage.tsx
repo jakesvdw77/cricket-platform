@@ -1,8 +1,7 @@
-import { Box, Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -20,7 +19,6 @@ import type { Match, MatchPayload } from '../../api/matchApi'
 import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useMatchFormData } from '../../hooks/useMatchFormData'
 import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
-import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
 import { selectTeamPath } from './teamSelection/selectionLinks'
 
 // docs/specs/093-team-selection-hub.md: the old deep links into the removed Home XI / Away XI tabs
@@ -106,8 +104,6 @@ export default function MatchFormPage() {
   // edit's own values (from `match`) are never overridden by a stray query param.
   const prefillLeagueId = !isEdit ? searchParams.get('leagueId') : null
   const prefillSeasonId = !isEdit ? searchParams.get('seasonId') : null
-  // docs/specs/093: Select team links to the Select team page of the first side that is a team of the club.
-  const hasOwnTeam = Boolean(match?.homeTeamId) || Boolean(match?.awayTeamId)
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -137,29 +133,9 @@ export default function MatchFormPage() {
       title={isEdit ? 'Edit Match' : 'Add Match'}
       backTo="/manage/fixtures/matches"
       backLabel="Back to Matches"
-      headerAction={
-        isEdit && match ? (
-          <Box component="span" title={hasOwnTeam ? undefined : NO_CLUB_TEAM_REASON} sx={{ display: 'inline-flex' }}>
-            {hasOwnTeam && match ? (
-              <MuiButton
-                component={RouterLink}
-                to={selectTeamPath(match.id, null, Boolean(match.homeTeamId))}
-                variant="outlined"
-                startIcon={<GroupsOutlinedIcon fontSize="small" />}
-                sx={compactButtonSx}
-              >
-                Select team
-              </MuiButton>
-            ) : (
-              <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />} sx={compactButtonSx}>
-                Select team
-              </MuiButton>
-            )}
-          </Box>
-        ) : undefined
-      }
+      compact
       actions={
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           {saveMutation.isError && !matchOutsideLeagueDatesMessage(saveMutation.error) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
@@ -167,12 +143,12 @@ export default function MatchFormPage() {
           )}
 
           {/* docs/specs/089 (B): Cancel goes back to the match (edit) or the list (add), without saving. */}
-          <MuiButton component={RouterLink} to={cancelLink.to ?? '/manage/fixtures/matches'} variant="outlined" sx={compactButtonSx}>
+          <MuiButton component={RouterLink} to={cancelLink.to ?? '/manage/fixtures/matches'} variant="outlined" size="small" sx={compactButtonSx}>
             Cancel
           </MuiButton>
 
           <Button size="compact" type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
-            {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create match'}
+            {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Match'}
           </Button>
 
           {/* docs/specs/093: Deactivate / Reactivate is a record action, so it lives with Details, not with selection. */}

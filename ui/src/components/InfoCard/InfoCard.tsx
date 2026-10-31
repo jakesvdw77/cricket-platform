@@ -43,12 +43,14 @@ export interface InfoCardProps {
   // docs/specs/103: 'large' is the roomier field text of the statistics cards (13px labels, 16px values, 12px captions; responsive 2/3/4 columns).
   // Omitted ('default'), every card is unchanged.
   fieldSize?: 'default' | 'large'
+  // docs/specs/129 and page-anatomy section 4: the explicit flat look (hairline border, no shadow). Omitted, the card is unchanged.
+  flat?: boolean
 }
 
 // docs/specs/088 section G (the Player page) and docs/specs/091 (the league Conditions tab): one section card. A solid-green icon tile and an uppercase heading, then
 // label-over-bold-value fields, optional chips, optional action buttons pinned to the bottom so the cards in a row
 // stay the same height.
-export function InfoCard({ title, icon, fields = [], columns, chips, chipsFirst = false, note, headerAction, children, actions, testId, tone = 'default', fieldSize = 'default' }: InfoCardProps) {
+export function InfoCard({ title, icon, fields = [], columns, chips, chipsFirst = false, note, headerAction, children, actions, testId, tone = 'default', fieldSize = 'default', flat = false }: InfoCardProps) {
   const large = fieldSize === 'large'
   // 'large' defaults to 2 columns on a phone, 3 from sm, and 4 from md when there are 6 or more fields; `columns` overrides it
   const gridColumns = columns
@@ -79,6 +81,7 @@ export function InfoCard({ title, icon, fields = [], columns, chips, chipsFirst 
     <Card
       sx={[
         { height: '100%' },
+        flat && { boxShadow: 0, border: 1, borderColor: 'divider' },
         tone === 'warning' && ((theme) => ({ borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06) })),
       ]}
       contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: large ? 1.5 : 2, p: large ? 1.5 : { xs: 2, md: 2.5 }, '&:last-child': { pb: large ? 1.5 : { xs: 2, md: 2.5 } } }} data-testid={testId}>

@@ -36,7 +36,7 @@ describe('ImportWizard', () => {
   it('puts Convert with AI beside Import history on the Upload step only, and loads the help when its dialog opens', async () => {
     renderWizard({}, null)
     const button = await screen.findByRole('button', { name: 'Convert with AI' }, { timeout: 10000 })
-    expect(screen.getByRole('button', { name: 'Import history' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Import History' })).toBeInTheDocument()
     expect(server.calls.some((call) => call.url.includes('ai-help'))).toBe(false)
     fireEvent.click(button)
     expect(await screen.findByRole('dialog', { name: 'Convert your file with AI' })).toBeInTheDocument()
@@ -48,7 +48,7 @@ describe('ImportWizard', () => {
     renderWizard()
     await screen.findByTestId('import-row-14')
     expect(screen.queryByRole('button', { name: 'Convert with AI' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Import history' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Import History' })).toBeInTheDocument()
   })
 
   it('drops Identify ours when the batch is not ours-only', async () => {
@@ -206,7 +206,7 @@ describe('ImportWizard, editable rows (spec 125)', () => {
       </QueryClientProvider>,
     )
     fireEvent.click(await screen.findByRole('button', { name: 'No file? Start with an empty schedule' }, { timeout: 10000 }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Row' }))
     fireEvent.change(screen.getByLabelText('Home team, row new'), { target: { value: 'Irene Villagers 2' } })
     fireEvent.change(screen.getByLabelText('Away team, row new'), { target: { value: 'Irene Villagers 2' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -231,7 +231,7 @@ describe('ImportWizard, editable rows (spec 125)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'No file? Start with an empty schedule' }, { timeout: 10000 }))
     expect(await screen.findByText('No rows yet. Add the first match.')).toBeInTheDocument()
     expect(server.calls.some((call) => call.method === 'post' && call.url.endsWith('/blank'))).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add Row' }))
     fireEvent.change(screen.getByLabelText('Home team, row new'), { target: { value: 'CBC U13' } })
     fireEvent.change(screen.getByLabelText('Away team, row new'), { target: { value: 'Hilton' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))

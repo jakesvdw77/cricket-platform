@@ -57,8 +57,9 @@ class ImportConfirmationTokenTest {
         String forgedPayload = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString((batch + "|9|d|" + user + "|" + NOW.getEpochSecond()).getBytes(StandardCharsets.UTF_8));
         assertInvalid(() -> tokens.validate(forgedPayload + token.substring(dot), batch, 9, "d", user, true));
-        char last = token.charAt(token.length() - 1);
-        String flipped = token.substring(0, token.length() - 1) + (last == 'A' ? 'B' : 'A');
+        // First signature character: the last base64 character of a 32-byte MAC carries padding bits, so flipping it can decode unchanged.
+        char first = token.charAt(dot + 1);
+        String flipped = token.substring(0, dot + 1) + (first == 'A' ? 'B' : 'A') + token.substring(dot + 2);
         assertInvalid(() -> tokens.validate(flipped, batch, 1, "d", user, true));
     }
 

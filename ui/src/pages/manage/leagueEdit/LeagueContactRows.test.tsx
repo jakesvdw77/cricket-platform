@@ -88,41 +88,42 @@ describe('LeagueContactRows', () => {
     expect(within(plain).queryByTestId('league-contact-badge')).not.toBeInTheDocument()
   })
 
-  it('links the name and the View and Edit icons to the contact routes', () => {
+  it('links the name to the contact, and one kebab holds View Contact and Edit Contact with the origin', async () => {
+    const user = userEvent.setup()
     renderRows([makeContact({ id: 'contact-9' })])
 
     expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/leagues/league-1/contacts/contact-9',
+      expect.stringMatching(/^\/manage\/fixtures\/leagues\/league\-1\/contacts\/contact\-9\?returnTo=.*tab%3Dcontacts.*returnLabel=League\+contacts/),
     )
-    expect(screen.getByRole('link', { name: 'View Jane Smith' })).toHaveAttribute(
+    // No per-row eye or pencil icons: one actions button per row.
+    expect(screen.queryByRole('link', { name: 'View Jane Smith' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Edit Jane Smith' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Jane Smith' }))
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['View Contact', 'Edit Contact'])
+    expect(screen.getByRole('menuitem', { name: 'View Contact' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/leagues/league-1/contacts/contact-9',
+      expect.stringMatching(/^\/manage\/fixtures\/leagues\/league\-1\/contacts\/contact\-9\?returnTo=.*tab%3Dcontacts.*returnLabel=League\+contacts/),
     )
-    expect(screen.getByRole('link', { name: 'Edit Jane Smith' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Edit Contact' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/leagues/league-1/contacts/contact-9/edit',
+      expect.stringMatching(/^\/manage\/fixtures\/leagues\/league\-1\/contacts\/contact\-9\/edit\?returnTo=.*tab%3Dcontacts.*returnLabel=League\+contacts/),
     )
   })
 
-  it('on a phone shows the role under the name and a three-dot menu holding View and Edit', async () => {
+  it('on a phone shows the role under the name, with the same kebab and no chevron', async () => {
     setPhone(true)
     const user = userEvent.setup()
     renderRows([makeContact({ id: 'contact-9' })])
 
     expect(screen.getByTestId('league-contact-phone-role')).toHaveTextContent('League Administrator')
-    expect(screen.queryByRole('link', { name: 'View Jane Smith' })).not.toBeInTheDocument()
+    expect(document.querySelector('[data-testid="ChevronRightOutlinedIcon"]')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'Jane Smith, more actions' }))
-
-    expect(screen.getByRole('menuitem', { name: 'View' })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/leagues/league-1/contacts/contact-9',
-    )
-    expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/leagues/league-1/contacts/contact-9/edit',
-    )
+    await user.click(screen.getByRole('button', { name: 'Actions for Jane Smith' }))
+    expect(screen.getByRole('menuitem', { name: 'View Contact' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Edit Contact' })).toBeInTheDocument()
   })
 
   it('keeps the empty line and the Add contact button when there are no contacts', async () => {

@@ -2,7 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, Box, Tooltip, Typography } from '@mui/material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { Button } from '../../../components/Button'
+import { FormSectionHeading } from '../../../components/FormSectionHeading'
 import { Input } from '../../../components/Input'
 import { getLeagueSeasonDates, leagueSeasonDatesKey, putLeagueSeasonDates } from '../../../api/leagueSeasonDatesApi'
 import type { LeagueSeasonDates } from '../../../api/leagueSeasonDatesApi'
@@ -112,9 +114,6 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
 
   const controls = (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexWrap: 'wrap', alignItems: { md: 'center' }, gap: 1.25 }}>
-      <Typography variant="subtitle2" component="p" sx={{ mr: { md: 1 } }}>
-        Season dates for {seasonLabel || 'this season'}
-      </Typography>
       <Input
         label="Start date"
         type="date"
@@ -167,6 +166,7 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
       data-testid="league-season-dates"
       sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1 }}
     >
+      <FormSectionHeading compact icon={<EventOutlinedIcon />} title="Season dates" />
       {warning ? (
         <Alert severity="warning" data-testid="season-dates-banner" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" sx={{ mb: 1 }}>

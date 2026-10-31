@@ -175,7 +175,7 @@ describe('SeasonList', () => {
       await user.click(counter('upcoming'))
       expect(headings()).toEqual(['2027/28'])
       expect(counter('upcoming')).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByText(/Showing 1 season · Upcoming/)).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
 
       await user.click(counter('upcoming'))
       expect(headings()).toEqual(['2027/28', '2026/27', '2025/26'])
@@ -209,7 +209,7 @@ describe('SeasonList', () => {
       await screen.findAllByRole('heading', { level: 3 })
 
       fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
-      await user.click(screen.getAllByRole('checkbox', { name: 'Show inactive' })[0])
+      await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
 
       expect(within(counter('current')).getByTestId('page-counter-value')).toHaveTextContent('2026/27')
       expect(within(counter('upcoming')).getByTestId('page-counter-value')).toHaveTextContent('1')
@@ -226,7 +226,7 @@ describe('SeasonList', () => {
       await screen.findAllByRole('heading', { level: 3 })
       expect(screen.queryByText('Trial')).not.toBeInTheDocument()
 
-      await user.click(screen.getAllByRole('checkbox', { name: 'Show inactive' })[0])
+      await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
       expect(headings()).toEqual(['2027/28', '2026/27', 'Trial', '2025/26'])
       expect(screen.getByText('Inactive', { selector: '.MuiChip-label' })).toBeInTheDocument()
     })
@@ -265,14 +265,16 @@ describe('SeasonList', () => {
       expect(counter('current')).toBeInTheDocument()
     })
 
-    it('opens the season from the whole card and Edit from the footer', async () => {
+    it('opens the season from the whole card and Edit Season from the kebab, carrying returnTo', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValue([CURRENT])
       renderList('test-club-id')
 
       await screen.findAllByRole('heading', { level: 3 })
-      expect(screen.getByRole('link', { name: '2026/27' })).toHaveAttribute('href', '/manage/fixtures/seasons/cur')
-      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(screen.getByRole('link', { name: '2026/27' })).toHaveAttribute('href', expect.stringMatching(/^\/manage\/fixtures\/seasons\/cur\?returnTo=.*returnLabel=Seasons/))
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Actions for 2026/27' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Edit Season' }))
       expect(await screen.findByText('Edit Season Page')).toBeInTheDocument()
     })
 
@@ -295,7 +297,7 @@ describe('SeasonList', () => {
       fireEvent.change(screen.getByLabelText('Search'), { target: { value: '2025' } })
 
       expect(headings()).toEqual(['2025/26'])
-      expect(screen.getByText(/Showing 1 season\b/)).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
 
     it('sorts newest first by default, then oldest first and by name from the sort menu', async () => {
@@ -306,11 +308,11 @@ describe('SeasonList', () => {
       await screen.findAllByRole('heading', { level: 3 })
       expect(headings()).toEqual(['2027/28', '2026/27', '2025/26'])
 
-      await user.click(screen.getByRole('button', { name: /newest first/i }))
-      await user.click(screen.getByRole('menuitem', { name: 'Oldest first' }))
+      await user.click(screen.getByRole('button', { name: /sort: newest first/i }))
+      await user.click(screen.getByRole('menuitem', { name: 'Oldest First' }))
       expect(headings()).toEqual(['2025/26', '2026/27', '2027/28'])
 
-      await user.click(screen.getByRole('button', { name: /oldest first/i }))
+      await user.click(screen.getByRole('button', { name: /sort: oldest first/i }))
       await user.click(screen.getByRole('menuitem', { name: 'Name, A to Z' }))
       expect(headings()).toEqual(['2025/26', '2026/27', '2027/28'])
     })
@@ -328,7 +330,7 @@ describe('SeasonList', () => {
 
       await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       const table = await screen.findByRole('table', { name: 'Seasons' })
-      expect(within(table).getByRole('link', { name: '2026/27' })).toHaveAttribute('href', '/manage/fixtures/seasons/cur')
+      expect(within(table).getByRole('link', { name: '2026/27' })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/seasons/cur'))
       expect(localStorage.getItem('seasonList:view')).toBe('list')
       unmount()
 
@@ -357,21 +359,20 @@ describe('SeasonList', () => {
       renderList('test-club-id')
 
       const table = await screen.findByRole('table', { name: 'Seasons' })
-      expect(within(table).getByRole('link', { name: '2027/28' })).toHaveAttribute('href', '/manage/fixtures/seasons/up')
+      expect(within(table).getByRole('link', { name: '2027/28' })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/seasons/up'))
     })
   })
 
   describe('empty states', () => {
-    it('shows "No seasons yet" with an Add Season button when the club has none', async () => {
+    it('shows "No seasons yet" with no button in the message, and the dashed Add Season card as the only card', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValue([])
       renderList('test-club-id')
 
       expect(await screen.findByText('No seasons yet')).toBeInTheDocument()
       expect(screen.getByText("Create your club's first season to get started.")).toBeInTheDocument()
-      const buttons = screen.getAllByRole('button', { name: 'Add Season' })
-      expect(buttons).toHaveLength(2)
-      await user.click(buttons[1])
+      expect(screen.getAllByRole('button', { name: 'Add Season' })).toHaveLength(1)
+      await user.click(screen.getByTestId('add-season-card'))
       expect(await screen.findByText('Add Season Page')).toBeInTheDocument()
     })
 
@@ -401,6 +402,60 @@ describe('SeasonList', () => {
 
       expect(await screen.findByText('No inactive seasons')).toBeInTheDocument()
       expect(counter('inactive')).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
+  describe('toolbar and cards (129)', () => {
+    beforeEach(() => listSeasons.mockResolvedValue(ALL))
+
+    it('shows no count text and no FILTER tag in either view', async () => {
+      const user = userEvent.setup()
+      renderList('test-club-id')
+      await screen.findAllByRole('heading', { level: 3 })
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
+      expect(screen.queryByText('FILTER')).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      await screen.findByRole('table', { name: 'Seasons' })
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
+    })
+
+    it('ends the Cards grid with a dashed Add Season card carrying returnTo', async () => {
+      renderList('test-club-id')
+      await screen.findAllByRole('heading', { level: 3 })
+      const card = screen.getByTestId('add-season-card')
+      expect(card).toHaveAttribute('href', expect.stringMatching(/^\/manage\/fixtures\/seasons\/new\?returnTo=.*returnLabel=Seasons/))
+    })
+
+    it('puts the toolbar inside the table card in List view and in its own card in Cards view', async () => {
+      const user = userEvent.setup()
+      renderList('test-club-id')
+      await screen.findAllByRole('heading', { level: 3 })
+      expect(screen.queryByTestId('seasons-fused-card')).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      const fused = await screen.findByTestId('seasons-fused-card')
+      expect(within(fused).getByLabelText('Search')).toBeInTheDocument()
+    })
+
+    it('orders the toolbar Show Inactive, Sort, then Cards | List last', async () => {
+      renderList('test-club-id')
+      await screen.findAllByRole('heading', { level: 3 })
+      const toggle = screen.getByRole('button', { name: 'Show Inactive' })
+      const sort = screen.getByRole('button', { name: /sort: newest first/i })
+      const cards = screen.getAllByRole('button', { name: 'Cards' })[0]
+      expect(toggle.compareDocumentPosition(sort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(sort.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('keeps the search mounted while the empty message shows inside the fused card', async () => {
+      localStorage.setItem('seasonList:view', 'list')
+      renderList('test-club-id')
+      await screen.findByRole('table', { name: 'Seasons' })
+      const search = screen.getByLabelText('Search')
+      fireEvent.change(search, { target: { value: 'zzz' } })
+      expect(await screen.findByText('No matching seasons')).toBeInTheDocument()
+      expect(screen.getByLabelText('Search')).toBe(search)
     })
   })
 })

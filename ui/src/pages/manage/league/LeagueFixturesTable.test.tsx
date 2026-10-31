@@ -75,16 +75,17 @@ describe('LeagueFixturesTable', () => {
     expect(within(theirs).queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('gives only our matches an Actions kebab: Open Match and Edit Match, as links', async () => {
+  it('gives only our matches an Actions kebab: Open Match and Edit Match as links, then a disabled Share Match', async () => {
     renderTable([match({ id: 'ours', homeTeamId: 't1', homeTeamName: null }), match({ id: 'theirs' })])
 
     const [ours, theirs] = screen.getAllByTestId('fixture-row')
     expect(within(theirs).queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument()
     await userEvent.click(within(ours).getByRole('button', { name: 'Actions for Villagers 1 vs Eagles' }))
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((item) => item.textContent)).toEqual(['Open Match', 'Edit Match'])
+    expect(items.map((item) => item.textContent)).toEqual(['Open Match', 'Edit Match', expect.stringContaining('Share Match')])
     expect(items[0]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours'))
     expect(items[1]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours/edit'))
+    expect(items[2]).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps the desktop-only columns marked so a phone can drop them, and shows the phone line', () => {
@@ -111,7 +112,7 @@ describe('LeagueFixturesTable', () => {
     const origin = { to: '/manage/fixtures/leagues/l-1/schedule?seasonId=s-9', label: 'TVL schedule' }
     expect(returnOf(within(ours).getByRole('link', { name: 'Villagers 1 vs Eagles' }).getAttribute('href'))).toEqual(origin)
     await userEvent.click(within(ours).getByRole('button', { name: 'Actions for Villagers 1 vs Eagles' }))
-    for (const item of screen.getAllByRole('menuitem')) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
+    for (const item of screen.getAllByRole('menuitem').filter((entry) => entry.hasAttribute('href'))) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
   })
 
   it('has no open chevron on a row: the whole row is the link', () => {

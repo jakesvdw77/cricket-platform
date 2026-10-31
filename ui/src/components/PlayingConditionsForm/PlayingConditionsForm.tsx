@@ -163,9 +163,9 @@ function validate(values: FormState): FormErrors {
 }
 
 const fieldGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 1.25 }
-const switchGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 1.25, rowGap: 0.5 }
+const switchGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }, columnGap: 1.25, rowGap: 0.5, alignItems: 'start' }
 // Every switch row is the same 36 px high on desktop (44 px on a phone, from CompactSwitch), so the switches line up.
-const switchRowSx = { display: 'flex', alignItems: 'center', gap: 1.5, minHeight: { xs: 44, md: 36 }, minWidth: 0 }
+const switchRowSx = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, minHeight: { xs: 44, md: 36 }, minWidth: 0 }
 
 // docs/specs/052 (fields, validation, payload) restyled by docs/specs/095: FormSectionHeading sections (Innings, Points, Bonus
 // points, Notes) in a three-column grid from md. There is no Save button in here: the tab's footer owns it and submits this

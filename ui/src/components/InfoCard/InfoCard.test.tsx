@@ -161,4 +161,9 @@ describe('InfoCard', () => {
       expect(getComputedStyle(screen.getByText('–')).fontWeight).toBe('400')
     })
   })
+
+  it('draws the flat look (no shadow) only when flat is set', () => {
+    render(<InfoCard title="Dates" icon={<span />} testId="flat-card" flat fields={[{ label: 'Label', value: 'x' }]} />)
+    expect(getComputedStyle(screen.getByTestId('flat-card')).boxShadow).toBe('none')
+  })
 })

@@ -4,6 +4,7 @@ import { Box } from '@mui/material'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { Input } from '../Input'
 import { FormSectionHeading } from '../FormSectionHeading'
+import { compactFieldSx } from '../../utils/compactFieldSx'
 import type { SeasonPayload } from '../../api/seasonApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
@@ -80,21 +81,21 @@ export function SeasonForm({ initialValues, onSubmit }: SeasonFormProps) {
   }
 
   return (
-    // docs/specs/094 (F): one "Season dates" section, Label / Start date / End date in three columns from md. No helper
-    // text; only validation errors show under a field.
+    // docs/specs/129 (builds on 094 F): one compact "Season Dates" section, Label / Start Date / End Date on three columns (two
+    // at sm, one on a phone), 36 px fields. No helper text; only validation errors show under a field.
     <Box
       component="form"
       id={SEASON_FORM_ID}
       onSubmit={handleSubmit}
       noValidate
-      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}
+      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}
     >
-      <FormSectionHeading icon={<EventOutlinedIcon />} title="Season dates" />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+      <FormSectionHeading compact icon={<EventOutlinedIcon />} title="Season Dates" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }, ...compactFieldSx }}>
         <Input label="Label" value={values.label} onChange={handleChange('label')} error={Boolean(errors.label)} helperText={errors.label} />
 
         <Input
-          label="Start date"
+          label="Start Date"
           type="date"
           value={values.startDate}
           onChange={handleChange('startDate')}
@@ -104,7 +105,7 @@ export function SeasonForm({ initialValues, onSubmit }: SeasonFormProps) {
         />
 
         <Input
-          label="End date"
+          label="End Date"
           type="date"
           value={values.endDate}
           onChange={handleChange('endDate')}

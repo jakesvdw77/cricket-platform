@@ -1,14 +1,14 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { CardProgressBar } from '../../../components/CardProgressBar'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { RecordCard } from '../../../components/RecordCard'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
+import { SeasonRowMenu } from './SeasonRowMenu'
 import type { Season, SeasonSummary } from '../../../api/seasonApi'
 import { formatSeasonRange, localToday, seasonBadge, seasonLength, seasonProgress, seasonTimeStrip } from '../../../utils/seasonStatus'
 
@@ -52,27 +52,26 @@ function FigureTile({ testId, label, value }: { testId: string; label: string; v
 // docs/specs/094-club-structure-and-seasons.md (B): one RecordCard per season, built like the league and team cards - a
 // calendar tile, the label and ONE status badge (Current, Upcoming, Past or Inactive), the written date range and length,
 // a time strip ("Ends in 41 days", amber within 7 days of a start or an end), a "Day n of m" bar for the current season,
-// Leagues / Teams / Matches figures and an icon-over-caption footer. Every card has the same parts and the same height:
+// Leagues / Teams / Matches figures and one Actions kebab in the corner (no footer bar). Every card has the same parts and the same height:
 // outside the current season the progress row shows a muted "-". The whole card opens the season.
 export function SeasonCard({ season, summary, today = localToday() }: SeasonCardProps) {
-  const navigate = useNavigate()
+  const location = useLocation()
   const base = `/manage/fixtures/seasons/${season.id}`
   const strip = seasonTimeStrip(season, today)
   const progress = seasonProgress(season, today)
 
   return (
     <RecordCard
+      flat
       title={season.label}
       titleWrap
       badgesBelow
       avatar={{ fallback: <CalendarMonthOutlinedIcon fontSize="small" />, shape: 'rounded' }}
       badges={[seasonBadge(season, today)]}
-      viewTo={base}
-      footerButtons={[
-        { label: 'Matches', icon: <EventOutlinedIcon fontSize="small" />, onClick: () => navigate('/manage/fixtures/matches') },
-        { label: 'Leagues', icon: <EmojiEventsOutlinedIcon fontSize="small" />, onClick: () => navigate('/manage/fixtures/leagues') },
-        { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => navigate(`${base}/edit`) },
-      ]}
+      headerActions={<SeasonRowMenu season={season} testId="season-card-actions" />}
+      viewTo={withReturnTo(base, currentOrigin(location), 'Seasons')}
+      // No footer action bar (page-anatomy section 6): the kebab in the corner holds every action.
+      footerActions={null}
     >
       <Typography variant="body2" data-testid="season-dates" sx={{ fontWeight: 600 }}>
         {formatSeasonRange(season)}
