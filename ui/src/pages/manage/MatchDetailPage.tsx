@@ -211,7 +211,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   }
 
   // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
-  // docs/specs/131: ONE Share Match dialog; the per-side Share Team Sheet entries are preselections of it.
+  // docs/specs/131: ONE Share Match dialog; the Team Sheet button of a team panel preselects it.
   const weather = useMatchFieldWeather(clubId, match)
   const directionsTarget = useMatchDirections(clubId, match)
   const directions = useGetDirections(directionsTarget)
@@ -264,15 +264,6 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         icon: <GroupsOutlinedIcon fontSize="small" />,
         to: leaveTo(selectTeamPath(match.id, (entry.side === 'home' ? homeSide : awaySide)?.id ?? null, entry.side === 'home')),
       }))
-  const shareItems: ManageMenuItem[] = noOwnTeam
-    ? [{ id: 'share-team-sheet', title: 'Share Team Sheet', description: 'The team sheet as a PDF or message.', icon: <ShareOutlinedIcon fontSize="small" />, disabled: true, reason: NO_CLUB_TEAM_REASON }]
-    : own.map((entry) => ({
-        id: perSide ? `share-team-sheet-${entry.side}` : 'share-team-sheet',
-        title: perSide ? `Share Team Sheet: ${sideName2(entry)}` : 'Share Team Sheet',
-        description: 'The team sheet as a PDF or message.',
-        icon: <ShareOutlinedIcon fontSize="small" />,
-        onClick: shareTeamSheet(entry),
-      }))
   const shareMatchItem: ManageMenuItem = { id: 'share-match', title: 'Share Match', description: 'The fixture, team poster, countdown, facts or team sheet.', icon: <ShareOutlinedIcon fontSize="small" />, onClick: share.openShare }
   const manageMenu = (
     <ManageMenu
@@ -294,7 +285,6 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
             ...selectItems,
             ...availabilityMenuItems(destination, leaveTo, availabilityReason, 'Ask the players if they can play.'),
             ...directionsMenuItems(directionsTarget, directions.start),
-            ...shareItems,
             shareMatchItem,
           ],
         },

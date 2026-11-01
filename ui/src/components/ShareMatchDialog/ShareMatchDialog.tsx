@@ -53,7 +53,7 @@ export interface ShareMatchDialogProps {
 type Step = 'contents' | 'formats' | 'screen'
 const STEPS = ['What To Share', 'Format', 'Preview']
 
-// docs/specs/131-match-sharing.md (ShareMatchDialog): step 1 What to share (one content, Side, Layout), step 2 Format (tiles), then the
+// docs/specs/131-match-sharing.md (ShareMatchDialog): step 1 What to share (one content), step 2 Format (tiles), then the
 // chosen format's screen on the 114 shell. Full screen on a phone; choice steps a 720 px card; the preview near full screen.
 // Replaces TeamSheetCommunicationDialog. Everything it reads is fetched only while it is open.
 export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, sides, sidesLoading, leagueName, seasonLabel, initialContent, initialScope, resultAvailable = false, onOpenResult }: ShareMatchDialogProps) {
@@ -264,11 +264,6 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
             onChange={setContent}
             resultAvailable={resultAvailable}
             gaps={gaps}
-            side={chosenSide}
-            onSideChange={(value) => setSide(value)}
-            sideGaps={sideGaps}
-            layout={layout}
-            onLayoutChange={setLayout}
             loading={sidesLoading}
           />
         )}

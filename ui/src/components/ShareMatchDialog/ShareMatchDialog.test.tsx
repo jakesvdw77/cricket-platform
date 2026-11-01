@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { shareSettingsKey } from '../../api/shareSettingsApi'
 import { baseTheme } from '../../theme'
 import { FULL_FIRST_NAMES, fixtureMatch, fixtureSide } from '../../utils/share/matchShareFixture'
-import type { MatchContent, MatchSideChoice } from '../../utils/share/matchShareFormats'
+import type { MatchContent } from '../../utils/share/matchShareFormats'
 import { ShareMatchDialog } from './ShareMatchDialog'
 import type { Team } from '../../api/teamApi'
 
@@ -129,17 +129,18 @@ describe('step 1, What to share', () => {
     expect(radio('Countdown')).toHaveTextContent('The match has been played')
   })
 
-  it('shows Side only for lineup contents, with Opposition and Both disabled and a reason when the opposition has no XI', async () => {
+  it('does not ask for the Side on step 1; the preview step has it, with Opposition and Both disabled and a reason when the opposition has no XI', async () => {
     renderDialog()
+    await userEvent.click(radio('Team Sheet'))
     expect(screen.queryByRole('group', { name: 'Side' })).not.toBeInTheDocument()
-    await userEvent.click(radio('Team Selection Poster'))
-    const side = screen.getByRole('group', { name: 'Side' })
+    await next()
+    await userEvent.click(radio('PDF'))
+    await next()
+    const side = await screen.findByRole('group', { name: 'Side' })
     expect(within(side).getByRole('button', { name: 'Our Side' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(side).getByRole('button', { name: 'Opposition' })).toBeDisabled()
     expect(within(side).getByRole('button', { name: 'Both' })).toBeDisabled()
     expect(screen.getByText(/Needs the opposition's selected XI on the platform/)).toBeInTheDocument()
-    await userEvent.click(radio('Fixture Card'))
-    expect(screen.queryByRole('group', { name: 'Side' })).not.toBeInTheDocument()
   })
 
   it('has a Close button', async () => {
@@ -287,13 +288,5 @@ describe('format screens', () => {
     await choose('Team Sheet', 'PDF')
     expect(await screen.findByRole('group', { name: 'Template' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Compact' })).toBeInTheDocument()
-  })
-})
-
-describe('side choice', () => {
-  const sideButton = (name: MatchSideChoice) => screen.getByRole('button', { name: name === 'OURS' ? 'Our Side' : name === 'OPPOSITION' ? 'Opposition' : 'Both' })
-  it('starts on Our Side from an own-side panel', async () => {
-    renderDialog({ initialContent: 'TEAM_SHEET', initialScope: 'home' })
-    expect(sideButton('OURS')).toHaveAttribute('aria-pressed', 'true')
   })
 })

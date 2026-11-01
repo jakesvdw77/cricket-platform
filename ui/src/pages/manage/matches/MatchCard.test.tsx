@@ -323,14 +323,14 @@ describe('MatchCard', () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: future() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Team Sheet', 'Share Match'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Match'])
     })
 
     it('adds Import Result after the result action once the match has started', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: past() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Team Sheet', 'Share Match'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Match'])
     })
 
     it('offers Continue Result for a draft and View Result (and no Import) for a published result', async () => {
@@ -422,15 +422,15 @@ describe('MatchCard', () => {
       expect(await screen.findByText(`At: /manage/availability/squad/match-1/poll-2?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('disables Select Team, Open Availability and Share Team Sheet with the reason when neither side is a club team, keeping Edit Match', async () => {
+    it('disables Select Team and Open Availability with the reason when neither side is a club team, keeping Edit Match', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ homeTeamId: null, homeTeamName: 'A', homePickedCount: null }))
 
       const menu = await user.click(screen.getByRole('button', { name: 'Actions for A v Riverside Occasionals' })).then(() => screen.findByRole('menu'))
-      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+      for (const id of ['select-team', 'availability']) {
         expect(within(menu).getByTestId(`manage-item-${id}`)).toHaveAttribute('aria-disabled', 'true')
       }
-      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(3)
+      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(2)
       expect(within(menu).getByTestId('manage-item-edit')).not.toHaveAttribute('aria-disabled', 'true')
     })
 
@@ -439,21 +439,9 @@ describe('MatchCard', () => {
       renderCard(makeMatch({ homePickedCount: 0 }))
 
       const menu = await openMenu(user)
-      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+      for (const id of ['select-team', 'availability']) {
         expect(within(menu).getByTestId(`manage-item-${id}`)).not.toHaveAttribute('aria-disabled', 'true')
       }
-    })
-
-    it('Share Team Sheet opens the dialog and fetches the sides and squads only then', async () => {
-      const user = userEvent.setup()
-      renderCard(makeMatch())
-      expect(listMatchSides).not.toHaveBeenCalled()
-
-      await user.click(within(await openMenu(user)).getByTestId('manage-item-share-team-sheet'))
-
-      expect(await screen.findByText('Share match')).toBeInTheDocument()
-      expect(listMatchSides).toHaveBeenCalledWith('club-1', 'match-1')
-      expect(listSquad).toHaveBeenCalledWith('club-1', 'team-1', 'season-1')
     })
 
     it('Share Match opens the same dialog on What To Share, with no content ticked', async () => {

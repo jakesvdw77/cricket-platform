@@ -74,8 +74,8 @@ Built on the `114`/`122` pieces, reused not copied (`ShareFooterContext`, `Share
 
 ### Entry points
 
-- **Matches list row kebab:** the disabled "Share Match" item is enabled and opens the dialog (Share last, `page-anatomy.md` 6b). The existing "Share Team Sheet" item opens the same dialog with Team sheet ticked.
-- **Match page, Manage Match menu:** **Share Match** last (the per-side Share Team Sheet items become preselections).
+- **Matches list row kebab:** the disabled "Share Match" item is enabled and opens the dialog (Share last, `page-anatomy.md` 6b). The separate "Share Team Sheet" item is removed (Share Match covers it).
+- **Match page, Manage Match menu:** **Share Match** last (the per-side Share Team Sheet items are removed; the Team Sheet button inside each team panel opens the dialog with Team Sheet preselected).
 - **Team panels on the match page:** the Team Sheet button opens the dialog with Team selection poster and Team sheet ticked and that side chosen. Disabled with a visible reason until a team is selected.
 - **A played match** (a result exists): Share Match hands over to `ShareResultDialog` (published result) with the reason line "Opening the result share"; a played match with no published result offers the dialog as normal.
 - Title Case labels; one `ShareMatchDialog`.
@@ -84,7 +84,7 @@ Built on the `114`/`122` pieces, reused not copied (`ShareFooterContext`, `Share
 
 Dialog on desktop, full screen from `sm` down, titled "Share match". Back keeps choices.
 
-1. **What to share** (720 px card): the contents as **one choice** (the manager picks one visual or text content per share; radio-style tiles, no multi-select, no combined image, no stepper). Our side, Opposition, Both toggle, and for Both the **Side by side / Separate** toggle (Separate means one image per side, stepped on screen and downloaded separately, or two pages in a PDF). Contents needing data are disabled with a visible reason: Fixture Card, Countdown and match-level Fun Facts work before a team is selected; Team Selection poster, Team Sheet and team-based facts need a selected XI ("Select the team first"). Season pill only when opened without a match season.
+1. **What to share** (720 px card): the contents as **one choice** (the manager picks one visual or text content per share; radio-style tiles, no multi-select, no combined image, no stepper). The Side (Our Side, Opposition, Both) and Layout (Side by side / Separate for Both) choices are **not** asked here; they sit on the preview step (step 3), defaulting to Our Side, where Separate means one image per side, stepped on screen and downloaded separately, or two pages in a PDF. Contents needing data are disabled with a visible reason: Fixture Card, Countdown and match-level Fun Facts work before a team is selected; Team Selection poster, Team Sheet and team-based facts need a selected XI ("Select the team first"). Season pill only when opened without a match season.
 2. **Format** (720 px card): tiles for formats the chosen content supports and the club has enabled; unsupported ones greyed with the reason.
 3. **Preview** (near full screen): controls left, live preview right, actions pinned in the footer (Share or Download, Copy text, Print, Send in WhatsApp), zoom as `114`.
 

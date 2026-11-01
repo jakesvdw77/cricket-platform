@@ -27,7 +27,7 @@ describe('MatchRowMenu', () => {
     const items = within(await screen.findByRole('menu')).getAllByRole('menuitem')
     expect(items[0]).toHaveTextContent('Open Match')
     expect(items[1]).toHaveTextContent('Edit Match')
-    expect(items[items.length - 2]).toHaveTextContent('Share Team Sheet')
+    expect(items[items.length - 2]).not.toHaveTextContent('Share Team Sheet')
     expect(items[items.length - 1]).toHaveTextContent('Share Match')
   })
 

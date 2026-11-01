@@ -612,14 +612,14 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText(`At: /manage/availability/squad/match-1/p2?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('puts Edit Match first and Share Match last in Manage Match, after the per-side Share Team Sheet items', async () => {
+    it('puts Edit Match first and Share Match last in Manage Match, with no Share Team Sheet item', async () => {
       const user = userEvent.setup()
       await renderLoaded()
 
       const menu = await openManage(user)
       const titles = itemTitles(menu)
       expect(titles[0]).toBe('Edit Match')
-      expect(titles[titles.length - 2]).toBe('Share Team Sheet: 2nd XI')
+      expect(titles.some((title) => title.startsWith('Share Team Sheet'))).toBe(false)
       expect(titles[titles.length - 1]).toBe('Share Match')
       expect(within(menu).getByTestId('manage-item-edit-match')).toHaveAttribute('href', `/manage/fixtures/matches/match-1/edit?${RETURN}`)
     })
@@ -680,20 +680,6 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByRole('radio', { name: /Team Sheet/ })).toBeChecked()
     })
 
-    it('Share Team Sheet: 2nd XI in Manage Match opens the dialog with Team Sheet and the opposition side', async () => {
-      const user = userEvent.setup()
-      listMatchSides.mockResolvedValue([
-        makeSide({ id: 'side-away', teamId: 'team-2', players: [{ playerProfileId: 'player-2', battingOrder: 1, role: 'BATSMAN' }] }),
-      ])
-      await renderLoaded()
-
-      await screen.findByTestId('match-team-card-away')
-      await user.click(within(await openManage(user)).getByTestId('manage-item-share-team-sheet-away'))
-
-      expect(await screen.findByText('Share match')).toBeInTheDocument()
-      expect(await screen.findByRole('radio', { name: /Team Sheet/ })).toBeChecked()
-    })
-
     it('Share Match in Manage Match opens the dialog on step 1 with nothing preselected', async () => {
       const user = userEvent.setup()
       await renderLoaded()
@@ -715,7 +701,7 @@ describe('MatchDetailPage', () => {
       expect(screen.queryByTestId('match-team-card-away')).not.toBeInTheDocument()
       const menu = await openManage(user)
       expect(within(menu).getByText('Select Team')).toBeInTheDocument()
-      expect(within(menu).getByText('Share Team Sheet')).toBeInTheDocument()
+      expect(within(menu).queryByText('Share Team Sheet')).not.toBeInTheDocument()
     })
 
     it('disables the team items and Open Availability with the reason when neither side is a club team', async () => {
@@ -727,10 +713,10 @@ describe('MatchDetailPage', () => {
       await screen.findByRole('heading', { level: 1 })
 
       const menu = await openManage(user)
-      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+      for (const id of ['select-team', 'availability']) {
         expect(within(menu).getByTestId(`manage-item-${id}`)).toHaveAttribute('aria-disabled', 'true')
       }
-      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(3)
+      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(2)
       expect(screen.queryByRole('link', { name: /Select Team/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Share team sheet/ })).not.toBeInTheDocument()
     })
