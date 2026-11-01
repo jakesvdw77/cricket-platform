@@ -36,11 +36,11 @@ export interface MatchTableProps {
 
 const NOT_ON_FILE = '–'
 
-// Desktop: When, Match, Selection, Announced, Poll, Status, actions. A phone has no Status column (the chips sit under the name); it keeps Match (with the time under the names), Picked and
+// Desktop: When, Match, Venue, Selection, Announced, Poll, Status, actions. A phone has no Status column (the chips sit under the name); it keeps Match (with the time under the names), Picked and
 // the actions button. No chevron: the whole row is the link.
 const COLUMNS = {
   xs: 'minmax(0, 1fr) 54px 44px',
-  sm: '150px minmax(220px, 2fr) 170px minmax(130px, 1fr) 110px 130px 44px',
+  sm: '150px minmax(200px, 2fr) minmax(120px, 1fr) 170px minmax(130px, 1fr) 110px 130px 44px',
 }
 
 const gridSx = {
@@ -103,6 +103,8 @@ function MatchRow({
   const ownTeam = (match.homeTeamId && teamsById.get(match.homeTeamId)) || (match.awayTeamId && teamsById.get(match.awayTeamId)) || undefined
   const logoName = ownTeam ? ownTeam.name : home
 
+  // `venue` carries the field's name when the match is linked to a field (docs/specs/099).
+  const venueText = match.venue?.trim() || 'TBC'
   const rows = selectionRows(match, teamsById)
   const first = rows[0]
   // A standalone match has no league: "Friendly · 2026/27", as the mockup shows.
@@ -178,6 +180,11 @@ function MatchRow({
           </Typography>
         )}
       </Box>
+      <Box role="cell" sx={{ ...desktopOnly, minWidth: 0 }} {...DESKTOP_ONLY} data-testid="match-row-venue">
+        <Typography variant="body2" noWrap component="div" title={venueText} sx={{ color: match.venue ? 'text.primary' : 'text.secondary' }}>
+          {venueText}
+        </Typography>
+      </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }} data-testid="match-row-selection">
         {!first ? (
           <Typography variant="body2" color="text.secondary">
@@ -252,6 +259,7 @@ export function MatchTable({ clubId, matches, teamsById, leaguesById, seasonsByI
       >
         <Box role="columnheader" sx={{ ...desktopOnly, order: -1 }} {...DESKTOP_ONLY}>When</Box>
         <Box role="columnheader">Match</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Venue</Box>
         <Box role="columnheader" sx={{ textAlign: { xs: 'right', sm: 'left' } }}>
           <Box component="span" sx={phoneOnly}>Picked</Box>
           <Box component="span" sx={desktopOnly} {...DESKTOP_ONLY}>Selection</Box>

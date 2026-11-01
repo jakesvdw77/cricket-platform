@@ -131,7 +131,8 @@ class ScheduleFixtureFilesTest {
         for (RowResult r : result.rows()) {
             List<String> want = new ArrayList<>();
             expected.path("rowCodes").path(String.valueOf(r.rowNumber())).forEach(n -> want.add(n.asText()));
-            assertThat(r.issueCodes().stream().sorted().toList()).as(fileName + " codes of row " + r.rowNumber())
+            // PAST_DATE depends on the real date the test runs on, so the fixtures (which pin the other rules) do not assert it.
+            assertThat(r.issueCodes().stream().filter(code -> !"PAST_DATE".equals(code)).sorted().toList()).as(fileName + " codes of row " + r.rowNumber())
                     .isEqualTo(want.stream().sorted().toList());
         }
         List<String> wantFile = new ArrayList<>();
