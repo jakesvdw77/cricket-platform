@@ -4,13 +4,15 @@ import { useGetDirections } from '../../../components/GetDirectionsButton'
 import { WeatherBadge } from '../../../components/WeatherBadge'
 import type { MyLeagueFixtureDto } from '../../../api/myPlayersApi'
 import { fieldFromMatch, useMatchWeather } from '../../../hooks/useMatchWeather'
+import type { MatchFieldPosition } from '../../../hooks/useMatchWeather'
 import { directionsTarget } from '../../../utils/fieldLocation'
 import { HUB } from './hubStyle'
 
 // docs/specs/133 (Player Hub match rows): the forecast badge and the Get Directions button of one fixture, from the position the row
 // carries (no second call: a row has no map link or address, so the chain here is the stored position or nothing). The badge sits on a
 // cream pill so it stays readable on the dark console; the button is a compact outlined text button, 44 px to touch on a phone.
-export function HubFixtureLocation({ row }: { row: MyLeagueFixtureDto }) {
+// A league fixture and a match (docs/specs/135) both fit: a date, an optional time and the stored position.
+export function HubFixtureLocation({ row }: { row: Pick<MyLeagueFixtureDto, 'date' | 'time'> & MatchFieldPosition }) {
   const field = fieldFromMatch(row)
   const weather = useMatchWeather(row.time ? `${row.date}T${row.time}` : `${row.date}T12:00`, field)
   const target = directionsTarget(field)

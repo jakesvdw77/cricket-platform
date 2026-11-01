@@ -68,8 +68,8 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
         {tab === 'details' && <HubLeagueDetails dto={dto} />}
         {tab === 'conditions' && <HubLeagueConditions dto={dto} />}
         {tab === 'teams' && <HubLeagueTeams dto={dto} />}
-        {tab === 'schedule' && <HubLeagueSchedule dto={dto} />}
-        {tab === 'results' && <HubLeagueResults dto={dto} />}
+        {tab === 'schedule' && <HubLeagueSchedule dto={dto} playerKey={playerKey} />}
+        {tab === 'results' && <HubLeagueResults dto={dto} playerKey={playerKey} />}
         {tab === 'fields' && <HubLeagueFields dto={dto} />}
       </Box>
     </Box>

@@ -4,6 +4,8 @@ import com.cricketlegend.dto.InviteAgentRequest;
 import com.cricketlegend.dto.MyFieldDto;
 import com.cricketlegend.dto.MyLeagueDto;
 import com.cricketlegend.dto.MyLeaguesDto;
+import com.cricketlegend.dto.MyMatchDto;
+import com.cricketlegend.dto.MyMatchListDto;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.MyPollDto;
@@ -13,6 +15,7 @@ import com.cricketlegend.dto.UpdateMyPlayerRequest;
 import com.cricketlegend.service.AgentInvitationService;
 import com.cricketlegend.service.MyFieldService;
 import com.cricketlegend.service.MyLeagueService;
+import com.cricketlegend.service.MyMatchService;
 import com.cricketlegend.service.MyPlayerPollService;
 import com.cricketlegend.service.MyPlayerService;
 import jakarta.validation.Valid;
@@ -44,18 +47,21 @@ class MePlayersController {
     private final AgentInvitationService agentInvitationService;
     private final MyFieldService myFieldService;
     private final MyLeagueService myLeagueService;
+    private final MyMatchService myMatchService;
 
     MePlayersController(
             MyPlayerService myPlayerService,
             MyPlayerPollService myPlayerPollService,
             AgentInvitationService agentInvitationService,
             MyFieldService myFieldService,
-            MyLeagueService myLeagueService) {
+            MyLeagueService myLeagueService,
+            MyMatchService myMatchService) {
         this.myPlayerService = myPlayerService;
         this.myPlayerPollService = myPlayerPollService;
         this.agentInvitationService = agentInvitationService;
         this.myFieldService = myFieldService;
         this.myLeagueService = myLeagueService;
+        this.myMatchService = myMatchService;
     }
 
     // Write endpoints below: MyPlayerAccess (inside the services) is the only authorisation gate, from the caller's own rows.
@@ -113,6 +119,18 @@ class MePlayersController {
             @PathVariable UUID leagueId,
             @RequestParam(required = false) UUID seasonId) {
         return myLeagueService.get(authentication, playerKey, leagueId, seasonId);
+    }
+
+    /** docs/specs/135: the held player's live, upcoming and recent matches, authorised only through MyPlayerAccess. */
+    @GetMapping("/{playerKey}/matches")
+    MyMatchListDto matches(Authentication authentication, @PathVariable String playerKey) {
+        return myMatchService.list(authentication, playerKey);
+    }
+
+    /** docs/specs/135: one match; a 404 when it is not a match of the held player's teams. */
+    @GetMapping("/{playerKey}/matches/{matchId}")
+    MyMatchDto match(Authentication authentication, @PathVariable String playerKey, @PathVariable UUID matchId) {
+        return myMatchService.get(authentication, playerKey, matchId);
     }
 
     @PutMapping("/{playerKey}/polls/{pollId}/answers")

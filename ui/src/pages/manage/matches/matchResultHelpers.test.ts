@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resultActionFor, resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { LIVE_WINDOW_HOURS, matchStatusFor, resultActionFor, resultBadgeFor, resultStateOf } from './matchResultHelpers'
 
 describe('resultStateOf', () => {
   it('maps the server status and treats NONE or missing as none', () => {
@@ -39,5 +39,25 @@ describe('resultBadgeFor', () => {
     expect(resultBadgeFor({ resultStatus: 'PUBLISHED' })).toEqual({ label: 'Completed', tone: 'active' })
     expect(resultBadgeFor({ resultStatus: 'NONE' })).toBeNull()
     expect(resultBadgeFor({})).toBeNull()
+  })
+})
+
+describe('matchStatusFor live window', () => {
+  const start = new Date('2026-11-01T09:00:00').getTime()
+  const match = { id: 'm1', active: true, resultStatus: 'NONE' as const, matchDate: '2026-11-01T09:00:00' }
+  const hours = (n: number) => start + n * 3_600_000
+
+  it('is one number: eight hours (owner, 2026-11-01)', () => {
+    expect(LIVE_WINDOW_HOURS).toBe(8)
+  })
+
+  it('is Live just before the window ends and Awaiting Result at it', () => {
+    expect(matchStatusFor(match, 'A v B', hours(7.9)).kind).toBe('live')
+    expect(matchStatusFor(match, 'A v B', hours(8)).kind).toBe('awaiting')
+  })
+
+  it('is Live at the start and Upcoming before it', () => {
+    expect(matchStatusFor(match, 'A v B', start).kind).toBe('live')
+    expect(matchStatusFor(match, 'A v B', start - 60_000).kind).toBe('upcoming')
   })
 })

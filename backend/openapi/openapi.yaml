@@ -2323,6 +2323,52 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyLeagueDto"
+  /api/v1/me/players/{playerKey}/matches:
+    get:
+      tags:
+      - me-players-controller
+      description: "The held player matches (docs/specs/135): live now, upcoming (soonest first, current season, at most 20) and recent (newest first, at most 10). Only matches of the teams the player is in the squad of for the match season. Phase is computed on the server clock (live = started, no published result, within 8 hours of the start). Key not held, malformed or dropped out is 404, a suspended caller 403."
+      operationId: listMyPlayerMatches
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyMatchListDto"
+  /api/v1/me/players/{playerKey}/matches/{matchId}:
+    get:
+      tags:
+      - me-players-controller
+      description: "One match of the held player teams (docs/specs/135). 404 when the match is not a match of one of those teams or is another club. An unannounced side lists no players; juniors appear as initials; stream only while live and https. No manager-only data."
+      operationId: getMyPlayerMatch
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyMatchDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -18049,6 +18095,303 @@ components:
       - id
       - name
       - mine
+    LiveScoreSource:
+      type: object
+      description: "The LiveScore seam (docs/specs/135): a discriminated source. EXTERNAL carries the https scoring link and its host; a later NATIVE kind adds a summary."
+      properties:
+        kind:
+          type: string
+          enum:
+          - EXTERNAL
+        url:
+          type: string
+        host:
+          type: string
+      required:
+      - kind
+      - url
+      - host
+    MyMatchStreamDto:
+      type: object
+      description: "The stream of a live match (docs/specs/135), https only. embedUrl is built by the server from an allow-listed template, null for OTHER or an unparsable link."
+      properties:
+        url:
+          type: string
+        provider:
+          type: string
+          enum:
+          - YOUTUBE
+          - VIMEO
+          - FACEBOOK
+          - OTHER
+        embedUrl:
+          type: [string, 'null']
+      required:
+      - url
+      - provider
+    MyMatchRefDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    MyMatchTeamDto:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: [string, 'null']
+      required:
+      - name
+    MyMatchResultDto:
+      type: object
+      description: "The published result line only (docs/specs/135); no scorecard."
+      properties:
+        homeScore:
+          type: string
+        awayScore:
+          type: string
+        resultLine:
+          type: string
+      required:
+      - homeScore
+      - awayScore
+      - resultLine
+    MyMatchAvailabilityDto:
+      type: object
+      description: "The held player own answer on the match squad poll (docs/specs/135); answer null when not answered."
+      properties:
+        answer:
+          type: [string, 'null']
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+          - null
+        pollId:
+          type: string
+          format: uuid
+        pollOpen:
+          type: boolean
+      required:
+      - pollId
+      - pollOpen
+    MyMatchPlayerDto:
+      type: object
+      description: "One player of an announced side. name is initials where the junior rule applies. twelfth marks the twelfth man (role null)."
+      properties:
+        name:
+          type: string
+        role:
+          type: [string, 'null']
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+          - null
+        captain:
+          type: boolean
+        keeper:
+          type: boolean
+        twelfth:
+          type: boolean
+      required:
+      - name
+      - captain
+      - keeper
+      - twelfth
+    MyMatchSideDto:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: [string, 'null']
+        mine:
+          type: boolean
+        announced:
+          type: boolean
+        players:
+          type: array
+          description: "Empty unless the side is announced."
+          items:
+            $ref: "#/components/schemas/MyMatchPlayerDto"
+      required:
+      - name
+      - mine
+      - announced
+      - players
+    MyMatchSummaryDto:
+      type: object
+      description: "One row of the Player Hub matches list (docs/specs/135). startedAt is live only, result recent only."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        phase:
+          type: string
+          enum:
+          - LIVE
+          - UPCOMING
+          - RECENT
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          format: partial-time
+        startedAt:
+          type: [string, 'null']
+          format: date-time
+        home:
+          $ref: "#/components/schemas/MyMatchTeamDto"
+        away:
+          $ref: "#/components/schemas/MyMatchTeamDto"
+        league:
+          type: [string, 'null']
+        venue:
+          type: [string, 'null']
+        mine:
+          type: boolean
+        selection:
+          type: string
+          enum:
+          - SELECTED
+          - NOT_SELECTED
+          - NOT_ANNOUNCED
+        hasLiveScore:
+          type: boolean
+        hasStream:
+          type: boolean
+        result:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchResultDto"
+      required:
+      - matchId
+      - phase
+      - date
+      - time
+      - home
+      - away
+      - mine
+      - selection
+      - hasLiveScore
+      - hasStream
+    MyMatchListDto:
+      type: object
+      properties:
+        live:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyMatchSummaryDto"
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyMatchSummaryDto"
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyMatchSummaryDto"
+      required:
+      - live
+      - upcoming
+      - recent
+    MyMatchDto:
+      type: object
+      description: "One match for the Player Hub match page (docs/specs/135). Response only. No manager-only data."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          format: partial-time
+        startedAt:
+          type: [string, 'null']
+          format: date-time
+        phase:
+          type: string
+          enum:
+          - LIVE
+          - UPCOMING
+          - RECENT
+        status:
+          type: string
+          enum:
+          - UPCOMING
+          - PLAYED
+          - CANCELLED
+          - POSTPONED
+        league:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchRefDto"
+        season:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchRefDto"
+        venue:
+          type: [string, 'null']
+        playingAreaId:
+          type: [string, 'null']
+          format: uuid
+        playingAreaName:
+          type: [string, 'null']
+        playingAreaLatitude:
+          type: [number, 'null']
+        playingAreaLongitude:
+          type: [number, 'null']
+        playingAreaAccessLatitude:
+          type: [number, 'null']
+        playingAreaAccessLongitude:
+          type: [number, 'null']
+        playingAreaAccessNote:
+          type: [string, 'null']
+        home:
+          $ref: "#/components/schemas/MyMatchSideDto"
+        away:
+          $ref: "#/components/schemas/MyMatchSideDto"
+        selection:
+          type: string
+          enum:
+          - SELECTED
+          - NOT_SELECTED
+          - NOT_ANNOUNCED
+        availability:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchAvailabilityDto"
+        liveScore:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/LiveScoreSource"
+        stream:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchStreamDto"
+        result:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchResultDto"
+      required:
+      - matchId
+      - date
+      - time
+      - phase
+      - status
+      - home
+      - away
+      - selection
     MyScheduleItemDto:
       type: object
       description: "One fixture of the whole league schedule (docs/specs/123). date and time are on the server clock (time to the minute, HH:mm); matchId is opaque and only a list key."

@@ -4,6 +4,9 @@
 // Ids, labels and order are binding on routes, tests and copy; the Club order is Club info, Bookings, Field Directory,
 // Other Services, and Updates holds Messages, Gallery, Social Media (owner, 2026-10-24).
 
+import { hubLeaguePath } from './leagueFormat'
+import { matchPath, parseFrom } from './matchFormat'
+
 export type HubPillSource = 'openPolls' | 'invitations' | 'linkRequests'
 
 export interface HubPillCounts {
@@ -49,12 +52,8 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'schedule',
     label: 'Schedule',
     children: [
-      {
-        id: 'schedule.matches',
-        label: 'Matches',
-        soon: true,
-        soonCopy: 'Upcoming matches and training for this player will show here once the club shares them with linked accounts.',
-      },
+      // docs/specs/135: live now (Live Now, Upcoming, Recent), no longer a Soon item.
+      { id: 'schedule.matches', label: 'Matches' },
       { id: 'schedule.leagues', label: 'Leagues' },
       { id: 'schedule.results', label: 'Results', soon: true, soonCopy: "Published results for this player's teams." },
       { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
@@ -170,7 +169,7 @@ export function visibleItems(ctx: HubNavContext, items: HubNavItem[] = HUB_NAV):
 }
 
 // What a parent opens on where the menu column stays visible: its first child that is a page and not a Soon item, else
-// its first child (Decision 16). Club gives Field Directory, Account gives Invitations, Schedule gives Matches (a Soon item, so it opens the first child).
+// its first child (Decision 16). Club gives Field Directory, Account gives Invitations, Schedule gives Matches.
 export function defaultChild(item: HubNavItem): HubNavItem | undefined {
   const children = item.children ?? []
   return children.find((child) => !child.soon && !child.action) ?? children[0]
@@ -225,6 +224,10 @@ export interface HubBackState {
   view?: string
   // The season the league page was opened from (docs/specs/123); the Back to Leagues target keeps it.
   season?: string
+  // docs/specs/135: a segment after the match id (`watch`), the `from` parameter of a match page and the league name for its label.
+  extra?: string
+  from?: string
+  fromLabel?: string
 }
 
 export interface HubBackAction {
@@ -234,9 +237,19 @@ export interface HubBackAction {
 
 // The footer's one Back (Decision 15); Escape runs the same action. Null means no Back control at all.
 export function hubBack(state: HubBackState): HubBackAction | null {
-  const { playerKey, layout, many, section, item, view, season } = state
+  const { playerKey, layout, many, section, item, view, season, extra, from, fromLabel } = state
   const main = hubPath(playerKey)
   const route = resolveRoute(section, item)
+  // docs/specs/135: the match page goes back to where it was opened from, the Watch Live page back to the match, on every layout.
+  if (route.section.id === 'schedule' && item === 'matches' && view) {
+    if (extra === 'watch') return { label: 'Back to Match', target: matchPath(playerKey, view, from) }
+    const origin = parseFrom(from)
+    if (origin.kind === 'league') {
+      const word = origin.tab === 'results' ? 'results' : 'schedule'
+      return { label: `Back to ${fromLabel ?? 'League'} ${word}`, target: hubLeaguePath(playerKey, origin.leagueId, { tab: origin.tab }) }
+    }
+    return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
+  }
   if (route.section.id === 'profile' && isProfileSubView(item, view)) {
     return { label: 'Back to Profile', target: hubPath(playerKey, 'profile', item) }
   }

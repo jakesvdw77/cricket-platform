@@ -50,6 +50,24 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             + "AND m.active = true AND m.playingAreaId IS NOT NULL")
     List<UUID> findPlayingAreaIdsInSeason(@Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
 
+    /**
+     * docs/specs/135 (Player Hub matches): the club's ACTIVE matches starting at or after {@code from} in which one of
+     * {@code teamIds} plays, soonest first. The caller bounds it with a {@link Pageable} and drops matches whose
+     * season does not hold the player in that team's squad.
+     */
+    @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.active = true AND m.matchDate >= :from "
+            + "AND (m.homeTeamId IN :teamIds OR m.awayTeamId IN :teamIds) ORDER BY m.matchDate ASC, m.id ASC")
+    List<Match> findActiveForTeamsFrom(
+            @Param("clubId") UUID clubId, @Param("teamIds") Collection<UUID> teamIds, @Param("from") Instant from,
+            Pageable pageable);
+
+    /** As {@link #findActiveForTeamsFrom} for matches starting before {@code before}, newest first. */
+    @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.active = true AND m.matchDate < :before "
+            + "AND (m.homeTeamId IN :teamIds OR m.awayTeamId IN :teamIds) ORDER BY m.matchDate DESC, m.id DESC")
+    List<Match> findActiveForTeamsBefore(
+            @Param("clubId") UUID clubId, @Param("teamIds") Collection<UUID> teamIds, @Param("before") Instant before,
+            Pageable pageable);
+
     Page<Match> findByClubId(UUID clubId, Pageable pageable);
 
     /**

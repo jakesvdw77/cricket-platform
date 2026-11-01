@@ -44,8 +44,8 @@ export function resultBadgeFor(match: Pick<Match, 'resultStatus'>): RecordCardBa
 }
 
 // Owner decision 2026-11-01: a match that started less than this many hours ago and has no published result is Live; after that
-// it is Awaiting Result.
-export const LIVE_WINDOW_HOURS = 6
+// it is Awaiting Result. Eight hours covers a T20 and a one-day game; the Player Hub's server rule (docs/specs/135) uses the same number.
+export const LIVE_WINDOW_HOURS = 8
 
 export type MatchStatusKind = 'upcoming' | 'live' | 'awaiting' | 'draft' | 'completed' | 'inactive'
 

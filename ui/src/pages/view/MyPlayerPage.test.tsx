@@ -8,6 +8,7 @@ import MyPlayerPage from './MyPlayerPage'
 import { calls, clearViewport, httpError, renderRoutes, routeApi, setPhone } from '../../test/accountTestUtils'
 import type { ApiMock } from '../../test/accountTestUtils'
 import { agent, makeMyPlayer } from '../../test/myPlayerFixtures'
+import { STREAM, matchDto, matchList, summary as matchSummary } from '../../test/hubMatchFixtures'
 
 vi.mock('../../auth/keycloak', () => ({ keycloak: { tokenParsed: { name: 'Priya Naidoo' }, logout: vi.fn() } }))
 vi.mock('../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }))
@@ -44,6 +45,7 @@ function setup(entry: string, { player = makeMyPlayer(), players = [summary('k1'
       <Route path="/account/players/:key/:section" element={<MyPlayerPage />} />
       <Route path="/account/players/:key/:section/:sub" element={<MyPlayerPage />} />
       <Route path="/account/players/:key/:section/:sub/:leaf" element={<MyPlayerPage />} />
+      <Route path="/account/players/:key/:section/:sub/:leaf/:extra" element={<MyPlayerPage />} />
     </>,
   )
 }
@@ -100,7 +102,6 @@ describe('MyPlayerPage on a desktop', () => {
   })
 
   it.each([
-    ['schedule/matches', 'Matches', /Upcoming matches and training for this player will show here/],
     ['stats', 'My stats', /Personal bests, form and season progress/],
   ])('%s opens on its first child, a locked panel that says Coming soon', async (path, label, text) => {
     setup(`/account/players/k1/${path}`)
@@ -109,6 +110,41 @@ describe('MyPlayerPage on a desktop', () => {
     expect(screen.getByText('Coming soon')).toBeInTheDocument()
     expect(screen.getByText(text)).toBeInTheDocument()
     expect(within(menu()).getByRole('button', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page')
+  })
+
+  // docs/specs/135: Schedule > Matches is live, and the match and Watch Live pages sit under it with the footer's one Back.
+  it('schedule/matches is the live matches list, not a Coming soon panel', async () => {
+    setup('/account/players/k1/schedule/matches', { extra: { 'GET /me/players/k1/matches': matchList({ upcoming: [matchSummary()] }) } })
+
+    expect(await screen.findByTestId('hub-match-row')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Matches' })).toBeInTheDocument()
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
+    expect(within(menu()).getByRole('button', { name: /^Matches/ })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('a match page has Back to Matches as its one Back, and a league origin names the league', async () => {
+    const extra = { 'GET /me/players/k1/matches/m1': matchDto() }
+    const { unmount } = setup('/account/players/k1/schedule/matches/m1', { extra })
+    expect(await screen.findByTestId('hub-match')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Back to Matches' })).toBeInTheDocument()
+    unmount()
+
+    setup('/account/players/k1/schedule/matches/m1?from=league%3Al1', { extra })
+    expect(await screen.findByRole('button', { name: 'Back to TVL Division 1 schedule' })).toBeInTheDocument()
+  })
+
+  it('the Watch Live page has Back to Match, and Answer Availability goes to Availability', async () => {
+    const user = userEvent.setup()
+    const extra = { 'GET /me/players/k1/matches/m1': matchDto({ phase: 'LIVE', stream: STREAM, availability: { answer: null, pollId: 'p1', pollOpen: true } }) }
+    const { unmount } = setup('/account/players/k1/schedule/matches/m1/watch?from=matches', { extra })
+    expect(await screen.findByTestId('hub-watch-live')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back to Match' })).toBeInTheDocument()
+    unmount()
+
+    setup('/account/players/k1/schedule/matches/m1', { extra })
+    await user.click(await screen.findByRole('button', { name: 'Answer Availability' }))
+    expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
   })
 
   it('shows the Invitations count under Account, opening the invitations page in the hub', async () => {

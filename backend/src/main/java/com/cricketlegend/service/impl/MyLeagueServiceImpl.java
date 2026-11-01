@@ -330,7 +330,7 @@ class MyLeagueServiceImpl implements MyLeagueService {
     }
 
     /** A real team carries its name on the Team, an opponent on the match; the match's own logo wins over the team's. */
-    private static LeagueSide side(UUID teamId, String matchName, String matchLogo, Map<UUID, Team> teams, String fallback) {
+    static LeagueSide side(UUID teamId, String matchName, String matchLogo, Map<UUID, Team> teams, String fallback) {
         Team team = teamId == null ? null : teams.get(teamId);
         String name = team != null && team.getName() != null && !team.getName().isBlank()
                 ? team.getName().trim()
@@ -339,7 +339,7 @@ class MyLeagueServiceImpl implements MyLeagueService {
         return new LeagueSide(name, logo);
     }
 
-    private static String blankToNull(String value) {
+    static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 }

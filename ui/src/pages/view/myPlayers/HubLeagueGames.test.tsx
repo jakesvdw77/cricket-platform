@@ -2,12 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render as baseRender, screen, within } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HubLeagueResults, HubLeagueSchedule } from './HubLeagueGames'
 import { leagueDto } from '../../../test/hubLeagueFixtures'
 
 const render = (node: ReactElement) =>
-  baseRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{node}</QueryClientProvider>)
+  baseRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter>{node}</MemoryRouter></QueryClientProvider>)
 
 // docs/specs/123 (Schedule and Results): the whole league, own games highlighted and tagged, "Only my games" filters.
 const games = () => screen.getAllByRole('article')
@@ -119,5 +120,31 @@ describe('HubLeagueResults', () => {
 
     render(<HubLeagueResults dto={{ ...dto, results: [] }} />)
     expect(screen.getByText('No results published yet.')).toBeInTheDocument()
+  })
+})
+
+// docs/specs/135: a `mine` row is one tap target into the match page; any other row opens nothing.
+describe('league rows linking into the match page', () => {
+  it('links only the player\'s own schedule row, remembering the league for Back', () => {
+    render(<HubLeagueSchedule dto={leagueDto()} playerKey="k1" />)
+
+    const links = screen.getAllByTestId('hub-league-row-link')
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAttribute('href', '/account/players/k1/schedule/matches/m1?from=league%3Al1')
+    expect(links[0]).toHaveAccessibleName('Paarl U15 versus Wellington U15')
+  })
+
+  it('links only the player\'s own result row, remembering the Results tab', () => {
+    render(<HubLeagueResults dto={leagueDto()} playerKey="k1" />)
+
+    const links = screen.getAllByTestId('hub-league-row-link')
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAttribute('href', '/account/players/k1/schedule/matches/m0?from=league%3Al1%3Aresults')
+  })
+
+  it('has no link at all without a player key', () => {
+    render(<HubLeagueSchedule dto={leagueDto()} />)
+
+    expect(screen.queryByTestId('hub-league-row-link')).not.toBeInTheDocument()
   })
 })

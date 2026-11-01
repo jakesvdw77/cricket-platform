@@ -145,7 +145,11 @@ export function useSaveMyPlayerPollAnswers(key: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ pollId, answers }: { pollId: string; answers: PublicAnswer[] }) => saveMyPlayerPollAnswers(key, pollId, answers),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key, 'polls'] }),
+    onSuccess: () => {
+      // The match page shows the answer too (docs/specs/135).
+      void queryClient.invalidateQueries({ queryKey: myPlayerMatchesKey(key) })
+      return queryClient.invalidateQueries({ queryKey: [...myPlayersKey, key, 'polls'] })
+    },
   })
 }
 
@@ -328,5 +332,150 @@ export function useMyPlayerLeague(key: string | undefined, leagueId: string | un
     queryFn: () => getMyPlayerLeague(key as string, leagueId as string, seasonId),
     enabled: Boolean(key) && Boolean(leagueId),
     retry: false,
+  })
+}
+
+// docs/specs/135 (Player Hub match view): the held player's matches and one match page. Backend: GET /me/players/{key}/matches and
+// .../matches/{matchId} (404 outside the player's teams). The server decides phase, selection, the announced-only XI, the junior
+// initials and the embed URL; the client only formats and renders what it is given.
+export type MyMatchPhase = 'LIVE' | 'UPCOMING' | 'RECENT'
+export type MyMatchSelection = 'SELECTED' | 'NOT_SELECTED' | 'NOT_ANNOUNCED'
+export type MyMatchStatus = 'UPCOMING' | 'PLAYED' | 'CANCELLED' | 'POSTPONED'
+export type MyStreamProvider = 'YOUTUBE' | 'VIMEO' | 'FACEBOOK' | 'OTHER'
+
+export interface MyMatchTeamDto {
+  name: string
+  logoUrl?: string | null
+}
+
+export interface MyMatchResultDto {
+  homeScore: string
+  awayScore: string
+  resultLine: string
+}
+
+export interface MyMatchSummaryDto {
+  matchId: string
+  phase: MyMatchPhase
+  // yyyy-MM-dd and HH:mm.
+  date: string
+  time: string | null
+  startedAt?: string | null
+  home: MyMatchTeamDto
+  away: MyMatchTeamDto
+  league?: string | null
+  venue?: string | null
+  mine: boolean
+  selection: MyMatchSelection
+  hasLiveScore: boolean
+  hasStream: boolean
+  result?: MyMatchResultDto | null
+}
+
+export interface MyMatchListDto {
+  live: MyMatchSummaryDto[]
+  upcoming: MyMatchSummaryDto[]
+  recent: MyMatchSummaryDto[]
+}
+
+// The LiveScore seam: a discriminated source. Only HubLiveScore reads it; a NATIVE kind joins later.
+export interface LiveScoreSource {
+  kind: 'EXTERNAL'
+  url: string
+  host: string
+}
+
+export interface MyMatchStreamDto {
+  url: string
+  provider: MyStreamProvider
+  // Built by the server from an allow-listed template; null means nothing can be embedded.
+  embedUrl?: string | null
+}
+
+export interface MyMatchPlayerDto {
+  name: string
+  role?: 'BATSMAN' | 'BOWLER' | 'ALL_ROUNDER' | null
+  captain: boolean
+  keeper: boolean
+  twelfth: boolean
+}
+
+export interface MyMatchSideDto {
+  name: string
+  logoUrl?: string | null
+  mine: boolean
+  announced: boolean
+  players: MyMatchPlayerDto[]
+}
+
+export interface MyMatchAvailabilityDto {
+  answer?: 'AVAILABLE' | 'UNAVAILABLE' | 'UNSURE' | null
+  pollId: string
+  pollOpen: boolean
+}
+
+export interface MyMatchRefDto {
+  id: string
+  name: string
+}
+
+export interface MyMatchDto {
+  matchId: string
+  date: string
+  time: string | null
+  startedAt?: string | null
+  phase: MyMatchPhase
+  status: MyMatchStatus
+  league?: MyMatchRefDto | null
+  season?: MyMatchRefDto | null
+  venue?: string | null
+  playingAreaId?: string | null
+  playingAreaName?: string | null
+  playingAreaLatitude?: number | null
+  playingAreaLongitude?: number | null
+  playingAreaAccessLatitude?: number | null
+  playingAreaAccessLongitude?: number | null
+  playingAreaAccessNote?: string | null
+  home: MyMatchSideDto
+  away: MyMatchSideDto
+  selection: MyMatchSelection
+  availability?: MyMatchAvailabilityDto | null
+  liveScore?: LiveScoreSource | null
+  stream?: MyMatchStreamDto | null
+  result?: MyMatchResultDto | null
+}
+
+export async function getMyPlayerMatches(key: string): Promise<MyMatchListDto> {
+  const { data } = await api.get<MyMatchListDto>(`/me/players/${key}/matches`)
+  return data
+}
+
+export async function getMyPlayerMatch(key: string, matchId: string): Promise<MyMatchDto> {
+  const { data } = await api.get<MyMatchDto>(`/me/players/${key}/matches/${matchId}`)
+  return data
+}
+
+// The live phase is the server's clock; while one is showing, ask again every minute so the badge, elapsed time and Watch Live follow it.
+export const MATCH_REFRESH_MS = 60_000
+
+export const myPlayerMatchesKey = (key: string | undefined) => [...myPlayersKey, key, 'matches'] as const
+
+export function useMyPlayerMatches(key: string | undefined) {
+  return useQuery({
+    queryKey: myPlayerMatchesKey(key),
+    queryFn: () => getMyPlayerMatches(key as string),
+    enabled: Boolean(key),
+    retry: false,
+    refetchInterval: (query) => ((query.state.data?.live.length ?? 0) > 0 ? MATCH_REFRESH_MS : false),
+  })
+}
+
+export function useMyPlayerMatch(key: string | undefined, matchId: string | undefined) {
+  return useQuery({
+    queryKey: [...myPlayerMatchesKey(key), matchId],
+    queryFn: () => getMyPlayerMatch(key as string, matchId as string),
+    enabled: Boolean(key) && Boolean(matchId),
+    retry: false,
+    refetchInterval: (query) => (query.state.data?.phase === 'LIVE' ? MATCH_REFRESH_MS : false),
   })
 }
