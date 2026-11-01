@@ -30,28 +30,66 @@ const player = (name: string, extra: Record<string, unknown> = {}) => ({ name, r
 
 beforeEach(() => vi.clearAllMocks())
 
+describe('HubMatch weather panel', () => {
+  const iso = () => {
+    const day = new Date()
+    day.setDate(day.getDate() + 2)
+    return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+  }
+
+  it('is collapsed with the range and a toggle, then lists the lines when expanded', async () => {
+    const date = iso()
+    const times = Array.from({ length: 24 }, (_, hour) => `${date}T${String(hour).padStart(2, '0')}:00`)
+    const body = {
+      daily: { time: [date], weather_code: [1], temperature_2m_max: [30], temperature_2m_min: [10], precipitation_probability_max: [5], sunset: [`${date}T13:30`] },
+      hourly: { time: times, temperature_2m: times.map((_, h) => 10 + h), precipitation_probability: times.map(() => 4), precipitation: times.map(() => 0), wind_gusts_10m: times.map(() => 33), uv_index: times.map(() => 1), relative_humidity_2m: times.map(() => 40), cloud_cover: times.map(() => 50) },
+    }
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) })))
+    renderMatch(matchDto({ date, playingAreaName: 'Riverside Oval', playingAreaLatitude: -33.7, playingAreaLongitude: 18.96 }))
+
+    const toggle = await screen.findByTestId('match-weather-toggle')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('match-weather-range')).toHaveTextContent('19-25 degrees, dry')
+    expect(screen.queryByTestId('match-weather-line')).not.toBeInTheDocument()
+
+    await userEvent.setup().click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const lines = screen.getAllByTestId('match-weather-line').map((line) => line.textContent)
+    expect(lines).toEqual(['Dry for the whole match', 'Breezy: gusts up to 33 km/h', 'Sunset 13:30'])
+    vi.unstubAllGlobals()
+  })
+
+  it('is omitted without a forecast', async () => {
+    renderMatch(matchDto())
+    await screen.findByTestId('hub-match')
+    expect(screen.queryByTestId('match-weather-panel')).not.toBeInTheDocument()
+  })
+})
+
 describe('HubMatch upcoming', () => {
-  it('shows one status badge, the title and four static figures with Not Announced Yet', async () => {
+  it('shows one status badge, the title and four static figures with Waiting For Team Announcement', async () => {
     renderMatch(matchDto())
 
     expect(await screen.findByRole('heading', { name: 'Riverside U15 A versus Coastal U15' })).toBeInTheDocument()
     expect(screen.getByTestId('match-status-badge')).toHaveTextContent('Upcoming')
+    expect(within(screen.getByTestId('match-title-block')).getByTestId('match-status-badge')).toBeInTheDocument()
     expect(screen.queryByTestId('live-badge')).not.toBeInTheDocument()
     const figures = screen.getByTestId('match-figures')
     expect(within(figures).getByTestId('match-figure-when')).toHaveTextContent(/Sun 8 Nov 09:00/)
     expect(within(figures).getByTestId('match-figure-where')).toHaveTextContent('Riverside Oval')
     expect(within(figures).getByTestId('match-figure-league')).toHaveTextContent('TVL Division 1 · 2099/2100')
-    expect(within(figures).getByTestId('match-figure-status')).toHaveTextContent('Not Announced Yet')
-    expect(within(figures).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(figures).getByTestId('match-figure-status')).toHaveTextContent('Waiting For Team Announcement')
+    expect(within(figures).queryByRole('button', { name: /^(?!Get Directions)/ })).not.toBeInTheDocument()
     expect(within(figures).queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('says Friendly with no league, and a dash with no venue', async () => {
+  it('says Friendly with no league, and TBC with no venue', async () => {
     renderMatch(matchDto({ league: null, season: null, venue: null }))
 
     await screen.findByTestId('match-figures')
     expect(screen.getByTestId('match-figure-league')).toHaveTextContent('Friendly')
-    expect(screen.getByTestId('match-figure-where')).toHaveTextContent('-')
+    expect(screen.getByTestId('match-figure-where')).toHaveTextContent('TBC')
   })
 
   it('has no Share, Manage, Edit or Back control', async () => {
@@ -63,7 +101,7 @@ describe('HubMatch upcoming', () => {
   })
 
   it('reads each selection state', async () => {
-    for (const [selection, text] of [['SELECTED', 'Selected'], ['NOT_SELECTED', 'Not Selected']] as const) {
+    for (const [selection, text] of [['SELECTED', 'Selected'], ['SELECTED_TWELFTH', 'Selected (12th)'], ['NOT_SELECTED', 'Not Selected']] as const) {
       const { unmount } = renderMatch(matchDto({ selection }))
       expect(await screen.findByTestId('match-figure-status')).toHaveTextContent(text)
       unmount()
@@ -98,14 +136,14 @@ describe('HubMatch upcoming', () => {
     expect(screen.queryByTestId('match-availability')).not.toBeInTheDocument()
   })
 
-  it('shows Your team on the player\'s side and Team not announced yet for an unannounced side', async () => {
+  it('shows Your team on the player\'s side and Waiting For Team Announcement for an unannounced side', async () => {
     renderMatch(matchDto())
 
     const sides = await screen.findAllByTestId('match-side')
     expect(sides[0]).toHaveAttribute('data-mine', 'true')
     expect(within(sides[0]).getByText('Your team')).toBeInTheDocument()
     expect(within(sides[1]).queryByText('Your team')).not.toBeInTheDocument()
-    for (const side of sides) expect(side).toHaveTextContent('Team not announced yet')
+    for (const side of sides) expect(side).toHaveTextContent('Waiting For Team Announcement')
     expect(screen.queryAllByTestId('match-player')).toHaveLength(0)
   })
 
@@ -124,7 +162,7 @@ describe('HubMatch upcoming', () => {
     expect(rows[0]).toHaveTextContent('1A.B. (C)')
     expect(rows[1]).toHaveTextContent('2J.K. (WK)')
     expect(rows[2]).toHaveTextContent('M.S. (12th)')
-    expect(within(mine).queryByText('Team not announced yet')).not.toBeInTheDocument()
+    expect(within(mine).queryByText('Waiting For Team Announcement')).not.toBeInTheDocument()
   })
 })
 

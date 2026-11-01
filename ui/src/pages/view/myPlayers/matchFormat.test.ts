@@ -47,7 +47,8 @@ describe('labels', () => {
   it('names the selection states in Title Case', () => {
     expect(selectionLabel('SELECTED')).toBe('Selected')
     expect(selectionLabel('NOT_SELECTED')).toBe('Not Selected')
-    expect(selectionLabel('NOT_ANNOUNCED')).toBe('Not Announced Yet')
+    expect(selectionLabel('SELECTED_TWELFTH')).toBe('Selected (12th)')
+    expect(selectionLabel('NOT_ANNOUNCED')).toBe('Waiting For Team Announcement')
   })
 
   it('gives one status badge, with Result Pending for a past match without a result', () => {

@@ -6,12 +6,12 @@ import type { MyMatchSelection, MyMatchSummaryDto } from '../../../api/myPlayers
 import { useMyPlayerMatch } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
-import { HubFixtureLocation } from './HubFixtureLocation'
+import { HubVenueLine, HubWeatherBadge } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLiveScore } from './HubLiveScore'
 import { LiveBadge } from './LiveBadge'
 import { timeLabel } from './leagueFormat'
-import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentResultLine, selectionLabel, watchPath, withinForecastDays } from './matchFormat'
+import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentResultLine, selectionLabel, watchPath } from './matchFormat'
 
 // docs/specs/135 (Schedule > Matches rows): the whole row is one tap target (the title is a stretched link; inner buttons sit above it),
 // 44 px, hover tint, gold focus ring, no chevron, no kebab. A live row has the gold edge and tint ("Your game" one step stronger).
@@ -46,7 +46,7 @@ export function SelectionTag({ selection }: { selection: MyMatchSelection | null
       variant="outlined"
       label={selectionLabel(selection)}
       data-testid="selection-tag"
-      sx={{ height: 22, borderRadius: '4px', fontSize: 12, fontWeight: 600, color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', justifySelf: 'start' }}
+      sx={{ height: 22, borderRadius: '4px', fontSize: 12, fontWeight: 600, color: HUB.sand, borderColor: HUB.line, bgcolor: 'transparent', justifySelf: 'start' }}
     />
   )
 }
@@ -54,7 +54,7 @@ export function SelectionTag({ selection }: { selection: MyMatchSelection | null
 function Side({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl ?? null} size={24} />
+      <LeagueLogo logoUrl={logoUrl ?? null} size={24} name={name} />
       <Typography component="span" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )
@@ -69,13 +69,24 @@ function LiveRowScore({ playerKey, matchId }: { playerKey: string; matchId: stri
   return <HubLiveScore source={match.data?.liveScore} variant="row" />
 }
 
-// Forecast and Get Directions for an upcoming match inside the forecast window; the position comes from the match read.
-function UpcomingLocation({ playerKey, matchId }: { playerKey: string; matchId: string }) {
+// The top line of an upcoming row: the time and countdown on the left, the match-hours weather badge in the top right corner (a phone
+// drops it under the time). The position for the forecast comes from the match read.
+function UpcomingHeader({ playerKey, matchId, text }: { playerKey: string; matchId: string; text: string }) {
   const match = useMyPlayerMatch(playerKey, matchId)
-  if (!match.data) return null
+  return (
+    <Box sx={{ ...inner, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 0.5, pointerEvents: 'none' }}>
+      <Typography sx={{ fontSize: 14, color: HUB.muted }}>{text}</Typography>
+      {match.data && <HubWeatherBadge row={match.data} />}
+    </Box>
+  )
+}
+
+// The VENUE line of a row. Get Directions needs the stored position, which only the match read carries; a recent row has none.
+function RowVenue({ playerKey, row, withDirections }: { playerKey: string; row: MyMatchSummaryDto; withDirections: boolean }) {
+  const match = useMyPlayerMatch(playerKey, row.matchId, withDirections)
   return (
     <Box sx={inner}>
-      <HubFixtureLocation row={match.data} />
+      <HubVenueLine row={match.data} venue={row.venue} withDirections={withDirections} />
     </Box>
   )
 }
@@ -89,7 +100,6 @@ export interface HubMatchRowProps {
 export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
   const kind = row.phase === 'LIVE' ? 'live' : row.phase === 'RECENT' ? 'recent' : 'upcoming'
   const title = matchTitle(row.home.name, row.away.name)
-  const facts = [row.league, row.venue].filter(Boolean).join(' · ')
   const time = timeLabel(row.time)
   return (
     <Box component="article" data-testid="hub-match-row" data-phase={row.phase} sx={rowSx(kind)}>
@@ -99,15 +109,14 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
           <Typography component="span" data-testid="match-elapsed" sx={{ fontSize: 14, color: HUB.muted }}>{elapsedLabel(row.startedAt, now)}</Typography>
         </Box>
       )}
-      {kind === 'upcoming' && (
-        <Typography sx={{ fontSize: 14, color: HUB.muted }}>{[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')}</Typography>
-      )}
+      {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
       <Box component={RouterLink} to={matchPath(playerKey, row.matchId, 'matches')} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
         <Side name={row.home.name} logoUrl={row.home.logoUrl} />
         <Typography component="span" sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
         <Side name={row.away.name} logoUrl={row.away.logoUrl} />
       </Box>
-      {facts && <Typography sx={{ fontSize: 14, color: HUB.muted }}>{facts}</Typography>}
+      <Typography data-testid="match-league-line" sx={{ fontSize: 14, color: HUB.muted }}>{row.league || 'Friendly'}</Typography>
+      <RowVenue playerKey={playerKey} row={row} withDirections={kind !== 'recent'} />
       {kind === 'recent' && (
         <Box sx={{ display: 'grid', gap: 0.25 }}>
           {row.result && (
@@ -136,7 +145,6 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
           )}
         </Box>
       )}
-      {kind === 'upcoming' && withinForecastDays(row.date, now) && <UpcomingLocation playerKey={playerKey} matchId={row.matchId} />}
     </Box>
   )
 }

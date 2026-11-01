@@ -28,3 +28,21 @@ describe('WeatherBadge', () => {
     expect(container).toBeEmptyDOMElement()
   })
 })
+
+describe('WeatherBadge tooltip', () => {
+  const withLines = { ...summary, lines: ['Dry for the whole match', 'Sunset 18:40'] }
+
+  it('is keyboard focusable and shows the lines on focus', async () => {
+    wrap(<WeatherBadge summary={withLines} variant="compact" />)
+    const badge = screen.getByTestId('weather-badge')
+    expect(badge).toHaveAttribute('tabindex', '0')
+    badge.focus()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Dry for the whole match')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Sunset 18:40')
+  })
+
+  it('has no tab stop and no tooltip without lines', () => {
+    wrap(<WeatherBadge summary={summary} />)
+    expect(screen.getByTestId('weather-badge')).not.toHaveAttribute('tabindex')
+  })
+})

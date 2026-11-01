@@ -7,13 +7,13 @@ import { useMyPlayerMatch } from '../../../api/myPlayersApi'
 import type { MyMatchDto } from '../../../api/myPlayersApi'
 import { blackAlpha, creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
-import { HubFixtureLocation } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLiveScore } from './HubLiveScore'
+import { HubWeatherPanel } from './HubFixtureLocation'
 import { HubMatchFigures } from './HubMatchFigures'
 import { HubMatchSide } from './HubMatchSide'
 import { LiveBadge } from './LiveBadge'
-import { answerLabel, matchTitle, statusBadgeLabel, watchPath } from './matchFormat'
+import { answerLabel, statusBadgeLabel, watchPath } from './matchFormat'
 import { useNow } from './useNow'
 
 // docs/specs/135 (Match page): read only. The footer owns Back (no Back, Manage, Edit or Share here). One status badge, four static
@@ -76,16 +76,22 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
 
   const live = match.phase === 'LIVE'
   const mine = match.home.mine ? match.home : match.away.mine ? match.away : match.home
-  const title = matchTitle(match.home.name, match.away.name)
   return (
     <Box data-testid="hub-match" sx={{ display: 'grid', gap: 1.5 }}>
-      <Box sx={{ display: 'grid', gap: 0.75 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={32} />
-          <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={32} />
-        </Box>
-        <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, overflowWrap: 'anywhere' }}>{title}</Typography>
-        <Box>
+      {/* The status badge (or LIVE) is always in the top right corner of the title block; a phone keeps it under the title. */}
+      <Box data-testid="match-title-block" sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'flex-start', justifyContent: 'space-between', gap: 0.75 }}>
+        <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5 }}>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={28} name={match.home.name} />
+            <span>{match.home.name}</span>
+          </Box>
+          <span>versus</span>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={28} name={match.away.name} />
+            <span>{match.away.name}</span>
+          </Box>
+        </Typography>
+        <Box sx={{ flex: 'none' }}>
           {live ? (
             <LiveBadge />
           ) : (
@@ -94,6 +100,7 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
         </Box>
       </Box>
       <HubMatchFigures match={match} now={now} />
+      <HubWeatherPanel match={match} />
       {(live || match.phase === 'UPCOMING') && <HubLiveScore source={match.liveScore} variant="card" owner={{ name: mine.name, logoUrl: mine.logoUrl }} />}
       {live && match.stream && (
         <Box data-testid="match-watch-card" sx={panelSx}>
@@ -111,7 +118,6 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
           </MuiButton>
         </Box>
       )}
-      {match.phase === 'UPCOMING' && <HubFixtureLocation row={match} />}
       <Availability match={match} onAnswer={onAnswerAvailability} />
       <HubMatchSide side={match.home} />
       <HubMatchSide side={match.away} />

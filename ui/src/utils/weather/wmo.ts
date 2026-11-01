@@ -29,6 +29,8 @@ export interface WeatherSummary {
   text: string
   // "14 to 27 degrees, 20% rain" for tight places.
   short: string
+  // docs/specs/135: plain-language lines for the match hours (the badge tooltip); absent for a whole-day summary.
+  lines?: string[]
 }
 
 export function summariseForecast(forecast: DailyForecast): WeatherSummary {

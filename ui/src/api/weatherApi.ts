@@ -8,6 +8,23 @@ export interface DailyForecast {
   tempMax: number
   tempMin: number
   rainChance: number | null
+  // The hourly values of that day and its sunrise and sunset (local clock 'yyyy-MM-ddTHH:mm'); absent when the response has none.
+  hours?: HourSample[]
+  sunrise?: string | null
+  sunset?: string | null
+}
+
+// One hour of the day at the field, in the field's own local time ('yyyy-MM-ddTHH:mm'); a value the API leaves out is null.
+export interface HourSample {
+  time: string
+  temperature: number | null
+  rainChance: number | null
+  rainMm: number | null
+  wind: number | null
+  gusts: number | null
+  humidity: number | null
+  uv: number | null
+  cloud: number | null
 }
 
 export interface Coordinates {
@@ -27,7 +44,44 @@ interface ForecastResponse {
     temperature_2m_max?: number[]
     temperature_2m_min?: number[]
     precipitation_probability_max?: (number | null)[]
+    sunrise?: (string | null)[]
+    sunset?: (string | null)[]
   }
+  hourly?: {
+    time?: string[]
+    temperature_2m?: (number | null)[]
+    precipitation_probability?: (number | null)[]
+    precipitation?: (number | null)[]
+    wind_speed_10m?: (number | null)[]
+    wind_gusts_10m?: (number | null)[]
+    relative_humidity_2m?: (number | null)[]
+    uv_index?: (number | null)[]
+    cloud_cover?: (number | null)[]
+  }
+}
+
+const HOURLY = 'temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,uv_index,cloud_cover'
+
+const num = (value: number | null | undefined): number | null => (typeof value === 'number' ? value : null)
+
+function hoursOf(hourly: ForecastResponse['hourly'], date: string): HourSample[] {
+  const times = hourly?.time ?? []
+  const samples: HourSample[] = []
+  times.forEach((time, index) => {
+    if (!time.startsWith(date)) return
+    samples.push({
+      time,
+      temperature: num(hourly?.temperature_2m?.[index]),
+      rainChance: num(hourly?.precipitation_probability?.[index]),
+      rainMm: num(hourly?.precipitation?.[index]),
+      wind: num(hourly?.wind_speed_10m?.[index]),
+      gusts: num(hourly?.wind_gusts_10m?.[index]),
+      humidity: num(hourly?.relative_humidity_2m?.[index]),
+      uv: num(hourly?.uv_index?.[index]),
+      cloud: num(hourly?.cloud_cover?.[index]),
+    })
+  })
+  return samples
 }
 
 // The forecast for one date, or null when the API has none for it. Throws on a network or HTTP failure (the hook keeps that quiet).
@@ -35,7 +89,9 @@ export async function fetchDailyForecast(coords: Coordinates, date: string): Pro
   const params = new URLSearchParams({
     latitude: coords.lat.toFixed(2),
     longitude: coords.lng.toFixed(2),
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+    hourly: HOURLY,
+    wind_speed_unit: 'kmh',
     forecast_days: String(FORECAST_DAYS),
     timezone: 'auto',
   })
@@ -50,7 +106,17 @@ export async function fetchDailyForecast(coords: Coordinates, date: string): Pro
   const tempMin = daily.temperature_2m_min?.[index]
   if (typeof code !== 'number' || typeof tempMax !== 'number' || typeof tempMin !== 'number') return null
   const rain = daily.precipitation_probability_max?.[index]
-  return { date, code, tempMax, tempMin, rainChance: typeof rain === 'number' ? rain : null }
+  const hours = hoursOf(body.hourly, date)
+  return {
+    date,
+    code,
+    tempMax,
+    tempMin,
+    rainChance: typeof rain === 'number' ? rain : null,
+    ...(hours.length > 0 ? { hours } : {}),
+    sunrise: daily.sunrise?.[index] ?? null,
+    sunset: daily.sunset?.[index] ?? null,
+  }
 }
 
 interface GeocodeResponse {

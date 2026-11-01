@@ -339,7 +339,7 @@ export function useMyPlayerLeague(key: string | undefined, leagueId: string | un
 // .../matches/{matchId} (404 outside the player's teams). The server decides phase, selection, the announced-only XI, the junior
 // initials and the embed URL; the client only formats and renders what it is given.
 export type MyMatchPhase = 'LIVE' | 'UPCOMING' | 'RECENT'
-export type MyMatchSelection = 'SELECTED' | 'NOT_SELECTED' | 'NOT_ANNOUNCED'
+export type MyMatchSelection = 'SELECTED' | 'SELECTED_TWELFTH' | 'NOT_SELECTED' | 'NOT_ANNOUNCED'
 export type MyMatchStatus = 'UPCOMING' | 'PLAYED' | 'CANCELLED' | 'POSTPONED'
 export type MyStreamProvider = 'YOUTUBE' | 'VIMEO' | 'FACEBOOK' | 'OTHER'
 
@@ -470,11 +470,11 @@ export function useMyPlayerMatches(key: string | undefined) {
   })
 }
 
-export function useMyPlayerMatch(key: string | undefined, matchId: string | undefined) {
+export function useMyPlayerMatch(key: string | undefined, matchId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: [...myPlayerMatchesKey(key), matchId],
     queryFn: () => getMyPlayerMatch(key as string, matchId as string),
-    enabled: Boolean(key) && Boolean(matchId),
+    enabled: enabled && Boolean(key) && Boolean(matchId),
     retry: false,
     refetchInterval: (query) => (query.state.data?.phase === 'LIVE' ? MATCH_REFRESH_MS : false),
   })

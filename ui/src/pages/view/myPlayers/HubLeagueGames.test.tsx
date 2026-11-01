@@ -22,7 +22,8 @@ describe('HubLeagueSchedule', () => {
     const [mine, other] = games()
     expect(mine).toHaveAttribute('data-mine', 'true')
     expect(within(mine).getByText('Your game')).toBeInTheDocument()
-    expect(mine).toHaveTextContent('09:30 · Riverside Oval')
+    expect(mine).toHaveTextContent('09:30')
+    expect(within(mine).getByTestId('hub-venue-line')).toHaveTextContent(/Venue\s*Riverside Oval/i)
     expect(other).not.toHaveAttribute('data-mine')
     expect(within(other).queryByText('Your game')).not.toBeInTheDocument()
   })
@@ -81,6 +82,33 @@ describe('HubLeagueSchedule location', () => {
     render(<HubLeagueSchedule dto={withPosition({ playingAreaAccessLatitude: -33.71, playingAreaAccessLongitude: 18.97 })} />)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Get Directions' }))
     expect(open).toHaveBeenCalledWith('https://www.google.com/maps/dir/?api=1&destination=-33.71,18.97', '_blank', 'noopener,noreferrer')
+  })
+
+  it('shows the match-hours range on the badge and the detail in its tooltip', async () => {
+    const day = new Date()
+    day.setDate(day.getDate() + 2)
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    const hours = Array.from({ length: 24 }, (_, hour) => `${iso}T${String(hour).padStart(2, '0')}:00`)
+    const body = {
+      daily: { time: [iso], weather_code: [1], temperature_2m_max: [31], temperature_2m_min: [12], precipitation_probability_max: [39], sunset: [`${iso}T18:40`] },
+      hourly: {
+        time: hours,
+        temperature_2m: hours.map((_, hour) => 10 + hour),
+        precipitation_probability: hours.map(() => 4),
+        precipitation: hours.map(() => 0),
+        wind_gusts_10m: hours.map(() => 20),
+        uv_index: hours.map(() => 1),
+        relative_humidity_2m: hours.map(() => 40),
+        cloud_cover: hours.map(() => 50),
+      },
+    }
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) })))
+    render(<HubLeagueSchedule dto={withPosition({ date: iso, time: '09:30' })} />)
+    const badge = await screen.findByTestId('hub-row-weather')
+    // 09:30 start, a T20 league (4 hours): the 09:00 to 13:30 hours are 19 to 23 degrees.
+    expect(badge).toHaveTextContent('19-23 degrees, dry')
+    await userEvent.setup().hover(badge)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Dry for the whole match')
   })
 
   it('shows the forecast badge for a match within the next week', async () => {

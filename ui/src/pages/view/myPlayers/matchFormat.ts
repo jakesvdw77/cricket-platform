@@ -60,8 +60,9 @@ export function dayLabel(date: string): string {
 
 export const SELECTION_LABELS: Record<MyMatchSelection, string> = {
   SELECTED: 'Selected',
+  SELECTED_TWELFTH: 'Selected (12th)',
   NOT_SELECTED: 'Not Selected',
-  NOT_ANNOUNCED: 'Not Announced Yet',
+  NOT_ANNOUNCED: 'Waiting For Team Announcement',
 }
 
 export const selectionLabel = (selection: MyMatchSelection | null | undefined): string => (selection ? SELECTION_LABELS[selection] : '-')

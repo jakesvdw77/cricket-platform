@@ -7,7 +7,7 @@ import { CompactSwitch } from '../../../components/CompactSwitch'
 import type { MyLeagueDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
-import { HubFixtureLocation } from './HubFixtureLocation'
+import { HubVenueLine, HubWeatherBadge } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { emptyLine, tagSx } from './HubLeagueTabs'
 import { groupByDate, isPast, longDate, shortDate, timeLabel } from './leagueFormat'
@@ -40,7 +40,7 @@ function OnlyMine({ checked, onChange }: { checked: boolean; onChange: (next: bo
 function Side({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl} size={28} />
+      <LeagueLogo logoUrl={logoUrl} size={28} name={name} />
       <Typography sx={{ fontSize: 17, fontWeight: 600, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )
@@ -83,17 +83,20 @@ export function HubLeagueSchedule({ dto, playerKey }: { dto: MyLeagueDto; player
           {group.rows.map((row) => (
             <Box key={row.matchId} component="article" data-mine={row.mine ? 'true' : undefined} sx={[rowSx(row.mine, isPast(row.date)), row.mine && playerKey ? tapSx : {}]}>
               {row.mine && <YourGame />}
+              {!isPast(row.date) && (row.time || row.date) && (
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 0.5, pointerEvents: 'none' }}>
+                  <Typography sx={{ fontSize: 15, color: HUB.muted }}>{timeLabel(row.time)}</Typography>
+                  <HubWeatherBadge row={row} format={dto.league.format} />
+                </Box>
+              )}
               <RowBody link={{ playerKey, leagueId: dto.league.id, tab: 'schedule' }} matchId={row.matchId} label={`${row.homeName} versus ${row.awayName}`} tapped={row.mine}>
                 <Side name={row.homeName} logoUrl={row.homeLogoUrl} />
                 <Typography sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
                 <Side name={row.awayName} logoUrl={row.awayLogoUrl} />
-                <Typography sx={{ fontSize: 15, color: HUB.muted }}>{[timeLabel(row.time), row.venue].filter(Boolean).join(' · ')}</Typography>
               </RowBody>
-              {!isPast(row.date) && (
-                <Box sx={{ position: 'relative', zIndex: 1 }}>
-                  <HubFixtureLocation row={row} />
-                </Box>
-              )}
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <HubVenueLine row={row} venue={row.venue} withDirections={!isPast(row.date)} />
+              </Box>
             </Box>
           ))}
         </Box>

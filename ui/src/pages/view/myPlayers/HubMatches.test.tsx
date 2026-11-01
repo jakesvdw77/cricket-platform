@@ -65,8 +65,9 @@ describe('HubMatches', () => {
     const row = await screen.findByTestId('hub-match-row')
     expect(screen.getByRole('heading', { name: /8 November 2099/ })).toBeInTheDocument()
     expect(row).toHaveTextContent(/09:00 · in \d+ days/)
-    expect(within(row).getByTestId('selection-tag')).toHaveTextContent('Not Announced Yet')
-    expect(row).toHaveTextContent('TVL Division 1 · Riverside Oval')
+    expect(within(row).getByTestId('selection-tag')).toHaveTextContent('Waiting For Team Announcement')
+    expect(within(row).getByTestId('match-league-line')).toHaveTextContent('TVL Division 1')
+    expect(within(row).getByTestId('hub-venue-line')).toHaveTextContent('Riverside Oval')
     expect(within(row).queryByRole('button')).not.toBeInTheDocument()
   })
 
