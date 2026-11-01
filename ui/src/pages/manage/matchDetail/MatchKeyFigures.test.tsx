@@ -22,6 +22,8 @@ const renderFigures = (props: Partial<Parameters<typeof MatchKeyFigures>[0]> & {
     </MemoryRouter>,
   )
 
+const WEATHER = { label: 'Mostly sunny', icon: 'sunny' as const, tempMin: 14, tempMax: 27, rainChance: 20, text: 'Mostly sunny, 14 to 27 degrees, 20% rain', short: '14 to 27 degrees, 20% rain' }
+
 describe('MatchKeyFigures', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -116,5 +118,19 @@ describe('MatchKeyFigures', () => {
   it('shows a dash for the poll until the polls have loaded', () => {
     renderFigures({ pollsReady: false, matchDate: '2026-10-15T07:15:00' })
     expect(valueOf('match-figure-poll')).toHaveTextContent('–')
+  })
+
+  // docs/specs/131 (Weather): a forecast badge in words under the counters, nothing without one or once played.
+  it('shows the forecast in words when given one, and nothing without it', () => {
+    const { unmount } = renderFigures({ matchDate: '2026-10-11T07:15:00', weather: WEATHER })
+    expect(screen.getByTestId('match-figure-weather')).toHaveAccessibleName('Forecast: Mostly sunny, 14 to 27 degrees, 20% rain')
+    unmount()
+    renderFigures({ matchDate: '2026-10-11T07:15:00', weather: null })
+    expect(screen.queryByTestId('match-figure-weather')).not.toBeInTheDocument()
+  })
+
+  it('hides the forecast once the match is played', () => {
+    renderFigures({ matchDate: '2026-10-11T07:15:00', weather: WEATHER, resultStatus: 'PUBLISHED' })
+    expect(screen.queryByTestId('match-figure-weather')).not.toBeInTheDocument()
   })
 })

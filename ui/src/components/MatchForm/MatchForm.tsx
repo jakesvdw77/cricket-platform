@@ -114,6 +114,13 @@ function toSideState(
   }
 }
 
+function hasSideData(initialValues: Partial<MatchPayload> | undefined, side: 'home' | 'away'): boolean {
+  const v = initialValues
+  return side === 'home'
+    ? Boolean(v?.homeTeamId || v?.homeTeamName || v?.homeLeagueTeamId)
+    : Boolean(v?.awayTeamId || v?.awayTeamName || v?.awayLeagueTeamId)
+}
+
 function toFormState(initialValues?: Partial<MatchPayload>, initialField?: FieldPickerValue | null): FormState {
   return {
     home: toSideState(
@@ -276,7 +283,25 @@ export function MatchForm({
     onScopeChange?.(values.leagueId, values.seasonId)
   }, [onScopeChange, values.leagueId, values.seasonId])
 
+  // The side selector defaults to League team on both sides once a league and season are chosen (the league team list
+  // already includes our own teams), and back to My team without a league. Only a side the manager has not touched and
+  // that the match did not arrive with follows the default, so an edit keeps its stored kind.
+  const sideTouched = useRef({ home: hasSideData(initialValues, 'home'), away: hasSideData(initialValues, 'away') })
+  const defaultSideMode: SideMode = canUseLeagueTeams && values.leagueId && values.seasonId ? 'leagueTeam' : 'team'
+  useEffect(() => {
+    setValues((prev) => {
+      const follow = (side: SideState, touched: boolean): SideState =>
+        touched || side.mode === defaultSideMode || side.teamId || side.teamName || side.leagueTeamId
+          ? side
+          : { ...side, mode: defaultSideMode }
+      const home = follow(prev.home, sideTouched.current.home)
+      const away = follow(prev.away, sideTouched.current.away)
+      return home === prev.home && away === prev.away ? prev : { ...prev, home, away }
+    })
+  }, [defaultSideMode])
+
   const updateSide = (side: 'home' | 'away', patch: Partial<SideState>) => {
+    sideTouched.current[side] = true
     setValues((prev) => ({ ...prev, [side]: { ...prev[side], ...patch } }))
   }
 

@@ -24,6 +24,11 @@ public interface MatchMapper {
     @Mapping(target = "polls", ignore = true)
     @Mapping(target = "playingAreaName", ignore = true)
     @Mapping(target = "playingAreaVerificationStatus", ignore = true)
+    @Mapping(target = "playingAreaLatitude", ignore = true)
+    @Mapping(target = "playingAreaLongitude", ignore = true)
+    @Mapping(target = "playingAreaAccessLatitude", ignore = true)
+    @Mapping(target = "playingAreaAccessLongitude", ignore = true)
+    @Mapping(target = "playingAreaAccessNote", ignore = true)
     @Mapping(target = "resultStatus", ignore = true)
     @Mapping(target = "deletable", ignore = true) // docs/specs/109: batched in the service
     MatchDto toDto(Match entity);

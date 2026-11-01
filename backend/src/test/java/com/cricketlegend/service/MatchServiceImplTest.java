@@ -117,6 +117,9 @@ class MatchServiceImplTest {
     @Mock
     private com.cricketlegend.service.support.MatchEmptiness matchEmptiness;
 
+    @Mock
+    private com.cricketlegend.service.MatchScheduleRules scheduleRules;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -130,13 +133,19 @@ class MatchServiceImplTest {
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
                 accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver,
-                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository), matchEmptiness);
+                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository), matchEmptiness,
+                scheduleRules);
+        // no scheduling findings by default (docs/specs/132): the rules have their own tests
+        org.mockito.Mockito.lenient().when(scheduleRules.check(any(), any(), any())).thenReturn(java.util.List.of());
+        org.mockito.Mockito.lenient().when(scheduleRules.checkBatch(any(), org.mockito.ArgumentMatchers.anyList()))
+                .thenAnswer(inv -> ((java.util.List<?>) inv.getArgument(1)).stream()
+                        .map(c -> java.util.List.of()).toList());
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -704,9 +713,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -747,7 +756,7 @@ class MatchServiceImplTest {
     private MatchDto cardDto(Match m) {
         return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
                 m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
-                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
+                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private List<MatchDto> listCard(Match... matches) {
@@ -1770,7 +1779,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, homeLtId, awayLtId, null, null, null, null, null, null, false));
+                null, null, homeLtId, awayLtId, null, null, null, null, null, null, null, null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1983,7 +1992,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null, false));
+                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null, null, null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -2426,6 +2435,157 @@ class MatchServiceImplTest {
         assertThatThrownBy(() -> matchService.updateDateTime(
                         authentication, UUID.randomUUID(), UUID.randomUUID(), dateTime(at(2030, 1, 1))))
                 .isInstanceOf(NotFoundException.class);
+        verify(matchRepository, never()).save(any());
+    }
+
+    // --- 132: the shared scheduling rules on every route that saves a match ---
+
+    private static com.cricketlegend.exception.ScheduleRuleException refusal() {
+        return new com.cricketlegend.exception.ScheduleRuleException(java.util.List.of(
+                new com.cricketlegend.dto.ScheduleFindingDto("OWN_TEAM_OVERLAP", "ERROR", "clash", "time", null)));
+    }
+
+    private Match storedFreeTextMatch(UUID matchId, UUID seasonId, Instant when) {
+        return Match.builder().id(matchId).clubId(clubIdForLinks).homeTeamName("Home").awayTeamName("Away")
+                .seasonId(seasonId).matchDate(when).venue("Ground").active(true).build();
+    }
+
+    private UpdateMatchRequest freeTextUpdate(UUID seasonId, Instant when, String home, String venue, String scoringUrl,
+            java.util.List<String> acknowledged) {
+        return new UpdateMatchRequest(null, home, null, "Away", null, null, null, seasonId, when, venue, null, null,
+                scoringUrl, null, null, acknowledged);
+    }
+
+    private Match stubStoredForUpdate(UUID matchId, UUID seasonId, Instant when) {
+        Match stored = storedFreeTextMatch(matchId, seasonId, when);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(stored));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubIdForLinks)));
+        stubSave();
+        return stored;
+    }
+
+    @Test
+    void updateSkipsTheSchedulingRulesWhenTimeSidesAndVenueAreUnchanged() {
+        UUID matchId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Instant when = at(2030, 5, 5);
+        stubStoredForUpdate(matchId, seasonId, when);
+
+        // same minute, same names, the venue differs only by case and spacing: only the link changes
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(20), " home ", " GROUND ", "https://example.com/live", null));
+
+        verify(scheduleRules, never()).check(any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        verify(scheduleRules, never()).enforce(any(), any());
+        verify(matchRepository).save(any());
+    }
+
+    @Test
+    void updateRunsTheSchedulingRulesWhenTheTimeASideOrTheVenueChanges() {
+        UUID matchId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Instant when = at(2030, 5, 5);
+        stubStoredForUpdate(matchId, seasonId, when);
+        java.util.List<String> acknowledged = java.util.List.of("VENUE_TIME_CLASH");
+
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(3600), "Home", "Ground", null, acknowledged));
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(3600), "Other", "Ground", null, acknowledged));
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(3600), "Other", "Back field", null, acknowledged));
+
+        // each run excludes the edited match itself and passes the request's acknowledged codes
+        // the stored match is the same object, so only the first run changes the time
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(matchId), eq(true));
+        verify(scheduleRules, times(2)).check(eq(clubIdForLinks), any(), eq(matchId), eq(false));
+        verify(scheduleRules, times(3)).enforce(any(), eq(acknowledged));
+    }
+
+    @Test
+    void updateAsksForThePastDateRuleOnlyWhenTheDateOrTimeChanges() {
+        UUID matchId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Instant when = at(2030, 5, 5);
+        stubStoredForUpdate(matchId, seasonId, when);
+
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when, "Other", "Ground", null, null));
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(matchId), eq(false));
+
+        matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(3600), "Other", "Ground", null, null));
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(matchId), eq(true));
+    }
+
+    @Test
+    void updateRefusedByTheSchedulingRulesChangesAndSavesNothing() {
+        UUID matchId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Instant when = at(2030, 5, 5);
+        Match stored = storedFreeTextMatch(matchId, seasonId, when);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(stored));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubIdForLinks)));
+        org.mockito.Mockito.doThrow(refusal()).when(scheduleRules).enforce(any(), any());
+
+        assertThatThrownBy(() -> matchService.update(authentication, clubIdForLinks, matchId,
+                freeTextUpdate(seasonId, when.plusSeconds(3600), "Home", "Ground", null, null)))
+                .isInstanceOf(com.cricketlegend.exception.ScheduleRuleException.class);
+
+        assertThat(stored.getMatchDate()).isEqualTo(when);
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void createRunsTheSchedulingRulesWithTheAcknowledgedCodesAndSavesNothingWhenRefused() {
+        UUID seasonId = UUID.randomUUID();
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubIdForLinks)));
+        java.util.List<String> acknowledged = java.util.List.of("DUPLICATE_SAME_DAY");
+        CreateMatchRequest request = new CreateMatchRequest(null, "Home", null, "Away", null, null, null, seasonId,
+                at(2030, 5, 5), "Ground", null, null, null, null, null, acknowledged);
+        org.mockito.Mockito.doThrow(refusal()).when(scheduleRules).enforce(any(), any());
+
+        assertThatThrownBy(() -> matchService.create(authentication, clubIdForLinks, request))
+                .isInstanceOf(com.cricketlegend.exception.ScheduleRuleException.class);
+
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(null));
+        verify(scheduleRules).enforce(any(), eq(acknowledged));
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void updateDateTimeAlwaysRunsTheSchedulingRulesAndSavesNothingWhenRefused() {
+        UUID matchId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match stored = storedFreeTextMatch(matchId, seasonId, at(2030, 5, 5));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(stored));
+        com.cricketlegend.dto.UpdateMatchDateTimeRequest request = new com.cricketlegend.dto.UpdateMatchDateTimeRequest(
+                at(2030, 5, 6), java.util.List.of("OWN_TEAM_SAME_DATE"));
+        org.mockito.Mockito.doThrow(refusal()).when(scheduleRules).enforce(any(), any());
+
+        assertThatThrownBy(() -> matchService.updateDateTime(authentication, clubIdForLinks, matchId, request))
+                .isInstanceOf(com.cricketlegend.exception.ScheduleRuleException.class);
+
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(matchId), eq(true));
+        verify(scheduleRules).enforce(any(), eq(java.util.List.of("OWN_TEAM_SAME_DATE")));
+        assertThat(stored.getMatchDate()).isEqualTo(at(2030, 5, 5));
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void reactivateRunsTheSchedulingRulesAcknowledgingEveryWarningSoOnlyErrorsBlock() {
+        UUID matchId = UUID.randomUUID();
+        Match stored = storedFreeTextMatch(matchId, UUID.randomUUID(), at(2030, 5, 5));
+        stored.setActive(false);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(stored));
+        org.mockito.Mockito.doThrow(refusal()).when(scheduleRules).enforce(any(), any());
+
+        assertThatThrownBy(() -> matchService.reactivate(authentication, clubIdForLinks, matchId))
+                .isInstanceOf(com.cricketlegend.exception.ScheduleRuleException.class);
+
+        verify(scheduleRules).check(eq(clubIdForLinks), any(), eq(matchId), eq(false));
+        verify(scheduleRules).enforce(any(), eq(com.cricketlegend.service.support.schedule.ScheduleRule.warningCodes()));
+        assertThat(stored.isActive()).isFalse();
         verify(matchRepository, never()).save(any());
     }
 }

@@ -87,7 +87,7 @@ class MatchesSummaryIntegrationTest {
         fixtures.linkMatch(fixtures.groupPoll(w, w.seniors(), null), c);
         fixtures.match(w, other.seniors1(), null, now.plus(Duration.ofDays(4))); // D: no own side
         fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(2)), false, null); // E: inactive
-        fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(3))); // F: past
+        fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(3)), false, null); // F: past and inactive (an active past match without a result stays listed, spec 132)
         Match g = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(6)));
         fixtures.closeSquadPoll(fixtures.squadPoll(g, w.seniors1(), null));
         fixtures.match(w, w.juniorsTeam(), null, now.plus(Duration.ofDays(3))); // H

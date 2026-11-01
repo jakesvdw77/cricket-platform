@@ -50,6 +50,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * docs/specs/132-match-scheduling-rules.md: the scheduling findings of a refused match save, and whether the
+     * manager can confirm them (warnings only). Wins over the generic {@link ConflictException} handler.
+     */
+    @ExceptionHandler(ScheduleRuleException.class)
+    ProblemDetail handleScheduleRule(ScheduleRuleException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("findings", ex.getFindings());
+        problem.setProperty("needsConfirmation", ex.needsConfirmation());
+        return problem;
+    }
+
+    /**
      * docs/specs/104-match-results-import-adaptors.md: the provider id is already on another match; carries {@code
      * otherMatchId}. Wins over the generic {@link ConflictException} handler.
      */

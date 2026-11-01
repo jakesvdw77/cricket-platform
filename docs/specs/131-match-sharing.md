@@ -1,7 +1,7 @@
 # 131: Match Sharing
 
 **Depends on:** `114-share-result.md` (the dialog shell, format screens, preview stage, delivery by capability, `shareName`, `isJuniorMatch`, remembered choices, `WhatsAppSendActions`, `ShareSettingsDto`), `122-league-sharing.md` (the multi-step "What to share, Format, Preview" dialog, content-by-format table, club format switches, `ShareCore`), `030-team-sheet-communication.md` and `039-team-sheet-whatsapp-text.md` (the dialog this replaces), `130-matches-pages-revamp.md` (the row kebab and Manage Match menu this plugs into), `076`/`093` (team selection, the selected XI, captain and wicketkeeper), `099` (Field Directory, `PlayingArea`), `100`/`101` (results, sides), `103`, `116`, `117` (player and team statistics, form, milestones), `051` (poster generator precedent), `docs/standards/page-anatomy.md`, `design-system.md`.
-**Status:** draft (2026-10-31), owner decisions folded in. No code is written by this spec.
+**Status:** approved 2026-10-31 (owner approved the mockups in `docs/mockups/match-sharing-mockup.html`; TV summary for matches stays as proposed: Fixture Card, Countdown, Team Selection). Building.
 
 ## Problem & Goals
 
@@ -74,8 +74,8 @@ Built on the `114`/`122` pieces, reused not copied (`ShareFooterContext`, `Share
 
 ### Entry points
 
-- **Matches list row kebab:** the disabled "Share Match" item is enabled and opens the dialog (Share last, `page-anatomy.md` 6b). The existing "Share Team Sheet" item opens the same dialog with Team sheet ticked.
-- **Match page, Manage Match menu:** **Share Match** last (the per-side Share Team Sheet items become preselections).
+- **Matches list row kebab:** the disabled "Share Match" item is enabled and opens the dialog (Share last, `page-anatomy.md` 6b). The separate "Share Team Sheet" item is removed (Share Match covers it).
+- **Match page, Manage Match menu:** **Share Match** last (the per-side Share Team Sheet items are removed; the Team Sheet button inside each team panel opens the dialog with Team Sheet preselected).
 - **Team panels on the match page:** the Team Sheet button opens the dialog with Team selection poster and Team sheet ticked and that side chosen. Disabled with a visible reason until a team is selected.
 - **A played match** (a result exists): Share Match hands over to `ShareResultDialog` (published result) with the reason line "Opening the result share"; a played match with no published result offers the dialog as normal.
 - Title Case labels; one `ShareMatchDialog`.
@@ -84,7 +84,7 @@ Built on the `114`/`122` pieces, reused not copied (`ShareFooterContext`, `Share
 
 Dialog on desktop, full screen from `sm` down, titled "Share match". Back keeps choices.
 
-1. **What to share** (720 px card): the contents as **one choice** (the manager picks one visual or text content per share; radio-style tiles, no multi-select, no combined image, no stepper). Our side, Opposition, Both toggle, and for Both the **Side by side / Separate** toggle (Separate means one image per side, stepped on screen and downloaded separately, or two pages in a PDF). Contents needing data are disabled with a visible reason: Fixture Card, Countdown and match-level Fun Facts work before a team is selected; Team Selection poster, Team Sheet and team-based facts need a selected XI ("Select the team first"). Season pill only when opened without a match season.
+1. **What to share** (720 px card): the contents as **one choice** (the manager picks one visual or text content per share; radio-style tiles, no multi-select, no combined image, no stepper). The Side (Our Side, Opposition, Both) and Layout (Side by side / Separate for Both) choices are **not** asked here; they sit on the preview step (step 3), defaulting to Our Side, where Separate means one image per side, stepped on screen and downloaded separately, or two pages in a PDF. Contents needing data are disabled with a visible reason: Fixture Card, Countdown and match-level Fun Facts work before a team is selected; Team Selection poster, Team Sheet and team-based facts need a selected XI ("Select the team first"). Season pill only when opened without a match season.
 2. **Format** (720 px card): tiles for formats the chosen content supports and the club has enabled; unsupported ones greyed with the reason.
 3. **Preview** (near full screen): controls left, live preview right, actions pinned in the footer (Share or Download, Copy text, Print, Send in WhatsApp), zoom as `114`.
 
@@ -183,9 +183,11 @@ Per `docs/standards/testing.md`; build first, tests after the owner's check (wor
 4. **Umpires:** backlog item, not built here (roadmap line).
 5. **One visual per share:** the manager chooses one content; no stepper and no combined image.
 6. **Picture:** uploaded per share, not saved; a gallery is a later feature (roadmap line).
-7. **Played matches:** Share Match hands over to `ShareResultDialog`.
+7. **Played matches (owner, 2026-11-01):** Share Match always opens `ShareMatchDialog`. A match with a published result gets a first, preselected content "Match Result" ("Scorecard, result card and summary"); Next closes the dialog and opens the existing `ShareResultDialog`. Fixture Card, Fun Facts and Team Sheet stay available where they apply.
 8. **Fun facts about the opposition:** yes, platform-team opposition only, and juniors by initials only.
 9. **Weather:** added (Open-Meteo forecast, browser-only, forecast range only, never a guess); backend proxy is Later.
+
+10. **Weather coordinates (owner, 2026-10-31):** resolve in this order: (1) latitude and longitude parsed from the field's `mapUrl` (`@lat,lng`, `!3d!4d`, `?q=lat,lng`); (2) when there are none (short maps links, or no map URL, as in the dev data), geocode the field's address city with province or state and country when present through Open-Meteo's free geocoding API (`https://geocoding-api.open-meteo.com/v1/search`, no key), cached by React Query for a long stale time keyed by the place string; (3) when neither resolves, no weather (never a guess). This settles Open question 2: parsing plus geocoding now, stored coordinates still the later backend follow-up.
 
 ## Open Questions
 

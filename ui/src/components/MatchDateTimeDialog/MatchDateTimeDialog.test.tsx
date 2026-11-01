@@ -2,12 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchDateTimeDialog } from './MatchDateTimeDialog'
 import * as matchApi from '../../api/matchApi'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
 
-vi.mock('../../api/matchApi')
+vi.mock('../../api/matchApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/matchApi')>()),
+  updateMatchDateTime: vi.fn(),
+}))
 const getLeagueSeasonDates = vi.fn()
 vi.mock('../../api/leagueSeasonDatesApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/leagueSeasonDatesApi')>()),
@@ -17,7 +21,9 @@ vi.mock('../../api/leagueSeasonDatesApi', async (importOriginal) => ({
 function renderDialog(onSaved = vi.fn(), onClose = vi.fn()) {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MatchDateTimeDialog open onClose={onClose} onSaved={onSaved} clubId="c1" matchId="m1" matchDate="2026-10-04T08:00:00.000Z" />
+      <MemoryRouter>
+        <MatchDateTimeDialog open onClose={onClose} onSaved={onSaved} clubId="c1" matchId="m1" matchDate="2026-10-04T08:00:00.000Z" />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return { onSaved, onClose }
@@ -92,5 +98,30 @@ describe('MatchDateTimeDialog', () => {
     fireEvent.change(screen.getByLabelText('Match date & time (date)'), { target: { value: '2027-09-01' } })
     expect(await screen.findByText(/This league runs from/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  // docs/specs/132
+  it('shows a blocking scheduling finding with an Open link and no Save Anyway', async () => {
+    vi.mocked(matchApi.updateMatchDateTime).mockRejectedValue(
+      Object.assign(new Error('c'), { isAxiosError: true, response: { status: 409, data: { needsConfirmation: false, findings: [{ code: 'OWN_TEAM_OVERLAP', severity: 'ERROR', message: 'Overlaps another match', otherMatchId: 'm5' }] } } }),
+    )
+    renderDialog()
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Overlaps another match')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save Anyway' })).not.toBeInTheDocument()
+  })
+
+  it('Save Anyway resends with the warning codes and closes', async () => {
+    vi.mocked(matchApi.updateMatchDateTime)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('c'), { isAxiosError: true, response: { status: 409, data: { needsConfirmation: true, findings: [{ code: 'VENUE_TIME_CLASH', severity: 'WARNING', message: 'Venue busy' }] } } }),
+      )
+      .mockResolvedValueOnce({ id: 'm1' } as matchApi.Match)
+    const { onClose } = renderDialog()
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Save Anyway' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(vi.mocked(matchApi.updateMatchDateTime).mock.calls[1][3]).toEqual(['VENUE_TIME_CLASH'])
   })
 })

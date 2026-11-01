@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import api from './axiosConfig'
 import type { Page } from './productApi'
 import type { FieldVerificationStatus } from './playingAreaApi'
@@ -56,6 +57,12 @@ export interface Match {
   playingAreaId?: string | null
   playingAreaName?: string | null
   playingAreaVerificationStatus?: FieldVerificationStatus | null
+  // docs/specs/133: the field's stored position and optional access point (null when no field or none stored).
+  playingAreaLatitude?: number | null
+  playingAreaLongitude?: number | null
+  playingAreaAccessLatitude?: number | null
+  playingAreaAccessLongitude?: number | null
+  playingAreaAccessNote?: string | null
   // docs/specs/100-match-results-core.md: NONE, DRAFT or PUBLISHED. A match is completed when its result is published.
   // Optional so older fixtures stay valid; absent means NONE.
   resultStatus?: MatchResultStatus
@@ -109,7 +116,40 @@ export interface MatchPayload {
   // docs/specs/075-match-view-and-edit.md: optional http(s) links; blank/null clears.
   scoringUrl?: string | null
   streamingUrl?: string | null
+  // docs/specs/132: the warning codes the manager confirmed after a 409 with needsConfirmation; sent only on the resend.
+  acknowledgedWarnings?: string[]
 }
+
+// docs/specs/132: one hit of the shared scheduling rules. Errors (OWN_TEAM_OVERLAP, DUPLICATE_MATCH) block; warnings can be
+// confirmed and resent in acknowledgedWarnings.
+export interface ScheduleFinding {
+  code: string
+  severity: 'ERROR' | 'WARNING'
+  message: string
+  field?: 'time' | 'date' | 'venue' | 'teams' | null
+  otherMatchId?: string | null
+}
+
+export interface ScheduleFindings {
+  findings: ScheduleFinding[]
+  // True when every finding is a warning the manager can confirm.
+  needsConfirmation: boolean
+}
+
+// The findings of a 409 from create, update, date-time or reactivate; null for any other failure. Malformed findings are dropped.
+export function scheduleFindings(error: unknown): ScheduleFindings | null {
+  if (!isAxiosError(error) || error.response?.status !== 409) return null
+  const data = error.response.data as { findings?: unknown; needsConfirmation?: unknown } | undefined
+  if (!data || !Array.isArray(data.findings)) return null
+  const findings = (data.findings as Partial<ScheduleFinding>[]).filter(
+    (f): f is ScheduleFinding => Boolean(f) && typeof f.code === 'string' && typeof f.message === 'string' && (f.severity === 'ERROR' || f.severity === 'WARNING'),
+  )
+  if (findings.length === 0) return null
+  const onlyWarnings = findings.every((f) => f.severity === 'WARNING')
+  return { findings, needsConfirmation: onlyWarnings && data.needsConfirmation !== false }
+}
+
+export const warningCodes = (result: ScheduleFindings): string[] => result.findings.filter((f) => f.severity === 'WARNING').map((f) => f.code)
 
 export interface ListMatchesParams {
   page: number
@@ -307,8 +347,11 @@ export async function updateMatch(clubId: string, matchId: string, payload: Matc
 }
 
 // docs/specs/118-result-review-fixes.md: changes the match's date and time and nothing else (same access and league-dates rule as update).
-export async function updateMatchDateTime(clubId: string, matchId: string, matchDate: string): Promise<Match> {
-  const { data } = await api.patch<Match>(`${matchesPath(clubId)}/${matchId}/date-time`, { matchDate })
+export async function updateMatchDateTime(clubId: string, matchId: string, matchDate: string, acknowledgedWarnings?: string[]): Promise<Match> {
+  const { data } = await api.patch<Match>(`${matchesPath(clubId)}/${matchId}/date-time`, {
+    matchDate,
+    ...(acknowledgedWarnings && acknowledgedWarnings.length > 0 ? { acknowledgedWarnings } : {}),
+  })
   return data
 }
 

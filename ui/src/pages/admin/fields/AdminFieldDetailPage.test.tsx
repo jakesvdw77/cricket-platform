@@ -80,15 +80,21 @@ async function renderLoaded(field: PlatformPlayingArea = SOURCE) {
 const KEEP = /^Hilton Oval\s*Hilton,/
 const FAR = /^Hilton Oval Far/
 
+const openManage = async (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Manage Field' }))
+const openMerge = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openManage(user)
+  await user.click(await screen.findByRole('menuitem', { name: /Merge Into/ }))
+}
+
 async function openMergeAndPick(user: ReturnType<typeof userEvent.setup>, target: RegExp) {
-  await user.click(screen.getByRole('button', { name: 'Merge into...' }))
+  await openMerge(user)
   const dialog = await screen.findByRole('dialog', { name: 'Merge into another field' })
   await user.click(within(dialog).getByLabelText('Field to keep'))
   await user.click(await screen.findByRole('option', { name: target }))
   return dialog
 }
 
-// docs/specs/099-fields-directory.md (9)
+// docs/specs/099-fields-directory.md (9) and docs/specs/134
 describe('AdminFieldDetailPage', () => {
   it('shows the admin key figures (clubs using it), the clubs on the Details card and the possible duplicates', async () => {
     await renderLoaded()
@@ -96,51 +102,80 @@ describe('AdminFieldDetailPage', () => {
     expect(screen.getByTestId('field-figure-clubs')).toHaveTextContent('2')
     expect(screen.getByTestId('field-figure-matches')).toHaveTextContent('3')
     expect(screen.getByText('Riverside CC, Oakfield CC')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Hilton Oval' })).toHaveAttribute('href', '/admin/fields/keep-1')
+    expect(screen.getByRole('link', { name: 'Hilton Oval' })).toHaveAttribute('href', expect.stringContaining('/admin/fields/keep-1'))
     expect(screen.getByTestId('field-status-notice')).toHaveTextContent('Check the details, then verify or reject it.')
   })
 
-  it('has Edit (always enabled), Merge into... and Status', async () => {
+  it('has ONE filled Manage Field menu holding every action; no separate Edit, Status, Merge, Verify or Open in maps button', async () => {
+    const user = userEvent.setup()
     await renderLoaded(makeField({ verificationStatus: 'VERIFIED' }) as PlatformPlayingArea)
 
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/admin/fields/field-1/edit')
-    expect(screen.getByRole('button', { name: 'Merge into...' })).toBeEnabled()
+    const title = screen.getByTestId('field-header-title-row')
+    expect(within(title).getAllByRole('button')).toHaveLength(1)
+    for (const name of ['Edit', 'Status', 'Merge into...', 'Verify']) expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('field-header-top-row')).getAllByRole('link')).toHaveLength(1)
+
+    await openManage(user)
+    const items = screen.getAllByRole('menuitem')
+    expect(items[0]).toHaveTextContent('Edit Field')
+    // Edit first, then status actions, then Merge, then links
+    expect(items.map((item) => item.getAttribute('data-testid'))).toEqual(['manage-item-edit', 'manage-item-status', 'manage-item-merge', 'manage-item-maps'])
+    expect(screen.getByRole('menuitem', { name: /Edit Field/ })).toHaveAttribute('href', expect.stringContaining('/admin/fields/field-1/edit'))
+    expect(screen.queryByRole('menuitem', { name: /Share/ })).not.toBeInTheDocument()
   })
 
-  it('Status lists Verify and Reject… for an unverified field, and Verify acts at once', async () => {
+  // docs/specs/133
+  it('puts Get Directions after Edit Field when the field has a position', async () => {
+    const user = userEvent.setup()
+    await renderLoaded(makeField({ verificationStatus: 'VERIFIED', latitude: -29.55, longitude: 30.29 }) as PlatformPlayingArea)
+    await openManage(user)
+    expect(screen.getAllByRole('menuitem').map((item) => item.getAttribute('data-testid'))).toEqual(['manage-item-edit', 'manage-item-directions', 'manage-item-status', 'manage-item-merge', 'manage-item-maps'])
+    expect(screen.getByText('-29.55, 30.29')).toBeInTheDocument()
+  })
+
+  it('links the possible duplicate with this page as its origin, and shows Open in maps inline', async () => {
+    await renderLoaded()
+    expect(screen.getByRole('link', { name: 'Hilton Oval' })).toHaveAttribute('href', '/admin/fields/keep-1?returnTo=%2Fadmin%2Ffields%2Fdup-1&returnLabel=Hilton+Oval+%28dup%29')
+    expect(screen.getByRole('link', { name: 'Open in maps' })).toBeInTheDocument()
+  })
+
+  it('Manage Field lists Verify and Reject for an unverified field, and Verify acts at once', async () => {
     const user = userEvent.setup()
     await renderLoaded()
 
-    await user.click(screen.getByRole('button', { name: 'Status' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject…'])
-    await user.click(screen.getByRole('menuitem', { name: 'Verify' }))
+    await openManage(user)
+    expect(screen.getByRole('menuitem', { name: /^Verify/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /^Reject/ })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Reopen/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: /^Verify/ }))
 
     await waitFor(() => expect(verifyPlayingArea).toHaveBeenCalledWith('dup-1'))
   })
 
-  it('has a Verify button on the notice of an unverified field', async () => {
-    const user = userEvent.setup()
+  it('the notice of an unverified field has no Verify button of its own', async () => {
     await renderLoaded()
 
-    await user.click(within(screen.getByTestId('field-status-notice')).getByRole('button', { name: 'Verify' }))
-
-    await waitFor(() => expect(verifyPlayingArea).toHaveBeenCalledWith('dup-1'))
+    expect(within(screen.getByTestId('field-status-notice')).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('disables Status, with a tooltip, for a verified field; a rejected one offers Reopen', async () => {
+  it('keeps a disabled Change Status item, with its reason, for a verified field', async () => {
+    const user = userEvent.setup()
     await renderLoaded({ ...SOURCE, verificationStatus: 'VERIFIED' })
-    const status = screen.getByRole('button', { name: 'Status' })
-    expect(status).toBeDisabled()
-    expect(status.closest('span[title]')).toHaveAttribute('title', 'A verified field has no status changes.')
+
+    await openManage(user)
+    const status = await screen.findByRole('menuitem', { name: /Change Status/ })
+    expect(status).toHaveAttribute('aria-disabled', 'true')
+    expect(status).toHaveTextContent('A verified field has no status changes.')
   })
 
   it('a rejected field offers only Reopen', async () => {
     const user = userEvent.setup()
     await renderLoaded({ ...SOURCE, verificationStatus: 'REJECTED', rejectionReason: 'Duplicate' })
 
-    await user.click(screen.getByRole('button', { name: 'Status' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reopen'])
-    await user.click(screen.getByRole('menuitem', { name: 'Reopen' }))
+    await openManage(user)
+    expect(screen.queryByRole('menuitem', { name: /^Verify/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /^Reject/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: /Reopen/ }))
     await waitFor(() => expect(reopenPlayingArea).toHaveBeenCalledWith('dup-1'))
   })
 
@@ -148,8 +183,8 @@ describe('AdminFieldDetailPage', () => {
     const user = userEvent.setup()
     await renderLoaded()
 
-    await user.click(screen.getByRole('button', { name: 'Status' }))
-    await user.click(screen.getByRole('menuitem', { name: /Reject/ }))
+    await openManage(user)
+    await user.click(screen.getByRole('menuitem', { name: /^Reject/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Reject this field?' })
     expect(within(dialog).getByRole('button', { name: 'Reject field' })).toBeDisabled()
     await user.type(within(dialog).getByLabelText(/Reason for rejecting/), 'Spam')
@@ -183,7 +218,7 @@ describe('AdminFieldDetailPage', () => {
     it('does not offer the field itself as the one to keep', async () => {
       const user = userEvent.setup()
       await renderLoaded()
-      await user.click(screen.getByRole('button', { name: 'Merge into...' }))
+      await openMerge(user)
       const dialog = await screen.findByRole('dialog', { name: 'Merge into another field' })
       await user.click(within(dialog).getByLabelText('Field to keep'))
 
@@ -203,7 +238,7 @@ describe('AdminFieldDetailPage', () => {
     it('Merge… is disabled until a field is chosen, and calls no API until the explicit confirmation', async () => {
       const user = userEvent.setup()
       await renderLoaded()
-      await user.click(screen.getByRole('button', { name: 'Merge into...' }))
+      await openMerge(user)
       const dialog = await screen.findByRole('dialog', { name: 'Merge into another field' })
       expect(within(dialog).getByRole('button', { name: 'Merge…' })).toBeDisabled()
 

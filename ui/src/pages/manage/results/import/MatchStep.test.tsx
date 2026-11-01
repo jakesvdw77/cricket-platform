@@ -22,7 +22,8 @@ vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   }
 })
 // The Add match dialog's own data.
-vi.mock('../../../../api/matchApi', () => ({
+vi.mock('../../../../api/matchApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../api/matchApi')>()),
   createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
   deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),

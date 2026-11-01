@@ -2,7 +2,7 @@ import { ThemeProvider } from '@mui/material'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { FieldTable } from './FieldTable'
 import type { FieldTableProps } from './FieldTable'
 import type { PlayingArea } from '../../api/playingAreaApi'
@@ -16,22 +16,19 @@ function LocationProbe() {
 }
 
 function renderTable(fields: PlayingArea[], props: Partial<FieldTableProps> = {}) {
-  const onToggleHome = vi.fn()
-  const onStatusAction = vi.fn()
   render(
     <ThemeProvider theme={baseTheme}>
       <MemoryRouter initialEntries={['/list']}>
         <Routes>
-          <Route path="/list" element={<FieldTable fields={fields} viewTo={(field) => `/manage/fixtures/fields/${field.id}`} onToggleHome={onToggleHome} {...props} />} />
+          <Route path="/list" element={<FieldTable fields={fields} viewTo={(field) => `/manage/fixtures/fields/${field.id}`} {...props} />} />
           <Route path="*" element={<LocationProbe />} />
         </Routes>
       </MemoryRouter>
     </ThemeProvider>,
   )
-  return { onToggleHome, onStatusAction }
 }
 
-// docs/specs/099-fields-directory.md (3)
+// docs/specs/099-fields-directory.md (3) and docs/specs/134
 describe('FieldTable', () => {
   it('has a header row with every column and one row per field', () => {
     renderTable([makeField({ id: 'a' }), makeField({ id: 'b', name: 'Hilton Ground' })])
@@ -85,13 +82,36 @@ describe('FieldTable', () => {
     expect(screen.getAllByTestId('field-status-badge-desktop').map((badge) => badge.textContent)).toEqual(['Verified', 'Unverified', 'Rejected'])
   })
 
-  it('tints the first and third rows with the shared zebra tint', () => {
+  it('tints the header and the second row, so the first data row is white (zebra parity)', () => {
     renderTable([makeField({ id: 'a' }), makeField({ id: 'b' }), makeField({ id: 'c' })])
     const rows = screen.getAllByTestId('field-row')
     const tint = zebraTint(baseTheme)
-    expect(rows[0]).toHaveStyle({ backgroundColor: tint })
-    expect(rows[2]).toHaveStyle({ backgroundColor: tint })
-    expect(rows[1]).not.toHaveStyle({ backgroundColor: tint })
+    expect(screen.getAllByRole('columnheader')[0].parentElement).toHaveStyle({ backgroundColor: tint })
+    expect(rows[1]).toHaveStyle({ backgroundColor: tint })
+    expect(rows[0]).not.toHaveStyle({ backgroundColor: tint })
+    expect(rows[2]).not.toHaveStyle({ backgroundColor: tint })
+  })
+
+  it('is a flat card (no shadow) with no chevron or open arrow', () => {
+    renderTable([makeField()])
+    expect(getComputedStyle(screen.getByRole('table', { name: 'Fields' })).boxShadow).toBe('none')
+    expect(screen.queryByTestId('ChevronRightIcon')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ArrowForwardIosIcon')).not.toBeInTheDocument()
+  })
+
+  it('fuses the toolbar into one card with the table, and shows the empty message in that card', () => {
+    renderTable([], { toolbar: <div>Toolbar here</div>, empty: <p>Nothing here</p> })
+    const card = screen.getByTestId('fields-fused-card')
+    expect(within(card).getByText('Toolbar here')).toBeInTheDocument()
+    expect(within(card).getByText('Nothing here')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('renders the row actions at the right end of every row', () => {
+    renderTable([makeField({ id: 'a' }), makeField({ id: 'b' })], { rowActions: (field) => <button type="button">Actions {field.id}</button> })
+    const [first] = screen.getAllByTestId('field-row')
+    const cells = within(first).getAllByRole('cell')
+    expect(within(cells[cells.length - 1]).getByRole('button', { name: 'Actions a' })).toBeInTheDocument()
   })
 
   describe('opening the field', () => {
@@ -106,53 +126,12 @@ describe('FieldTable', () => {
       expect(await screen.findByText('At: /manage/fixtures/fields/f9')).toBeInTheDocument()
     })
 
-    it('the row button sits above the link and does not navigate', async () => {
-      const { onToggleHome } = renderTable([makeField({ id: 'f9' })])
+    it('a row button sits above the link and does not navigate', async () => {
+      renderTable([makeField({ id: 'f9' })], { rowActions: () => <button type="button" style={{ position: 'relative' }}>Row action</button> })
 
-      const button = screen.getByRole('button', { name: 'Add Riverside Oval to our fields' })
-      expect(button).toHaveStyle({ position: 'relative' })
-      await userEvent.click(button)
+      await userEvent.click(screen.getByRole('button', { name: 'Row action' }))
 
-      expect(onToggleHome).toHaveBeenCalledWith(expect.objectContaining({ id: 'f9' }))
       expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
-    })
-  })
-
-  it('offers Remove for one of our fields', async () => {
-    const { onToggleHome } = renderTable([makeField({ linkedHome: true })])
-
-    await userEvent.click(screen.getByRole('button', { name: 'Remove Riverside Oval from our fields' }))
-
-    expect(onToggleHome).toHaveBeenCalledTimes(1)
-  })
-
-  it('disables the button while that field\'s change is pending', () => {
-    renderTable([makeField({ id: 'a' }), makeField({ id: 'b', name: 'Other' })], { homePendingId: 'a' })
-    expect(screen.getByRole('button', { name: 'Add Riverside Oval to our fields' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Add Other to our fields' })).toBeEnabled()
-  })
-
-  describe('platform admin Status button', () => {
-    it.each([
-      ['UNVERIFIED', ['Verify', 'Reject…']],
-      ['REJECTED', ['Reopen']],
-    ] as const)('a %s field offers %j and reports the choice without navigating', async (verificationStatus, labels) => {
-      const onStatusAction = vi.fn()
-      renderTable([makeField({ id: 'f1', verificationStatus })], { onToggleHome: undefined, onStatusAction })
-
-      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(labels)
-      await userEvent.click(screen.getAllByRole('menuitem')[0])
-
-      expect(onStatusAction).toHaveBeenCalledWith(expect.objectContaining({ id: 'f1' }), expect.any(String))
-      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
-    })
-
-    it('disables the button, with a tooltip, for a verified field', () => {
-      renderTable([makeField({ verificationStatus: 'VERIFIED' })], { onToggleHome: undefined, onStatusAction: vi.fn() })
-      const button = screen.getByRole('button', { name: 'Change status' })
-      expect(button).toBeDisabled()
-      expect(button.closest('span[title]')).toHaveAttribute('title', 'A verified field has no status changes.')
     })
   })
 })

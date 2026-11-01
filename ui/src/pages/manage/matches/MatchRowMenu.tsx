@@ -62,7 +62,7 @@ export function availabilityMenuItems(
 
 // docs/specs/130 and docs/standards/page-anatomy.md section 6: the ONE actions button of a match row or card, a dense kebab menu.
 // Deactivate, Reactivate and Delete stay on the edit page (038, 109). Scoring and Watch Live open the match's own links in a new
-// tab. Share Team Sheet is last. The button never navigates the row it sits in.
+// tab. Share Match is last (docs/specs/131). The button never navigates the row it sits in.
 export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsById, testId = 'match-actions' }: MatchRowMenuProps) {
   const location = useLocation()
   const base = `${MATCHES_PATH}/${match.id}`
@@ -97,14 +97,8 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
     ...(match.streamingUrl
       ? [{ id: 'watch-live', title: 'Watch Live', icon: <LiveTvOutlinedIcon fontSize="small" />, onClick: () => window.open(match.streamingUrl as string, '_blank', 'noopener,noreferrer') }]
       : []),
-    {
-      id: 'share-team-sheet',
-      title: 'Share Team Sheet',
-      icon: <ShareOutlinedIcon fontSize="small" />,
-      onClick: openShare,
-      disabled: !hasOwnTeam,
-      reason: NO_CLUB_TEAM_REASON,
-    },
+    // docs/specs/131: Share Match is last (page-anatomy section 6b); a played match hands over to the result share.
+    { id: 'share-match', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: openShare },
   ]
   return (
     <>

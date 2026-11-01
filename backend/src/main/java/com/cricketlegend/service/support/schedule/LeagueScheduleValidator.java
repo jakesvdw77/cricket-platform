@@ -8,6 +8,7 @@ import com.cricketlegend.domain.ImportScopeMode;
 import com.cricketlegend.dto.ImportIssueDto;
 import com.cricketlegend.service.support.schedule.LeagueScheduleIdentity.Difference;
 import com.cricketlegend.service.support.schedule.LeagueScheduleIdentity.Evaluation;
+import com.cricketlegend.service.support.schedule.ScheduleOverlapRules.Item;
 import com.cricketlegend.service.support.schedule.ScheduleRule.Severity;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -174,9 +175,6 @@ public final class LeagueScheduleValidator {
             return !excluded && !skipped;
         }
     }
-
-    private record Item(Integer row, UUID matchId, Instant start, LocalDate date, String venueKey, String venueText,
-            Set<String> ownKeys) {}
 
     private static final class Run {
         private final List<Row> rows;
@@ -345,6 +343,10 @@ public final class LeagueScheduleValidator {
                 var instant = ScheduleTimeParser.toInstant(date.date(), time.time(), ctx.zone());
                 if (instant.ok()) {
                     a.start = instant.instant();
+                    if (a.start.isBefore(LocalDate.now(ctx.zone()).atStartOfDay(ctx.zone()).toInstant())) {
+                        add(a, ScheduleRule.PAST_DATE, Severity.NOTE, "date",
+                                "Some matches are dated in the past; they will be imported as they are.");
+                    }
                 } else {
                     add(a, ScheduleRule.TIME_INVALID, "time", ref(a) + ": " + instant.message());
                 }
@@ -637,36 +639,19 @@ public final class LeagueScheduleValidator {
         }
 
         private void ownTeamRules(List<Item> items) {
-            Map<String, List<Item>> groups = new HashMap<>();
-            for (Item item : items) {
-                for (String key : item.ownKeys()) {
-                    groups.computeIfAbsent(key + "|" + item.date(), k -> new ArrayList<>()).add(item);
-                }
-            }
-            for (Item item : items) {
-                if (item.row() == null) {
-                    continue;
-                }
+            for (ScheduleOverlapRules.Finding f : ScheduleOverlapRules.ownTeam(items)) {
+                Item item = f.item();
                 Acc a = accs.get(item.row());
-                for (String key : item.ownKeys()) {
-                    List<Item> others = new ArrayList<>(groups.get(key + "|" + item.date()));
-                    others.remove(item);
-                    if (others.isEmpty()) {
-                        continue;
-                    }
-                    String team = teamName(a.fixture, key);
-                    Item close = others.stream().filter(o -> gapMinutes(item, o) < ScheduleConstants.OWN_TEAM_MIN_GAP_MINUTES)
-                            .findFirst().orElse(null);
-                    if (close != null) {
-                        add(a, ScheduleRule.OWN_TEAM_OVERLAP, "time", ref(a) + ": " + team + " also plays at "
-                                + localTime(close) + " on " + DATE.format(item.date()) + " (" + which(close)
-                                + "), less than " + ScheduleConstants.OWN_TEAM_MIN_GAP_MINUTES / 60 + " hours from "
-                                + localTime(item) + ".");
-                    } else {
-                        Item other = others.get(0);
-                        add(a, ScheduleRule.OWN_TEAM_SAME_DATE, "date", ref(a) + ": " + team + " has another match on "
-                                + DATE.format(item.date()) + " at " + localTime(other) + " (" + which(other) + ").");
-                    }
+                String team = teamName(a.fixture, f.ownKey());
+                Item other = f.others().get(0);
+                if (f.rule() == ScheduleRule.OWN_TEAM_OVERLAP) {
+                    add(a, ScheduleRule.OWN_TEAM_OVERLAP, "time", ref(a) + ": " + team + " also plays at "
+                            + localTime(other) + " on " + DATE.format(item.date()) + " (" + which(other)
+                            + "), less than " + ScheduleConstants.OWN_TEAM_MIN_GAP_MINUTES / 60 + " hours from "
+                            + localTime(item) + ".");
+                } else {
+                    add(a, ScheduleRule.OWN_TEAM_SAME_DATE, "date", ref(a) + ": " + team + " has another match on "
+                            + DATE.format(item.date()) + " at " + localTime(other) + " (" + which(other) + ").");
                 }
             }
         }
@@ -683,29 +668,11 @@ public final class LeagueScheduleValidator {
             return other.row() == null ? "an existing match" : ScheduleRows.label(other.row());
         }
 
-        private static long gapMinutes(Item a, Item b) {
-            return Math.abs(java.time.Duration.between(a.start(), b.start()).toMinutes());
-        }
-
         private void venueRules(List<Item> items) {
-            Map<String, List<Item>> groups = new HashMap<>();
-            for (Item item : items) {
-                if (!item.venueKey().isEmpty()) {
-                    groups.computeIfAbsent(item.venueKey() + "|" + item.date(), k -> new ArrayList<>()).add(item);
-                }
-            }
-            for (Item item : items) {
-                if (item.row() == null || item.venueKey().isEmpty()) {
-                    continue;
-                }
-                List<Item> clashes = new ArrayList<>(groups.get(item.venueKey() + "|" + item.date()));
-                clashes.remove(item);
-                clashes.removeIf(o -> gapMinutes(item, o) >= ScheduleConstants.VENUE_MIN_GAP_MINUTES);
-                if (clashes.isEmpty()) {
-                    continue;
-                }
+            for (ScheduleOverlapRules.Finding f : ScheduleOverlapRules.venue(items)) {
+                Item item = f.item();
                 Acc a = accs.get(item.row());
-                List<String> others = clashes.stream().limit(3).map(o -> localTime(o) + " (" + which(o) + ")").toList();
+                List<String> others = f.others().stream().limit(3).map(o -> localTime(o) + " (" + which(o) + ")").toList();
                 add(a, ScheduleRule.VENUE_TIME_CLASH, "venue", ref(a) + ": " + item.venueText() + " is also used on "
                         + DATE.format(item.date()) + " at " + String.join(", ", others) + ", less than "
                         + ScheduleConstants.VENUE_MIN_GAP_MINUTES / 60 + " hours from " + localTime(item) + ".");

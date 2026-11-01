@@ -1,7 +1,9 @@
 package com.cricketlegend.dto;
 
 import com.cricketlegend.domain.MatchResultStatus;
+import com.cricketlegend.domain.PlayingArea;
 import com.cricketlegend.domain.PlayingAreaVerificationStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +32,8 @@ import java.util.UUID;
  *
  * <p>{@code playingAreaId}/{@code playingAreaName}/{@code playingAreaVerificationStatus}
  * (docs/specs/099-fields-directory.md) describe the chosen field; the name equals {@code venue} when linked, and all
- * three are {@code null} for a match with no field.
+ * three are {@code null} for a match with no field. The five {@code playingAreaLatitude}..{@code playingAreaAccessNote}
+ * values (docs/specs/133) are the field's stored position and access point, {@code null} with no field or none set.
  *
  * <p>{@code resultStatus} (docs/specs/100-match-results-core.md) is {@code NONE}, {@code DRAFT} or {@code PUBLISHED}:
  * a match is completed when its result is published. Computed in batch on the list and single-match paths; normalised
@@ -70,6 +73,11 @@ public record MatchDto(
         UUID playingAreaId,
         String playingAreaName,
         PlayingAreaVerificationStatus playingAreaVerificationStatus,
+        BigDecimal playingAreaLatitude,
+        BigDecimal playingAreaLongitude,
+        BigDecimal playingAreaAccessLatitude,
+        BigDecimal playingAreaAccessLongitude,
+        String playingAreaAccessNote,
         MatchResultStatus resultStatus,
         boolean deletable) {
 
@@ -78,13 +86,30 @@ public record MatchDto(
         resultStatus = resultStatus == null ? MatchResultStatus.NONE : resultStatus;
     }
 
-    /** A copy carrying the chosen field's name and verification status (docs/specs/099-fields-directory.md). */
-    public MatchDto withPlayingArea(String name, PlayingAreaVerificationStatus status) {
+    /**
+     * A copy carrying the chosen field's name, verification status and coordinates (docs/specs/099-fields-directory.md,
+     * 133); a null {@code area} leaves the field values {@code null}.
+     */
+    public MatchDto withPlayingArea(PlayingArea area) {
+        return withPlayingArea(
+                area == null ? null : area.getName(),
+                area == null ? null : area.getVerificationStatus(),
+                area == null ? null : area.getLatitude(),
+                area == null ? null : area.getLongitude(),
+                area == null ? null : area.getAccessLatitude(),
+                area == null ? null : area.getAccessLongitude(),
+                area == null ? null : area.getAccessNote());
+    }
+
+    private MatchDto withPlayingArea(
+            String name, PlayingAreaVerificationStatus status, BigDecimal latitude, BigDecimal longitude,
+            BigDecimal accessLatitude, BigDecimal accessLongitude, String accessNote) {
         return new MatchDto(
                 id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
-                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, resultStatus, deletable);
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, latitude, longitude,
+                accessLatitude, accessLongitude, accessNote, resultStatus, deletable);
     }
 
     /** A copy carrying the match's result status (docs/specs/100-match-results-core.md). */
@@ -94,7 +119,8 @@ public record MatchDto(
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
-                playingAreaVerificationStatus, status, deletable);
+                playingAreaVerificationStatus, playingAreaLatitude, playingAreaLongitude, playingAreaAccessLatitude,
+                playingAreaAccessLongitude, playingAreaAccessNote, status, deletable);
     }
 
     /** A copy carrying whether the match is deletable (docs/specs/109-delete-empty-match.md). */
@@ -104,6 +130,7 @@ public record MatchDto(
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
-                playingAreaVerificationStatus, resultStatus, deletable);
+                playingAreaVerificationStatus, playingAreaLatitude, playingAreaLongitude, playingAreaAccessLatitude,
+                playingAreaAccessLongitude, playingAreaAccessNote, resultStatus, deletable);
     }
 }

@@ -15,6 +15,7 @@ import com.cricketlegend.exception.DuplicateFieldException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayingAreaMapperImpl;
 import com.cricketlegend.repository.PlayingAreaRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,8 @@ class PlayingAreaWriterTest {
 
     private static PlayingAreaRequest request(AddressDto address, String mapUrl) {
         return new PlayingAreaRequest(
-                "  Irene Oval ", PlayingAreaCategory.CLUB, PlayingAreaOwnerType.CLUB, " Irene CC ", address, mapUrl, "  gate B ");
+                "  Irene Oval ", PlayingAreaCategory.CLUB, PlayingAreaOwnerType.CLUB, " Irene CC ", address, mapUrl, "  gate B ",
+                null, null, null, null, null);
     }
 
     @Test
@@ -62,6 +64,95 @@ class PlayingAreaWriterTest {
         assertThat(area.getAddress().getCountry()).isEqualTo("ZA");
         assertThat(area.getMapUrl()).isEqualTo("https://maps.example.com/x");
         assertThat(area.getLocationNotes()).isEqualTo("gate B");
+    }
+
+    private static PlayingAreaRequest located(
+            BigDecimal lat, BigDecimal lng, BigDecimal accessLat, BigDecimal accessLng, String note) {
+        return new PlayingAreaRequest(
+                "Irene Oval", PlayingAreaCategory.CLUB, PlayingAreaOwnerType.CLUB, "Irene CC",
+                address("1 Main Rd", "Pretoria", "ZA"), null, null, lat, lng, accessLat, accessLng, note);
+    }
+
+    private static BigDecimal bd(String value) {
+        return new BigDecimal(value);
+    }
+
+    @Test
+    void coordinatesAndAccessPointAreStoredRoundedToSixDecimalsWithATrimmedNote() {
+        PlayingArea area = new PlayingArea();
+
+        writer().apply(area, located(bd("-25.8812345"), bd("28.2"), bd("-25.88"), bd("28.21"), "  Gate 2 off Main Rd "));
+
+        assertThat(area.getLatitude()).isEqualByComparingTo("-25.881235");
+        assertThat(area.getLongitude()).isEqualByComparingTo("28.2");
+        assertThat(area.getAccessLatitude()).isEqualByComparingTo("-25.88");
+        assertThat(area.getAccessLongitude()).isEqualByComparingTo("28.21");
+        assertThat(area.getAccessNote()).isEqualTo("Gate 2 off Main Rd");
+    }
+
+    @Test
+    void boundaryValuesAreAccepted() {
+        PlayingArea area = new PlayingArea();
+
+        writer().apply(area, located(bd("90"), bd("180"), bd("-90"), bd("-180"), null));
+
+        assertThat(area.getLatitude()).isEqualByComparingTo("90");
+        assertThat(area.getLongitude()).isEqualByComparingTo("180");
+        assertThat(area.getAccessLatitude()).isEqualByComparingTo("-90");
+        assertThat(area.getAccessLongitude()).isEqualByComparingTo("-180");
+    }
+
+    @Test
+    void editingWithNoCoordinatesClearsThem() {
+        PlayingArea area = new PlayingArea();
+        area.setLatitude(bd("1"));
+        area.setLongitude(bd("2"));
+        area.setAccessLatitude(bd("1"));
+        area.setAccessLongitude(bd("2"));
+        area.setAccessNote("x");
+
+        writer().apply(area, located(null, null, null, null, null));
+
+        assertThat(area.getLatitude()).isNull();
+        assertThat(area.getLongitude()).isNull();
+        assertThat(area.getAccessLatitude()).isNull();
+        assertThat(area.getAccessLongitude()).isNull();
+        assertThat(area.getAccessNote()).isNull();
+    }
+
+    @Test
+    void outOfRangeCoordinatesAreRefused() {
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(bd("90.000001"), bd("0"), null, null, null)))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("latitude");
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(bd("0"), bd("-180.1"), null, null, null)))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("longitude");
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(null, null, bd("-91"), bd("0"), null)))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("accessLatitude");
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(null, null, bd("0"), bd("181"), null)))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("accessLongitude");
+    }
+
+    @Test
+    void aPairNeedsBothValues() {
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(bd("1"), null, null, null, null)))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("together");
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(null, bd("1"), null, null, null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(null, null, null, bd("1"), null)))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void anAccessNoteNeedsAnAccessPoint() {
+        assertThatThrownBy(() -> writer().apply(new PlayingArea(), located(bd("1"), bd("1"), null, null, "Gate 2")))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("accessNote");
+    }
+
+    @Test
+    void anAccessNoteOver200CharactersIsRefused() {
+        assertThatThrownBy(() -> writer().apply(
+                        new PlayingArea(), located(null, null, bd("1"), bd("1"), "x".repeat(201))))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("accessNote");
     }
 
     @Test

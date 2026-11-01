@@ -1020,6 +1020,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Refused by the shared scheduling rules (docs/specs/132): findings lists each rule hit with its severity. needsConfirmation is true when there are only warnings; resend with their codes in acknowledgedWarnings to save. An ERROR finding is never overridden."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ScheduleFindingsProblem"
         "200":
           description: OK
           content:
@@ -1103,6 +1109,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Refused by the shared scheduling rules (docs/specs/132): findings lists each rule hit with its severity. needsConfirmation is true when there are only warnings; resend with their codes in acknowledgedWarnings to save. An ERROR finding is never overridden."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ScheduleFindingsProblem"
         "200":
           description: OK
           content:
@@ -3673,6 +3685,7 @@ paths:
       - name: upcomingOnly
         in: query
         required: false
+        description: "The default Matches view (docs/specs/132): matches dated today or later, plus active past matches with no published result (none or a draft). False returns everything."
         schema:
           type: boolean
           default: false
@@ -3759,6 +3772,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Refused by the shared scheduling rules (docs/specs/132): findings lists each rule hit with its severity. needsConfirmation is true when there are only warnings; resend with their codes in acknowledgedWarnings to save. An ERROR finding is never overridden."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ScheduleFindingsProblem"
         "201":
           description: Match created
           content:
@@ -4053,6 +4072,12 @@ paths:
           type: string
           format: uuid
       responses:
+        "409":
+          description: "Refused by the shared scheduling rules (docs/specs/132): findings lists each rule hit with its severity. needsConfirmation is true when there are only warnings; only errors are checked on reactivate (warnings are not asked)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ScheduleFindingsProblem"
         "200":
           description: OK
           content:
@@ -5816,6 +5841,7 @@ paths:
       - name: upcomingOnly
         in: query
         required: false
+        description: "The default Matches view (docs/specs/132): matches dated today or later, plus active past matches with no published result (none or a draft). False returns everything."
         schema:
           type: boolean
           default: false
@@ -9188,6 +9214,54 @@ components:
           format: date
       required:
       - productId
+    ScheduleFindingsProblem:
+      type: object
+      description: "The 409 body of a match save refused by the shared scheduling rules (docs/specs/132)."
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        needsConfirmation:
+          type: boolean
+          description: "True when every finding is a warning the manager can confirm."
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleFinding"
+    ScheduleFinding:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "OWN_TEAM_OVERLAP, DUPLICATE_MATCH (errors); DUPLICATE_SAME_DAY, POSSIBLE_DUPLICATE_NEARBY, POSSIBLE_DUPLICATE_FREE_TEXT, OWN_TEAM_SAME_DATE, VENUE_TIME_CLASH, PAST_DATE (warnings)."
+        severity:
+          type: string
+          enum:
+          - ERROR
+          - WARNING
+        message:
+          type: string
+        field:
+          type: string
+          enum:
+          - time
+          - date
+          - venue
+          - teams
+        otherMatchId:
+          type: string
+          format: uuid
+          description: "The match it clashes with, when there is one to link."
     ProblemDetail:
       type: object
       properties:
@@ -10505,6 +10579,11 @@ components:
         matchDate:
           type: string
           format: date-time
+        acknowledgedWarnings:
+          type: array
+          description: "Scheduling warning codes the manager has confirmed with Save Anyway (docs/specs/132). A code not listed, or any error finding, answers 409 again."
+          items:
+            type: string
       required:
       - matchDate
     UpdateMatchRequest:
@@ -10549,6 +10628,11 @@ components:
           type: string
           format: uuid
           description: "Optional field from the directory (docs/specs/099). When set, venue is written from the field's name and wins over any venue sent; when null the field link is cleared and venue is stored as sent."
+        acknowledgedWarnings:
+          type: array
+          description: "Scheduling warning codes the manager has confirmed with Save Anyway (docs/specs/132). A code not listed, or any error finding, answers 409 again."
+          items:
+            type: string
       required:
       - matchDate
       - seasonId
@@ -10635,6 +10719,20 @@ components:
           - UNVERIFIED
           - VERIFIED
           - REJECTED
+        playingAreaLatitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        playingAreaLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        playingAreaAccessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        playingAreaAccessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        playingAreaAccessNote:
+          type: [string, 'null']
         resultStatus:
           type: string
           description: "NONE, DRAFT or PUBLISHED (docs/specs/100); a match is completed when its result is published."
@@ -12396,6 +12494,11 @@ components:
           type: string
           format: uuid
           description: "Optional field from the directory (docs/specs/099). When set, venue is written from the field's name and wins over any venue sent; when null the field link is cleared and venue is stored as sent."
+        acknowledgedWarnings:
+          type: array
+          description: "Scheduling warning codes the manager has confirmed with Save Anyway (docs/specs/132). A code not listed, or any error finding, answers 409 again."
+          items:
+            type: string
       required:
       - matchDate
       - seasonId
@@ -15045,6 +15148,22 @@ components:
           type: string
           maxLength: 500
           description: "Optional https URL."
+        latitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        longitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        accessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessNote:
+          type: [string, 'null']
+          maxLength: 200
+          description: "Only allowed with an access point."
         locationNotes:
           type: string
           maxLength: 500
@@ -15087,6 +15206,20 @@ components:
           $ref: "#/components/schemas/AddressDto"
         mapUrl:
           type: string
+        latitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        longitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        accessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessNote:
+          type: [string, 'null']
         locationNotes:
           type: string
         verificationStatus:
@@ -15201,6 +15334,20 @@ components:
           $ref: "#/components/schemas/AddressDto"
         mapUrl:
           type: string
+        latitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        longitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        accessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessNote:
+          type: [string, 'null']
         locationNotes:
           type: string
         verificationStatus:
@@ -17661,6 +17808,20 @@ components:
         mapUrl:
           type: [string, 'null']
           description: "https map link as stored; the client re-checks the scheme."
+        latitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        longitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        accessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        accessNote:
+          type: [string, 'null']
         verified:
           type: boolean
         home:
@@ -17913,6 +18074,25 @@ components:
           type: [string, 'null']
         mine:
           type: boolean
+        playingAreaId:
+          type: [string, 'null']
+          format: uuid
+        playingAreaName:
+          type: [string, 'null']
+        playingAreaLatitude:
+          type: [number, 'null']
+          description: "Field position, -90..90; both or neither with longitude (docs/specs/133)."
+        playingAreaLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        playingAreaAccessLatitude:
+          type: [number, 'null']
+          description: "Optional entrance or parking point; both or neither with accessLongitude. Used as the directions destination when set."
+        playingAreaAccessLongitude:
+          type: [number, 'null']
+          description: "-180..180."
+        playingAreaAccessNote:
+          type: [string, 'null']
       required:
       - matchId
       - date

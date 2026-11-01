@@ -8,6 +8,7 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { useQuery } from '@tanstack/react-query'
 import { AddressFields } from '../AddressFields'
 import { Button } from '../Button'
+import { FieldLocationSection } from './FieldLocationSection'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
@@ -17,6 +18,7 @@ import type { FieldCategory, FieldOwnerType, PlayingArea } from '../../api/playi
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { countryName } from '../../utils/countries'
 import { FIELD_CATEGORIES, FIELD_CATEGORY_LABEL, FIELD_OWNER_TYPES, FIELD_OWNER_TYPE_LABEL } from '../../utils/fieldLabels'
+import { compactFieldSx } from '../../utils/compactFieldSx'
 import { effectiveOwnerType, MAX_MAP_URL_LENGTH, MAX_NAME_LENGTH, MAX_NOTES_LENGTH } from '../../utils/fieldForm'
 import type { FieldFormErrors, FieldFormValues } from '../../utils/fieldForm'
 import { fieldStatusBadge, fieldStatusOf } from '../../utils/fieldStatus'
@@ -38,6 +40,9 @@ export interface FieldFormFieldsProps {
   onUseExisting?: (field: PlayingArea) => void
   // Shown under Country on a create form.
   countryHint?: string
+  // docs/specs/134: the dense look of the compact edit card (compact section headings, 36 px fields, two columns from sm and
+  // three from md). Page variant only; omitted, the form is unchanged.
+  compact?: boolean
 }
 
 const SUGGEST_DEBOUNCE_MS = 400
@@ -184,13 +189,16 @@ export function FieldFormFields({
   duplicateOfId,
   onUseExisting,
   countryHint,
+  compact = false,
 }: FieldFormFieldsProps) {
   const dialog = variant === 'dialog'
   const columns = dialog
     ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }
-    : { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }
+    : compact
+      ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }
+      : { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }
   const spanTwo = dialog ? { sm: 'span 2' } : { md: 'span 2' }
-  const gridSx = { display: 'grid', gap: 2, gridTemplateColumns: columns, alignItems: 'start' } as const
+  const gridSx = { display: 'grid', gap: 2, gridTemplateColumns: columns, alignItems: 'start', ...(compact && compactFieldSx) } as const
   const wrapFrom = dialog ? 'sm' : 'md'
 
   const typeToggle = (
@@ -292,8 +300,8 @@ export function FieldFormFields({
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-      <FormSectionHeading icon={<InfoOutlinedIcon />} title="Basic info" />
+    <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: compact ? 2 : 2.5 }}>
+      <FormSectionHeading compact={compact} icon={<InfoOutlinedIcon />} title="Basic info" />
       <Box sx={gridSx}>
         {nameInput}
         {typeToggle}
@@ -314,7 +322,7 @@ export function FieldFormFields({
         {similarPanel}
       </Box>
 
-      <FormSectionHeading icon={<PlaceOutlinedIcon />} title="Address" />
+      <FormSectionHeading compact={compact} icon={<PlaceOutlinedIcon />} title="Address" />
       <Box sx={gridSx}>
         <AddressFields
           value={values.address}
@@ -329,7 +337,7 @@ export function FieldFormFields({
         />
       </Box>
 
-      <FormSectionHeading icon={<MapOutlinedIcon />} title="Map and notes" />
+      <FormSectionHeading compact={compact} icon={<MapOutlinedIcon />} title="Map and notes" />
       <Box sx={gridSx}>
         {mapInput}
         <Input
@@ -344,6 +352,8 @@ export function FieldFormFields({
           InputLabelProps={{ shrink: true }}
         />
       </Box>
+
+      <FieldLocationSection values={values} onChange={onChange} errors={errors} disabled={disabled} compact={compact} gridSx={gridSx} />
     </Box>
   )
 }

@@ -4,6 +4,7 @@ import com.cricketlegend.domain.PlayingAreaCategory;
 import com.cricketlegend.domain.PlayingAreaOwnerType;
 import com.cricketlegend.domain.PlayingAreaType;
 import com.cricketlegend.domain.PlayingAreaVerificationStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +25,11 @@ public record PlatformPlayingAreaDto(
         AddressDto address,
         String mapUrl,
         String locationNotes,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        BigDecimal accessLatitude,
+        BigDecimal accessLongitude,
+        String accessNote,
         PlayingAreaVerificationStatus verificationStatus,
         Instant verifiedAt,
         String verifiedBySubject,

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { LeagueFixturesTable } from './LeagueFixturesTable'
 import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
@@ -25,10 +25,10 @@ function match(overrides: Partial<Match>): Match {
   } as Match
 }
 
-function renderTable(matches: Match[], entry = '/', originLabel?: string) {
+function renderTable(matches: Match[], entry = '/', originLabel?: string, onShare?: (match: Match) => void) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
-      <LeagueFixturesTable matches={matches} teamsById={teamsById} originLabel={originLabel} />
+      <LeagueFixturesTable matches={matches} teamsById={teamsById} originLabel={originLabel} onShare={onShare} />
     </MemoryRouter>,
   )
 }
@@ -75,7 +75,7 @@ describe('LeagueFixturesTable', () => {
     expect(within(theirs).queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('gives only our matches an Actions kebab: Open Match and Edit Match as links, then a disabled Share Match', async () => {
+  it('gives only our matches an Actions kebab: Open Match and Edit Match as links, then Share Match, disabled only without a handler', async () => {
     renderTable([match({ id: 'ours', homeTeamId: 't1', homeTeamName: null }), match({ id: 'theirs' })])
 
     const [ours, theirs] = screen.getAllByTestId('fixture-row')
@@ -86,6 +86,17 @@ describe('LeagueFixturesTable', () => {
     expect(items[0]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours'))
     expect(items[1]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours/edit'))
     expect(items[2]).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('Share Match is enabled with a handler and calls it with the match', async () => {
+    const onShare = vi.fn()
+    renderTable([match({ id: 'ours', homeTeamId: 't1', homeTeamName: null })], '/', undefined, onShare)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Villagers 1 vs Eagles' }))
+    const item = screen.getByRole('menuitem', { name: /Share Match/ })
+    expect(item).not.toHaveAttribute('aria-disabled', 'true')
+    await userEvent.click(item)
+    expect(onShare).toHaveBeenCalledWith(expect.objectContaining({ id: 'ours' }))
   })
 
   it('keeps the desktop-only columns marked so a phone can drop them, and shows the phone line', () => {

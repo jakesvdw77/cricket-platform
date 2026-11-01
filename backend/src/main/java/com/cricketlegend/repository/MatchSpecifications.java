@@ -74,6 +74,16 @@ public final class MatchSpecifications {
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("matchDate"), startOfToday);
     }
 
+    /**
+     * docs/specs/132 Part B, the Matches list's default ({@code upcomingOnly}): the match is today or later, or it is
+     * active, already played and has no published result (none, or a draft), so a match that still needs action is
+     * never hidden.
+     */
+    public static Specification<Match> upcomingOrAwaitingResult(Instant startOfToday) {
+        return matchDateOnOrAfter(startOfToday)
+                .or(active().and(Specification.not(hasResult(ResultStatus.PUBLISHED))));
+    }
+
     /** The match is active (not deactivated). */
     public static Specification<Match> active() {
         return (root, query, cb) -> cb.isTrue(root.get("active"));

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 131 Match sharing mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+.lede{color:var(--inkMuted);max-width:820px;margin:0 0 28px;font-size:15px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.note{color:var(--inkMuted);font-size:13px;margin:0 0 14px;max-width:900px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;position:relative;overflow:hidden}
+.frame.d{width:1280px;height:640px;zoom:.62}
+.frame.p{width:375px;height:700px;zoom:.9}
+.frame.d.tall{height:760px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center}
+.dlg{background:#fff;border-radius:6px;display:flex;flex-direction:column;width:640px;max-height:92%;box-shadow:0 8px 32px color-mix(in srgb,var(--ink) 35%,transparent)}
+.p .dlg{width:100%;height:100%;max-height:none;border-radius:0}
+.dlg-h{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--cardLine)}
+.dlg-h b{font-family:var(--display);font-size:24px;font-weight:700;color:var(--green900)}
+.x{color:var(--inkMuted);font-size:22px;line-height:1}
+.steps{display:flex;gap:6px;align-items:center;padding:10px 20px 0;font-size:13px;color:var(--inkMuted)}
+.steps .on{color:var(--green800);font-weight:600}
+.dot{width:20px;height:20px;border-radius:50%;background:var(--cardLine);color:var(--ink900);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-right:4px}
+.on .dot{background:var(--green700);color:#fff}
+.dlg-b{padding:14px 20px;overflow:auto;flex:1}
+.dlg-f{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--cardLine);display:flex;gap:8px;align-items:center;justify-content:flex-end;background:#fff}
+.dlg-f .hint{margin-right:auto;font-size:13px;color:var(--error)}
+.p .dlg-f{flex-wrap:wrap}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;cursor:default;white-space:nowrap}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:transparent;color:var(--green700);border-color:var(--green700)}
+.btn.t{background:transparent;color:var(--green700)}
+.btn.dis{background:color-mix(in srgb,var(--ink900) 12%,transparent);color:color-mix(in srgb,var(--ink900) 38%,transparent);border-color:transparent}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border:1px solid var(--cardLine);border-radius:14px;background:#fff;font-size:13px;font-weight:600;color:var(--green800)}
+.sec{font-family:var(--display);font-weight:700;font-size:18px;margin:14px 0 6px}
+.chk{display:flex;align-items:flex-start;gap:12px;padding:9px 12px;border:1px solid var(--cardLine);border-radius:6px;margin-bottom:8px}
+.chk.sel{border-color:var(--green700);background:color-mix(in srgb,var(--green700) 7%,#fff)}
+.chk.off{background:color-mix(in srgb,var(--cardLine) 35%,#fff);color:color-mix(in srgb,var(--ink900) 45%,transparent)}
+.chk .t{font-weight:600;font-size:15px}
+.chk .s{font-size:12.5px;color:var(--inkMuted)}
+.chk.off .s{color:var(--warning)}
+.box{width:18px;height:18px;border:2px solid var(--inkMuted);border-radius:3px;flex:none;margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+.sel .box{background:var(--green700);border-color:var(--green700)}
+.off .box{border-color:var(--cardLine)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.p .tiles{grid-template-columns:repeat(2,1fr)}
+.tile{border:1px solid var(--cardLine);border-radius:6px;padding:12px 8px;text-align:center;min-height:96px;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:center}
+.tile .ic{width:36px;height:36px;border-radius:6px;background:var(--green700);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px var(--display)}
+.tile .n{font-weight:600;font-size:14px}
+.tile .r{font-size:11.5px;color:var(--warning);line-height:1.25}
+.tile.sel{border-color:var(--green700);box-shadow:0 0 0 1px var(--green700)}
+.tile.off{background:color-mix(in srgb,var(--cardLine) 35%,#fff);color:color-mix(in srgb,var(--ink900) 45%,transparent)}
+.tile.off .ic{background:var(--cardLine);color:var(--inkMuted)}
+.tile.ghost{border-style:dashed;background:none;color:var(--inkMuted);font-size:12px}
+.callout{border-left:3px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,#fff);padding:8px 12px;font-size:13px;border-radius:0 6px 6px 0;margin:10px 0}
+.split{display:flex;gap:16px;height:100%}
+.p .split{flex-direction:column}
+.ctrl{width:250px;flex:none}
+.p .ctrl{width:auto}
+.stage{flex:1;background:var(--groundTop);border:1px solid var(--cardLine);border-radius:6px;padding:12px;display:flex;justify-content:center}
+.wa{background:var(--cream);border-radius:8px;border:1px solid var(--sand);padding:12px;font-size:13px;line-height:1.45;max-width:340px;width:100%;white-space:pre-wrap}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:14px}
+.sw small{display:block;color:var(--inkMuted);font-size:12px}
+.tg{width:34px;height:18px;border-radius:9px;background:var(--cardLine);position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 40%,transparent)}
+.tg.on{background:var(--green700)}.tg.on::after{left:18px}
+.tg.lock{opacity:.5}
+
+.dlg.w{width:1180px;height:92%}.dlg.m{width:720px}
+.tg.lock{opacity:.5}
+.seg{display:inline-flex;border:1px solid var(--green700);border-radius:6px;overflow:hidden}
+.seg span{height:32px;padding:0 14px;display:inline-flex;align-items:center;font:600 13px var(--body);color:var(--green700)}
+.seg span.on{background:var(--green700);color:#fff}
+.seg span.off{color:color-mix(in srgb,var(--ink900) 38%,transparent)}
+.rad{width:18px;height:18px;border:2px solid var(--inkMuted);border-radius:50%;flex:none;margin-top:2px}
+.sel .rad{border:5px solid var(--green700)}.off .rad{border-color:var(--cardLine)}
+.sl{height:4px;background:var(--cardLine);border-radius:2px;position:relative;margin:8px 0 10px}
+.sl i{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--green700)}
+.lbl{font-size:12.5px;font-weight:600;margin-top:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{height:26px;padding:0 10px;border:1px solid var(--cardLine);border-radius:13px;font-size:12px;display:inline-flex;align-items:center;font-weight:600;color:var(--green800);background:#fff}
+.chip.on{background:var(--green700);color:#fff;border-color:var(--green700)}
+.wx{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--green800);background:color-mix(in srgb,var(--gold) 16%,#fff);border:1px solid color-mix(in srgb,var(--gold) 55%,#fff);border-radius:14px;height:24px;padding:0 9px;white-space:nowrap}
+.wx b{font-size:14px;line-height:1}
+.pad{padding:16px}
+.sheet{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+/* posters */
+.poster{background:var(--green900);color:#fff;position:relative;overflow:hidden;display:flex;font-family:var(--body)}
+.poster.pt{width:432px;height:540px;flex-direction:column}
+.poster.ls{width:640px;height:360px}
+.pic{background:linear-gradient(160deg,var(--green700),var(--green800) 60%,var(--ink));position:relative;display:flex;align-items:flex-end;padding:10px;font-size:11px;color:var(--sand)}
+.pic::before{content:"";position:absolute;left:50%;top:34%;width:84px;height:84px;margin-left:-42px;border-radius:50%;background:color-mix(in srgb,var(--sand) 35%,transparent)}
+.pic::after{content:"";position:absolute;left:50%;top:62%;width:150px;height:120px;margin-left:-75px;border-radius:70px 70px 0 0;background:color-mix(in srgb,var(--sand) 28%,transparent)}
+.pic span{position:relative;z-index:1}
+.ls .pic{width:38%}.pt .pic{height:42%}
+.pp{flex:1;padding:14px 16px;background:var(--ink);display:flex;flex-direction:column;gap:4px;min-width:0}
+.pp .lg{display:flex;align-items:center;gap:8px;font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--sand)}
+.crest{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font:700 12px var(--display);flex:none}
+.crest.s{background:var(--sand)}
+.pp h4{font-family:var(--display);font-size:26px;line-height:1;margin:2px 0 0;text-transform:uppercase}
+.pp .meta{font-size:12px;color:var(--sand)}
+.xi{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px 14px;font-size:13px;font-weight:500}
+.pt .xi{grid-template-columns:1fr 1fr}.ls .xi{grid-template-columns:1fr}
+.xi li{display:flex;gap:6px}.xi li i{font-style:normal;width:16px;color:var(--gold);font:700 13px var(--display)}
+.xi em{font-style:normal;font-size:10px;font-weight:700;background:var(--gold);color:var(--ink);border-radius:3px;padding:0 4px;margin-left:4px}
+.pp .wxp{margin-top:auto;display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink);background:var(--gold);border-radius:12px;padding:3px 10px}
+.pp.two{flex-direction:row;gap:14px}.pp.two>div{flex:1}
+.pp.two .xi{grid-template-columns:1fr;font-size:12px}
+.big{font-family:var(--display);font-weight:700;font-size:92px;line-height:.9;color:var(--gold);text-transform:uppercase}
+.cd{width:432px;height:540px;background:linear-gradient(170deg,var(--green800),var(--ink));color:#fff;padding:26px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;justify-content:center}
+.vs{display:flex;gap:18px;align-items:center;font:700 22px var(--display);text-transform:uppercase}
+.vs .crest{width:56px;height:56px;font-size:20px}
+.fx{width:432px;height:540px;background:var(--cream);border:1px solid var(--sand);padding:22px;display:flex;flex-direction:column;gap:9px}
+.fx h4{font-family:var(--display);font-size:30px;margin:0;color:var(--green900);text-transform:uppercase;line-height:1}
+.fact{display:flex;gap:10px;background:#fff;border-left:4px solid var(--green700);padding:9px 12px;font-size:14px;font-weight:500;border-radius:0 6px 6px 0}
+.fact small{display:block;font-size:11.5px;color:var(--inkMuted);font-weight:400}
+.a4{width:420px;height:594px;background:#fff;border:1px solid var(--cardLine);padding:28px;font-size:12px;display:flex;flex-direction:column;gap:6px}
+.a4 h4{font-family:var(--display);font-size:24px;margin:0;color:var(--green900);text-transform:uppercase}
+.a4 table{font-size:12px}.a4 td,.a4 th{padding:4px 8px}
+.a4 .ln{border-bottom:1px solid var(--ink900);height:18px;margin-top:6px;font-size:10px;color:var(--inkMuted)}
+.mc{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:12px;width:320px;display:flex;flex-direction:column;gap:5px}
+.mc .nm{font-family:var(--display);font-weight:700;font-size:20px;color:var(--green900)}
+.mc .m{font-size:13px;color:var(--inkMuted)}
+.fig{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:10px 14px;min-width:150px}
+.fig .k{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--inkMuted)}
+.fig .v{font-family:var(--display);font-weight:700;font-size:26px;color:var(--green900);line-height:1.1}
+.fig .w{font-size:12.5px;color:var(--green800);font-weight:600}
+.hub{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:10px 12px;width:360px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.hub b{font-size:15px}.hub div div{font-size:12.5px;color:var(--inkMuted)}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+</style>
+</head>
+<body>
+<h1>Match Sharing mockup</h1>
+<p class="lede">Spec 131. One Share dialog for a match: What to share, Format, Preview. Sample match: IRENE VILLAGERS U15 v Pretoria A, Hofmeyer Park, Fri 6 Nov 09:15, Diamond League U15 T20, 2026/2027. Junior match, so every name is shown as initials. Weather is a forecast only.</p>
+
+<h2>1. The dialog, three steps</h2>
+<p class="note">One content per share (radio tiles). Fixture Card, Countdown and match-level Fun Facts work before a team is selected; the rest say why they are disabled.</p>
+<div class="row">
+<div><p class="cap">Step 1, What to share (desktop)</p>
+<div class="frame d"><div class="scrim"><div class="dlg m">
+<div class="dlg-h"><b>Share match</b><span class="x">&times;</span></div>
+<div class="steps"><span class="on"><span class="dot">1</span>What To Share</span> &rsaquo; <span><span class="dot">2</span>Format</span> &rsaquo; <span><span class="dot">3</span>Preview</span></div>
+<div class="dlg-b">
+<div class="sec">Content</div>
+<div class="chk sel"><span class="rad"></span><div><div class="t">Team Selection Poster</div><div class="s">A chosen picture beside the XI</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Countdown</div><div class="s">"3 days to go" with fixture, venue and weather</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Fun Facts</div><div class="s">Form, head to head and milestones, built from stored results</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Fixture Card</div><div class="s">Date, time, venue, teams, league and logos</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Team Sheet</div><div class="s">Printable A4 with the XI, roles and blank lines for officials</div></div></div>
+<div class="sec">Side</div>
+<div class="seg"><span class="on">Our Side</span><span>Opposition</span><span>Both</span></div>
+<div class="callout">First names are initials only. Always on for junior leagues.</div>
+</div>
+<div class="dlg-f"><span class="btn t">Cancel</span><span class="btn c">Next</span></div>
+</div></div></div></div>
+<div><p class="cap">Step 1 at 375 px (before a team is selected)</p>
+<div class="frame p"><div class="dlg">
+<div class="dlg-h"><b>Share match</b><span class="x">&times;</span></div>
+<div class="steps"><span class="on"><span class="dot">1</span>What To Share</span> &rsaquo; <span>Format</span> &rsaquo; <span>Preview</span></div>
+<div class="dlg-b">
+<div class="chk off"><span class="rad"></span><div><div class="t">Team Selection Poster</div><div class="s">Select the team first</div></div></div>
+<div class="chk sel"><span class="rad"></span><div><div class="t">Countdown</div><div class="s">Works before the team is selected</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Fun Facts</div><div class="s">Match facts only until a team is selected</div></div></div>
+<div class="chk"><span class="rad"></span><div><div class="t">Fixture Card</div></div></div>
+<div class="chk off"><span class="rad"></span><div><div class="t">Team Sheet</div><div class="s">Select the team first</div></div></div>
+<div class="sec">Side</div>
+<div class="seg"><span class="on">Our Side</span><span class="off">Opposition</span><span class="off">Both</span></div>
+<div class="legend" style="color:var(--warning)">Opposition and Both need a selected XI.</div>
+</div>
+<div class="dlg-f"><span class="btn t">Cancel</span><span class="btn c">Next</span></div>
+</div></div></div>
+</div>
+<div class="row" style="margin-top:20px">
+<div><p class="cap">Step 2, Format</p>
+<div class="frame d" style="height:520px"><div class="scrim"><div class="dlg m">
+<div class="dlg-h"><b>Share match</b><span class="x">&times;</span></div>
+<div class="steps"><span><span class="dot">1</span>What To Share</span> &rsaquo; <span class="on"><span class="dot">2</span>Format</span> &rsaquo; <span><span class="dot">3</span>Preview</span></div>
+<div class="dlg-b"><div class="sec">Format for Team Selection Poster</div>
+<div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+<div class="tile"><span class="ic">PDF</span><span class="n">PDF</span></div>
+<div class="tile sel"><span class="ic">IMG</span><span class="n">Image</span></div>
+<div class="tile"><span class="ic">TV</span><span class="n">TV Summary</span></div>
+<div class="tile"><span class="ic">WA</span><span class="n">WhatsApp</span></div>
+<div class="tile"><span class="ic">FB</span><span class="n">Facebook</span></div>
+<div class="tile ghost">Team Sheet offers PDF, WhatsApp and Facebook only</div>
+</div></div>
+<div class="dlg-f"><span class="btn t">Back</span><span class="btn c">Next</span></div>
+</div></div></div></div>
+</div>
+<p class="cap" style="margin-top:20px">Step 3, Preview (near full screen)</p>
+<div class="frame d tall"><div class="scrim"><div class="dlg w">
+<div class="dlg-h"><b>Share match</b><span class="x">&times;</span></div>
+<div class="steps"><span><span class="dot">1</span>What To Share</span> &rsaquo; <span><span class="dot">2</span>Format</span> &rsaquo; <span class="on"><span class="dot">3</span>Preview</span></div>
+<div class="dlg-b"><div class="split">
+<div class="ctrl"><div class="lbl" style="margin-top:0">Template</div><div class="chips"><span class="chip on">Club Green</span><span class="chip">Night</span><span class="chip">Daylight</span></div>
+<div class="lbl">Size</div><div class="chips"><span class="chip">Square 1080</span><span class="chip on">Portrait 4:5</span><span class="chip">Story 9:16</span></div>
+<div class="lbl">Side</div><div class="seg"><span class="on">Our Side</span><span>Opposition</span><span>Both</span></div>
+<div class="sw"><span>Picture</span><span class="tg on"></span></div>
+<div class="sw"><span>Captain And Keeper Marks</span><span class="tg on"></span></div>
+<div class="sw"><span>Include Weather</span><span class="tg on"></span></div>
+<div class="sw"><span>Logos</span><span class="tg on"></span></div>
+<div class="sw"><span>Initials Only<small>Always on for junior leagues</small></span><span class="tg on lock"></span></div>
+</div>
+<div class="stage" style="align-items:flex-start"><div class="poster pt" style="zoom:.95"><div class="pic"><span>Chosen picture</span></div><div class="pp"><div class="lg"><span class="crest">IV</span>Diamond League U15 T20</div><h4>Team Selection</h4><div class="meta">Irene Villagers U15 v Pretoria A, Fri 6 Nov 09:15</div><ul class="xi"><li><i>1</i>A. Botha<em>C</em></li><li><i>2</i>T. Naidoo</li><li><i>3</i>J. Smit</li><li><i>4</i>K. Dlamini</li><li><i>5</i>L. Pretorius<em>WK</em></li><li><i>6</i>M. Venter</li><li><i>7</i>S. Khumalo</li><li><i>8</i>R. Jacobs</li><li><i>9</i>D. Mokoena</li><li><i>10</i>N. van Wyk</li><li><i>11</i>B. Steyn</li></ul></div></div></div>
+</div></div>
+<div class="dlg-f"><span class="hint" style="color:var(--inkMuted)">Zoom 100%</span><span class="btn t">Back</span><span class="btn o">Copy Text</span><span class="btn c">Download</span></div>
+</div></div></div>
+
+<h2>2. Team selection poster, Portrait and Landscape</h2>
+<p class="note">The uploaded picture is held in memory only and cropped, never stretched. Text sits on a solid panel, never on the photo.</p>
+<div class="cols">
+<div><p class="cap">Portrait 4:5</p>
+<div class="poster pt"><div class="pic"><span>Chosen picture</span></div><div class="pp"><div class="lg"><span class="crest">IV</span>Diamond League U15 T20 &middot; 2026/2027</div><h4>Irene Villagers U15</h4><div class="meta">v Pretoria A &middot; Hofmeyer Park &middot; Fri 6 Nov 09:15</div><ul class="xi"><li><i>1</i>A. Botha<em>C</em></li><li><i>2</i>T. Naidoo</li><li><i>3</i>J. Smit</li><li><i>4</i>K. Dlamini</li><li><i>5</i>L. Pretorius<em>WK</em></li><li><i>6</i>M. Venter</li><li><i>7</i>S. Khumalo</li><li><i>8</i>R. Jacobs</li><li><i>9</i>D. Mokoena</li><li><i>10</i>N. van Wyk</li><li><i>11</i>B. Steyn</li></ul><span class="wxp">Sunny, 14 to 27 degrees, 20% rain</span></div></div></div>
+<div><p class="cap">Landscape (TV 1920 x 1080 shown scaled)</p>
+<div class="poster ls"><div class="pic"><span>Chosen picture</span></div><div class="pp"><div class="lg"><span class="crest">IV</span><span class="crest s">PA</span>Diamond League U15 T20</div><h4>Irene Villagers U15 v Pretoria A</h4><div class="meta">Hofmeyer Park &middot; Fri 6 Nov 09:15</div><ul class="xi" style="grid-template-columns:1fr 1fr;font-size:12px"><li><i>1</i>A. Botha<em>C</em></li><li><i>2</i>T. Naidoo</li><li><i>3</i>J. Smit</li><li><i>4</i>K. Dlamini</li><li><i>5</i>L. Pretorius<em>WK</em></li><li><i>6</i>M. Venter</li><li><i>7</i>S. Khumalo</li><li><i>8</i>R. Jacobs</li><li><i>9</i>D. Mokoena</li><li><i>10</i>N. van Wyk</li><li><i>11</i>B. Steyn</li></ul><span class="wxp">Sunny, 14 to 27 degrees, 20% rain</span></div></div></div>
+<div style="width:300px"><p class="cap">Picture and weather controls</p>
+<div class="card" style="gap:2px">
+<div class="row" style="gap:8px"><span class="btn o">Choose Picture</span><span class="btn t">Remove</span></div>
+<div class="lbl">Position X</div><div class="sl"><i style="left:40%"></i></div>
+<div class="lbl">Position Y</div><div class="sl"><i style="left:25%"></i></div>
+<div class="lbl">Zoom</div><div class="sl"><i style="left:30%"></i></div>
+<div class="lbl">Opacity</div><div class="sl"><i style="left:82%"></i></div>
+<div class="lbl">Filter</div><div class="chips"><span class="chip on">None</span><span class="chip">Black And White</span><span class="chip">Sepia</span><span class="chip">Vivid</span></div>
+<div class="sw" style="margin-top:6px"><span>Include Weather<small>Badge on the poster</small></span><span class="tg on"></span></div>
+<div class="sw"><span>Club Logo<small>Both club logos in the header</small></span><span class="tg on"></span></div>
+<div class="legend">No picture chosen: a club-colour panel with logos.</div>
+</div></div>
+</div>
+
+<h2>3. Both sides</h2>
+<p class="note">Side by side puts both XIs on one image (Portrait and Landscape; Square and Story fall back to Separate with a note). Separate is one image per side, stepped on screen and downloaded separately, or two PDF pages.</p>
+<div class="cols">
+<div><p class="cap">Toggle</p><div class="card"><div class="lbl" style="margin-top:0">Side</div><div class="seg"><span>Our Side</span><span>Opposition</span><span class="on">Both</span></div>
+<div class="lbl">Layout</div><div class="seg"><span class="on">Side By Side</span><span>Separate</span></div>
+<div class="legend">Opposition and Both are disabled with a reason when the opposition has no selected XI on the platform.</div></div></div>
+<div><p class="cap">Side by side (Portrait)</p>
+<div class="poster pt"><div class="pic" style="height:30%"><span>Chosen picture</span></div><div class="pp"><div class="lg"><span class="crest">IV</span><span class="crest s">PA</span>Diamond League U15 T20</div><h4>Villagers v Pretoria A</h4><div class="meta">Hofmeyer Park &middot; Fri 6 Nov 09:15</div>
+<div class="pp two" style="padding:6px 0 0"><div><div class="meta" style="font-weight:700">Irene Villagers U15</div><ul class="xi"><li><i>1</i>A. Botha<em>C</em></li><li><i>2</i>T. Naidoo</li><li><i>3</i>J. Smit</li><li><i>4</i>K. Dlamini</li><li><i>5</i>L. Pretorius<em>WK</em></li><li><i>6</i>M. Venter</li><li><i>7</i>S. Khumalo</li><li><i>8</i>R. Jacobs</li><li><i>9</i>D. Mokoena</li><li><i>10</i>N. van Wyk</li><li><i>11</i>B. Steyn</li></ul></div>
+<div><div class="meta" style="font-weight:700">Pretoria A</div><ul class="xi"><li><i>1</i>C. Meyer<em>C</em></li><li><i>2</i>P. Joubert</li><li><i>3</i>H. Louw</li><li><i>4</i>G. Nel</li><li><i>5</i>E. Kruger<em>WK</em></li><li><i>6</i>W. Coetzee</li><li><i>7</i>F. Mahlangu</li><li><i>8</i>Z. Bosman</li><li><i>9</i>V. Ndlovu</li><li><i>10</i>Y. Fourie</li><li><i>11</i>O. Swart</li></ul></div></div></div></div></div>
+<div><p class="cap">Separate, image 2 of 2 (Pretoria A)</p>
+<div class="row" style="gap:8px;margin-bottom:6px"><span class="btn t">&lsaquo; Irene Villagers U15</span><span class="chip on">Pretoria A</span><span class="btn t">Download Both</span></div>
+<div class="poster pt"><div class="pic"><span>Chosen picture</span></div><div class="pp"><div class="lg"><span class="crest s">PA</span>Diamond League U15 T20</div><h4>Pretoria A</h4><div class="meta">v Irene Villagers U15 &middot; Fri 6 Nov 09:15</div><ul class="xi"><li><i>1</i>C. Meyer<em>C</em></li><li><i>2</i>P. Joubert</li><li><i>3</i>H. Louw</li><li><i>4</i>G. Nel</li><li><i>5</i>E. Kruger<em>WK</em></li><li><i>6</i>W. Coetzee</li><li><i>7</i>F. Mahlangu</li><li><i>8</i>Z. Bosman</li><li><i>9</i>V. Ndlovu</li><li><i>10</i>Y. Fourie</li><li><i>11</i>O. Swart</li></ul></div></div></div>
+</div>
+
+<h2>4. Countdown poster</h2>
+<div class="cols"><div class="cd"><div class="lg" style="font:600 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--sand)">Diamond League U15 T20 &middot; 2026/2027</div>
+<div class="big">3 Days<br>To Go</div>
+<div class="vs"><span class="crest">IV</span>Villagers<span style="color:var(--gold)">v</span>Pretoria A<span class="crest s">PA</span></div>
+<div style="font-size:15px;font-weight:600">Fri 6 Nov &middot; 09:15</div><div style="font-size:14px;color:var(--sand)">Hofmeyer Park</div>
+<span class="wxp" style="display:inline-flex;font-size:13px;font-weight:600;color:var(--ink);background:var(--gold);border-radius:12px;padding:4px 12px">Sunny, 14 to 27 degrees, 20% rain</span></div>
+<div style="width:300px"><div class="card"><div class="sec" style="margin-top:0">Wording</div><div class="legend">N days to go, Tomorrow, Today, Match day. Not offered for a past match.</div>
+<div class="sw"><span>Include Weather</span><span class="tg on"></span></div><div class="sw"><span>Logos</span><span class="tg on"></span></div><div class="sw"><span>Footer Line</span><span class="tg"></span></div></div></div></div>
+
+<h2>5. Fun facts card</h2>
+<p class="note">Rule-built from stored results, never AI. Each fact states its basis and can be ticked off; a fact without enough data is not offered. Juniors by initials only.</p>
+<div class="cols"><div class="fx"><div class="lg" style="font:600 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--green800)">Diamond League U15 T20 &middot; Fri 6 Nov 09:15</div><h4>Villagers v Pretoria A</h4>
+<div class="fact"><div>Villagers have won 4 of their last 5<small>Form, last 5 published results</small></div></div>
+<div class="fact"><div>Pretoria A have won 2 of their last 5<small>Form, platform team</small></div></div>
+<div class="fact"><div>Head to head: 3 wins each from 6<small>Head to head, 6 meetings</small></div></div>
+<div class="fact"><div>A. Botha is 21 runs from 500 for the club<small>Milestone, club statistics</small></div></div>
+<div class="fact"><div>L. Pretorius is 2 wickets from 30 this season<small>Milestone, season statistics</small></div></div>
+<div style="margin-top:auto;font-size:12px;color:var(--inkMuted)">Irene Villagers Cricket Club</div></div>
+<div style="width:320px"><div class="card"><div class="sec" style="margin-top:0">Facts</div>
+<div class="sw"><span>Our form</span><span class="tg on"></span></div><div class="sw"><span>Opposition form</span><span class="tg on"></span></div><div class="sw"><span>Head to head</span><span class="tg on"></span></div><div class="sw"><span>Our milestones</span><span class="tg on"></span></div><div class="sw"><span>Last meeting<small>Needs at least 3 prior meetings</small></span><span class="tg lock"></span></div>
+<div class="legend">Up to five facts are ticked to start with.</div></div></div></div>
+
+<h2>6. A4 team sheet</h2>
+<div class="cols"><div class="a4"><div class="row" style="gap:8px;align-items:center"><span class="crest" style="color:var(--ink)">IV</span><h4>Irene Villagers U15 v Pretoria A</h4></div>
+<div>Diamond League U15 T20 &middot; 2026/2027 &middot; Hofmeyer Park &middot; Fri 6 Nov 09:15</div><div style="color:var(--green800);font-weight:600">Forecast: sunny, 14 to 27 degrees, 20% rain</div>
+<table><tr><th>#</th><th>Player</th><th>Role</th></tr>
+<tr><td>1</td><td>A. Botha</td><td>Captain</td></tr><tr><td>2</td><td>T. Naidoo</td><td></td></tr><tr><td>3</td><td>J. Smit</td><td></td></tr><tr><td>4</td><td>K. Dlamini</td><td></td></tr><tr><td>5</td><td>L. Pretorius</td><td>Wicketkeeper</td></tr><tr><td>6</td><td>M. Venter</td><td></td></tr><tr><td>7</td><td>S. Khumalo</td><td></td></tr><tr><td>8</td><td>R. Jacobs</td><td></td></tr><tr><td>9</td><td>D. Mokoena</td><td></td></tr><tr><td>10</td><td>N. van Wyk</td><td></td></tr><tr><td>11</td><td>B. Steyn</td><td></td></tr></table>
+<div class="ln">Scorers</div><div class="ln">Toss won by</div><div class="ln">Signed (captain)</div><div style="margin-top:auto;font-size:10px;color:var(--inkMuted)">Initials only. Junior match.</div></div>
+<div style="width:300px"><div class="card"><div class="sec" style="margin-top:0">PDF Controls</div><div class="lbl" style="margin-top:0">Template</div><div class="chips"><span class="chip on">Club Colours</span><span class="chip">Classic</span><span class="chip">Compact</span></div>
+<div class="sw"><span>Weather</span><span class="tg on"></span></div><div class="sw"><span>Captain And Keeper Marks</span><span class="tg on"></span></div><div class="sw"><span>Footer Line</span><span class="tg on"></span></div><div class="legend">Prints on one page and matches the preview. Opening actions: Download, Print.</div></div></div></div>
+
+<h2>7. Weather badge placements</h2>
+<p class="note">Forecast only, within 7 days and with usable field coordinates. Always words plus an icon. Nothing is shown (no placeholder) for a past date, beyond 7 days, no coordinates or a failed fetch.</p>
+<div class="cols">
+<div><p class="cap">Match card</p><div class="mc"><div class="nm">Irene Villagers U15 v Pretoria A</div><div class="m">Fri 6 Nov 09:15 &middot; Hofmeyer Park</div><div class="m">Diamond League U15 T20</div><div><span class="wx"><b>&#9728;</b>14 to 27&deg;, 20% rain</span></div></div></div>
+<div><p class="cap">Match page counter</p><div class="row" style="gap:10px"><div class="fig"><div class="k">Starts In</div><div class="v">3 Days</div></div><div class="fig"><div class="k">Forecast</div><div class="v">27&deg;</div><div class="w">Mostly sunny, 14 to 27 degrees, 20% rain</div></div></div></div>
+<div><p class="cap">Player Hub row (read only)</p><div class="hub"><div><b>v Pretoria A</b><div>Fri 6 Nov 09:15 &middot; Hofmeyer Park</div></div><span class="wx"><b>&#9728;</b>14 to 27&deg;</span></div></div>
+<div style="width:300px"><p class="cap">Poster toggle</p><div class="card"><div class="sw"><span>Include Weather<small>Sunny, 14 to 27 degrees, 20% rain</small></span><span class="tg on"></span></div></div>
+<div class="card" style="margin-top:8px"><div class="sw"><span>Include Weather<small style="color:var(--warning)">No forecast: the match is more than 7 days away</small></span><span class="tg lock"></span></div></div></div>
+</div>
+</body>
+</html>

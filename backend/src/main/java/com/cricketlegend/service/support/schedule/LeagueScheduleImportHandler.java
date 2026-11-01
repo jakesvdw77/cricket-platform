@@ -941,7 +941,7 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
         UUID awayLeagueTeam = m.away().ours() ? null : leagueTeamId(m.away(), teamIds);
         String venue = m.result().venue() == null || m.result().venue().isBlank() ? null : m.result().venue();
         return new CreateMatchRequest(homeTeam, null, awayTeam, null, null, null, leagueId, seasonId,
-                m.result().start(), venue, homeLeagueTeam, awayLeagueTeam, null, null, null);
+                m.result().start(), venue, homeLeagueTeam, awayLeagueTeam, null, null, null, ScheduleRule.warningCodes());
     }
 
     private static UUID leagueTeamId(ResolvedSide side, Map<String, UUID> teamIds) {
@@ -955,7 +955,7 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
                 m.homeLeagueTeamId() == null ? m.homeTeamLogoUrl() : null,
                 m.awayLeagueTeamId() == null ? m.awayTeamLogoUrl() : null,
                 m.leagueId(), m.seasonId(), start, venue, m.homeLeagueTeamId(), m.awayLeagueTeamId(),
-                m.scoringUrl(), m.streamingUrl(), venueChanged ? null : m.playingAreaId());
+                m.scoringUrl(), m.streamingUrl(), venueChanged ? null : m.playingAreaId(), ScheduleRule.warningCodes());
     }
 
     /** One alias per ticked Remember, to the own team, or to the league team's name (it works next season too). */

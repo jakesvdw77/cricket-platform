@@ -33,13 +33,21 @@ describe('MatchTable', () => {
   it('renders a header row and one row per match, with the teams and the league and season under them', () => {
     renderTable([makeMatch({ id: 'm1', leagueId: 'league-1', matchDate: '2026-10-15T07:15:00' }), makeMatch({ id: 'm2', matchDate: '2026-10-16T07:15:00' })])
     expect(screen.getByRole('table', { name: 'Matches' })).toBeInTheDocument()
-    for (const name of ['When', 'Match', 'Announced', 'Poll', 'Status', 'Actions']) {
+    for (const name of ['When', 'Match', 'Venue', 'Announced', 'Poll', 'Status', 'Actions']) {
       expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
     }
     expect(screen.getAllByTestId('match-row')).toHaveLength(2)
     expect(screen.getAllByText('1st XI vs Riverside Occasionals')).toHaveLength(2)
     expect(screen.getByText('TVL Division 1 · 2026/27')).toBeInTheDocument()
     expect(screen.getByText('Friendly · 2026/27')).toBeInTheDocument()
+  })
+
+  it('shows the venue (the field name) with the full text as title, and TBC when there is none', () => {
+    renderTable([makeMatch({ id: 'm1', venue: 'Riverside Oval' }), makeMatch({ id: 'm2', venue: null })])
+    const cells = screen.getAllByTestId('match-row-venue')
+    expect(cells[0]).toHaveTextContent('Riverside Oval')
+    expect(within(cells[0]).getByTitle('Riverside Oval')).toBeInTheDocument()
+    expect(cells[1]).toHaveTextContent('TBC')
   })
 
   it('turns a row amber within 24 hours and says Played once started', () => {
@@ -99,7 +107,7 @@ describe('MatchTable', () => {
   it('keeps the desktop-only columns marked so a phone can drop them', () => {
     renderTable([makeMatch({ matchDate: '2026-10-15T07:15:00' })])
     const row = screen.getByTestId('match-row')
-    for (const id of ['match-row-when', 'match-row-announced', 'match-row-poll', 'match-row-status']) {
+    for (const id of ['match-row-when', 'match-row-venue', 'match-row-announced', 'match-row-poll', 'match-row-status']) {
       expect(within(row).getByTestId(id)).toHaveAttribute('data-desktop-only', 'true')
     }
     expect(within(row).getByTestId('match-row-selection')).not.toHaveAttribute('data-desktop-only')

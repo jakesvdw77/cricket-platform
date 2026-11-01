@@ -195,6 +195,92 @@ class PlatformPlayingAreaControllerIntegrationTest extends AbstractPlayingAreaIn
                 .andExpect(jsonPath("$.name").value("Oval Renamed"));
     }
 
+    private static String locatedBody(String extra) {
+        return fieldBody("Oval", null, "Pretoria", "ZA", null).replaceFirst("\\}\\s*$", ", " + extra + "}");
+    }
+
+    @Test
+    void anAdminEditWithCoordinatesKeepsAVerifiedFieldVerifiedAndRestampsTheVerifier() throws Exception {
+        PlayingArea field = area("Oval", "Pretoria", "ZA", VERIFIED);
+        field.setVerifiedAt(Instant.parse("2020-01-01T00:00:00Z"));
+        field.setVerifiedBySubject("old-admin");
+        playingAreaRepository.save(field);
+
+        mockMvc.perform(put(BASE + "/{id}", field.getId()).with(platformAdmin(b -> b.subject("new-admin")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(locatedBody("\"latitude\": -25.8812, \"longitude\": 28.2, "
+                                + "\"accessLatitude\": -25.882, \"accessLongitude\": 28.201, \"accessNote\": \"Gate 2\"")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verificationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.verifiedBySubject").value("new-admin"))
+                .andExpect(jsonPath("$.latitude").value(-25.8812))
+                .andExpect(jsonPath("$.longitude").value(28.2))
+                .andExpect(jsonPath("$.accessLatitude").value(-25.882))
+                .andExpect(jsonPath("$.accessNote").value("Gate 2"));
+
+        PlayingArea after = playingAreaRepository.findById(field.getId()).orElseThrow();
+        assertThat(after.getVerifiedAt()).isAfter(Instant.parse("2020-01-01T00:00:00Z"));
+        assertThat(after.getLatitude()).isEqualByComparingTo("-25.8812");
+        mockMvc.perform(get(BASE + "/{id}", field.getId()).with(platformAdmin()))
+                .andExpect(jsonPath("$.longitude").value(28.2));
+    }
+
+    @Test
+    void badCoordinatesAreRejectedWith400AndNothingIsStored() throws Exception {
+        PlayingArea field = area("Oval", "Pretoria", "ZA", UNVERIFIED);
+        for (String extra : new String[] {
+            "\"latitude\": 91, \"longitude\": 0",
+            "\"latitude\": 0, \"longitude\": -181",
+            "\"latitude\": 10",
+            "\"accessNote\": \"Gate 2\"",
+        }) {
+            mockMvc.perform(put(BASE + "/{id}", field.getId()).with(platformAdmin())
+                            .contentType(MediaType.APPLICATION_JSON).content(locatedBody(extra)))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(playingAreaRepository.findById(field.getId()).orElseThrow().getLatitude()).isNull();
+    }
+
+    @Test
+    void theDatabaseChecksRejectBadCoordinatesDirectly() {
+        PlayingArea field = area("Oval", "Pretoria", "ZA", UNVERIFIED);
+        String[] bad = {
+            "latitude = 91, longitude = 0",
+            "latitude = 0, longitude = 181",
+            "latitude = 10",
+            "access_latitude = 10",
+            "access_latitude = -91, access_longitude = 0",
+            "access_note = 'x'",
+        };
+        for (String set : bad) {
+            assertThatThrownBy(() -> jdbc.update("update playing_area set " + set + " where id = ?", field.getId()))
+                    .as(set).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+        jdbc.update("update playing_area set latitude = 90, longitude = -180, access_latitude = -90, "
+                + "access_longitude = 180, access_note = 'ok' where id = ?", field.getId());
+    }
+
+    @Test
+    void mergeKeepsTheSurvivorsCoordinates() throws Exception {
+        PlayingArea source = area("Source Oval", "Pretoria", "ZA", UNVERIFIED);
+        source.setLatitude(new java.math.BigDecimal("1.5"));
+        source.setLongitude(new java.math.BigDecimal("2.5"));
+        playingAreaRepository.save(source);
+        PlayingArea target = area("Target Oval", "Pretoria", "ZA", VERIFIED);
+        target.setLatitude(new java.math.BigDecimal("-25.8"));
+        target.setLongitude(new java.math.BigDecimal("28.2"));
+        playingAreaRepository.save(target);
+
+        mockMvc.perform(post(BASE + "/{id}/merge", source.getId()).with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetPlayingAreaId\":\"" + target.getId() + "\"}"))
+                .andExpect(status().isOk());
+
+        PlayingArea survivor = playingAreaRepository.findById(target.getId()).orElseThrow();
+        assertThat(survivor.getLatitude()).isEqualByComparingTo("-25.8");
+        assertThat(survivor.getLongitude()).isEqualByComparingTo("28.2");
+    }
+
     // ---- merge --------------------------------------------------------------------------------------------------
 
     @Test

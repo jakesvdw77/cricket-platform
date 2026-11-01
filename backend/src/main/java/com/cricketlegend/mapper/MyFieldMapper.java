@@ -24,6 +24,11 @@ public interface MyFieldMapper {
     @Mapping(target = "postalCode", source = "entity.address.postalCode")
     @Mapping(target = "country", source = "entity.address.country")
     @Mapping(target = "mapUrl", source = "entity.mapUrl")
+    @Mapping(target = "latitude", source = "entity.latitude")
+    @Mapping(target = "longitude", source = "entity.longitude")
+    @Mapping(target = "accessLatitude", source = "entity.accessLatitude")
+    @Mapping(target = "accessLongitude", source = "entity.accessLongitude")
+    @Mapping(target = "accessNote", source = "entity.accessNote")
     @Mapping(target = "verified", source = "entity.verificationStatus", qualifiedByName = "isVerified")
     @Mapping(target = "home", source = "home")
     MyFieldDto toDto(PlayingArea entity, boolean home);

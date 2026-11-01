@@ -9,6 +9,7 @@ import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.dto.MatchResultDto;
+import com.cricketlegend.dto.MyFieldDto;
 import com.cricketlegend.dto.MyKeyDatesDto;
 import com.cricketlegend.dto.MyLeagueDto;
 import com.cricketlegend.dto.MyLeagueSummaryDto;
@@ -213,14 +214,22 @@ class MyLeagueServiceImpl implements MyLeagueService {
                     .forEach(t -> sideTeams.put(t.getId(), t));
         }
 
+        List<MyFieldDto> fields = myFieldService.describe(clubId, matches.stream().map(Match::getPlayingAreaId)
+                .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new)));
+        Map<UUID, MyFieldDto> fieldsById = fields.stream().collect(Collectors.toMap(MyFieldDto::id, f -> f));
         List<MyScheduleItemDto> schedule = new ArrayList<>();
         for (Match m : matches) {
+            MyFieldDto field = m.getPlayingAreaId() == null ? null : fieldsById.get(m.getPlayingAreaId());
             LeagueSide home = side(m.getHomeTeamId(), m.getHomeTeamName(), m.getHomeTeamLogoUrl(), sideTeams, "TBC");
             LeagueSide away = side(m.getAwayTeamId(), m.getAwayTeamName(), m.getAwayTeamLogoUrl(), sideTeams, "TBC");
             schedule.add(new MyScheduleItemDto(
                     m.getId(), ServerClock.localDate(m.getMatchDate()), ServerClock.localTime(m.getMatchDate()),
                     home.name(), home.logoUrl(), away.name(), away.logoUrl(), blankToNull(m.getVenue()),
-                    isMine(m, myTeamIds)));
+                    isMine(m, myTeamIds),
+                    field == null ? null : field.id(), field == null ? null : field.name(),
+                    field == null ? null : field.latitude(), field == null ? null : field.longitude(),
+                    field == null ? null : field.accessLatitude(), field == null ? null : field.accessLongitude(),
+                    field == null ? null : field.accessNote()));
         }
 
         Map<UUID, MatchResultDto> published =
@@ -254,8 +263,7 @@ class MyLeagueServiceImpl implements MyLeagueService {
         return new MyLeagueDto(
                 mapper.toInfo(league), mapper.toSeason(season), conditions, teams, schedule, results, keyDates,
                 shareSettingsService.get(clubId).disabledFormats().getOrDefault("LEAGUE", List.of()),
-                myFieldService.describe(clubId, matches.stream().map(Match::getPlayingAreaId)
-                        .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new))));
+                fields);
     }
 
     /**

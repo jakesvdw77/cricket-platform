@@ -31,6 +31,8 @@ import { listPolls } from '../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
 import { resultActionFor, resultBadgeFor, resultImportActionFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
+import { useMatchDirections, useMatchFieldWeather } from '../../hooks/useMatchWeather'
+import { GetDirectionsButton, directionsMenuItems, useGetDirections } from '../../components/GetDirectionsButton'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { availabilityMenuItems, titleCase } from './matches/MatchRowMenu'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
@@ -209,8 +211,11 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   }
 
   // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
-  const homeShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'home' })
-  const awayShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'away' })
+  // docs/specs/131: ONE Share Match dialog; the Team Sheet button of a team panel preselects it.
+  const weather = useMatchFieldWeather(clubId, match)
+  const directionsTarget = useMatchDirections(clubId, match)
+  const directions = useGetDirections(directionsTarget)
+  const share = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById })
   // docs/specs/127 and 130: Back returns to where the page was opened from (default: the Matches list); every link that leaves the page
   // carries this page as its origin, labelled "{Home} v {Away}" (at most 60 characters).
   const location = useLocation()
@@ -246,7 +251,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const availabilityReason = noOwnTeam ? NO_CLUB_TEAM_REASON : !pollsReady ? 'Polls are still loading' : null
   const sideName2 = (entry: OwnSide) => (entry.side === 'home' ? homeName : awayName)
   const perSide = own.length > 1
-  const shareFor = (entry: OwnSide) => (entry.side === 'home' ? homeShare : awayShare)
+  const shareTeamSheet = (entry: OwnSide) => () => share.openShareFor({ content: 'TEAM_SHEET', scope: entry.side })
 
   // docs/specs/130 and page-anatomy sections 1 and 8: ONE filled Manage Match menu with everything you can do to the match, Share last.
   // Deactivate, Reactivate and Delete are on the edit page (6b, 109). An action that cannot apply says why.
@@ -259,15 +264,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         icon: <GroupsOutlinedIcon fontSize="small" />,
         to: leaveTo(selectTeamPath(match.id, (entry.side === 'home' ? homeSide : awaySide)?.id ?? null, entry.side === 'home')),
       }))
-  const shareItems: ManageMenuItem[] = noOwnTeam
-    ? [{ id: 'share-team-sheet', title: 'Share Team Sheet', description: 'The team sheet as a PDF or message.', icon: <ShareOutlinedIcon fontSize="small" />, disabled: true, reason: NO_CLUB_TEAM_REASON }]
-    : own.map((entry) => ({
-        id: perSide ? `share-team-sheet-${entry.side}` : 'share-team-sheet',
-        title: perSide ? `Share Team Sheet: ${sideName2(entry)}` : 'Share Team Sheet',
-        description: 'The team sheet as a PDF or message.',
-        icon: <ShareOutlinedIcon fontSize="small" />,
-        onClick: shareFor(entry).openShare,
-      }))
+  const shareMatchItem: ManageMenuItem = { id: 'share-match', title: 'Share Match', description: 'The fixture, team poster, countdown, facts or team sheet.', icon: <ShareOutlinedIcon fontSize="small" />, onClick: share.openShare }
   const manageMenu = (
     <ManageMenu
       label="Manage Match"
@@ -287,7 +284,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               : []),
             ...selectItems,
             ...availabilityMenuItems(destination, leaveTo, availabilityReason, 'Ask the players if they can play.'),
-            ...shareItems,
+            ...directionsMenuItems(directionsTarget, directions.start),
+            shareMatchItem,
           ],
         },
       ]}
@@ -388,6 +386,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         polls={overlay.polls}
         pollClosesAt={pollClosesAt}
         resultStatus={match.resultStatus}
+        weather={weather.summary}
+        directions={directionsTarget ? <GetDirectionsButton target={directionsTarget} variant="link" testId="match-directions-link" /> : undefined}
       />
 
       {own.length === 0 ? (
@@ -420,15 +420,15 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 sidesReady={sidesReady}
                 playingXiSize={hasLeague ? (side?.limits?.maxSelected ?? null) : null}
                 selectTo={leaveTo(selectTeamPath(match.id, side?.id ?? null, entry.side === 'home'))}
-                onShare={shareFor(entry).openShare}
+                onShare={shareTeamSheet(entry)}
               />
             )
           })}
         </Box>
       )}
 
-      {homeShare.shareDialog}
-      {awayShare.shareDialog}
+      {share.shareDialog}
+      {directions.sheet}
     </Box>
   )
 }

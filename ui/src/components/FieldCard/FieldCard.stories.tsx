@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
 import { FieldCard } from './FieldCard'
 import { makeField } from '../../test/fieldFixtures'
+import { ManageMenu } from '../ManageMenu'
 
 const meta: Meta<typeof FieldCard> = {
   title: 'Components/FieldCard',
@@ -16,17 +17,15 @@ const meta: Meta<typeof FieldCard> = {
   ],
   args: {
     field: makeField({ linkedHome: true }),
-    clubId: 'club-1',
     viewTo: '/manage/fixtures/fields/field-1',
-    editTo: '/manage/fixtures/fields/field-1/edit',
-    onToggleHome: () => undefined,
+    actions: <ManageMenu trigger="kebab" dense label="Actions for Riverside Oval" groups={[{ id: 'a', heading: 'Actions', items: [{ id: 'open', title: 'Open Field' }] }]} />,
   },
 }
 export default meta
 
 type Story = StoryObj<typeof FieldCard>
 
-// docs/specs/099: one shape for every status - the same rows and the same three footer columns.
+// docs/specs/099 and 134: one flat shape for every status - the same rows, no footer bar (the page passes its kebab as `actions`).
 export const Verified: Story = {}
 export const UnverifiedEditable: Story = { args: { field: makeField({ verificationStatus: 'UNVERIFIED', createdByClubId: 'club-1' }) } }
 export const Rejected: Story = { args: { field: makeField({ verificationStatus: 'REJECTED', linkedHome: false }) } }
@@ -42,9 +41,7 @@ export const EmptyValues: Story = {
 export const PlatformAdmin: Story = {
   args: {
     field: makeField({ verificationStatus: 'UNVERIFIED', linkedClubCount: 1, matchCount: 2 }),
-    clubId: undefined,
-    onToggleHome: undefined,
-    onStatusAction: () => undefined,
+    admin: true,
   },
 }
 export const MobileViewport: Story = { args: Verified.args, parameters: { viewport: { defaultViewport: 'mobile' } } }

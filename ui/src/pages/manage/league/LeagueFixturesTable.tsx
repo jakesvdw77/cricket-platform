@@ -26,6 +26,8 @@ export interface LeagueFixturesTableProps {
   empty?: ReactNode
   // docs/specs/127: the name of the page this table is on, for the "Back to ..." of the match pages it opens (default "Schedule").
   originLabel?: string
+  // docs/specs/131: opens the Share Match dialog for one of our matches. Omitted, the row's Share Match item is disabled.
+  onShare?: (match: Match) => void
 }
 
 // Desktop: When, Home, Away, Venue, a chip, the actions button (Home and Away equal width so the names line up down the rows). A phone keeps
@@ -87,7 +89,7 @@ function SideCell({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   )
 }
 
-function FixtureRow({ match, teamsById, originLabel }: { match: Match; teamsById: Map<string, Team>; originLabel: string }) {
+function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; teamsById: Map<string, Team>; originLabel: string; onShare?: (match: Match) => void }) {
   const location = useLocation()
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), originLabel)
   const homeName = fixtureSideName(match.homeTeamId, match.homeTeamName, teamsById)
@@ -187,8 +189,8 @@ function FixtureRow({ match, teamsById, originLabel }: { match: Match; teamsById
                 items: [
                   { id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) },
                   { id: 'edit', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
-                  // Share is always last (page-anatomy section 8). The match share itself is built with the Matches review; until then the item is disabled.
-                  { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, disabled: true, reason: 'Sharing a match is coming soon' },
+                  // Share is always last (page-anatomy section 8); it opens the Share Match dialog (docs/specs/131).
+                  { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare?.(match), disabled: !onShare, reason: 'Sharing is not available here' },
                 ],
               },
             ]}
@@ -202,7 +204,7 @@ function FixtureRow({ match, teamsById, originLabel }: { match: Match; teamsById
 // docs/specs/091 (C): the Schedule tab's fixtures as a zebra table (the standard of PlayerTable, MatchTable and PollTable):
 // When, Home and Away (a logo beside each name), Venue and an "Our match" chip; our matches open the match, the others are plain
 // rows. (The edit form's Schedule tab uses this table too.)
-export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, originLabel = 'Schedule' }: LeagueFixturesTableProps) {
+export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, originLabel = 'Schedule', onShare }: LeagueFixturesTableProps) {
   const table = (
     <Box
       role="table"
@@ -237,7 +239,7 @@ export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, origin
       </Box>
       <Box role="rowgroup">
         {matches.map((match) => (
-          <FixtureRow key={match.id} match={match} teamsById={teamsById} originLabel={originLabel} />
+          <FixtureRow key={match.id} match={match} teamsById={teamsById} originLabel={originLabel} onShare={onShare} />
         ))}
       </Box>
     </Box>

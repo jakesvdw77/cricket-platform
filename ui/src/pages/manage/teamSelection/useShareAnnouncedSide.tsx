@@ -10,12 +10,12 @@ import { listLeagues } from '../../../api/leagueApi'
 import type { League } from '../../../api/leagueApi'
 import { listSeasons } from '../../../api/seasonApi'
 import type { Season } from '../../../api/seasonApi'
-import type { TeamSheetPrintScope } from '../../../components/TeamSheetCommunicationDialog'
 import { useTeamSheetShare } from '../matches/useTeamSheetShare'
+import type { TeamSheetScope } from '../matches/useTeamSheetShare'
 
 interface ShareTarget {
   matchId: string
-  scope: TeamSheetPrintScope
+  scope: TeamSheetScope
   // Bumped on every click so the host remounts and opens afresh, re-reading the current sides.
   nonce: number
 }
@@ -23,7 +23,7 @@ interface ShareTarget {
 interface HostProps {
   clubId: string
   match: Match
-  scope: TeamSheetPrintScope
+  scope: TeamSheetScope
   teams: Team[]
   leagues: League[]
   seasons: Season[]
@@ -36,7 +36,7 @@ function ShareHost({ clubId, match, scope, teams, leagues, seasons }: HostProps)
   const teamsById = useMemo(() => new Map(teams.map((team): [string, Team] => [team.id, team])), [teams])
   const leaguesById = useMemo(() => new Map(leagues.map((league): [string, League] => [league.id, league])), [leagues])
   const seasonsById = useMemo(() => new Map(seasons.map((season): [string, Season] => [season.id, season])), [seasons])
-  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById, initialScope: scope })
+  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById, initialScope: scope, initialContent: 'TEAM_SHEET' })
   useEffect(() => {
     openShare()
     // Once, on mount: each Share click mounts a fresh host (keyed by the click).

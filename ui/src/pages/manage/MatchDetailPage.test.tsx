@@ -17,7 +17,6 @@ const listSquad = vi.fn()
 const listMatchSides = vi.fn()
 const listPolls = vi.fn()
 const getMatchSquad = vi.fn()
-const generateTeamSheetPdf = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
@@ -49,10 +48,6 @@ vi.mock('../../api/matchAvailabilityApi', () => ({
 
 vi.mock('../../api/matchSquadApi', () => ({
   getMatchSquad: (clubId: string, matchId: string, teamId: string) => getMatchSquad(clubId, matchId, teamId),
-}))
-
-vi.mock('../../utils/teamSheetPdf', () => ({
-  generateTeamSheetPdf: (...args: unknown[]) => generateTeamSheetPdf(...args),
 }))
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -182,7 +177,6 @@ beforeEach(() => {
   listMatchSides.mockResolvedValue([])
   listPolls.mockResolvedValue([])
   getMatchSquad.mockResolvedValue(UNCOVERED)
-  generateTeamSheetPdf.mockResolvedValue('blob:team-sheet')
 })
 
 function LocationProbe() {
@@ -248,6 +242,38 @@ describe('MatchDetailPage', () => {
     renderPage(PATH, 'test-club-id')
 
     expect(await screen.findByText("Couldn't load this match")).toBeInTheDocument()
+  })
+
+  // docs/specs/133
+  describe('Get Directions', () => {
+    const located = { playingAreaId: 'field-1', playingAreaName: 'Riverside Oval', playingAreaLatitude: -29.55, playingAreaLongitude: 30.29 }
+
+    it('is an item of Manage Match, before Share, and an inline link under the figures', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch(located))
+      expect(screen.getByTestId('match-directions-link')).toHaveTextContent('Get Directions')
+      const menu = await openManage(user)
+      const titles = itemTitles(menu)
+      expect(titles).toContain('Get Directions')
+      expect(titles.indexOf('Get Directions')).toBeLessThan(titles.indexOf('Share Match'))
+    })
+
+    it('opens Google Maps with the stored coordinates in one click on a desktop, the access point winning when set', async () => {
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ ...located, playingAreaAccessLatitude: -29.551, playingAreaAccessLongitude: 30.291 }))
+      await user.click(screen.getByTestId('match-directions-link'))
+      expect(open).toHaveBeenCalledWith('https://www.google.com/maps/dir/?api=1&destination=-29.551,30.291', '_blank', 'noopener,noreferrer')
+      open.mockRestore()
+    })
+
+    it('is hidden, not disabled, for a match with no field or no position', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch())
+      expect(screen.queryByTestId('match-directions-link')).not.toBeInTheDocument()
+      const menu = await openManage(user)
+      expect(itemTitles(menu)).not.toContain('Get Directions')
+    })
   })
 
   // docs/specs/127-return-navigation.md
@@ -586,14 +612,15 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText(`At: /manage/availability/squad/match-1/p2?${RETURN}`)).toBeInTheDocument()
     })
 
-    it('puts Edit Match first and Share Team Sheet last in Manage Match', async () => {
+    it('puts Edit Match first and Share Match last in Manage Match, with no Share Team Sheet item', async () => {
       const user = userEvent.setup()
       await renderLoaded()
 
       const menu = await openManage(user)
       const titles = itemTitles(menu)
       expect(titles[0]).toBe('Edit Match')
-      expect(titles[titles.length - 1]).toBe('Share Team Sheet: 2nd XI')
+      expect(titles.some((title) => title.startsWith('Share Team Sheet'))).toBe(false)
+      expect(titles[titles.length - 1]).toBe('Share Match')
       expect(within(menu).getByTestId('manage-item-edit-match')).toHaveAttribute('href', `/manage/fixtures/matches/match-1/edit?${RETURN}`)
     })
 
@@ -639,9 +666,8 @@ describe('MatchDetailPage', () => {
       expect(within(screen.getByTestId('match-figure-poll')).queryByRole('button')).not.toBeInTheDocument()
     })
 
-    it('Share Team Sheet on a panel opens the dialog on that side and prints through the shared hook', async () => {
+    it('Team Sheet on a panel opens Share Match with Team Sheet preselected', async () => {
       const user = userEvent.setup()
-      const open = vi.spyOn(window, 'open').mockReturnValue(null)
       listMatchSides.mockResolvedValue([
         makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
       ])
@@ -650,32 +676,18 @@ describe('MatchDetailPage', () => {
       const home = await screen.findByTestId('match-team-card-home')
       await user.click(within(home).getByRole('button', { name: 'Share team sheet for 1st XI' }))
 
-      expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
-      await user.click(await screen.findByRole('button', { name: 'Print 1st XI' }))
-      await waitFor(() => expect(generateTeamSheetPdf).toHaveBeenCalled())
-      await waitFor(() => expect(open).toHaveBeenCalledWith('blob:team-sheet', '_blank'))
-      // scoped to the home side only
-      expect(generateTeamSheetPdf.mock.calls[0][1]).toHaveLength(1)
-      open.mockRestore()
+      expect(await screen.findByText('Share match')).toBeInTheDocument()
+      expect(await screen.findByRole('radio', { name: /Team Sheet/ })).toBeChecked()
     })
 
-    it('Share Team Sheet: 2nd XI in Manage Match is scoped to the away side', async () => {
+    it('Share Match in Manage Match opens the dialog on step 1 with nothing preselected', async () => {
       const user = userEvent.setup()
-      const open = vi.spyOn(window, 'open').mockReturnValue(null)
-      listMatchSides.mockResolvedValue([
-        makeSide({ id: 'side-away', teamId: 'team-2', players: [{ playerProfileId: 'player-2', battingOrder: 1, role: 'BATSMAN' }] }),
-      ])
       await renderLoaded()
 
-      await screen.findByTestId('match-team-card-away')
-      await user.click(within(await openManage(user)).getByTestId('manage-item-share-team-sheet-away'))
+      await user.click(within(await openManage(user)).getByTestId('manage-item-share-match'))
 
-      expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
-      await user.click(await screen.findByRole('button', { name: 'Print 2nd XI' }))
-      await waitFor(() => expect(generateTeamSheetPdf).toHaveBeenCalled())
-      const sides = generateTeamSheetPdf.mock.calls[0][1] as { teamName: string }[]
-      expect(sides.map((side) => side.teamName)).toEqual(['2nd XI'])
-      open.mockRestore()
+      expect(await screen.findByText('Share match')).toBeInTheDocument()
+      expect(screen.getAllByRole('radio').filter((radio) => (radio as HTMLInputElement).checked || radio.getAttribute('aria-checked') === 'true')).toHaveLength(0)
     })
 
     it('puts the team actions only on the own side, with plain item names, when the opponent is not the club\'s', async () => {
@@ -689,7 +701,7 @@ describe('MatchDetailPage', () => {
       expect(screen.queryByTestId('match-team-card-away')).not.toBeInTheDocument()
       const menu = await openManage(user)
       expect(within(menu).getByText('Select Team')).toBeInTheDocument()
-      expect(within(menu).getByText('Share Team Sheet')).toBeInTheDocument()
+      expect(within(menu).queryByText('Share Team Sheet')).not.toBeInTheDocument()
     })
 
     it('disables the team items and Open Availability with the reason when neither side is a club team', async () => {
@@ -701,10 +713,10 @@ describe('MatchDetailPage', () => {
       await screen.findByRole('heading', { level: 1 })
 
       const menu = await openManage(user)
-      for (const id of ['select-team', 'availability', 'share-team-sheet']) {
+      for (const id of ['select-team', 'availability']) {
         expect(within(menu).getByTestId(`manage-item-${id}`)).toHaveAttribute('aria-disabled', 'true')
       }
-      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(3)
+      expect(within(menu).getAllByText('None of your teams is playing in this match')).toHaveLength(2)
       expect(screen.queryByRole('link', { name: /Select Team/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Share team sheet/ })).not.toBeInTheDocument()
     })

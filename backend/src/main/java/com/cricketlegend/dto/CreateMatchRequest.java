@@ -2,6 +2,7 @@ package com.cricketlegend.dto;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,6 +23,9 @@ import java.util.UUID;
  * <p>{@code playingAreaId} (optional, docs/specs/099-fields-directory.md) picks a field from the directory: the match's
  * {@code venue} is then written from the field's name and wins over any {@code venue} sent alongside. Without it,
  * {@code venue} is stored as sent and any previous field link is cleared.
+ *
+ * <p>{@code acknowledgedWarnings} (optional, docs/specs/132-match-scheduling-rules.md) are the scheduling warning codes
+ * the manager has confirmed (Save Anyway); an error finding is never overridden by it.
  */
 public record CreateMatchRequest(
         UUID homeTeamId,
@@ -38,5 +42,15 @@ public record CreateMatchRequest(
         UUID awayLeagueTeamId,
         String scoringUrl,
         String streamingUrl,
-        UUID playingAreaId) {
+        UUID playingAreaId,
+        List<String> acknowledgedWarnings) {
+
+    /** Without acknowledgements: every scheduling warning (docs/specs/132) is returned as a 409 to confirm. */
+    public CreateMatchRequest(
+            UUID homeTeamId, String homeTeamName, UUID awayTeamId, String awayTeamName, String homeTeamLogoUrl,
+            String awayTeamLogoUrl, UUID leagueId, UUID seasonId, Instant matchDate, String venue,
+            UUID homeLeagueTeamId, UUID awayLeagueTeamId, String scoringUrl, String streamingUrl, UUID playingAreaId) {
+        this(homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl, leagueId, seasonId,
+                matchDate, venue, homeLeagueTeamId, awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, null);
+    }
 }

@@ -66,6 +66,36 @@ class MatchPlayingAreaIntegrationTest extends AbstractPlayingAreaIntegrationTest
     }
 
     @Test
+    void theMatchCarriesItsFieldsCoordinatesAndAccessPointOnGetAndList() throws Exception {
+        Club club = club("Riverside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        Season season = season(club.getId());
+        PlayingArea field = area("Irene Oval", "Pretoria", "ZA", PlayingAreaVerificationStatus.VERIFIED);
+        field.setLatitude(new java.math.BigDecimal("-25.881200"));
+        field.setLongitude(new java.math.BigDecimal("28.200000"));
+        field.setAccessLatitude(new java.math.BigDecimal("-25.882000"));
+        field.setAccessLongitude(new java.math.BigDecimal("28.201000"));
+        field.setAccessNote("Gate 2 off Main Rd");
+        playingAreaRepository.save(field);
+        Match onField = match(club.getId(), season.getId(), field.getId(), "Irene Oval");
+        Match free = match(club.getId(), season.getId(), null, "Free text");
+
+        mockMvc.perform(get(MATCHES + "/{m}", club.getId(), onField.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.playingAreaLatitude").value(-25.8812))
+                .andExpect(jsonPath("$.playingAreaLongitude").value(28.2))
+                .andExpect(jsonPath("$.playingAreaAccessLatitude").value(-25.882))
+                .andExpect(jsonPath("$.playingAreaAccessLongitude").value(28.201))
+                .andExpect(jsonPath("$.playingAreaAccessNote").value("Gate 2 off Main Rd"));
+        mockMvc.perform(get(MATCHES, club.getId()).param("playingAreaId", field.getId().toString()).with(admin))
+                .andExpect(jsonPath("$.content[0].playingAreaLatitude").value(-25.8812))
+                .andExpect(jsonPath("$.content[0].playingAreaAccessNote").value("Gate 2 off Main Rd"));
+        mockMvc.perform(get(MATCHES + "/{m}", club.getId(), free.getId()).with(admin))
+                .andExpect(jsonPath("$.playingAreaLatitude").doesNotExist())
+                .andExpect(jsonPath("$.playingAreaAccessNote").doesNotExist());
+    }
+
+    @Test
     void createWithoutAFieldStoresTheSentVenueUnchanged() throws Exception {
         Club club = club("Riverside CC");
         Season season = season(club.getId());

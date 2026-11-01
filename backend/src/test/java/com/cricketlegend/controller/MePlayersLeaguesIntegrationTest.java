@@ -85,7 +85,8 @@ class MePlayersLeaguesIntegrationTest extends AbstractLinkIntegrationTest {
     private static final Set<String> SEASON_KEYS = Set.of("id", "name", "startDate", "endDate");
     private static final Set<String> TEAM_KEYS = Set.of("id", "name", "abbreviation", "logoUrl", "mine");
     private static final Set<String> SCHEDULE_KEYS = Set.of("matchId", "date", "time", "homeName", "homeLogoUrl", "awayName",
-            "awayLogoUrl", "venue", "mine");
+            "awayLogoUrl", "venue", "mine", "playingAreaId", "playingAreaName", "playingAreaLatitude",
+            "playingAreaLongitude", "playingAreaAccessLatitude", "playingAreaAccessLongitude", "playingAreaAccessNote");
     private static final Set<String> RESULT_KEYS = Set.of("matchId", "date", "homeName", "awayName", "homeScore", "awayScore",
             "resultLine", "mine");
     private static final Set<String> KEY_DATE_KEYS = Set.of("seasonStart", "seasonEnd", "firstMatchDate", "lastMatchDate",
@@ -95,7 +96,8 @@ class MePlayersLeaguesIntegrationTest extends AbstractLinkIntegrationTest {
             "pointsForWin", "pointsForLoss", "pointsForDraw", "pointsForNoResult", "pointsForForfeitWin",
             "bonusPointsEnabled", "bonusBattingOversThreshold", "bonusBowlingRestrictionPercentage", "additionalNotes");
     private static final Set<String> FIELD_KEYS = Set.of("id", "name", "owner", "addressLine1", "city", "provinceState",
-            "postalCode", "country", "mapUrl", "verified", "home");
+            "postalCode", "country", "mapUrl", "latitude", "longitude", "accessLatitude", "accessLongitude", "accessNote",
+            "verified", "home");
     private static final List<String> BANNED = List.of("contact", "phone", "email", "0821234567", "league@secret.example",
             "\"active\"", "clubId", "createdAt", "updatedAt", "updatedBy", "uploadedBy", "uploadedAt", "affiliation",
             "children", "scorecard", "innings", "DRAFT");
@@ -437,6 +439,34 @@ class MePlayersLeaguesIntegrationTest extends AbstractLinkIntegrationTest {
         assertThat(keys(json, "$.fields[0]")).isSubsetOf(FIELD_KEYS);
         assertThat(json).doesNotContain("Gate code").doesNotContain("Free text ground\",\"verified");
         assertThat((List<?>) JsonPath.read(json, "$.fields")).hasSize(1);
+    }
+
+    @Test
+    void scheduleRowsCarryTheFieldIdNameAndCoordinatesAndAreNullWithoutAField() throws Exception {
+        World w = world();
+        PlayingArea field = playingAreaRepository.save(PlayingArea.builder().areaType(PlayingAreaType.CRICKET_FIELD)
+                .name(unique("Oval")).category(PlayingAreaCategory.CLUB).ownerType(PlayingAreaOwnerType.CLUB)
+                .ownerName("Owner").address(Address.builder().city(unique("City")).country("ZA").build())
+                .latitude(new java.math.BigDecimal("-25.881200")).longitude(new java.math.BigDecimal("28.200000"))
+                .accessLatitude(new java.math.BigDecimal("-25.882000")).accessLongitude(new java.math.BigDecimal("28.201000"))
+                .accessNote("Gate 2").verificationStatus(PlayingAreaVerificationStatus.VERIFIED)
+                .createdByClubId(w.club().getId()).build());
+        playingAreaIds.add(field.getId());
+        match(w, w.team().getId(), null, "Visitors", 1, field.getId());
+        match(w, w.team().getId(), null, "Visitors", 2, null);
+
+        String json = detail(w, w.league(), "");
+
+        assertThat((String) JsonPath.read(json, "$.schedule[0].playingAreaId")).isEqualTo(field.getId().toString());
+        assertThat((String) JsonPath.read(json, "$.schedule[0].playingAreaName")).isEqualTo(field.getName());
+        assertThat(((Number) JsonPath.read(json, "$.schedule[0].playingAreaLatitude")).doubleValue()).isEqualTo(-25.8812);
+        assertThat(((Number) JsonPath.read(json, "$.schedule[0].playingAreaLongitude")).doubleValue()).isEqualTo(28.2);
+        assertThat(((Number) JsonPath.read(json, "$.schedule[0].playingAreaAccessLatitude")).doubleValue()).isEqualTo(-25.882);
+        assertThat(((Number) JsonPath.read(json, "$.schedule[0].playingAreaAccessLongitude")).doubleValue()).isEqualTo(28.201);
+        assertThat((String) JsonPath.read(json, "$.schedule[0].playingAreaAccessNote")).isEqualTo("Gate 2");
+        assertThat((Object) JsonPath.read(json, "$.schedule[1].playingAreaId")).isNull();
+        assertThat((Object) JsonPath.read(json, "$.schedule[1].playingAreaLatitude")).isNull();
+        assertThat(((Number) JsonPath.read(json, "$.fields[0].latitude")).doubleValue()).isEqualTo(-25.8812);
     }
 
     // --- authorisation ---

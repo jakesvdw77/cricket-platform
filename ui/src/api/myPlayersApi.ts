@@ -260,6 +260,14 @@ export interface MyLeagueFixtureDto {
   awayLogoUrl: string | null
   venue: string | null
   mine: boolean
+  // docs/specs/133: the field and its stored position, for the forecast and Get Directions. Optional so older fixtures stay valid.
+  playingAreaId?: string | null
+  playingAreaName?: string | null
+  playingAreaLatitude?: number | null
+  playingAreaLongitude?: number | null
+  playingAreaAccessLatitude?: number | null
+  playingAreaAccessLongitude?: number | null
+  playingAreaAccessNote?: string | null
 }
 
 export interface MyLeagueResultDto {

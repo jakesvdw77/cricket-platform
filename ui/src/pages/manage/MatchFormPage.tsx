@@ -1,4 +1,5 @@
-import { Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Box, Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -6,6 +7,7 @@ import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button, compactButtonSx } from '../../components/Button'
+import { ScheduleFindingsPanel } from '../../components/ScheduleFindingsPanel'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import {
@@ -14,6 +16,8 @@ import {
   updateMatch,
   deactivateMatch,
   reactivateMatch,
+  scheduleFindings,
+  warningCodes,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
 import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
@@ -56,6 +60,9 @@ export default function MatchFormPage() {
 
   const { formProps } = useMatchFormData(clubId)
 
+  // docs/specs/132: the payload last sent, kept so Save Anyway can resend it with the confirmed warning codes.
+  const [lastPayload, setLastPayload] = useState<MatchPayload | null>(null)
+
   const saveMutation = useMutation({
     mutationFn: (payload: MatchPayload) => {
       if (isEdit && matchId) {
@@ -94,6 +101,7 @@ export default function MatchFormPage() {
   })
 
   const match = matchQuery.data
+  const findings = scheduleFindings(saveMutation.error) ?? scheduleFindings(reactivate.error)
   const toggle = match?.active ? deactivate : reactivate
 
   // docs/specs/050-league-schedule-and-fixtures.md: LeagueFormPage's Schedule tab's own "Add
@@ -136,7 +144,7 @@ export default function MatchFormPage() {
       compact
       actions={
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          {saveMutation.isError && !matchOutsideLeagueDatesMessage(saveMutation.error) && (
+          {saveMutation.isError && !findings && !matchOutsideLeagueDatesMessage(saveMutation.error) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
             </Typography>
@@ -180,6 +188,20 @@ export default function MatchFormPage() {
       }
     >
       {deleteFlow.dialog}
+      {findings && (
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <ScheduleFindingsPanel
+            result={findings}
+            pending={saveMutation.isPending}
+            returnLabel={isEdit ? 'Edit Match' : 'Add Match'}
+            onSaveAnyway={() => lastPayload && saveMutation.mutate({ ...lastPayload, acknowledgedWarnings: warningCodes(findings) })}
+            onCancel={() => {
+              saveMutation.reset()
+              reactivate.reset()
+            }}
+          />
+        </Box>
+      )}
       <MatchForm
         clubId={clubId}
         initialField={
@@ -214,7 +236,11 @@ export default function MatchFormPage() {
               : undefined
         }
         {...formProps}
-        onSubmit={(payload) => saveMutation.mutate(payload)}
+        onSubmit={(payload) => {
+          setLastPayload(payload)
+          reactivate.reset()
+          saveMutation.mutate(payload)
+        }}
         matchDateServerError={matchOutsideLeagueDatesMessage(saveMutation.error)}
       />
     </RecordFormScreen>

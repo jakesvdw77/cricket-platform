@@ -59,8 +59,8 @@ public class PlatformPlayingAreaController {
 
     @PutMapping("/api/v1/platform/playing-areas/{id}")
     public ResponseEntity<PlatformPlayingAreaDto> update(
-            @PathVariable UUID id, @Valid @RequestBody PlayingAreaRequest request) {
-        return ResponseEntity.ok(platformPlayingAreaService.update(id, request));
+            Authentication authentication, @PathVariable UUID id, @Valid @RequestBody PlayingAreaRequest request) {
+        return ResponseEntity.ok(platformPlayingAreaService.update(id, request, authentication.getName()));
     }
 
     @PostMapping("/api/v1/platform/playing-areas/{id}/verify")

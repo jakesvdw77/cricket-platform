@@ -364,7 +364,7 @@ export default function MatchList({
         {
           id: 'shown',
           value: summary.matchesShown,
-          label: upcomingOnly ? 'Upcoming Matches' : 'Matches Shown',
+          label: upcomingOnly ? 'Upcoming And Awaiting Result' : 'Matches Shown',
           shortLabel: upcomingOnly ? 'Upcoming' : 'Shown',
           kind: 'filter',
           active: focus === null,

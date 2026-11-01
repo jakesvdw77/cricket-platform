@@ -187,7 +187,7 @@ class PlatformPlayingAreaServiceImplTest {
         merged.setMergedIntoId(UUID.randomUUID());
         PlayingAreaRequest request = new PlayingAreaRequest(
                 "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
-                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null);
+                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null);
 
         org.mockito.Mockito.lenient()
                 .when(playingAreaRepository.findAll(
@@ -195,10 +195,52 @@ class PlatformPlayingAreaServiceImplTest {
                         any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.update(verified.getId(), request);
+        service.update(verified.getId(), request, "admin-sub");
 
         assertThat(verified.getName()).isEqualTo("Renamed");
-        assertThatThrownBy(() -> service.update(merged.getId(), request)).isInstanceOf(FieldNotEditableException.class);
+        assertThatThrownBy(() -> service.update(merged.getId(), request, "admin-sub")).isInstanceOf(FieldNotEditableException.class);
+    }
+
+    @Test
+    void anAdminEditOfAVerifiedFieldKeepsItVerifiedAndRestampsTheVerifier() {
+        PlayingArea verified = stored(PlayingAreaVerificationStatus.VERIFIED);
+        verified.setVerifiedAt(java.time.Instant.parse("2020-01-01T00:00:00Z"));
+        verified.setVerifiedBySubject("old-admin");
+        PlayingAreaRequest request = new PlayingAreaRequest(
+                "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
+                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null,
+                new java.math.BigDecimal("-33.9"), new java.math.BigDecimal("18.4"), null, null, null);
+        org.mockito.Mockito.lenient()
+                .when(playingAreaRepository.findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        service.update(verified.getId(), request, "new-admin");
+
+        assertThat(verified.getVerificationStatus()).isEqualTo(PlayingAreaVerificationStatus.VERIFIED);
+        assertThat(verified.getVerifiedBySubject()).isEqualTo("new-admin");
+        assertThat(verified.getVerifiedAt()).isAfter(java.time.Instant.parse("2020-01-01T00:00:00Z"));
+        assertThat(verified.getLatitude()).isEqualByComparingTo("-33.9");
+    }
+
+    @Test
+    void anAdminEditOfAnUnverifiedFieldStaysUnverifiedAndUnstamped() {
+        PlayingArea unverified = stored(PlayingAreaVerificationStatus.UNVERIFIED);
+        PlayingAreaRequest request = new PlayingAreaRequest(
+                "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
+                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null);
+        org.mockito.Mockito.lenient()
+                .when(playingAreaRepository.findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        service.update(unverified.getId(), request, "admin");
+
+        assertThat(unverified.getVerificationStatus()).isEqualTo(PlayingAreaVerificationStatus.UNVERIFIED);
+        assertThat(unverified.getVerifiedBySubject()).isNull();
+        assertThat(unverified.getVerifiedAt()).isNull();
     }
 
     @Test

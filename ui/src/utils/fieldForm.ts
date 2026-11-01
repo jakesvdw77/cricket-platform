@@ -13,15 +13,22 @@ export interface FieldFormValues {
   address: Address
   mapUrl: string
   locationNotes: string
+  // docs/specs/133: decimal degrees typed as text (empty = not set), and the optional entrance or parking point with its note.
+  latitude: string
+  longitude: string
+  accessLatitude: string
+  accessLongitude: string
+  accessNote: string
 }
 
 export type FieldFormErrors = Partial<
-  Record<'name' | 'ownerName' | 'street' | 'city' | 'country' | 'mapUrl' | 'locationNotes', string>
+  Record<'name' | 'ownerName' | 'street' | 'city' | 'country' | 'mapUrl' | 'locationNotes' | 'latitude' | 'longitude' | 'accessLatitude' | 'accessLongitude' | 'accessNote', string>
 >
 
 export const MAX_NAME_LENGTH = 200
 export const MAX_MAP_URL_LENGTH = 500
 export const MAX_NOTES_LENGTH = 500
+export const MAX_ACCESS_NOTE_LENGTH = 200
 
 export function emptyFieldForm(country = ''): FieldFormValues {
   return {
@@ -32,7 +39,48 @@ export function emptyFieldForm(country = ''): FieldFormValues {
     address: { number: null, street: '', city: '', provinceState: '', country, postalCode: '' },
     mapUrl: '',
     locationNotes: '',
+    latitude: '',
+    longitude: '',
+    accessLatitude: '',
+    accessLongitude: '',
+    accessNote: '',
   }
+}
+
+// A stored coordinate as the text of its input (at most 6 decimals, no trailing zeros).
+export const coordinateText = (value: number | null | undefined): string => (typeof value === 'number' && Number.isFinite(value) ? String(Number(value.toFixed(6))) : '')
+
+// docs/specs/133: a typed coordinate, or null when empty or not a plain decimal number.
+const DECIMAL = /^-?\d+(?:\.\d+)?$/
+export function parseCoordinate(text: string): number | null {
+  const trimmed = text.trim()
+  return DECIMAL.test(trimmed) ? Number(trimmed) : null
+}
+
+type Axis = 'latitude' | 'longitude'
+const LIMIT: Record<Axis, number> = { latitude: 90, longitude: 180 }
+
+function coordinateError(text: string, axis: Axis): string | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const value = parseCoordinate(trimmed)
+  if (value === null) return 'Enter a number such as -26.1234'
+  if (Math.abs(value) > LIMIT[axis]) return `${axis === 'latitude' ? 'Latitude' : 'Longitude'} must be between -${LIMIT[axis]} and ${LIMIT[axis]}`
+  return null
+}
+
+// Both or neither, each in range. `keys` picks the field's own pair or the access point's.
+function pairErrors(latText: string, lngText: string, keys: { lat: 'latitude' | 'accessLatitude'; lng: 'longitude' | 'accessLongitude' }): FieldFormErrors {
+  const errors: FieldFormErrors = {}
+  const latError = coordinateError(latText, 'latitude')
+  const lngError = coordinateError(lngText, 'longitude')
+  if (latError) errors[keys.lat] = latError
+  if (lngError) errors[keys.lng] = lngError
+  const hasLat = latText.trim() !== ''
+  const hasLng = lngText.trim() !== ''
+  if (hasLat && !hasLng) errors[keys.lng] = 'Enter the longitude too, or clear the latitude'
+  if (hasLng && !hasLat) errors[keys.lat] = 'Enter the latitude too, or clear the longitude'
+  return errors
 }
 
 export function fieldFormFromField(field: PlayingArea): FieldFormValues {
@@ -51,6 +99,11 @@ export function fieldFormFromField(field: PlayingArea): FieldFormValues {
     },
     mapUrl: field.mapUrl ?? '',
     locationNotes: field.locationNotes ?? '',
+    latitude: coordinateText(field.latitude),
+    longitude: coordinateText(field.longitude),
+    accessLatitude: coordinateText(field.accessLatitude),
+    accessLongitude: coordinateText(field.accessLongitude),
+    accessNote: field.accessNote ?? '',
   }
 }
 
@@ -81,6 +134,11 @@ export function validateFieldForm(values: FieldFormValues): FieldFormErrors {
   const mapError = validateMapUrl(values.mapUrl)
   if (mapError) errors.mapUrl = mapError
   if (values.locationNotes.trim().length > MAX_NOTES_LENGTH) errors.locationNotes = 'Notes must be 500 characters or fewer'
+  Object.assign(errors, pairErrors(values.latitude, values.longitude, { lat: 'latitude', lng: 'longitude' }))
+  Object.assign(errors, pairErrors(values.accessLatitude, values.accessLongitude, { lat: 'accessLatitude', lng: 'accessLongitude' }))
+  const note = values.accessNote.trim()
+  if (note.length > MAX_ACCESS_NOTE_LENGTH) errors.accessNote = 'Note must be 200 characters or fewer'
+  else if (note && !values.accessLatitude.trim() && !values.accessLongitude.trim()) errors.accessNote = 'Add the entrance or parking position for this note'
   return errors
 }
 
@@ -102,6 +160,11 @@ export function fieldFormToPayload(values: FieldFormValues): PlayingAreaPayload 
     },
     mapUrl: orNull(values.mapUrl),
     locationNotes: orNull(values.locationNotes),
+    latitude: parseCoordinate(values.latitude),
+    longitude: parseCoordinate(values.longitude),
+    accessLatitude: parseCoordinate(values.accessLatitude),
+    accessLongitude: parseCoordinate(values.accessLongitude),
+    accessNote: orNull(values.accessNote),
   }
 }
 

@@ -43,3 +43,18 @@ export const WithErrors: Story = {
 }
 export const ReadOnly: Story = { render: () => <Demo variant="page" disabled initial={{ name: 'Riverside Oval', ownerName: 'Riverside CC' }} /> }
 export const MobileViewport: Story = { render: () => <Demo variant="dialog" />, parameters: { viewport: { defaultViewport: 'mobile' } } }
+
+// docs/specs/133: the Location section (coordinates, Read From Map Link, Find On Map) and the Entrance Or Parking section.
+export const CompactWithLocation: Story = {
+  render: () => (
+    <Demo
+      variant="page"
+      compact
+      initial={{ name: 'Riverside Oval', ownerName: 'Riverside CC', mapUrl: 'https://www.google.com/maps/@-26.1325,28.0567,17z', latitude: '-26.1325', longitude: '28.0567', accessLatitude: '-26.1331', accessLongitude: '28.0571', accessNote: 'Use gate 2 off Main Rd' }}
+    />
+  ),
+}
+export const LocationErrors: Story = {
+  render: () => <Demo variant="page" compact errors={{ latitude: 'Enter the latitude too, or clear the longitude', accessLongitude: 'Longitude must be between -180 and 180' }} initial={{ longitude: '28.05', accessLatitude: '-26.1', accessLongitude: '190' }} />,
+}
+export const LocationMobile: Story = { render: () => <Demo variant="page" compact />, parameters: { viewport: { defaultViewport: 'mobile' } } }

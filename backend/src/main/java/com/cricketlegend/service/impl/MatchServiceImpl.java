@@ -37,6 +37,7 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchPollCoverageService;
+import com.cricketlegend.service.MatchScheduleRules;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.SelectionLimitsResolver;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
@@ -45,9 +46,12 @@ import com.cricketlegend.service.support.MatchEmptiness;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultStatusResolver;
 import com.cricketlegend.service.support.ServerClock;
+import com.cricketlegend.service.support.schedule.LeagueScheduleIdentity;
+import com.cricketlegend.service.support.schedule.ScheduleRule;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,6 +61,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -105,6 +110,7 @@ public class MatchServiceImpl implements MatchService {
     private final ResultStatusResolver resultStatusResolver;
     private final LeagueSeasonDates leagueSeasonDates;
     private final MatchEmptiness matchEmptiness;
+    private final MatchScheduleRules scheduleRules;
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
@@ -123,7 +129,8 @@ public class MatchServiceImpl implements MatchService {
             PlayingAreaMatchResolver playingAreaMatchResolver,
             ResultStatusResolver resultStatusResolver,
             LeagueSeasonDates leagueSeasonDates,
-            MatchEmptiness matchEmptiness) {
+            MatchEmptiness matchEmptiness,
+            MatchScheduleRules scheduleRules) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
@@ -141,6 +148,7 @@ public class MatchServiceImpl implements MatchService {
         this.resultStatusResolver = resultStatusResolver;
         this.leagueSeasonDates = leagueSeasonDates;
         this.matchEmptiness = matchEmptiness;
+        this.scheduleRules = scheduleRules;
     }
 
     @Override
@@ -297,9 +305,10 @@ public class MatchServiceImpl implements MatchService {
             UUID teamId,
             UUID playingAreaId,
             String search) {
-        return MatchSpecifications.forList(
-                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, teamId,
-                playingAreaId, search);
+        Specification<Match> spec = MatchSpecifications.forList(
+                clubId, sectionIds, null, leagueId, seasonId, teamId, playingAreaId, search);
+        // docs/specs/132 Part B: the default view is today onward plus past matches still awaiting a published result.
+        return upcomingOnly ? spec.and(MatchSpecifications.upcomingOrAwaitingResult(ServerClock.startOfToday())) : spec;
     }
 
     @Override
@@ -507,6 +516,11 @@ public class MatchServiceImpl implements MatchService {
                     dto.playingAreaId(),
                     fieldName(fieldsById, dto.playingAreaId()),
                     fieldStatus(fieldsById, dto.playingAreaId()),
+                    field(fieldsById, dto.playingAreaId(), PlayingArea::getLatitude),
+                    field(fieldsById, dto.playingAreaId(), PlayingArea::getLongitude),
+                    field(fieldsById, dto.playingAreaId(), PlayingArea::getAccessLatitude),
+                    field(fieldsById, dto.playingAreaId(), PlayingArea::getAccessLongitude),
+                    field(fieldsById, dto.playingAreaId(), PlayingArea::getAccessNote),
                     resultStatusByMatchId.get(dto.id()),
                     emptyMatchIds.contains(dto.id()));
         });
@@ -593,6 +607,9 @@ public class MatchServiceImpl implements MatchService {
                 .active(true)
                 .build();
 
+        // docs/specs/132: the shared scheduling rules, after every other check and before anything is saved.
+        scheduleRules.enforce(
+                scheduleRules.check(clubId, candidateOf(match), null), request.acknowledgedWarnings());
         return toDto(matchRepository.save(match));
     }
 
@@ -690,7 +707,42 @@ public class MatchServiceImpl implements MatchService {
                 leagueSeasonDates.assertAllWithin(request.leagueId(), request.seasonId(), dates);
             }
         }
+        // docs/specs/132: the shared scheduling rules; a later match of the batch is also checked against the earlier ones.
+        List<List<com.cricketlegend.dto.ScheduleFindingDto>> findings =
+                scheduleRules.checkBatch(clubId, matches.stream().map(MatchServiceImpl::candidateOf).toList());
+        for (int i = 0; i < requests.size(); i++) {
+            scheduleRules.enforce(findings.get(i), requests.get(i).acknowledgedWarnings());
+        }
         return toDtos(matchRepository.saveAll(matches));
+    }
+
+    private static MatchScheduleRules.Candidate candidateOf(Match m) {
+        return new MatchScheduleRules.Candidate(m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), m.getVenue(),
+                m.getHomeTeamId(), m.getHomeLeagueTeamId(), m.getHomeTeamName(),
+                m.getAwayTeamId(), m.getAwayLeagueTeamId(), m.getAwayTeamName());
+    }
+
+    /**
+     * docs/specs/132 "Only on change": the scheduling rules run on an edit only when the match's start (to the minute),
+     * a side or the venue differs from what is stored, so an old clash never blocks editing an unrelated field.
+     */
+    private static boolean schedulingChanged(Match stored, MatchScheduleRules.Candidate edited) {
+        return !stored.getMatchDate().truncatedTo(ChronoUnit.MINUTES).equals(edited.start().truncatedTo(ChronoUnit.MINUTES))
+                || !sameSide(stored.getHomeTeamId(), stored.getHomeLeagueTeamId(), stored.getHomeTeamName(),
+                        edited.homeTeamId(), edited.homeLeagueTeamId(), edited.homeName())
+                || !sameSide(stored.getAwayTeamId(), stored.getAwayLeagueTeamId(), stored.getAwayTeamName(),
+                        edited.awayTeamId(), edited.awayLeagueTeamId(), edited.awayName())
+                || !LeagueScheduleIdentity.normaliseVenue(stored.getVenue())
+                        .equals(LeagueScheduleIdentity.normaliseVenue(edited.venue()));
+    }
+
+    private static boolean sameSide(UUID teamId, UUID leagueTeamId, String name,
+            UUID otherTeamId, UUID otherLeagueTeamId, String otherName) {
+        if (!Objects.equals(teamId, otherTeamId) || !Objects.equals(leagueTeamId, otherLeagueTeamId)) {
+            return false;
+        }
+        return teamId != null || leagueTeamId != null
+                || LeagueScheduleIdentity.normaliseVenue(name).equals(LeagueScheduleIdentity.normaliseVenue(otherName));
     }
 
     private static void addIfSet(Set<UUID> ids, UUID id) {
@@ -726,6 +778,17 @@ public class MatchServiceImpl implements MatchService {
 
         assertCanAdministerMatch(authentication, clubId, match);
         PlayingArea field = resolveField(request.playingAreaId());
+        // docs/specs/132: before any field of the stored match is changed; the edited match excludes itself.
+        MatchScheduleRules.Candidate edited = new MatchScheduleRules.Candidate(
+                request.leagueId(), request.seasonId(), request.matchDate(), venueFor(field, request.venue()),
+                request.homeTeamId(), request.homeLeagueTeamId(), sideName(homeLeagueTeam, request.homeTeamName()),
+                request.awayTeamId(), request.awayLeagueTeamId(), sideName(awayLeagueTeam, request.awayTeamName()));
+        if (schedulingChanged(match, edited)) {
+            boolean dateChanged = !match.getMatchDate().truncatedTo(ChronoUnit.MINUTES)
+                    .equals(edited.start().truncatedTo(ChronoUnit.MINUTES));
+            scheduleRules.enforce(scheduleRules.check(clubId, edited, matchId, dateChanged),
+                    request.acknowledgedWarnings());
+        }
         match.setHomeTeamId(request.homeTeamId());
         match.setHomeTeamName(sideName(homeLeagueTeam, request.homeTeamName()));
         match.setAwayTeamId(request.awayTeamId());
@@ -753,6 +816,14 @@ public class MatchServiceImpl implements MatchService {
         assertCanAdministerMatch(authentication, clubId, match);
         // docs/specs/111 and 118: the same league-season dates check as update, over the match's own league and season.
         leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), request.matchDate());
+        // docs/specs/132: a reschedule always changes the time, so it always runs the shared scheduling rules.
+        MatchScheduleRules.Candidate moved = new MatchScheduleRules.Candidate(
+                match.getLeagueId(), match.getSeasonId(), request.matchDate(), match.getVenue(),
+                match.getHomeTeamId(), match.getHomeLeagueTeamId(), match.getHomeTeamName(),
+                match.getAwayTeamId(), match.getAwayLeagueTeamId(), match.getAwayTeamName());
+        boolean dateChanged = !match.getMatchDate().truncatedTo(ChronoUnit.MINUTES)
+                .equals(request.matchDate().truncatedTo(ChronoUnit.MINUTES));
+        scheduleRules.enforce(scheduleRules.check(clubId, moved, matchId, dateChanged), request.acknowledgedWarnings());
         match.setMatchDate(request.matchDate());
         return toDto(matchRepository.save(match));
     }
@@ -779,6 +850,9 @@ public class MatchServiceImpl implements MatchService {
         }
         // docs/specs/111: a match left outside its league's dates (deactivated before they were set) cannot come back.
         leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), match.getMatchDate());
+        // docs/specs/132: back on the calendar, so the shared rules apply; only errors block (warnings are not asked).
+        scheduleRules.enforce(
+                scheduleRules.check(clubId, candidateOf(match), matchId, false), ScheduleRule.warningCodes());
         match.setActive(true);
         return toDto(matchRepository.save(match));
     }
@@ -845,9 +919,7 @@ public class MatchServiceImpl implements MatchService {
                             .withDeletable(emptyMatchIds.contains(match.getId()));
                     return match.getPlayingAreaId() == null
                             ? dto
-                            : dto.withPlayingArea(
-                                    fieldName(fieldsById, match.getPlayingAreaId()),
-                                    fieldStatus(fieldsById, match.getPlayingAreaId()));
+                            : dto.withPlayingArea(fieldsById.get(match.getPlayingAreaId()));
                 })
                 .toList();
     }
@@ -858,6 +930,11 @@ public class MatchServiceImpl implements MatchService {
         }
         return playingAreaRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(PlayingArea::getId, area -> area));
+    }
+
+    private <T> T field(Map<UUID, PlayingArea> fieldsById, UUID playingAreaId, Function<PlayingArea, T> getter) {
+        PlayingArea area = playingAreaId == null ? null : fieldsById.get(playingAreaId);
+        return area == null ? null : getter.apply(area);
     }
 
     private String fieldName(Map<UUID, PlayingArea> fieldsById, UUID playingAreaId) {

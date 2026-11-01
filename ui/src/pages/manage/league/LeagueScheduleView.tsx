@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import type { Match } from '../../../api/matchApi'
+import type { League } from '../../../api/leagueApi'
+import type { Season } from '../../../api/seasonApi'
+import { MatchShareHost } from '../matches/MatchShareHost'
 import { Box, Button as MuiButton, Skeleton, Typography } from '@mui/material'
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom'
 import { compactButtonSx } from '../../../components/Button'
@@ -22,7 +26,7 @@ import { useLeagueView } from './leagueViewContext'
 // season's matches come from the layout (listAllMatches, not just the first page); the filters are client-side and per
 // visit. Share schedule is in the page header's Actions menu; the next-match countdown is in the key-figure strip.
 export default function LeagueScheduleView() {
-  const { leagueId, league, seasons, selectedSeasonId, teamsById, affiliationsForSeason, activeLeagueTeams, matches, isLoadingMatches, openShare } =
+  const { clubId, leagueId, league, seasons, selectedSeasonId, teamsById, affiliationsForSeason, activeLeagueTeams, matches, isLoadingMatches, openShare } =
     useLeagueView()
   const [teamId, setTeamId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -32,6 +36,10 @@ export default function LeagueScheduleView() {
   const [showPlayed, setShowPlayed] = useState(searchParams.get('showAll') === '1')
   const location = useLocation()
   const originLabel = `${league.name} schedule`
+  // docs/specs/131: Share Match on a row opens the Share Match dialog; each click mounts a fresh host.
+  const [shareTarget, setShareTarget] = useState<{ match: Match; nonce: number } | null>(null)
+  const leaguesById = useMemo(() => new Map<string, League>([[league.id, league]]), [league])
+  const seasonsById = useMemo(() => new Map<string, Season>(seasons.map((season) => [season.id, season])), [seasons])
 
   // Our entered teams first, then the league's other teams, each once.
   const teamOptions = useMemo(
@@ -160,7 +168,14 @@ export default function LeagueScheduleView() {
         ]}
       />
 
-      <LeagueFixturesTable matches={loading ? [] : visible} teamsById={teamsById} toolbar={bar} empty={emptyNode} originLabel={originLabel} />
+      <LeagueFixturesTable matches={loading ? [] : visible} teamsById={teamsById} toolbar={bar}
+        empty={emptyNode}
+        originLabel={originLabel}
+        onShare={(match) => setShareTarget((previous) => ({ match, nonce: (previous?.nonce ?? 0) + 1 }))}
+      />
+      {shareTarget && (
+        <MatchShareHost key={shareTarget.nonce} clubId={clubId} match={shareTarget.match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} />
+      )}
     </Box>
   )
 }

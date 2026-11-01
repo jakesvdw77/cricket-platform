@@ -8,6 +8,8 @@ import com.cricketlegend.exception.DuplicateFieldException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayingAreaMapper;
 import com.cricketlegend.repository.PlayingAreaRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
@@ -24,6 +26,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlayingAreaWriter {
 
+    private static final int COORDINATE_SCALE = 6;
+    private static final BigDecimal MAX_LATITUDE = BigDecimal.valueOf(90);
+    private static final BigDecimal MAX_LONGITUDE = BigDecimal.valueOf(180);
     private static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
 
     private final PlayingAreaRepository playingAreaRepository;
@@ -41,6 +46,14 @@ public class PlayingAreaWriter {
         Address address = normaliseAddress(playingAreaMapper.toAddress(request.address()));
         String mapUrl = validateMapUrl(request.mapUrl());
         String notes = optionalText(request.locationNotes(), "locationNotes", 500);
+
+        BigDecimal[] position = coordinatePair(request.latitude(), request.longitude(), "latitude", "longitude");
+        BigDecimal[] access =
+                coordinatePair(request.accessLatitude(), request.accessLongitude(), "accessLatitude", "accessLongitude");
+        String accessNote = optionalText(request.accessNote(), "accessNote", 200);
+        if (accessNote != null && access == null) {
+            throw new ValidationException("accessNote needs an access point (accessLatitude and accessLongitude)");
+        }
 
         playingAreaRepository
                 .findByIdentity(PlayingAreaType.CRICKET_FIELD, name, address.getCity(), address.getCountry())
@@ -61,6 +74,33 @@ public class PlayingAreaWriter {
         target.setAddress(address);
         target.setMapUrl(mapUrl);
         target.setLocationNotes(notes);
+        target.setLatitude(position == null ? null : position[0]);
+        target.setLongitude(position == null ? null : position[1]);
+        target.setAccessLatitude(access == null ? null : access[0]);
+        target.setAccessLongitude(access == null ? null : access[1]);
+        target.setAccessNote(accessNote);
+    }
+
+    /**
+     * docs/specs/133: both or neither, latitude in -90..90 and longitude in -180..180 (boundaries allowed), rounded to
+     * the column's six decimals. Returns null when neither is set.
+     */
+    private static BigDecimal[] coordinatePair(BigDecimal lat, BigDecimal lng, String latField, String lngField) {
+        if (lat == null && lng == null) {
+            return null;
+        }
+        if (lat == null || lng == null) {
+            throw new ValidationException(latField + " and " + lngField + " must be given together");
+        }
+        BigDecimal roundedLat = lat.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
+        BigDecimal roundedLng = lng.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
+        if (roundedLat.abs().compareTo(MAX_LATITUDE) > 0) {
+            throw new ValidationException(latField + " must be between -90 and 90");
+        }
+        if (roundedLng.abs().compareTo(MAX_LONGITUDE) > 0) {
+            throw new ValidationException(lngField + " must be between -180 and 180");
+        }
+        return new BigDecimal[] {roundedLat, roundedLng};
     }
 
     /**

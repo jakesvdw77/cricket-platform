@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
 /**
  * Create/edit payload of a field (docs/specs/099-fields-directory.md), for the club-scoped POST/PUT and the platform
@@ -20,5 +21,10 @@ public record PlayingAreaRequest(
         @NotBlank @Size(max = 200) String ownerName,
         @NotNull @Valid AddressDto address,
         @Size(max = 500) String mapUrl,
-        @Size(max = 500) String locationNotes) {
+        @Size(max = 500) String locationNotes,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        BigDecimal accessLatitude,
+        BigDecimal accessLongitude,
+        @Size(max = 200) String accessNote) {
 }

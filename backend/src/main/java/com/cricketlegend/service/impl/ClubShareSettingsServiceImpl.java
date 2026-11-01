@@ -32,7 +32,9 @@ public class ClubShareSettingsServiceImpl implements ClubShareSettingsService {
     /** Content type to the format codes it supports; the single place these are validated. */
     private static final Map<String, Set<String>> FORMATS = Map.of(
             "RESULT", Set.of("PDF", "IMAGE", "TV", "WHATSAPP", "FACEBOOK"),
-            "LEAGUE", Set.of("PDF", "POSTER", "CALENDAR", "WHATSAPP", "FACEBOOK"));
+            "LEAGUE", Set.of("PDF", "POSTER", "CALENDAR", "WHATSAPP", "FACEBOOK"),
+            // docs/specs/131-match-sharing.md: the match dialog offers the same formats as a result.
+            "MATCH", Set.of("PDF", "IMAGE", "TV", "WHATSAPP", "FACEBOOK"));
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final JavaType MAP_TYPE = JSON.getTypeFactory().constructMapType(Map.class, JSON.getTypeFactory().constructType(String.class), JSON.getTypeFactory().constructCollectionType(List.class, String.class));

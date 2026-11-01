@@ -30,3 +30,8 @@ export const FriendlyWithNoPoll: Story = { args: { ...base, venue: null, leagueN
 
 // docs/specs/130: the Venue counter is the one clickable card, a link to the field's page.
 export const WithField: Story = { args: { ...base, matchDate: inDays(3), playingAreaId: 'field-1', playingAreaVerificationStatus: 'UNVERIFIED' } }
+
+// docs/specs/131: the forecast badge under the counters (only within 7 days and with a usable field place).
+export const WithForecast: Story = {
+  args: { ...base, matchDate: inDays(3), weather: { label: 'Mostly sunny', icon: 'sunny', tempMin: 14, tempMax: 27, rainChance: 20, text: 'Mostly sunny, 14 to 27 degrees, 20% rain', short: '14 to 27 degrees, 20% rain' } },
+}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -594,12 +594,45 @@ describe('MatchForm league teams', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('shows an empty-list helper linking to the league', async () => {
-    const user = userEvent.setup()
+  it('shows an empty-list helper linking to the league', () => {
     renderWithTeams({ initialValues: SCOPE, leagueTeams: [] })
-    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
-    expect(screen.getByText('No league teams registered for this league and season.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Open the league's Teams/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/teams')
+    expect(screen.getAllByText('No league teams registered for this league and season.')).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: /Open the league's Teams/ })[0]).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/teams')
+  })
+
+  describe('side selector default', () => {
+    const pressed = (side: 'home' | 'away', name: string) =>
+      within(screen.getByTestId(`match-side-${side}`)).getByRole('button', { name })
+
+    it('is My team on both sides while no league is chosen', () => {
+      renderWithTeams()
+      expect(pressed('home', 'My team')).toHaveAttribute('aria-pressed', 'true')
+      expect(pressed('away', 'My team')).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('switches both untouched sides to League team once a league is chosen, and back when it is cleared', async () => {
+      const user = userEvent.setup()
+      renderWithTeams({ initialValues: { seasonId: 'season-1' } })
+      await user.click(screen.getByLabelText('League (optional)'))
+      await user.click(await screen.findByRole('option', { name: LEAGUES[0].name }))
+      expect(pressed('home', 'League team')).toHaveAttribute('aria-pressed', 'true')
+      expect(pressed('away', 'League team')).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(screen.getByLabelText('League (optional)'))
+      await user.click(await screen.findByRole('option', { name: 'None (friendly)' }))
+      expect(pressed('home', 'My team')).toHaveAttribute('aria-pressed', 'true')
+      expect(pressed('away', 'My team')).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('leaves a side the manager touched, and a side that arrived with a stored kind, alone', async () => {
+      const user = userEvent.setup()
+      renderWithTeams({ initialValues: { seasonId: 'season-1', homeTeamId: 'team-1' } })
+      await user.click(within(screen.getByTestId('match-side-away')).getByRole('button', { name: 'Other' }))
+      await user.click(screen.getByLabelText('League (optional)'))
+      await user.click(await screen.findByRole('option', { name: LEAGUES[0].name }))
+      expect(pressed('home', 'My team')).toHaveAttribute('aria-pressed', 'true')
+      expect(pressed('away', 'Other')).toHaveAttribute('aria-pressed', 'true')
+    })
   })
 
   it('opens a stored league-team side on League team, showing an inactive pick with its suffix', async () => {
