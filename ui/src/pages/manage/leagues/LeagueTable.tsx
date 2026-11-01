@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ProgressMeter } from '../../../components/ProgressMeter'
 import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
@@ -60,7 +61,6 @@ function LeagueRow({ league, seasonId, onShare, onDuplicate }: { league: League;
   const matchCount = league.matchCount ?? 0
   const playedCount = league.playedCount ?? 0
   const teamCount = league.teams?.length ?? 0
-  const percent = matchCount > 0 ? Math.min(100, (playedCount / matchCount) * 100) : 0
   const countdownText = next.stage === 'none' ? '' : next.stage === 'expired' ? 'Starting now' : `in ${next.text}`
   const location = useLocation()
   const to = withReturnTo(`/manage/fixtures/leagues/${league.id}/schedule${seasonId ? `?seasonId=${seasonId}` : ''}`, currentOrigin(location), 'Leagues')
@@ -124,25 +124,12 @@ function LeagueRow({ league, seasonId, onShare, onDuplicate }: { league: League;
         )}
       </Box>
       <Box role="cell" sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-end', sm: 'stretch' }, gap: 0.5, minWidth: 0 }} data-testid="league-row-played">
-        {matchCount === 0 ? (
-          <>
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{NOT_ON_FILE}</Box>
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} {...DESKTOP_ONLY}>No matches scheduled</Box>
-            </Typography>
-            <Box sx={{ ...desktopOnly, height: 6, borderRadius: 3, bgcolor: 'grey.200', border: 1, borderStyle: 'dashed', borderColor: 'divider' }} {...DESKTOP_ONLY} />
-          </>
-        ) : (
-          <>
-            <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{`${playedCount}/${matchCount}`}</Box>
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} {...DESKTOP_ONLY}>{`${playedCount} of ${matchCount}`}</Box>
-            </Typography>
-            <Box sx={{ ...desktopOnly, height: 6, borderRadius: 3, bgcolor: 'grey.300', overflow: 'hidden' }} {...DESKTOP_ONLY}>
-              <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: 'primary.main' }} />
-            </Box>
-          </>
-        )}
+        <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'block', sm: 'none' }, fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+          {matchCount === 0 ? NOT_ON_FILE : `${playedCount}/${matchCount}`}
+        </Typography>
+        <Box sx={desktopOnly} {...DESKTOP_ONLY}>
+          <ProgressMeter value={playedCount} max={matchCount} ariaLabel="Matches played" emptyLabel="No matches scheduled" testId="league-row-meter" />
+        </Box>
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, textAlign: 'center' }} {...DESKTOP_ONLY} data-testid="league-row-status">
         <Chip size="small" label={league.active ? 'Active' : 'Inactive'} sx={{ ...badgeSx(league.active ? 'active' : 'muted'), height: 22, fontSize: '0.75rem' }} />

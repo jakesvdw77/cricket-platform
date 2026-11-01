@@ -47,7 +47,7 @@ describe('SelectionMatchesTable', () => {
   it('shows the picked count against the limit, the status chip and the league under the match', () => {
     renderTable(sampleMatches())
     const rows = screen.getAllByTestId('selection-row')
-    expect(within(rows[1]).getByTestId('selection-m-2-team-2-picked')).toHaveTextContent('7 Picked')
+    expect(within(rows[1]).getByTestId('selection-m-2-team-2-label')).toHaveTextContent('7 of 12')
     expect(within(rows[1]).getByText('In progress')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Ready to announce')).toBeInTheDocument()
     expect(screen.getAllByText('Over 40 League').length).toBeGreaterThan(0)

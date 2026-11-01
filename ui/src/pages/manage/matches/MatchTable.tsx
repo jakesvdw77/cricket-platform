@@ -18,6 +18,7 @@ import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { matchStatusFor } from './matchResultHelpers'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
+import { ProgressMeter } from '../../../components/ProgressMeter'
 import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, sideName } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
 
@@ -214,14 +215,20 @@ function MatchRow({
           </Typography>
         ) : (
           <>
-            {first.playingXiSize !== null && (
-              <Box sx={{ ...desktopOnly, flex: 1, height: 6, borderRadius: 3, bgcolor: 'grey.300', overflow: 'hidden' }} {...DESKTOP_ONLY}>
-                <Box sx={{ width: `${Math.min(100, (first.picked / Math.max(first.playingXiSize, 1)) * 100)}%`, height: '100%', bgcolor: 'primary.main' }} />
-              </Box>
-            )}
-            <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ ...phoneOnly, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
               {rows.map((row) => pickedText(row.playingXiSize, row.picked)).join(' · ')}
             </Typography>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', gap: 0.75, flex: 1, minWidth: 0 }} {...DESKTOP_ONLY}>
+              {rows.map((row, index) =>
+                row.playingXiSize !== null ? (
+                  <ProgressMeter key={index} value={row.picked} max={row.playingXiSize} ariaLabel={`${row.teamName} selection`} testId={`match-row-meter-${index}`} />
+                ) : (
+                  <Typography key={index} variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    {row.picked} picked
+                  </Typography>
+                ),
+              )}
+            </Box>
           </>
         )}
       </Box>
