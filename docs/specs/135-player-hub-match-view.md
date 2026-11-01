@@ -1,150 +1,195 @@
 # 135: Player Hub Match View
 
-**Depends on:** `121-player-hub-menu-and-fields.md` (Hub menu, `hubNav.ts`, `hubBack`, footer Back, phone rules, `MyPlayerAccess`), `123-player-hub-leagues.md` (league page, `MyLeagueFixtureDto` rows, `MyLeagueServiceImpl`, "Your game" highlight; its Non-goals and follow-ups name this view as future work), `124` (league specs follow-up, Hub league rows), `133-field-location-and-directions.md` (`HubFixtureLocation`, `useMatchWeather`, `GetDirectionsButton`), `129`-`134` and `docs/standards/page-anatomy.md` (manager Matches round), `040-announce-team.md` (`MatchSide.announced`; its Non-goals say the flag exists to gate exactly this player-facing view), `076-team-selection.md` (selection, release), `034`/`064`-`066` (availability polls, poll screens), `119` (`/api/v1/me/players`, `PollAnswer` save), `122-league-sharing.md`/`114` (junior initials via `shareName`), `docs/standards/*.md`.
-**Status:** draft (owner decisions of 2026-11-01 recorded below; open questions have defaults). No code is written by this spec.
+**Depends on:** `121-player-hub-menu-and-fields.md` (Hub menu, `hubNav.ts`, `hubBack`, footer Back, phone rules, `MyPlayerAccess`), `123-player-hub-leagues.md` (league page, `MyLeagueFixtureDto` rows, `MyLeagueServiceImpl`, "Your game" highlight; it left fixture pages and Schedule > Matches to this spec), `124` (Hub league rows), `133-field-location-and-directions.md` (`HubFixtureLocation`, `useMatchWeather`, `GetDirectionsButton`), `129`-`134` and `docs/standards/page-anatomy.md` (manager Matches round), `040-announce-team.md` (`MatchSide.announced`, whose Non-goals say the flag exists to gate this view), `076-team-selection.md`, `034`/`064`-`066` (availability polls), `119` (`/api/v1/me/players`, poll answer save), `122`/`114` (junior initials via `shareName`), the manager Match's existing `scoringUrl` and `streamingUrl` fields (`130`, `MatchDetailPage`), `docs/standards/*.md`.
+**Status:** draft. Owner decisions of 2026-11-01 are recorded under "Decisions". No code is written by this spec. Mockup: `docs/mockups/player-match-view-mockup.html`.
 
 ## Problem & Goals
 
-The manager Matches pages were revamped to `page-anatomy.md` (`130`-`134`), but a parent, player or agent in the Player Hub still has no page for one match. The only match rows in the Hub are league fixtures (`HubLeagueSchedule`, `HubLeagueResults`) with no tap target: weather and Get Directions (`133`) are on the row, but "who is selected", "when do I need to answer" and "where do I go" are not. `schedule.matches` in `hubNav.ts` is still a Soon item, and `123` explicitly left fixture detail pages out.
+The manager Matches pages follow `page-anatomy.md` (`130`-`134`), but a parent, player or agent in the Player Hub has no page for a match and no list of their matches. The only match rows are league fixtures with no tap target; `schedule.matches` in `hubNav.ts` is a Soon item. A parent cannot tell what is on now, whether the player is selected, where to follow the score, or watch a stream the club already provides (the manager Match has a scoring link and a streaming link that only managers see).
 
 Goals:
 
-- **A. A player-facing match page** in the Hub for one match of a linked player's team.
-- **B. Hub fixture rows consistent with the manager lists** (one tap target, no chevron, same label rules) and opening that page.
-- **C. Privacy by construction**: initials for juniors, the XI only after the manager announced it, no manager-only data.
-- **D. One scoped backend read**, authorised by the account's link to the player.
+- **A. Schedule > Matches goes live**: Live Now, Upcoming and Recent sections for the selected linked player.
+- **B. A player-facing match page** (upcoming and live states).
+- **C. Live score and Watch Live entries**, with an in-app TV-style Watch Live page; live scoring is a **replaceable slot** (see "The LiveScore seam").
+- **D. Hub rows consistent with the manager lists**, privacy by construction, one scoped backend read set.
 
 ## Non-goals
 
-- **Sharing from the player view** (owner, 2026-11-01). No Share button, no Share Match dialog, no team-sheet share. Revisit only on request.
-- **Editing selection**, announcing or releasing, availability management, or any manager action. Read-only except the existing availability answer, which is saved by the existing poll flow (`119`), not by this page.
-- **Live scoring, scorecards, player performances or result detail.** A played match shows the published result line only (`123` Decision 4); scorecards belong to Stats.
-- **Other players' availability**: no responses, counts, or "who has not answered".
-- **Manager-only data**: internal notes, poll configuration, squad membership of others, contacts, active flags, import data.
-- **Training sessions and non-match events** (the Soon copy of `schedule.matches` mentions training; not here).
-- **The Matches list, Results and Team sheets Hub items.** This spec builds the one match page and the way into it from league rows; a Schedule > Matches list is a follow-up (Open question 4).
-- **Per-club time zones** (known gap).
+- **Sharing from the player view** (owner). No Share button, dialog or team-sheet share.
+- **Editing selection**, announcing, releasing, availability management or any manager action. The availability answer is saved by the existing poll flow (`119`).
+- **An in-app live scorecard now.** Today the live score is the external scoring link (Follow Live Score). The owner has said our own scoring app view replaces it later; that is a separate spec that plugs into the seam below. This spec builds the seam, not the scorecard, and shows no ball-by-ball, scorecards or player performances. A played match shows the published result line only.
+- **Hosting, relaying, recording or proxying video.** The app embeds the provider's own player; it never touches the stream.
+- **Chat, comments, reactions, notifications or "match started" push.** A later spec.
+- **Embedding arbitrary HTML or arbitrary sites.** Only the allow-listed providers below; anything else is a button.
+- **Other players' availability**, counts, notes and any manager-only data.
+- **Training sessions and non-match events.**
+- **Results and Team sheets Hub items** (still Soon; they can reuse `MyMatchDto` later).
+- **Per-club time zones** (known gap: South Africa assumed, so "started" uses that zone).
+
+## Decisions
+
+1. **Open questions 1, 2, 3 and 5 of the first draft stay at their defaults (owner, 2026-11-01):** (1) a side's XI is visible only after the manager announced it; (2) the opposing side's XI is shown once announced; (3) a league row that is not the player's team's game opens no match page; (5) a twelfth man reads "Selected (12th)".
+2. **Schedule > Matches is live now (this spec)** and separates upcoming from live matches.
+3. No sharing in the player view.
+4. **Live scoring is a replaceable slot (owner, 2026-11-01):** external link today, our own in-app live scorecard later, with no external-link assumption anywhere outside the slot.
 
 ## User Stories
 
-- As a parent, I tap a fixture row and see when, where, who plays, and whether my player is selected, so I know what to bring and when to arrive.
-- As a parent, I see "Not announced yet" until the manager announces the team, so I am never told a team that is still being changed.
-- As a parent, I see my player's availability answer for this match and, while the poll is open, a link to change it.
-- As a parent, I see the forecast and tap Get Directions from the match page.
+- As a parent, I open Schedule > Matches and see a match that is on now at the top, clearly marked LIVE, with how long ago it started.
+- As a parent, I see upcoming matches with a countdown and recent matches with their result, tucked away until I want them.
+- As a parent, I tap a match and see when, where, who plays, whether my player is selected ("Not announced yet" until the manager announces) and my availability answer with a link to change it while the poll is open.
+- As a parent, I follow the live score: today a button opens the club's scoring site in a new tab; later the score shows in the app.
+- As a parent, when the club has set a stream and the match is live, I tap Watch Live and see it in a TV-style page in the app; if the stream cannot be embedded, I tap Open Stream.
 - As a parent of a junior team, I see other juniors as initials only.
 - As an agent, I see only matches of players I am linked to.
 
 ## Data Model Changes
 
-None. No migration, no new column, no club switch. `MatchSide.announced` (`040`) already exists and is the gate.
+None. `MatchSide.announced` (`040`), `Match.scoringUrl` and `Match.streamingUrl` (existing manager fields) are read. The lifecycle phase is computed, not stored.
 
 ## API Contract
 
-**Finding (flagged, not assumed):** a new read is required. `MyLeagueFixtureDto` (`123`, extended by `133`) carries no sides' players, no selection state, no availability answer, and `MyPoll` lists open polls only with no match id. The league page's `matchId` is "opaque, list key only" (`123`) and no endpoint accepts it. Also, the brief names `MyScheduleItemDto`; no such type exists in `backend/` or `ui/src` today, so the fields spec `133` added live on `MyLeagueFixtureDto` (`playingAreaId`, `playingAreaName`, coordinates, access point and note). This spec reuses those, not an invented type.
+**Finding (flagged, not assumed):** new reads are required. `MyLeagueFixtureDto` carries no players, selection, answer or links, `MyPoll` lists open polls only with no match id, and no endpoint accepts a fixture's `matchId`. The brief named `MyScheduleItemDto`; that type does not exist in `backend/` or `ui/src`, so the position fields `133` added on `MyLeagueFixtureDto` are reused instead.
 
 | Endpoint | Access | Purpose |
 |---|---|---|
-| `GET /api/v1/me/players/{playerKey}/matches/{matchId}` | Authenticated; authorised only through `MyPlayerAccess.resolve`. Key not held, malformed key, dropped-out player: **404**; SUSPENDED: **403**. A `matchId` that is not a match of one of the held player's teams (squad row for the match's season, home or away by `team_id`, or the league team that maps to it), or is another club's, is **404**, never 403 or an empty body | One match as `MyMatchDto` |
+| `GET /api/v1/me/players/{playerKey}/matches` | Authenticated; `MyPlayerAccess.resolve` only | The held player's matches as `MyMatchListDto` (Live, Upcoming, Recent) |
+| `GET /api/v1/me/players/{playerKey}/matches/{matchId}` | Same | One match as `MyMatchDto` |
 
-Added to `MePlayersController` (thin, delegating to a new `MyMatchService` interface and impl, `@Transactional(readOnly = true)`, same shape as `MyLeagueService`). It reuses the existing match, match side, poll answer and published result read logic through internal read methods (as `123` does), maps to `My*` DTOs, and does not call or widen manager controllers or DTOs. `openapi.yaml` is regenerated by hand (no `mvn` under the live backend). The caller supplies no club.
+Failures, both: key not held, malformed key or dropped-out player is **404**; SUSPENDED is **403**; a `matchId` that is not a match of one of the held player's teams (squad row for the match's season, home or away by `team_id` or its league team) or is another club's, is **404**, never 403 or an empty body. Both are added to `MePlayersController` (thin, delegating to a new `MyMatchService` interface and impl, `@Transactional(readOnly = true)`, the shape of `MyLeagueService`), reuse the existing match, side, poll answer and published-result read logic through internal read methods, and map to `My*` DTOs; manager controllers and DTOs are untouched. `openapi.yaml` is regenerated by hand. The caller supplies no club.
+
+**Live rule (server side, one place, `MatchPhase`).** A match is `LIVE` when all hold: it is not cancelled, postponed or inactive; its start (`date` + `time`, Open question 6 for no time) is at or before now; now is before start plus **`LIVE_WINDOW_HOURS`** (a constant, default **8**, Open question 7); and it has **no published result**. Otherwise it is `UPCOMING` when the start is in the future, and `RECENT` when it has a published result or the window has passed (a match past the window without a result reads "Result pending"). The presence of a scoring or streaming link does **not** define live (a match with no links is still on); links only decide which entries are offered. The server computes `phase` and `startedAt` with its own clock so every device agrees; the client only formats elapsed time.
+
+**`MyMatchListDto`:** `live` (list), `upcoming` (list, soonest first, the current season, capped at 20), `recent` (list, newest first, capped at 10). Each item `MyMatchSummaryDto`: `matchId`, `phase`, `date`, `time`, `startedAt` (live only), home and away `{ name, logoUrl }`, `league` name or null, `venue`, `mine`, `selection`, `hasLiveScore` (see the seam), `hasStream` (true only when live and a stream is set), `result` summary (recent only).
 
 **`MyMatchDto`** (response only; a test asserts the exact JSON keys)
 
 | Property | Type | Notes |
 |---|---|---|
-| `matchId`, `date`, `time` | uuid, yyyy-MM-dd, HH:mm or null | |
-| `status` | `UPCOMING`, `PLAYED`, `CANCELLED`, `POSTPONED` | Derived as the manager badge derives it (`130`) |
-| `league` | `{ id, name }` or null | |
-| `season` | `{ id, name }` | |
-| `venue`, `playingAreaId`, `playingAreaName`, coordinates, access point and note | as `MyLeagueFixtureDto` (`133`) | Feeds `fieldFromMatch`, `useMatchWeather`, `directionsTarget` unchanged |
-| `home`, `away` | `{ name, logoUrl, mine, announced, players[] }` | `players` is **empty unless that side `announced` is true** (see below); each `{ name, role, captain, keeper }`, with `name` already reduced to initials for juniors by the server |
-| `myTeamSide` | `HOME`, `AWAY` | The side that is the held player's team |
-| `selection` | `SELECTED`, `NOT_SELECTED`, `NOT_ANNOUNCED` | Server-computed for the held player: `NOT_ANNOUNCED` while the player's own side is not announced; otherwise by membership of the announced XI |
-| `availability` | `{ answer, pollId, pollOpen }` or null | `answer` is the held player's own answer for this match (`YES`, `NO`, `MAYBE`, or null for not answered); `pollOpen` true only while the poll accepts answers; null when no poll covers the match |
-| `result` | `{ homeScore, awayScore, resultLine }` or null | Published only; as `MyLeagueResultDto` |
+| `matchId`, `date`, `time`, `startedAt` | | `startedAt` live only |
+| `phase`, `status` | `LIVE`, `UPCOMING`, `RECENT`; `UPCOMING`, `PLAYED`, `CANCELLED`, `POSTPONED` | Phase per the rule above |
+| `league`, `season` | `{ id, name }` | League null for a friendly |
+| `venue`, `playingAreaId`, `playingAreaName`, coordinates, access point and note | as `MyLeagueFixtureDto` (`133`) | Feeds `fieldFromMatch`, `useMatchWeather`, `directionsTarget` |
+| `home`, `away` | `{ name, logoUrl, mine, announced, players[] }` | `players` empty unless that side is announced; each `{ name, role, captain, keeper }`, junior names already initials |
+| `selection` | `SELECTED`, `NOT_SELECTED`, `NOT_ANNOUNCED` | For the held player; `SELECTED` includes the twelfth man |
+| `availability` | `{ answer, pollId, pollOpen }` or null | The held player's own answer only |
+| `liveScore` | `LiveScoreSource` or null | The one live-score field; see the seam. Present while live or upcoming; null otherwise |
+| `stream` | `{ url, provider, embedUrl }` or null | Present **only while live**, `https` only. `provider` is `YOUTUBE`, `VIMEO`, `FACEBOOK` or `OTHER`; `embedUrl` is null for `OTHER` and for any link that does not parse |
+| `result` | `{ homeScore, awayScore, resultLine }` or null | Published only |
 
-**Deliberately absent:** others' poll responses and availability counts, internal notes, draft or unpublished results, contacts, active flags, squad lists beyond the announced XI, creator and audit fields, import data.
+**Embed URL (server builds, never trusts HTML).** A pure `StreamEmbed` helper parses the pasted link with `java.net.URI`, requires `https`, matches the host against an allow-list, extracts an id and **constructs** the embed URL from a fixed template; nothing from the link beyond the validated id or encoded `href` is copied. Templates: YouTube (`watch?v=`, `youtu.be/`, `/live/`, `/embed/`) to `https://www.youtube-nocookie.com/embed/{id}`; Vimeo (`vimeo.com/{id}`) to `https://player.vimeo.com/video/{id}`; Facebook video links to `https://www.facebook.com/plugins/video.php?href={url-encoded original}&show_text=false`. Anything else: `embedUrl` null. The client renders what the server returns and never builds its own URL.
 
-**Privacy rules (server side).** A side's `players` are filled only when `announced` is true (default, Open question 1). Juniors (held player or listed player under 18, or a match in a league with `maxAge` at or below 18, per `122`) appear as initials through the same rule as `shareName` (`114`); the server applies it, so the client never receives a junior's full name. The held player's own name is not repeated (the page already knows it from the Hub selector).
+**Deliberately absent:** others' responses and counts, notes, draft results, contacts, active flags, squads beyond the announced XI, audit and import data, any stream on a match that is not live.
+
+**Privacy (server).** An unannounced side's `players` is empty. Juniors (held or listed player under 18, or a league with `maxAge` at or below 18, per `122`) appear as initials through the `shareName` rule applied server side. The held player's name is not repeated.
+
+## The LiveScore seam (owner, 2026-11-01)
+
+Live scoring is **one replaceable slot**, so the later in-app scorecard changes one component and one data read, nothing else.
+
+- **Data:** `MyMatchDto.liveScore` (and `hasLiveScore` on list items) is a discriminated `LiveScoreSource`, built in one server method `LiveScoreResolver`. Today it returns `{ kind: 'EXTERNAL', url, host }` from `Match.scoringUrl` (https only, null otherwise). The future scoring spec adds `{ kind: 'NATIVE', summary: { homeScore, awayScore, overs, striker, nonStriker, lastBalls[], status } }` filled from our own scoring data (and may drop `EXTERNAL`). The wire shape of every other field is unchanged. Names and numbers in a `NATIVE` summary pass the same junior initials rule.
+- **UI:** one Hub-local component `LiveScore` (`HubLiveScore.tsx`) takes `source` and a `variant` (`row`, `card`, `tv`) and is the **only** place that knows what a score source is. Today `EXTERNAL` renders the **Follow Live Score** button (new tab, `noopener noreferrer`, https only, never framed) with the "Scores are kept on {host}" line; `NATIVE` (later) renders the summary strip (score, overs, batters, last balls). It sits in exactly three places: the **Live Now row**, the **match page** and the **Watch Live page** (below the scoreboard strip, inside the TV surround). Nothing else in the Hub reads `scoringUrl`, mentions an external site or opens a scoring link; list rows, figures, filters and tests use `hasLiveScore` and the component, never the URL.
+- **Polling:** the existing 60 s refetch while live is the only update mechanism; a native scorecard may later raise it or add a stream, inside the seam.
+- **Not decided here:** the scorecard's data model, how scores are captured, and whether `EXTERNAL` stays as a per-match fallback. The mockup shows the `NATIVE` variant as "later" for review only.
 
 ## UI Requirements
 
-Composed from `HubFrame`, `hubStyle.ts` (`HUB`, `hubHeading`, `darkFieldSx`), `HubFixtureLocation` (reused as is: weather badge and Get Directions), `LeagueLogo`, `leagueFormat.ts` date helpers, `LinkedPollCard`'s answer wording, the compact `Button`, and `BrandIcon`. Dark console only, no new hex literals (`120` gate). Hub-local components: `HubMatch.tsx` (page), `HubMatchFigures.tsx`, `HubMatchSide.tsx`. No new shared component.
+Composed from `HubFrame`, `hubStyle.ts` (`HUB`, `hubHeading`, `darkFieldSx`), `HubFixtureLocation`, `LeagueLogo`, `leagueFormat.ts`, `LinkedPollCard` wording, the compact `Button`, `BrandIcon`. Dark console, `HUB` and `brandTokens.ts` only, no new hex literals (`120` gate); the pulse uses the existing gold, disabled under `prefers-reduced-motion`. Hub-local components: `HubMatches.tsx` (list), `HubMatchRow.tsx`, `HubMatch.tsx` (page), `HubMatchFigures.tsx`, `HubMatchSide.tsx`, `HubWatchLive.tsx`, `HubLiveScore.tsx`, `LiveBadge.tsx`, `streamFrame.ts`. No shared component.
 
-### 1. Page (`HubMatch.tsx`)
+### 1. Schedule > Matches (`HubMatches.tsx`)
 
-Route `/account/players/:key/schedule/matches/:matchId`, with `?league=` and `?season=` carried so Back returns to the league tab it came from. `hubBack` gains this state: **"Back to {league name} schedule"** (or "Back to Leagues" when the league is unknown), the footer Back being the one Back (`121`/`123`: no header Back). `schedule.matches` stays Soon until Open question 4 is answered; the page is reached from league rows only.
+`schedule.matches` loses `soon` and `soonCopy` (label stays "Matches"; six top-level items unchanged). Route `/account/players/:key/schedule/matches`. Switching player re-fetches. Footer Back "Back to Schedule" on a phone, "Back to menu" otherwise (as Leagues, `123`).
 
-Top to bottom (the manager Match page skeleton of `page-anatomy.md` section 1, adapted):
+Sections, in order:
 
-1. **Title row:** team logos, "Home versus Away" in the display face, and **one** status badge inline (Upcoming, Played, Cancelled, Postponed). No Manage menu, no Season pill action row; the season sits in the League and Season figure.
-2. **Figures:** static compact counters (no icons, not clickable, 44 px tall on touch) in one wrapping row: **When** (date and time, with a countdown such as "in 3 days" for an upcoming match, "today" on the day), **Where** (field name or venue; the text is not a link, Get Directions below does the job), **League and Season** (league name, season name; "Friendly" with no league), **Your Status** (Selected, Not Selected, Not Announced Yet, or "Played" once a result exists).
-3. **Location row** (one row, under the figures): the forecast badge and Get Directions, both from `HubFixtureLocation`, shown only for an upcoming match and only when they resolve (`133` rules, including "(approximate)").
-4. **Your Availability panel:** the held player's answer in words and, when `pollOpen`, an outlined "Answer Availability" button opening the existing Hub poll answering (`MyPlayerPolls` / `LinkedPollCard` path for that `pollId`); a closed poll shows the answer with "Poll closed". No panel when `availability` is null.
-5. **Teams:** two flat hairline panels (home, away), the player's own side marked with the text tag "Your team". Each lists the announced XI (initials for juniors, "(C)" and "(WK)" tags, text not colour alone) or the line "Team not announced yet" when not announced. The player's own row is not highlighted by name; the Your Status counter carries it.
-6. **Result** (played only): a flat panel with scores and the result line, no scorecard link.
+1. **Live Now** (only when a match is live; pinned to the top): the heading carries a small pulsing gold dot. Each live card has a **LIVE badge** (gold fill, ink text, a pulsing dot, the text "LIVE" so colour is never the only cue), a **gold left edge 4 px and a gold tint** (the "Your game" language of `123`, one step stronger), the teams, the league, "Started 1h 20m ago" (updates each minute, from `startedAt`), the player's selection status, the **`LiveScore` slot (`row` variant)** and **Watch Live** when `hasStream`. The card body opens the match page; the inner controls sit outside the stretched link.
+2. **Upcoming**: rows grouped by date, each with the time, teams, league, venue, countdown ("in 3 days", "today", "tomorrow"), the selection status as a text tag, and the forecast and Get Directions from `HubFixtureLocation` within 7 days (`133`).
+3. **Recent**: **collapsed by default** behind a "Recent Matches" disclosure (button, `aria-expanded`), then newest first, each with the scores and result line ("Result pending" when past the window with no result). Played rows dimmed slightly as in `123`.
 
-States: loading skeleton per band; 404 shows "This match is not available" with the footer Back; error shows the retry line. Empty XI is not an error.
+Rows follow the manager lists' rules: the whole row is one tap target (44 px, hover tint, pointer, gold focus ring), **no chevron, no kebab** (the Hub has no row actions, so a kebab would be a lone control), Title Case labels, "-" for missing values, no count text. States: skeleton, error with retry, and the empty state "No matches for {player} yet" with the brand icon.
 
-### 2. Hub fixture rows (`HubLeagueGames.tsx`)
+Hub league rows (`HubLeagueGames`): a `mine` Schedule or Results row becomes one tap target opening the match page (Decision 1.3: a non-`mine` row opens nothing and has no tap cue). Get Directions stays inside the row, outside the stretched link (`133`).
 
-- **Schedule rows** (the Hub counterpart of the manager's table rows, `page-anatomy.md` section 6): the whole row is one tap target (stretched link, 44 px minimum, hover tint and pointer, focus ring in gold) opening the match page for **every fixture of the player's own teams** (`mine`). A row that is not `mine` opens nothing, because the data rule above limits the read to the player's teams; it stays a plain row with no tap cue (so no dead link is drawn). **No chevron, no kebab**: the Hub has no row actions (no Edit, Share or Add), and a kebab with one item would be a lone control; Get Directions stays its own button inside the row, outside the stretched link, as `133` built it.
-- **Results rows** follow the same rule for `mine` rows.
-- **Labels:** Title Case for buttons and tags ("Your Game", "Get Directions", "Answer Availability"); body text and headings stay sentence case; `-` for a missing value; no count text and no counts in toggle labels; "Only my games" stays as the existing switch (a toggle chip is the manager rule for filter bars, this is the Hub's own list control, see below).
-- **Flat panels:** rows and panels are flat with a hairline (the existing `HUB.line` border), no shadow, consistent with `page-anatomy.md` section 4.
+### 2. Match page (`HubMatch.tsx`)
 
-### 3. Where the Hub differs from the manager standard, and why
+Route `/account/players/:key/schedule/matches/:matchId`, with `?from=` (`matches` or `league:{id}`) so footer Back reads "Back to Matches" or "Back to {league} schedule". Footer Back is the only Back.
 
-The Hub is a dark console with a footer Back (`121`), so: no top-row Back, no filled Manage menu (nothing to manage), no kebab (no actions), no Season pill (one season in context), the status badge and the figure counters are drawn in `HUB` tokens not the manager light theme, and the "Only my games" switch keeps its existing Hub form. These are Hub rules, not forgotten standards. The shared rules that do carry over are: flat hairline surfaces, compact static counters without icons, Title Case labels, no chevron, one tap target per row, 44 px touch targets, no lone control rows.
+1. **Title row:** logos, "Home versus Away" in the display face, **one** status badge inline: Upcoming, Played, Cancelled, Postponed, or the pulsing **LIVE**. No Manage menu.
+2. **Figures:** static compact counters (no icons, not clickable): **When** (date and time; countdown when upcoming; "Started 1h 20m ago" when live), **Where**, **League And Season** ("Friendly" when none), **Your Status** (Selected, Not Selected, Not Announced Yet; "Played" with a result).
+3. **Live entries:** the **`LiveScore` slot (`card` variant)**, shown while live, and while upcoming when a source exists. For `EXTERNAL` it is a flat hairline card with the club's name and logo, "Scores are kept on {host}" and an outlined **Follow Live Score** button. Then, when live and `stream` is set, a **Watch Live** card with a small poster and a gold **Watch Live** button to the Watch Live page.
+4. **Location row:** forecast badge and Get Directions from `HubFixtureLocation`, upcoming only.
+5. **Your Availability** panel: the answer in words; when `pollOpen`, an outlined "Answer Availability" button into the existing Hub poll answering; closed shows "Poll closed". Hidden when `availability` is null.
+6. **Teams:** two flat hairline panels, "Your team" text tag on the player's side; announced XI (initials for juniors, "(C)", "(WK)") or "Team not announced yet".
+7. **Result** (played): scores and result line, no scorecard.
 
-### 4. API client
+States: skeleton per band, 404 "This match is not available", error with retry.
 
-`myPlayersApi.ts` gains `MyMatchDto` and `useMyPlayerMatch(playerKey, matchId)` (key `[...myPlayersKey, key, 'match', matchId]`, `retry: false`); no axios in components. After a poll answer is saved the match query is invalidated so the availability line updates.
+### 3. Watch Live page (`HubWatchLive.tsx`)
 
-### 5. Docs updated in the same change set
+Route `/account/players/:key/schedule/matches/:matchId/watch`. Footer Back "Back to Match". Shown only while the match is live and `stream` is set; otherwise the page shows "The stream is not on right now" with the Back (no stream link is ever returned for a non-live match).
 
-`docs/standards/page-anatomy.md` (a short "Player Hub differences" note and the review log row), `docs/standards/design-system.md` only if a component changes, `docs/roadmap.md` (the `123` follow-up "a league fixture opening the match page" resolved; Matches list, Team sheets and Results Hub items remain), and `docs/specs/040-announce-team.md`'s Rollout Notes pointer ("player-facing half of Announce now consumed by `135`").
+- **TV surround:** a dark panel (`HUB.menu` ground, `HUB.line` hairline, 4 px radius, no shadow) with a thin gold top rule. Inside, from top: the **scoreboard strip** (home logo and name, "versus", away logo and name in the display face on one line, the league and venue beneath in `HUB.sand`, the LIVE badge at the right), the **16:9 frame** (`aspect-ratio: 16 / 9`, full width, black ground, a dark surround of about 12 px so it reads as a screen), then the **`LiveScore` slot (`tv` variant)** directly under the frame, and under that "Open Stream" (outlined, always present as the fallback, new tab).
+- **Player frame:** when `embedUrl` is set, a **click-to-play poster first** ("Tap To Watch", the live badge, the provider name): no third-party request is made until the user taps (Open question 8). After the tap an `<iframe>` loads `embedUrl` with `sandbox="allow-scripts allow-same-origin allow-presentation"`, `referrerpolicy="strict-origin-when-cross-origin"`, `allow="autoplay; fullscreen; picture-in-picture"`, `loading="lazy"`, a `title` naming the match, and `allowfullscreen`. No `allow-top-navigation`, no `allow-popups`.
+- **Fallback:** when `embedUrl` is null the frame area shows "This stream opens on {host}" and a gold **Open Stream** button, in the same TV surround; nothing is embedded.
+- **Embed refusal:** a provider can refuse a frame without the page being told. The always-visible Open Stream button covers that, with the helper text "Not loading? Open the stream in a new tab."
+- Not shown: chat, comments, sharing, any control that is not the provider's own player or the `LiveScore` slot.
+
+### 4. Where the Hub differs from the manager standard, and why
+
+The Hub is a dark console with a footer Back (`121`), so: no top-row Back, no filled Manage menu (nothing to manage), no kebab (no actions), no Season pill (one season in context), badges and figure counters are drawn in `HUB` tokens, and "Only my games" keeps its Hub form. Shared rules that carry over: flat hairline surfaces, compact static counters without icons, Title Case labels, no chevron, one tap target per row, 44 px touch targets, no lone control rows.
+
+### 5. Security and operations items (open, not decided here)
+
+- **CSP `frame-src`.** If the platform sets a Content-Security-Policy (not verified in this spec; the nginx or Spring config must be checked), `frame-src` must allow `https://www.youtube-nocookie.com https://player.vimeo.com https://www.facebook.com`, and nothing wider. Open question 9.
+- **Privacy.** Loading a provider iframe discloses the viewer's IP and cookies to that provider; the click-to-play poster and `youtube-nocookie.com` reduce this but do not remove it. Streams of junior matches are the club's responsibility; a per-club switch is Open question 10.
+- **Stored links are manager input.** The server accepts only `https` and re-validates on read; a `javascript:`, `data:` or `http` link yields null. A test covers each.
+
+### 6. API client and docs
+
+`myPlayersApi.ts` gains `MyMatchListDto`, `MyMatchDto`, `LiveScoreSource`, `useMyPlayerMatches(key)` (refetch every 60 s while a live match is present), `useMyPlayerMatch(key, matchId)` (same), `retry: false`. The match query is invalidated after a poll answer is saved. Docs updated in the same change: `page-anatomy.md` ("Player Hub differences" note and review log row), `docs/roadmap.md` (`123` follow-up resolved; Results and Team sheets items remain; the in-app live scorecard added as a Later item), `040`'s Rollout Notes pointer, `design-system.md` only if a component changes, `docs/standards/frontend.md` (Hub reads matches only through `myPlayersApi`; iframes only in `HubWatchLive`; scoring only through `HubLiveScore`).
 
 ## Test Plan
 
 Per `docs/standards/testing.md`; tests are written after the owner has checked the function.
 
-- **Unit (JUnit 5):** `MyMatchServiceImpl`: 404 for a match of another team, another club, or an unknown id; `selection` is `NOT_ANNOUNCED` when the own side is unannounced, `SELECTED` or `NOT_SELECTED` once announced; `players` empty for an unannounced side; junior names are initials, adult names full; the answer is the held player's own only; `pollOpen` false once closed; result only when published; un-announcing again (`040`) empties the XI.
-- **Integration (Testcontainers):** authorisation matrix (key not held, malformed, dropped-out, another account's key, manager role without link: 404; unauthenticated 401; SUSPENDED 403); no manager-only keys (exact JSON key assertion, no counts, no other players' answers); a parent with players at two clubs gets each club's data and no cross-club match.
-- **Contract:** hand-regenerated `openapi.yaml` diff, one path and its schemas, additions only; ArchUnit layering passes.
-- **Unit (Vitest):** `hubBack` match states; `selectionLabel` and countdown helpers; row rules (`mine` rows are links, others are not).
-- **Component and Storybook:** page for each status and each selection state, the not-announced line, the answer panel with an open and a closed poll, weather and directions present and absent, junior initials as given, no Share, no Manage menu, no Edit, exactly one Back (footer). Fixture rows: one tap target, no chevron, Get Directions still operable. Stories at 375, 768, 1280.
-- **E2E (Playwright):** parent signs in, Schedule, Leagues, opens a league, taps "Your game", sees the match page, answers availability from the link, sees the status.
-- **Manual:** the three sweeps, keyboard pass, a two-club parent, a junior team with initials.
+- **Unit (JUnit 5):** `MatchPhase`: just before start is upcoming, at start live, one minute before the window ends live, at the window upcoming-to-recent, a published result ends live early, cancelled and postponed never live, no time set; `StreamEmbed`: each provider's accepted shapes, `http`, `javascript:`, `data:`, unknown host, host spoofing (`youtube.com.evil.example`, userinfo tricks), malformed ids, output host always on the allow-list; `LiveScoreResolver`: `EXTERNAL` for an https link, null for others; `MyMatchServiceImpl`: 404 for another team, club or unknown id; selection states; empty XI when unannounced; junior initials; own answer only; `stream` null unless live.
+- **Integration (Testcontainers):** authorisation matrix (key not held, malformed, dropped-out, another account's key, manager role without link: 404; unauthenticated 401; SUSPENDED 403); exact JSON keys, no manager-only data; a two-club parent gets no cross-club match; a non-live match never returns `stream`.
+- **Contract:** hand-regenerated `openapi.yaml` diff, two paths and their schemas (`liveScore` as a discriminated type), additions only; ArchUnit layering.
+- **Unit (Vitest):** `hubBack` states; countdown and elapsed formatters; row rules; `streamFrame` never builds a URL itself; a grep-style test that only `HubLiveScore` reads `liveScore.url`.
+- **Component and Storybook:** list with and without a live match (pinned, LIVE badge text, order, Recent collapsed), empty and error; match page upcoming and live, each selection state, answer panel open and closed; `LiveScore` in all three variants for `EXTERNAL` (new tab, `noopener`) and a `NATIVE` story; Watch Live with an embed (poster first, no iframe before the tap, iframe attributes after), with the fallback, and non-live; no Share, Manage or Edit; one Back. Stories at 375, 768, 1280. Reduced motion removes the pulse.
+- **E2E (Playwright):** parent opens Schedule, Matches, sees the live card, taps Watch Live, taps the poster and sees the frame; taps Follow Live Score and a new page opens; opens an upcoming match and answers availability.
+- **Manual:** three sweeps, keyboard pass, 200 percent zoom, a real YouTube and a real Facebook link, a link that refuses embedding, a junior team.
 
 ## Acceptance Criteria
 
-1. A `mine` fixture row in the Hub league Schedule and Results opens the match page by tapping anywhere on the row except Get Directions; the row has no chevron and no kebab; a non-`mine` row has no tap cue.
-2. The match page has the title with one status badge, four static compact figures (When with countdown, Where, League and Season, Your Status), the forecast badge and Get Directions when they resolve, both teams, and the availability panel.
-3. Your Status reads Not Announced Yet while the player's side is not announced, then Selected or Not Selected.
-4. No XI is returned or drawn for an unannounced side.
-5. Juniors appear as initials only, applied server side.
-6. The page never shows other players' availability, counts, notes or any manager-only data; a test asserts the exact JSON keys.
-7. The endpoint answers 404 for a match outside the held player's teams or club, 403 for a suspended account, 401 unauthenticated.
-8. There is no Share, Edit, Manage or live scoring control anywhere on the page, and the footer Back is the only Back.
-9. Nothing is saved from this page; the answer link uses the existing poll flow and the page shows the new answer afterwards.
-10. No new table or migration; "children" appears nowhere.
+1. Schedule > Matches is live (not Soon), six top-level items unchanged, with Live Now (pinned, only when a match is live), Upcoming (with countdown) and Recent (collapsed by default, with result).
+2. A live match shows a LIVE badge (text, not colour alone), the accent edge and tint, and the elapsed time; the rule is the one stated and is computed server side.
+3. `mine` league rows and every Matches row open the match page by tapping anywhere except an inner button; no chevron, no kebab; a non-`mine` league row has no tap cue.
+4. The match page shows one status badge, four static compact figures, the `LiveScore` slot and Watch Live entry when they apply, the forecast and Get Directions, the availability panel, both teams and the result when played.
+5. Your Status reads Not Announced Yet until the player's side is announced; no XI is returned or drawn for an unannounced side; juniors are initials server side.
+6. Live score appears in exactly three places (Live Now row, match page, Watch Live page) through one component and one DTO field; today it opens the scoring link in a new tab with `noopener` and the external site is never embedded; no other Hub code reads `scoringUrl`.
+7. Watch Live appears only while the match is live and a stream is set; it shows the TV surround, scoreboard strip and a 16:9 frame; no third-party request happens before the tap; an unlisted or unparsable link shows Open Stream and embeds nothing; Open Stream is always available.
+8. The embed URL comes only from the server's allow-listed templates; non-`https` links yield no `liveScore`, `stream` or `embedUrl`.
+9. The responses contain no manager-only data; the endpoints answer 404 outside the held player's teams or club, 403 suspended, 401 unauthenticated.
+10. No Share, Edit, Manage, chat or in-app scoring entry exists beyond the seam; the footer Back is the only Back; no new table or migration; "children" appears nowhere.
 
 ## Rollout Notes
 
-- **Order:** backend read (service, DTO, controller method, `openapi.yaml`), API client, page, row changes, docs. One PR. No feature flag and no club switch.
-- Depends on `040`'s flag being reliably cleared on any XI edit (already built), so un-announcing hides the XI at once.
-- Follow-ups: Schedule > Matches list (turns `schedule.matches` live), Results and Team sheets Hub items reusing this DTO, sharing from the player view if the owner asks, a club hide switch if clubs ask.
+- **Order:** `MatchPhase`, `StreamEmbed` and `LiveScoreResolver`, the two reads and `openapi.yaml`, API client, list, match page, Watch Live page, row changes, docs. The CSP check (Open question 9) must be done before Watch Live is released; the list and match page can ship without it. No feature flag unless Open question 10 is answered yes.
+- **Later:** (1) **the in-app live scorecard** replaces the external scoring link through the LiveScore seam: a new spec adds the `NATIVE` source and summary strip (score, overs, batters, last balls) on the Live Now row, match page and TV page, with no change elsewhere; (2) Results and Team sheets Hub items reusing `MyMatchDto`; (3) "match started" notifications; (4) a club switch for streams; (5) sharing from the player view if asked.
 
 ## Documentation gaps
 
-- `docs/standards/page-anatomy.md` states no rule for Hub (dark console) pages; section 3 above is the working interpretation and should be recorded there once the owner agrees.
-- No existing spec defines which polls cover a match for the "answer" lookup (squad poll versus group poll, `034`). Default: the held player's answer on the squad poll of the match's team, else the group poll that includes the match; implementer confirms against `PollAnswer` before building.
+- `page-anatomy.md` has no rule for Hub (dark console) pages; section 4 is the working interpretation, to be recorded there once agreed.
+- No existing spec says which poll covers a match for the "answer" lookup (`034`). Default: the held player's answer on the match's team squad poll, else the group poll including the match; confirm against `PollAnswer` before building.
+- Whether a CSP is set anywhere today is unverified (Open question 9).
 
-## Open questions (defaults apply unless the owner says otherwise)
+## Open questions (defaults apply)
 
-1. **When is the XI visible?** Default: only after the manager announced that side (`040`). Alternative: show the selected XI as soon as it exists. Unannounced-by-default protects players from a team that is still changing.
-2. **Show the opposing side's XI?** Default: yes, once announced (it is on the shared team sheet anyway). Alternative: own side only.
-3. **Non-`mine` league rows open a match page?** Default: no (privacy and the scoped read). Alternative: a reduced page with date, place and result only.
-4. **Make Schedule > Matches live now with a list of the player's upcoming matches?** Default: no, a follow-up; this spec only adds the page and the way in from league rows.
-5. **Show "Selected" for a player on the twelfth-man line?** Default: yes, labelled "Selected (12th)".
+6. **Match with no start time:** default treat as `09:00` for the live rule; alternative never live without a time.
+7. **`LIVE_WINDOW_HOURS`:** default **8** (covers a T20 or a one-day game); alternative per-format or per-league.
+8. **Click-to-play before the iframe loads:** default yes (privacy); alternative load on page open.
+9. **CSP and `frame-src`:** to be checked; default allow only the three provider hosts.
+10. **Per-club switch to hide streams in the Hub:** default no switch; alternative a club setting, off until switched on, given junior viewers.
+11. **Live match with no live-score source or stream:** default still shows LIVE with elapsed time and no buttons; alternative show it as Upcoming-style until a link exists.

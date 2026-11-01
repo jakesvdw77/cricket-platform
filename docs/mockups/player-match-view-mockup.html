@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 135 Player Hub match view mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;
+  --line:color-mix(in srgb,var(--cream) 22%,transparent);--muted:color-mix(in srgb,var(--cream) 68%,transparent);
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:900px;font-size:14px;margin:0 0 14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+/* Hub console frame */
+.hub{background:var(--green900);color:var(--cream);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.hub.p{width:375px;height:760px}
+.hub.d{width:760px;min-height:640px}
+.body{padding:16px;flex:1;overflow:hidden;display:grid;gap:12px;align-content:start}
+.foot{border-top:1px solid var(--line);padding:10px 16px;font-size:14px;font-weight:600;color:var(--sand)}
+h3{font-family:var(--display);font-weight:700;font-size:26px;margin:0;color:var(--cream)}
+h4{font-family:var(--display);font-weight:600;font-size:17px;margin:4px 0 0;color:var(--sand);letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted);font-size:14px}
+.team{font-family:var(--display);font-weight:700;font-size:21px}
+/* live badge */
+.live{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;background:var(--gold);color:var(--ink);font:700 13px/1 var(--body);letter-spacing:.08em}
+.live i,.dot{width:8px;height:8px;border-radius:50%;background:var(--ink);animation:pulse 1.4s ease-in-out infinite}
+.dot{background:var(--gold)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){.live i,.dot{animation:none}}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--line);font:600 13px/1 var(--body);color:var(--sand)}
+.tag{display:inline-flex;height:22px;align-items:center;padding:0 8px;border-radius:4px;border:1px solid var(--gold);color:var(--gold);font-size:12px;font-weight:600}
+/* cards and rows */
+.card{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:4px;padding:12px;display:grid;gap:6px;background:color-mix(in srgb,var(--cream) 7%,transparent)}
+.card.liveNow{border-left-color:var(--gold);background:color-mix(in srgb,var(--gold) 20%,transparent);border-color:var(--gold)}
+.card.dim{opacity:.72}
+.flat{border:1px solid var(--line);border-radius:4px;padding:12px;display:grid;gap:6px;background:color-mix(in srgb,#000 22%,transparent)}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;border:1px solid var(--line);color:var(--cream);background:transparent;white-space:nowrap}
+.btn.g{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.figs{display:flex;gap:8px;flex-wrap:wrap}
+.fig{height:46px;border:1px solid var(--line);border-radius:6px;padding:0 12px;display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--cream) 7%,transparent);font-size:14px}
+.fig b{font-family:var(--display);font-size:19px;color:var(--gold)}
+.fig span{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.xi{font-size:14px;line-height:1.5}
+.disc{border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-weight:600;font-size:14px;display:flex;justify-content:space-between}
+/* TV */
+.tv{border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:4px;background:var(--menu);padding:12px;display:grid;gap:10px}
+.strip{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.strip .vs{color:var(--muted);font-size:14px;margin:0 8px}
+.screen{aspect-ratio:16/9;background:#000;border:12px solid var(--ink);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--cream)}
+.play{width:56px;height:56px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:22px}
+.sb{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:color-mix(in srgb,#000 22%,transparent)}
+.sb .big{font-family:var(--display);font-weight:700;font-size:26px;color:var(--gold)}
+.sb .sm{font-size:13px;color:var(--muted)}
+.balls{display:flex;gap:4px}
+.balls u{text-decoration:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.balls u.w{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.later{border:1px dashed var(--gold);border-radius:6px;padding:8px}
+.flag{font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+</style>
+</head>
+<body>
+<h1>Player Hub match view</h1>
+<p class="lede">Mockup for <code>docs/specs/135-player-hub-match-view.md</code>. Dark Hub console, brand tokens only. The footer is the one Back. No chevrons, no kebabs, no Share. Live scoring is one replaceable slot (LiveScore): an external link today, an in-app scorecard later.</p>
+
+<h2>1. Schedule &gt; Matches</h2>
+<p class="note">Live Now pinned first (pulsing LIVE badge with text, gold edge and tint, elapsed time, LiveScore slot, Watch Live). Upcoming with countdown. Recent collapsed by default.</p>
+<div class="row">
+ <div><p class="cap">Phone, with a live match</p>
+ <div class="hub p"><div class="body">
+  <h3>Matches</h3>
+  <h4><span class="dot"></span>Live Now</h4>
+  <div class="card liveNow">
+   <div class="acts"><span class="live"><i></i>LIVE</span><span class="muted">Started 1h 20m ago</span></div>
+   <div class="team">Riverside U15 A</div><div class="muted">versus Hillside U15</div>
+   <div class="muted">TVL Division 1 T20 · Riverside Oval</div>
+   <div class="acts"><span class="tag">Selected</span></div>
+   <div class="acts"><span class="btn">Follow Live Score</span><span class="btn g">Watch Live</span></div>
+  </div>
+  <h4>Upcoming</h4>
+  <div class="card"><span class="muted">Sat 8 Nov · 09:00 · in 7 days</span><div class="team">Riverside U15 A versus Coastal U15</div><div class="acts"><span class="tag">Not Announced Yet</span></div><div class="acts"><span class="btn">Get Directions</span></div></div>
+  <div class="disc"><span>Recent Matches</span><span>+</span></div>
+ </div><div class="foot">Back to Schedule</div></div></div>
+ <div><p class="cap">Desktop, no live match, Recent expanded</p>
+ <div class="hub d"><div class="body">
+  <h3>Matches</h3>
+  <h4>Upcoming</h4>
+  <div class="card"><span class="muted">Sat 8 Nov · 09:00 · in 7 days</span><div class="team">Riverside U15 A versus Coastal U15</div><div class="acts"><span class="tag">Selected</span><span class="btn">Get Directions</span></div></div>
+  <div class="disc"><span>Recent Matches</span><span>-</span></div>
+  <div class="card dim"><span class="muted">Sat 25 Oct</span><div class="team">Riverside U15 A 142/6 versus Hillside U15 138/9</div><div style="color:var(--gold)">Riverside U15 A won by 4 runs</div></div>
+  <div class="card dim"><span class="muted">Sat 18 Oct</span><div class="team">Northside U15 versus Riverside U15 A</div><div class="muted">Result pending</div></div>
+ </div><div class="foot">Back to menu</div></div></div>
+</div>
+
+<h2>2. Match page</h2>
+<p class="note">One status badge, static compact figures, the LiveScore slot (card variant), availability, teams. Upcoming and live states.</p>
+<div class="row">
+ <div><p class="cap">Upcoming</p>
+ <div class="hub p"><div class="body">
+  <div><h3>Riverside U15 A versus Coastal U15</h3><div style="margin-top:6px"><span class="badge">Upcoming</span></div></div>
+  <div class="figs"><div class="fig"><b>Sat 8 Nov 09:00</b><span>When, in 7 days</span></div><div class="fig"><b>Riverside Oval</b><span>Where</span></div><div class="fig"><b>TVL Div 1</b><span>League and season</span></div><div class="fig"><b>Not Announced Yet</b><span>Your status</span></div></div>
+  <div class="acts"><span class="btn">Get Directions</span><span class="muted">Sunny, 24 C</span></div>
+  <div class="flat"><b>Your Availability</b><span class="muted">You said Yes. Poll open.</span><div class="acts"><span class="btn">Answer Availability</span></div></div>
+  <div class="flat"><div class="acts"><b class="team">Riverside U15 A</b><span class="tag">Your team</span></div><span class="muted">Team not announced yet</span></div>
+  <div class="flat"><b class="team">Coastal U15</b><span class="muted">Team not announced yet</span></div>
+ </div><div class="foot">Back to Matches</div></div></div>
+
+ <div><p class="cap">Live (LiveScore slot, external-link variant today)</p>
+ <div class="hub p"><div class="body">
+  <div><h3>Riverside U15 A versus Hillside U15</h3><div style="margin-top:6px"><span class="live"><i></i>LIVE</span></div></div>
+  <div class="figs"><div class="fig"><b>Started 1h 20m ago</b><span>When</span></div><div class="fig"><b>Selected</b><span>Your status</span></div></div>
+  <div class="flat">
+   <div class="flag">LiveScore slot</div>
+   <b>Riverside U15 A</b><span class="muted">Scores are kept on cricclubs.com</span>
+   <div class="acts"><span class="btn">Follow Live Score</span></div>
+  </div>
+  <div class="flat"><b>Watch Live</b><span class="muted">The club is streaming this match.</span><div class="acts"><span class="btn g">Watch Live</span></div></div>
+  <div class="flat"><div class="acts"><b class="team">Riverside U15 A</b><span class="tag">Your team</span></div><div class="xi">1 A.B. (C) · 2 J.K. · 3 M.S. (WK) · 4 T.N. · 5 L.P. · 6 R.D. · 7 S.V. · 8 K.M. · 9 B.H. · 10 N.O. · 11 Z.F.</div></div>
+ </div><div class="foot">Back to Matches</div></div></div>
+</div>
+
+<h2>3. Watch Live ("TV" page) and the Follow Live Score card</h2>
+<p class="note">Same TV surround; the LiveScore slot sits under the 16:9 frame. Left: today (external link). Right: later (in-app scorecard, same slot, dashed for review only). Open Stream is always there as the fallback.</p>
+<div class="row">
+ <div><p class="cap">Today: external link</p>
+ <div class="hub d" style="width:560px"><div class="body">
+  <div class="tv">
+   <div class="strip"><div><span class="team">Riverside U15 A</span><span class="vs">versus</span><span class="team">Hillside U15</span><div class="muted">TVL Division 1 T20 · Riverside Oval</div></div><span class="live"><i></i>LIVE</span></div>
+   <div class="screen"><div class="play">&#9654;</div><b>Tap To Watch</b><span class="muted">YouTube, loads only after you tap</span></div>
+   <div class="flat" style="border-left:4px solid var(--gold)"><div class="flag">LiveScore slot, external</div><span class="muted">Scores are kept on cricclubs.com</span><div class="acts"><span class="btn">Follow Live Score</span></div></div>
+   <div class="acts"><span class="btn">Open Stream</span><span class="muted">Not loading? Open the stream in a new tab.</span></div>
+  </div>
+ </div><div class="foot">Back to Match</div></div></div>
+
+ <div><p class="cap">Later: in-app live scorecard</p>
+ <div class="hub d" style="width:560px"><div class="body">
+  <div class="tv">
+   <div class="strip"><div><span class="team">Riverside U15 A</span><span class="vs">versus</span><span class="team">Hillside U15</span><div class="muted">TVL Division 1 T20 · Riverside Oval</div></div><span class="live"><i></i>LIVE</span></div>
+   <div class="screen"><div class="play">&#9654;</div><b>Tap To Watch</b><span class="muted">YouTube, loads only after you tap</span></div>
+   <div class="later"><div class="flag">LiveScore slot, later (native)</div>
+    <div class="sb">
+     <div><span class="big">87/3</span> <span class="muted">(11.4 ov)</span></div><div class="sm">Target 143</div>
+     <div class="sm">Batting: A.B. 34* (22) · J.K. 12 (9)</div><div class="sm">Run rate 7.4</div>
+     <div class="balls"><u>1</u><u>4</u><u>0</u><u class="w">W</u><u>2</u><u>6</u></div><div class="sm">Last 6 balls</div>
+    </div></div>
+   <div class="acts"><span class="btn">Open Stream</span></div>
+  </div>
+ </div><div class="foot">Back to Match</div></div></div>
+</div>
+
+<p class="cap" style="margin-top:28px">Follow Live Score card, alone (phone width, no stream set)</p>
+<div class="hub p" style="height:auto;width:375px"><div class="body">
+ <div class="flat"><div class="acts"><b class="team">Riverside Cricket Club</b></div><span class="muted">Scores are kept on cricclubs.com. It opens in a new tab.</span><div class="acts"><span class="btn">Follow Live Score</span></div></div>
+</div></div>
+</body>
+</html>
