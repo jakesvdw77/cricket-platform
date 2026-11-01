@@ -509,7 +509,9 @@ class ImportServiceImplTest {
     void commitWithATamperedTokenIsRefused() {
         ImportBatchDto c = confirmed("Alpha");
         String token = c.confirmationToken();
-        String tampered = token.substring(0, token.length() - 1) + (token.endsWith("A") ? "B" : "A");
+        // First signature character: the last base64 character of a MAC carries padding bits, so flipping it can decode unchanged.
+        int dot = token.indexOf('.');
+        String tampered = token.substring(0, dot + 1) + (token.charAt(dot + 1) == 'A' ? 'B' : 'A') + token.substring(dot + 2);
         assertThatThrownBy(() -> service.commit(auth, clubId, c.id(), new CommitImportRequest(c.revision(), tampered, c.creationsDigest())))
                 .isInstanceOf(ImportConfirmationInvalidException.class);
         assertNothingWritten();
