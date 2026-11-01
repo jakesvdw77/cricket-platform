@@ -5,7 +5,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import { Button } from '../../../components/Button'
 import { badgeSx } from '../../../components/RecordCard'
-import { SelectionGauge } from '../../../components/SelectionGauge'
+import { ProgressMeter } from '../../../components/ProgressMeter'
 import type { TeamSelectionMatch, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { zebraTint } from '../../../utils/zebraTint'
@@ -118,11 +118,11 @@ function SideRow({
           {`${side.pickedCount}/${max}`}
         </Typography>
         <Box sx={{ ...desktopOnly, width: '100%' }} {...DESKTOP_ONLY}>
-          <SelectionGauge
-            picked={side.pickedCount}
-            size={max}
+          <ProgressMeter
+            value={side.pickedCount}
+            max={max}
             ariaLabel={`${side.teamName} selection, ${side.pickedCount} of ${max} picked`}
-            testIdPrefix={`selection-${match.matchId}-${side.teamId}`}
+            testId={`selection-${match.matchId}-${side.teamId}`}
           />
         </Box>
       </Box>

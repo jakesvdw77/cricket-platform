@@ -165,5 +165,6 @@ Copy into the PR description for each page.
 - [ ] Raised only for the figure cards; tables, panels and cards are flat with a hairline; the filter toolbar sits inside its content card.
 - [ ] Buttons: white secondary, one filled per band, compact, Title Case, no lone row; one Add button with a chooser when there are several kinds; icons only on Add, Edit and Share.
 - [ ] Navigation: links that leave this page carry `returnTo`; pages reached from elsewhere honour it. Table rows have no chevron.
+- [ ] Any x-of-y progress (matches played, picked of 12) uses `components/ProgressMeter`: text above, bar below, full cell width; never a bespoke bar.
 - [ ] Phone: checked at 375 px.
 - [ ] Tests updated; `design-system.md` updated only if a component changed.
