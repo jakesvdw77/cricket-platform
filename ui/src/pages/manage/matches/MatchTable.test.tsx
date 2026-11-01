@@ -50,7 +50,7 @@ describe('MatchTable', () => {
     expect(cells[1]).toHaveTextContent('TBC')
   })
 
-  it('turns a row amber within 24 hours and says Played once started', () => {
+  it('turns a row amber within 24 hours and shows only the date once started', () => {
     renderTable([
       makeMatch({ id: 'soon', matchDate: '2026-10-09T18:00:00' }),
       makeMatch({ id: 'later', matchDate: '2026-10-15T07:15:00' }),
@@ -60,22 +60,40 @@ describe('MatchTable', () => {
     expect(rows[0]).toHaveAttribute('data-tone', 'warning')
     expect(rows[1]).toHaveAttribute('data-tone', 'neutral')
     expect(within(rows[1]).getByTestId('match-row-when')).toHaveTextContent(/in 5 days/)
-    expect(within(rows[2]).getByTestId('match-row-when')).toHaveTextContent('Played')
+    expect(within(rows[2]).getByTestId('match-row-when')).not.toHaveTextContent(/Played|Awaiting/)
   })
 
-  it('says Awaiting result for a started match without a published result, and shows the result chip (docs/specs/100)', () => {
+  it('says Upcoming, Live, Awaiting Result, Result draft and Completed in the Status column, and links them (docs/specs/100)', () => {
     renderTable([
-      makeMatch({ id: 'none', matchDate: '2026-10-09T08:00:00' }),
-      makeMatch({ id: 'draft', matchDate: '2026-10-09T08:00:00', resultStatus: 'DRAFT' }),
-      makeMatch({ id: 'done', matchDate: '2026-10-09T08:00:00', resultStatus: 'PUBLISHED' }),
+      makeMatch({ id: 'up', matchDate: '2026-10-15T07:15:00' }),
+      makeMatch({ id: 'live', matchDate: '2026-10-09T08:00:00' }),
+      makeMatch({ id: 'await', matchDate: '2026-10-08T08:00:00' }),
+      makeMatch({ id: 'draft', matchDate: '2026-10-08T08:00:00', resultStatus: 'DRAFT' }),
+      makeMatch({ id: 'done', matchDate: '2026-10-08T08:00:00', resultStatus: 'PUBLISHED' }),
     ])
-    const rows = screen.getAllByTestId('match-row')
-    expect(within(rows[0]).getByTestId('match-row-when')).toHaveTextContent('Awaiting result')
-    expect(within(rows[0]).queryByTestId('match-row-result')).not.toBeInTheDocument()
-    expect(within(rows[1]).getByTestId('match-row-when')).toHaveTextContent('Awaiting result')
-    expect(within(rows[1]).getByTestId('match-row-result')).toHaveTextContent('Result draft')
-    expect(within(rows[2]).getByTestId('match-row-when')).toHaveTextContent('Played')
-    expect(within(rows[2]).getByTestId('match-row-result')).toHaveTextContent('Completed')
+    const status = (index: number) => within(screen.getAllByTestId('match-row')[index]).getByTestId('match-row-status')
+    expect(status(0)).toHaveTextContent('Upcoming')
+    expect(within(status(0)).queryByRole('link')).not.toBeInTheDocument()
+    expect(status(1)).toHaveTextContent('Live')
+    expect(within(status(1)).getByRole('link', { name: /^Capture result for 1st XI v / })).toHaveAttribute('href', '/manage/results/live/capture?returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches')
+    expect(within(status(1)).getByTestId('pulse-dot')).toBeInTheDocument()
+    expect(status(2)).toHaveTextContent('Awaiting Result')
+    expect(within(status(2)).getByRole('link')).toHaveAttribute('href', expect.stringContaining('/manage/results/await/capture'))
+    expect(status(3)).toHaveTextContent('Result draft')
+    expect(within(status(3)).getByRole('link', { name: /^Continue result for / })).toBeInTheDocument()
+    expect(status(4)).toHaveTextContent('Completed')
+    expect(within(status(4)).getByRole('link', { name: /^View result for / })).toHaveAttribute('href', expect.stringContaining('/manage/results/done?returnTo='))
+  })
+
+  it('links the Poll chip to availability and the Venue to the field page, both returning to the list', () => {
+    renderTable([
+      makeMatch({ id: 'a', polls: [squadPoll()], playingAreaId: 'field-1', venue: 'Riverside Oval', matchDate: '2026-10-15T07:15:00' }),
+      makeMatch({ id: 'b', venue: 'Some park', playingAreaId: null, matchDate: '2026-10-15T07:15:00' }),
+    ])
+    const [a, b] = screen.getAllByTestId('match-row')
+    expect(within(within(a).getByTestId('match-row-poll')).getByRole('link', { name: /^Open availability for / })).toHaveAttribute('href', expect.stringContaining('returnTo=%2Fmanage%2Ffixtures%2Fmatches'))
+    expect(within(a).getByRole('link', { name: 'View field Riverside Oval' })).toHaveAttribute('href', '/manage/fixtures/fields/field-1?returnTo=%2Fmanage%2Ffixtures%2Fmatches&returnLabel=Matches')
+    expect(within(within(b).getByTestId('match-row-venue')).queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('shows the picked count of the club side, both sides for a derby, and a dash with no club side', () => {
@@ -120,7 +138,7 @@ describe('MatchTable', () => {
     unmount()
 
     renderTable([makeMatch({ id: 'm1', matchDate: '2026-10-15T07:15:00' })])
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '1st XI vs Riverside Occasionals' })).not.toBeInTheDocument()
   })
 
   it('marks an inactive match in its Status cell', () => {
@@ -138,10 +156,9 @@ describe('MatchTable', () => {
     expect(window.getComputedStyle(status).justifyContent).toBe('center')
     expect(window.getComputedStyle(status).whiteSpace).toBe('nowrap')
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
-    // Nothing to show: a dash. On a phone the chips stay under the name.
-    expect(within(plain).getByTestId('match-row-status')).toHaveTextContent('–')
+    // Never a dash. On a phone the chip stays under the name.
+    expect(within(plain).getByTestId('match-row-status')).toHaveTextContent('Upcoming')
     expect(within(done).getByTestId('match-row-phone-status')).toHaveTextContent('Completed')
-    expect(within(plain).queryByTestId('match-row-phone-status')).not.toBeInTheDocument()
   })
 
   it('is flat, with no chevron, no Delete column and one actions kebab per row that never opens the row', () => {

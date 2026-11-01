@@ -76,6 +76,8 @@ Written after the Seasons pages were built from these docs alone (`docs/specs/12
 - **Status transitions (Verify, Reject, Reopen) sit after Edit in the Manage menu,** each with its confirm dialog. **Decided 2026-11-01.**
 - **A disabled Edit stays in the menu with its reason line** (never hidden) when the record cannot be edited. **Decided 2026-11-01.**
 - **A filter switch becomes a toggle chip** in the filter bar (for example Our Fields Only). **Decided 2026-11-01.**
+- **Chips that name a place or state with a destination are links** (real anchors, keyboard focusable with a visible focus ring, accessible name says where they go, for example "View result for Home v Away"), carrying `returnTo`/`returnLabel`. Matches: Status goes to the result page when a result exists and to Capture Result when Live or Awaiting Result; Poll goes to Open Availability; Venue goes to the field page when the match has a field. Upcoming and Inactive stay plain chips. **Decided 2026-11-01.**
+- **Matches Status values, never a dash:** Upcoming; Live (started within `LIVE_WINDOW_HOURS` = 6, no published result, subtle pulsing dot, still under prefers-reduced-motion); Awaiting Result (started earlier, no published result); Result draft; Completed (published); Inactive. The When column shows the date alone (a countdown only before kickoff). **Decided 2026-11-01.**
 
 ## 7. Forms inside a page (edit modes)
 Editing is a mode of the page, not a different screen, and uses the same row editor, checks and Review as the import (`docs/specs/126`). Nothing is saved before an explicit, server-enforced confirmation.

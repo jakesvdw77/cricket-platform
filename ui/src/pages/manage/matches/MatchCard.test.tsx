@@ -78,7 +78,7 @@ describe('MatchCard', () => {
   it('renders no title link without viewTo', () => {
     renderCard(makeMatch())
 
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /vs/ })).not.toBeInTheDocument()
   })
 
   it('renders the badges in a left-aligned row under the header, after the title (docs/specs/087)', () => {
@@ -233,12 +233,12 @@ describe('MatchCard', () => {
       expect(within(strip).getByRole('timer')).toHaveTextContent(/^5 h \d+ min to go$/)
     })
 
-    it('reads Played, neutral and with no countdown once the match has started', () => {
+    it('reads Started, neutral and with no countdown once the match has started', () => {
       renderCard(makeMatch({ matchDate: inHours(-48), resultStatus: 'PUBLISHED' }))
 
       const strip = screen.getByTestId('match-time-strip')
       expect(strip).toHaveAttribute('data-tone', 'neutral')
-      expect(within(strip).getByText('Played')).toBeInTheDocument()
+      expect(within(strip).getByText('Started')).toBeInTheDocument()
       expect(within(strip).queryByText('Starts')).not.toBeInTheDocument()
       expect(screen.queryByRole('timer')).not.toBeInTheDocument()
     })
@@ -260,21 +260,21 @@ describe('MatchCard', () => {
       expect(screen.getByText('Completed')).toBeInTheDocument()
     })
 
-    it('says Awaiting result, not Played, for a started match without a published result', () => {
-      renderCard(makeMatch({ matchDate: inHours(-48), resultStatus: 'DRAFT' }))
-
-      const strip = screen.getByTestId('match-time-strip')
-      expect(within(strip).getByText('Awaiting result')).toBeInTheDocument()
-      expect(within(strip).queryByText('Played')).not.toBeInTheDocument()
-      expect(screen.queryByRole('timer')).not.toBeInTheDocument()
-    })
-
-    it('says Played for a published result and no countdown, even when the kickoff is still ahead', () => {
-      renderCard(makeMatch({ matchDate: inHours(72), resultStatus: 'PUBLISHED' }))
-
-      const strip = screen.getByTestId('match-time-strip')
-      expect(within(strip).getByText('Played')).toBeInTheDocument()
-      expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    it('says Upcoming, Live, Awaiting Result and Completed, and links Live and Awaiting to Capture Result', () => {
+      const upcoming = renderCard(makeMatch({ id: 'm1', matchDate: inHours(48) }))
+      expect(screen.getByText('Upcoming')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /result for/ })).not.toBeInTheDocument()
+      upcoming.unmount()
+      const live = renderCard(makeMatch({ id: 'm1', matchDate: inHours(-2) }))
+      expect(screen.getByRole('link', { name: /^Capture result for / })).toHaveAttribute('href', expect.stringContaining('/manage/results/m1/capture?returnTo='))
+      expect(screen.getByTestId('pulse-dot')).toBeInTheDocument()
+      live.unmount()
+      const awaiting = renderCard(makeMatch({ id: 'm1', matchDate: inHours(-48) }))
+      expect(screen.getByRole('link', { name: /^Capture result for / })).toBeInTheDocument()
+      expect(screen.getByText('Awaiting Result')).toBeInTheDocument()
+      awaiting.unmount()
+      renderCard(makeMatch({ id: 'm1', matchDate: inHours(-48), resultStatus: 'PUBLISHED' }))
+      expect(screen.getByRole('link', { name: /^View result for / })).toHaveAttribute('href', expect.stringContaining('/manage/results/m1?returnTo='))
     })
   })
 

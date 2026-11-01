@@ -1,5 +1,5 @@
-import { Chip } from '@mui/material'
-import { useLocation } from 'react-router-dom'
+import { Chip, Link as MuiLink } from '@mui/material'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { BrandIcon } from '../../../components/BrandIcon'
@@ -9,7 +9,7 @@ import { DetailLine } from '../../../components/DetailLine'
 import { WeatherBadge } from '../../../components/WeatherBadge'
 import { useMatchFieldWeather } from '../../../hooks/useMatchWeather'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
-import { badgeSx, RecordCard } from '../../../components/RecordCard'
+import { badgeSx, chipLinkSx, RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
@@ -17,14 +17,17 @@ import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { formatMatchDateTime } from '../availability/pollHelpers'
-import { resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { matchStatusFor } from './matchResultHelpers'
+import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
 import { SelectionBlock } from './SelectionBlock'
+import type { PollDestination } from './matchCardHelpers'
 import {
   announcedBadges,
-  badgeFor,
   matchLeagueValue,
+  ownSides,
   pollBadgeFor,
+  pollDestination,
   selectionRows,
   sideName,
 } from './matchCardHelpers'
@@ -54,19 +57,30 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
   // The strip reads the kickoff: a countdown and the amber tone before it, "Played" (neutral, no countdown) after.
   const kickoff = useCountdown(match.matchDate)
-  // docs/specs/100: "played" is the real result state, not the date. A started match with no published result reads
-  // "Awaiting result".
-  const resultState = resultStateOf(match)
-  const played = resultState === 'published'
+  // docs/specs/127: every destination returns to the list the card is on.
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Matches')
+  const status = matchStatusFor(match, `${homeTeamName} v ${awayTeamName}`)
+  const upcoming = status.kind === 'upcoming'
   const started = kickoff.stage === 'expired'
-  const resultBadge = resultBadgeFor(match)
 
-  const inactive = badgeFor(match)
+  const pollDest = pollDestination(match, teamsById)
+  const mappedDest: PollDestination =
+    pollDest.kind === 'link' ? { kind: 'link', to: leaveTo(pollDest.to) } : { kind: 'menu', options: pollDest.options.map((option) => ({ ...option, to: leaveTo(option.to) })) }
+  const { openAvailability, menu: pollMenu } = useAvailabilityNavigation(mappedDest)
+  const canOpenPoll = ownSides(match).length > 0
+  const matchName = `${homeTeamName} v ${awayTeamName}`
+  const pollBadge: RecordCardBadge = {
+    ...pollBadgeFor(match.polls),
+    ...(canOpenPoll
+      ? mappedDest.kind === 'link'
+        ? { to: mappedDest.to, ariaLabel: `Open availability for ${matchName}` }
+        : { onClick: openAvailability, ariaLabel: `Choose availability poll for ${matchName}` }
+      : {}),
+  }
   const badges: RecordCardBadge[] = [
     ...announcedBadges(match, teamsById),
-    ...(inactive ? [inactive] : []),
-    ...(resultBadge ? [resultBadge] : []),
-    pollBadgeFor(match.polls),
+    { label: status.label, tone: status.tone, to: status.to ? leaveTo(status.to) : undefined, ariaLabel: status.ariaLabel, pulse: status.kind === 'live' },
+    pollBadge,
   ]
 
   return (
@@ -88,11 +102,11 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
     >
         <CardTimeStrip
           testId="match-time-strip"
-          tone={!started && !played && kickoff.warn ? 'warning' : 'neutral'}
+          tone={upcoming && kickoff.warn ? 'warning' : 'neutral'}
           icon={<EventOutlinedIcon fontSize="small" />}
-          label={played ? 'Played' : started ? 'Awaiting result' : 'Starts'}
+          label={started ? 'Started' : 'Starts'}
           value={formatMatchDateTime(match.matchDate)}
-          trailing={started || played ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
+          trailing={!upcoming ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
         />
         {match.venue && (
           <DetailLine
@@ -100,7 +114,13 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             label="Venue"
             value={
               <>
-                {match.venue}
+                {match.playingAreaId ? (
+                  <MuiLink component={RouterLink} to={leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`)} color="inherit" underline="hover" aria-label={`View field ${match.venue}`} sx={{ ...chipLinkSx, borderRadius: 0.5 }}>
+                    {match.venue}
+                  </MuiLink>
+                ) : (
+                  match.venue
+                )}
                 {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
                     a match with only the old venue text shows none. */}
                 {match.playingAreaVerificationStatus === 'UNVERIFIED' && (
@@ -115,6 +135,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
         )}
         {weather.summary && <DetailLine icon={<CloudOutlinedIcon fontSize="small" />} label="Forecast" value={<WeatherBadge summary={weather.summary} variant="compact" testId="match-card-weather" />} />}
         <SelectionBlock rows={selectionRows(match, teamsById)} />
+        {pollMenu}
     </RecordCard>
   )
 }

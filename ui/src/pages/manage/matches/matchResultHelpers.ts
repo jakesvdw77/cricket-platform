@@ -42,3 +42,33 @@ export function resultBadgeFor(match: Pick<Match, 'resultStatus'>): RecordCardBa
   if (state === 'published') return { label: 'Completed', tone: 'active' }
   return null
 }
+
+// Owner decision 2026-11-01: a match that started less than this many hours ago and has no published result is Live; after that
+// it is Awaiting Result.
+export const LIVE_WINDOW_HOURS = 6
+
+export type MatchStatusKind = 'upcoming' | 'live' | 'awaiting' | 'draft' | 'completed' | 'inactive'
+
+export interface MatchStatus {
+  kind: MatchStatusKind
+  label: string
+  tone: RecordCardBadge['tone']
+  // Where the chip goes: the result page when a result exists, Capture Result when Live or Awaiting Result; none otherwise.
+  to?: string
+  // Names the destination for assistive tech, for example "View result for Home v Away".
+  ariaLabel?: string
+}
+
+// The Status column and chip of a match. Never empty: Upcoming, Live, Awaiting Result, Result draft, Completed or Inactive.
+export function matchStatusFor(match: Pick<Match, 'id' | 'active' | 'resultStatus' | 'matchDate'>, matchName: string, now = Date.now()): MatchStatus {
+  if (!match.active) return { kind: 'inactive', label: 'Inactive', tone: 'muted' }
+  const state = resultStateOf(match)
+  const action = resultActionFor(match)
+  const link = action ? { to: action.to, ariaLabel: `${state === 'published' ? 'View' : state === 'draft' ? 'Continue' : 'Capture'} result for ${matchName}` } : {}
+  if (state === 'published') return { kind: 'completed', label: 'Completed', tone: 'active', ...link }
+  if (state === 'draft') return { kind: 'draft', label: 'Result draft', tone: 'warning', ...link }
+  const started = new Date(match.matchDate).getTime() <= now
+  if (!started) return { kind: 'upcoming', label: 'Upcoming', tone: 'neutral' }
+  const live = now - new Date(match.matchDate).getTime() < LIVE_WINDOW_HOURS * 3_600_000
+  return live ? { kind: 'live', label: 'Live', tone: 'open', ...link } : { kind: 'awaiting', label: 'Awaiting Result', tone: 'warning', ...link }
+}
