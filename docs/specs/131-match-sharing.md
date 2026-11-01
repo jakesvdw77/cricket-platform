@@ -183,7 +183,7 @@ Per `docs/standards/testing.md`; build first, tests after the owner's check (wor
 4. **Umpires:** backlog item, not built here (roadmap line).
 5. **One visual per share:** the manager chooses one content; no stepper and no combined image.
 6. **Picture:** uploaded per share, not saved; a gallery is a later feature (roadmap line).
-7. **Played matches:** Share Match hands over to `ShareResultDialog`.
+7. **Played matches (owner, 2026-11-01):** Share Match always opens `ShareMatchDialog`. A match with a published result gets a first, preselected content "Match Result" ("Scorecard, result card and summary"); Next closes the dialog and opens the existing `ShareResultDialog`. Fixture Card, Fun Facts and Team Sheet stay available where they apply.
 8. **Fun facts about the opposition:** yes, platform-team opposition only, and juniors by initials only.
 9. **Weather:** added (Open-Meteo forecast, browser-only, forecast range only, never a guess); backend proxy is Later.
 

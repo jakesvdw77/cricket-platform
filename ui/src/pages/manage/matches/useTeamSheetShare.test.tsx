@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
 import { MemoryRouter } from 'react-router-dom'
@@ -9,7 +9,7 @@ import { shareSettingsKey } from '../../../api/shareSettingsApi'
 import { fixtureMatch } from '../../../utils/share/matchShareFixture'
 import { useTeamSheetShare } from './useTeamSheetShare'
 
-// docs/specs/131: Share Match opens the match dialog; a match with a published result hands over to the result Share dialog.
+// docs/specs/131: Share Match opens the match dialog; a match with a published result lists Match Result, which opens the result Share dialog.
 const getMatchResult = vi.fn()
 vi.mock('../../../api/matchResultApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/matchResultApi')>()),
@@ -62,14 +62,16 @@ describe('useTeamSheetShare', () => {
     expect(getMatchResult).not.toHaveBeenCalled()
   })
 
-  it('hands a played match with a published result over to the result Share dialog', async () => {
-    let finish: (value: unknown) => void = () => {}
-    getMatchResult.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+  it('opens the Share Match dialog for a published match, with Match Result first and chosen, and Next opens the result Share dialog', async () => {
+    getMatchResult.mockResolvedValue({ id: 'r1', status: 'PUBLISHED', hasScorecard: false })
     renderHost('PUBLISHED')
     await userEvent.click(screen.getByRole('button', { name: 'Share it' }))
-    expect(await screen.findByText('Opening the result share')).toBeInTheDocument()
-    finish({ id: 'r1', status: 'PUBLISHED', hasScorecard: false })
+    expect(await screen.findByText('Share match')).toBeInTheDocument()
+    const radios = screen.getAllByRole('radio')
+    expect(radios[0]).toHaveAccessibleName(/^Match Result/)
+    expect(radios[0]).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByTestId('result-share-dialog')).toBeInTheDocument()
-    expect(screen.queryByText('Share match')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Share match')).not.toBeInTheDocument())
   })
 })

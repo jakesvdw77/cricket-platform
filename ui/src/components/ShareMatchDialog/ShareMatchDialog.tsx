@@ -21,6 +21,7 @@ import { Button } from '../Button'
 import { resolveShareInitials } from '../ShareCore'
 import { ShareFillContext, ShareFooterContext } from '../ShareFormatScreen'
 import { MatchContentStep } from './MatchContentStep'
+import type { MatchStepContent } from './MatchContentStep'
 import { MatchFormatStep } from './MatchFormatStep'
 import { MatchImageScreen } from './MatchImageScreen'
 import { MatchPdfScreen } from './MatchPdfScreen'
@@ -44,6 +45,9 @@ export interface ShareMatchDialogProps {
   initialContent?: MatchContent
   // The home or away team a team panel is about; becomes Our Side or Opposition once the sides are known.
   initialScope?: 'home' | 'away'
+  // The match has a published result: step 1 lists Match Result first (preselected); Next calls onOpenResult.
+  resultAvailable?: boolean
+  onOpenResult?: () => void
 }
 
 type Step = 'contents' | 'formats' | 'screen'
@@ -52,12 +56,12 @@ const STEPS = ['What To Share', 'Format', 'Preview']
 // docs/specs/131-match-sharing.md (ShareMatchDialog): step 1 What to share (one content, Side, Layout), step 2 Format (tiles), then the
 // chosen format's screen on the 114 shell. Full screen on a phone; choice steps a 720 px card; the preview near full screen.
 // Replaces TeamSheetCommunicationDialog. Everything it reads is fetched only while it is open.
-export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, sides, sidesLoading, leagueName, seasonLabel, initialContent, initialScope }: ShareMatchDialogProps) {
+export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, sides, sidesLoading, leagueName, seasonLabel, initialContent, initialScope, resultAvailable = false, onOpenResult }: ShareMatchDialogProps) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'))
   const [choices, updateChoices] = useShareChoices(clubId)
   const [step, setStep] = useState<Step>('contents')
-  const [content, setContent] = useState<MatchContent | null>(initialContent ?? null)
+  const [content, setContent] = useState<MatchStepContent | null>(initialContent ?? (resultAvailable ? 'RESULT' : null))
   const [side, setSide] = useState<MatchSideChoice>('OURS')
   const [layout, setLayout] = useState<MatchLayout>(choices.match.layout)
   const [picked, setPicked] = useState<ShareFormat | null>(null)
@@ -93,7 +97,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
       setStep('contents')
       setPicked(null)
       setUnticked([])
-      setContent(initialContent ?? choices.match.content)
+      setContent(initialContent ?? (resultAvailable ? 'RESULT' : choices.match.content))
       setSide(initialScope ? (initialScope === roles.ours ? 'OURS' : 'OPPOSITION') : choices.match.side)
       setLayout(choices.match.layout)
     }
@@ -111,7 +115,8 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidesLoading, context.hasOurXi, context.hasOppositionXi, context.past])
   const sideGaps: Record<MatchSideChoice, string | null> = { OURS: sideGap('OURS', context), OPPOSITION: sideGap('OPPOSITION', context), BOTH: sideGap('BOTH', context) }
-  const chosenContent = content && !gaps[content] ? content : null
+  const resultChosen = resultAvailable && content === 'RESULT'
+  const chosenContent = content && content !== 'RESULT' && !gaps[content] ? content : null
   const chosenSide: MatchSideChoice = sideGaps[side] ? 'OURS' : side
   const formats = useMemo(() => (chosenContent ? matchFormatAvailability(chosenContent, settings.settings?.disabledFormats) : null), [chosenContent, settings.settings?.disabledFormats])
 
@@ -164,7 +169,9 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
   const highlighted = formats ? ([picked, choices.match.format].find((format) => format !== null && formats.offered.includes(format)) ?? null) : null
 
   const next = () => {
-    if (step === 'contents' && chosenContent) {
+    if (step === 'contents' && resultChosen) {
+      onOpenResult?.()
+    } else if (step === 'contents' && chosenContent) {
       updateChoices({ match: { content: chosenContent, side: chosenSide, layout } })
       setStep('formats')
     } else if (step === 'formats' && highlighted) {
@@ -204,7 +211,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
     shareTitle: model.title,
   }
 
-  const canNext = step === 'contents' ? chosenContent !== null && !sidesLoading : highlighted !== null
+  const canNext = step === 'contents' ? resultChosen || (chosenContent !== null && !sidesLoading) : highlighted !== null
   const fill = !phone && step === 'screen'
   const stepIndex = step === 'contents' ? 0 : step === 'formats' ? 1 : 2
 
@@ -248,8 +255,9 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
 
         {step === 'contents' && (
           <MatchContentStep
-            value={chosenContent}
+            value={resultChosen ? 'RESULT' : chosenContent}
             onChange={setContent}
+            resultAvailable={resultAvailable}
             gaps={gaps}
             side={chosenSide}
             onSideChange={(value) => setSide(value)}
@@ -302,7 +310,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
         ) : (
           <>
             <Typography variant="body2" role="status" sx={{ mr: 'auto', color: 'text.secondary' }}>
-              {step === 'contents' ? (chosenContent ? '' : sidesLoading ? 'Loading the teams…' : 'Choose what to share') : highlighted ? '' : 'Choose a format'}
+              {step === 'contents' ? (chosenContent || resultChosen ? '' : sidesLoading ? 'Loading the teams…' : 'Choose what to share') : highlighted ? '' : 'Choose a format'}
             </Typography>
             {step === 'formats' && (
               <Button size="compact" variant="ghost" onClick={() => setStep('contents')}>

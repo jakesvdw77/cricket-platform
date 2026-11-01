@@ -40,15 +40,17 @@ interface Options {
   initialScope?: 'home' | 'away'
   disabledFormats?: Record<string, string[]>
   onClose?: () => void
+  resultAvailable?: boolean
+  onOpenResult?: () => void
 }
 
-function renderDialog({ selected = true, days = 3, initialContent, initialScope, disabledFormats, onClose = () => {} }: Options = {}) {
+function renderDialog({ selected = true, days = 3, initialContent, initialScope, disabledFormats, onClose = () => {}, resultAvailable, onOpenResult }: Options = {}) {
   const match = fixtureMatch({ matchDate: inDays(days) })
   const sides: [ReturnType<typeof fixtureSide>, ReturnType<typeof fixtureSide>] = [fixtureSide('t-home', 'Irene Villagers U15', 0, selected), fixtureSide('t-away', 'Pretoria A', 5, false)]
   return render(
     <ThemeProvider theme={baseTheme}>
       <QueryClientProvider client={seeded(disabledFormats)}>
-        <ShareMatchDialog open onClose={onClose} clubId="club-1" match={match} teamsById={teamsById} sides={sides} sidesLoading={false} leagueName="Diamond League U15 T20" seasonLabel="2026/2027" initialContent={initialContent} initialScope={initialScope} />
+        <ShareMatchDialog open onClose={onClose} clubId="club-1" match={match} teamsById={teamsById} sides={sides} sidesLoading={false} leagueName="Diamond League U15 T20" seasonLabel="2026/2027" initialContent={initialContent} initialScope={initialScope} resultAvailable={resultAvailable} onOpenResult={onOpenResult} />
       </QueryClientProvider>
     </ThemeProvider>,
   )
@@ -66,6 +68,25 @@ const choose = async (content: string, format?: string) => {
 }
 
 beforeEach(() => localStorage.clear())
+
+describe('step 1, Match Result', () => {
+  it('lists Match Result first and preselected for a published result, and Next hands over', async () => {
+    const onOpenResult = vi.fn()
+    renderDialog({ resultAvailable: true, days: -2, onOpenResult })
+    const radios = screen.getAllByRole('radio')
+    expect(radios[0]).toHaveAccessibleName(/^Match Result/)
+    expect(radios[0]).toBeChecked()
+    expect(screen.getByText('Scorecard, result card and summary')).toBeInTheDocument()
+    expect(radio('Fixture Card')).toBeEnabled()
+    await next()
+    expect(onOpenResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not list Match Result without a published result', () => {
+    renderDialog()
+    expect(screen.queryByRole('radio', { name: /^Match Result/ })).not.toBeInTheDocument()
+  })
+})
 
 describe('step 1, What to share', () => {
   it('lists the five contents as one choice, none ticked at first', async () => {

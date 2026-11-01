@@ -65,7 +65,7 @@ export interface TeamSheetShare {
 }
 
 // docs/specs/131-match-sharing.md: renders ShareMatchDialog (it replaced TeamSheetCommunicationDialog, docs/specs/030 and 039); a match with
-// a published result hands over to ShareResultDialog. Extracted by docs/specs/075-match-view-and-edit.md:
+// a published result lists Match Result in it, which opens ShareResultDialog. Extracted by docs/specs/075-match-view-and-edit.md:
 // the Team Sheet data-fetching and dialog wiring shared by the match card and the Match View page.
 // The data-fetching lives in the host (the codebase's presentational-dialog convention). Every
 // query is `enabled: dialogOpen` so nothing fires until the admin actually opens the dialog; the
@@ -144,29 +144,38 @@ export function useTeamSheetShare({
     setDialogOpen(true)
   }
 
-  const shareDialog = published ? (
-    dialogOpen && resultQuery.data ? (
-      <ShareResultDialog open onClose={() => setDialogOpen(false)} clubId={clubId} match={match} result={resultQuery.data} teamsById={teamsById} />
-    ) : (
-      <Backdrop open={dialogOpen && !resultQuery.isError} sx={{ zIndex: (theme) => theme.zIndex.modal, flexDirection: 'column', gap: 1.5, color: 'common.white' }} onClick={() => setDialogOpen(false)}>
-        <CircularProgress color="inherit" size={28} />
-        <Typography role="status">Opening the result share</Typography>
-      </Backdrop>
-    )
-  ) : (
-    <ShareMatchDialog
-      open={dialogOpen}
-      onClose={() => setDialogOpen(false)}
-      clubId={clubId}
-      match={match}
-      teamsById={teamsById}
-      sides={teamSheetSides}
-      sidesLoading={Boolean(sidesLoading)}
-      leagueName={leagueName}
-      seasonLabel={seasonLabel}
-      initialContent={options.content}
-      initialScope={options.scope}
-    />
+  const [resultOpen, setResultOpen] = useState(false)
+  const shareDialog = (
+    <>
+      <ShareMatchDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        clubId={clubId}
+        match={match}
+        teamsById={teamsById}
+        sides={teamSheetSides}
+        sidesLoading={Boolean(sidesLoading)}
+        leagueName={leagueName}
+        seasonLabel={seasonLabel}
+        initialContent={options.content}
+        initialScope={options.scope}
+        resultAvailable={published}
+        onOpenResult={() => {
+          setDialogOpen(false)
+          setResultOpen(true)
+        }}
+      />
+      {published &&
+        resultOpen &&
+        (resultQuery.data ? (
+          <ShareResultDialog open onClose={() => setResultOpen(false)} clubId={clubId} match={match} result={resultQuery.data} teamsById={teamsById} />
+        ) : (
+          <Backdrop open={!resultQuery.isError} sx={{ zIndex: (theme) => theme.zIndex.modal, flexDirection: 'column', gap: 1.5, color: 'common.white' }} onClick={() => setResultOpen(false)}>
+            <CircularProgress color="inherit" size={28} />
+            <Typography role="status">Opening the result share</Typography>
+          </Backdrop>
+        ))}
+    </>
   )
 
   return { openShare: () => open({ content: initialContent, scope: initialScope }), openShareFor: open, shareDialog }
