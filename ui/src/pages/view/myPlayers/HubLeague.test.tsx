@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../../../api/axiosConfig'
 import type { MyLeagueDto } from '../../../api/myPlayersApi'
@@ -20,7 +21,9 @@ function renderLeague(data: MyLeagueDto | Error, tab: LeagueTab = 'details', onT
   routeApi(http, { 'GET /me/players/k1/leagues/l1': data })
   return render(
     <QueryClientProvider client={newQueryClient()}>
-      <HubLeague playerKey="k1" leagueId="l1" seasonId={seasonId} clubId="c1" clubName="Paarl CC" tab={tab} onTab={onTab} />
+      <MemoryRouter>
+        <HubLeague playerKey="k1" leagueId="l1" seasonId={seasonId} clubId="c1" clubName="Paarl CC" tab={tab} onTab={onTab} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -86,13 +89,15 @@ describe('HubLeague', () => {
     expect(header).toHaveStyle({ marginLeft: 'auto' })
   })
 
-  it('passes the club\'s disabled formats to Share and has no Back, Edit or fixture link', async () => {
+  it('passes the club\'s disabled formats to Share and has no Back or Edit, and links only the own game (docs/specs/135)', async () => {
     renderLeague(leagueDto({ shareDisabledFormats: ['ICS'] }), 'schedule')
 
     expect(await screen.findByTestId('share-stub')).toHaveTextContent('ICS')
     expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit|add/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAttribute('href', '/account/players/k1/schedule/matches/m1?from=league%3Al1')
   })
 
   it('asks for the league with the season from the URL', async () => {
@@ -106,7 +111,9 @@ describe('HubLeague', () => {
     http.get.mockImplementation(() => new Promise(() => undefined))
     const { container } = render(
       <QueryClientProvider client={newQueryClient()}>
-        <HubLeague playerKey="k1" leagueId="l1" clubId="c1" clubName={null} tab="details" onTab={vi.fn()} />
+        <MemoryRouter>
+          <HubLeague playerKey="k1" leagueId="l1" clubId="c1" clubName={null} tab="details" onTab={vi.fn()} />
+        </MemoryRouter>
       </QueryClientProvider>,
     )
 

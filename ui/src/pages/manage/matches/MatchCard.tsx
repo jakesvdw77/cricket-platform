@@ -48,7 +48,7 @@ export interface MatchCardProps {
 // holds every action (no footer bar, no icon cluster). Deactivate/Reactivate and Delete live on the edit screen (038, 109).
 export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, viewTo }: MatchCardProps) {
   // docs/specs/131 (Weather): the forecast within 7 days at a field with a usable place; nothing otherwise.
-  const weather = useMatchFieldWeather(clubId, match)
+  const weather = useMatchFieldWeather(clubId, match, undefined, match.leagueId ? leaguesById.get(match.leagueId)?.format : null)
   const location = useLocation()
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)

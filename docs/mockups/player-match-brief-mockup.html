@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 135 Match Brief mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;
+  --line:color-mix(in srgb,var(--cream) 22%,transparent);--muted:color-mix(in srgb,var(--cream) 68%,transparent);
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:900px;font-size:14px;margin:0 0 14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.hub{background:var(--green900);color:var(--cream);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.hub.p{width:375px}
+.hub.d{width:640px}
+.body{padding:16px;display:grid;gap:12px;align-content:start}
+.foot{border-top:1px solid var(--line);padding:10px 16px;font-size:14px;font-weight:600;color:var(--sand)}
+h3{font-family:var(--display);font-weight:700;font-size:26px;margin:0;color:var(--cream)}
+h4{font-family:var(--display);font-weight:600;font-size:17px;margin:4px 0 0;color:var(--sand);letter-spacing:.04em;text-transform:uppercase}
+.muted{color:var(--muted);font-size:14px}
+.team{font-family:var(--display);font-weight:700;font-size:21px}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--line);font:600 13px/1 var(--body);color:var(--sand);white-space:nowrap}
+/* neutral selection chip, never amber */
+.chip{display:inline-flex;height:24px;align-items:center;padding:0 10px;border-radius:12px;border:1px solid var(--line);color:var(--sand);font:600 12.5px/1 var(--body)}
+.card{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:4px;padding:12px;display:grid;gap:6px;background:color-mix(in srgb,var(--cream) 7%,transparent)}
+.flat{border:1px solid var(--line);border-radius:4px;padding:12px;display:grid;gap:8px;background:color-mix(in srgb,#000 22%,transparent)}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;border:1px solid var(--line);color:var(--cream);background:transparent;white-space:nowrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* row anatomy */
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.hdr .time{font-size:14px;color:var(--muted)}
+.hdr .time b{color:var(--cream);font-weight:600}
+.phone .hdr{flex-direction:column}
+.lg{font-size:13.5px;color:var(--muted)}
+.venue{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0}
+.venue .lab{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--sand);display:block}
+.venue .nm{font-weight:600;font-size:15.5px;color:var(--cream)}
+.brief1{font-size:13.5px;color:var(--sand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* brief panel */
+.bp{display:grid;gap:10px}
+.bp ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:15px}
+.bp li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:10px;vertical-align:middle}
+.note-blk{border-left:3px solid var(--gold);padding:6px 0 6px 12px}
+.note-blk .lab{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.figs{display:flex;gap:8px;flex-wrap:wrap}
+.fig{height:46px;border:1px solid var(--line);border-radius:6px;padding:0 12px;display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--cream) 7%,transparent);font-size:14px}
+.fig b{font-family:var(--display);font-size:19px;color:var(--gold)}
+.fig span{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+/* ticker variant B (review only) */
+.tick{overflow:hidden;white-space:nowrap;font-size:13.5px;color:var(--sand);border:1px dashed var(--gold);border-radius:4px;padding:4px 0}
+.tick span{display:inline-block;padding-left:100%;animation:scroll 14s linear infinite}
+@keyframes scroll{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.tick span{animation:none;padding-left:8px}}
+.flag{font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase}
+textarea{width:100%;background:transparent;border:1px solid var(--line);border-radius:4px;color:var(--cream);font:400 15px var(--body);padding:8px;min-height:64px}
+</style>
+</head>
+<body>
+<h1>Match Brief, row layout and coach's note</h1>
+<p class="lede">Mockup for <code>docs/specs/135-player-hub-match-view.md</code> (owner direction 2026-11-02). Dark Hub console, brand tokens only. Corner weather, VENUE line with Get Directions at its right end, neutral selection chip, Match Brief panel, coach's note.</p>
+
+<h2>1. Upcoming row (new layout)</h2>
+<p class="note">Weather badge top right (phone: under the time). League and season alone on their line. VENUE is its own line, Get Directions always at the right end. Chip wording is neutral outline. One static brief sentence at the bottom.</p>
+<div class="row">
+ <div><p class="cap">Desktop</p>
+ <div class="hub d"><div class="body">
+  <div class="card">
+   <div class="hdr"><div class="time"><b>Sat 8 Nov, 09:00</b> &middot; in 3 days</div><span class="badge">24-31 C, rain 4-39%</span></div>
+   <div class="team">Riverside U15 A versus Coastal U15</div>
+   <div class="lg">TVL Division 1 T20 &middot; 2026/27</div>
+   <div class="venue"><div><span class="lab">Venue</span><span class="nm">Riverside Oval, Field 2</span></div><span class="btn">Get Directions</span></div>
+   <div class="acts"><span class="chip">Waiting For Team Announcement</span></div>
+   <div class="brief1">Dry until about 13:00, showers likely after 14:00</div>
+  </div>
+ </div></div></div>
+
+ <div><p class="cap">Phone</p>
+ <div class="hub p phone"><div class="body">
+  <div class="card">
+   <div class="hdr"><div class="time"><b>Sat 8 Nov, 09:00</b> &middot; in 3 days</div><span class="badge">24-31 C, rain 4-39%</span></div>
+   <div class="team">Riverside U15 A versus Coastal U15</div>
+   <div class="lg">TVL Division 1 T20 &middot; 2026/27</div>
+   <div class="venue"><div><span class="lab">Venue</span><span class="nm">Riverside Oval, Field 2</span></div><span class="btn">Get Directions</span></div>
+   <div class="acts"><span class="chip">Selected (12th)</span></div>
+   <div class="brief1">Dry until about 13:00, showers likely after 14:00</div>
+  </div>
+ </div></div></div>
+</div>
+
+<h2>1a. Venue and chip states</h2>
+<div class="row">
+ <div class="hub p"><div class="body">
+  <div class="card"><div class="venue" style="border-top:0"><div><span class="lab">Venue</span><span class="nm">TBC</span></div></div><span class="muted">No button when there is no venue.</span></div>
+  <div class="card"><div class="venue" style="border-top:0"><div><span class="lab">Venue</span><span class="nm">Home ground, Main Road</span></div></div><span class="muted">Plain text when the venue is free text.</span></div>
+  <div class="acts"><span class="chip">Waiting For Team Announcement</span><span class="chip">Selected</span><span class="chip">Selected (12th)</span><span class="chip">Not Selected</span></div>
+ </div></div>
+</div>
+
+<h2>2. Match page, Match Brief panel</h2>
+<p class="note">Weather for the match hours (09:00 to 13:00 for a T20, 4 hours), the range badge, rule-built sentences (priority order, up to four), then the coach's note. Get Directions lives on the VENUE line.</p>
+<div class="row">
+ <div><p class="cap">Upcoming, announced, T20</p>
+ <div class="hub p"><div class="body">
+  <div><h3>Riverside U15 A versus Coastal U15</h3><div style="margin-top:6px"><span class="badge">Upcoming</span></div></div>
+  <div class="figs"><div class="fig"><b>Sat 8 Nov 09:00</b><span>When, in 3 days</span></div><div class="fig"><b>TVL Div 1</b><span>League and season</span></div><div class="fig"><b>Selected</b><span>Your status</span></div></div>
+  <div class="venue"><div><span class="lab">Venue</span><span class="nm">Riverside Oval, Field 2</span></div><span class="btn">Get Directions</span></div>
+  <div class="flat bp">
+   <h4 style="margin:0">Match Brief</h4>
+   <span class="badge" style="justify-self:start">24-31 degrees, rain 4-39%</span>
+   <ul>
+    <li>Dry until about 11:00, showers likely after 12:00</li>
+    <li>Windy: gusts up to 43 km/h</li>
+    <li>Hot: 31 degrees, bring water</li>
+    <li>Very high UV from 11:00, bring sunscreen</li>
+   </ul>
+   <div class="note-blk"><span class="lab">From the coach</span><div>Arrive 08:15 for warm-ups, wear whites, bring water.</div></div>
+  </div>
+  <div class="flat"><b>Your Availability</b><span class="muted">You said Yes. Poll open.</span><div class="acts"><span class="btn">Answer Availability</span></div></div>
+ </div><div class="foot">Back to Matches</div></div></div>
+
+ <div><p class="cap">Full-day game, sunset sentence, no note</p>
+ <div class="hub p"><div class="body">
+  <div class="flat bp">
+   <h4 style="margin:0">Match Brief</h4>
+   <span class="badge" style="justify-self:start">17-26 degrees, dry</span>
+   <ul>
+    <li>Dry for the whole match</li>
+    <li>Breezy: gusts up to 34 km/h</li>
+    <li>High UV from 10:00, bring sunscreen</li>
+    <li>Sunset 18:24</li>
+   </ul>
+  </div>
+  <p class="cap" style="margin:6px 0 0">Forecast out of range or failed, note only</p>
+  <div class="flat bp"><h4 style="margin:0">Match Brief</h4><div class="note-blk"><span class="lab">From the coach</span><div>Meet at the nets at 08:00.</div></div></div>
+  <p class="cap" style="margin:6px 0 0">Out of range and no note</p>
+  <div class="muted">Panel not drawn.</div>
+ </div></div></div>
+</div>
+
+<h2>3. Row weather line: static (A, recommended) or scrolling (B)</h2>
+<p class="note">A: one short static sentence, the highest priority rule, truncated if needed; the full text is on the page. B: a slow ticker with the full text (review only; needs a pause control and a reduced-motion fallback, so it is not recommended: moving text fails the pause and stop expectation, is hard to read with a magnifier and competes with the LIVE pulse).</p>
+<div class="row">
+ <div class="hub p"><div class="body">
+  <div class="flag">Variant A, static (recommended)</div>
+  <div class="card"><div class="brief1">Dry until about 13:00, showers likely after 14:00</div></div>
+  <div class="flag">Variant B, ticker (not recommended)</div>
+  <div class="card"><div class="tick"><span>Dry until about 13:00, showers likely after 14:00 &middot; Windy: gusts up to 43 km/h &middot; Hot: 31 degrees, bring water &middot; Sunset 18:24</span></div></div>
+ </div></div>
+</div>
+
+<h2>4. Manager: coach's note field (Team Selection and match page)</h2>
+<div class="row">
+ <div class="hub d"><div class="body">
+  <div class="flat">
+   <b>Coach's Note, Riverside U15 A</b>
+   <textarea>Arrive 08:15 for warm-ups, wear whites, bring water.</textarea>
+   <div class="acts" style="justify-content:space-between"><span class="muted">Players see this note. Do not put names or phone numbers here.</span><span class="muted">55 / 280</span></div>
+   <div class="acts"><span class="btn">Save</span></div>
+  </div>
+ </div></div>
+</div>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { storedPoint } from '../utils/fieldLocation'
 import type { DirectionsTarget, LocatableField } from '../utils/fieldLocation'
 import { useDirectionsTarget, useFieldLocation } from './useFieldLocation'
 import { summariseForecast } from '../utils/weather/wmo'
+import { matchWindowHours, summariseMatchHours } from '../utils/weather/matchHours'
 import type { WeatherSummary } from '../utils/weather/wmo'
 import type { Match } from '../api/matchApi'
 
@@ -13,6 +14,7 @@ import type { Match } from '../api/matchApi'
 // (1) the coordinates stored on the field, (2) its map URL, (3) the Open-Meteo geocoding of the address city (cached by place for a
 // long time), (4) nothing: then no weather is shown, never a guess. The access point is for directions only. Nothing is requested
 // for a past date, for a date more than 6 days ahead, or when the field gives no usable place. A failed fetch is quiet and retried later.
+// docs/specs/135: the summary covers the MATCH HOURS (start to start + 4, 6 or 8 hours by league format), with tooltip lines.
 
 export type WeatherField = LocatableField
 
@@ -26,7 +28,7 @@ export interface MatchWeather {
 const LONG = 6 * 60 * 60 * 1000
 const NONE: MatchWeather = { status: 'none', summary: null }
 
-export function useMatchWeather(matchDate: string | null | undefined, field: WeatherField | null | undefined, now?: Date): MatchWeather {
+export function useMatchWeather(matchDate: string | null | undefined, field: WeatherField | null | undefined, now?: Date, format?: string | null): MatchWeather {
   const inRange = Boolean(matchDate) && inForecastRange(matchDate as string, now)
   const location = useFieldLocation(field, inRange)
   const coords = location.point
@@ -42,7 +44,12 @@ export function useMatchWeather(matchDate: string | null | undefined, field: Wea
   })
 
   if (!inRange) return NONE
-  if (forecast.data) return { status: 'ready', summary: summariseForecast(forecast.data) }
+  if (forecast.data) {
+    // The match hours (start to start + N hours) when the response has hourly values; the whole day only when it has none.
+    const hasHours = Boolean(forecast.data.hours?.length)
+    const summary = hasHours ? summariseMatchHours(forecast.data, matchDate as string, matchWindowHours(format)) : summariseForecast(forecast.data)
+    return summary ? { status: 'ready', summary } : NONE
+  }
   const waiting = location.loading || (coords !== null && forecast.isLoading)
   return waiting ? { status: 'loading', summary: null } : NONE
 }
@@ -88,10 +95,10 @@ export function useMatchField(clubId: string | undefined, match: (Pick<Match, 'p
 }
 
 // The forecast for a match: loads the field's place only when the match has no stored position.
-export function useMatchFieldWeather(clubId: string | undefined, match: (Pick<Match, 'matchDate' | 'playingAreaId'> & MatchFieldPosition) | null | undefined, now?: Date): MatchWeather {
+export function useMatchFieldWeather(clubId: string | undefined, match: (Pick<Match, 'matchDate' | 'playingAreaId'> & MatchFieldPosition) | null | undefined, now?: Date, format?: string | null): MatchWeather {
   const inRange = Boolean(match?.matchDate) && inForecastRange(match?.matchDate as string, now)
   const field = useMatchField(clubId, match, inRange)
-  return useMatchWeather(match?.matchDate, field, now)
+  return useMatchWeather(match?.matchDate, field, now, format)
 }
 
 // Get Directions for a match: the access point when set, else the resolved position (the town lookup only when nothing else exists).

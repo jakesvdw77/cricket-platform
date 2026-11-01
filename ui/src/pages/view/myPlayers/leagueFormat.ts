@@ -25,7 +25,7 @@ export function ageBand(league: Pick<MyLeagueSummaryDto, 'minAge' | 'maxAge'>): 
 const pad = (value: number) => String(value).padStart(2, '0')
 
 // A bare yyyy-mm-dd (or an ISO date and time) read as a local calendar date, so it never shifts a day.
-function localDate(value: string): Date | null {
+export function localDate(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
   if (!match) return null
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))

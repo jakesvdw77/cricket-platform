@@ -1,17 +1,22 @@
 import { Box, ButtonBase, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { BrandIcon } from '../../../components/BrandIcon'
+import { LogoAvatar } from '../../../components/LogoAvatar'
+import { initialsFromName } from '../../../utils/initials'
 import type { MyLeagueSummaryDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
 import { ageBand, shortDate } from './leagueFormat'
 
 // docs/specs/123 (Leagues list): one league as a poll-card style button. The whole card opens the league page. Hub-local.
-export function LeagueLogo({ logoUrl, size }: { logoUrl: string | null; size: number }) {
-  return logoUrl ? (
-    <Box component="img" src={logoUrl} alt="" aria-hidden draggable={false} sx={{ width: size, height: size, flex: 'none', objectFit: 'contain', borderRadius: '4px', bgcolor: creamAlpha(0.9) }} />
-  ) : (
-    <BrandIcon name="nav/cricket-leagues" size={size} onDark />
+// The Hub's logo: the shared LogoAvatar, so a logo that fails to load (a missing file, a bad URL) falls back to the initials tile, never a
+// broken image icon (docs/standards/page-anatomy.md 6a). With a `name` the fallback is its initials; a league (no name) keeps the brand icon.
+export function LeagueLogo({ logoUrl, size, name }: { logoUrl: string | null; size: number; name?: string }) {
+  if (!logoUrl && !name) return <BrandIcon name="nav/cricket-leagues" size={size} onDark />
+  return (
+    <LogoAvatar src={logoUrl} size={size} variant="rounded" fontSize={`${Math.round(size * 0.4)}px`} aria-hidden data-testid="hub-logo" sx={{ borderRadius: '4px' }}>
+      {name ? initialsFromName(name) : <BrandIcon name="nav/cricket-leagues" size={size} onDark />}
+    </LogoAvatar>
   )
 }
 

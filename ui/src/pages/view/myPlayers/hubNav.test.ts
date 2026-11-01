@@ -32,7 +32,7 @@ describe('HUB_NAV', () => {
   it('marks Field Directory as the only live Club item, and the other sections as Soon where they are not built', () => {
     expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Field Directory'])
     for (const id of ['updates', 'stats']) expect(byId(id).children?.every((child) => child.soon)).toBe(true)
-    expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Leagues'])
+    expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues'])
     for (const id of ['profile', 'account']) expect(byId(id).children?.some((child) => child.soon)).toBe(false)
   })
 
@@ -48,7 +48,7 @@ describe('defaultChild', () => {
     expect(defaultChild(byId('club'))?.label).toBe('Field Directory')
     expect(defaultChild(byId('account'))?.label).toBe('Invitations')
     expect(defaultChild(byId('profile'))?.label).toBe('Contact')
-    expect(defaultChild(byId('schedule'))?.label).toBe('Leagues')
+    expect(defaultChild(byId('schedule'))?.label).toBe('Matches')
     expect(defaultChild(byId('stats'))?.label).toBe('My stats')
   })
 

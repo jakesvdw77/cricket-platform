@@ -212,7 +212,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
 
   // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
   // docs/specs/131: ONE Share Match dialog; the Team Sheet button of a team panel preselects it.
-  const weather = useMatchFieldWeather(clubId, match)
+  const weather = useMatchFieldWeather(clubId, match, undefined, match.leagueId ? leaguesById.get(match.leagueId)?.format : null)
   const directionsTarget = useMatchDirections(clubId, match)
   const directions = useGetDirections(directionsTarget)
   const share = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById })

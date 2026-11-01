@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-
 import { MyLinkRequests } from './MyLinkRequests'
 import { InvitationsList } from './MyInvitationsPage'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
-import { useMyPlayer, useMyPlayerPolls, useMyPlayers } from '../../api/myPlayersApi'
+import { useMyPlayer, useMyPlayerMatch, useMyPlayerPolls, useMyPlayers } from '../../api/myPlayersApi'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { EditAgentsView, RemoveLinkView } from './myPlayers/AgentViews'
 import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
@@ -20,6 +20,9 @@ import { HubSoonPanel } from './myPlayers/HubSoonPanel'
 import { HubFields } from './myPlayers/HubFields'
 import { HubLeague } from './myPlayers/HubLeague'
 import { HubLeagues } from './myPlayers/HubLeagues'
+import { HubMatch } from './myPlayers/HubMatch'
+import { HubMatches } from './myPlayers/HubMatches'
+import { HubWatchLive } from './myPlayers/HubWatchLive'
 import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
 import { HUB, hubPageHeading } from './myPlayers/hubStyle'
 import { LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
@@ -43,7 +46,7 @@ export function LegacyDetailsRedirect() {
 
 export default function MyPlayerPage() {
   // Route params: /:section/:sub is a section and its item (profile/card); /:section/:sub/:leaf adds a Profile sub view (profile/card/edit).
-  const { key = '', section: rawSection, sub, leaf } = useParams<{ key: string; section?: string; sub?: string; leaf?: string }>()
+  const { key = '', section: rawSection, sub, leaf, extra } = useParams<{ key: string; section?: string; sub?: string; leaf?: string; extra?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useSearchParams()
   const playerQuery = useMyPlayer(key)
@@ -76,7 +79,12 @@ export default function MyPlayerPage() {
   const subView = section.id === 'profile' && isProfileSubView(sub, leaf)
   const phoneMenuScreen = phone && route.root
 
-  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined })
+  // docs/specs/135: a match page (schedule/matches/:matchId[/watch]) goes back to where it was opened from; the league name is in the
+  // match read the page itself makes (same cache).
+  const matchPage = rawSection === 'schedule' && sub === 'matches' && Boolean(leaf)
+  const from = search.get('from') ?? undefined
+  const fromLeague = useMyPlayerMatch(key, matchPage && from?.startsWith('league:') ? leaf : undefined).data?.league?.name
+  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined, extra, from, fromLabel: fromLeague })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
@@ -182,6 +190,14 @@ export default function MyPlayerPage() {
         onSeasonChange={(next) => navigate(hubLeaguePath(key, undefined, { season: next }), { replace: true })}
         onOpen={(leagueId, seasonId) => navigate(hubLeaguePath(key, leagueId, { season: seasonId }))}
       />
+    )
+  } else if (pageItem?.id === 'schedule.matches') {
+    panel = !leaf ? (
+      <HubMatches playerKey={key} playerName={player?.firstName ?? 'this player'} />
+    ) : extra === 'watch' ? (
+      <HubWatchLive playerKey={key} matchId={leaf} />
+    ) : (
+      <HubMatch playerKey={key} matchId={leaf} from={from} onAnswerAvailability={() => navigate(hubPath(key, 'availability'))} />
     )
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
