@@ -29,8 +29,12 @@ public interface PlatformPlayingAreaService {
     /** Full detail: linked clubs, match count, creator club and possible duplicates. Does not follow a merge. */
     PlatformPlayingAreaDto get(UUID playingAreaId);
 
-    /** Edits any field in any state except merged away; editing a verified field keeps it verified. */
-    PlatformPlayingAreaDto update(UUID playingAreaId, PlayingAreaRequest request);
+    /**
+     * Edits any field in any state except merged away; editing a verified field keeps it verified and restamps
+     * {@code verifiedAt} and {@code verifiedBySubject} with {@code editedBySubject} (spec 133: an admin's edit is a
+     * verification act).
+     */
+    PlatformPlayingAreaDto update(UUID playingAreaId, PlayingAreaRequest request, String editedBySubject);
 
     /**
      * {@code UNVERIFIED -> VERIFIED}, stamping the time and {@code verifiedBySubject}; idempotent on a verified field;

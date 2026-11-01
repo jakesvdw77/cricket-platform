@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMatchWeather } from './useMatchWeather'
+import { fieldFromMatch, useMatchWeather } from './useMatchWeather'
 
 const NOW = new Date(2026, 10, 3, 12, 0)
 const forecastBody = {
@@ -90,5 +90,29 @@ describe('useMatchWeather', () => {
     const second = renderHook(() => useMatchWeather('2026-11-06T14:00:00', { mapUrl: 'https://www.google.com/maps/@-25.7489,28.1899,15z' }, NOW), { wrapper: shared })
     await waitFor(() => expect(second.result.current.status).toBe('ready'))
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  // docs/specs/133
+  it('path 0: stored coordinates win over the map link and the town, with no geocoding', async () => {
+    const field = { latitude: -33.9, longitude: 18.4, mapUrl: 'https://www.google.com/maps/@-25.7461,28.1881,17z', address: { city: 'Irene', provinceState: null, country: 'ZA' } }
+    const { result } = renderHook(() => useMatchWeather('2026-11-06T09:15:00', field, NOW), { wrapper: wrapper() })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0][0])).toContain('latitude=-33.90')
+  })
+
+  it('never uses the access point for the forecast', async () => {
+    fetchMock.mockImplementation(() => json({ results: [] }))
+    const field = { accessLatitude: -26.1, accessLongitude: 28.0 }
+    const { result } = renderHook(() => useMatchWeather('2026-11-06T09:15:00', field, NOW), { wrapper: wrapper() })
+    expect(result.current.status).toBe('none')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('a Player Hub row with a stored position gets a forecast without loading the field', async () => {
+    const row = fieldFromMatch({ playingAreaLatitude: -26.1325, playingAreaLongitude: 28.0567 })
+    const { result } = renderHook(() => useMatchWeather('2026-11-06T09:15:00', row, NOW), { wrapper: wrapper() })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(String(fetchMock.mock.calls[0][0])).toContain('latitude=-26.13')
   })
 })

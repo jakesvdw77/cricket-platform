@@ -601,7 +601,7 @@ class MatchControllerIntegrationTest {
                 .awayTeamName("Occasionals")
                 .seasonId(season.getId())
                 .matchDate(Instant.now().minus(1, ChronoUnit.DAYS))
-                .active(true)
+                .active(false) // an active past match without a result stays listed (spec 132)
                 .build());
         Match todayMatch = matchRepository.save(Match.builder()
                 .clubId(club.getId())

@@ -11,6 +11,12 @@ import { fieldPage, makeField } from '../../test/fieldFixtures'
 
 const findSimilarPlayingAreas = vi.fn()
 const getPlayingArea = vi.fn()
+const searchPlaces = vi.fn()
+
+vi.mock('../../api/weatherApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/weatherApi')>()
+  return { ...actual, searchPlaces: (place: unknown) => searchPlaces(place) }
+})
 
 vi.mock('../../api/playingAreaApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/playingAreaApi')>()
@@ -79,6 +85,14 @@ describe('FieldFormFields', () => {
       expect(screen.getByLabelText('Postal code (optional)')).toBeInTheDocument()
       expect(screen.getByLabelText('Location notes (optional)')).toBeInTheDocument()
       expect(screen.getByText('The owner of the land, even if your club only manages it')).toBeInTheDocument()
+    })
+
+    it('keeps every section and field when compact (docs/specs/134: only the density changes)', () => {
+      renderFields({ variant: 'page', compact: true })
+
+      for (const heading of ['Basic info', 'Address', 'Map and notes']) expect(screen.getByText(heading)).toBeInTheDocument()
+      expect(screen.getByLabelText('Owner type')).toBeInTheDocument()
+      expect(screen.getByLabelText('Location notes (optional)')).toBeInTheDocument()
     })
 
     it('never shows an area type or ground control on the page either', () => {
@@ -228,6 +242,101 @@ describe('FieldFormFields', () => {
       renderFields({ clubId: 'club-1', duplicateOfId: null })
       await waitFor(() => expect(getPlayingArea).not.toHaveBeenCalled())
       expect(screen.queryByRole('region', { name: 'Did you mean' })).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/133
+  describe('Location and the access point', () => {
+    const GOOGLE = 'https://www.google.com/maps/place/Wanderers/@-26.1325,28.0567,17z/data=!3m1'
+    const latitudeInput = () => screen.getByLabelText('Latitude (optional)') as HTMLInputElement
+    const longitudeInput = () => screen.getByLabelText('Longitude (optional)') as HTMLInputElement
+
+    it('pasting a map link never fills or overwrites the coordinates', async () => {
+      const user = userEvent.setup()
+      renderFields({ initial: { latitude: '-33.9', longitude: '18.4' } })
+      await user.click(screen.getByLabelText('Map link (optional)'))
+      await user.paste(GOOGLE)
+      expect(latitudeInput().value).toBe('-33.9')
+      expect(longitudeInput().value).toBe('18.4')
+    })
+
+    it('Read From Map Link fills empty coordinates and says where they came from', async () => {
+      const user = userEvent.setup()
+      renderFields({ initial: { mapUrl: GOOGLE } })
+      await user.click(screen.getByRole('button', { name: 'Read From Map Link' }))
+      expect(latitudeInput().value).toBe('-26.1325')
+      expect(longitudeInput().value).toBe('28.0567')
+      expect(screen.getByText('Read from the map link')).toBeInTheDocument()
+    })
+
+    it('reads a ?q=lat,lng link', async () => {
+      const user = userEvent.setup()
+      renderFields({ initial: { mapUrl: 'https://maps.google.com/?q=-25.75,28.19' } })
+      await user.click(screen.getByRole('button', { name: 'Read From Map Link' }))
+      expect(latitudeInput().value).toBe('-25.75')
+      expect(longitudeInput().value).toBe('28.19')
+    })
+
+    it('asks before replacing coordinates that differ, and keeps them on Cancel', async () => {
+      const user = userEvent.setup()
+      renderFields({ initial: { mapUrl: GOOGLE, latitude: '-33.9', longitude: '18.4' } })
+      await user.click(screen.getByRole('button', { name: 'Read From Map Link' }))
+      expect(await screen.findByText('Replace latitude and longitude with the ones in the link?')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(latitudeInput().value).toBe('-33.9')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Read From Map Link' }))
+      await user.click(await screen.findByRole('button', { name: 'Replace' }))
+      expect(latitudeInput().value).toBe('-26.1325')
+    })
+
+    it('says a short link cannot be read and never guesses', async () => {
+      const user = userEvent.setup()
+      renderFields({ initial: { mapUrl: 'https://maps.app.goo.gl/abc123' } })
+      await user.click(screen.getByRole('button', { name: 'Read From Map Link' }))
+      expect(screen.getByText('This short link cannot be read. Type the coordinates, or use Find On Map.')).toBeInTheDocument()
+      expect(latitudeInput().value).toBe('')
+    })
+
+    it('Find On Map fills nothing until a town is picked, and labels it approximate', async () => {
+      searchPlaces.mockResolvedValue([
+        { name: 'Springs', admin1: 'Gauteng', country: 'South Africa', coords: { lat: -26.25, lng: 28.4 } },
+        { name: 'Springs', admin1: 'Eastern Cape', country: 'South Africa', coords: { lat: -33.1, lng: 25.5 } },
+      ])
+      const user = userEvent.setup()
+      const initial = emptyFieldForm('ZA')
+      renderFields({ initial: { address: { ...initial.address, city: 'Springs' } } })
+      await user.click(screen.getByRole('button', { name: 'Find On Map' }))
+      expect(await screen.findAllByTestId('town-match')).toHaveLength(2)
+      expect(latitudeInput().value).toBe('')
+      await user.click(screen.getByRole('button', { name: 'Use Springs, Gauteng, South Africa' }))
+      expect(latitudeInput().value).toBe('-26.25')
+      expect(longitudeInput().value).toBe('28.4')
+      expect(screen.getByText(/Town centre only: approximate/)).toBeInTheDocument()
+    })
+
+    it('Find On Map needs a city', () => {
+      renderFields()
+      expect(screen.getByRole('button', { name: 'Find On Map' })).toBeDisabled()
+    })
+
+    it('shows the access point only when expanded, and opens it when one is already set', async () => {
+      const user = userEvent.setup()
+      const { unmount } = renderFields()
+      const toggle = screen.getByRole('button', { name: 'Entrance Or Parking' })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await user.click(toggle)
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByLabelText('Access note (optional)')).toBeVisible()
+      unmount()
+      renderFields({ initial: { accessLatitude: '-26.1', accessLongitude: '28.0' } })
+      expect(screen.getByRole('button', { name: 'Entrance Or Parking' })).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('shows inline errors on the pair', () => {
+      renderFields({ errors: { latitude: 'Enter the latitude too, or clear the longitude', accessLongitude: 'Longitude must be between -180 and 180' } })
+      expect(screen.getByText('Enter the latitude too, or clear the longitude')).toBeInTheDocument()
+      expect(screen.getByText('Longitude must be between -180 and 180')).toBeInTheDocument()
     })
   })
 })

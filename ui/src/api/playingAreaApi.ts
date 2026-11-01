@@ -30,6 +30,12 @@ export interface PlayingArea {
   address: Address
   mapUrl: string | null
   locationNotes: string | null
+  // docs/specs/133: the field's position (decimal degrees, both or neither) and an optional entrance or parking point with a note.
+  latitude?: number | null
+  longitude?: number | null
+  accessLatitude?: number | null
+  accessLongitude?: number | null
+  accessNote?: string | null
   verificationStatus: FieldVerificationStatus
   verifiedAt?: string | null
   rejectionReason?: string | null
@@ -58,6 +64,12 @@ export interface PlayingAreaPayload {
   address: Address
   mapUrl: string | null
   locationNotes: string | null
+  // docs/specs/133: the field's position (decimal degrees, both or neither) and an optional entrance or parking point with a note.
+  latitude?: number | null
+  longitude?: number | null
+  accessLatitude?: number | null
+  accessLongitude?: number | null
+  accessNote?: string | null
 }
 
 export interface ListPlayingAreasParams {

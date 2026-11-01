@@ -31,7 +31,8 @@ import { listPolls } from '../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
 import { resultActionFor, resultBadgeFor, resultImportActionFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
-import { useMatchFieldWeather } from '../../hooks/useMatchWeather'
+import { useMatchDirections, useMatchFieldWeather } from '../../hooks/useMatchWeather'
+import { GetDirectionsButton, directionsMenuItems, useGetDirections } from '../../components/GetDirectionsButton'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { availabilityMenuItems, titleCase } from './matches/MatchRowMenu'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
@@ -212,6 +213,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
   // docs/specs/131: ONE Share Match dialog; the per-side Share Team Sheet entries are preselections of it.
   const weather = useMatchFieldWeather(clubId, match)
+  const directionsTarget = useMatchDirections(clubId, match)
+  const directions = useGetDirections(directionsTarget)
   const share = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById })
   // docs/specs/127 and 130: Back returns to where the page was opened from (default: the Matches list); every link that leaves the page
   // carries this page as its origin, labelled "{Home} v {Away}" (at most 60 characters).
@@ -290,6 +293,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               : []),
             ...selectItems,
             ...availabilityMenuItems(destination, leaveTo, availabilityReason, 'Ask the players if they can play.'),
+            ...directionsMenuItems(directionsTarget, directions.start),
             ...shareItems,
             shareMatchItem,
           ],
@@ -393,6 +397,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         pollClosesAt={pollClosesAt}
         resultStatus={match.resultStatus}
         weather={weather.summary}
+        directions={directionsTarget ? <GetDirectionsButton target={directionsTarget} variant="link" testId="match-directions-link" /> : undefined}
       />
 
       {own.length === 0 ? (
@@ -433,6 +438,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
       )}
 
       {share.shareDialog}
+      {directions.sheet}
     </Box>
   )
 }

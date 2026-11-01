@@ -129,7 +129,7 @@ class MatchDateTimeIntegrationTest {
     void worksOnAMatchWithADraftAndWithAPublishedResult() throws Exception {
         World w = fixtures.world();
         Match draft = fixtures.match(w, w.seniors1(), null, on(5, 5));
-        Match published = fixtures.match(w, w.seniors1(), null, on(5, 6));
+        Match published = fixtures.match(w, w.seniors1(), w.seniors2(), on(5, 6));
         result(draft, w.club().getId(), "DRAFT");
         result(published, w.club().getId(), "PUBLISHED");
 

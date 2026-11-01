@@ -1,4 +1,5 @@
 import { hashtagOf, stripEmoji } from './resultTextShared'
+import { directionsText } from './shareMatchData'
 import type { MatchShareLineup, MatchShareModel, MatchSharePlayer } from './shareMatchData'
 import type { MatchFacebookTemplate, MatchWhatsAppTemplate } from './matchShareFormats'
 import type { PlayingRole } from '../../api/matchSideApi'
@@ -20,6 +21,8 @@ export interface MatchTextOptions {
   emoji: boolean
   // Include the forecast line (only when the model has one).
   weather: boolean
+  // docs/specs/133: include the Directions line (only when the model has one). Omitted means off.
+  directions?: boolean
   hashtags?: boolean
   mentionSponsor?: string | null
 }
@@ -35,6 +38,7 @@ function detailLines(model: MatchShareModel, options: MatchTextOptions, withVenu
   const competition = [model.leagueName, model.seasonLabel].filter(Boolean).join(' · ')
   if (competition) lines.push(competition)
   if (options.weather && model.weather) lines.push(`Forecast: ${model.weather.text}`)
+  if (options.directions && model.directions) lines.push(`${directionsText(model.directions)}: ${model.directions.url}`)
   return lines
 }
 

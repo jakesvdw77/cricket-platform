@@ -56,7 +56,7 @@ export type MatchShareChoices = {
   layout: MatchLayout
   imageSize: ImageSize
   templates: { pdf: PdfTemplate; image: ImageTemplate; tv: TvTemplate; whatsapp: MatchWhatsAppTemplate; facebook: MatchFacebookTemplate }
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean; emoji: boolean; hashtags: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; picture: boolean; emoji: boolean; hashtags: boolean }
 }
 
 // A type alias (not an interface) so it satisfies usePersistedListFilters' Record<string, unknown>.
@@ -121,7 +121,7 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     layout: 'SIDE_BY_SIDE',
     imageSize: 'PORTRAIT',
     templates: { pdf: 'CLUB', image: 'CLUB_GREEN', tv: 'BROADCAST', whatsapp: 'SHORT', facebook: 'ANNOUNCEMENT' },
-    include: { marks: true, venueAndDate: true, weather: true, picture: true, emoji: true, hashtags: true },
+    include: { marks: true, venueAndDate: true, weather: true, directions: true, picture: true, emoji: true, hashtags: true },
   },
 }
 

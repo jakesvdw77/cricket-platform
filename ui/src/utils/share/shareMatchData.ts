@@ -7,6 +7,8 @@ import { shareName } from './shareName'
 import { countdownWording, usesLineup } from './matchShareFormats'
 import type { MatchContent, MatchLayout, MatchSideChoice } from './matchShareFormats'
 import type { FunFact } from './matchFunFacts'
+import { googleMapsDirectionsUrl } from '../directions'
+import type { DirectionsTarget } from '../fieldLocation'
 
 // docs/specs/131-match-sharing.md (Content catalogue): the ONE model every match output (PDF, image, TV, WhatsApp, Facebook)
 // is built from. Every player name in it has already passed through shareName, so no generator formats a name by hand.
@@ -31,6 +33,23 @@ export interface MatchShareLineup {
   twelfthMan: string | null
 }
 
+// docs/specs/133 (Match share): the Directions line. Field name, a Google Maps link and the access note when set. Never a person.
+export interface MatchShareDirections {
+  fieldName: string
+  url: string
+  note: string | null
+  approximate: boolean
+}
+
+// "Directions: Wanderers (approximate), use gate 2 off Main Rd" (the link is a separate line or follows it, per format).
+export function directionsText(directions: MatchShareDirections): string {
+  return `Directions: ${directions.fieldName}${directions.approximate ? ' (approximate)' : ''}${directions.note ? `, ${directions.note}` : ''}`
+}
+
+export function directionsOf(target: DirectionsTarget | null | undefined): MatchShareDirections | null {
+  return target ? { fieldName: target.name, url: googleMapsDirectionsUrl(target.point), note: target.viaAccess ? target.accessNote : null, approximate: target.approximate } : null
+}
+
 export interface MatchShareModel {
   content: MatchContent
   title: string
@@ -49,6 +68,8 @@ export interface MatchShareModel {
   // "3 days to go", "Tomorrow", "Today", "Match day"; null for a past day.
   countdown: string | null
   weather: WeatherSummary | null
+  // docs/specs/133: null when no point resolves; the generators draw it only when the Include Directions switch is on.
+  directions: MatchShareDirections | null
   // The lineups in scope, in the order they are shown.
   lineups: MatchShareLineup[]
   layout: MatchLayout
@@ -71,6 +92,8 @@ export interface BuildMatchShareInput {
   seasonLabel: string | null
   clubName: string | null
   weather: WeatherSummary | null
+  // docs/specs/133: where Get Directions goes; omitted, the model has no Directions line.
+  directions?: DirectionsTarget | null
   facts: FunFact[]
   now?: Date
 }
@@ -162,6 +185,7 @@ export function buildMatchShareModel(input: BuildMatchShareInput): MatchShareMod
     clubName: input.clubName,
     countdown: countdownWording(days, started),
     weather: input.weather,
+    directions: directionsOf(input.directions),
     lineups: usesLineup(input.content) ? keys.map(lineupFor) : [],
     layout: input.layout,
     facts: input.facts,

@@ -87,7 +87,7 @@ class PlayingAreaServiceImplTest {
                 "City Council",
                 new AddressDto(null, null, "Pretoria", null, "ZA", null),
                 null,
-                null);
+                null, null, null, null, null, null);
     }
 
     private PlayingArea stored(UUID createdBy, PlayingAreaVerificationStatus status) {

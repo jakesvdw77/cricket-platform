@@ -21,7 +21,7 @@ interface Props extends MatchScreenProps {
 // docs/specs/131 (Control strips): Side and Layout, the Include group (initials with the junior lock, weather with its reason,
 // the format's own switches) and the fun facts list. Shared by every match format screen.
 export function MatchContentControls(props: Props) {
-  const { model, side, sideGaps, layout, onSideChange, onLayoutChange, initials, weatherReason, weatherOn, onWeatherChange, facts, tickedFactIds, onToggleFact, guard = (change) => change(), children, showFacts } = props
+  const { model, side, sideGaps, layout, onSideChange, onLayoutChange, initials, weatherReason, directionsReason = null, choices, updateChoices, weatherOn, onWeatherChange, facts, tickedFactIds, onToggleFact, guard = (change) => change(), children, showFacts } = props
   const lineup = usesLineup(model.content)
   const both = side === 'BOTH' && lineup
   const gapText = MATCH_SIDE_CHOICES.map((item) => sideGaps[item]).find(Boolean) ?? null
@@ -69,6 +69,18 @@ export function MatchContentControls(props: Props) {
         {weatherReason && (
           <Typography id="match-weather-reason" variant="caption" color="text.secondary">
             {weatherReason}
+          </Typography>
+        )}
+        <CompactSwitch
+          label="Include Directions"
+          checked={choices.match.include.directions && !directionsReason}
+          disabled={Boolean(directionsReason)}
+          describedBy={directionsReason ? 'match-directions-reason' : undefined}
+          onChange={(next) => guard(() => updateChoices({ match: { include: { directions: next } } }))}
+        />
+        {directionsReason && (
+          <Typography id="match-directions-reason" variant="caption" color="text.secondary">
+            {directionsReason}
           </Typography>
         )}
         {children}

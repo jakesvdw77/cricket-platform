@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -106,6 +107,10 @@ public final class LeagueScheduleIdentity {
         return DATE_FORMAT.format(date);
     }
 
+    public static String formatTime(LocalTime time) {
+        return TIME_FORMAT.format(time);
+    }
+
     public record Difference(String field, String oldValue, String newValue) {}
 
     /** A possible duplicate finding; {@code dates} are the other dates the teams already meet on. */
@@ -144,7 +149,7 @@ public final class LeagueScheduleIdentity {
         List<LocalDate> nearby = new ArrayList<>();
         List<LocalDate> freeText = new ArrayList<>();
         for (ExistingMatch m : existing) {
-            if (!leagueId.equals(m.leagueId()) || !seasonId.equals(m.seasonId())) {
+            if (!Objects.equals(leagueId, m.leagueId()) || !Objects.equals(seasonId, m.seasonId())) {
                 continue;
             }
             ZonedDateTime local = m.start().atZone(zone);

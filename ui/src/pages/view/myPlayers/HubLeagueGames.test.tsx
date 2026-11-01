@@ -1,8 +1,13 @@
-import { render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render as baseRender, screen, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HubLeagueResults, HubLeagueSchedule } from './HubLeagueGames'
 import { leagueDto } from '../../../test/hubLeagueFixtures'
+
+const render = (node: ReactElement) =>
+  baseRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{node}</QueryClientProvider>)
 
 // docs/specs/123 (Schedule and Results): the whole league, own games highlighted and tagged, "Only my games" filters.
 const games = () => screen.getAllByRole('article')
@@ -42,6 +47,49 @@ describe('HubLeagueSchedule', () => {
     render(<HubLeagueSchedule dto={{ ...dto, schedule: [] }} />)
     expect(screen.getByText('No matches scheduled yet.')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+})
+
+// docs/specs/133 (Player Hub rows): Get Directions and the forecast come from the position the row carries.
+describe('HubLeagueSchedule location', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+  const withPosition = (patch: Record<string, unknown> = {}) => {
+    const dto = leagueDto()
+    return { ...dto, schedule: [{ ...dto.schedule[0], playingAreaName: 'Riverside Oval', playingAreaLatitude: -33.7, playingAreaLongitude: 18.96, ...patch }, dto.schedule[1]] }
+  }
+
+  it('shows Get Directions on a row with a stored position and none on a row without one', () => {
+    render(<HubLeagueSchedule dto={withPosition()} />)
+    const [first, second] = games()
+    expect(within(first).getByRole('button', { name: 'Get Directions' })).toBeInTheDocument()
+    expect(within(second).queryByRole('button', { name: /Get Directions/ })).not.toBeInTheDocument()
+  })
+
+  it('opens Google Maps with the stored coordinates in one click on a desktop', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<HubLeagueSchedule dto={withPosition()} />)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Get Directions' }))
+    expect(open).toHaveBeenCalledWith('https://www.google.com/maps/dir/?api=1&destination=-33.7,18.96', '_blank', 'noopener,noreferrer')
+  })
+
+  it('goes to the access point when the row has one', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<HubLeagueSchedule dto={withPosition({ playingAreaAccessLatitude: -33.71, playingAreaAccessLongitude: 18.97 })} />)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Get Directions' }))
+    expect(open).toHaveBeenCalledWith('https://www.google.com/maps/dir/?api=1&destination=-33.71,18.97', '_blank', 'noopener,noreferrer')
+  })
+
+  it('shows the forecast badge for a match within the next week', async () => {
+    const day = new Date()
+    day.setDate(day.getDate() + 2)
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    const body = { daily: { time: [iso], weather_code: [1], temperature_2m_max: [27], temperature_2m_min: [14], precipitation_probability_max: [20] } }
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) })))
+    render(<HubLeagueSchedule dto={withPosition({ date: iso })} />)
+    expect(await screen.findByTestId('hub-row-weather')).toHaveTextContent('14 to 27 degrees, 20% rain')
   })
 })
 

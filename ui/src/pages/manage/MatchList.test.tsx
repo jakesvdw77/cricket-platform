@@ -948,7 +948,7 @@ describe('MatchList', () => {
       await screen.findByText('1st XI vs Riverside Occasionals')
       await screen.findByTestId('page-counter-shown')
       expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
-      expect(within(counter('shown')).getByText('Upcoming Matches')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Upcoming And Awaiting Result')).toBeInTheDocument()
       expect(within(counter('this-week')).getByText('3')).toBeInTheDocument()
       expect(within(counter('not-announced')).getByText('Teams Not Announced')).toBeInTheDocument()
       expect(within(counter('no-poll')).getByText('Without A Poll')).toBeInTheDocument()
@@ -967,7 +967,7 @@ describe('MatchList', () => {
 
       await screen.findByTestId('page-counter-shown')
       expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: false }))
-      expect(within(counter('shown')).getByText('Upcoming Matches')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Upcoming And Awaiting Result')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: /view (entire season|all seasons)/i }))
 

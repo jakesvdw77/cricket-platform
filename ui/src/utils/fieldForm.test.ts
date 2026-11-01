@@ -103,3 +103,49 @@ describe('duplicateFieldId', () => {
     expect(duplicateFieldId(undefined)).toBeNull()
   })
 })
+
+// docs/specs/133
+describe('coordinates and the access point', () => {
+  const base = (patch: Partial<FieldFormValues> = {}): FieldFormValues => ({
+    ...emptyFieldForm('ZA'),
+    name: 'Wanderers',
+    ownerName: 'Club',
+    address: { number: null, street: '', city: 'Johannesburg', provinceState: '', country: 'ZA', postalCode: '' },
+    ...patch,
+  })
+
+  it('accepts none, a full pair, and the boundaries 90 and 180', () => {
+    expect(validateFieldForm(base())).toEqual({})
+    expect(validateFieldForm(base({ latitude: '-26.1325', longitude: '28.0567' }))).toEqual({})
+    expect(validateFieldForm(base({ latitude: '90', longitude: '-180' }))).toEqual({})
+  })
+
+  it('refuses a number out of range or text', () => {
+    expect(validateFieldForm(base({ latitude: '90.1', longitude: '10' })).latitude).toMatch(/between -90 and 90/)
+    expect(validateFieldForm(base({ latitude: '10', longitude: '181' })).longitude).toMatch(/between -180 and 180/)
+    expect(validateFieldForm(base({ latitude: 'north', longitude: '10' })).latitude).toMatch(/Enter a number/)
+  })
+
+  it('wants both or neither, with the error on the missing half', () => {
+    expect(validateFieldForm(base({ latitude: '10' })).longitude).toMatch(/longitude too/)
+    expect(validateFieldForm(base({ longitude: '10' })).latitude).toMatch(/latitude too/)
+    expect(validateFieldForm(base({ accessLatitude: '10' })).accessLongitude).toMatch(/longitude too/)
+  })
+
+  it('allows an access note only with an access pair, at most 200 characters', () => {
+    expect(validateFieldForm(base({ accessNote: 'Gate 2' })).accessNote).toMatch(/position/)
+    expect(validateFieldForm(base({ accessLatitude: '1', accessLongitude: '2', accessNote: 'Gate 2' }))).toEqual({})
+    expect(validateFieldForm(base({ accessLatitude: '1', accessLongitude: '2', accessNote: 'x'.repeat(201) })).accessNote).toMatch(/200/)
+  })
+
+  it('sends numbers, or null for what is empty', () => {
+    const payload = fieldFormToPayload(base({ latitude: ' -26.1325 ', longitude: '28.0567', accessNote: '' }))
+    expect(payload).toMatchObject({ latitude: -26.1325, longitude: 28.0567, accessLatitude: null, accessLongitude: null, accessNote: null })
+  })
+
+  it('loads a stored field into the inputs and back', () => {
+    const values = fieldFormFromField(makeField({ latitude: -26.1325, longitude: 28.0567, accessLatitude: -26.2, accessLongitude: 28.1, accessNote: 'Gate 2' }))
+    expect(values).toMatchObject({ latitude: '-26.1325', longitude: '28.0567', accessLatitude: '-26.2', accessLongitude: '28.1', accessNote: 'Gate 2' })
+    expect(fieldFormToPayload(values)).toMatchObject({ latitude: -26.1325, accessLongitude: 28.1, accessNote: 'Gate 2' })
+  })
+})

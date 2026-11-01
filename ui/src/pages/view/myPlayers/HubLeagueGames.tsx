@@ -5,6 +5,7 @@ import { CompactSwitch } from '../../../components/CompactSwitch'
 import type { MyLeagueDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
+import { HubFixtureLocation } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { emptyLine, tagSx } from './HubLeagueTabs'
 import { groupByDate, isPast, longDate, shortDate, timeLabel } from './leagueFormat'
@@ -64,6 +65,7 @@ export function HubLeagueSchedule({ dto }: { dto: MyLeagueDto }) {
                 <Side name={row.awayName} logoUrl={row.awayLogoUrl} />
               </Box>
               <Typography sx={{ fontSize: 15, color: HUB.muted }}>{[timeLabel(row.time), row.venue].filter(Boolean).join(' · ')}</Typography>
+              {!isPast(row.date) && <HubFixtureLocation row={row} />}
             </Box>
           ))}
         </Box>

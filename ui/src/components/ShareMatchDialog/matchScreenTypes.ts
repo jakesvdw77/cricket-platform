@@ -27,6 +27,8 @@ export interface MatchScreenProps extends ShareCoreScreenProps {
   onLayoutChange: (layout: MatchLayout) => void
   // The reason the Include weather switch is off (no forecast), or null when a forecast exists.
   weatherReason: string | null
+  // docs/specs/133: the reason the Include Directions switch is off (no field position), or null/omitted when a point resolves.
+  directionsReason?: string | null
   // Every fact the data supports and the ones ticked for this share.
   facts: FunFact[]
   tickedFactIds: string[]

@@ -1,22 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
-import type { Address } from '../api/clubApi'
-import { fetchDailyForecast, geocodePlace } from '../api/weatherApi'
+import { fetchDailyForecast } from '../api/weatherApi'
 import { getPlayingArea, playingAreasKey } from '../api/playingAreaApi'
 import { localDateIso, inForecastRange } from '../utils/weather/forecastWindow'
-import { parseMapCoords, placeFromAddress, placeKey } from '../utils/weather/mapCoords'
+import { storedPoint } from '../utils/fieldLocation'
+import type { DirectionsTarget, LocatableField } from '../utils/fieldLocation'
+import { useDirectionsTarget, useFieldLocation } from './useFieldLocation'
 import { summariseForecast } from '../utils/weather/wmo'
 import type { WeatherSummary } from '../utils/weather/wmo'
 import type { Match } from '../api/matchApi'
 
-// docs/specs/131-match-sharing.md (Weather): the forecast for a match day at a field. Coordinates come, in this order, from
-// (1) the field's map URL, (2) the Open-Meteo geocoding of the address city (cached by place for a long time), (3) nothing: then
-// no weather is shown, never a guess. Nothing is requested for a past date, for a date more than 6 days ahead, or when the
-// field gives no usable place. A failed fetch is quiet and retried later.
+// docs/specs/131-match-sharing.md (Weather) and 133: the forecast for a match day at a field. Coordinates come, in this order, from
+// (1) the coordinates stored on the field, (2) its map URL, (3) the Open-Meteo geocoding of the address city (cached by place for a
+// long time), (4) nothing: then no weather is shown, never a guess. The access point is for directions only. Nothing is requested
+// for a past date, for a date more than 6 days ahead, or when the field gives no usable place. A failed fetch is quiet and retried later.
 
-export interface WeatherField {
-  mapUrl?: string | null
-  address?: Pick<Address, 'city' | 'provinceState' | 'country'> | null
-}
+export type WeatherField = LocatableField
 
 export type MatchWeatherStatus = 'ready' | 'loading' | 'none'
 
@@ -26,24 +24,12 @@ export interface MatchWeather {
 }
 
 const LONG = 6 * 60 * 60 * 1000
-const GEOCODE_STALE = 30 * 24 * 60 * 60 * 1000
 const NONE: MatchWeather = { status: 'none', summary: null }
 
 export function useMatchWeather(matchDate: string | null | undefined, field: WeatherField | null | undefined, now?: Date): MatchWeather {
   const inRange = Boolean(matchDate) && inForecastRange(matchDate as string, now)
-  const fromMap = parseMapCoords(field?.mapUrl)
-  const place = fromMap ? null : placeFromAddress(field?.address)
-
-  const geocode = useQuery({
-    queryKey: ['weather', 'geocode', place ? placeKey(place) : ''],
-    queryFn: () => geocodePlace(place as NonNullable<typeof place>),
-    enabled: inRange && place !== null,
-    staleTime: GEOCODE_STALE,
-    gcTime: GEOCODE_STALE,
-    refetchOnWindowFocus: false,
-    retry: false,
-  })
-  const coords = fromMap ?? geocode.data ?? null
+  const location = useFieldLocation(field, inRange)
+  const coords = location.point
   const date = inRange ? localDateIso(matchDate as string) : ''
 
   const forecast = useQuery({
@@ -57,20 +43,59 @@ export function useMatchWeather(matchDate: string | null | undefined, field: Wea
 
   if (!inRange) return NONE
   if (forecast.data) return { status: 'ready', summary: summariseForecast(forecast.data) }
-  const waiting = (place !== null && geocode.isLoading) || (coords !== null && forecast.isLoading)
+  const waiting = location.loading || (coords !== null && forecast.isLoading)
   return waiting ? { status: 'loading', summary: null } : NONE
 }
 
-// The same for a match: loads the field the match is played on (cached with the Fields directory) and reads its place.
-export function useMatchFieldWeather(clubId: string | undefined, match: Pick<Match, 'matchDate' | 'playingAreaId'> | null | undefined, now?: Date): MatchWeather {
-  const inRange = Boolean(match?.matchDate) && inForecastRange(match?.matchDate as string, now)
+// docs/specs/133: what a match tells about its field's position without a request: the stored coordinates and access point on
+// the match itself (MatchDto and the Player Hub rows carry them).
+export interface MatchFieldPosition {
+  playingAreaName?: string | null
+  venue?: string | null
+  playingAreaLatitude?: number | null
+  playingAreaLongitude?: number | null
+  playingAreaAccessLatitude?: number | null
+  playingAreaAccessLongitude?: number | null
+  playingAreaAccessNote?: string | null
+}
+
+export function fieldFromMatch(match: MatchFieldPosition | null | undefined): LocatableField {
+  return {
+    name: match?.playingAreaName ?? match?.venue ?? null,
+    latitude: match?.playingAreaLatitude ?? null,
+    longitude: match?.playingAreaLongitude ?? null,
+    accessLatitude: match?.playingAreaAccessLatitude ?? null,
+    accessLongitude: match?.playingAreaAccessLongitude ?? null,
+    accessNote: match?.playingAreaAccessNote ?? null,
+  }
+}
+
+// The match's field for the chain: the stored position on the match first; the Fields directory entry (cached with it) is loaded
+// only when the match carries no stored position, to read its map URL and address.
+export function useMatchField(clubId: string | undefined, match: (Pick<Match, 'playingAreaId'> & MatchFieldPosition) | null | undefined, enabled = true): LocatableField {
+  const own = fieldFromMatch(match)
+  const stored = storedPoint(own.latitude, own.longitude) !== null
   const field = useQuery({
     queryKey: [...playingAreasKey(clubId ?? ''), 'one', match?.playingAreaId ?? ''],
     queryFn: () => getPlayingArea(clubId as string, match?.playingAreaId as string),
-    enabled: inRange && Boolean(clubId) && Boolean(match?.playingAreaId),
+    enabled: enabled && !stored && Boolean(clubId) && Boolean(match?.playingAreaId),
     staleTime: LONG,
     refetchOnWindowFocus: false,
     retry: false,
   })
-  return useMatchWeather(match?.matchDate, field.data ?? null, now)
+  if (stored || !field.data) return own
+  return { ...field.data, accessLatitude: own.accessLatitude ?? field.data.accessLatitude, accessLongitude: own.accessLongitude ?? field.data.accessLongitude, accessNote: own.accessNote ?? field.data.accessNote }
+}
+
+// The forecast for a match: loads the field's place only when the match has no stored position.
+export function useMatchFieldWeather(clubId: string | undefined, match: (Pick<Match, 'matchDate' | 'playingAreaId'> & MatchFieldPosition) | null | undefined, now?: Date): MatchWeather {
+  const inRange = Boolean(match?.matchDate) && inForecastRange(match?.matchDate as string, now)
+  const field = useMatchField(clubId, match, inRange)
+  return useMatchWeather(match?.matchDate, field, now)
+}
+
+// Get Directions for a match: the access point when set, else the resolved position (the town lookup only when nothing else exists).
+export function useMatchDirections(clubId: string | undefined, match: (Pick<Match, 'playingAreaId'> & MatchFieldPosition) | null | undefined): DirectionsTarget | null {
+  const field = useMatchField(clubId, match, Boolean(match?.playingAreaId))
+  return useDirectionsTarget(match?.playingAreaId ? field : null)
 }

@@ -18,6 +18,7 @@ import com.cricketlegend.domain.PlayingArea;
 import com.cricketlegend.domain.PlayingAreaCategory;
 import com.cricketlegend.domain.PlayingAreaVerificationStatus;
 import com.cricketlegend.support.AbstractPlayingAreaIntegrationTest;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
@@ -375,6 +376,50 @@ class PlayingAreaControllerIntegrationTest extends AbstractPlayingAreaIntegratio
 
         mockMvc.perform(get(BASE + "/{id}", club.getId(), merged.getId()).with(admin))
                 .andExpect(jsonPath("$.id").value(survivor.getId().toString()));
+    }
+
+    @Test
+    void coordinatesRoundTripOnCreateAndEditAndAVerifiedFieldsCannotBeEditedByTheManager() throws Exception {
+        Club club = club("Riverside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        String located = fieldBody("Council Park", null, "Durban", "ZA", null)
+                .replaceFirst("\\}\\s*$", ", \"latitude\": -29.8587, \"longitude\": 31.0218, "
+                        + "\"accessLatitude\": -29.859, \"accessLongitude\": 31.022, \"accessNote\": \"Gate 2\"}");
+
+        String created = mockMvc.perform(post(BASE, club.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(located))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.latitude").value(-29.8587))
+                .andExpect(jsonPath("$.longitude").value(31.0218))
+                .andExpect(jsonPath("$.accessNote").value("Gate 2"))
+                .andReturn().getResponse().getContentAsString();
+        UUID id = UUID.fromString(com.jayway.jsonpath.JsonPath.read(created, "$.id"));
+
+        mockMvc.perform(get(BASE + "/{id}", club.getId(), id).with(admin))
+                .andExpect(jsonPath("$.accessLatitude").value(-29.859))
+                .andExpect(jsonPath("$.accessLongitude").value(31.022));
+        mockMvc.perform(put(BASE + "/{id}", club.getId(), id).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(fieldBody("Council Park", null, "Durban", "ZA", null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").doesNotExist())
+                .andExpect(jsonPath("$.accessNote").doesNotExist());
+
+        PlayingArea verified = area("Locked", "Pretoria", "ZA", null, PlayingAreaCategory.CLUB, VERIFIED, club.getId());
+        mockMvc.perform(put(BASE + "/{id}", club.getId(), verified.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(located.replace("Council Park", "Locked")))
+                .andExpect(status().isConflict());
+        assertThat(playingAreaRepository.findById(verified.getId()).orElseThrow().getLatitude()).isNull();
+    }
+
+    @Test
+    void badCoordinatesOnCreateAreA400() throws Exception {
+        Club club = club("Riverside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        mockMvc.perform(post(BASE, club.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content(fieldBody("Council Park", null, "Durban", "ZA", null)
+                                .replaceFirst("\\}\\s*$", ", \"latitude\": 12}")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

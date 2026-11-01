@@ -11,9 +11,11 @@ import { RecordFormScreen } from '../../../components/RecordFormScreen'
 import { createPlayingArea, getPlayingArea, playingAreasKey, updatePlayingArea } from '../../../api/playingAreaApi'
 import type { PlayingArea, PlayingAreaPayload } from '../../../api/playingAreaApi'
 import { useFieldForm } from '../../../hooks/useFieldForm'
+import { useBackLink, useReturnTo } from '../../../hooks/useReturnTo'
 import { duplicateFieldId } from '../../../utils/fieldForm'
 import { errorDetail } from '../../../utils/errorDetail'
 import { fieldEditState } from '../../../utils/fieldStatus'
+import { afterSaveTarget } from '../../../utils/returnTo'
 
 export const FIELD_FORM_ID = 'field-form'
 
@@ -29,12 +31,16 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
   const [ownField, setOwnField] = useState(false)
   const edit = field ? fieldEditState(field, clubId) : { editable: true, reason: null }
   const backTo = field ? `${LIST_PATH}/${field.id}` : LIST_PATH
+  // docs/specs/127 and 134: Back, Cancel and Save go to the origin when there is one; otherwise Back and Cancel go to `backTo`
+  // and Save to the saved field's page.
+  const origin = useReturnTo()
+  const cancelLink = useBackLink(backTo, 'Cancel')
 
   const save = useMutation({
     mutationFn: (payload: PlayingAreaPayload) => (field ? updatePlayingArea(clubId, field.id, payload) : createPlayingArea(clubId, payload, ownField)),
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: playingAreasKey(clubId) })
-      navigate(`${LIST_PATH}/${saved.id}`)
+      navigate(afterSaveTarget(origin ? { to: origin.to } : null, { defaultTo: `${LIST_PATH}/${saved.id}` }))
     },
     onError: (error) => setDuplicateOfId(duplicateFieldId(error)),
   })
@@ -52,22 +58,23 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
 
   return (
     <RecordFormScreen
-      title={isEdit ? 'Edit field' : 'Add field'}
+      title={isEdit ? 'Edit Field' : 'Add Field'}
       backTo={backTo}
-      backLabel={isEdit ? 'Back to field' : 'Back to Fields'}
+      backLabel={isEdit ? 'Back to Field' : 'Back to Fields'}
+      compact
       actions={
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           {save.isError && !duplicateOfId && (
             <Typography variant="body2" color="error.main">
               {errorDetail(save.error, 'Something went wrong saving this field. Please try again.')}
             </Typography>
           )}
-          <MuiButton component={RouterLink} to={backTo} variant="outlined" sx={compactButtonSx}>
+          <MuiButton component={RouterLink} to={cancelLink.to ?? backTo} variant="outlined" size="small" sx={compactButtonSx}>
             Cancel
           </MuiButton>
           {edit.editable && (
             <Button size="compact" type="submit" form={FIELD_FORM_ID} disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Add field'}
+              {save.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Field'}
             </Button>
           )}
         </Stack>
@@ -88,6 +95,7 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
           suggest={!isEdit}
           duplicateOfId={duplicateOfId}
           onUseExisting={openExisting}
+          compact
           countryHint={isEdit ? undefined : 'Chosen from your browser. Change it if it is wrong.'}
         />
         {!isEdit && (
@@ -104,9 +112,10 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
   )
 }
 
-// docs/specs/099-fields-directory.md (5): Add field and Edit field on the compact form of the Match and Team pages
-// (RecordFormScreen with one card of FormSectionHeading sections). A field that cannot be edited opens read-only with the
-// reason. Saving goes to the field's page, where an unverified field says so.
+// docs/specs/099-fields-directory.md (5) and docs/specs/134: Add Field and Edit Field on the compact flat form card of the Season and
+// Match pages (RecordFormScreen compact: one card of compact FormSectionHeading sections, 36 px fields, footer Cancel then
+// Save Changes or Create Field). A field that cannot be edited opens read-only with the reason. Saving goes to the origin
+// (`returnTo`) or else to the field's page, where an unverified field says so.
 export default function FieldFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { fieldId } = useParams<{ fieldId?: string }>()

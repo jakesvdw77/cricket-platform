@@ -54,7 +54,8 @@ import org.springframework.test.web.servlet.MockMvc;
 class MePlayersFieldsIntegrationTest extends AbstractLinkIntegrationTest {
 
     private static final Set<String> KEYS = Set.of("id", "name", "owner", "addressLine1", "city", "provinceState",
-            "postalCode", "country", "mapUrl", "verified", "home");
+            "postalCode", "country", "mapUrl", "latitude", "longitude", "accessLatitude", "accessLongitude", "accessNote",
+            "verified", "home");
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PlayingAreaRepository playingAreaRepository;

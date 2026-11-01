@@ -140,6 +140,54 @@ describe('privacy: initials on shows no full given name anywhere', () => {
   })
 })
 
+// docs/specs/133 (Match share): the Directions line.
+describe('Directions line', () => {
+  const target = { point: { lat: -26.1325, lng: 28.0567 }, approximate: false, viaAccess: true, name: 'Hofmeyer Park', accessNote: 'Use gate 2 off Main Rd', addressText: '' }
+  const URL = 'https://www.google.com/maps/dir/?api=1&destination=-26.1325,28.0567'
+
+  it('the model carries the field, the Google Maps link and the access note, and nothing when no point resolves', () => {
+    expect(fixtureModel({ directions: target }).directions).toEqual({ fieldName: 'Hofmeyer Park', url: URL, note: 'Use gate 2 off Main Rd', approximate: false })
+    expect(fixtureModel({ directions: null }).directions).toBeNull()
+    expect(fixtureModel().directions).toBeNull()
+  })
+
+  it('WhatsApp and Facebook text include it only when switched on', () => {
+    const model = fixtureModel({ content: 'COUNTDOWN', directions: target })
+    const on = generateMatchWhatsAppText(model, 'SHORT', { emoji: false, weather: false, directions: true })
+    expect(on).toContain(`Directions: Hofmeyer Park, Use gate 2 off Main Rd: ${URL}`)
+    expect(generateMatchWhatsAppText(model, 'SHORT', { emoji: false, weather: false, directions: false })).not.toContain('Directions')
+    expect(generateMatchWhatsAppText(model, 'SHORT', { emoji: false, weather: false })).not.toContain(URL)
+    expect(generateMatchFacebookText(model, 'BRIEF', { emoji: false, weather: false, directions: true })).toContain(URL)
+  })
+
+  it('says approximate for a town-only point and adds no person name', () => {
+    const model = fixtureModel({ content: 'FIXTURE', initialsOnly: true, directions: { ...target, viaAccess: false, accessNote: null, approximate: true } })
+    const text = generateMatchWhatsAppText(model, 'SHORT', { emoji: false, weather: false, directions: true })
+    expect(text).toContain('Directions: Hofmeyer Park (approximate): ')
+    for (const first of FULL_FIRST_NAMES) expect(text).not.toContain(first)
+  })
+
+  it('is drawn on the Fixture Card and Countdown only when on, and no model without a point draws it', () => {
+    for (const content of ['FIXTURE', 'COUNTDOWN'] as const) {
+      const drawnOn: string[] = []
+      drawMatchImage(recordingContext(drawnOn), fixtureModel({ content, directions: target }), { ...imageOptions(), include: { ...imageOptions().include, directions: true } })
+      expect(drawnOn.some((line) => line.startsWith('Directions: Hofmeyer Park'))).toBe(true)
+      expect(drawnOn.some((line) => line.includes('google.com/maps/dir'))).toBe(true)
+      const drawnOff: string[] = []
+      drawMatchImage(recordingContext(drawnOff), fixtureModel({ content, directions: target }), imageOptions())
+      expect(drawnOff.some((line) => line.startsWith('Directions'))).toBe(false)
+      const drawnNone: string[] = []
+      drawMatchImage(recordingContext(drawnNone), fixtureModel({ content }), { ...imageOptions(), include: { ...imageOptions().include, directions: true } })
+      expect(drawnNone.some((line) => line.startsWith('Directions'))).toBe(false)
+    }
+  })
+
+  it('is remembered on by default and survives a sanitise', () => {
+    expect(DEFAULT_SHARE_CHOICES.match.include.directions).toBe(true)
+    expect(sanitiseShareChoices({ match: { include: { directions: false } } }).match.include.directions).toBe(false)
+  })
+})
+
 describe('text builders', () => {
   it('writes the countdown and fixture, with the forecast only when on', () => {
     const countdown = fixtureModel({ content: 'COUNTDOWN' })

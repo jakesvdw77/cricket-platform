@@ -18,7 +18,8 @@ const listSeasons = vi.fn()
 const listLeagues = vi.fn()
 const listLeagueAffiliations = vi.fn()
 
-vi.mock('../../api/matchApi', () => ({
+vi.mock('../../api/matchApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/matchApi')>()),
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
   createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
   updateMatch: (clubId: string, matchId: string, payload: unknown) => updateMatch(clubId, matchId, payload),
@@ -587,6 +588,83 @@ describe('MatchFormPage', () => {
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('This match has a draft result. Deactivate it instead.')
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.queryByText('Match List Page')).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/132: the scheduling rules' 409.
+  describe('scheduling findings (132)', () => {
+    const conflict = (data: unknown) => Object.assign(new Error('conflict'), { isAxiosError: true, response: { status: 409, data } })
+
+    async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
+      await screen.findByText('Add Match')
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2026' }))
+      await user.click(screen.getByLabelText('Home team'))
+      await user.click(await screen.findByRole('option', { name: '1st XI' }))
+      await user.click(screen.getByLabelText('Away team'))
+      await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+      setDateTime('Match date & time', '2026-06-01T14:30')
+      await user.click(screen.getByRole('button', { name: 'Create Match' }))
+    }
+
+    it('shows a blocking finding with an Open link carrying returnTo, and no Save Anyway', async () => {
+      const user = userEvent.setup()
+      createMatch.mockRejectedValueOnce(
+        conflict({ needsConfirmation: false, findings: [{ code: 'DUPLICATE_MATCH', severity: 'ERROR', message: 'Already scheduled', otherMatchId: 'm9' }] }),
+      )
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+      await fillAndSubmit(user)
+
+      expect(await screen.findByText('Already scheduled')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open' }).getAttribute('href')).toContain('returnTo=')
+      expect(screen.queryByRole('button', { name: 'Save Anyway' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Match List Page')).not.toBeInTheDocument()
+    })
+
+    it('Save Anyway resends the same payload with the warning codes', async () => {
+      const user = userEvent.setup()
+      createMatch
+        .mockRejectedValueOnce(
+          conflict({ needsConfirmation: true, findings: [{ code: 'DUPLICATE_SAME_DAY', severity: 'WARNING', message: 'Same day' }] }),
+        )
+        .mockResolvedValueOnce(makeMatch())
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+      await fillAndSubmit(user)
+
+      await user.click(await screen.findByRole('button', { name: 'Save Anyway' }))
+
+      await waitFor(() => expect(createMatch).toHaveBeenCalledTimes(2))
+      expect(createMatch.mock.calls[1][1]).toEqual(expect.objectContaining({ acknowledgedWarnings: ['DUPLICATE_SAME_DAY'], seasonId: expect.any(String) }))
+      expect(createMatch.mock.calls[0][1].acknowledgedWarnings).toBeUndefined()
+      expect(await screen.findByText('Match List Page')).toBeInTheDocument()
+    })
+
+    it('Cancel dismisses the warning banner and stays on the form', async () => {
+      const user = userEvent.setup()
+      createMatch.mockRejectedValueOnce(
+        conflict({ needsConfirmation: true, findings: [{ code: 'DUPLICATE_SAME_DAY', severity: 'WARNING', message: 'Same day' }] }),
+      )
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+      await fillAndSubmit(user)
+
+      const banner = await screen.findByTestId('schedule-finding-warning')
+      await user.click(within(banner).getByRole('button', { name: 'Cancel' }))
+
+      await waitFor(() => expect(screen.queryByTestId('schedule-finding-warning')).not.toBeInTheDocument())
+      expect(screen.getByText('Add Match')).toBeInTheDocument()
+    })
+
+    it('shows a blocking finding when Reactivate is refused', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ active: false }))
+      reactivateMatch.mockRejectedValueOnce(
+        conflict({ needsConfirmation: false, findings: [{ code: 'OWN_TEAM_OVERLAP', severity: 'ERROR', message: 'Team overlaps', otherMatchId: 'm2' }] }),
+      )
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Reactivate' }))
+
+      expect(await screen.findByText('Team overlaps')).toBeInTheDocument()
     })
   })
 

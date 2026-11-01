@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -18,6 +19,11 @@ public record MyFieldDto(
         String postalCode,
         String country,
         String mapUrl,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        BigDecimal accessLatitude,
+        BigDecimal accessLongitude,
+        String accessNote,
         boolean verified,
         boolean home) {
 }

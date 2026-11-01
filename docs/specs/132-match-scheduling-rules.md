@@ -14,7 +14,7 @@ Goals:
 
 ## Non-goals
 
-- No new rules. Only rules that already exist in 098 are reused; the thresholds (120 min own team, 180 min venue, 14-day window) stay in `ScheduleConstants`. Making them per-club is out.
+- No new rules, with one owner-approved exception (2026-11-01, `PAST_DATE`, below). Otherwise only rules that already exist in 098 are reused; the thresholds (120 min own team, 180 min venue, 14-day window) stay in `ScheduleConstants`. Making them per-club is out.
 - Whole-file rules (`TEAM_TWICE_SAME_DATE`, `TEAM_MISSING_ON_DATE`, `MEETINGS_EXCEED`, weekday majority, in-file duplicates) stay import-only: they need a whole schedule.
 - No clean-up of existing clashes in the data, no report of them, no retroactive blocking (see Rules, "Only on change").
 - No per-club time zone (`project_club_time_zones`): the import's South Africa zone is used, same as today.
@@ -52,6 +52,7 @@ Signature (sketch): `ScheduleCheck check(clubId, CandidateMatch candidate, UUID 
 | `POSSIBLE_DUPLICATE_NEARBY` / `POSSIBLE_DUPLICATE_FREE_TEXT` | Same pair on another date within 14 days; similar free-text opponent | WARNING, confirmable |
 | `OWN_TEAM_SAME_DATE` | Our team has another match that day at least 120 min away | WARNING, confirmable |
 | `VENUE_TIME_CLASH` | Same normalised venue, same date, less than 180 min apart (blank venue never clashes) | WARNING, confirmable |
+| `PAST_DATE` (decision 2026-11-01, owner approved) | A match is CREATED with a date-time before the start of today (server clock, `ServerClock.startOfToday()`), or its date or time is CHANGED (edit, or the date-time route) to before the start of today. Not raised when other fields (teams, venue) of an already-past match change, nor when the date and time are unchanged; reactivate does not ask for it | WARNING, confirmable through `acknowledgedWarnings`. Message "This match is dated in the past." (field `date`). The import shows it as a NOTE on past rows (never blocking, `LeagueScheduleValidator`), and its commit acknowledges it like every warning |
 
 Identity uses the 098 key `(league, season, unordered pair of resolved sides, local date)`; a free-text side matches by normalised name, similar names raise the free-text warning only. A match with no league is compared only with other no-league matches of the same season. `SAME_CLUB_DERBY` is not applied manually (a manager picking both own teams is deliberate).
 

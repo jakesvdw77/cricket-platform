@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Alert, Box, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
-import { updateMatchDateTime } from '../../api/matchApi'
-import type { Match } from '../../api/matchApi'
+import { scheduleFindings, updateMatchDateTime, warningCodes } from '../../api/matchApi'
+import type { Match, ScheduleFindings } from '../../api/matchApi'
 import { useLeagueDatesHint } from '../../hooks/useLeagueDatesHint'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { Button } from '../Button'
+import { ScheduleFindingsPanel } from '../ScheduleFindingsPanel'
 import { DateTimeField } from '../DateTimeField'
 
 const TITLE_ID = 'match-date-time-title'
@@ -30,6 +31,8 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
   const [value, setValue] = useState(() => toDatetimeLocal(matchDate))
   const [dateError, setDateError] = useState<string | null>(null)
   const [otherError, setOtherError] = useState<string | null>(null)
+  // docs/specs/132: the scheduling rules' refusal; warnings alone can be confirmed with Save Anyway.
+  const [findings, setFindings] = useState<ScheduleFindings | null>(null)
 
   // Each opening starts from the match's current date and time, with no old error.
   const [wasOpen, setWasOpen] = useState(open)
@@ -39,18 +42,28 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
       setValue(toDatetimeLocal(matchDate))
       setDateError(null)
       setOtherError(null)
+      setFindings(null)
     }
   }
 
   const { range, outside, message: rangeMessage } = useLeagueDatesHint(clubId, leagueId, seasonId, value, open)
 
   const mutation = useMutation({
-    mutationFn: () => updateMatchDateTime(clubId, matchId, fromDatetimeLocal(value)),
+    mutationFn: (acknowledged?: string[]) => (acknowledged
+        ? updateMatchDateTime(clubId, matchId, fromDatetimeLocal(value), acknowledged)
+        : updateMatchDateTime(clubId, matchId, fromDatetimeLocal(value))),
     onSuccess: (match) => {
       onSaved(match)
       onClose()
     },
     onError: (error) => {
+      const found = scheduleFindings(error)
+      setFindings(found)
+      if (found) {
+        setDateError(null)
+        setOtherError(null)
+        return
+      }
       const dates = matchOutsideLeagueDatesMessage(error)
       setDateError(dates)
       setOtherError(dates ? null : errorDetail(error, 'We could not change the date and time. Please try again.'))
@@ -70,6 +83,7 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
               setValue(next)
               setDateError(null)
               setOtherError(null)
+              setFindings(null)
             }}
             min={range?.startDate}
             max={range?.endDate}
@@ -77,6 +91,15 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
             helperText={message}
             disabled={mutation.isPending}
           />
+          {findings && (
+            <ScheduleFindingsPanel
+              result={findings}
+              pending={mutation.isPending}
+              returnLabel="Result"
+              onSaveAnyway={() => mutation.mutate(warningCodes(findings))}
+              onCancel={() => setFindings(null)}
+            />
+          )}
           {otherError && <Alert severity="error">{otherError}</Alert>}
         </Box>
       </DialogContent>
@@ -84,7 +107,7 @@ export function MatchDateTimeDialog({ open, onClose, clubId, matchId, matchDate,
         <Button size="compact" variant="secondary" onClick={onClose} disabled={mutation.isPending} >
           Cancel
         </Button>
-        <Button size="compact" onClick={() => mutation.mutate()} disabled={!value || outside || mutation.isPending} >
+        <Button size="compact" onClick={() => mutation.mutate(undefined)} disabled={!value || outside || mutation.isPending} >
           {mutation.isPending ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>

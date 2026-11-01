@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -62,6 +63,23 @@ public class PlayingArea {
 
     @Column(name = "map_url")
     private String mapUrl;
+
+    /** docs/specs/133: the field's position, both or neither (CHECK in migration 060). */
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(name = "longitude", precision = 9, scale = 6)
+    private BigDecimal longitude;
+
+    /** Optional entrance or parking point, used as the directions destination when set. */
+    @Column(name = "access_latitude", precision = 9, scale = 6)
+    private BigDecimal accessLatitude;
+
+    @Column(name = "access_longitude", precision = 9, scale = 6)
+    private BigDecimal accessLongitude;
+
+    @Column(name = "access_note", length = 200)
+    private String accessNote;
 
     @Column(name = "location_notes")
     private String locationNotes;

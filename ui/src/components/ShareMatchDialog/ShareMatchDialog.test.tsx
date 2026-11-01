@@ -42,10 +42,11 @@ interface Options {
   onClose?: () => void
   resultAvailable?: boolean
   onOpenResult?: () => void
+  matchPatch?: Record<string, unknown>
 }
 
-function renderDialog({ selected = true, days = 3, initialContent, initialScope, disabledFormats, onClose = () => {}, resultAvailable, onOpenResult }: Options = {}) {
-  const match = fixtureMatch({ matchDate: inDays(days) })
+function renderDialog({ selected = true, days = 3, initialContent, initialScope, disabledFormats, onClose = () => {}, resultAvailable, onOpenResult, matchPatch = {} }: Options = {}) {
+  const match = fixtureMatch({ matchDate: inDays(days), ...matchPatch })
   const sides: [ReturnType<typeof fixtureSide>, ReturnType<typeof fixtureSide>] = [fixtureSide('t-home', 'Irene Villagers U15', 0, selected), fixtureSide('t-away', 'Pretoria A', 5, false)]
   return render(
     <ThemeProvider theme={baseTheme}>
@@ -223,6 +224,28 @@ describe('format screens', () => {
     const weather = screen.getByRole('checkbox', { name: 'Include Weather' })
     expect(weather).toBeDisabled()
     expect(weather).toHaveAccessibleDescription(/No forecast/)
+  })
+
+  // docs/specs/133
+  it('Include Directions is off with its reason when the match has no field position', async () => {
+    renderDialog()
+    await choose('Fixture Card', 'WhatsApp')
+    const message = (await screen.findByRole('textbox', { name: 'Message text' })) as HTMLTextAreaElement
+    const directions = screen.getByRole('checkbox', { name: 'Include Directions' })
+    expect(directions).toBeDisabled()
+    expect(directions).toHaveAccessibleDescription(/No directions/)
+    expect(message.value).not.toContain('Directions')
+  })
+
+  it('Include Directions is on by default with a field position, adds the Google Maps line and switches off', async () => {
+    renderDialog({ matchPatch: { playingAreaId: 'f1', playingAreaName: 'Hofmeyer Park', playingAreaLatitude: -25.9, playingAreaLongitude: 28.2, playingAreaAccessLatitude: -25.91, playingAreaAccessLongitude: 28.21, playingAreaAccessNote: 'Use gate 2' } })
+    await choose('Fixture Card', 'WhatsApp')
+    const message = (await screen.findByRole('textbox', { name: 'Message text' })) as HTMLTextAreaElement
+    const directions = screen.getByRole('checkbox', { name: 'Include Directions' })
+    expect(directions).toBeChecked()
+    expect(message.value).toContain('Directions: Hofmeyer Park, Use gate 2: https://www.google.com/maps/dir/?api=1&destination=-25.91,28.21')
+    await userEvent.click(directions)
+    expect((screen.getByRole('textbox', { name: 'Message text' }) as HTMLTextAreaElement).value).not.toContain('Directions')
   })
 
   it('Facebook: the post carries hashtags of team names only and offers Copy Text', async () => {

@@ -5,7 +5,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import CloseIcon from '@mui/icons-material/Close'
 import type { Match } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
-import { useMatchFieldWeather } from '../../hooks/useMatchWeather'
+import { useMatchDirections, useMatchFieldWeather } from '../../hooks/useMatchWeather'
 import { useShareChoices } from '../../hooks/useShareChoices'
 import { useShareMatchData } from '../../hooks/useShareMatchData'
 import { useShareSettings } from '../../hooks/useShareSettings'
@@ -90,6 +90,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
   const ownTeamId = roles.ours === 'home' ? match.homeTeamId : roles.ours === 'away' ? match.awayTeamId : null
   const data = useShareMatchData(clubId, match, teamsById, { ours: oursSide?.teamName ?? sides[0].teamName, opposition: oppSide?.teamName ?? sides[1].teamName }, ownTeamId, oppositionTeamId, open)
   const weather = useMatchFieldWeather(open ? clubId : undefined, match)
+  const directionsTarget = useMatchDirections(open ? clubId : undefined, match)
 
   // Every opening starts afresh: the entry point's content and side, else the remembered ones, step 1.
   useEffect(() => {
@@ -151,9 +152,10 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
         seasonLabel,
         clubName: data.clubProfile?.name ?? null,
         weather: weather.summary,
+        directions: directionsTarget,
         facts: tickedFacts,
       }),
-    [chosenContent, match, sides, ownKeys, preferredOurs, chosenSide, layout, initials.value, leagueName, seasonLabel, data.clubProfile?.name, weather.summary, tickedFacts],
+    [chosenContent, match, sides, ownKeys, preferredOurs, chosenSide, layout, initials.value, leagueName, seasonLabel, data.clubProfile?.name, weather.summary, directionsTarget, tickedFacts],
   )
 
   const weatherReason = weather.summary
@@ -165,6 +167,8 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
         : days >= 7
           ? 'No forecast: the match is more than 7 days away'
           : 'No forecast available for this field'
+
+  const directionsReason = directionsTarget ? null : 'No directions: this match has no field with a known position'
 
   const highlighted = formats ? ([picked, choices.match.format].find((format) => format !== null && formats.offered.includes(format)) ?? null) : null
 
@@ -195,6 +199,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
       updateChoices({ match: { layout: value } })
     },
     weatherReason,
+    directionsReason,
     facts: data.facts,
     tickedFactIds: tickedFacts.map((fact) => fact.id),
     onToggleFact: (id) => setUnticked((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),

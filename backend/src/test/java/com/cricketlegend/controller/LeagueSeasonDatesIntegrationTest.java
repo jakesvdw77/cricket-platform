@@ -259,7 +259,7 @@ class LeagueSeasonDatesIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(matchJson(w, undated, on(12, 25))))
                 .andExpect(status().isCreated());
         mockMvc.perform(post(MATCHES, w.club().getId()).with(fixtures.clubAdmin(w))
-                        .contentType(MediaType.APPLICATION_JSON).content(matchJson(w, null, on(12, 25))))
+                        .contentType(MediaType.APPLICATION_JSON).content(matchJson(w, null, on(12, 26))))
                 .andExpect(status().isCreated());
     }
 

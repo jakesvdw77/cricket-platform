@@ -1,30 +1,28 @@
-import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
-import LinkIcon from '@mui/icons-material/Link'
-import LinkOffIcon from '@mui/icons-material/LinkOff'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
-import { FieldStatusMenu } from '../FieldStatusMenu'
+import { ToolbarCard } from '../ToolbarCard'
 import { initialsFromName } from '../../utils/initials'
 import { FIELD_CATEGORY_LABEL } from '../../utils/fieldLabels'
-import { FIELD_STATUS_ACTIONS, fieldStatusBadge, fieldStatusOf, VERIFIED_FIELD_NO_ACTIONS } from '../../utils/fieldStatus'
-import type { FieldStatusAction } from '../../utils/fieldStatus'
+import { fieldStatusBadge, fieldStatusOf } from '../../utils/fieldStatus'
 import { NOT_ON_FILE } from '../../utils/playerFormat'
 import { zebraTint } from '../../utils/zebraTint'
 import type { PlayingArea } from '../../api/playingAreaApi'
 
 export interface FieldTableProps {
   fields: PlayingArea[]
+  // The field page for a row, already carrying its returnTo.
   viewTo: (field: PlayingArea) => string
-  // A manager's list: the last column is the Add to our fields / Remove button.
-  onToggleHome?: (field: PlayingArea) => void
-  homePendingId?: string | null
-  // The platform admin's list: the last column is the Status button and its menu.
-  onStatusAction?: (field: PlayingArea, action: FieldStatusAction) => void
+  // The row's ONE actions button (the page's FieldRowMenu kebab), at the right end; it never navigates the row.
+  rowActions?: (field: PlayingArea) => ReactNode
+  // docs/specs/134 and page-anatomy section 3: the page's filter bar. Given, the table renders ONE card: this toolbar, a hairline,
+  // then the header and rows. Omitted, the table is its own bordered card.
+  toolbar?: ReactNode
+  // With a toolbar and no rows: this message replaces the table inside the same card, so the toolbar never remounts.
+  empty?: ReactNode
 }
 
 // Desktop: Field, Status, Type, Owner, City, Province, Matches and the button. A phone keeps Field (the status badge moves
@@ -46,6 +44,9 @@ const gridSx = {
 const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
 // Marks those cells for assistive tooling and tests (jsdom does not evaluate responsive CSS).
 const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
+
+// clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
 
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
@@ -72,25 +73,9 @@ function Cell({ children, value, sx, hiddenOnPhone = false }: { children?: React
   )
 }
 
-function FieldRow({
-  field,
-  viewTo,
-  onToggleHome,
-  homePending,
-  onStatusAction,
-}: {
-  field: PlayingArea
-  viewTo: string
-  onToggleHome?: (field: PlayingArea) => void
-  homePending: boolean
-  onStatusAction?: (action: FieldStatusAction) => void
-}) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+function FieldRow({ field, viewTo, actions }: { field: PlayingArea; viewTo: string; actions?: ReactNode }) {
   const status = fieldStatusOf(field)
   const badge = fieldStatusBadge(status)
-  const admin = Boolean(onStatusAction)
-  const linkedHome = Boolean(field.linkedHome)
-  const noStatusChanges = FIELD_STATUS_ACTIONS[status].length === 0
 
   return (
     <Box
@@ -100,7 +85,8 @@ function FieldRow({
         ...gridSx,
         position: 'relative',
         minHeight: { xs: 56, sm: 44 },
-        '&:nth-of-type(odd)': { bgcolor: zebraTint },
+        // the header row is tinted, so the first data row is white and the second tinted (page-anatomy section 6)
+        '&:nth-of-type(even)': { bgcolor: zebraTint },
         '&:hover': { bgcolor: hoverTint },
         // a keyboard user tabbing to the name (or the row's button) sees the whole row marked
         '&:focus-within': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
@@ -113,7 +99,7 @@ function FieldRow({
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           <Typography variant="body2" fontWeight={600} noWrap component="div">
             {/* Stretched link over the whole row (docs/specs/059): the row is position: relative, so a click anywhere on it
-                opens the field; the row's button sits above it and never navigates. */}
+                opens the field; the row's button sits above it and never navigates. No chevron (page-anatomy section 6). */}
             <MuiLink
               component={RouterLink}
               to={viewTo}
@@ -140,60 +126,20 @@ function FieldRow({
       <Cell hiddenOnPhone sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
         {field.matchCount ?? 0}
       </Cell>
-      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
-        {admin ? (
-          <Box component="span" title={noStatusChanges ? VERIFIED_FIELD_NO_ACTIONS : 'Change status'} sx={{ display: 'inline-flex' }}>
-            <IconButton
-              aria-label="Change status"
-              aria-haspopup="menu"
-              size="small"
-              disabled={noStatusChanges}
-              onClick={(event) => setAnchor(event.currentTarget)}
-              // position: relative lifts it above the row's stretched link, so using the menu never navigates
-              sx={{ position: 'relative', color: 'primary.dark', width: 36, height: 36 }}
-            >
-              <ManageAccountsOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        ) : (
-          <IconButton
-            aria-label={linkedHome ? `Remove ${field.name} from our fields` : `Add ${field.name} to our fields`}
-            title={linkedHome ? 'Remove from our fields' : 'Add to our fields'}
-            size="small"
-            disabled={homePending || !onToggleHome}
-            onClick={() => onToggleHome?.(field)}
-            sx={{ position: 'relative', color: 'primary.dark', width: 36, height: 36 }}
-          >
-            {linkedHome ? <LinkOffIcon fontSize="small" /> : <LinkIcon fontSize="small" />}
-          </IconButton>
-        )}
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: 'primary.main' }}>
+        {actions}
       </Box>
-      {admin && (
-        <FieldStatusMenu status={status} anchorEl={anchor} onClose={() => setAnchor(null)} onAction={(action) => onStatusAction?.(action)} />
-      )}
     </Box>
   )
 }
 
-// docs/specs/099-fields-directory.md: the list view of the Fields page, the shape of PlayerTable/MatchTable/LeagueTable.
-// One bordered panel with a header row that sticks to the top of the scrolling page and zebra rows of equal height; the
-// whole row opens the field, and the row's button (Add to our fields / Remove for a manager, Status for the platform
-// admin) sits above that link and never navigates. A value that is not on file shows "-".
-export function FieldTable({ fields, viewTo, onToggleHome, homePendingId = null, onStatusAction }: FieldTableProps) {
-  return (
-    <Box
-      role="table"
-      aria-label="Fields"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        boxShadow: 2,
-        // clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
-        overflow: 'clip',
-      }}
-    >
+// docs/specs/099 and docs/specs/134: the list view of the Fields page, the shape of SeasonTable and LeagueTable. One flat card
+// (hairline, no shadow) whose toolbar, when given, is its top row; a tinted header row that sticks to the top of the scrolling
+// page, a white first row then tinted rows of equal height; the whole row opens the field, no chevron, and the row's one kebab
+// sits above that link and never navigates. A value that is not on file shows "-".
+export function FieldTable({ fields, viewTo, rowActions, toolbar, empty }: FieldTableProps) {
+  const table = (
+    <Box role="table" aria-label="Fields" sx={toolbar ? undefined : cardSx}>
       <Box
         role="row"
         sx={{
@@ -202,7 +148,7 @@ export function FieldTable({ fields, viewTo, onToggleHome, homePendingId = null,
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
           fontSize: { xs: '0.6875rem', sm: '0.75rem' },
@@ -219,20 +165,22 @@ export function FieldTable({ fields, viewTo, onToggleHome, homePendingId = null,
         <Box role="columnheader">City</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Province</Box>
         <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Matches</Box>
-        <Box role="columnheader" aria-label={onStatusAction ? 'Status actions' : 'Our fields'} />
+        <Box role="columnheader" aria-label="Actions" />
       </Box>
       <Box role="rowgroup">
         {fields.map((field) => (
-          <FieldRow
-            key={field.id}
-            field={field}
-            viewTo={viewTo(field)}
-            onToggleHome={onToggleHome}
-            homePending={homePendingId === field.id}
-            onStatusAction={onStatusAction ? (action) => onStatusAction(field, action) : undefined}
-          />
+          <FieldRow key={field.id} field={field} viewTo={viewTo(field)} actions={rowActions?.(field)} />
         ))}
       </Box>
     </Box>
   )
+  if (toolbar) {
+    return (
+      <Box data-testid="fields-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {fields.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return table
 }

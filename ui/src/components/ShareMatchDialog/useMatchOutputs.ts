@@ -37,7 +37,7 @@ export function useMatchImageOptions(source: Source, model: MatchShareModel, spe
       size,
       template,
       colour: { main, dark, contrastText },
-      include: { marks: include.marks, venueAndDate: include.venueAndDate, weather: include.weather, picture: include.picture },
+      include: { marks: include.marks, venueAndDate: include.venueAndDate, weather: include.weather, directions: include.directions, picture: include.picture },
       logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teams: team, sponsorUrls },
       images,
       clubWebsite,
@@ -45,7 +45,7 @@ export function useMatchImageOptions(source: Source, model: MatchShareModel, spe
       picture,
       pictureSettings,
     }),
-    [format, size, template, main, dark, contrastText, include.marks, include.venueAndDate, include.weather, include.picture, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, images, clubWebsite, choices.footerLine, picture, pictureSettings],
+    [format, size, template, main, dark, contrastText, include.marks, include.venueAndDate, include.weather, include.directions, include.picture, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, images, clubWebsite, choices.footerLine, picture, pictureSettings],
   )
 }
 
@@ -93,17 +93,17 @@ export function useMatchPdfOptions(source: Source): MatchPdfOptions {
   const sponsorKey = JSON.stringify(sponsorUrlsOf(source))
   const sponsorUrls = useMemo(() => JSON.parse(sponsorKey) as string[], [sponsorKey])
   const { club, league, team } = choices.logos
-  const { marks, venueAndDate, weather } = choices.match.include
+  const { marks, venueAndDate, weather, directions } = choices.match.include
   return useMemo(
     () => ({
       template: choices.match.templates.pdf,
       colour: { main, dark, contrastText },
-      include: { marks, venueAndDate, weather },
+      include: { marks, venueAndDate, weather, directions },
       logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teams: team, sponsorUrls },
       clubWebsite,
       footerLine: choices.footerLine,
     }),
-    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, clubWebsite, choices.footerLine],
+    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, clubWebsite, choices.footerLine],
   )
 }
 

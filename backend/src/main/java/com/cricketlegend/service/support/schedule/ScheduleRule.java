@@ -50,7 +50,16 @@ public enum ScheduleRule {
     DATE_DAY_FIRST(Severity.WARNING, Mode.BOTH),
     DATE_EXCEL_NUMBER(Severity.WARNING, Mode.BOTH),
     TWO_NAMES_ONE_TEAM(Severity.WARNING, Mode.BOTH),
-    UPDATE_BLOCKED(Severity.ERROR, Mode.BOTH);
+    UPDATE_BLOCKED(Severity.ERROR, Mode.BOTH),
+    /** Manual routes only (docs/specs/132): an exact repeat of a match, which the import skips as ALREADY_EXISTS. */
+    DUPLICATE_MATCH(Severity.ERROR, Mode.BOTH),
+    /** Manual routes only (docs/specs/132): the same teams the same day at another time, the import's DIFFERS. */
+    DUPLICATE_SAME_DAY(Severity.WARNING, Mode.BOTH),
+    /**
+     * A match dated before the start of today (docs/specs/132): a WARNING on the manual routes, shown as a NOTE on past
+     * rows by the import (never blocking there).
+     */
+    PAST_DATE(Severity.WARNING, Mode.BOTH);
 
     public enum Severity { ERROR, WARNING, NOTE }
 
@@ -62,6 +71,14 @@ public enum ScheduleRule {
     ScheduleRule(Severity severity, Mode mode) {
         this.severity = severity;
         this.mode = mode;
+    }
+
+    /**
+     * Every warning code. The import commit passes them as {@code acknowledgedWarnings}: its own review step has already
+     * shown and confirmed each warning, and an error still blocks (docs/specs/132).
+     */
+    public static java.util.List<String> warningCodes() {
+        return java.util.Arrays.stream(values()).filter(r -> r.severity == Severity.WARNING).map(Enum::name).toList();
     }
 
     public Severity severity() {

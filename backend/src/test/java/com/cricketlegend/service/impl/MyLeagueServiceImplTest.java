@@ -355,7 +355,7 @@ class MyLeagueServiceImplTest {
         match(myTeam.getId(), null, "Visitors", 1, field);
         match(myTeam.getId(), null, "Visitors", 2, field);
         match(myTeam.getId(), null, "Visitors", 3, null); // free-text venue "Some ground", no field
-        MyFieldDto described = new MyFieldDto(field, "Oval", null, null, null, null, null, null, null, true, false);
+        MyFieldDto described = new MyFieldDto(field, "Oval", null, null, null, null, null, null, null, null, null, null, null, null, true, false);
         when(fieldService.describe(eq(clubId), any())).thenReturn(List.of(described));
 
         MyLeagueDto dto = service.get(authentication, "key", league.getId(), null);

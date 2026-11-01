@@ -6,6 +6,7 @@ import type { PdfOp, ResultPdfLogos, ResultPdfOutput } from './resultPdf'
 import { readableOn } from './resultImage'
 import type { ResultImageColour } from './resultImage'
 import type { PdfTemplate } from './shareChoices'
+import { directionsText } from './shareMatchData'
 import type { MatchShareLineup, MatchShareModel } from './shareMatchData'
 
 // docs/specs/131-match-sharing.md (Team sheet A4, PDF format): one A4 document for any match content, laid out into the same
@@ -34,7 +35,7 @@ const SCALE: Record<PdfTemplate, { title: number; body: number; small: number; r
 export interface MatchPdfOptions {
   template: PdfTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean }
   logos: ResultPdfLogos
   clubWebsite: string | null
   footerLine: boolean
@@ -154,6 +155,7 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
     const lines: string[] = []
     if (options.include.venueAndDate) lines.push([model.whenLabel, model.venue].filter(Boolean).join(' · '))
     if (options.include.weather && model.weather) lines.push(`Forecast: ${model.weather.text}`)
+    if (options.include.directions && model.directions) lines.push(directionsText(model.directions), model.directions.url)
     lines.forEach((line, index) => {
       text(fit(line, contentW, type.body + 1, index === 0 ? 'bold' : 'normal'), left, y, type.body + 1, index === 0 ? INK : [20, 99, 63], index === 0 ? 'bold' : 'normal')
       y += type.body * MM_PER_PT + 2.6
@@ -243,6 +245,7 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
       const lines: string[] = []
       if (options.include.venueAndDate) lines.push(model.whenLabel, model.venue ?? '')
       if (options.include.weather && model.weather) lines.push(`Forecast: ${model.weather.text}`)
+      if (options.include.directions && model.directions) lines.push(directionsText(model.directions), model.directions.url)
       lines.filter(Boolean).forEach((line) => {
         text(fit(line, contentW, type.body + 3), pageW / 2, y, type.body + 3, MUTED, 'normal', 'center')
         y += 8

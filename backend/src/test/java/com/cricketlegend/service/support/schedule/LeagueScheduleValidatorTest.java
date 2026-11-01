@@ -90,9 +90,11 @@ class LeagueScheduleValidatorTest {
         assertThat(row.status()).isEqualTo(ImportRowStatus.OK);
         assertThat(row.outcome()).isEqualTo(ImportOutcome.NEW);
         assertThat(row.action()).isEqualTo(ImportRowAction.CREATE);
-        assertThat(row.issueCodes()).isEmpty();
+        // 2026-09-13 is in the past: a NOTE (docs/specs/132 PAST_DATE), never an issue and never blocking
+        assertThat(row.issueCodes()).containsExactly("PAST_DATE");
         assertThat(row.start()).isEqualTo(ScheduleTestSupport.at("2026-09-13", "08:00"));
         assertThat(r.issues()).isEmpty();
+        assertThat(r.notes()).extracting(n -> n.code()).contains("PAST_DATE");
         assertThat(r.hasErrors()).isFalse();
     }
 

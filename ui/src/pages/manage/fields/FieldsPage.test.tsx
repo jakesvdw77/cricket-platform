@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FieldsPage from './FieldsPage'
 import { fieldPage, makeField } from '../../../test/fieldFixtures'
@@ -37,6 +37,11 @@ beforeEach(() => {
   unlinkPlayingAreaHome.mockResolvedValue(undefined)
 })
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="at">{location.pathname + location.search}</div>
+}
+
 function renderPage(clubId: string | undefined = 'club-1') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
@@ -46,6 +51,8 @@ function renderPage(clubId: string | undefined = 'club-1') {
           <Route element={<Outlet context={{ clubId }} />}>
             <Route path="/manage/fixtures/fields" element={<FieldsPage />} />
             <Route path="/manage/fixtures/fields/new" element={<div>Add field page</div>} />
+            <Route path="/manage/fixtures/fields/:fieldId" element={<LocationProbe />} />
+            <Route path="/manage/fixtures/fields/:fieldId/edit" element={<LocationProbe />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -54,29 +61,39 @@ function renderPage(clubId: string | undefined = 'club-1') {
 }
 
 const lastListParams = () => listPlayingAreas.mock.calls[listPlayingAreas.mock.calls.length - 1][1] as Record<string, unknown>
-const ownSwitch = () => screen.getAllByRole('checkbox', { name: 'Show only our fields' })[0]
+const ownChip = () => screen.getByRole('button', { name: 'Our Fields Only' })
+const openMenu = async (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(await screen.findByRole('button', { name: `Actions for ${name}` }))
 
-// docs/specs/099-fields-directory.md (1)
+// docs/specs/099-fields-directory.md (1) and docs/specs/134
 describe('FieldsPage', () => {
-  it('shows the header with Add field, which opens the add page', async () => {
+  it('shows the header with Add Field, which opens the add page carrying the list as its origin', async () => {
     const user = userEvent.setup()
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Fields' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Add field' }))
+    await user.click(screen.getByRole('button', { name: 'Add Field' }))
 
     expect(await screen.findByText('Add field page')).toBeInTheDocument()
   })
 
-  it('shows the three counters from the summary, including the Our fields count', async () => {
+  it('has no count text, no Quick filter row and no icon on the Add Field button', async () => {
     renderPage()
 
     await screen.findByText('Riverside Oval')
-    expect(await screen.findByText('Our fields', { selector: ':not(label *)' })).toBeInTheDocument()
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Quick filter/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Field' }).querySelector('svg')).toBeNull()
+  })
+
+  it('shows the three counters from the summary, including the Our Fields count', async () => {
+    renderPage()
+
+    await screen.findByText('Riverside Oval')
+    expect(await screen.findByText('Our Fields', { selector: ':not(label *)' })).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('14')).toBeInTheDocument()
     expect(screen.getByTestId('page-counter-unverified')).toHaveTextContent('3')
-    expect(screen.getByText('In the directory')).toBeInTheDocument()
+    expect(screen.getByText('In The Directory')).toBeInTheDocument()
     expect(getPlayingAreasSummary).toHaveBeenCalledWith('club-1', {})
   })
 
@@ -88,12 +105,12 @@ describe('FieldsPage', () => {
     expect(screen.queryByTestId('page-counter-unverified')).not.toBeInTheDocument()
   })
 
-  describe('Show only our fields', () => {
+  describe('Our Fields Only', () => {
     it('defaults on, and asks for mine=true, when the club has fields of its own', async () => {
       renderPage()
 
       await screen.findByText('Riverside Oval')
-      expect(ownSwitch()).toBeChecked()
+      expect(ownChip()).toHaveAttribute('aria-pressed', 'true')
       expect(lastListParams()).toMatchObject({ page: 0, mine: true })
     })
 
@@ -109,7 +126,7 @@ describe('FieldsPage', () => {
       renderPage()
 
       await screen.findByText('Riverside Oval')
-      expect(ownSwitch()).not.toBeChecked()
+      expect(ownChip()).toHaveAttribute('aria-pressed', 'false')
       expect(lastListParams().mine).toBeUndefined()
     })
 
@@ -118,10 +135,10 @@ describe('FieldsPage', () => {
       renderPage()
       await screen.findByText('Riverside Oval')
 
-      await user.click(ownSwitch())
+      await user.click(ownChip())
 
       await waitFor(() => expect(lastListParams().mine).toBeUndefined())
-      expect(ownSwitch()).not.toBeChecked()
+      expect(ownChip()).toHaveAttribute('aria-pressed', 'false')
       expect(JSON.parse(localStorage.getItem('fieldList:filters:club-1') as string)).toMatchObject({ ownOnly: false })
     })
 
@@ -130,7 +147,7 @@ describe('FieldsPage', () => {
       renderPage()
 
       await screen.findByText('Riverside Oval')
-      await waitFor(() => expect(ownSwitch()).not.toBeChecked())
+      await waitFor(() => expect(ownChip()).toHaveAttribute('aria-pressed', 'false'))
       expect(lastListParams().mine).toBeUndefined()
     })
   })
@@ -212,12 +229,13 @@ describe('FieldsPage', () => {
       await waitFor(() => expect(lastListParams().verification).toBeUndefined())
     })
 
-    it('the sort link asks the server for Z to A', async () => {
+    it('Sort asks the server for Name, Z To A', async () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Riverside Oval')
 
-      await user.click(screen.getAllByText('A to Z')[0])
+      await user.click(screen.getByRole('button', { name: 'Sort: Name, A To Z' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Name, Z To A' }))
 
       await waitFor(() => expect(lastListParams()).toMatchObject({ sort: 'name,desc' }))
     })
@@ -250,22 +268,24 @@ describe('FieldsPage', () => {
       expect(localStorage.getItem('fieldList:view')).toBe('list')
     })
 
-    it('Add to our fields links the field for this club', async () => {
+    it('Add To Our Fields in the kebab links the field for this club', async () => {
       const user = userEvent.setup()
       getPlayingAreasSummary.mockResolvedValue({ ourFields: 0, inDirectory: 5, unverified: 0 })
       listPlayingAreas.mockResolvedValue(fieldPage([OTHER]))
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Add to our fields' }))
+      await openMenu(user, 'Hilton College Oval')
+      await user.click(await screen.findByRole('menuitem', { name: 'Add To Our Fields' }))
 
       await waitFor(() => expect(linkPlayingAreaHome).toHaveBeenCalledWith('club-1', 'other-1'))
     })
 
-    it('Remove unlinks it', async () => {
+    it('Remove From Our Fields unlinks it', async () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Remove from our fields' }))
+      await openMenu(user, 'Riverside Oval')
+      await user.click(await screen.findByRole('menuitem', { name: 'Remove From Our Fields' }))
 
       await waitFor(() => expect(unlinkPlayingAreaHome).toHaveBeenCalledWith('club-1', 'own-1'))
     })
@@ -277,9 +297,103 @@ describe('FieldsPage', () => {
       listPlayingAreas.mockResolvedValue(fieldPage([OTHER]))
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Add to our fields' }))
+      await openMenu(user, 'Hilton College Oval')
+      await user.click(await screen.findByRole('menuitem', { name: 'Add To Our Fields' }))
 
       expect(await screen.findByText("Couldn't change your fields")).toBeInTheDocument()
+    })
+
+    it('puts Sort and then Cards | List last in the toolbar, with the chip before them', async () => {
+      renderPage()
+      await screen.findByText('Riverside Oval')
+
+      const chip = ownChip()
+      const sort = screen.getByRole('button', { name: 'Sort: Name, A To Z' })
+      const cards = screen.getByRole('button', { name: 'Cards' })
+      const list = screen.getByRole('button', { name: 'List' })
+      const order = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(order(chip, sort)).toBe(true)
+      expect(order(sort, cards)).toBe(true)
+      expect(order(cards, list)).toBe(true)
+    })
+
+    it('Cards view: a standalone toolbar card, flat cards with no footer bar, and a dashed Add Field card', async () => {
+      renderPage()
+
+      await screen.findByRole('heading', { name: 'Riverside Oval' })
+      expect(screen.getByTestId('toolbar-card')).toHaveAttribute('data-composition', 'standalone')
+      expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('add-field-card')).toHaveTextContent('Add Field')
+      expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(1)
+    })
+
+    it('List view: the toolbar is fused into the table card, rows have one kebab each and no chevron', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('fieldList:view', 'list')
+      listPlayingAreas.mockResolvedValue(fieldPage([OURS, OTHER]))
+      renderPage()
+
+      const table = await screen.findByRole('table', { name: 'Fields' })
+      expect(screen.getByTestId('fields-fused-card')).toContainElement(table)
+      expect(screen.getByTestId('toolbar-card-fused')).toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('add-field-card')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(2)
+      expect(screen.queryByTestId('ChevronRightIcon')).not.toBeInTheDocument()
+
+      // the kebab never navigates its row
+      await openMenu(user, 'Riverside Oval')
+      expect(screen.queryByTestId('at')).not.toBeInTheDocument()
+    })
+
+    describe('the kebab', () => {
+      it('lists Open Field, Edit Field, Open In Maps and the Our Fields choice, and no Share or status items', async () => {
+        const user = userEvent.setup()
+        listPlayingAreas.mockResolvedValue(fieldPage([makeField({ verificationStatus: 'UNVERIFIED', createdByClubId: 'club-1', linkedHome: true })]))
+        renderPage()
+
+        await openMenu(user, 'Riverside Oval')
+
+        expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Field', 'Edit Field', 'Open In Maps', 'Remove From Our Fields'])
+      })
+
+      it('keeps Edit Field disabled, with its reason, when the club cannot edit the field', async () => {
+        const user = userEvent.setup()
+        renderPage()
+
+        await openMenu(user, 'Riverside Oval')
+
+        const edit = await screen.findByRole('menuitem', { name: /Edit Field/ })
+        expect(edit).toHaveAttribute('aria-disabled', 'true')
+        expect(edit).toHaveTextContent('Only a platform admin can change a verified field.')
+      })
+
+      it('leaves out Open In Maps when the field has no map link', async () => {
+        const user = userEvent.setup()
+        listPlayingAreas.mockResolvedValue(fieldPage([makeField({ mapUrl: null })]))
+        renderPage()
+
+        await openMenu(user, 'Riverside Oval')
+
+        expect(screen.queryByRole('menuitem', { name: /Open In Maps/ })).not.toBeInTheDocument()
+      })
+
+      it('Open Field and Edit Field carry the list as returnTo', async () => {
+        const user = userEvent.setup()
+        listPlayingAreas.mockResolvedValue(fieldPage([makeField({ verificationStatus: 'UNVERIFIED', createdByClubId: 'club-1' })]))
+        renderPage()
+
+        await openMenu(user, 'Riverside Oval')
+        expect(await screen.findByRole('menuitem', { name: 'Open Field' })).toHaveAttribute(
+          'href',
+          '/manage/fixtures/fields/field-1?returnTo=%2Fmanage%2Ffixtures%2Ffields&returnLabel=Fields',
+        )
+        expect(screen.getByRole('menuitem', { name: 'Edit Field' })).toHaveAttribute(
+          'href',
+          '/manage/fixtures/fields/field-1/edit?returnTo=%2Fmanage%2Ffixtures%2Ffields&returnLabel=Fields',
+        )
+      })
     })
   })
 
@@ -332,10 +446,14 @@ describe('FieldsPage', () => {
   })
 
   describe('empty and error states', () => {
-    it('says the club has no fields of its own yet when "Show only our fields" finds none', async () => {
+    it('says the club has no fields of its own yet when Our Fields Only finds none, with no button in the message', async () => {
       listPlayingAreas.mockResolvedValue(fieldPage([]))
       renderPage()
-      expect(await screen.findByText('No fields of your own yet')).toBeInTheDocument()
+      const title = await screen.findByText('No fields of your own yet')
+      expect(title).toBeInTheDocument()
+      expect(within(title.parentElement as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
+      // the dashed Add Field card is the way in
+      expect(screen.getByTestId('add-field-card')).toBeInTheDocument()
     })
 
     it('says nothing matches a search', async () => {
@@ -373,9 +491,12 @@ describe('FieldsPage', () => {
     })
   })
 
-  it('the whole card opens the field: the title is a link to its page', async () => {
+  it('the whole card opens the field: the title is a link to its page carrying the list as returnTo', async () => {
     renderPage()
     const heading = await screen.findByRole('heading', { name: 'Riverside Oval' })
-    expect(within(heading).getByRole('link')).toHaveAttribute('href', '/manage/fixtures/fields/own-1')
+    expect(within(heading).getByRole('link')).toHaveAttribute(
+      'href',
+      '/manage/fixtures/fields/own-1?returnTo=%2Fmanage%2Ffixtures%2Ffields&returnLabel=Fields',
+    )
   })
 })

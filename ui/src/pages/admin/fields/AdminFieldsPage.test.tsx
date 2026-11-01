@@ -39,16 +39,18 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/admin/fields']}>
         <AdminFieldsPage />
       </MemoryRouter>
     </QueryClientProvider>,
   )
 }
 
+const openMenu = async (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(await screen.findByRole('button', { name: `Actions for ${name}` }))
+
 const lastParams = () => listPlatformPlayingAreas.mock.calls[listPlatformPlayingAreas.mock.calls.length - 1][0] as Record<string, unknown>
 
-// docs/specs/099-fields-directory.md (9)
+// docs/specs/099-fields-directory.md (9) and docs/specs/134
 describe('AdminFieldsPage', () => {
   it('opens on the Unverified queue, oldest first, with the three counters', async () => {
     renderPage()
@@ -60,7 +62,8 @@ describe('AdminFieldsPage', () => {
     expect(screen.getByTestId('page-counter-UNVERIFIED')).toHaveAttribute('data-active', 'true')
     expect(screen.getByTestId('page-counter-VERIFIED')).toHaveTextContent('20')
     expect(screen.getByTestId('page-counter-REJECTED')).toHaveTextContent('2')
-    expect(screen.getByText(/Showing 1 unverified field/)).toBeInTheDocument()
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Fields To Verify' })).toBeInTheDocument()
   })
 
   it('choosing the Verified or Rejected counter asks the server for that state', async () => {
@@ -90,7 +93,8 @@ describe('AdminFieldsPage', () => {
     await user.click(await screen.findByRole('option', { name: 'South Africa' }))
     await waitFor(() => expect(lastParams()).toMatchObject({ country: 'ZA' }))
 
-    await user.click(screen.getAllByText('oldest first')[0])
+    await user.click(screen.getByRole('button', { name: 'Sort: Oldest First' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Newest First' }))
     await waitFor(() => expect(lastParams()).toMatchObject({ sort: 'createdAt,desc' }))
   })
 
@@ -109,7 +113,7 @@ describe('AdminFieldsPage', () => {
     await screen.findByRole('heading', { name: 'Away Park' })
     const callsBefore = listPlatformPlayingAreas.mock.calls.length
 
-    await user.click(screen.getByRole('button', { name: 'Change status' }))
+    await openMenu(user, 'Away Park')
     await user.click(screen.getByRole('menuitem', { name: 'Verify' }))
 
     await waitFor(() => expect(verifyPlayingArea).toHaveBeenCalledWith('q-1'))
@@ -122,7 +126,7 @@ describe('AdminFieldsPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Away Park' })
 
-    await user.click(screen.getByRole('button', { name: 'Change status' }))
+    await openMenu(user, 'Away Park')
     await user.click(screen.getByRole('menuitem', { name: /Reject/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Reject this field?' })
     expect(within(dialog).getByRole('button', { name: 'Reject field' })).toBeDisabled()
@@ -138,21 +142,46 @@ describe('AdminFieldsPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Old Ground' })
 
-    await user.click(screen.getByRole('button', { name: 'Change status' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reopen'])
+    await openMenu(user, 'Old Ground')
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Field', 'Edit Field', 'Open In Maps', 'Reopen'])
     await user.click(screen.getByRole('menuitem', { name: 'Reopen' }))
 
     await waitFor(() => expect(reopenPlayingArea).toHaveBeenCalledWith('r-1'))
   })
 
-  it('disables Status, with a tooltip, on a verified field', async () => {
+  it('keeps a disabled Change Status item, with its reason, on a verified field', async () => {
+    const user = userEvent.setup()
     listPlatformPlayingAreas.mockResolvedValue(fieldPage([makeField({ id: 'v-1', name: 'Good Ground', verificationStatus: 'VERIFIED' })]))
     renderPage()
     await screen.findByRole('heading', { name: 'Good Ground' })
 
-    const status = screen.getByRole('button', { name: 'Change status' })
-    expect(status).toBeDisabled()
-    expect(status.closest('span[title]')).toHaveAttribute('title', 'A verified field has no status changes.')
+    await openMenu(user, 'Good Ground')
+
+    const status = await screen.findByRole('menuitem', { name: /Change Status/ })
+    expect(status).toHaveAttribute('aria-disabled', 'true')
+    expect(status).toHaveTextContent('A verified field has no status changes.')
+  })
+
+  it('the kebab offers Open Field, an always-enabled Edit Field and Open In Maps, with no Merge and no Share', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Away Park' })
+
+    await openMenu(user, 'Away Park')
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Field', 'Edit Field', 'Open In Maps', 'Verify', 'Reject'])
+    expect(screen.getByRole('menuitem', { name: 'Edit Field' })).toHaveAttribute('href', '/admin/fields/q-1/edit?returnTo=%2Fadmin%2Ffields&returnLabel=Fields')
+    expect(screen.getByRole('menuitem', { name: 'Open Field' })).toHaveAttribute('href', '/admin/fields/q-1?returnTo=%2Fadmin%2Ffields&returnLabel=Fields')
+  })
+
+  it('has no card footer bar, no Add Field and no dashed Add card', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Away Park' })
+
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add Field' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-field-card')).not.toBeInTheDocument()
   })
 
   it('shows the server\'s reason when a change is refused', async () => {
@@ -161,7 +190,7 @@ describe('AdminFieldsPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Away Park' })
 
-    await user.click(screen.getByRole('button', { name: 'Change status' }))
+    await openMenu(user, 'Away Park')
     await user.click(screen.getByRole('menuitem', { name: 'Verify' }))
 
     expect(await screen.findByText('Field is rejected')).toBeInTheDocument()
@@ -172,11 +201,12 @@ describe('AdminFieldsPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Away Park' })
 
-    await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+    await user.click(screen.getByRole('button', { name: 'List' }))
 
     expect(await screen.findByRole('table', { name: 'Fields' })).toBeInTheDocument()
+    expect(screen.getByTestId('fields-fused-card')).toBeInTheDocument()
     expect(localStorage.getItem('adminFieldList:view')).toBe('list')
-    expect(screen.getByRole('link', { name: 'Away Park' })).toHaveAttribute('href', '/admin/fields/q-1')
+    expect(screen.getByRole('link', { name: 'Away Park' })).toHaveAttribute('href', '/admin/fields/q-1?returnTo=%2Fadmin%2Ffields&returnLabel=Fields')
   })
 
   it('pages with the backend and shows an empty state', async () => {
@@ -194,7 +224,9 @@ describe('AdminFieldsPage', () => {
   it('says there is nothing in the queue', async () => {
     listPlatformPlayingAreas.mockResolvedValue(fieldPage([]))
     renderPage()
-    expect(await screen.findByText('Nothing here')).toBeInTheDocument()
+    const title = await screen.findByText('Nothing here')
+    expect(title).toBeInTheDocument()
+    expect(within(title.parentElement as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('shows an error when the queue cannot be loaded', async () => {

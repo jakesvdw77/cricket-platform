@@ -4,6 +4,7 @@ import type { Rect } from './logoLayout'
 import { readableOn } from './resultImage'
 import type { ResultImageColour } from './resultImage'
 import type { ImageSize, ImageTemplate, TvTemplate } from './shareChoices'
+import { directionsText } from './shareMatchData'
 import type { MatchShareLineup, MatchShareModel } from './shareMatchData'
 
 // docs/specs/131-match-sharing.md (Team selection poster, Countdown poster, Fixture card, Fun facts card; TV summary): ONE
@@ -52,7 +53,7 @@ export interface MatchImageOptions {
   size?: ImageSize
   template: ImageTemplate | TvTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean; directions?: boolean }
   logos: { clubUrl: string | null; leagueUrl: string | null; teams: boolean; sponsorUrls: string[] }
   images: Map<string, HTMLImageElement | null>
   clubWebsite?: string | null
@@ -338,6 +339,13 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     drawText(ctx, model.awayName.toUpperCase(), cx + nameSize * 0.8, centreY, { size: nameSize, colour: palette.text, weight: 700, align: 'left', maxWidth: nameWidth })
   }
 
+  // docs/specs/133: the Directions line of the Fixture Card and Countdown: the field (and access note), then the Google Maps link.
+  const drawDirections = (y: number) => {
+    if (!options.include.directions || !model.directions) return
+    drawText(ctx, directionsText(model.directions), width / 2, y, { size: 28 * k, colour: palette.text, weight: 700, align: 'center', maxWidth: area.width })
+    drawText(ctx, model.directions.url.replace(/^https:\/\//, ''), width / 2, y + 40 * k, { size: 22 * k, colour: palette.muted, align: 'center', maxWidth: area.width })
+  }
+
   if (model.content === 'TEAM_SELECTION') {
     drawSelection(ctx, model, options, palette, area, tv, k, weather, drawChip)
   } else if (model.content === 'COUNTDOWN') {
@@ -347,11 +355,13 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     const details = detailsLine(model, options)
     drawText(ctx, details, width / 2, mid + 130 * k, { size: 34 * k, colour: palette.text, weight: 500, align: 'center', maxWidth: area.width })
     if (weather) drawChip(ctx, weather, width / 2, mid + 200 * k, 30 * k, palette, 'center', area.width)
+    drawDirections(mid + (weather ? 262 : 200) * k)
   } else if (model.content === 'FIXTURE') {
     const mid = area.y + area.height / 2
     drawVersus(mid - 60 * k, 70 * k, 52 * k)
     drawText(ctx, detailsLine(model, options), width / 2, mid + 90 * k, { size: 38 * k, colour: palette.text, weight: 500, align: 'center', maxWidth: area.width })
     if (weather) drawChip(ctx, weather, width / 2, mid + 170 * k, 30 * k, palette, 'center', area.width)
+    drawDirections(mid + (weather ? 232 : 170) * k)
   } else if (model.content === 'FUN_FACTS') {
     drawText(ctx, `${model.homeName} v ${model.awayName}`.toUpperCase(), width / 2, area.y + 40 * k, { size: 52 * k, colour: palette.text, weight: 700, align: 'center', maxWidth: area.width })
     drawText(ctx, detailsLine(model, options), width / 2, area.y + 100 * k, { size: 28 * k, colour: palette.muted, align: 'center', maxWidth: area.width })

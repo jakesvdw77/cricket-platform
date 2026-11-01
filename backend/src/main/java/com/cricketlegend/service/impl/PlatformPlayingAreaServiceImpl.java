@@ -109,11 +109,15 @@ public class PlatformPlayingAreaServiceImpl implements PlatformPlayingAreaServic
 
     @Override
     @Transactional
-    public PlatformPlayingAreaDto update(UUID playingAreaId, PlayingAreaRequest request) {
+    public PlatformPlayingAreaDto update(UUID playingAreaId, PlayingAreaRequest request, String editedBySubject) {
         PlayingArea area = findOrThrow(playingAreaId);
         assertNotMerged(area, () -> new FieldNotEditableException(
                 "This field has been merged into another field and cannot be changed"));
         playingAreaWriter.apply(area, request);
+        if (area.getVerificationStatus() == PlayingAreaVerificationStatus.VERIFIED) {
+            area.setVerifiedAt(Instant.now());
+            area.setVerifiedBySubject(editedBySubject);
+        }
         return toDtos(List.of(playingAreaRepository.save(area)), true).get(0);
     }
 

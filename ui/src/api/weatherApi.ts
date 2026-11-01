@@ -76,3 +76,30 @@ export async function geocodePlace(place: PlaceQuery): Promise<Coordinates | nul
   const best = (wanted ? results.find((item) => item.admin1?.toLowerCase() === wanted) : undefined) ?? results[0]
   return best ? { lat: best.latitude, lng: best.longitude } : null
 }
+
+export interface PlaceMatch {
+  name: string
+  admin1: string | null
+  country: string | null
+  coords: Coordinates
+}
+
+interface PlaceSearchResponse {
+  results?: { name?: string; latitude: number; longitude: number; admin1?: string; country?: string }[]
+}
+
+// docs/specs/133 (Find On Map): up to five towns that match the typed city, for the manager to choose from. Nothing is picked here.
+// Only a place name (and the country code when the field has one) leaves the browser. Throws on failure.
+export async function searchPlaces(place: PlaceQuery): Promise<PlaceMatch[]> {
+  const params = new URLSearchParams({ name: place.city, count: '5', language: 'en', format: 'json' })
+  if (place.countryCode) params.set('countryCode', place.countryCode)
+  const response = await fetch(`${GEOCODE_URL}?${params.toString()}`)
+  if (!response.ok) throw new Error(`Geocoding failed with ${response.status}`)
+  const body = (await response.json()) as PlaceSearchResponse
+  return (body.results ?? []).slice(0, 5).map((item) => ({
+    name: item.name ?? place.city,
+    admin1: item.admin1 ?? null,
+    country: item.country ?? null,
+    coords: { lat: item.latitude, lng: item.longitude },
+  }))
+}

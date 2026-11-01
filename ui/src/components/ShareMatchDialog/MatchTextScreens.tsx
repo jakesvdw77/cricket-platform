@@ -19,8 +19,8 @@ import type { MatchScreenProps } from './matchScreenTypes'
 export function MatchWhatsAppScreen(props: MatchScreenProps) {
   const { model, choices, updateChoices, shareTitle } = props
   const template = choices.match.templates.whatsapp
-  const { emoji, weather } = choices.match.include
-  const generated = generateMatchWhatsAppText(model, template, { emoji, weather: weather && model.weather !== null })
+  const { emoji, weather, directions } = choices.match.include
+  const generated = generateMatchWhatsAppText(model, template, { emoji, weather: weather && model.weather !== null, directions: directions && model.directions !== null })
   const { text, setText, guard, confirmDialog } = useEditableShareText(generated)
   return (
     <>
@@ -58,8 +58,8 @@ export function MatchWhatsAppScreen(props: MatchScreenProps) {
 export function MatchFacebookScreen(props: MatchScreenProps) {
   const { model, choices, updateChoices, sponsorName } = props
   const template = choices.match.templates.facebook
-  const { emoji, weather, hashtags } = choices.match.include
-  const generated = generateMatchFacebookText(model, template, { emoji, weather: weather && model.weather !== null, hashtags, mentionSponsor: sponsorName })
+  const { emoji, weather, hashtags, directions } = choices.match.include
+  const generated = generateMatchFacebookText(model, template, { emoji, weather: weather && model.weather !== null, directions: directions && model.directions !== null, hashtags, mentionSponsor: sponsorName })
   const { text, setText, guard, confirmDialog } = useEditableShareText(generated)
   const { copy, copiedKey, failed } = useCopyToClipboard()
   return (

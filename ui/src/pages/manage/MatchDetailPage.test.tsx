@@ -244,6 +244,38 @@ describe('MatchDetailPage', () => {
     expect(await screen.findByText("Couldn't load this match")).toBeInTheDocument()
   })
 
+  // docs/specs/133
+  describe('Get Directions', () => {
+    const located = { playingAreaId: 'field-1', playingAreaName: 'Riverside Oval', playingAreaLatitude: -29.55, playingAreaLongitude: 30.29 }
+
+    it('is an item of Manage Match, before Share, and an inline link under the figures', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch(located))
+      expect(screen.getByTestId('match-directions-link')).toHaveTextContent('Get Directions')
+      const menu = await openManage(user)
+      const titles = itemTitles(menu)
+      expect(titles).toContain('Get Directions')
+      expect(titles.indexOf('Get Directions')).toBeLessThan(titles.indexOf('Share Match'))
+    })
+
+    it('opens Google Maps with the stored coordinates in one click on a desktop, the access point winning when set', async () => {
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ ...located, playingAreaAccessLatitude: -29.551, playingAreaAccessLongitude: 30.291 }))
+      await user.click(screen.getByTestId('match-directions-link'))
+      expect(open).toHaveBeenCalledWith('https://www.google.com/maps/dir/?api=1&destination=-29.551,30.291', '_blank', 'noopener,noreferrer')
+      open.mockRestore()
+    })
+
+    it('is hidden, not disabled, for a match with no field or no position', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch())
+      expect(screen.queryByTestId('match-directions-link')).not.toBeInTheDocument()
+      const menu = await openManage(user)
+      expect(itemTitles(menu)).not.toContain('Get Directions')
+    })
+  })
+
   // docs/specs/127-return-navigation.md
   describe('Back', () => {
     it('goes to the Matches list by default', async () => {

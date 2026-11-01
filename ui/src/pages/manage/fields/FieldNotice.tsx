@@ -1,13 +1,12 @@
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-import type { ReactNode } from 'react'
 import { fieldStatusOf } from '../../../utils/fieldStatus'
 import type { PlayingArea } from '../../../api/playingAreaApi'
 
 // docs/specs/099-fields-directory.md (4): the persistent notice above an unverified (amber) or rejected (red) field's cards,
-// built like the Player page's status banner. A verified field shows nothing. `action` is the platform admin's button.
-export function FieldNotice({ field, platform = false, action }: { field: PlayingArea; platform?: boolean; action?: ReactNode }) {
+// built like the Player page's status banner. A verified field shows nothing. No action button: Verify and Reject are items of the Manage Field menu (docs/specs/134).
+export function FieldNotice({ field, platform = false }: { field: PlayingArea; platform?: boolean }) {
   const status = fieldStatusOf(field)
   if (status === 'verified') return null
   const unverified = status === 'unverified'
@@ -44,7 +43,6 @@ export function FieldNotice({ field, platform = false, action }: { field: Playin
           </>
         )}
       </Typography>
-      {action}
     </Box>
   )
 }

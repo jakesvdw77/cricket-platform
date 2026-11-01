@@ -24,8 +24,12 @@ export function parseMapCoords(mapUrl: string | null | undefined): Coordinates |
   return null
 }
 
+// docs/specs/133: a short share link (maps.app.goo.gl, goo.gl/maps) hides its position behind a redirect the browser cannot follow.
+const SHORT_LINK = /^https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)\b/i
+export const isShortMapLink = (mapUrl: string | null | undefined): boolean => Boolean(mapUrl) && SHORT_LINK.test((mapUrl as string).trim())
+
 // Step 2: the address as a place to geocode (city, province or state, country), or null when there is no city.
-export function placeFromAddress(address: Pick<Address, 'city' | 'provinceState' | 'country'> | null | undefined): PlaceQuery | null {
+export function placeFromAddress(address: Partial<Pick<Address, 'city' | 'provinceState' | 'country'>> | null | undefined): PlaceQuery | null {
   const city = address?.city?.trim()
   if (!city) return null
   const country = address?.country?.trim() ?? ''
