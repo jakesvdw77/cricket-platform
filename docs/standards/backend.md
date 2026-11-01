@@ -22,6 +22,8 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 | `LinkLockedException` | 423 (account locked after 5 failed link confirmations in an hour, carries `retryAfterSeconds`; spec 119) |
 | `LinkRateLimitedException` | 429 (more than 10 link requests in a day, carries `retryAfterSeconds`; spec 119) |
 
+| `ScheduleRuleException` | 409 (extends `ConflictException`; a match save refused by the shared scheduling rules, problem properties `findings` and `needsConfirmation`; spec 132) |
+
   `EmailNotVerifiedException`, `LinkLockedException` and `LinkRateLimitedException` (spec 119) follow the same pattern and also extend `RuntimeException` directly; the two link ones mirror the public 423 and 429 and are mapped to a `ProblemDetail` with `retryAfterSeconds`. A suspended person on `/me/activate` or `/me/register` is refused with Spring Security's `AccessDeniedException` (403), the same type the section assertions use. The four public-availability exceptions (spec 077) are deliberately their own types rather than subclasses of the three bases, because no base carries 401, 403, 423 or 429; they are mapped in `GlobalExceptionHandler` to a `ProblemDetail` with their extra properties. They are the only exceptions allowed to extend `RuntimeException` directly.
 
   Extend this table here before introducing a new *base* type — don't invent a new HTTP-status category ad hoc in a controller.
@@ -103,6 +105,13 @@ Import rules (spec 104):
 ## League season dates (spec 111)
 
 - **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create, update, `updateDateTime` (spec 118) and reactivate, and a future bulk or schedule-import path must call it per fixture; it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
+
+## Match scheduling rules (spec 132)
+
+- **Every route that saves a match runs `MatchScheduleRules`** (`service`, impl in `service.impl`): `MatchServiceImpl` create, update (only when the start to the minute, a side or the venue changed), `updateDateTime`, `reactivate` (errors only) and `createBatch` (a later item sees the earlier ones). It wraps the import's pure rules, so own-team overlap, venue clash and match identity exist once. Never add a scheduling check to a route of your own.
+- **`ScheduleOverlapRules` (`service.support.schedule`) may be used only by `LeagueScheduleValidator` and `MatchScheduleRulesImpl`** (ArchUnit `ScheduleRuleBypassTest`).
+- **Errors block, warnings need `acknowledgedWarnings`.** `OWN_TEAM_OVERLAP` and `DUPLICATE_MATCH` are never overridden; every other code is a warning the request confirms by listing its code. The import commit acknowledges every warning code (`ScheduleRule.warningCodes()`) because its own review step already did. Inactive matches and the edited match itself are never compared.
+- **The Matches list default (`upcomingOnly`)** is `MatchSpecifications.upcomingOrAwaitingResult`: today onward, or active past with no published result. The summary counters use the same specification.
 
 ## Registered players on a result (spec 113)
 

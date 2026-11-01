@@ -71,6 +71,12 @@ Written after the Seasons pages were built from these docs alone (`docs/specs/12
 - **Row-menu file:** `pages/manage/<record>s/<Record>RowMenu.tsx`, mirroring `leagues/LeagueRowMenu.tsx`.
 - **Record cards with their own tint tiles** keep the card title in `cardTitleSx` (uppercase) until the card is reviewed; the page title keeps its own capitals.
 
+- **Destructive platform actions (Merge) live only in the Manage menu on the record page**, never in a row kebab. **Decided 2026-11-01.**
+- **No Share item when the page has nothing to share** (the menu simply omits it); Share is last only when it exists. **Decided 2026-11-01.**
+- **Status transitions (Verify, Reject, Reopen) sit after Edit in the Manage menu,** each with its confirm dialog. **Decided 2026-11-01.**
+- **A disabled Edit stays in the menu with its reason line** (never hidden) when the record cannot be edited. **Decided 2026-11-01.**
+- **A filter switch becomes a toggle chip** in the filter bar (for example Our Fields Only). **Decided 2026-11-01.**
+
 ## 7. Forms inside a page (edit modes)
 Editing is a mode of the page, not a different screen, and uses the same row editor, checks and Review as the import (`docs/specs/126`). Nothing is saved before an explicit, server-enforced confirmation.
 
