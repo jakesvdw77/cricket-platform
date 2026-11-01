@@ -605,7 +605,7 @@ describe('MatchList', () => {
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. The
   // footer is Edit / Select / Poll / Share (docs/specs/069).
-  it('never renders a Deactivate/Reactivate button on the card, while the kebab holds Edit, Select, Availability and Share', async () => {
+  it('never renders a Deactivate/Reactivate button on the card, while the kebab holds Edit, Select, Availability and Share Match', async () => {
     const user = userEvent.setup()
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
 
@@ -615,7 +615,7 @@ describe('MatchList', () => {
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^Actions for/ }))
-    for (const id of ['edit', 'select-team', 'availability', 'share-team-sheet']) {
+    for (const id of ['edit', 'select-team', 'availability', 'share-match']) {
       expect(await screen.findByTestId(`manage-item-${id}`)).toBeInTheDocument()
     }
   })
