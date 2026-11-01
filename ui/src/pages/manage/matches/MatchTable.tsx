@@ -1,10 +1,10 @@
-import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
+import { Avatar, Box, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { ToolbarCard } from '../../../components/ToolbarCard'
-import { badgeSx } from '../../../components/RecordCard'
+import { BadgeChip, chipLinkSx } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import { useCountdown } from '../../../components/Countdown'
 import type { Match } from '../../../api/matchApi'
@@ -15,9 +15,11 @@ import { initialsFromName } from '../../../utils/initials'
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { zebraTint } from '../../../utils/zebraTint'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
-import { resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { matchStatusFor } from './matchResultHelpers'
+import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
-import { announcedBadges, badgeFor, matchLeagueValue, pollBadgeFor, selectionRows, sideName } from './matchCardHelpers'
+import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, sideName } from './matchCardHelpers'
+import type { PollDestination } from './matchCardHelpers'
 
 export interface MatchTableProps {
   clubId: string
@@ -62,14 +64,7 @@ const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
 function StatusChip({ badge, height = 22 }: { badge: RecordCardBadge; height?: number }) {
-  return (
-    <Chip
-      size="small"
-      label={badge.label}
-      variant={badge.tone === 'neutral' || badge.tone === 'noPoll' ? 'outlined' : 'filled'}
-      sx={{ ...badgeSx(badge.tone), height, fontSize: '0.75rem' }}
-    />
-  )
+  return <BadgeChip entry={badge} height={height} />
 }
 
 function MatchRow({
@@ -93,27 +88,51 @@ function MatchRow({
   const kickoff = useCountdown(match.matchDate)
   // docs/specs/100: Played is the real (published) result state; a started match without one awaits its result.
   const started = kickoff.stage === 'expired'
-  const played = resultStateOf(match) === 'published'
-  const resultBadge = resultBadgeFor(match)
-  const soon = !started && !played && kickoff.warn
-  const countdownText = played ? 'Played' : started ? 'Awaiting result' : kickoff.text ? `in ${kickoff.text}` : ''
+  const location = useLocation()
+  // docs/specs/127: every destination returns to the list the row is on.
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Matches')
+  const matchName = `${home} v ${away}`
+  const status = matchStatusFor(match, matchName)
+  const statusBadge: RecordCardBadge = {
+    label: status.label,
+    tone: status.tone,
+    to: status.to ? leaveTo(status.to) : undefined,
+    ariaLabel: status.ariaLabel,
+    pulse: status.kind === 'live',
+  }
+  const soon = !started && status.kind === 'upcoming' && kickoff.warn
+  // The date stands alone once the match has started; the countdown only reads before it.
+  const countdownText = status.kind === 'upcoming' && kickoff.text ? `in ${kickoff.text}` : ''
   const timeColor = soon ? 'warning.dark' : 'text.secondary'
 
   // The logo is the club's own side (home first); a match with no own side shows the home side's initials.
   const ownTeam = (match.homeTeamId && teamsById.get(match.homeTeamId)) || (match.awayTeamId && teamsById.get(match.awayTeamId)) || undefined
   const logoName = ownTeam ? ownTeam.name : home
 
-  // `venue` carries the field's name when the match is linked to a field (docs/specs/099).
+  // `venue` carries the field's name when the match is linked to a field (docs/specs/099); a field links to its page.
   const venueText = match.venue?.trim() || 'TBC'
+  const venueTo = match.playingAreaId ? leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`) : undefined
   const rows = selectionRows(match, teamsById)
   const first = rows[0]
   // A standalone match has no league: "Friendly · 2026/27", as the mockup shows.
   const leagueValue = match.leagueId
     ? matchLeagueValue(match, leaguesById, seasonsById)
     : ['Friendly', seasonsById.get(match.seasonId)?.label].filter(Boolean).join(' · ')
-  const inactive = badgeFor(match)
   const announced = announcedBadges(match, teamsById)
-  const poll = pollBadgeFor(match.polls)
+  const pollDest = pollDestination(match, teamsById)
+  const mappedDest: PollDestination =
+    pollDest.kind === 'link' ? { kind: 'link', to: leaveTo(pollDest.to) } : { kind: 'menu', options: pollDest.options.map((option) => ({ ...option, to: leaveTo(option.to) })) }
+  const { openAvailability, menu: pollMenu } = useAvailabilityNavigation(mappedDest)
+  const pollBase = pollBadgeFor(match.polls)
+  const canOpenPoll = ownSides(match).length > 0
+  const poll: RecordCardBadge = {
+    ...pollBase,
+    ...(canOpenPoll
+      ? mappedDest.kind === 'link'
+        ? { to: mappedDest.to, ariaLabel: `Open availability for ${matchName}` }
+        : { onClick: openAvailability, ariaLabel: `Choose availability poll for ${matchName}` }
+      : {}),
+  }
   const pickedText = (size: number | null, picked: number) => (size === null ? `${picked}` : `${picked}/${size}`)
 
   const titleNode = (
@@ -161,12 +180,9 @@ function MatchRow({
             {countdownText ? ` · ${countdownText}` : ''}
           </Typography>
           {/* A phone has no Status column: the chips stay under the name. */}
-          {(inactive || resultBadge) && (
-            <Box data-testid="match-row-phone-status" sx={{ ...phoneOnly, display: { xs: 'flex', sm: 'none' }, flexWrap: 'wrap', gap: 0.5 }}>
-              {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 20, fontSize: '0.6875rem' }} />}
-              {resultBadge && <Chip size="small" label={resultBadge.label} sx={{ ...badgeSx(resultBadge.tone), height: 20, fontSize: '0.6875rem' }} />}
-            </Box>
-          )}
+          <Box data-testid="match-row-phone-status" sx={{ ...phoneOnly, display: { xs: 'flex', sm: 'none' }, flexWrap: 'wrap', gap: 0.5 }}>
+            <StatusChip badge={statusBadge} height={20} />
+          </Box>
         </Box>
       </Box>
       {/* Cells are placed by DOM order on a desktop (When first); the phone grid hides it. */}
@@ -182,7 +198,13 @@ function MatchRow({
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, minWidth: 0 }} {...DESKTOP_ONLY} data-testid="match-row-venue">
         <Typography variant="body2" noWrap component="div" title={venueText} sx={{ color: match.venue ? 'text.primary' : 'text.secondary' }}>
-          {venueText}
+          {venueTo ? (
+            <MuiLink component={RouterLink} to={venueTo} color="inherit" underline="hover" aria-label={`View field ${venueText}`} sx={{ ...chipLinkSx, borderRadius: 0.5 }}>
+              {venueText}
+            </MuiLink>
+          ) : (
+            venueText
+          )}
         </Typography>
       </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }} data-testid="match-row-selection">
@@ -214,15 +236,10 @@ function MatchRow({
       </Box>
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="match-row-poll">
         <StatusChip badge={poll} />
+        {pollMenu}
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, display: { xs: 'none', sm: 'flex' }, alignItems: 'center', justifyContent: 'center', gap: 0.5, whiteSpace: 'nowrap' }} {...DESKTOP_ONLY} data-testid="match-row-status">
-        {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 22, fontSize: '0.75rem' }} />}
-        {resultBadge && <Chip size="small" label={resultBadge.label} data-testid="match-row-result" sx={{ ...badgeSx(resultBadge.tone), height: 22, fontSize: '0.75rem' }} />}
-        {!inactive && !resultBadge && (
-          <Typography variant="body2" color="text.secondary">
-            {NOT_ON_FILE}
-          </Typography>
-        )}
+        <StatusChip badge={statusBadge} />
       </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: 'primary.main' }}>
         <MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-row-actions" />

@@ -12,7 +12,7 @@ import {
   Typography,
   Button as MuiButton,
 } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, keyframes } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -46,6 +46,13 @@ export type RecordCardBadgeTone =
 export interface RecordCardBadge {
   label: string
   tone: RecordCardBadgeTone
+  // A badge that names a place or state with a destination is a real link (page-anatomy 6b); `ariaLabel` says where it goes.
+  to?: string
+  ariaLabel?: string
+  // Alternative to `to` when the destination needs a choice (a menu); renders a button chip.
+  onClick?: (event: MouseEvent<HTMLElement>) => void
+  // A leading pulsing dot (Live).
+  pulse?: boolean
 }
 
 export interface RecordCardField {
@@ -219,6 +226,54 @@ export interface RecordCardProps {
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
 export { avatarSx }
 
+export const pulseDot = keyframes`
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 5px transparent; opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+`
+
+// The subtle pulsing dot of a Live chip; it stands still under prefers-reduced-motion.
+export function PulseDot() {
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      data-testid="pulse-dot"
+      sx={{
+        width: 7,
+        height: 7,
+        borderRadius: '50%',
+        bgcolor: 'currentColor',
+        '@media (prefers-reduced-motion: no-preference)': { animation: `${pulseDot} 1.6s ease-out infinite` },
+      }}
+    />
+  )
+}
+
+// The link-chip focus ring, shared with the table.
+export const chipLinkSx = {
+  position: 'relative',
+  zIndex: 1,
+  cursor: 'pointer',
+  '&:focus-visible': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+} as const
+
+// One badge chip; a link (or button) when it has a destination.
+export function BadgeChip({ entry, height }: { entry: RecordCardBadge; height?: number }) {
+  const interactive = Boolean(entry.to || entry.onClick)
+  const sx = { ...badgeSx(entry.tone), ...(height ? { height, fontSize: '0.75rem' } : {}), ...(interactive ? chipLinkSx : {}) }
+  const common = {
+    size: 'small' as const,
+    label: entry.label,
+    variant: isOutlinedTone(entry.tone) ? ('outlined' as const) : ('filled' as const),
+    icon: entry.pulse ? <PulseDot /> : undefined,
+    sx: entry.pulse ? { ...sx, '& .MuiChip-icon': { ml: 1, mr: -0.25, color: 'inherit' } } : sx,
+  }
+  if (entry.to) return <Chip {...common} component={RouterLink} to={entry.to} clickable aria-label={entry.ariaLabel} />
+  if (entry.onClick) return <Chip {...common} clickable onClick={entry.onClick} aria-label={entry.ariaLabel} />
+  return <Chip {...common} />
+}
+
 // 'neutral' and 'noPoll' are the outlined tones; every other tone is a filled chip.
 function isOutlinedTone(tone: RecordCardBadgeTone) {
   return tone === 'neutral' || tone === 'noPoll'
@@ -352,13 +407,7 @@ export function RecordCard({
         <Chip size="small" label={badge.label} variant={isOutlinedTone(badge.tone) ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
       )}
       {badges?.map((entry, index) => (
-        <Chip
-          key={index}
-          size="small"
-          label={entry.label}
-          variant={isOutlinedTone(entry.tone) ? 'outlined' : 'filled'}
-          sx={badgeSx(entry.tone)}
-        />
+        <BadgeChip key={index} entry={entry} />
       ))}
     </>
   )
