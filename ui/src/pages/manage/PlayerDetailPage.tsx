@@ -3,7 +3,7 @@ import { LogoAvatar } from '../../components/LogoAvatar'
 import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Chip, Stack, Typography } from '@mui/material'
+import { Box, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
@@ -148,15 +148,11 @@ export default function PlayerDetailPage() {
             <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
           </Box>
         }
-        // The player's tagged sections under the title (docs/specs/060).
+        // The player's sections as the plain sub-header line every detail page uses (a result's date, league and field), not pills (owner, 2026-11-04).
         subtitle={
-          taggedSections.length > 0 ? (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.5 }}>
-              {taggedSections.map((section) => (
-                <Chip key={section.id} size="small" variant="outlined" label={sectionPath(section)} />
-              ))}
-            </Stack>
-          ) : undefined
+          <Typography variant="subtitle1" fontWeight={600} color={taggedSections.length > 0 ? 'text.primary' : 'text.secondary'} component="span">
+            {taggedSections.length > 0 ? taggedSections.map(sectionPath).join(' · ') : 'No section'}
+          </Typography>
         }
         // docs/specs/141 (owner, 2026-11-04): View Stats is its own outlined button beside the Manage menu so it is not missed, as Share is
         // on a result (the menu keeps its own View Stats item).
