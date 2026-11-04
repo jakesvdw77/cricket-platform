@@ -325,11 +325,7 @@ export default function ResultImportPage() {
         subtitle="Bring a result in from another source"
         backTo={RESULTS_PATH}
         backLabel="Back to Results"
-        action={
-          <Button size="compact" variant="secondary" onClick={() => navigate(RESULTS_PATH)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
-            Cancel
-          </Button>
-        }
+        // docs/specs/138 (owner, 2026-11-05): no Cancel here; it only went to the Results list, which "Back to Results" does, and nothing is saved before Review.
       />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>

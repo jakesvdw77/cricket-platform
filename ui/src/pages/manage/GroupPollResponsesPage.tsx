@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Chip, Typography } from '@mui/material'
+import { HeaderActions, HeaderShareButton } from '../../components/HeaderShareButton'
 import { ManageMenu } from '../../components/ManageMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -135,7 +136,11 @@ export default function GroupPollResponsesPage() {
           <Chip size="small" label={responses.open ? 'Open' : 'Closed'} variant="filled" sx={badgeSx(responses.open ? 'open' : 'closed')} />
         </Box>
       }
-      headerAction={<ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />}
+      headerAction={
+        <HeaderActions beside={actions.share ? <HeaderShareButton onClick={actions.share} testId="poll-share" /> : null}>
+          <ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />
+        </HeaderActions>
+      }
       meta={
         <Typography variant="subtitle1" fontWeight={600} color="text.primary">
           {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}

@@ -48,6 +48,8 @@ export interface PollActionsOptions {
 
 export interface PollActions {
   items: ManageMenuItem[]
+  // Opens the share dialog while the poll is open, else null: the page header's Share button (docs/standards/page-anatomy.md).
+  share: (() => void) | null
   // Render once next to the caller's own UI.
   dialogs: ReactNode
   // The close or delete failure as text, or null.
@@ -144,6 +146,8 @@ export function usePollActions({
 
   return {
     items,
+    // docs/standards/page-anatomy.md (owner, 2026-11-05): the page header shows Share beside the menu while the poll is open.
+    share: open ? () => setShareOpen(true) : null,
     errorMessage: failure,
     dialogs: (
       <>

@@ -11,6 +11,9 @@ import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { EmptyState } from '../../../components/EmptyState'
 import { CardForecastStrip } from '../../../components/CardForecastStrip'
+import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
+import { Button } from '../../../components/Button'
+import { HeaderActions, HeaderShareButton } from '../../../components/HeaderShareButton'
 import { KeyFigureTile } from '../../../components/KeyFigureTile'
 import { ManageMenu } from '../../../components/ManageMenu'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
@@ -281,7 +284,22 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
         }
         action={
           <Box ref={manageAnchor}>
-            <ManageMenu label="Manage Team" fixedWidth testId="manage-team" groups={[{ id: 'team', heading: 'Team', items: manageItems }]} />
+            <HeaderActions
+              beside={
+                <>
+                {/* docs/specs/138 (owner, 2026-11-05): beside Manage Team, an announced side offers Share; a side that can be announced offers Announce Team instead. */}
+                {side?.announced ? (
+                  <HeaderShareButton onClick={() => shareSide.share(match.id, sideLabel === 'Home')} testId="select-share" />
+                ) : side && !panel.blockedReason ? (
+                  <Button variant="secondary" size="compact" startIcon={<CampaignOutlinedIcon fontSize="small" />} onClick={() => panel.setConfirmAnnounce(true)} disabled={panel.announcing} data-testid="select-announce">
+                    {panel.announcing ? 'Announcing…' : 'Announce Team'}
+                  </Button>
+                ) : null}
+                </>
+              }
+            >
+              <ManageMenu label="Manage Team" fixedWidth testId="manage-team" groups={[{ id: 'team', heading: 'Team', items: manageItems }]} />
+            </HeaderActions>
           </Box>
         }
       />

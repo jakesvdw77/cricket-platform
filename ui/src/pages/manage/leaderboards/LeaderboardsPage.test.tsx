@@ -606,11 +606,11 @@ describe('LeaderboardsPage', () => {
     })
   })
 
-  it('has the Full name | First name toggle', async () => {
+  it('has the Full name | Initials toggle', async () => {
     renderPage()
     await screen.findAllByTestId('standings-row', {}, wait)
     expect(screen.getByRole('button', { name: 'Full name' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'First name' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Initials' })).toBeInTheDocument()
   })
 
   it('does not call the awards route for a standings tab', async () => {

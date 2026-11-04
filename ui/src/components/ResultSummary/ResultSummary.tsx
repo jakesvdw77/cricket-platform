@@ -6,6 +6,8 @@ import { ResultScoreLine } from '../ResultScoreLine'
 export interface ResultSummarySide {
   key: string
   name: string
+  // docs/specs/138: the name as a link (a club team's page); drawn in place of the plain name when given.
+  nameLink?: ReactNode
   // Optional team logo, drawn before the name.
   logo?: ReactNode
   innings: Innings[]
@@ -36,7 +38,7 @@ export function ResultSummary({ sides, ballsPerOver, resultLine, resultColor = '
           <Box key={side.key} sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
             {side.logo}
             <Typography variant="body2" fontWeight={side.winner ? 700 : 500} noWrap sx={{ flex: 1, minWidth: 0 }}>
-              {side.name}
+              {side.nameLink ?? side.name}
             </Typography>
             <ResultScoreLine innings={side.innings} ballsPerOver={ballsPerOver} winner={side.winner} />
           </Box>

@@ -1,3 +1,4 @@
+import { resetPlayerNameModeForTests } from '../../../hooks/usePlayerNameMode'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -62,7 +63,7 @@ function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: 
   return render(
     <ThemeProvider theme={baseTheme}>
       <QueryClientProvider client={queryClient}>
-        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} toss={null} readOnly={readOnly} sectionIds={sectionIds} />
+        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} readOnly={readOnly} sectionIds={sectionIds} />
       </QueryClientProvider>
     </ThemeProvider>,
   )
@@ -71,9 +72,14 @@ function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: 
 beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
+  resetPlayerNameModeForTests()
   getScorecard.mockResolvedValue(card())
   linkResultPlayer.mockResolvedValue(undefined)
 })
+
+// The team cards are closed by default (docs/specs/138): open one before reading its tables or pressing its buttons.
+const openSide = (user: ReturnType<typeof userEvent.setup>, side: 'home' | 'away') =>
+  user.click(within(screen.getByTestId(`scorecard-${side}`)).getByRole('button', { name: /^Expand/ }))
 
 describe('ResultScorecard', () => {
   it('never shows a planned batting number under a name, even when it differs from where the player batted', async () => {
@@ -81,6 +87,17 @@ describe('ResultScorecard', () => {
     renderCard()
     await screen.findAllByText('Ann Ash')
     expect(screen.queryByText(/planned/i)).not.toBeInTheDocument()
+  })
+
+  it('starts each team card closed, headed by its innings, and opens it from the chevron (138)', async () => {
+    const user = userEvent.setup()
+    renderCard()
+    const home = await screen.findByTestId('scorecard-home')
+    expect(home).toHaveTextContent(/(First|Second) Innings - /)
+    const toggle = within(home).getByRole('button', { name: /^Expand/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(toggle)
+    expect(within(home).getByRole('button', { name: /^Collapse/ })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('shows a section per side with its batting table, the dismissal text and the names of the other side', async () => {
@@ -95,8 +112,10 @@ describe('ResultScorecard', () => {
   })
 
   it('shows bowling figures with the economy and the fielding credits', async () => {
+    const user = userEvent.setup()
     renderCard()
     const home = await screen.findByTestId('scorecard-home')
+    await openSide(user, 'home')
     const bowlingTable = within(home).getAllByRole('table').find((table) => table.getAttribute('aria-label')?.toLowerCase().includes('bowling'))
     expect(bowlingTable).toBeDefined()
     expect(within(bowlingTable as HTMLElement).getByText('Ann Ash')).toBeInTheDocument()
@@ -104,12 +123,12 @@ describe('ResultScorecard', () => {
     expect(screen.getByTestId('scorecard-away')).toHaveTextContent('Sam Jones: 1 catch')
   })
 
-  it('switches every name to the first name, tagging only collisions, from the Full name | First name toggle', async () => {
+  it('switches every name to initials and the surname from the Full name | Initials toggle', async () => {
     const user = userEvent.setup()
     renderCard()
     const home = await screen.findByTestId('scorecard-home')
-    await user.click(screen.getAllByRole('button', { name: /first name/i })[0])
-    await waitFor(() => expect(within(home).getAllByText('Ann').length).toBeGreaterThan(0))
+    await user.click(screen.getAllByRole('button', { name: /initials/i })[0])
+    await waitFor(() => expect(within(home).getAllByText('A. Ash').length).toBeGreaterThan(0))
     expect(within(home).queryByText('Ann Ash')).not.toBeInTheDocument()
   })
 
@@ -117,6 +136,8 @@ describe('ResultScorecard', () => {
     const user = userEvent.setup()
     renderCard('PUBLISHED')
     const home = await screen.findByTestId('scorecard-home')
+    await openSide(user, 'home')
+    await openSide(user, 'away')
     const links = within(home).getAllByRole('button', { name: /link to player/i })
     expect(links.length).toBeGreaterThan(0)
     expect(within(screen.getByTestId('scorecard-away')).queryByRole('button', { name: /link to player/i })).not.toBeInTheDocument()
@@ -131,13 +152,16 @@ describe('ResultScorecard', () => {
     const user = userEvent.setup()
     renderCard('PUBLISHED', { home: true, away: false }, false, { home: 'sec-9', away: null })
     const home = await screen.findByTestId('scorecard-home')
+    await openSide(user, 'home')
     await user.click(within(home).getAllByRole('button', { name: 'Link to player' })[0])
     expect(await screen.findByTestId('new-player-config')).toHaveTextContent('Gus Guest|sec-9')
   })
 
   it('readOnly (the capture preview) shows no Link to player for a guest of our side', async () => {
+    const user = userEvent.setup()
     renderCard('DRAFT', { home: true, away: false }, true)
     const home = await screen.findByTestId('scorecard-home')
+    await openSide(user, 'home')
     expect(within(home).getAllByText(/Gus/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /link to player/i })).not.toBeInTheDocument()
   })

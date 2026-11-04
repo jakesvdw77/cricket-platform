@@ -22,10 +22,10 @@ describe('NameModeToggle', () => {
     expect(screen.getByRole('button', { name: 'Full name' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Sam Venter')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'First name' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Initials' }))
 
-    expect(screen.getByText('Sam')).toBeInTheDocument()
-    expect(localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('first')
+    expect(screen.getByText('S. Venter')).toBeInTheDocument()
+    expect(localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('initials')
     expect(screen.getByRole('group', { name: 'Player names' })).toBeInTheDocument()
   })
 })

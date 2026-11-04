@@ -10,6 +10,7 @@ import { ViewTabsRow } from '../../../components/ViewTabsRow'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import { compactButtonSx } from '../../../components/Button'
+import { HeaderActions, HeaderShareButton } from '../../../components/HeaderShareButton'
 import { ManageMenu, MANAGE_BUTTON_WIDTH } from '../../../components/ManageMenu'
 import type { ManageMenuGroup } from '../../../components/ManageMenu'
 import { BrandIcon } from '../../../components/BrandIcon'
@@ -285,7 +286,11 @@ export default function LeagueViewLayout() {
       { id: 'share', title: 'Share League', description: 'Schedule, results, teams or conditions as a PDF, poster, calendar or message.', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => openShare(activeSegment === 'conditions' ? ['CONDITIONS'] : ['SCHEDULE']) },
     ],
   }
-  const manageMenu = <ManageMenu label="Manage League" groups={[leagueGroup]} testId="manage-league" fixedWidth />
+  const manageMenu = (
+    <HeaderActions beside={<HeaderShareButton onClick={() => openShare(activeSegment === 'conditions' ? ['CONDITIONS'] : ['SCHEDULE'])} testId="league-share" />}>
+      <ManageMenu label="Manage League" groups={[leagueGroup]} testId="manage-league" fixedWidth />
+    </HeaderActions>
+  )
 
   const linkSx = { fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere' } as const
   const linkItemSx = { display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 } as const

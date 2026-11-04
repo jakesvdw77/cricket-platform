@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+import { NameModeToggle } from '../../../../components/NameModeToggle'
+import { ToolbarToggleChip } from '../../../../components/ToolbarCard'
+import { toolbarControlSx } from '../../../../components/ToolbarCard/toolbarControlSx'
 import type { ReactNode } from 'react'
-import { Alert, Box, Chip, MenuItem, ListItemIcon, Typography } from '@mui/material'
+import { Alert, Box, Button as MuiButton, Chip, MenuItem, ListItemIcon, Typography } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
 import AddIcon from '@mui/icons-material/Add'
 import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined'
@@ -92,7 +95,7 @@ export function TeamsStep(props: ScorecardStepProps) {
         onConfirmAll={() => onReplace(withScorecard(draft, { ...scorecard, players: confirmRuleBased(scorecard.players) }))}
         disabled={disabled}
       />
-      <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} label="Who is playing?" />
+      <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} label="Who is playing?" nameToggle={false} />
       <FormSectionHeading icon={<GroupsOutlinedIcon />} title={`${ours?.teamName ?? opposing?.name ?? ''}: who played`} />
       {ours ? (
         <OurSideTeam {...props} ours={ours} />
@@ -150,6 +153,8 @@ function OurSideTeam({
   const duplicates = duplicatePlayerKeys(scorecard, side)
   const queryClient = useQueryClient()
   const [resetOpen, setResetOpen] = useState(false)
+  // docs/specs/138 (owner, 2026-11-05): the planned batting order is a column, hidden until this switch is on; it is not under the name any more.
+  const [showPlanned, setShowPlanned] = useState(false)
   const [populating, setPopulating] = useState(false)
   const [fromSquad, setFromSquad] = useState(false)
   const [populateFailed, setPopulateFailed] = useState(false)
@@ -295,11 +300,11 @@ function OurSideTeam({
       const replaced = plannedPeople.get(player.replacedPlayerProfileId)
       parts.push(replaced ? `replaced ${label({ id: replaced.playerProfileId, firstName: replaced.firstName, lastName: replaced.lastName })}` : 'swapped in')
     }
-    // An import builds the list in the file's order, so a planned number would read as a mistake beside it.
-    if (player.plannedBattingOrder != null && !player.substitute && importReview.provider === null) parts.push(`planned ${player.plannedBattingOrder}`)
     return parts.length > 0 ? parts.join(' · ') : null
   }
 
+  // An import builds the list in the file's order, so a planned number would read as a mistake beside it.
+  const canShowPlanned = importReview.provider === null && rows.some((player) => player.plannedBattingOrder != null && !player.substitute)
   const took = players.filter((player) => !player.substitute && tookPart(player)).length
   const countLine = `${team.length} ${team.length === 1 ? 'player' : 'players'}${substitutes.length > 0 ? ` + ${substitutes.length === 1 ? '12th man' : `${substitutes.length} substitutes`}` : ''}`
   const empty = rows.length === 0
@@ -356,15 +361,21 @@ function OurSideTeam({
       {notice && <NotSelectedBanner notice={notice} onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectPlayers={actions.openAdd} disabled={disabled} />}
 
       {!empty && (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+        // docs/specs/138 (owner, 2026-11-05): a light opaque band so the count and its controls read as the header of the list below.
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', bgcolor: 'grey.100', border: 1, borderColor: 'divider', borderRadius: 1, px: 1.5, py: 0.75 }}>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             {countLine}
           </Typography>
-          {prefillSide && prefillSide.players.length > 0 && (
-            <Button variant="ghost" size="compact" startIcon={<RestartAltIcon />} onClick={() => setResetOpen(true)} disabled={disabled}>
-              Reset to selection
-            </Button>
-          )}
+          {/* docs/specs/138 (owner, 2026-11-05): the planned-batting-position switch, Reset and, last, the name toggle share one right-aligned group on the count line. */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', ml: { sm: 'auto' } }}>
+            {canShowPlanned && <ToolbarToggleChip pressed={showPlanned} onChange={setShowPlanned} label="Show planned batting position" />}
+            {prefillSide && prefillSide.players.length > 0 && (
+              <MuiButton variant="outlined" startIcon={<RestartAltIcon />} onClick={() => setResetOpen(true)} disabled={disabled} sx={toolbarControlSx}>
+                Reset to selection
+              </MuiButton>
+            )}
+            <NameModeToggle inline toolbar />
+          </Box>
         </Box>
       )}
       <Typography variant="caption" color="text.secondary">
@@ -396,7 +407,12 @@ function OurSideTeam({
         playerHeader="Player"
         rows={rows}
         getRowId={playerRowKey}
-        columns={[{ id: 'type', header: 'Type', render: typeChips }]}
+        columns={[
+          ...(canShowPlanned && showPlanned
+            ? [{ id: 'planned', header: 'Planned batting', render: (player: ResultPlayer) => (player.substitute || player.plannedBattingOrder == null ? '–' : player.plannedBattingOrder) }]
+            : []),
+          { id: 'type', header: 'Type', render: typeChips },
+        ]}
         renderPlayer={nameCell}
         renderPosition={(player, index) => (player.substitute ? '–' : index + 1)}
         isRowFlagged={(player) => guesses.guessOf(player) !== undefined}

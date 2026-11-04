@@ -1,5 +1,5 @@
 import type { Match } from '../../../api/matchApi'
-import type { MatchResult, ResultSide } from '../../../api/matchResultApi'
+import type { MatchResult, ResultListItem, ResultSide } from '../../../api/matchResultApi'
 import type { Team } from '../../../api/teamApi'
 import type { OwnSides, ResultPerspective } from '../../../utils/resultLine'
 import { sideName } from '../matches/matchCardHelpers'
@@ -57,4 +57,10 @@ export const PERSPECTIVE_COLOR: Record<ResultPerspective, string> = {
   won: 'success.main',
   lost: 'error.main',
   neutral: 'text.primary',
+}
+
+// "Home vs Away" for a result, the name a row or card kebab is labelled with (docs/specs/138).
+export function resultTitle(item: Pick<ResultListItem, 'match'>, teamsById: Map<string, Team>): string {
+  const sides = resultSides(item.match, teamsById)
+  return `${sides[0].name} vs ${sides[1].name}`
 }

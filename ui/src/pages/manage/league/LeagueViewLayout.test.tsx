@@ -373,14 +373,15 @@ describe('LeagueViewLayout', () => {
       expect(screen.getByRole('menuitem', { name: /Edit League Details/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/edit?${tab}seasonId=season-1`))
     })
 
-    it('no longer has Create match, Share, Duplicate League, Edit League or Actions as page buttons (they are Manage League options)', async () => {
+    it('no longer has Create match, Duplicate League, Edit League or Actions as page buttons (they are Manage League options); Share sits beside Manage League (138)', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
-      for (const name of ['Create match', 'Share', 'Duplicate League', 'Actions', 'Create New Match']) {
+      for (const name of ['Create match', 'Duplicate League', 'Actions', 'Create New Match']) {
         expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
       }
       expect(screen.queryByRole('link', { name: 'Edit League' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('league-share')).toBeInTheDocument()
     })
 
     it('shows only a white Manage Teams menu button in the tab actions area on the Teams tab when the season has teams', async () => {

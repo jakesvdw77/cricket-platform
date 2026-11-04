@@ -250,7 +250,7 @@ export function CaptureResultDialog({ open, onClose, clubId, teamsById, leaguesB
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-label="Capture a result" PaperProps={{ sx: { maxHeight: 640 } }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-label="Capture a result" PaperProps={{ sx: { height: "85vh", maxHeight: "85vh" } }}>
       <DialogTitle sx={{ pb: 0.5 }}>
         Capture a result
         <Typography variant="body2" color="text.secondary">

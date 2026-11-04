@@ -397,7 +397,7 @@ function PickerBody({
           </Typography>
         )}
         <TextField size="small" label="Search players" value={search} onChange={(event) => setSearch(event.target.value)} inputProps={{ 'aria-label': 'Search players' }} autoFocus />
-        <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
+        <Box sx={{ maxHeight: { xs: '50vh', sm: '55vh' }, overflowY: 'auto' }}>
           <PlayerRows
             people={shown}
             takenPlayers={takenPlayers}
@@ -476,7 +476,7 @@ function PickerBody({
                 {scopeCaption(scopedView, sectionsQuery.data ?? [], scopedSectionId, newPlayerSection?.name, newPlayerLeague?.name)}
               </Typography>
               <TextField size="small" label="Search players" value={search} onChange={(event) => setSearch(event.target.value)} inputProps={{ 'aria-label': 'Search players' }} autoFocus />
-              <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
+              <Box sx={{ maxHeight: { xs: '50vh', sm: '55vh' }, overflowY: 'auto' }}>
                 <PlayerRows
                   people={matching(scopedView.people)}
                   takenPlayers={takenPlayers}
@@ -505,7 +505,7 @@ function PickerBody({
             inputProps={{ 'aria-label': 'Search players' }}
             autoFocus
           />
-          <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
+          <Box sx={{ maxHeight: { xs: '50vh', sm: '55vh' }, overflowY: 'auto' }}>
             {(scope === 'match' ? false : scope === 'squad' ? squadQuery.isError : clubQuery.isError) ? (
               <Alert severity="error">We couldn't load the players.</Alert>
             ) : (scope === 'match' ? false : scope === 'squad' ? squadQuery.isPending : clubQuery.isPending) ? (
@@ -591,7 +591,7 @@ export function PlayerSlotPicker({ open, onClose, title = 'Choose a player', ...
     )
   }
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" aria-labelledby="player-slot-picker-title">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="player-slot-picker-title">
       <DialogTitle id="player-slot-picker-title" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
         {title}
         <IconButton aria-label="Close" onClick={onClose} size="small">

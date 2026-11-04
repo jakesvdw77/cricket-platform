@@ -17,25 +17,25 @@ describe('usePlayerNameMode (docs/specs/101)', () => {
   })
 
   it('restores the remembered mode', () => {
-    localStorage.setItem(PLAYER_NAME_MODE_KEY, 'first')
-    expect(renderHook(() => usePlayerNameMode()).result.current[0]).toBe('first')
+    localStorage.setItem(PLAYER_NAME_MODE_KEY, 'initials')
+    expect(renderHook(() => usePlayerNameMode()).result.current[0]).toBe('initials')
   })
 
   it('saves the choice and a new mount gets it back', () => {
     const first = renderHook(() => usePlayerNameMode())
-    act(() => first.result.current[1]('first'))
+    act(() => first.result.current[1]('initials'))
 
-    expect(localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('first')
+    expect(localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('initials')
     first.unmount()
-    expect(renderHook(() => usePlayerNameMode()).result.current[0]).toBe('first')
+    expect(renderHook(() => usePlayerNameMode()).result.current[0]).toBe('initials')
   })
 
   it('changes every user of the hook at once', () => {
     const toggle = renderHook(() => usePlayerNameMode())
     const label = renderHook(() => usePlayerNameMode())
-    act(() => toggle.result.current[1]('first'))
+    act(() => toggle.result.current[1]('initials'))
 
-    expect(label.result.current[0]).toBe('first')
+    expect(label.result.current[0]).toBe('initials')
   })
 
   it('ignores a stored value it does not know', () => {
@@ -53,7 +53,7 @@ describe('usePlayerNameMode (docs/specs/101)', () => {
     const { result } = renderHook(() => usePlayerNameMode())
 
     expect(result.current[0]).toBe('full')
-    act(() => result.current[1]('first'))
-    expect(result.current[0]).toBe('first')
+    act(() => result.current[1]('initials'))
+    expect(result.current[0]).toBe('initials')
   })
 })
