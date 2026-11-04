@@ -52,6 +52,11 @@ export const CHROME = {
   // The brand icon tile on the dark chrome: the mid green of the buttons, with a thin cream ring (BrandIcon). A cream tile
   // made the icons whose artwork is cream or white (Players, Leagues) disappear, and the soft mint tile looked flat.
   iconTile: BRAND.green700,
+  // docs/specs/139 (quiet side menu): the active row is a slightly lighter green than the menu, with a gold bar on its left; inactive
+  // labels are cream at 75%; an icon that needs a ground gets a faint cream ghost tile, no ring.
+  activeRow: '#17432d',
+  inactiveText: alpha(BRAND.cream, 0.75),
+  ghostTile: alpha(BRAND.cream, 0.06),
 }
 
 // The dark dropdown ground (a touch lighter than the menu).
