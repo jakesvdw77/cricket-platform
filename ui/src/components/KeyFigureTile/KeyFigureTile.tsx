@@ -107,7 +107,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
             fontWeight: 700,
             // docs/specs/120 Decision 14: numerals take the display face; the icon tile is unchanged.
             ...(!textValue && { fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay }),
-            ...(compact && { color: `${emphasis ?? 'primary'}.dark` }),
+            ...((compact || (counter && emphasis)) && { color: `${emphasis ?? 'primary'}.dark` }),
             fontVariantNumeric: 'tabular-nums',
             overflowWrap: 'anywhere',
           }}

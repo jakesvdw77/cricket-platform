@@ -63,10 +63,10 @@ describe('DashboardCard', () => {
     expect(screen.queryByTestId('demo-coverage')).not.toBeInTheDocument()
   })
 
-  describe('View as table', () => {
+  describe('View As Table', () => {
     it('is a compact toggle with aria-pressed that swaps the chart for a real table with the same rows in order, and back', async () => {
       renderCard()
-      const toggle = screen.getByRole('button', { name: 'View as table' })
+      const toggle = screen.getByRole('button', { name: 'View As Table' })
       expect(toggle).toHaveAttribute('aria-pressed', 'false')
       expect(toggle).toHaveStyle({ minHeight: '32px' })
       expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -91,7 +91,7 @@ describe('DashboardCard', () => {
 
     it('is not offered when the card has no table', () => {
       renderCard({ table: undefined })
-      expect(screen.queryByRole('button', { name: 'View as table' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'View As Table' })).not.toBeInTheDocument()
     })
   })
 
@@ -101,7 +101,7 @@ describe('DashboardCard', () => {
       expect(screen.getByTestId('dashboard-card-demo')).toHaveAttribute('aria-busy', 'true')
       expect(screen.getByTestId('demo-loading')).toBeInTheDocument()
       expect(screen.queryByTestId('the-chart')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'View as table' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'View As Table' })).not.toBeInTheDocument()
       expect(screen.queryByTestId('demo-coverage')).not.toBeInTheDocument()
       expect(screen.queryByTestId('demo-description')).not.toBeInTheDocument()
     })
@@ -112,7 +112,7 @@ describe('DashboardCard', () => {
       expect(empty).toHaveTextContent('No batting cards captured')
       expect(empty).toHaveTextContent('The runs chart needs a scorecard.')
       expect(screen.queryByTestId('the-chart')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'View as table' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'View As Table' })).not.toBeInTheDocument()
       expect(screen.queryByTestId('demo-coverage')).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Runs per innings' })).toBeInTheDocument()
     })

@@ -137,7 +137,7 @@ describe('PlayerStatsPage', () => {
       renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByRole('heading', { name: 'Sam Visser' }, wait)).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Batting' })).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByTestId('tile-highest-value')).toHaveTextContent('94*')
+      expect(within(screen.getByTestId('tile-highest')).getByTestId('page-counter-value')).toHaveTextContent('94*')
       expect(screen.getByTestId('not-captured-panel')).toHaveTextContent('Dot ball percentage')
       expect(screen.getByTestId('not-captured-panel')).not.toHaveTextContent('Boundaries conceded')
     })
@@ -156,7 +156,7 @@ describe('PlayerStatsPage', () => {
     it('a missing or unknown ?tab= value falls back to Dashboard, whose body starts with the same tile strip', async () => {
       renderPage(`${BASE}?tab=nonsense`)
       expect(await screen.findByRole('tab', { name: 'Overview' }, wait)).toHaveAttribute('aria-selected', 'true')
-      expect(await screen.findByTestId('tile-runs-value')).toHaveTextContent('412')
+      expect(await within(screen.getByTestId('tile-runs')).getByTestId('page-counter-value')).toHaveTextContent('412')
     })
 
     it('clicking a tab writes ?tab= and keeps the other parameters', async () => {
@@ -165,12 +165,12 @@ describe('PlayerStatsPage', () => {
       const search = new URLSearchParams(screen.getByTestId('location').textContent ?? '')
       expect(search.get('tab')).toBe('bowling')
       expect(search.get('seasonId')).toBe('season-1')
-      expect(await screen.findByTestId('tile-wickets-value')).toHaveTextContent('21')
+      expect(await within(screen.getByTestId('tile-wickets')).getByTestId('page-counter-value')).toHaveTextContent('21')
     })
 
     it('Fielding no longer shows the awards and the record', async () => {
       renderPage(`${BASE}?tab=fielding`)
-      expect(await screen.findByTestId('tile-catches-value', {}, wait)).toHaveTextContent('9')
+      expect(within(await screen.findByTestId('tile-catches', {}, wait)).getByTestId('page-counter-value')).toHaveTextContent('9')
       expect(screen.queryByText('Record while playing')).not.toBeInTheDocument()
       expect(screen.queryByText('Awards')).not.toBeInTheDocument()
       expect(screen.queryByTestId('tile-potm')).not.toBeInTheDocument()
@@ -180,9 +180,10 @@ describe('PlayerStatsPage', () => {
     it('Awards & record shows the awards and the record, and no dismissals', async () => {
       renderPage(`${BASE}?tab=awards`)
       expect(await screen.findByText('Record while playing', {}, wait)).toBeInTheDocument()
-      expect(screen.getByText('Awards')).toBeInTheDocument()
-      expect(screen.getByTestId('tile-potm-value')).toHaveTextContent('4')
-      expect(screen.getByTestId('tile-won-value')).toHaveTextContent('11')
+      // the Awards card repeated the first two figures, so the figures above the tabs are the awards (141)
+      expect(screen.queryByText('Awards')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('tile-potm')).getByTestId('page-counter-value')).toHaveTextContent('4')
+      expect(within(screen.getByTestId('tile-won')).getByTestId('page-counter-value')).toHaveTextContent('11')
       expect(screen.queryByText('Dismissals')).not.toBeInTheDocument()
     })
   })
@@ -193,7 +194,7 @@ describe('PlayerStatsPage', () => {
       expect(await optionsOf('Season')).toEqual(['All seasons', '2026/27'])
       expect(await optionsOf('League')).toEqual(['All leagues', 'Premier League'])
       expect(await optionsOf('Team')).toEqual(['All teams', 'Villagers 1'])
-      expect(await optionsOf('Competition')).toEqual(['All competitions', 'League'])
+      expect(await optionsOf('Competition')).toEqual(['All Competitions', 'League'])
 
       await userEvent.click(screen.getByLabelText('Section'))
       await screen.findAllByRole('treeitem')
@@ -287,27 +288,26 @@ describe('PlayerStatsPage', () => {
   describe('basis and coverage', () => {
     it('states the basis per tab', async () => {
       renderPage(`${BASE}?tab=batting`)
-      expect(await screen.findByTestId('stats-basis', {}, wait)).toHaveTextContent('Based on 18 published results with this player on the team list: 14 with a batting card.')
+      expect(await screen.findByLabelText(/^Based on/, {}, wait)).toHaveAttribute('aria-label', expect.stringContaining('Based on 18 published results with this player on the team list: 14 with a batting card.'))
       await userEvent.click(screen.getByRole('tab', { name: 'Bowling' }))
-      expect(screen.getByTestId('stats-basis')).toHaveTextContent('Based on 18 published results with this player on the team list: 12 with a bowling card.')
+      expect(screen.getByLabelText(/^Based on/)).toHaveAttribute('aria-label', expect.stringContaining('Based on 18 published results with this player on the team list: 12 with a bowling card.'))
       await userEvent.click(screen.getByRole('tab', { name: 'Fielding' }))
-      expect(screen.getByTestId('stats-basis')).toHaveTextContent('Based on 18 published results with this player on the team list.')
+      expect(screen.getByLabelText(/^Based on/)).toHaveAttribute('aria-label', expect.stringContaining('Based on 18 published results with this player on the team list.'))
     })
 
     it('says "1 published result" in the singular', async () => {
       usePlayerStats.mockReturnValue({ data: makeStats({ basis: { matchesCounted: 1, resultsWithBattingCard: 1, resultsWithBowlingCard: 0 } }), isError: false, refetch: vi.fn() })
       renderPage(BASE)
-      expect(await screen.findByTestId('stats-basis', {}, wait)).toHaveTextContent('Based on 1 published result with')
+      expect(await screen.findByLabelText(/^Based on/, {}, wait)).toHaveAttribute('aria-label', expect.stringContaining('Based on 1 published result with'))
     })
 
     it('captions only the optional figures that part of the innings recorded', async () => {
       renderPage(`${BASE}?tab=batting`)
-      await screen.findByTestId('stats-basis', {}, wait)
+      await screen.findByLabelText(/^Based on/, {}, wait)
       // balls recorded in 9 of 14, boundaries in all 14
       expect(fieldValue('Balls faced')).toHaveTextContent('from 9 of 14 innings that recorded balls')
       expect(fieldValue('Strike rate')).toHaveTextContent('from 9 of 14 innings that recorded balls')
       expect(fieldValue('Fours')).not.toHaveTextContent('from')
-      expect(screen.getByTestId('tile-strike-rate')).toHaveTextContent('from 9 of 14 innings')
       await userEvent.click(screen.getByRole('tab', { name: 'Bowling' }))
       expect(fieldValue('Wides')).toHaveTextContent('from 10 of 12 innings')
       expect(fieldValue('No-balls')).not.toHaveTextContent('from')
@@ -398,7 +398,7 @@ describe('PlayerStatsPage', () => {
       usePlayerStats.mockReturnValue({ data: makeStats({ basis: EMPTY_BASIS }), isError: false, refetch: vi.fn() })
       renderPage(BASE)
       expect(await screen.findByText('No published results yet', {}, wait)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Go to Results' })).toHaveAttribute('href', '/manage/results')
+      expect(screen.getByRole('button', { name: 'Open Results' })).toBeInTheDocument()
     })
 
     it('when filters match nothing, says so and Clear filters resets every filter', async () => {
@@ -410,9 +410,9 @@ describe('PlayerStatsPage', () => {
       renderPage(`${BASE}?teamId=team-1`)
       expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
       expect(screen.queryByText('No published results yet')).not.toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
       await waitFor(() => expect(lastFilters()).toEqual({ seasonId: null, leagueId: null, teamId: null, sectionId: null, competition: null }))
-      expect(await screen.findByTestId('tile-runs-value')).toHaveTextContent('412')
+      expect(await within(screen.getByTestId('tile-runs')).getByTestId('page-counter-value')).toHaveTextContent('412')
     })
 
     it('with appearances but no batting card shows Matches and a plain note, not zeros', async () => {
@@ -423,7 +423,7 @@ describe('PlayerStatsPage', () => {
       })
       renderPage(`${BASE}?tab=batting`)
       expect(await screen.findByText('No batting card has been captured for these results.', {}, wait)).toBeInTheDocument()
-      expect(screen.getByTestId('tile-matches-value')).toHaveTextContent('3')
+      expect(within(screen.getByTestId('tile-matches')).getByTestId('page-counter-value')).toHaveTextContent('3')
       expect(screen.queryByTestId('tile-runs')).not.toBeInTheDocument()
       await userEvent.click(screen.getByRole('tab', { name: 'Bowling' }))
       expect(screen.queryByText('No bowling card has been captured for these results.')).not.toBeInTheDocument()
@@ -451,7 +451,7 @@ describe('PlayerStatsPage', () => {
       usePlayerStats.mockReturnValue({ data: undefined, isError: true, refetch })
       renderPage(BASE)
       expect(await screen.findByText("Couldn't load the statistics", {}, wait)).toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
       expect(refetch).toHaveBeenCalled()
     })
 

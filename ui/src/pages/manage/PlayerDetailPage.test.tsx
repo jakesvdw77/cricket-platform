@@ -182,7 +182,7 @@ describe('PlayerDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
     expect(listPlayers).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-1' })
 
-    for (const name of ['Basic info', 'Contact info', 'Cricket']) {
+    for (const name of ['Basic Info', 'Contact Info', 'Cricket']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
 
@@ -193,12 +193,15 @@ describe('PlayerDetailPage', () => {
     expect(screen.getByText(/^12 Apr 2010 · \d+ yrs$/)).toBeInTheDocument()
     expect(screen.getByText('Male')).toBeInTheDocument()
     expect(screen.getByText('+27 82 555 0100')).toBeInTheDocument()
-    expect(screen.getByText('Bats: Right-handed')).toBeInTheDocument()
-    expect(screen.getByText('Bowls: Right-arm, Fast-medium')).toBeInTheDocument()
+    expect(screen.getByText('Batting: Right-handed')).toBeInTheDocument()
+    expect(screen.getByText('Bowling: Right-arm, Fast-medium')).toBeInTheDocument()
     expect(screen.getByText('Wicketkeeper: Yes')).toBeInTheDocument()
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/players/player-1/edit')
+    // docs/specs/141: Edit is the first item of the one Manage Player menu; View Stats is its own button beside it
+    expect(screen.getByTestId('player-view-stats')).toHaveTextContent('View Stats')
+    await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+    expect(screen.getByRole('menuitem', { name: 'Edit Player' })).toHaveAttribute('href', expect.stringContaining('/manage/players/player-1/edit'))
   })
 
   it('shows the status badge in the header: Verified, and Suspended for a deactivated player', async () => {
@@ -225,8 +228,8 @@ describe('PlayerDetailPage', () => {
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
       expect(screen.queryByTestId('player-status-banner')).not.toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Suspend'])
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit Player', 'View Stats', 'Suspend Player'])
     })
 
     it('shows an amber banner for an unverified player, with Change status opening the same menu', async () => {
@@ -240,7 +243,7 @@ describe('PlayerDetailPage', () => {
       expect(banner).toHaveTextContent('waiting for you')
       expect(screen.getByTestId('player-status-badge')).toHaveTextContent('Unverified')
 
-      await userEvent.click(within(banner).getByRole('button', { name: 'Change status' }))
+      await userEvent.click(within(banner).getByRole('button', { name: 'Change Status' }))
       expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
     })
 
@@ -252,12 +255,12 @@ describe('PlayerDetailPage', () => {
       renderPage('/manage/players/player-1', 'test-club-id')
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
-      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify Player' }))
       await waitFor(() => expect(verifyPlayer).toHaveBeenCalledWith('test-club-id', 'player-1'))
 
-      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
-      await userEvent.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Reject Player' }))
       expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
       expect(rejectPlayer).not.toHaveBeenCalled()
       await userEvent.click(screen.getByRole('button', { name: 'Reject player' }))
@@ -271,8 +274,8 @@ describe('PlayerDetailPage', () => {
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
       expect(screen.getByTestId('player-status-banner')).toHaveAttribute('data-tone', 'closed')
-      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify'])
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit Player', 'View Stats', 'Verify Player'])
     })
 
     it('offers Reactivate for a suspended player and shows no banner', async () => {
@@ -282,8 +285,8 @@ describe('PlayerDetailPage', () => {
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
       expect(screen.queryByTestId('player-status-banner')).not.toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reactivate'])
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Player' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit Player', 'View Stats', 'Reactivate Player'])
     })
   })
 
@@ -398,7 +401,7 @@ describe('PlayerDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     const chips = screen.getAllByTestId('player-info-chip')
-    expect(chips.map((chip) => chip.textContent)).toEqual(['Bats: –', 'Bowls: –', 'Wicketkeeper: No'])
+    expect(chips.map((chip) => chip.textContent)).toEqual(['Batting: –', 'Bowling: –', 'Wicketkeeper: No'])
     expect(chips.map((chip) => chip.getAttribute('data-on'))).toEqual(['false', 'false', 'false'])
   })
 

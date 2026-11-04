@@ -19,7 +19,7 @@ function sourceFiles(dir: string): string[] {
 
 // `<MuiButton ...>` tags (the alias the pages use for MUI's Button) that carry neither `compactButtonSx` nor the 'text' look of a link.
 function rawButtonTags(source: string): number {
-  const tags = source.match(/<MuiButton\b(?:=>|[^>])*>/g) ?? []
+  const tags: string[] = source.match(/<MuiButton\b(?:=>|[^>])*>/g) ?? []
   // a quiet text button (a Back link) is the standard's own look, so only the filled and outlined ones count
   return tags.filter((tag) => !tag.includes('compactButtonSx') && !tag.includes('variant="text"')).length
 }

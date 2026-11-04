@@ -11,21 +11,20 @@ function figure(id: string) {
 }
 
 describe('PlayerKeyFigures', () => {
-  it('shows the games, jersey number and age with the birth date', () => {
+  it('shows the games, jersey number and age as compact counters', () => {
     render(<PlayerKeyFigures player={base} now={now} />)
     expect(figure('season')).toBe('12')
     expect(figure('overall')).toBe('48')
     expect(figure('jersey')).toBe('#9')
     expect(figure('age')).toBe('46')
-    expect(screen.getByText('Games this season')).toBeInTheDocument()
-    expect(screen.getByText('Age · born 1 Jan 1980')).toBeInTheDocument()
+    expect(screen.getByText('Games This Season')).toBeInTheDocument()
+    expect(screen.getByText('Age')).toBeInTheDocument()
   })
 
   it('shows dashes for no jersey number and no date of birth', () => {
     render(<PlayerKeyFigures player={{ ...base, jerseyNumber: null, dateOfBirth: null }} now={now} />)
     expect(figure('jersey')).toBe('–')
     expect(figure('age')).toBe('–')
-    expect(screen.getByText('No date of birth')).toBeInTheDocument()
   })
 
   it('shows 0 games, not a dash', () => {
