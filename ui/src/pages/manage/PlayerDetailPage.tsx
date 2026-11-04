@@ -190,7 +190,10 @@ export default function PlayerDetailPage() {
 
       <PlayerKeyFigures player={player} />
 
-      <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+      {/* docs/specs/141 (owner, 2026-11-04): no wasted width on a big screen. md: two columns (Basic and Contact, then Cricket and Account full width). lg and up: three columns, so
+          everything is on screen without scrolling: Basic Info over Account, Contact Info, and the Cricket card. */}
+      <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+        <Box sx={{ gridColumn: { lg: 1 }, gridRow: { lg: 1 }, '& > *': { height: '100%' } }}>
         <InfoCard
           flat
           title="Basic Info"
@@ -202,7 +205,9 @@ export default function PlayerDetailPage() {
             { label: 'Jersey number', value: player.jerseyNumber != null ? `#${player.jerseyNumber}` : null },
           ]}
         />
+        </Box>
 
+        <Box sx={{ gridColumn: { lg: 2 }, gridRow: { lg: '1 / span 2' }, '& > *': { height: '100%' } }}>
         <InfoCard
           flat
           title="Contact Info"
@@ -232,14 +237,15 @@ export default function PlayerDetailPage() {
             )
           }
         />
+        </Box>
 
-        {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a desktop. */}
-        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+        {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a tablet, the third column from lg. */}
+        <Box sx={{ gridColumn: { md: '1 / -1', lg: 3 }, gridRow: { lg: '1 / span 2' }, '& > *': { height: '100%' } }}>
           <PlayerStatsCard clubId={clubId} playerId={player.id} chips={cricketChips} />
         </Box>
 
         {/* docs/specs/119 shortcut (b): read-only Account card (main agent and other agents). */}
-        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+        <Box sx={{ gridColumn: { md: '1 / -1', lg: 1 }, gridRow: { lg: 2 }, '& > *': { height: '100%' } }}>
           <PlayerAccountSection clubId={clubId} playerId={player.id} playerName={`${player.firstName} ${player.lastName}`} />
         </Box>
       </Box>
