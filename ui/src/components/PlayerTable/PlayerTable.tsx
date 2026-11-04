@@ -168,7 +168,7 @@ function PlayerRow({
         {statsTo && (
           <>
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-              <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(statsTo)} data-testid="player-row-stats">
+              <Button size="compact" variant="ghost" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(statsTo)} data-testid="player-row-stats" sx={{ color: 'primary.dark' }}>
                 View Stats
               </Button>
             </Box>
