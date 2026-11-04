@@ -168,7 +168,7 @@ describe('Matches tab', () => {
       server.rows = makeRows(45)
       renderPage()
       await screen.findAllByTestId('match-row', {}, wait)
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
 
       await userEvent.click(screen.getByRole('combobox', { name: 'Season' }))
@@ -207,7 +207,7 @@ describe('Matches tab', () => {
         if (url.endsWith('/stats/matches')) await gate
         return playerMatchesApi(server).get(url, config as never)
       })
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       expect(screen.getByRole('table', { name: 'Matches played' })).toHaveAttribute('aria-busy', 'true')
       release()
       await waitFor(() => expect(screen.getByRole('table', { name: 'Matches played' })).toHaveAttribute('aria-busy', 'false'))
@@ -413,35 +413,22 @@ describe('Matches tab', () => {
     })
   })
 
-  describe('tiles and counts', () => {
-    it('shows the Matches, Runs, Wickets and Catches tiles from the stats the page holds, and no Total row', async () => {
+  describe('figures and counts', () => {
+    // docs/specs/141: the Matches, Runs, Wickets and Catches figures are the page's, above the tabs (PlayerStatsPage), not the tab's
+    it('draws no figure strip of its own, and no Total row', async () => {
       renderPage()
       await screen.findAllByTestId('match-row', {}, wait)
-      expect(within(screen.getByTestId('stat-tiles')).getAllByTestId(/^tile-/).filter((tile) => !tile.dataset.testid?.endsWith('-value'))).toHaveLength(4)
-      expect(screen.getByTestId('tile-matches-value')).toHaveTextContent('3')
-      expect(screen.getByTestId('tile-runs-value')).toHaveTextContent('412')
-      expect(screen.getByTestId('tile-wickets-value')).toHaveTextContent('21')
-      expect(screen.getByTestId('tile-catches-value')).toHaveTextContent('9')
+      expect(screen.queryByTestId('stat-tiles')).not.toBeInTheDocument()
       expect(screen.queryByText(/^Total/)).not.toBeInTheDocument()
       expect(screen.queryByLabelText('Total for the filtered matches')).not.toBeInTheDocument()
     })
 
-    it('shows a dash for a figure the stats do not have', async () => {
-      server.stats = makeStats({ matchesCounted: 3 }, { batting: { runs: null }, fielding: { catches: null } })
-      renderPage()
-      await screen.findAllByTestId('match-row', {}, wait)
-      expect(screen.getByTestId('tile-runs-value')).toHaveTextContent('–')
-      expect(screen.getByTestId('tile-catches-value')).toHaveTextContent('–')
-      expect(screen.getByTestId('tile-wickets-value')).toHaveTextContent('21')
-    })
-
-    it('shows the strip for a single match', async () => {
+    it('shows the footer count for a single match', async () => {
       await showRows(makeMatchRow())
-      expect(screen.getByTestId('stat-tiles')).toBeInTheDocument()
       expect(screen.getByTestId('matches-footer')).toHaveTextContent('Showing 1 of 1 match')
     })
 
-    it('omits the strip when the list has no matches, and says so', async () => {
+    it('says so when the list has no matches, with no footer', async () => {
       server.rows = []
       server.stats = makeStats({ matchesCounted: 5 })
       renderPage()
@@ -458,14 +445,14 @@ describe('Matches tab', () => {
     })
   })
 
-  describe('Show more', () => {
+  describe('Show More', () => {
     it('requests the next page, appends the rows (never slices), and disappears when hasMore is false', async () => {
       server.rows = makeRows(45)
       renderPage()
       await screen.findAllByTestId('match-row', {}, wait)
       expect(rowsOnScreen()).toHaveLength(20)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
       expect(server.calls.map((call) => call.page)).toEqual([0, 1])
       expect(server.calls[1].size).toBe(20)
@@ -474,16 +461,16 @@ describe('Matches tab', () => {
       expect(cellsOf(rowsOnScreen()[20])[0]).toHaveTextContent('Opponent 21')
       expect(screen.getByTestId('matches-footer')).toHaveTextContent('Showing 40 of 45 matches')
 
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(45))
       expect(screen.getByTestId('matches-footer')).toHaveTextContent('Showing 45 of 45 matches')
-      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
 
     it('is not offered when everything fits on one page', async () => {
       renderPage()
       await screen.findAllByTestId('match-row', {}, wait)
-      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
 
     it('shows a busy, disabled button while the next page loads and keeps the rows', async () => {
@@ -497,7 +484,7 @@ describe('Matches tab', () => {
         return playerMatchesApi(server).get(url, config as never)
       })
 
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       const busy = await screen.findByRole('button', { name: 'Loading...' })
       expect(busy).toBeDisabled()
       expect(rowsOnScreen()).toHaveLength(20)
@@ -520,11 +507,11 @@ describe('Matches tab', () => {
         return pages(params)
       }
 
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       expect(await screen.findByText("Couldn't load more matches")).toBeInTheDocument()
       expect(rowsOnScreen()).toHaveLength(20)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
       expect(screen.queryByText("Couldn't load more matches")).not.toBeInTheDocument()
     })
@@ -534,9 +521,9 @@ describe('Matches tab', () => {
       server.rows = makeRows(25)
       renderPage()
       expect(await screen.findAllByTestId('match-card', {}, wait)).toHaveLength(20)
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(screen.getAllByTestId('match-card')).toHaveLength(25))
-      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
   })
 
@@ -553,7 +540,7 @@ describe('Matches tab', () => {
       server.rows = makeRows(45)
       renderPage()
       await screen.findAllByTestId('match-row', {}, wait)
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rowsOnScreen()).toHaveLength(40))
 
       await userEvent.click(screen.getByRole('button', { name: 'Date, sorted newest first; click to reverse' }))
@@ -686,7 +673,7 @@ describe('Matches tab', () => {
       expect(rowsOnScreen()).toHaveLength(0)
 
       server.matches = (params) => pageOf(server.rows, params)
-      await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
       expect(await screen.findAllByTestId('match-row', {}, wait)).toHaveLength(3)
       expect(screen.queryByText("Couldn't load the matches")).not.toBeInTheDocument()
     })
@@ -706,7 +693,7 @@ describe('Matches tab', () => {
       server.stats = makeStats({ matchesCounted: 0, resultsWithBattingCard: 0, resultsWithBowlingCard: 0 })
       renderPage(`${MATCHES}&competition=FRIENDLY`)
       expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
       await waitFor(() => expect(screen.queryByText('No published results match these filters')).not.toBeInTheDocument())
     })
   })

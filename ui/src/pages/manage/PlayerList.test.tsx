@@ -227,12 +227,12 @@ describe('PlayerList', () => {
     await screen.findByText('Sipho Ndlovu')
     expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: false }))
 
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: /show inactive/i }))
 
     await waitFor(() =>
       expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: true })),
     )
-    expect(await within(counter('shown')).findByText('Players shown')).toBeInTheDocument()
+    expect(await within(counter('shown')).findByText('Players Shown')).toBeInTheDocument()
     expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: true }))
   })
 
@@ -245,7 +245,7 @@ describe('PlayerList', () => {
     await screen.findByText('Sipho Ndlovu')
     expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ missingDateOfBirth: undefined }))
 
-    await user.click(screen.getByRole('checkbox', { name: /missing date of birth/i }))
+    await user.click(screen.getByRole('button', { name: /missing date of birth/i }))
 
     await waitFor(() =>
       expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ missingDateOfBirth: true })),
@@ -263,7 +263,7 @@ describe('PlayerList', () => {
 
     await screen.findByText('Sipho Ndlovu')
     listPlayers.mockResolvedValue([])
-    await user.click(screen.getByRole('checkbox', { name: /missing date of birth/i }))
+    await user.click(screen.getByRole('button', { name: /missing date of birth/i }))
 
     expect(await screen.findByText('Every player has a date of birth')).toBeInTheDocument()
   })
@@ -286,15 +286,17 @@ describe('PlayerList', () => {
     expect(listPlayers).not.toHaveBeenCalledWith('test-club-id', expect.objectContaining({ search: expect.anything() }))
   })
 
-  it('renders Edit and View on a card, both pointing at the player\'s own routes', async () => {
+  it('has no Edit, View or Stats footer on a card: one kebab and a quick View Stats button, both to the player\'s own routes (141)', async () => {
     listPlayers.mockResolvedValue([makePlayer({ id: 'player-1' })])
 
     renderList('test-club-id')
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
-    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/players/player-1/stats')
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sipho Ndlovu' }).getAttribute('href')).toContain('/manage/players/player-1')
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
+    expect(screen.getByRole('menuitem', { name: 'Edit Player' })).toHaveAttribute('href', expect.stringContaining('/manage/players/player-1/edit'))
+    expect(screen.getByRole('menuitem', { name: 'View Stats' })).toHaveAttribute('href', expect.stringContaining('/manage/players/player-1/stats'))
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
@@ -313,7 +315,8 @@ describe('PlayerList', () => {
     expect(await screen.findByLabelText('Section')).toHaveValue('U15')
     await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' })))
     expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' }))
-    expect(await screen.findByText('Showing: U15')).toBeInTheDocument()
+    // docs/specs/141: no scope subtitle or count text
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Section'))
     await user.click(screen.getByRole('button', { name: /all sections/i }))
@@ -337,19 +340,19 @@ describe('PlayerList', () => {
 
     await user.click(screen.getByRole('button', { name: /a to z/i }))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Name, A to Z', 'Name, Z to A', 'Games this season, most first', 'Games this season, fewest first',
+      'Name, A to Z', 'Name, Z to A', 'Most Games This Season', 'Fewest Games This Season',
     ])
     await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
     expect(names()).toEqual(['Zed Zulu', 'Bea Bell', 'Amy Ansell'])
 
     await user.click(screen.getByRole('button', { name: /z to a/i }))
-    await user.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Most Games This Season' }))
     // Zed has 11; Amy and Bea tie on 3 and keep name order
     expect(names()).toEqual(['Zed Zulu', 'Amy Ansell', 'Bea Bell'])
     expect(screen.getByRole('button', { name: /most games/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /most games/i }))
-    await user.click(screen.getByRole('menuitem', { name: 'Games this season, fewest first' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Fewest Games This Season' }))
     expect(names()).toEqual(['Amy Ansell', 'Bea Bell', 'Zed Zulu'])
     // sorting is client-side: it never refetches
     expect(listPlayers).toHaveBeenCalledTimes(1)
@@ -367,7 +370,7 @@ describe('PlayerList', () => {
 
     await screen.findByRole('table', { name: 'Players' })
     await user.click(screen.getByRole('button', { name: /a to z/i }))
-    await user.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Most Games This Season' }))
 
     expect(screen.getAllByTestId('player-row').map((row) => within(row).getAllByRole('link')[0].textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
   })
@@ -383,14 +386,14 @@ describe('PlayerList', () => {
     await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' })))
     expect(await screen.findByLabelText('Section')).toHaveValue('U15')
     await user.type(screen.getByLabelText('Search'), 'Sip')
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: /show inactive/i }))
     await user.click(await screen.findByTestId('page-counter-unverified'))
 
     const persisted = JSON.parse(localStorage.getItem('playerList:filters:test-club-id') as string)
     expect(Object.keys(persisted).sort()).toEqual(['missingDateOfBirth', 'sectionId'])
   })
 
-  describe('the Status button', () => {
+  describe('the kebab status changes (141)', () => {
     it('Reject asks first, then rejects the player and refreshes the list', async () => {
       const user = userEvent.setup()
       listPlayers.mockResolvedValue([makePlayer({ id: 'p9', verificationStatus: 'UNVERIFIED' })])
@@ -398,9 +401,9 @@ describe('PlayerList', () => {
       renderList('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-      await user.click(screen.getByRole('button', { name: 'Change status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
-      await user.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      await user.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Player', 'Edit Player', 'View Stats', 'Verify Player', 'Reject Player'])
+      await user.click(screen.getByRole('menuitem', { name: 'Reject Player' }))
 
       expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
       expect(rejectPlayer).not.toHaveBeenCalled()
@@ -417,16 +420,16 @@ describe('PlayerList', () => {
       const { unmount } = renderList('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-      await user.click(screen.getByRole('button', { name: 'Change status' }))
-      await user.click(screen.getByRole('menuitem', { name: 'Verify' }))
+      await user.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Verify Player' }))
       await waitFor(() => expect(verifyPlayer).toHaveBeenCalledWith('test-club-id', 'p9'))
       unmount()
 
       listPlayers.mockResolvedValue([makePlayer({ id: 'p8', active: false })])
       renderList('test-club-id')
       await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-      await user.click(screen.getByRole('button', { name: 'Change status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reactivate'])
+      await user.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Player', 'Edit Player', 'View Stats', 'Reactivate Player'])
     })
   })
 
@@ -439,11 +442,11 @@ describe('PlayerList', () => {
 
       await screen.findByTestId('page-counter-shown')
       expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
-      expect(within(counter('shown')).getByText('Active players')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Active Players')).toBeInTheDocument()
       expect(within(counter('in-squad')).getByText('9')).toBeInTheDocument()
-      expect(within(counter('in-squad')).getByText('In a squad this season')).toBeInTheDocument()
+      expect(within(counter('in-squad')).getByText('In A Squad This Season')).toBeInTheDocument()
       expect(within(counter('selected')).getByText('7')).toBeInTheDocument()
-      expect(within(counter('selected')).getByText('Players selected this season')).toBeInTheDocument()
+      expect(within(counter('selected')).getByText('Players Selected This Season')).toBeInTheDocument()
       expect(within(counter('unverified')).getByText('3')).toBeInTheDocument()
       const colour = (id: string) => getComputedStyle(within(counter(id)).getByTestId('page-counter-value')).color
       expect(colour('unverified')).not.toBe(colour('in-squad'))
@@ -467,7 +470,7 @@ describe('PlayerList', () => {
       expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.not.objectContaining({ search: expect.anything() }))
     })
 
-    it('choosing a season counter sends the backend focus with the season, and names it in the scope text', async () => {
+    it('choosing a season counter sends the backend focus with the season, and and shows no count text', async () => {
       const user = userEvent.setup()
       listPlayers.mockResolvedValue([makePlayer()])
 
@@ -481,7 +484,8 @@ describe('PlayerList', () => {
       )
       expect(counter('in-squad')).toHaveAttribute('aria-pressed', 'true')
       expect(counter('shown')).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByText(/Showing 1 player · In a squad this season/)).toBeInTheDocument()
+      // the quick filter is the active counter and a chip, never count text (141)
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
       // the counters keep describing the list's filters, not the quick filter
       expect(getPlayersSummary).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focus: expect.anything() }))
     })
@@ -566,13 +570,14 @@ describe('PlayerList', () => {
         await screen.findByTestId('page-counter-unverified')
         // the phone shows the short label; the full name stays accessible
         expect(within(counter('unverified')).getByText('Unverified')).toBeInTheDocument()
-        await user.click(screen.getByRole('button', { name: '3 Unverified players' }))
+        await user.click(screen.getByRole('button', { name: '3 Unverified Players' }))
 
         expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Remove filter Unverified players' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove filter Unverified Players' })).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
         expect(await screen.findByText(/Quick filter:/)).toBeInTheDocument()
+        // on a phone the sheet holds the switches (docs/standards/page-anatomy.md section 3)
         expect(screen.getByRole('checkbox', { name: /show inactive/i })).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Clear all' }))
@@ -616,7 +621,7 @@ describe('PlayerList', () => {
       expect(await screen.findByRole('table', { name: 'Players' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Amy Ansell' })).not.toBeInTheDocument()
       expect(screen.getAllByTestId('player-row')).toHaveLength(2)
-      expect(screen.getByRole('link', { name: 'Amy Ansell' })).toHaveAttribute('href', '/manage/players/p1')
+      expect(screen.getByRole('link', { name: 'Amy Ansell' })).toHaveAttribute('href', expect.stringContaining('/manage/players/p1'))
       // the same list request: switching the view does not refetch or change any filter
       expect(listPlayers).toHaveBeenCalledTimes(1)
     })
@@ -654,10 +659,10 @@ describe('PlayerList', () => {
       expect(screen.getAllByTestId('player-row')).toHaveLength(1)
       await user.click(counter('in-squad'))
       await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'in-squad' })))
-      expect(screen.getByText(/Showing 2 players · In a squad this season/)).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
 
-    it('a list row has the same Status menu as a card, and Reject still asks first', async () => {
+    it('a list row has the same kebab as a card, and Reject still asks first', async () => {
       const user = userEvent.setup()
       localStorage.setItem('playerList:view', 'list')
       listPlayers.mockResolvedValue([makePlayer({ id: 'p9', verificationStatus: 'UNVERIFIED' })])
@@ -665,9 +670,9 @@ describe('PlayerList', () => {
       renderList('test-club-id')
 
       await screen.findByRole('table', { name: 'Players' })
-      await user.click(screen.getByRole('button', { name: 'Change status' }))
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
-      await user.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      await user.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Player', 'Edit Player', 'View Stats', 'Verify Player', 'Reject Player'])
+      await user.click(screen.getByRole('menuitem', { name: 'Reject Player' }))
       expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Reject player' }))
       await waitFor(() => expect(rejectPlayer).toHaveBeenCalledWith('test-club-id', 'p9'))
@@ -695,8 +700,7 @@ describe('PlayerList', () => {
         expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: 'Filters' }))
         const sheetToggle = await screen.findByRole('group', { name: 'View' })
-        const controls = sheetToggle.closest('[data-testid="filter-sheet-fields"]')?.lastElementChild as HTMLElement
-        expect(controls.firstElementChild).toContainElement(sheetToggle)
+        expect(sheetToggle.closest('[data-testid="filter-sheet-fields"]')).not.toBeNull()
 
         await user.click(within(sheetToggle).getByRole('button', { name: 'List' }))
         expect(localStorage.getItem('playerList:view')).toBe('list')

@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
+import { Box, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import { PageHeaderBand } from '../../components/PageHeaderBand'
+import { Button } from '../../components/Button'
+import { HeaderActions } from '../../components/HeaderShareButton'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { PlayerActionsMenu } from '../../components/PlayerActionsMenu'
 import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
 import { PlayerStatusMenu } from '../../components/PlayerStatusMenu'
@@ -46,6 +48,8 @@ export default function PlayerDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const backLink = useBackLink('/manage/players', 'Back to Players')
   const { playerId } = useParams<{ playerId?: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
   const statusActions = usePlayerStatusActions(clubId)
   // docs/specs/088 section G: the games counts come from the list endpoint, and "this season" needs the season
@@ -115,92 +119,61 @@ export default function PlayerDetailPage() {
   // All three always show, so the card keeps its shape; one with nothing on file is drawn dashed and muted.
   const cricketChips: InfoCardChip[] = [
     {
-      label: `Bats: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
+      label: `Batting: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
       on: Boolean(player.battingStance),
     },
-    { label: `Bowls: ${bowling.length > 0 ? bowling.join(', ') : '–'}`, on: bowling.length > 0 },
+    { label: `Bowling: ${bowling.length > 0 ? bowling.join(', ') : '–'}`, on: bowling.length > 0 },
     { label: `Wicketkeeper: ${player.isWicketKeeper ? 'Yes' : 'No'}`, on: player.isWicketKeeper },
   ]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to={backLink.to ?? '/manage/players'}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
-        >
-          {backLink.label}
-        </MuiButton>
-
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={{ xs: 1.75, md: 2 }} sx={{ minWidth: 0 }}>
+      <ManageScreenHeader
+        title={fullName(player)}
+        backTo={backLink.to ?? '/manage/players'}
+        backLabel={backLink.label}
+        // docs/specs/141: the avatar and the ONE status badge sit beside the name, as a result's logos and badge do.
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <LogoAvatar
               src={playerAvatarSrc(player.photoUrl, player.gender)}
               variant="circular"
-              size={80}
+              size={40}
               kind="person"
               keepTile={!player.photoUrl}
-              fontSize="1.6rem"
-              sx={(theme) => ({
-                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.18)}`,
-                [theme.breakpoints.down('md')]: { width: 72, height: 72, fontSize: '1.4rem' },
-              })}
+              fontSize="0.9rem"
             >
               {initialsFromName(fullName(player))}
             </LogoAvatar>
-            <Stack spacing={1} sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-              >
-                {fullName(player)}
-              </Typography>
-              {/* The status badge first, then the player's tagged sections (docs/specs/060, 088). */}
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
-                {taggedSections.map((section) => (
-                  <Chip key={section.id} size="small" variant="outlined" label={sectionPath(section)} />
-                ))}
-              </Stack>
-            </Stack>
-          </Stack>
-
-          {/* Side by side on the right on a desktop; two full-width halves under the header on a phone. */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', md: 'auto auto' },
-              gap: 1,
-              width: { xs: '100%', md: 'auto' },
-              '& .MuiButton-root': { minHeight: { xs: 44, md: 40 } },
-            }}
-          >
-            <MuiButton
-              variant="outlined"
-              aria-haspopup="menu"
-              startIcon={<ManageAccountsOutlinedIcon fontSize="small" />}
-              onClick={(event) => setStatusAnchor(event.currentTarget)}
-            >
-              Status
-            </MuiButton>
-            {/* The primary page action: the same filled dark green as Add Player (the shared primary button) */}
-            <MuiButton
-              component={RouterLink}
-              to={`/manage/players/${player.id}/edit`}
-              variant="contained"
-              startIcon={<EditOutlinedIcon fontSize="small" />}
-            >
-              Edit
-            </MuiButton>
+            <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
           </Box>
-        </Box>
-      </PageHeaderBand>
+        }
+        // The player's sections as the plain sub-header line every detail page uses (a result's date, league and field), not pills (owner, 2026-11-04).
+        subtitle={
+          <Typography variant="subtitle1" fontWeight={600} color={taggedSections.length > 0 ? 'text.primary' : 'text.secondary'} component="span">
+            {taggedSections.length > 0 ? taggedSections.map(sectionPath).join(' · ') : 'No section'}
+          </Typography>
+        }
+        // docs/specs/141 (owner, 2026-11-04): View Stats is its own outlined button beside the Manage menu so it is not missed, as Share is
+        // on a result (the menu keeps its own View Stats item).
+        action={
+          <HeaderActions
+            beside={
+              <Button
+                onClick={() => navigate(withReturnTo(`/manage/players/${player.id}/stats`, currentOrigin(location), 'Player'))}
+                variant="secondary"
+                size="compact"
+                startIcon={<EqualizerOutlinedIcon />}
+                data-testid="player-view-stats"
+              >
+                View Stats
+              </Button>
+            }
+          >
+            <PlayerActionsMenu player={player} trigger="button" onStatusAction={(action) => statusActions.requestAction(player, action)} />
+          </HeaderActions>
+        }
+      />
 
       {/* docs/specs/088: an unverified or rejected player shows a banner above the cards, with the same Status menu. */}
       {(status === 'unverified' || status === 'rejected') && (
@@ -228,17 +201,21 @@ export default function PlayerDetailPage() {
               ? 'This player request is waiting for you. Change the status to verify or reject it.'
               : 'This player request was rejected, so they are hidden from the player list. You can verify them again.'}
           </Typography>
-          <MuiButton variant="contained" onClick={(event) => setStatusAnchor(event.currentTarget)}>
-            Change status
-          </MuiButton>
+          <Button size="compact" onClick={(event) => setStatusAnchor(event.currentTarget)}>
+            Change Status
+          </Button>
         </Box>
       )}
 
       <PlayerKeyFigures player={player} />
 
-      <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+      {/* docs/specs/141 (owner, 2026-11-04): no wasted width on a big screen. md: two columns (Basic and Contact, then Cricket and Account full width). lg and up: three columns, so
+          everything is on screen without scrolling: Basic Info over Account, Contact Info, and the Cricket card. */}
+      <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+        <Box sx={{ gridColumn: { lg: 1 }, gridRow: { lg: 1 }, '& > *': { height: '100%' } }}>
         <InfoCard
-          title="Basic info"
+          flat
+          title="Basic Info"
           icon={<InfoOutlinedIcon />}
           fields={[
             { label: 'Date of birth', value: dateOfBirthText },
@@ -247,9 +224,12 @@ export default function PlayerDetailPage() {
             { label: 'Jersey number', value: player.jerseyNumber != null ? `#${player.jerseyNumber}` : null },
           ]}
         />
+        </Box>
 
+        <Box sx={{ gridColumn: { lg: 2 }, gridRow: { lg: '1 / span 2' }, '& > *': { height: '100%' } }}>
         <InfoCard
-          title="Contact info"
+          flat
+          title="Contact Info"
           icon={<AlternateEmailIcon />}
           fields={[
             { label: 'Phone', value: player.phone },
@@ -263,27 +243,28 @@ export default function PlayerDetailPage() {
             (player.phone || player.email) && (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: player.phone && player.email ? '1fr 1fr' : '1fr', md: 'none' }, gridAutoFlow: { md: 'column' }, justifyContent: { md: 'start' }, gap: 1 }}>
                 {player.phone && (
-                  <MuiButton component="a" href={`tel:${player.phone}`} variant="outlined" startIcon={<PhoneOutlinedIcon fontSize="small" />} sx={{ minHeight: { xs: 44, md: 34 } }}>
+                  <Button component="a" href={`tel:${player.phone}`} size="compact" variant="secondary" startIcon={<PhoneOutlinedIcon fontSize="small" />}>
                     Call
-                  </MuiButton>
+                  </Button>
                 )}
                 {player.email && (
-                  <MuiButton component="a" href={`mailto:${player.email}`} variant="outlined" startIcon={<EmailOutlinedIcon fontSize="small" />} sx={{ minHeight: { xs: 44, md: 34 } }}>
+                  <Button component="a" href={`mailto:${player.email}`} size="compact" variant="secondary" startIcon={<EmailOutlinedIcon fontSize="small" />}>
                     Email
-                  </MuiButton>
+                  </Button>
                 )}
               </Box>
             )
           }
         />
+        </Box>
 
-        {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a desktop. */}
-        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+        {/* docs/specs/103 decision 24: one Cricket card (chips, career figures, form), full width on a tablet, the third column from lg. */}
+        <Box sx={{ gridColumn: { md: '1 / -1', lg: 3 }, gridRow: { lg: '1 / span 2' }, '& > *': { height: '100%' } }}>
           <PlayerStatsCard clubId={clubId} playerId={player.id} chips={cricketChips} />
         </Box>
 
         {/* docs/specs/119 shortcut (b): read-only Account card (main agent and other agents). */}
-        <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+        <Box sx={{ gridColumn: { md: '1 / -1', lg: 1 }, gridRow: { lg: 2 }, '& > *': { height: '100%' } }}>
           <PlayerAccountSection clubId={clubId} playerId={player.id} playerName={`${player.firstName} ${player.lastName}`} />
         </Box>
       </Box>

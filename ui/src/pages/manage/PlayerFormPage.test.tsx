@@ -130,7 +130,7 @@ describe('PlayerFormPage', () => {
 
       renderPage('/manage/players/new', 'test-club-id')
 
-      expect(screen.getByText('Add Player')).toBeInTheDocument()
+      expect(screen.getByText('Add New Player')).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Basic Info' })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Contact Info' })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Cricket Info' })).toBeInTheDocument()
@@ -144,7 +144,7 @@ describe('PlayerFormPage', () => {
       await user.type(screen.getByLabelText('First name'), 'Sipho')
       await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
       await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
-      await user.click(screen.getByRole('button', { name: 'Create player' }))
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
 
       expect(createPlayer).toHaveBeenCalledWith(
         'test-club-id',
@@ -159,7 +159,7 @@ describe('PlayerFormPage', () => {
 
       await user.type(screen.getByLabelText('First name'), 'Sipho')
       await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
-      await user.click(screen.getByRole('button', { name: 'Create player' }))
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
 
       expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
       expect(createPlayer).not.toHaveBeenCalled()
@@ -178,7 +178,7 @@ describe('PlayerFormPage', () => {
       await user.type(screen.getByLabelText('First name'), 'Sipho')
       await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
       await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
-      await user.click(screen.getByRole('button', { name: 'Create player' }))
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
 
       expect(await screen.findByText('Date of birth must not be before 1900-01-01')).toBeInTheDocument()
     })
@@ -192,7 +192,7 @@ describe('PlayerFormPage', () => {
       renderPage('/manage/players/player-1/edit', 'test-club-id')
 
       expect(await screen.findByLabelText('Date of birth')).toHaveValue('')
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
       expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
       expect(updatePlayer).not.toHaveBeenCalled()
     })
@@ -232,7 +232,7 @@ describe('PlayerFormPage', () => {
       renderPage('/manage/players/player-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Player')
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       expect(updatePlayer).toHaveBeenCalledWith(
         'test-club-id',
@@ -251,25 +251,25 @@ describe('PlayerFormPage', () => {
       await screen.findByText('Edit Player')
       // Basic Info is active by default.
       expect(screen.getByLabelText('First name')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Contact Info' }))
       expect(await screen.findByLabelText('Phone')).toBeInTheDocument()
       expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Cricket Info' }))
       expect(await screen.findByLabelText('Batting stance')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Sections' }))
       expect(await screen.findByText('Not tagged to any sections yet.')).toBeInTheDocument()
       expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Basic Info' }))
       expect(await screen.findByLabelText('First name')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
     })
 
     describe('Sections tab', () => {
@@ -308,7 +308,7 @@ describe('PlayerFormPage', () => {
 
         await screen.findByText('Edit Player')
         await user.click(screen.getByRole('tab', { name: 'Sections' }))
-        await user.click(await screen.findByRole('button', { name: 'Link existing' }))
+        await user.click(await screen.findByRole('button', { name: 'Link Existing Section' }))
 
         // A real tree (SectionTree), not a flat search Autocomplete — the already-tagged section
         // still renders (disabled), it isn't removed from the candidate pool.
@@ -375,7 +375,7 @@ describe('PlayerFormPage', () => {
         await user.click(screen.getByRole('tab', { name: 'Sections' }))
 
         expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
-        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
       })
     })
   })

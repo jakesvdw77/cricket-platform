@@ -79,7 +79,7 @@ describe('Team Overview block', () => {
     expect(within(block).getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
     const toggle = screen.getByTestId('team-dashboard-toggle')
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(toggle).toHaveTextContent('Hide overview')
+    expect(toggle).toHaveTextContent('Hide Overview')
     expect(toggle).toHaveStyle({ minHeight: '32px' })
     expect(toggle.getAttribute('aria-controls')).toBeTruthy()
     // the existing cards after it are unchanged
@@ -130,7 +130,7 @@ describe('Team Overview block', () => {
       const toggle = screen.getByTestId('team-dashboard-toggle')
       await userEvent.click(toggle)
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
-      expect(toggle).toHaveTextContent('Show overview')
+      expect(toggle).toHaveTextContent('Show Overview')
       expect(screen.queryByTestId('dashboard-card-results')).not.toBeInTheDocument()
       // the header stays; the tiles, form strip and the cards below are untouched
       expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()

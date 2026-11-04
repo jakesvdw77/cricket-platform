@@ -44,8 +44,6 @@ const meta: Meta<typeof PlayerTable> = {
   args: {
     sectionNamesFor: (player) => (player.sectionIds.length > 0 ? ['Vets'] : []),
     viewTo: (player) => `/manage/players/${player.id}`,
-    statsTo: (player) => `/manage/players/${player.id}/stats`,
-    onStatusAction: () => undefined,
   },
 }
 export default meta

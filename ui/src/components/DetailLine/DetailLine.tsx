@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { Stack, Typography } from '@mui/material'
 
 export interface DetailLineProps {
-  icon: ReactNode
+  // docs/specs/141: optional; Details-style rows without icons (Results, Players) omit it.
+  icon?: ReactNode
   label: string
   value: ReactNode
   // Width of the label column; the default 56 is the Match card's. The league card passes 78.
@@ -21,9 +22,11 @@ export interface DetailLineProps {
 export function DetailLine({ icon, label, value, labelWidth = 56, muted = false, trailing, align = 'start' }: DetailLineProps) {
   return (
     <Stack direction="row" spacing={1.25} alignItems={align === 'center' ? 'center' : 'flex-start'}>
-      <Stack sx={{ color: 'text.secondary', pt: '1px', flexShrink: 0 }} aria-hidden>
-        {icon}
-      </Stack>
+      {icon && (
+        <Stack sx={{ color: 'text.secondary', pt: '1px', flexShrink: 0 }} aria-hidden>
+          {icon}
+        </Stack>
+      )}
       <Typography variant="body2" color="text.secondary" sx={{ width: labelWidth, flexShrink: 0 }}>
         {label}
       </Typography>

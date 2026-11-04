@@ -51,7 +51,7 @@ const reviewCardSx = {
   borderColor: 'divider',
   borderRadius: 2,
   p: { xs: 1.5, md: 2 },
-  boxShadow: 1,
+  boxShadow: 0,
 } as const
 
 export interface ReviewStepProps extends ScorecardStepProps {

@@ -29,7 +29,7 @@ export function CollapsibleSection({ title, description, open, onToggle, label, 
   const titleId = `${id}-title`
   const descriptionId = `${id}-description`
   const contentId = `${id}-content`
-  const noun = label ?? title.toLowerCase()
+  const noun = label ?? title
   return (
     <Box
       component="section"

@@ -10,7 +10,7 @@ import type { NotCapturedItem } from '../../../api/playerStatsApi'
 // The headline strip: 2-up on a phone, 4-up from md.
 export function StatTileStrip({ children }: { children: ReactNode }) {
   return (
-    <Box data-testid="stat-tiles" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
+    <Box data-testid="stat-tiles" sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
       {children}
     </Box>
   )
@@ -27,19 +27,19 @@ export interface StatTileProps {
   tone?: 'primary' | 'success' | 'error'
 }
 
-export function StatTile({ icon, label, value, caption, testId, tone = 'primary' }: StatTileProps) {
+export function StatTile({ label, value, caption, testId, tone = 'primary' }: StatTileProps) {
   return (
+    // docs/specs/141: the compact counter look every page uses (no icon, page-anatomy section 2); `icon` stays in the props so callers are unchanged.
     <KeyFigureTile
-      compact
+      counter
       emphasis={tone}
       testId={testId}
-      icon={icon}
       value={value}
       label={
-        <Box component="span" sx={{ fontSize: '0.8125rem', lineHeight: 1.3 }}>
+        <Box component="span">
           {label}
           {caption && (
-            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', lineHeight: 1.3 }}>
+            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, letterSpacing: 0, textTransform: 'none', lineHeight: 1.3 }}>
               {caption}
             </Box>
           )}

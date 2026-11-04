@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Box, Button as MuiButton, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
+import { Box, Typography } from '@mui/material'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
@@ -11,7 +12,7 @@ import { useAwardsView } from '../../../api/leaderboardApi'
 import type { AwardsCategory, AwardsOmission, LeaderboardBoardInfo, LeaderboardFilters } from '../../../api/leaderboardApi'
 import { CategoryChooser } from './CategoryChooser'
 import { awardLine, figureText } from './leaderboardFormat'
-import { compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 
 export interface AwardsViewProps {
   clubId: string
@@ -19,9 +20,9 @@ export interface AwardsViewProps {
   hasFilters: boolean
   onClearFilters: () => void
   catalogue: LeaderboardBoardInfo[]
-  // "Irene Villagers, 2026/27 season" and the narrower scope text ("Under 15 section")
-  titleText: string
-  scopeText: string
+  // docs/specs/140 and the page-anatomy checklist: the page's ONE flat toolbar card. The view hands it the controls that belong to it (the two minimums,
+  // Reset and Choose Categories), which sit before the Full name | Initials toggle.
+  renderToolbar: (controls: ReactNode) => ReactNode
   enabled: boolean
 }
 
@@ -29,7 +30,7 @@ export interface AwardsViewProps {
 // block naming the scope, the two minimums (pre-filled with the values the server used, Reset to default), one card per category
 // with joint winners together, a quiet amber note for a category nobody qualified for, and Choose categories. On screen only:
 // PDF and text output are deferred. The minimums are per visit: the page remounts this view when the filters change.
-export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalogue, titleText, scopeText, enabled }: AwardsViewProps) {
+export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalogue, renderToolbar, enabled }: AwardsViewProps) {
   // null = "the server's default" (the field shows the value the server used)
   const [innings, setInnings] = useState<number | null>(null)
   const [overs, setOvers] = useState<number | null>(null)
@@ -62,9 +63,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
         title="Could not load the awards"
         description="Check your connection and try again."
         action={
-          <MuiButton variant="outlined" onClick={() => query.refetch()} size="small" sx={compactButtonSx}>
-            Try again
-          </MuiButton>
+          <Button size="compact" variant="secondary" onClick={() => query.refetch()}>Try Again</Button>
         }
       />
     )
@@ -93,7 +92,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
           const joint = category.leaders.length > 1
           const first = category.leaders[0]
           return (
-            <InfoCard key={category.board.code} fieldSize="large" title={category.board.label} icon={<EmojiEventsOutlinedIcon />} testId={`award-${category.board.code}`}>
+            <InfoCard flat key={category.board.code} fieldSize="large" title={category.board.label} icon={<EmojiEventsOutlinedIcon />} testId={`award-${category.board.code}`}>
               <Box>
                 <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, overflowWrap: 'anywhere' }}>
                   {category.leaders.map((leader, index) => (
@@ -111,7 +110,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
           )
         })}
         {omitted.map((entry) => (
-          <InfoCard key={entry.board.code} fieldSize="large" tone="warning" title={entry.board.label} icon={<ErrorOutlineIcon />} testId={`award-none-${entry.board.code}`}>
+          <InfoCard flat key={entry.board.code} fieldSize="large" tone="warning" title={entry.board.label} icon={<ErrorOutlineIcon />} testId={`award-none-${entry.board.code}`}>
             <Typography sx={{ fontSize: '0.9375rem' }}>{entry.reason || 'Nobody qualified for this category.'}</Typography>
           </InfoCard>
         ))}
@@ -119,39 +118,32 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
     )
   }
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: { sm: 'flex-start' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography component="h2" data-testid="awards-title" sx={{ fontSize: '1.25rem', fontWeight: 700, overflowWrap: 'anywhere' }}>
-            {titleText}
-          </Typography>
-          <Typography sx={{ fontSize: '0.9375rem', color: 'text.secondary' }}>
-            {[scopeText, awards ? `${awards.basis.playersConsidered} players` : null].filter(Boolean).join(' · ')}
-          </Typography>
+  // The minimums are small labelled number cells in the toolbar; the server's default is their tooltip (no hint line of its own).
+  const defaultHint = awards ? `Default ${awards.minimums.defaultInnings} and ${awards.minimums.defaultOvers} for these filters. Applies to Batting average and Economy rate.` : undefined
+  const controls = (
+    <>
+      <Box title={defaultHint} data-testid="awards-minimums" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Box component="label" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: 13, fontWeight: 600 }}>
+          Min. Innings
+          <IntegerField variant="cell" label="Minimum innings" ariaLabel="Minimum innings" value={shownInnings} onChange={setInnings} max={999} maxLength={3} width={52} />
         </Box>
-        <CategoryChooser clubId={clubId} catalogue={catalogue} />
-      </Box>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap' }}>
-          <Box sx={{ width: { xs: 'calc(50% - 6px)', sm: 180 } }}>
-            <IntegerField label="Minimum innings" ariaLabel="Minimum innings" value={shownInnings} onChange={setInnings} max={999} maxLength={3} />
-          </Box>
-          <Box sx={{ width: { xs: 'calc(50% - 6px)', sm: 180 } }}>
-            <IntegerField label="Minimum overs" ariaLabel="Minimum overs" value={shownOvers} onChange={setOvers} max={999} maxLength={3} />
-          </Box>
-          <MuiButton variant="text" disabled={!customised} onClick={() => { setInnings(null); setOvers(null) }} size="small" sx={compactButtonSx}>
-            Reset to default
-          </MuiButton>
+        <Box component="label" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: 13, fontWeight: 600 }}>
+          Min. Overs
+          <IntegerField variant="cell" label="Minimum overs" ariaLabel="Minimum overs" value={shownOvers} onChange={setOvers} max={999} maxLength={3} width={52} />
         </Box>
-        {awards && (
-          <Typography data-testid="awards-default-hint" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
-            {`Default ${awards.minimums.defaultInnings} and ${awards.minimums.defaultOvers} for these filters. Applies to Batting average and Economy rate.`}
-          </Typography>
+        {customised && (
+          <Button size="compact" variant="ghost" onClick={() => { setInnings(null); setOvers(null) }}>
+            Reset To Default
+          </Button>
         )}
       </Box>
+      <CategoryChooser clubId={clubId} catalogue={catalogue} />
+    </>
+  )
 
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      {renderToolbar(controls)}
       {body}
     </Box>
   )

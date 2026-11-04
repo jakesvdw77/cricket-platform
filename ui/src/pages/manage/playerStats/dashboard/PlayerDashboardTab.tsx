@@ -4,7 +4,6 @@ import { DashboardCard, DashboardSkeleton } from '../../../../components/Dashboa
 import { CollapsibleSection } from '../../../../components/CollapsibleSection'
 import type { PlayerStats } from '../../../../api/playerStatsApi'
 import type { PlayerDashboard } from '../../../../api/playerDashboardApi'
-import { PlayerHeadlineTiles } from '../PlayerHeadlineTiles'
 import { loadPlayerDashboardCharts } from './playerDashboardChunk'
 import type { PlayerDashboardGroupKey } from './PlayerDashboardCharts'
 
@@ -69,12 +68,11 @@ function DashboardGroup({ group, dashboard, backTo }: GroupProps) {
 // shared PlayerHeadlineTiles), then two collapsible groups: Batting (open) and Bowling (closed) with three chart cards each. The tab adds no
 // filter bar, basis line or tab strip: those are the page's own. The tiles never wait for the charts; a failed read is one
 // "Couldn't load the overview" card and the tiles stay.
-export function PlayerDashboardTab({ stats, dashboard, backTo }: PlayerDashboardTabProps) {
+export function PlayerDashboardTab({ dashboard, backTo }: PlayerDashboardTabProps) {
   const { data, isError, refetch } = dashboard
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} data-testid="dashboard-tab">
-      <PlayerHeadlineTiles stats={stats} />
       {isError && !data ? (
         <DashboardCard testId="dashboard" title="Overview" headingLevel="h2" fullWidth error={{ onRetry: () => void refetch() }} />
       ) : (

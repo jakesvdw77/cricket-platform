@@ -355,8 +355,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
             </Box>
           </Box>
 
-          {/* Scoring and Watch Live (only when the match has the link): inline links under the title, on every width. */}
-          {(match.scoringUrl || match.streamingUrl) && (
+          {/* Scoring, Watch Live (only when the match has the link) and Get Directions: inline links under the title, on every width. */}
+          {(match.scoringUrl || match.streamingUrl || directionsTarget) && (
             <Box data-testid="match-header-links" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5 }}>
               {match.scoringUrl && (
                 <MuiLink href={match.scoringUrl} target="_blank" rel="noopener noreferrer" aria-label="Scoring link" underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600, fontSize: '0.875rem' }}>
@@ -370,6 +370,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                   Watch Live
                 </MuiLink>
               )}
+              {/* docs/specs/141 (owner, 2026-11-04): Get Directions belongs to the header's inline links, not a row of its own under the figures. */}
+              {directionsTarget && <GetDirectionsButton target={directionsTarget} variant="link" testId="match-directions-link" />}
             </Box>
           )}
         </Stack>
@@ -388,7 +390,6 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         pollClosesAt={pollClosesAt}
         resultStatus={match.resultStatus}
         weather={weather.summary}
-        directions={directionsTarget ? <GetDirectionsButton target={directionsTarget} variant="link" testId="match-directions-link" /> : undefined}
       />
 
       {own.length === 0 ? (

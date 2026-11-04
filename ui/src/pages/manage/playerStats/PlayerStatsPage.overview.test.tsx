@@ -121,47 +121,48 @@ describe('Player Overview tab', () => {
     it.each([['batting'], ['bowling'], ['fielding'], ['awards'], ['matches']])('?tab=%s is unchanged: that tab opens and the Overview is neither shown nor requested', async (value) => {
       renderPage(`${BASE}?tab=${value}`)
       await waitFor(() => expect(server.statsCalls.length).toBeGreaterThan(0), wait)
-      await screen.findByTestId('stats-basis', {}, wait)
+      await screen.findByLabelText(/^Based on/, {}, wait)
       expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'false')
       expect(screen.queryByTestId('dashboard-tab')).not.toBeInTheDocument()
       expect(server.dashboardCalls).toHaveLength(0)
     })
 
-    it('keeps the page order: tab strip, filter bar, basis line, then the Overview body, each rendered once', async () => {
+    it('keeps the anatomy order: figures, tab row, toolbar, then the Overview body, each rendered once (141)', async () => {
       renderPage(BASE)
       const body = await screen.findByTestId('dashboard-tab', {}, wait)
-      const strip = screen.getByRole('tablist', { name: 'Statistics' })
+      const figures = screen.getByTestId('tile-matches')
+      const strip = screen.getByRole('navigation', { name: 'Statistics' })
       const filter = screen.getByRole('combobox', { name: 'Season' })
-      const basis = screen.getByTestId('stats-basis')
+      expect(figures.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(strip.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(filter.compareDocumentPosition(basis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(basis.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(filter.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(screen.getAllByRole('tablist')).toHaveLength(1)
       expect(screen.getAllByRole('combobox', { name: 'Season' })).toHaveLength(1)
-      expect(screen.getAllByTestId('stats-basis')).toHaveLength(1)
+      // the basis sentence is the Matches figure's info icon, not a line of text
+      expect(screen.getAllByLabelText(/^Based on/)).toHaveLength(1)
       // the body adds none of its own
       expect(within(body).queryByRole('tablist')).not.toBeInTheDocument()
       expect(within(body).queryByRole('combobox')).not.toBeInTheDocument()
-      expect(within(body).queryByTestId('stats-basis')).not.toBeInTheDocument()
+      expect(within(body).queryByTestId('tile-matches')).not.toBeInTheDocument()
     })
   })
 
   describe('layout', () => {
     it('shows the four tiles first, then the Batting group open and the Bowling group collapsed', async () => {
       renderPage(BASE)
-      const body = await screen.findByTestId('dashboard-tab', {}, wait)
+      await screen.findByTestId('dashboard-tab', {}, wait)
       const tiles = await screen.findByTestId('tile-matches', {}, wait)
       const batting = screen.getByTestId('dashboard-group-batting')
       const bowling = screen.getByTestId('dashboard-group-bowling')
-      expect(['tile-matches', 'tile-runs', 'tile-wickets', 'tile-catches'].map((id) => within(body).getByTestId(id))).toHaveLength(4)
+      expect(['tile-matches', 'tile-runs', 'tile-wickets', 'tile-catches'].map((id) => screen.getByTestId(id))).toHaveLength(4)
       expect(tiles.compareDocumentPosition(batting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(batting.compareDocumentPosition(bowling) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.getByTestId('tile-runs-value')).toHaveTextContent('412')
-      expect(screen.getByTestId('tile-wickets-value')).toHaveTextContent('21')
+      expect(within(screen.getByTestId('tile-runs')).getByTestId('page-counter-value')).toHaveTextContent('412')
+      expect(within(screen.getByTestId('tile-wickets')).getByTestId('page-counter-value')).toHaveTextContent('21')
       expect(screen.getByTestId('dashboard-group-batting-toggle')).toHaveAttribute('aria-expanded', 'true')
       expect(screen.getByTestId('dashboard-group-bowling-toggle')).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.getByTestId('dashboard-group-batting-toggle')).toHaveTextContent('Hide batting')
-      expect(screen.getByTestId('dashboard-group-bowling-toggle')).toHaveTextContent('Show bowling')
+      expect(screen.getByTestId('dashboard-group-batting-toggle')).toHaveTextContent('Hide Batting')
+      expect(screen.getByTestId('dashboard-group-bowling-toggle')).toHaveTextContent('Show Bowling')
     })
 
     it('draws the three Batting cards in order with the Batting subtitle, and no bowling card or chart while that group is collapsed', async () => {
@@ -185,7 +186,7 @@ describe('Player Overview tab', () => {
       const toggle = screen.getByTestId('dashboard-group-bowling-toggle')
       await userEvent.click(toggle)
       expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      expect(toggle).toHaveTextContent('Hide bowling')
+      expect(toggle).toHaveTextContent('Hide Bowling')
       await screen.findByTestId('dashboard-card-economy-rate', {}, wait)
       expect(cardTitles()).toEqual(['Batting', 'Runs per innings', 'How you were dismissed', 'Batting trend', 'Bowling', 'Wickets per match', 'Wickets by type', 'Economy rate'])
       for (const id of ['wickets-per-match', 'wickets-by-type', 'economy-rate']) expect(screen.getByTestId(`${id}-subtitle`)).toHaveTextContent('Bowling')
@@ -216,7 +217,7 @@ describe('Player Overview tab', () => {
       await screen.findByTestId('dashboard-card-runs-per-innings', {}, wait)
       await userEvent.click(screen.getByTestId('runs-per-innings-view-table'))
       const runsTotal = within(screen.getByTestId('runs-per-innings-total')).getAllByRole('cell')[2].textContent
-      expect(runsTotal).toBe(screen.getByTestId('tile-runs-value').textContent)
+      expect(runsTotal).toBe(within(screen.getByTestId('tile-runs')).getByTestId('page-counter-value').textContent)
 
       await userEvent.click(screen.getByTestId('dashboard-group-bowling-toggle'))
       await userEvent.click(await screen.findByTestId('wickets-by-type-view-table', {}, wait))
@@ -274,7 +275,7 @@ describe('Player Overview tab', () => {
       renderPage(BASE)
       const alert = await screen.findByRole('alert', {}, wait)
       expect(alert).toHaveTextContent("Couldn't load the overview")
-      expect(screen.getByTestId('tile-runs-value')).toHaveTextContent('412')
+      expect(within(screen.getByTestId('tile-runs')).getByTestId('page-counter-value')).toHaveTextContent('412')
       expect(screen.queryByTestId('dashboard-group-batting')).not.toBeInTheDocument()
       fail = false
       await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
@@ -285,7 +286,7 @@ describe('Player Overview tab', () => {
     it('shows a skeleton per card while the read is outstanding, and the tiles do not wait', async () => {
       apiGet.mockImplementation((url: string, config?: { params?: Record<string, unknown> }) => (url.endsWith('/stats/dashboard') ? new Promise(() => undefined) : route(url, config)))
       renderPage(BASE)
-      expect(await screen.findByTestId('tile-runs-value', {}, wait)).toHaveTextContent('412')
+      expect(within(await screen.findByTestId('tile-runs', {}, wait)).getByTestId('page-counter-value')).toHaveTextContent('412')
       const loading = await screen.findByTestId('dashboard-group-batting', {}, wait)
       expect(within(loading).getByTestId('dashboard-loading')).toHaveAttribute('aria-busy', 'true')
       expect(within(loading).getAllByTestId(/-loading$/).length).toBeGreaterThanOrEqual(3)

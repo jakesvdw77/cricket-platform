@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { PlayerTable } from './PlayerTable'
+import { PlayerActionsMenu } from '../PlayerActionsMenu'
 import type { Player } from '../../api/playerApi'
 import { baseTheme } from '../../theme'
 import { zebraTint } from '../../utils/zebraTint'
@@ -62,7 +63,7 @@ function renderTable(players: Player[], sections: Record<string, string[]> = {})
                 sectionNamesFor={(player) => sections[player.id] ?? []}
                 viewTo={(player) => `/manage/players/${player.id}`}
                 statsTo={(player) => `/manage/players/${player.id}/stats`}
-                onStatusAction={onStatusAction}
+                renderActions={(player) => <PlayerActionsMenu player={player} onStatusAction={(action) => onStatusAction(player, action)} />}
               />
             }
           />
@@ -126,10 +127,10 @@ describe('PlayerTable', () => {
     const [full, empty] = screen.getAllByTestId('player-row')
     expect(within(full).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
       // the first cell also holds the badge a phone shows under the name (hidden from `sm` up by CSS)
-      'Sipho NdlovuVerified', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', '', '',
+      'Sipho NdlovuVerified', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', 'View Stats', '',
     ])
     expect(within(empty).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Sam PetersVerified', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', '', '',
+      'Sam PetersVerified', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', 'View Stats', '',
     ])
   })
 
@@ -169,51 +170,54 @@ describe('PlayerTable', () => {
       expect(await screen.findByText('At: /manage/players/p9')).toBeInTheDocument()
     })
 
-    it('the Status button sits above the link and opens its menu without navigating', async () => {
+    it('the kebab sits above the link and opens its menu without navigating', async () => {
       renderTable([makePlayer({ id: 'p9' })])
 
-      const button = screen.getByRole('button', { name: 'Change status' })
-      expect(button).toHaveStyle({ position: 'relative' })
-      await userEvent.click(button)
+      await userEvent.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
 
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Suspend'])
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Player', 'Edit Player', 'View Stats', 'Suspend Player'])
       expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
     })
   })
 
-  describe('the Status menu', () => {
+  // docs/specs/141: ONE kebab per row; no Status button, no Stats icon, no chevron
+  describe('the kebab', () => {
     it.each([
-      [{ verificationStatus: 'UNVERIFIED' as const }, ['Verify', 'Reject']],
-      [{ verificationStatus: 'VERIFIED' as const }, ['Suspend']],
-      [{ verificationStatus: 'REJECTED' as const }, ['Verify']],
-      [{ active: false }, ['Reactivate']],
-    ])('a player with %j offers %j', async (overrides, labels) => {
+      [{ verificationStatus: 'UNVERIFIED' as const }, ['Verify Player', 'Reject Player']],
+      [{ verificationStatus: 'VERIFIED' as const }, ['Suspend Player']],
+      [{ verificationStatus: 'REJECTED' as const }, ['Verify Player']],
+      [{ active: false }, ['Reactivate Player']],
+    ])('a player with %j offers the status changes %j after Open, Edit and View Stats', async (overrides, labels) => {
       renderTable([makePlayer(overrides)])
 
-      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
 
-      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(labels)
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Player', 'Edit Player', 'View Stats', ...labels])
     })
 
     it('reports the player and the chosen change to the caller', async () => {
       const players = [makePlayer({ id: 'a' }), makePlayer({ id: 'b', verificationStatus: 'UNVERIFIED' })]
       const { onStatusAction } = renderTable(players)
 
-      await userEvent.click(screen.getAllByRole('button', { name: 'Change status' })[1])
-      await userEvent.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      await userEvent.click(screen.getAllByRole('button', { name: /^Actions for / })[1])
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Reject Player' }))
 
       expect(onStatusAction).toHaveBeenCalledWith(players[1], 'reject')
     })
+
+    it('has no Status button and no Stats icon on a row', () => {
+      renderTable([makePlayer({ id: 'p1' })])
+      expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Stats' })).not.toBeInTheDocument()
+    })
   })
 
-  // docs/specs/103 (decision 20): the Stats icon button beside Change status
-  it('has a Stats link per row to that player\'s stats page, and using it does not open the player', async () => {
+  it('shows a quiet View Stats button on each row (the rows pass statsTo), without opening the player', async () => {
     renderTable([makePlayer({ id: 'p1' }), makePlayer({ id: 'p2', firstName: 'Amy', lastName: 'Ansell' })])
 
-    const links = screen.getAllByRole('link', { name: 'Stats' })
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/manage/players/p1/stats', '/manage/players/p2/stats'])
-
-    await userEvent.click(links[1])
+    const buttons = screen.getAllByTestId('player-row-stats')
+    expect(buttons).toHaveLength(2)
+    await userEvent.click(buttons[1])
     expect(screen.getByText('At: /manage/players/p2/stats')).toBeInTheDocument()
   })
 })

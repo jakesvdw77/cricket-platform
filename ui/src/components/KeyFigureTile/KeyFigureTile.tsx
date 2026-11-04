@@ -107,14 +107,15 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
             fontWeight: 700,
             // docs/specs/120 Decision 14: numerals take the display face; the icon tile is unchanged.
             ...(!textValue && { fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay }),
-            ...(compact && { color: `${emphasis ?? 'primary'}.dark` }),
+            ...((compact || (counter && emphasis)) && { color: `${emphasis ?? 'primary'}.dark` }),
             fontVariantNumeric: 'tabular-nums',
             overflowWrap: 'anywhere',
           }}
         >
           {value}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: compact ? '0.8125rem' : { xs: '0.75rem', md: '0.8125rem' }, lineHeight: compact ? 1.3 : undefined }}>
+        {/* docs/specs/141: a counter's label is the PageCounters label (uppercase, 12 px, semibold), so it reads the same on every page. */}
+        <Typography variant="caption" color="text.secondary" sx={counter ? { fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 1.3 } : { fontSize: compact ? '0.8125rem' : { xs: '0.75rem', md: '0.8125rem' }, lineHeight: compact ? 1.3 : undefined }}>
           {label}
         </Typography>
         {action && !interactive && <Box sx={{ mt: 1 }}>{action}</Box>}

@@ -28,7 +28,7 @@ describe('CollapsibleSection', () => {
   it('open: a "Hide" button that is expanded, controls the content, and the content shows', () => {
     renderSection()
     const button = screen.getByTestId('batting-toggle')
-    expect(button).toHaveTextContent('Hide batting')
+    expect(button).toHaveTextContent('Hide Batting')
     expect(button).toHaveAttribute('aria-expanded', 'true')
     expect(document.getElementById(button.getAttribute('aria-controls') as string)).toContainElement(screen.getByText('inside'))
     expect(screen.getByText('inside')).toBeVisible()
@@ -37,7 +37,7 @@ describe('CollapsibleSection', () => {
   it('collapsed: a "Show" button, nothing rendered below the header, and the content element hidden', () => {
     renderSection({ open: false })
     const button = screen.getByTestId('batting-toggle')
-    expect(button).toHaveTextContent('Show batting')
+    expect(button).toHaveTextContent('Show Batting')
     expect(button).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('inside')).not.toBeInTheDocument()
     expect(document.getElementById(button.getAttribute('aria-controls') as string)).toHaveAttribute('hidden')

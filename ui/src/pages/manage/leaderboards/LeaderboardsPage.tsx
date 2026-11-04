@@ -11,10 +11,8 @@ import { NameModeToggle } from '../../../components/NameModeToggle'
 import { DEFAULT_SORT, STANDINGS_GROUPS, catalogueBoards, useLeaderboardCatalogue } from '../../../api/leaderboardApi'
 import type { LeaderboardColumn, SortDirection } from '../../../api/leaderboardApi'
 import type { TeamStatsCompetition } from '../../../api/teamStatsApi'
-import { useManagedClubProfile } from '../../../hooks/useManagedClubProfile'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
-import { scopeFilterText } from '../../../utils/availabilityScope'
 import { AwardsView } from './AwardsView'
 import { LeaderboardSortButton } from './LeaderboardSortButton'
 import { LeaderboardTabs } from './LeaderboardTabs'
@@ -70,7 +68,6 @@ export default function LeaderboardsPage() {
   const sortColumn = columns.find((column) => column.code === sortCode)
   const naturalDirection = sortColumn?.direction ?? 'HIGHEST'
   const effectiveDirection = sortDirection ? (sortDirection === 'asc' ? 'LOWEST' : 'HIGHEST') : naturalDirection
-  const profileQuery = useManagedClubProfile(clubId, isAwardsTab)
 
   // The optional minimum of a rate sort: per visit, never saved; it belongs to one tab, sort and set of filters and is dropped
   // when any of them changes.
@@ -108,16 +105,6 @@ export default function LeaderboardsPage() {
     filterState.clearAll()
     setCompetitionChoice(null)
   }
-  const seasonName = filterState.seasons.find((season) => season.id === filters.seasonId)?.name
-  const titleText = [profileQuery.data?.name, seasonName ? `${seasonName} season` : 'All seasons'].filter(Boolean).join(', ')
-  const scopeText = scopeFilterText({
-    sections: filterState.allSections,
-    sectionId: filters.sectionId,
-    leagues: filterState.leagues,
-    leagueId: filters.leagueId,
-    teams: filterState.teams,
-    teamId: filters.teamId,
-  })
 
   // docs/specs/140 and page-anatomy section 3: ONE flat toolbar: League, Section, Team (Competition on Teams), then the page's Sort button and, last,
   // the Full name | Initials toggle (no person is named on the Teams tab). Fused into the standings card; standalone above everything else.
@@ -190,7 +177,6 @@ export default function LeaderboardsPage() {
     )
     standalone = true
   } else if (isAwardsTab) {
-    standalone = true
     content = (
       <AwardsView
         key={filterKey}
@@ -199,8 +185,7 @@ export default function LeaderboardsPage() {
         hasFilters={hasFilters}
         onClearFilters={clearFilters}
         catalogue={catalogue}
-        titleText={titleText}
-        scopeText={scopeText}
+        renderToolbar={(controls) => <ToolbarCard>{renderBar(controls, true)}</ToolbarCard>}
         enabled={ready}
       />
     )

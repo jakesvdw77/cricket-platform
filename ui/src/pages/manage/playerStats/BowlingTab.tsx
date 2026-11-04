@@ -1,8 +1,4 @@
 import { Alert, Box, Typography } from '@mui/material'
-import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
-import SpeedOutlinedIcon from '@mui/icons-material/SpeedOutlined'
-import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
 import WhatshotOutlinedIcon from '@mui/icons-material/WhatshotOutlined'
 import ExitToAppOutlinedIcon from '@mui/icons-material/ExitToAppOutlined'
@@ -10,7 +6,7 @@ import ShowChartOutlinedIcon from '@mui/icons-material/ShowChartOutlined'
 import { InfoCard } from '../../../components/InfoCard'
 import { FormStrip } from '../../../components/FormStrip'
 import type { PlayerStats } from '../../../api/playerStatsApi'
-import { CardGrid, CountRows, NotCapturedPanel, StatTile, StatTileStrip } from './statsParts'
+import { CardGrid, CountRows, NotCapturedPanel,  } from './statsParts'
 import { bestBowlingText, bowlingFormItems, coverageCaption, decimals, dismissalRows, notCapturedFor, oversText, percent } from './statsFormat'
 
 function HaulCounter({ count, label, testId }: { count: number; label: string; testId: string }) {
@@ -35,10 +31,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
   if (basis.resultsWithBowlingCard === 0) {
     return (
       <>
-        <StatTileStrip>
-          <StatTile testId="tile-matches" icon={<SportsBaseballOutlinedIcon />} label="Matches" value={String(basis.matchesCounted)} />
-        </StatTileStrip>
-        <Alert severity="info" icon={false}>
+          <Alert severity="info" icon={false}>
           No bowling card has been captured for these results.
         </Alert>
       </>
@@ -53,15 +46,8 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
 
   return (
     <>
-      <StatTileStrip>
-        <StatTile testId="tile-wickets" tone="success" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={String(bowling.wickets)} />
-        <StatTile testId="tile-average" icon={<TrendingDownOutlinedIcon />} label="Bowling average" value={decimals(bowling.average, 2)} />
-        <StatTile testId="tile-economy" icon={<SpeedOutlinedIcon />} label="Economy rate" value={decimals(bowling.economy, 2)} />
-        <StatTile testId="tile-best" icon={<EmojiEventsOutlinedIcon />} label="Best bowling" value={bestBowlingText(bowling.best)} />
-      </StatTileStrip>
-
       <CardGrid>
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Bowling"
           icon={<BarChartOutlinedIcon />}
           fields={[
@@ -85,8 +71,8 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Dot balls', value: dotsValue, caption: coverageCaption(cov.inningsWithDots, cov.inningsCounted) },
           ]}
         />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <InfoCard fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, '& > *': { height: 'auto', flex: '0 0 auto' } }}>
+          <InfoCard flat fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
               <HaulCounter testId="haul-3" count={bowling.threeWicketHauls} label="3 wickets" />
               <HaulCounter testId="haul-4" count={bowling.fourWicketHauls} label="4 wickets" />
@@ -96,14 +82,14 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
               Three separate bands, so they add up: exactly 3, exactly 4, 5 or more.
             </Typography>
           </InfoCard>
-          <InfoCard fieldSize="large" title="Wickets by type" icon={<ExitToAppOutlinedIcon />}>
+          <InfoCard flat fieldSize="large" title="Wickets by type" icon={<ExitToAppOutlinedIcon />}>
             <CountRows rows={wicketRows} empty="No wickets yet." />
           </InfoCard>
         </Box>
       </CardGrid>
 
       {stats.form.bowling.length > 0 && (
-        <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 spells, newest first">
+        <InfoCard flat fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 spells, newest first">
           <FormStrip title="Bowling, last 5 spells" items={bowlingFormItems(stats.form.bowling)} hideTitle />
         </InfoCard>
       )}
