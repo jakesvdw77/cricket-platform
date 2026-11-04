@@ -109,7 +109,8 @@ describe('LeaderboardsPage', () => {
       expect(screen.queryByRole('button', { name: 'Awards' })).not.toBeInTheDocument()
       await userEvent.click(screen.getByRole('tab', { name: 'Awards' }))
       expect(search().get('tab')).toBe('awards')
-      expect(await screen.findByRole('heading', { name: /Irene Villagers, 2026\/27 season/ }, wait)).toBeInTheDocument()
+      // docs/specs/141: no heading or count text; the Awards view's controls are in the one toolbar
+      expect(await screen.findByRole('button', { name: 'Choose Categories' }, wait)).toBeInTheDocument()
     })
 
     it('shows a retry when the catalogue cannot be loaded', async () => {
@@ -646,8 +647,9 @@ describe('LeaderboardsPage', () => {
 
     it('puts the toolbar above the Awards view, and keeps the name toggle there', async () => {
       renderPage('/manage/leaderboards?tab=awards')
-      await screen.findByRole('heading', { name: /Irene Villagers, 2026\/27 season/ }, wait)
+      await screen.findByRole('button', { name: 'Choose Categories' }, wait)
       expect(screen.getByTestId('toolbar-card')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Minimum innings' })).toBeInTheDocument()
       expect(screen.getByRole('group', { name: 'Player names' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Sort: / })).not.toBeInTheDocument()
     })

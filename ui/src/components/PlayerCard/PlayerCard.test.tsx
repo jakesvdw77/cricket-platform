@@ -51,7 +51,6 @@ function renderCard(props: Partial<Parameters<typeof PlayerCard>[0]> = {}) {
           player={makePlayer()}
           sectionNames={[]}
           viewTo="/manage/players/player-1"
-          editTo="/manage/players/player-1/edit"
           statsTo="/manage/players/player-1/stats"
           onStatusAction={onStatusAction}
           {...props}
@@ -66,13 +65,13 @@ const ROWS = ['Number', 'Born', 'Phone', 'Bat', 'Bowl']
 
 // docs/specs/088-players-polls-alignment.md
 describe('PlayerCard', () => {
-  it('renders the title as a heading linking to viewTo, with Edit and View as footer links', () => {
+  it('renders the title as a heading linking to viewTo, with no footer links (141)', () => {
     renderCard({ player: makePlayer({ firstName: 'Sipho', lastName: 'Ndlovu' }) })
 
     expect(screen.getByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sipho Ndlovu' })).toHaveAttribute('href', '/manage/players/player-1')
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
   it('clamps a long title to two lines so it always fits beside the avatar', () => {
@@ -110,7 +109,6 @@ describe('PlayerCard', () => {
               player={makePlayer()}
               sectionNames={['Vets', 'Over 40', 'Social']}
               viewTo="/p"
-              editTo="/p/edit"
               statsTo="/p/stats"
               onStatusAction={vi.fn()}
             />
@@ -179,40 +177,42 @@ describe('PlayerCard', () => {
     })
   })
 
-  describe('footer and the Status menu', () => {
-    it.each([
-      [{ verificationStatus: 'VERIFIED' as const, active: true }],
-      [{ verificationStatus: 'UNVERIFIED' as const, active: true }],
-      [{ verificationStatus: 'REJECTED' as const, active: true }],
-      [{ verificationStatus: 'VERIFIED' as const, active: false }],
-    ])('has the same four footer buttons, Status, Edit, View and Stats, for %j', (overrides) => {
-      renderCard({ player: makePlayer(overrides) })
-
-      const names = [screen.getByRole('button', { name: 'Change status' }), screen.getByRole('link', { name: 'Edit' }), screen.getByRole('link', { name: 'View' }), screen.getByRole('link', { name: 'Stats' })]
-      expect(names.map((node) => node.textContent)).toEqual(['Status', 'Edit', 'View', 'Stats'])
-      expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/players/player-1/stats')
-    })
+  // docs/specs/141: ONE kebab, a quick View Stats button, and a quick Verify Player on an unverified card
+  describe('the kebab and the quick actions', () => {
+    const open = async () => userEvent.click(screen.getByRole('button', { name: 'Actions for Sipho Ndlovu' }))
 
     it.each([
-      [{ verificationStatus: 'UNVERIFIED' as const, active: true }, ['Verify', 'Reject']],
-      [{ verificationStatus: 'VERIFIED' as const, active: true }, ['Suspend']],
-      [{ verificationStatus: 'REJECTED' as const, active: true }, ['Verify']],
-      [{ verificationStatus: 'VERIFIED' as const, active: false }, ['Reactivate']],
-    ])('the Status button of %j offers %j', async (overrides, labels) => {
+      [{ verificationStatus: 'VERIFIED' as const, active: true }, ['Open Player', 'Edit Player', 'View Stats', 'Suspend Player']],
+      [{ verificationStatus: 'UNVERIFIED' as const, active: true }, ['Open Player', 'Edit Player', 'View Stats', 'Verify Player', 'Reject Player']],
+      [{ verificationStatus: 'REJECTED' as const, active: true }, ['Open Player', 'Edit Player', 'View Stats', 'Verify Player']],
+      [{ verificationStatus: 'VERIFIED' as const, active: false }, ['Open Player', 'Edit Player', 'View Stats', 'Reactivate Player']],
+    ])('the kebab of %j lists %j', async (overrides, labels) => {
       renderCard({ player: makePlayer(overrides) })
-
-      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
-
+      await open()
       expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(labels)
     })
 
-    it('reports the chosen change to the caller and closes the menu', async () => {
+    it('has exactly one kebab and no footer buttons', () => {
+      renderCard()
+      expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
+    })
+
+    it('reports the chosen change to the caller', async () => {
       const { onStatusAction } = renderCard({ player: makePlayer({ verificationStatus: 'UNVERIFIED' }) })
-
-      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
-      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify' }))
-
+      await open()
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify Player' }))
       expect(onStatusAction).toHaveBeenCalledWith('verify')
+    })
+
+    it('shows a quick Verify Player only on an unverified card, and View Stats on every card', async () => {
+      renderCard({ player: makePlayer({ verificationStatus: 'UNVERIFIED' }) })
+      expect(screen.getByRole('button', { name: 'Verify Player' })).toBeInTheDocument()
+      expect(screen.getByTestId('player-card-stats')).toHaveTextContent('View Stats')
+      document.body.innerHTML = ''
+      renderCard()
+      expect(screen.queryByRole('button', { name: 'Verify Player' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('player-card-stats')).toBeInTheDocument()
     })
   })
 

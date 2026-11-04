@@ -30,8 +30,7 @@ function renderView(props: Partial<React.ComponentProps<typeof AwardsView>> = {}
           hasFilters
           onClearFilters={vi.fn()}
           catalogue={AWARD_BOARDS}
-          titleText="Irene Villagers, 2026/27 season"
-          scopeText="Under 15 section"
+          renderToolbar={(controls) => <div data-testid="toolbar">{controls}</div>}
           enabled
           {...props}
         />
@@ -52,10 +51,14 @@ describe('AwardsView', () => {
     apiGet.mockImplementation((url: string, config?: unknown) => leaderboardApi(server).get(url, config as never))
   })
 
-  it('names the scope and how many players were considered', async () => {
+  it('puts the minimums, Reset and Choose Categories in the one toolbar, with no heading or count text (140, 141)', async () => {
     renderView()
-    expect(screen.getByTestId('awards-title')).toHaveTextContent('Irene Villagers, 2026/27 season')
-    expect(await screen.findByText('Under 15 section · 21 players', {}, wait)).toBeInTheDocument()
+    const toolbar = screen.getByTestId('toolbar')
+    expect(within(toolbar).getByRole('textbox', { name: 'Minimum innings' })).toBeInTheDocument()
+    expect(within(toolbar).getByRole('button', { name: 'Choose Categories' })).toBeInTheDocument()
+    await screen.findByTestId('award-MOST_RUNS', {}, wait)
+    expect(screen.queryByTestId('awards-title')).not.toBeInTheDocument()
+    expect(screen.queryByText(/players$/)).not.toBeInTheDocument()
   })
 
   it('sends the filters, and no minimum so the server applies its filter-aware defaults', async () => {
@@ -100,8 +103,9 @@ describe('AwardsView', () => {
     renderView()
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Minimum innings' })).toHaveValue('3'), wait)
     expect(screen.getByRole('textbox', { name: 'Minimum overs' })).toHaveValue('8')
-    expect(screen.getByTestId('awards-default-hint')).toHaveTextContent('Default 3 and 8 for these filters. Applies to Batting average and Economy rate.')
-    expect(screen.getByRole('button', { name: 'Reset to default' })).toBeDisabled()
+    // the defaults are the minimums' tooltip, not a line of text; Reset To Default shows only once a minimum is changed
+    expect(screen.getByTestId('awards-minimums')).toHaveAttribute('title', 'Default 3 and 8 for these filters. Applies to Batting average and Economy rate.')
+    expect(screen.queryByRole('button', { name: 'Reset To Default' })).not.toBeInTheDocument()
   })
 
   it('a changed minimum is sent after a debounce, and Reset to default goes back to the server defaults', async () => {
@@ -113,12 +117,11 @@ describe('AwardsView', () => {
     await waitFor(() => expect(lastAwards()).toMatchObject({ minimumInnings: 5 }), { timeout: 3000 })
     expect(lastAwards()).not.toHaveProperty('minimumOvers')
 
-    const reset = screen.getByRole('button', { name: 'Reset to default' })
-    expect(reset).toBeEnabled()
+    const reset = await screen.findByRole('button', { name: 'Reset To Default' })
     await userEvent.click(reset)
     await waitFor(() => expect(lastAwards()).toEqual({ seasonId: 'season-1' }), { timeout: 3000 })
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Minimum innings' })).toHaveValue('3'))
-    expect(screen.getByRole('button', { name: 'Reset to default' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Reset To Default' })).not.toBeInTheDocument()
   })
 
   it('names a category nobody qualified for in a quiet note with the server reason', async () => {
@@ -162,7 +165,7 @@ describe('AwardsView', () => {
     renderView()
     expect(await screen.findByText('Could not load the awards', {}, wait)).toBeInTheDocument()
     server.awards = () => makeAwards()
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
     expect(await screen.findByTestId('award-MOST_RUNS', {}, wait)).toBeInTheDocument()
   })
 

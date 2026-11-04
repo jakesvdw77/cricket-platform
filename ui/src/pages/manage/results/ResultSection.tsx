@@ -27,7 +27,7 @@ export function ResultSection({
     <Box
       component="section"
       data-testid={testId}
-      sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, p: { xs: 1.5, md: 2 }, boxShadow: 1 }}
+      sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, p: { xs: 1.5, md: 2 }, boxShadow: 0 }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, mb: !collapsible || open ? 1.5 : 0, flexWrap: 'wrap' }}>
         <Typography variant="subtitle1" component="h2" fontWeight={700}>
