@@ -40,7 +40,7 @@ function renderChooser() {
 
 const wait = { timeout: 5000 }
 async function open() {
-  await userEvent.click(screen.getByRole('button', { name: 'Choose categories' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Choose Categories' }))
   return screen.findByRole('checkbox', { name: 'Most runs' }, wait)
 }
 
@@ -114,7 +114,7 @@ describe('CategoryChooser', () => {
       url.endsWith('/leaderboard-settings') ? Promise.reject(new Error('boom')) : leaderboardApi(server).get(url, config as never),
     )
     renderChooser()
-    await userEvent.click(screen.getByRole('button', { name: 'Choose categories' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Choose Categories' }))
     expect(await screen.findByText(/Could not load the categories/, {}, wait)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save for club' })).toBeDisabled()
   })

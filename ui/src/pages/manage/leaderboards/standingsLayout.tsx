@@ -11,10 +11,21 @@ import { hoverTint } from '../leagueEdit/leagueEditRowStyles'
 import { gridSx, pinnedFirst, pinnedRank, sortedTint, tableMinWidth } from './standingsGrid'
 import type { LayoutColumn, WidthOf } from './standingsGrid'
 import { compactButtonSx } from '../../../components/Button'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 
 // The layout pieces shared by the standings tables (docs/specs/103 player standings, docs/specs/116 team standings): the grid
 // with a pinned rank and first column, the sortable header, the unranked divider, the notices and the footer. Row content stays
 // in each table's own component.
+
+// docs/specs/140 (page-anatomy section 3): the flat card of a standings table: hairline edge, no shadow, the toolbar fused into its top.
+export function StandingsCard({ ariaLabel, testId, toolbar, children }: { ariaLabel: string; testId: string; toolbar?: ReactNode; children: ReactNode }) {
+  return (
+    <Box component="section" aria-label={ariaLabel} data-testid={testId} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' }}>
+      {toolbar && <ToolbarCard fused>{toolbar}</ToolbarCard>}
+      {children}
+    </Box>
+  )
+}
 
 export function Notice({ title, description, action, tone = 'info' }: { title: string; description: string; action?: ReactNode; tone?: 'info' | 'error' }) {
   return (
@@ -275,7 +286,7 @@ export function TableFooter({ lines, hasNextPage, fetchingNext, onShowMore }: { 
       )}
       {hasNextPage && (
         <MuiButton variant="outlined" onClick={onShowMore} disabled={fetchingNext} size="small" sx={{ ...compactButtonSx, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>
-          {fetchingNext ? 'Loading...' : 'Show more'}
+          {fetchingNext ? 'Loading...' : 'Show More'}
         </MuiButton>
       )}
     </Box>

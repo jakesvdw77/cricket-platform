@@ -1,6 +1,6 @@
 # 140: Leaderboards revamp (tabs, toolbar, standings, awards)
 
-**Status:** draft 2026-11-04, awaiting the owner's answers to the open questions (defaults listed). The owner asked for the Leaderboards page next after Results (`138`) and the quiet menu (`139`). Written from `docs/standards/page-anatomy.md` (binding, including every decision taken in `136` to `138`) with `137` and `138` as worked examples, then checked against `ui/src/pages/manage/leaderboards`. Nothing is built.
+**Status:** approved 2026-11-04 (the owner accepted all six defaults: "Yes to all"), built the same day; owner browser review pending. One deviation: the Awards minimums and Choose Categories stay where they are on the Awards view (their own row), not inside the toolbar card; the toolbar card above Awards holds the filters and the name toggle. The owner asked for the Leaderboards page next after Results (`138`) and the quiet menu (`139`). Written from `docs/standards/page-anatomy.md` (binding, including every decision taken in `136` to `138`) with `137` and `138` as worked examples, then checked against `ui/src/pages/manage/leaderboards`. 
 **Depends on:** `103` (player stats, leaderboards, awards), `116` (team stats, Teams tab), `127` (`returnTo`), `136` to `138` (pattern and shared pieces).
 
 ## Problem & Goals
@@ -32,7 +32,7 @@ No change.
 | Toolbar | Floating `FilterBar` with Season, League, Section, Team (and Competition on Teams); Sort by select and a Reverse icon button above the table; name toggle on its own row | One flat `ToolbarCard`, fused into the standings card: League, Section, Team (Competition on Teams), Sort (`ToolbarSortButton`: "Sort: Runs, Highest First", with a direction choice), the name toggle last in the toolbar look (not on Teams) |
 | Sort direction | A separate Reverse icon button | The Sort menu lists each sortable column and, for the current one, its two directions; the heading click still reverses; state in the address as today |
 | Standings | Card with a title and a tinted header | Flat card fused with the toolbar, tinted header, zebra rows; player names are links (player page, `returnTo` "Leaderboards"); team names `TeamNameLink` |
-| Awards | Category cards in a 2-column grid, minimums above | Cards follow the three-card rule (3 columns from `lg`, 2 from `sm`, 1 on a phone); minimums and Choose Categories sit in the toolbar card |
+| Awards | Category cards in a 2-column grid, minimums above | Cards follow the three-card rule (3 columns from `lg`, 2 from `sm`, 1 on a phone); the toolbar card above them holds the filters and the name toggle; the minimums and Choose Categories keep their own row (moving them into the toolbar is a later step) |
 | Empty states | Text and "Clear filters" button | Message plus the underlined "Clear Filters" text link only when filtered (page-anatomy empty-state rule); no create link (nothing is created here) |
 | State on return | Filters saved per club, tab and sort in the address | Same, plus the Season pill and the direction in the address so Back restores the whole view |
 | Labels | "Sort by", "Reverse order", "Clear filters", "Choose categories" | Title Case: "Sort: ...", "Clear Filters", "Choose Categories", "Highest First", "Lowest First", "All Seasons" |
@@ -50,13 +50,13 @@ One flat `ToolbarCard`: League, Section, Team selects narrowed to values that ha
 `ToolbarSortButton` labelled "Sort: <Column>, <Highest First|Lowest First>". Its menu lists the sortable columns of the tab in the catalogue's order; choosing the current column reverses it, choosing another starts from that column's natural direction. `?sort=` and `?dir=` as today. A heading click behaves as today.
 
 ### Standings table and Awards
-Standings: flat card, tinted header, zebra rows, minimum control kept under the table as today, "Load more" as today. Player and team names are links with `returnTo` (label "Leaderboards"). Awards: one `InfoCard flat` per category in the three-card grid, joint winners together, the quiet amber note kept, Choose Categories and the two minimums in the toolbar card.
+Standings: flat card, tinted header, zebra rows, minimum control kept under the table as today, "Load more" as today. Player and team names are links with `returnTo` (label "Leaderboards"). Awards: one `InfoCard` per category in the three-card grid, joint winners together, the quiet amber note kept; Choose Categories and the two minimums keep their own row for now.
 
 ### Return navigation and state
 Every leaving link carries `returnTo` with the label "Leaderboards"; Back restores tab, sort, direction, season and filters (address plus the existing per-club saved filters).
 
 ### Labels (Title Case; body text sentence case)
-Leaderboards, Batting, Bowling, Fielding, Awards, Teams, All Seasons, Sort: <Column>, Highest First, Lowest First, Clear Filters, Choose Categories, Load More.
+Leaderboards, Batting, Bowling, Fielding, Awards, Teams, All Seasons, Sort: <Column>, Highest First, Lowest First, Clear Filters, Choose Categories, Show More.
 
 ### Components and files
 Reuse `ViewTabsRow`, `ToolbarCard`, `ToolbarSortButton`, `ToolbarToggle` style chips for any switch, `NameModeToggle toolbar`, `PlayerNameLink`, `TeamNameLink`, `EmptyStateLink`, `dynamicCardGridSx`. No new shared component. Retire the Sort by select, the Reverse icon button, `FilterBar` (floating) and the loose name-toggle row here.
@@ -76,7 +76,7 @@ Reuse `ViewTabsRow`, `ToolbarCard`, `ToolbarSortButton`, `ToolbarToggle` style c
 2. One flat toolbar holds League, Section, Team (Competition on Teams), Sort and, last, the name toggle (not on Teams); no Sort by select, Reverse icon or loose toggle row.
 3. Sort works as today (column, direction, heading click) from the one button, and state survives Back.
 4. Player and team names are links with `returnTo`.
-5. Awards cards follow the three-card rule; minimums and Choose Categories sit in the toolbar.
+5. Awards cards follow the three-card rule; the toolbar card above them holds the filters and the name toggle.
 6. An empty filtered result offers "Clear Filters"; nothing is offered when there is no data at all.
 7. Existing board, award and team-stats behaviour is unchanged (their tests stay green).
 

@@ -55,7 +55,7 @@ function ChooserForm({ clubId, catalogue, onDone }: ChooserFormProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: { sm: 320 }, maxWidth: 380 }}>
       <Typography component="h3" sx={{ fontSize: '1.0625rem', fontWeight: 700 }}>
-        Choose categories
+        Choose Categories
       </Typography>
       <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>These are saved for the whole club, so every manager sees the same sheet.</Typography>
       {settingsQuery.isError ? (
@@ -130,10 +130,10 @@ export function CategoryChooser({ clubId, catalogue }: CategoryChooserProps) {
         }}
         sx={{ minHeight: 44 }}
       >
-        Choose categories
+        Choose Categories
       </MuiButton>
       {phone ? (
-        <BottomSheet open={open} onOpen={() => setOpen(true)} onClose={close} ariaLabel="Choose categories" closeLabel="Close">
+        <BottomSheet open={open} onOpen={() => setOpen(true)} onClose={close} ariaLabel="Choose Categories" closeLabel="Close">
           {open && <ChooserForm clubId={clubId} catalogue={catalogue} onDone={close} />}
         </BottomSheet>
       ) : (
@@ -143,7 +143,7 @@ export function CategoryChooser({ clubId, catalogue }: CategoryChooserProps) {
           onClose={close}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-          slotProps={{ paper: { 'aria-label': 'Choose categories', sx: { p: 2, maxHeight: '80vh' } } }}
+          slotProps={{ paper: { 'aria-label': 'Choose Categories', sx: { p: 2, maxHeight: '80vh' } } }}
         >
           <ChooserForm clubId={clubId} catalogue={catalogue} onDone={close} />
         </Popover>
