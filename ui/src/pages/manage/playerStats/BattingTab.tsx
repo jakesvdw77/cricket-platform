@@ -1,8 +1,4 @@
 import { Alert, Box } from '@mui/material'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import SpeedOutlinedIcon from '@mui/icons-material/SpeedOutlined'
-import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import ExitToAppOutlinedIcon from '@mui/icons-material/ExitToAppOutlined'
@@ -11,7 +7,7 @@ import ShowChartOutlinedIcon from '@mui/icons-material/ShowChartOutlined'
 import { InfoCard } from '../../../components/InfoCard'
 import { FormStrip } from '../../../components/FormStrip'
 import type { PlayerStats } from '../../../api/playerStatsApi'
-import { CardGrid, CountRows, NotCapturedPanel, StatTile, StatTileStrip } from './statsParts'
+import { CardGrid, CountRows, NotCapturedPanel,  } from './statsParts'
 import { battingFormItems, coverageCaption, decimals, dismissalRows, highestScoreText, notCapturedFor, percent } from './statsFormat'
 
 // docs/specs/103-player-stats.md, the Batting tab: four headline tiles, then Scoring, Milestones, How dismissed, Innings
@@ -23,10 +19,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
   if (basis.resultsWithBattingCard === 0) {
     return (
       <>
-        <StatTileStrip>
-          <StatTile testId="tile-matches" icon={<SportsCricketOutlinedIcon />} label="Matches" value={String(basis.matchesCounted)} />
-        </StatTileStrip>
-        <Alert severity="info" icon={false}>
+          <Alert severity="info" icon={false}>
           No batting card has been captured for these results.
         </Alert>
       </>
@@ -42,13 +35,6 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
 
   return (
     <>
-      <StatTileStrip>
-        <StatTile testId="tile-runs" icon={<SportsCricketOutlinedIcon />} label="Runs" value={String(batting.runs)} />
-        <StatTile testId="tile-average" icon={<TrendingUpOutlinedIcon />} label="Batting average" value={decimals(batting.average, 2)} />
-        <StatTile testId="tile-strike-rate" icon={<SpeedOutlinedIcon />} label="Strike rate" value={decimals(batting.strikeRate, 2)} caption={ballsCaption} />
-        <StatTile testId="tile-highest" icon={<EmojiEventsOutlinedIcon />} label="Highest score" value={highestScoreText(batting.highestScore)} />
-      </StatTileStrip>
-
       <CardGrid>
         <InfoCard flat fieldSize="large"
           title="Scoring"

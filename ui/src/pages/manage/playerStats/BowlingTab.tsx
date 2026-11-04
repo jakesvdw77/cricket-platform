@@ -1,8 +1,4 @@
 import { Alert, Box, Typography } from '@mui/material'
-import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
-import SpeedOutlinedIcon from '@mui/icons-material/SpeedOutlined'
-import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
 import WhatshotOutlinedIcon from '@mui/icons-material/WhatshotOutlined'
 import ExitToAppOutlinedIcon from '@mui/icons-material/ExitToAppOutlined'
@@ -10,7 +6,7 @@ import ShowChartOutlinedIcon from '@mui/icons-material/ShowChartOutlined'
 import { InfoCard } from '../../../components/InfoCard'
 import { FormStrip } from '../../../components/FormStrip'
 import type { PlayerStats } from '../../../api/playerStatsApi'
-import { CardGrid, CountRows, NotCapturedPanel, StatTile, StatTileStrip } from './statsParts'
+import { CardGrid, CountRows, NotCapturedPanel,  } from './statsParts'
 import { bestBowlingText, bowlingFormItems, coverageCaption, decimals, dismissalRows, notCapturedFor, oversText, percent } from './statsFormat'
 
 function HaulCounter({ count, label, testId }: { count: number; label: string; testId: string }) {
@@ -35,10 +31,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
   if (basis.resultsWithBowlingCard === 0) {
     return (
       <>
-        <StatTileStrip>
-          <StatTile testId="tile-matches" icon={<SportsBaseballOutlinedIcon />} label="Matches" value={String(basis.matchesCounted)} />
-        </StatTileStrip>
-        <Alert severity="info" icon={false}>
+          <Alert severity="info" icon={false}>
           No bowling card has been captured for these results.
         </Alert>
       </>
@@ -53,13 +46,6 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
 
   return (
     <>
-      <StatTileStrip>
-        <StatTile testId="tile-wickets" tone="success" icon={<SportsBaseballOutlinedIcon />} label="Wickets" value={String(bowling.wickets)} />
-        <StatTile testId="tile-average" icon={<TrendingDownOutlinedIcon />} label="Bowling average" value={decimals(bowling.average, 2)} />
-        <StatTile testId="tile-economy" icon={<SpeedOutlinedIcon />} label="Economy rate" value={decimals(bowling.economy, 2)} />
-        <StatTile testId="tile-best" icon={<EmojiEventsOutlinedIcon />} label="Best bowling" value={bestBowlingText(bowling.best)} />
-      </StatTileStrip>
-
       <CardGrid>
         <InfoCard flat fieldSize="large"
           title="Bowling"

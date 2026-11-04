@@ -19,7 +19,8 @@ import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { playerStatusBadge, playerStatusOf } from '../../../utils/playerStatus'
 import { fullName } from '../PlayerList'
 import { PlayerStatsTabs } from './PlayerStatsTabs'
-import { PlayerHeadlineTiles } from './PlayerHeadlineTiles'
+import { PageCounters } from '../../../components/PageCounters'
+import { playerStatsFigures } from './statsFigures'
 import { resolvePlayerStatsTab } from './playerStatsTabConfig'
 import { BattingTab } from './BattingTab'
 import { BowlingTab } from './BowlingTab'
@@ -213,7 +214,7 @@ export default function PlayerStatsPage() {
         titleAdornment={badge ? <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" /> : undefined}
       />
 
-      {stats && stats.basis.matchesCounted > 0 && <PlayerHeadlineTiles stats={stats} basis={basisLine(stats, tab)} />}
+      {stats && stats.basis.matchesCounted > 0 && <PageCounters density="compact" items={playerStatsFigures(stats, tab, basisLine(stats, tab))} />}
 
       <PlayerStatsTabs />
 

@@ -67,7 +67,8 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
       }}
       note={mode === 'average' ? 'Running average (runs per dismissal)' : 'Cumulative runs'}
       headerAction={
-          <Box>
+          // 32 px like the View As Table button beside it, so the two read as one row of controls
+          <Box sx={{ '& .MuiToggleButton-root': { height: 32, fontSize: '0.8125rem' } }}>
             <CompactToggleGroup<Mode> value={mode} onChange={setMode} ariaLabel="Batting trend measure">
               <ToggleButton value="average" aria-label="Average">
                 Average
