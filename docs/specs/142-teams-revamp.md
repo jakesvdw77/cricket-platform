@@ -1,6 +1,6 @@
 # 142: Teams revamp (list, cards, table, Team page, Team form, Team stats)
 
-**Status:** DRAFT 2026-11-05, waiting for the owner's answers to the open questions (defaults listed; "Yes to all" accepts them). The owner asked for the Teams revamp after Players (`141`), covering EVERY page reached from Teams, including the stats. Written from `docs/standards/page-anatomy.md` (binding, including section 0, the build checklist) and `141` as the worked example, checked against the code: `pages/manage/teams/TeamsPage.tsx` (the list, used by `TeamList` and `TeamDirectory`), `TeamDetailPage.tsx`, `TeamFormPage.tsx`, `teamStats/*`, `components/TeamCard`, `components/TeamTable`.
+**Status:** approved 2026-11-05 ("Yes to all", every default accepted); built the same day. The owner asked for the Teams revamp after Players (`141`), covering EVERY page reached from Teams, including the stats. Written from `docs/standards/page-anatomy.md` (binding, including section 0, the build checklist) and `141` as the worked example, checked against the code: `pages/manage/teams/TeamsPage.tsx` (the list, used by `TeamList` and `TeamDirectory`), `TeamDetailPage.tsx`, `TeamFormPage.tsx`, `teamStats/*`, `components/TeamCard`, `components/TeamTable`.
 **Depends on:** `036`, `060`, `092` (teams gold standard), `116` (team stats), `117` (dashboard), `127` (`returnTo`), `136` to `141` (pattern and shared pieces).
 
 ## Problem & Goals

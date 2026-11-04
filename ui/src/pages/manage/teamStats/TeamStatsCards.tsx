@@ -77,6 +77,7 @@ export function RecordCard({ stats }: { stats: TeamStatsPageData }) {
   const { record, basis } = stats
   return (
     <InfoCard
+      flat
       fieldSize="large"
       testId="team-record-card"
       title="Record"
@@ -101,6 +102,7 @@ export function BattingCard({ stats, backTo }: { stats: TeamStatsPageData; backT
   const classified = coverageCaption(batting.coverage.inningsClassifiable, batting.coverage.inningsCounted, 'that could be classed as complete')
   return (
     <InfoCard
+      flat
       fieldSize="large"
       testId="team-batting-card"
       title="Batting"
@@ -130,7 +132,7 @@ export function HighlightsCard({ stats, backTo }: { stats: TeamStatsPageData; ba
   const byRuns = chasing.largestVictoryByRuns
   const byWickets = chasing.largestVictoryByWickets
   return (
-    <InfoCard fieldSize="large" testId="team-highlights-card" title="Results highlights" icon={<EmojiEventsOutlinedIcon />}>
+    <InfoCard flat fieldSize="large" testId="team-highlights-card" title="Results highlights" icon={<EmojiEventsOutlinedIcon />}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
         <Highlights
           backTo={backTo}
@@ -166,6 +168,7 @@ export function BowlingCard({ stats }: { stats: TeamStatsPageData }) {
   const usable = coverageCaption(bowling.coverage.inningsUsable, bowling.coverage.inningsCounted, 'with a full score')
   return (
     <InfoCard
+      flat
       fieldSize="large"
       testId="team-bowling-card"
       title="Bowling"
@@ -189,6 +192,7 @@ export function ExtrasCard({ stats }: { stats: TeamStatsPageData }) {
   }
   return (
     <InfoCard
+      flat
       fieldSize="large"
       testId="team-extras-card"
       title="Extras conceded"
@@ -220,7 +224,7 @@ export function NetRunRateCard({ stats }: { stats: TeamStatsPageData }) {
     </Box>
   )
   return (
-    <InfoCard fieldSize="large" testId="team-nrr-card" title="Net run rate" icon={<SpeedOutlinedIcon />}>
+    <InfoCard flat fieldSize="large" testId="team-nrr-card" title="Net run rate" icon={<SpeedOutlinedIcon />}>
       {body}
     </InfoCard>
   )

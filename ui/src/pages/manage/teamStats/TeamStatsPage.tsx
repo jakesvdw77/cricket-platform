@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
-import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined'
-import PercentOutlinedIcon from '@mui/icons-material/PercentOutlined'
-import { PageHeaderBand } from '../../../components/PageHeaderBand'
+import { useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useBackLink } from '../../../hooks/useReturnTo'
+import { Box, Chip, Skeleton, Stack } from '@mui/material'
+import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { PageCounters } from '../../../components/PageCounters'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import { badgeSx } from '../../../components/RecordCard'
-import { EmptyState } from '../../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
 import { useTeamDashboard } from '../../../api/teamDashboardApi'
 import { useTeamStats, useTeamStatsFilterOptions } from '../../../api/teamStatsApi'
@@ -19,13 +17,13 @@ import { useStatsFilterLookups } from '../../../hooks/useStatsFilterLookups'
 import { backTarget } from '../../../utils/backTarget'
 import { pickDefaultSeasonId } from '../../../utils/defaultSeason'
 import { parseCompetition } from '../../../utils/statsCompetition'
-import { CardGrid, NotCapturedPanel, StatTile, StatTileStrip } from '../playerStats/statsParts'
+import { CardGrid, NotCapturedPanel } from '../playerStats/statsParts'
 import { countText, teamPageBasisLines, teamStatsLink, winPercentText } from '../leaderboards/teamStatsFormat'
 import { TeamFormStrip } from './TeamFormStrip'
 import { TeamDashboardBlock } from './dashboard/TeamDashboardBlock'
 import { loadTeamDashboardCharts } from './dashboard/teamDashboardChunk'
 import { BattingCard, BowlingCard, ExtrasCard, HighlightsCard, NetRunRateCard, RecordCard } from './TeamStatsCards'
-import { compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 
 const COMPETITION_OPTIONS = [
   { value: 'LEAGUE', label: 'League' },
@@ -46,7 +44,10 @@ export default function TeamStatsPage() {
   const { teamId } = useParams<{ teamId?: string }>()
   const [searchParams] = useSearchParams()
   const location = useLocation()
-  const back = backTarget(location.state, DEFAULT_BACK)
+  const navigate = useNavigate()
+  const legacyBack = backTarget(location.state, DEFAULT_BACK)
+  // docs/specs/142: a returnTo in the address wins (Back restores the list's view); the older router state is the fallback.
+  const back = useBackLink(legacyBack.to, `Back to ${legacyBack.label}`)
 
   const [saved, updateSaved] = usePersistedListFilters<{ seasonId: string | null; leagueId: string | null }>(
     `teamStats:filters:${clubId}`,
@@ -129,11 +130,7 @@ export default function TeamStatsPage() {
       <EmptyState
         title="Couldn't load the statistics"
         description="Something went wrong loading this team's statistics."
-        action={
-          <MuiButton variant="outlined" onClick={() => statsQuery.refetch()} size="small" sx={compactButtonSx}>
-            Try again
-          </MuiButton>
-        }
+        action={<Button size="compact" variant="secondary" onClick={() => statsQuery.refetch()}>Try Again</Button>}
       />
     )
   } else if (!stats) {
@@ -148,39 +145,18 @@ export default function TeamStatsPage() {
       <EmptyState
         title="No published results match these filters"
         description="Try a different season, league or competition."
-        action={
-          <MuiButton variant="outlined" onClick={clearFilters} size="small" sx={compactButtonSx}>
-            Clear filters
-          </MuiButton>
-        }
+        action={<EmptyStateLink onClick={clearFilters}>Clear Filters</EmptyStateLink>}
       />
     ) : (
       <EmptyState
         title="No published results yet"
         description="Team statistics appear here once a published result includes this team."
-        action={
-          <MuiButton component={RouterLink} to="/manage/results" variant="outlined" size="small" sx={compactButtonSx}>
-            Go to Results
-          </MuiButton>
-        }
+        action={<EmptyStateLink onClick={() => navigate('/manage/results')}>Open Results</EmptyStateLink>}
       />
     )
   } else {
     body = (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Box data-testid="stats-basis">
-          {teamPageBasisLines(stats.basis).map((line) => (
-            <Typography key={line} component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8125rem', lineHeight: 1.4, mr: 0.75 }}>
-              {line}
-            </Typography>
-          ))}
-        </Box>
-        <StatTileStrip>
-          <StatTile testId="tile-played" icon={<SportsCricketOutlinedIcon />} label="Played" value={countText(stats.record.played)} />
-          <StatTile testId="tile-won" tone="success" icon={<EmojiEventsOutlinedIcon />} label="Won" value={countText(stats.record.won)} />
-          <StatTile testId="tile-lost" tone="error" icon={<TrendingDownOutlinedIcon />} label="Lost" value={countText(stats.record.lost)} />
-          <StatTile testId="tile-win-percent" icon={<PercentOutlinedIcon />} label="Win %" value={winPercentText(stats.record.winPercent)} />
-        </StatTileStrip>
         <TeamFormStrip items={stats.form} backTo={pageUrl} />
         <TeamDashboardBlock shown={dashboardShown} onToggle={() => setDashboardShown((value) => !value)} dashboard={dashboardQuery} backTo={pageUrl} />
         <CardGrid>
@@ -197,29 +173,32 @@ export default function TeamStatsPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to={back.to}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, minHeight: 44, color: 'text.secondary' }}
-        >
-          Back to {back.label}
-        </MuiButton>
-        <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-            {stats ? stats.teamName : 'Team statistics'}
-          </Typography>
-          {stats && <Chip size="small" label={stats.active ? 'Active' : 'Inactive'} sx={badgeSx(stats.active ? 'positive' : 'muted')} data-testid="team-status-badge" />}
-        </Stack>
-      </PageHeaderBand>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
+      <ManageScreenHeader
+        title={stats ? stats.teamName : 'Team statistics'}
+        backTo={back.to}
+        backLabel={back.label}
+        titleAdornment={stats ? <Chip size="small" label={stats.active ? 'Active' : 'Inactive'} sx={badgeSx(stats.active ? 'positive' : 'muted')} data-testid="team-status-badge" /> : undefined}
+      />
+
+      {/* docs/specs/142 and page-anatomy section 0: the figures come first, directly under the title; the basis sentences are the first card's info icon. */}
+      {stats && !noResults && (
+        <PageCounters
+          density="compact"
+          items={[
+            { id: 'played', testId: 'tile-played', label: 'Played', value: countText(stats.record.played), info: teamPageBasisLines(stats.basis).join(' ') },
+            { id: 'won', testId: 'tile-won', label: 'Won', value: countText(stats.record.won) },
+            { id: 'lost', testId: 'tile-lost', label: 'Lost', value: countText(stats.record.lost) },
+            { id: 'win-percent', testId: 'tile-win-percent', label: 'Win %', value: winPercentText(stats.record.winPercent) },
+          ]}
+        />
+      )}
 
       {!neverPlayed && (
+        <ToolbarCard>
         <FilterBar
+          bare
+          inCard
           density="compact"
           seasons={seasonOptions.length > 0 ? seasonOptions : undefined}
           leagues={leagueOptions.length > 0 ? leagueOptions : undefined}
@@ -239,7 +218,7 @@ export default function TeamStatsPage() {
                   {
                     key: 'competition',
                     label: 'Competition',
-                    allLabel: 'All competitions',
+                    allLabel: 'All Competitions',
                     options: competitionOptions,
                     value: competition ?? '',
                     onChange: (value) => setCompetition((value || null) as TeamStatsCompetition | null),
@@ -249,6 +228,7 @@ export default function TeamStatsPage() {
           }
           onClearAll={clearFilters}
         />
+        </ToolbarCard>
       )}
 
       {body}

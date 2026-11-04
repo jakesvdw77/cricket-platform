@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Breadcrumbs, Button as MuiButton, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
 import type { TeamFormValues } from '../../components/TeamForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
-import { Button, compactButtonSx } from '../../components/Button'
+import { Button } from '../../components/Button'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
+import { VIEW_TABS_PROPS, viewTabsSx, viewTabSx } from '../../utils/viewTabs'
 import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
@@ -301,6 +303,9 @@ export default function TeamFormPage() {
   const isEdit = Boolean(teamId)
   const isSectionScoped = Boolean(sectionId)
   const navigate = useNavigate()
+  const defaultBack = isEdit ? (fromSection ? `/manage/sections/${sectionId}/teams` : '/manage/teams') : isSectionScoped ? `/manage/sections/${sectionId}/teams` : '/manage/teams'
+  const afterSave = useAfterSave(defaultBack)
+  const cancelLink = useBackLink(defaultBack, 'Cancel')
   const queryClient = useQueryClient()
 
   // Which tab is showing: 0 = Details (one always-mounted TeamForm, hidden rather than unmounted on the
@@ -385,7 +390,8 @@ export default function TeamFormPage() {
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sections', created.sectionId, 'teams'] })
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'teams'] })
-      navigate(isSectionScoped ? `/manage/sections/${sectionId}/teams` : '/manage/teams')
+      // docs/specs/142: Save returns to where the user came from (the Teams list with its view, or the Team page).
+      afterSave()
     },
   })
 
@@ -619,11 +625,12 @@ export default function TeamFormPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <RecordFormScreen
-        title={isEdit ? 'Edit Team' : 'Add Team'}
+        title={isEdit ? 'Edit Team' : 'Add New Team'}
+        compact
         backTo={backTo}
         backLabel="Back to Teams"
         actions={
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             {activeTab === 0 && (
               <>
                 {saveMutation.isError && (
@@ -632,13 +639,13 @@ export default function TeamFormPage() {
                   </Typography>
                 )}
 
-                {/* docs/specs/092: Cancel goes back to the list without saving. */}
-                <MuiButton component={RouterLink} to={backTo} variant="outlined" sx={compactButtonSx}>
+                {/* docs/specs/092 and 142: Cancel goes back (to where the user came from) without saving. */}
+                <Button size="compact" variant="secondary" onClick={() => navigate(cancelLink.to ?? backTo)}>
                   Cancel
-                </MuiButton>
+                </Button>
 
                 <Button size="compact" type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create team'}
+                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Team'}
                 </Button>
               </>
             )}
@@ -674,15 +681,14 @@ export default function TeamFormPage() {
           <Tabs
             value={activeTab}
             onChange={(_event, next: number) => setActiveTab(next)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+            aria-label="Team sections"
+            {...VIEW_TABS_PROPS}
+            sx={{ ...viewTabsSx, mb: 2 }}
           >
-            <Tab label="Details" />
-            {showContactsAndSponsors && <Tab label="Contacts" />}
-            {showContactsAndSponsors && <Tab label="Sponsors" />}
-            {showContactsAndSponsors && <Tab label="Squad" />}
+            <Tab label="Details" sx={viewTabSx} />
+            {showContactsAndSponsors && <Tab label="Contacts" sx={viewTabSx} />}
+            {showContactsAndSponsors && <Tab label="Sponsors" sx={viewTabSx} />}
+            {showContactsAndSponsors && <Tab label="Squad" sx={viewTabSx} />}
           </Tabs>
         </Box>
         )}

@@ -1,18 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LogoAvatar } from '../LogoAvatar'
-import type { ReactNode } from 'react'
 import { Box, ButtonBase, Stack, Typography } from '@mui/material'
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
+import type { ReactNode } from 'react'
 import { RecordCard } from '../RecordCard'
 import type { RecordCardBadge } from '../RecordCard'
 import { DetailLine } from '../DetailLine'
-import { KeyFigureTile } from '../KeyFigureTile'
+import { Button } from '../Button'
 import { SocialLinksRow } from '../marketing/SocialLinksRow'
 import { SponsorQuickViewDialog } from '../SponsorQuickViewDialog'
 import { initialsFromName } from '../../utils/initials'
@@ -31,24 +26,20 @@ export interface TeamCardProps {
   playerCount: number
   matchCount: number
   sponsors?: Sponsor[]
+  // Already carries returnTo (the list adds it).
   viewTo: string
-  editTo: string
-  // The footer's Squad and Matches destinations; both default to the team page (the squad is on it, and the Matches list
-  // has no team address to open on).
-  squadTo?: string
-  matchesTo?: string
-  // docs/specs/116 (decision 21): the fourth footer button, straight to the team's statistics page; statsState is the
-  // router state that page's Back button reads (the Teams list URL).
+  // docs/specs/142 (owner): View Stats is used often, so it stays a button on the card (it is also in the kebab); already carries returnTo.
   statsTo: string
-  statsState?: { backTo: string; backLabel: string }
+  // The ONE kebab (a `TeamActionsMenu`), top right beside the social links.
+  menu?: ReactNode
 }
 
 const NOT_ON_FILE = '–'
 
-function PersonRow({ icon, label, value }: { icon: ReactNode; label: string; value?: string | null }) {
+function PersonRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <Box data-testid="team-detail-row" sx={{ p: 1, borderRadius: 0.75, '&:nth-of-type(odd)': { bgcolor: zebraTint } }}>
-      <DetailLine icon={icon} label={label} labelWidth={72} value={value || NOT_ON_FILE} muted={!value} />
+      <DetailLine label={label} labelWidth={72} value={value === 0 || value ? value : NOT_ON_FILE} muted={value !== 0 && !value} />
     </Box>
   )
 }
@@ -67,12 +58,10 @@ export function TeamCard({
   matchCount,
   sponsors = [],
   viewTo,
-  editTo,
-  squadTo,
-  matchesTo,
   statsTo,
-  statsState,
+  menu,
 }: TeamCardProps) {
+  const navigate = useNavigate()
   const socialLinks = team.socialLinks ?? []
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
   const selectedSponsor = sponsors.find((sponsor) => sponsor.id === openSponsorId) ?? null
@@ -89,32 +78,31 @@ export function TeamCard({
         badgesBelow
         avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
         badges={badges}
-        // position: relative paints the links above the card's stretched link (059).
+        // position: relative paints the links and the kebab above the card's stretched link (059).
         headerActions={
-          socialLinks.length > 0 ? (
-            <Box data-testid="team-social-links" sx={{ position: 'relative' }}>
-              <SocialLinksRow links={socialLinks} size="small" />
+          socialLinks.length > 0 || menu ? (
+            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {socialLinks.length > 0 && (
+                <Box data-testid="team-social-links">
+                  <SocialLinksRow links={socialLinks} size="small" />
+                </Box>
+              )}
+              {menu}
             </Box>
           ) : undefined
         }
         viewTo={viewTo}
-        footerButtons={[
-          { label: 'Squad', icon: <GroupsOutlinedIcon fontSize="small" />, to: squadTo ?? viewTo },
-          { label: 'Matches', icon: <EventOutlinedIcon fontSize="small" />, to: matchesTo ?? viewTo },
-          { label: 'Edit', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
-          { label: 'Stats', icon: <EqualizerOutlinedIcon fontSize="small" />, to: statsTo, linkState: statsState },
-        ]}
+        // No footer bar (page-anatomy section 6): the kebab holds every action and View Stats is the one quick button below.
+        footerActions={null}
+        flat
       >
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>
-          <KeyFigureTile testId="team-players" icon={<GroupsOutlinedIcon fontSize="small" />} value={playerCount} label="Players" />
-          <KeyFigureTile testId="team-matches" icon={<EventOutlinedIcon fontSize="small" />} value={matchCount} label="Matches" />
-        </Box>
-
-        {/* The same three rows on every card; the margin lets the zebra tint bleed to the card padding's edge. */}
+        {/* The same five rows on every card (no icons); the margin lets the zebra tint bleed to the card padding's edge. */}
         <Stack sx={{ mx: -1 }}>
-          <PersonRow icon={<MilitaryTechOutlinedIcon fontSize="small" />} label="Captain" value={captainName} />
-          <PersonRow icon={<BadgeOutlinedIcon fontSize="small" />} label="Manager" value={managerName} />
-          <PersonRow icon={<SportsCricketOutlinedIcon fontSize="small" />} label="Coach" value={coachName} />
+          <PersonRow label="Players" value={playerCount} />
+          <PersonRow label="Matches" value={matchCount} />
+          <PersonRow label="Captain" value={captainName} />
+          <PersonRow label="Manager" value={managerName} />
+          <PersonRow label="Coach" value={coachName} />
         </Stack>
 
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minHeight: 32 }} data-testid="team-sponsors">
@@ -144,6 +132,13 @@ export function TeamCard({
             </Typography>
           )}
         </Stack>
+
+        {/* The one frequent action stays a click away, lifted above the stretched link; every card has the row so heights match. */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', position: 'relative' }}>
+          <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(statsTo)} data-testid="team-card-stats">
+            View Stats
+          </Button>
+        </Box>
       </RecordCard>
 
       <SponsorQuickViewDialog clubId={team.clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />

@@ -1,27 +1,27 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
-import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { Box, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useBackLink } from '../../hooks/useReturnTo'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
-import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
-import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined'
 import { EmptyState } from '../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { InfoCard } from '../../components/InfoCard'
-import { KeyFigureTile } from '../../components/KeyFigureTile'
-import { PageHeaderBand } from '../../components/PageHeaderBand'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { PageCounters } from '../../components/PageCounters'
+import { Button } from '../../components/Button'
+import { HeaderActions } from '../../components/HeaderShareButton'
+import { TeamActionsMenu } from '../../components/TeamActionsMenu'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
@@ -41,7 +41,6 @@ import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { badgeFor } from './TeamDirectory'
-import { compactButtonSx } from '../../components/Button'
 
 const NOT_ON_FILE = '–'
 
@@ -119,6 +118,7 @@ export default function TeamDetailPage() {
   const { sectionId, teamId } = useParams<{ sectionId?: string; teamId?: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const fromSection = searchParams.get('from') === 'section'
   // docs/specs/127: a returnTo in the address overrides the default Back.
   const back = useBackLink(fromSection ? `/manage/sections/${sectionId}/teams` : '/manage/teams', 'Back to Teams')
@@ -233,6 +233,7 @@ export default function TeamDetailPage() {
   const backTo = back.to ?? '/manage/teams'
   const backLabel = back.label
   const editTo = `/manage/sections/${sectionId}/teams/${team.id}/edit`
+  const statsPath = `/manage/teams/${team.id}/stats?seasonId=${encodeURIComponent(selectedSeasonId)}`
 
   // Sorted by name regardless of the server's own row order, so the grid does not visibly reshuffle.
   const squad = [...(squadQuery.data ?? [])].sort((a, b) =>
@@ -254,147 +255,71 @@ export default function TeamDetailPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
-      <PageHeaderBand>
-        <Stack spacing={2}>
-          {/* Top row: Back on the left; the Season pill and the filled primary Edit team on the right. */}
-          <Box
-            data-testid="team-header-top-row"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
-          >
-            <MuiButton
-              component={RouterLink}
-              to={backTo}
-              variant="text"
-              color="inherit"
-              size="small"
-              startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
-            >
-              {backLabel}
-            </MuiButton>
-
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, flex: 'none' }}>
-              {seasons.length > 0 && (
-                <HeaderSeasonSelect
-                  seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
-                  value={selectedSeasonId || null}
-                  onChange={handleSeasonChange}
-                  showAll={false}
-                />
-              )}
-              <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>
-                Edit team
-              </MuiButton>
-            </Box>
-          </Box>
-
-          {/* Title row: logo tile and name (wraps), then the section and status chips under it. */}
-          <Box data-testid="team-header-title-row" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-            <LogoAvatar
-              src={team.logoUrl}
-              variant="rounded"
-              size={64}
-              sx={{ width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
-            >
+      <ManageScreenHeader
+        title={team.name}
+        backTo={backTo}
+        backLabel={backLabel}
+        // docs/specs/142: the logo, the ONE status badge and the Season pill (no "All") sit beside the name, as on a league.
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <LogoAvatar src={team.logoUrl} variant="rounded" size={40}>
               {initialsFromName(team.name)}
             </LogoAvatar>
-            <Stack spacing={1} sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-              >
-                {team.name}
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Team badges">
-                <Chip size="small" icon={<AccountTreeOutlinedIcon />} variant="outlined" label={sectionBreadcrumb} />
-                <Chip size="small" label={status.label} sx={badgeSx(status.tone)} />
-              </Stack>
-            </Stack>
+            <Chip size="small" label={status.label} sx={badgeSx(status.tone)} data-testid="team-status-badge" />
+            {seasons.length > 0 && (
+              <HeaderSeasonSelect
+                seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
+                value={selectedSeasonId || null}
+                onChange={handleSeasonChange}
+                showAll={false}
+              />
+            )}
           </Box>
-
-          {(team.groundName || hasSocial) && (
-            <Box
-              data-testid="team-header-info-line"
-              sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 1 }}
-            >
-              {team.groundName && (
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
-                  <PlaceOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere' }}>{team.groundName}</Typography>
-                </Box>
-              )}
-              {hasSocial && (
-                <Box data-testid="team-header-social" sx={{ flex: 'none', ml: { sm: 'auto' } }}>
-                  <SocialLinksRow links={team.socialLinks} size="small" />
-                </Box>
-              )}
-            </Box>
-          )}
-        </Stack>
-      </PageHeaderBand>
-
-      <Box
-        data-testid="team-key-figures"
-        sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
-      >
-        <KeyFigureTile
-          testId="team-figure-players"
-          icon={<GroupsOutlinedIcon />}
-          value={String(playerCount)}
-          label="Players in squad"
-        />
-        <KeyFigureTile
-          testId="team-figure-matches"
-          icon={<EventOutlinedIcon />}
-          value={String(matchCount)}
-          label="Matches this season"
-        />
-        <KeyFigureTile
-          testId="team-figure-captain"
-          icon={<MilitaryTechOutlinedIcon />}
-          value={captainName ?? NOT_ON_FILE}
-          label="Captain"
-          textValue
-        />
-        <KeyFigureTile
-          testId="team-figure-ground"
-          icon={<PlaceOutlinedIcon />}
-          value={team.groundName || NOT_ON_FILE}
-          label="Ground"
-          textValue
-        />
-      </Box>
-
-      {/* docs/specs/116-team-stats.md: the one link to the team statistics page. The router state lets its Back return here. */}
-      <InfoCard
-        testId="team-statistics-card"
-        title="Statistics"
-        icon={<QueryStatsOutlinedIcon />}
-        actions={
-          <MuiButton
-            component={RouterLink}
-            to={`/manage/teams/${team.id}/stats?seasonId=${encodeURIComponent(selectedSeasonId)}`}
-            state={{ backTo: `${location.pathname}${location.search}`, backLabel: team.name || 'Team' }}
-            variant="outlined"
-            size="small"
-            sx={compactButtonSx}
-          >
-            View statistics
-          </MuiButton>
         }
-      >
-        <Typography variant="body2" color="text.secondary">
-          Record, form, batting, bowling and net run rate from this team's published results.
-        </Typography>
-      </InfoCard>
+        // The section path as the plain sub-header line, with the team's social links at its right (docs/specs/142).
+        subtitle={
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 0.5 }}>
+            <Typography variant="subtitle1" fontWeight={600} color="text.primary" component="span">
+              {sectionBreadcrumb}
+            </Typography>
+            {hasSocial && (
+              <Box data-testid="team-header-social" sx={{ flex: 'none' }}>
+                <SocialLinksRow links={team.socialLinks} size="small" />
+              </Box>
+            )}
+          </Box>
+        }
+        // ONE filled Manage Team menu, with View Stats beside it so it is not missed (as Share is on a result).
+        action={
+          <HeaderActions
+            beside={
+              <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(withReturnTo(statsPath, currentOrigin(location), 'Team'))} data-testid="team-view-stats">
+                View Stats
+              </Button>
+            }
+          >
+            <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" />
+          </HeaderActions>
+        }
+      />
+
+      <PageCounters
+        density="compact"
+        items={[
+          { id: 'players', testId: 'team-figure-players', value: String(playerCount), label: 'Players In Squad', shortLabel: 'Players' },
+          { id: 'matches', testId: 'team-figure-matches', value: String(matchCount), label: 'Matches This Season', shortLabel: 'Matches' },
+          { id: 'captain', testId: 'team-figure-captain', value: captainName ?? NOT_ON_FILE, label: 'Captain' },
+          { id: 'ground', testId: 'team-figure-ground', value: team.groundName || NOT_ON_FILE, label: 'Ground' },
+        ]}
+      />
 
       {/* Contacts + Sponsors: equal-height cards (InfoCard fills its grid cell), one column on a phone. */}
-      <Box
-        data-testid="team-contacts-sponsors-row"
-        sx={{ display: 'grid', alignItems: 'stretch', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}
+ <Box
+        data-testid="team-cards-grid"
+        sx={{ display: 'grid', alignItems: 'stretch', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}
       >
-        <InfoCard testId="team-contacts-card" title="Contacts" icon={<ContactsOutlinedIcon />}>
+        <Box sx={{ gridColumn: { lg: 3 }, gridRow: { lg: 1 }, '& > *': { height: '100%' } }}>
+        <InfoCard flat testId="team-contacts-card" title="Contacts" icon={<ContactsOutlinedIcon />}>
           {contacts.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No contacts linked to this team yet.
@@ -418,8 +343,10 @@ export default function TeamDetailPage() {
             </Stack>
           )}
         </InfoCard>
+        </Box>
 
-        <InfoCard testId="team-sponsors-card" title="Sponsors" icon={<HandshakeOutlinedIcon />}>
+        <Box sx={{ gridColumn: { lg: 3 }, gridRow: { lg: 2 }, '& > *': { height: '100%' } }}>
+        <InfoCard flat testId="team-sponsors-card" title="Sponsors" icon={<HandshakeOutlinedIcon />}>
           {sponsors.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No sponsors linked to this team yet.
@@ -440,18 +367,19 @@ export default function TeamDetailPage() {
             </Stack>
           )}
         </InfoCard>
-      </Box>
-
+        </Box>
       {/* Full-width Squad card for the pill's season. "Add player" goes to the edit screen's Squad tab, the one place
           squad membership is mutated (docs/specs/036-view-first-record-detail-screens.md). */}
+        <Box id="squad" sx={{ gridColumn: { md: '1 / -1', lg: '1 / span 2' }, gridRow: { lg: '1 / span 2' }, '& > *': { height: '100%' } }}>
       <InfoCard
+        flat
         testId="team-squad-card"
         title="Squad"
         icon={<GroupsOutlinedIcon />}
         actions={
-          <MuiButton component={RouterLink} to={editTo} variant="outlined" size="small">
-            Add player
-          </MuiButton>
+          <Button size="compact" variant="secondary" onClick={() => navigate(editTo)}>
+            Add Player
+          </Button>
         }
       >
         {seasons.length === 0 ? (
@@ -463,13 +391,15 @@ export default function TeamDetailPage() {
             No players in this team's squad for this season yet.
           </Typography>
         ) : (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' } }}>
             {squad.map((member) => (
               <SquadPlayerTile key={member.id} member={member} />
             ))}
           </Box>
         )}
       </InfoCard>
+        </Box>
+      </Box>
 
       <RecordQuickViewDialog
         open={Boolean(selectedContact)}

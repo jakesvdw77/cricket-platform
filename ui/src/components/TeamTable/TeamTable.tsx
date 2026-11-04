@@ -1,10 +1,12 @@
-import { Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Chip, IconButton, Link as MuiLink, Tooltip, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { LogoAvatar } from '../LogoAvatar'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
-import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
+import { Button } from '../Button'
+import { ToolbarCard } from '../ToolbarCard'
 import { badgeSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 import { zebraTint } from '../../utils/zebraTint'
@@ -20,21 +22,28 @@ export interface TeamTableRow {
   loaded: boolean
   // Where the whole row goes.
   to: string
-  // docs/specs/116 (decision 21): the Stats icon button; statsState is the router state the stats page's Back reads.
+  // docs/specs/142 (owner): View Stats stays a quiet button on the row (an icon on a phone), also in the kebab; already carries returnTo.
   statsTo: string
-  statsState?: { backTo: string; backLabel: string }
+  // The row's ONE kebab (a `TeamActionsMenu`).
+  actions?: ReactNode
 }
 
 export interface TeamTableProps {
   rows: TeamTableRow[]
+  // Given a toolbar the table is ONE card: the toolbar, a hairline, then the header and rows (or `empty`).
+  toolbar?: ReactNode
+  empty?: ReactNode
 }
+
+// One flat card (hairline, no shadow), as the Results, Players and Matches tables.
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
 
 const NOT_ON_FILE = '–'
 
-// Desktop: Team, Section, Players, Matches, Captain, Status, Stats button, chevron. A phone keeps Team, Players, the Stats button and the chevron.
+// Desktop: Team, Section, Players, Matches, Captain, Status, View Stats, kebab. A phone keeps Team, Players, the Stats icon and the kebab.
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 64px 44px 32px',
-  sm: 'minmax(220px, 2fr) minmax(120px, 1fr) 80px 80px minmax(160px, 1.2fr) 100px 44px 32px',
+  xs: 'minmax(0, 1fr) 64px 44px 44px',
+  sm: 'minmax(220px, 2fr) minmax(120px, 1fr) 80px 80px minmax(160px, 1.2fr) 100px 112px 44px',
 }
 
 const gridSx = {
@@ -54,6 +63,7 @@ const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 const figureSx = { fontVariantNumeric: 'tabular-nums' } as const
 
 function TeamRow({ row }: { row: TeamTableRow }) {
+  const navigate = useNavigate()
   const { team, sectionName, loaded } = row
   const figure = (value: number) => (loaded ? value : NOT_ON_FILE)
 
@@ -113,21 +123,20 @@ function TeamRow({ row }: { row: TeamTableRow }) {
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="team-row-status">
         <Chip size="small" label={team.active ? 'Active' : 'Inactive'} sx={{ ...badgeSx(team.active ? 'active' : 'muted'), height: 22, fontSize: '0.75rem' }} />
       </Box>
-      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
-        <IconButton
-          component={RouterLink}
-          to={row.statsTo}
-          state={row.statsState}
-          aria-label="Stats"
-          title="Stats"
-          size="small"
-          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
-        >
-          <EqualizerOutlinedIcon fontSize="small" />
-        </IconButton>
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+          <Button size="compact" variant="ghost" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(row.statsTo)} data-testid="team-row-stats" sx={{ color: 'primary.dark' }}>
+            View Stats
+          </Button>
+        </Box>
+        <Tooltip title="View Stats">
+          <IconButton aria-label={`View stats for ${team.name}`} size="small" onClick={() => navigate(row.statsTo)} sx={{ display: { xs: 'inline-flex', sm: 'none' }, color: 'primary.dark', width: 44, height: 44 }}>
+            <EqualizerOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
-      <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
-        <ChevronRightOutlinedIcon fontSize="small" />
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        {row.actions}
       </Box>
     </Box>
   )
@@ -136,21 +145,9 @@ function TeamRow({ row }: { row: TeamTableRow }) {
 // docs/specs/092-teams-gold-standard.md (A): the list view of the Teams page, built like LeagueTable, PlayerTable and
 // MatchTable: one bordered panel with a header row that sticks to the top of the scrolling page and zebra rows; the whole
 // row opens the team. A phone keeps Team, Players, the Stats button and the chevron.
-export function TeamTable({ rows }: TeamTableProps) {
-  return (
-    <Box
-      role="table"
-      aria-label="Teams"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        boxShadow: 2,
-        // clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
-        overflow: 'clip',
-      }}
-    >
+export function TeamTable({ rows, toolbar, empty }: TeamTableProps) {
+  const table = (
+    <Box role="table" aria-label="Teams" sx={toolbar ? undefined : cardSx}>
       <Box
         role="row"
         sx={{
@@ -159,10 +156,10 @@ export function TeamTable({ rows }: TeamTableProps) {
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
-          fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+          fontSize: '0.75rem',
           fontWeight: 700,
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
@@ -176,7 +173,7 @@ export function TeamTable({ rows }: TeamTableProps) {
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Captain</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Status</Box>
         <Box role="columnheader" aria-label="Stats" />
-        <Box role="columnheader" aria-label="Open" />
+        <Box role="columnheader" aria-label="Actions" />
       </Box>
       <Box role="rowgroup">
         {rows.map((row) => (
@@ -185,4 +182,13 @@ export function TeamTable({ rows }: TeamTableProps) {
       </Box>
     </Box>
   )
+  if (toolbar) {
+    return (
+      <Box data-testid="teams-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {rows.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return table
 }
