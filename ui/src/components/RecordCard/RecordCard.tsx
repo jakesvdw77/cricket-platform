@@ -143,6 +143,8 @@ export interface RecordCardProps {
   // unchanged, byte-for-byte, for every existing call site that only ever passes it.
   badges?: RecordCardBadge[]
   description?: string | null
+  // docs/specs/137: more sub-title lines under the description (a match card's venue line with its Get Directions button).
+  descriptionExtra?: ReactNode
   fields?: RecordCardField[]
   chips?: string[]
   // Optional — required historically, but a viewTo-only call site (docs/specs/
@@ -364,6 +366,7 @@ export function RecordCard({
   badge,
   badges,
   description,
+  descriptionExtra,
   fields,
   chips,
   editLabel = 'Edit',
@@ -577,6 +580,7 @@ export function RecordCard({
             {description}
           </Typography>
         )}
+        {descriptionExtra}
 
         {fields && fields.length > 0 && (
           <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>

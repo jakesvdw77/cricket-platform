@@ -1,14 +1,14 @@
-import { Chip, Link as MuiLink } from '@mui/material'
+import { Box, Chip, Link as MuiLink } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
-import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
-import { DetailLine } from '../../../components/DetailLine'
-import { WeatherBadge } from '../../../components/WeatherBadge'
-import { useMatchFieldWeather } from '../../../hooks/useMatchWeather'
-import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
+import { CardForecastStrip } from '../../../components/CardForecastStrip'
+import { CardVenueLine } from '../../../components/CardVenueLine'
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
+import { useMatchDirections, useMatchFieldWeather } from '../../../hooks/useMatchWeather'
+import { VenueDirectionsButton } from '../../../components/VenueDirectionsButton'
 import { badgeSx, chipLinkSx, RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import type { Match } from '../../../api/matchApi'
@@ -48,6 +48,7 @@ export interface MatchCardProps {
 // holds every action (no footer bar, no icon cluster). Deactivate/Reactivate and Delete live on the edit screen (038, 109).
 export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, viewTo }: MatchCardProps) {
   // docs/specs/131 (Weather): the forecast within 7 days at a field with a usable place; nothing otherwise.
+  const directions = useMatchDirections(clubId, match)
   const weather = useMatchFieldWeather(clubId, match, undefined, match.leagueId ? leaguesById.get(match.leagueId)?.format : null)
   const location = useLocation()
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
@@ -91,6 +92,29 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
       titleLines={3}
       badgesBelow
       description={leagueValue || undefined}
+      descriptionExtra={
+        match.venue ? (
+          <CardVenueLine trailing={<VenueDirectionsButton target={directions} venue={match.venue} />}>
+            <>
+                {match.playingAreaId ? (
+                  <MuiLink component={RouterLink} to={leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`)} color="inherit" underline="hover" aria-label={`View field ${match.venue}`} sx={{ ...chipLinkSx, borderRadius: 0.5 }}>
+                    {match.venue}
+                  </MuiLink>
+                ) : (
+                  match.venue
+                )}
+                {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
+                    a match with only the old venue text shows none. */}
+                {match.playingAreaVerificationStatus === 'UNVERIFIED' && (
+                  <Chip size="small" label="Unverified field" data-testid="match-field-flag" sx={{ ...badgeSx('warning'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
+                )}
+                {match.playingAreaVerificationStatus === 'REJECTED' && (
+                  <Chip size="small" label="Field rejected" data-testid="match-field-flag" sx={{ ...badgeSx('closed'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
+                )}
+            </>
+          </CardVenueLine>
+        ) : undefined
+      }
       headerActions={<MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-card-actions" />}
       // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
       // each side is the 56px avatar box).
@@ -108,32 +132,10 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           value={formatMatchDateTime(match.matchDate)}
           trailing={!upcoming ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
         />
-        {match.venue && (
-          <DetailLine
-            icon={<PlaceOutlinedIcon fontSize="small" />}
-            label="Venue"
-            value={
-              <>
-                {match.playingAreaId ? (
-                  <MuiLink component={RouterLink} to={leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`)} color="inherit" underline="hover" aria-label={`View field ${match.venue}`} sx={{ ...chipLinkSx, borderRadius: 0.5 }}>
-                    {match.venue}
-                  </MuiLink>
-                ) : (
-                  match.venue
-                )}
-                {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
-                    a match with only the old venue text shows none. */}
-                {match.playingAreaVerificationStatus === 'UNVERIFIED' && (
-                  <Chip size="small" label="Unverified field" data-testid="match-field-flag" sx={{ ...badgeSx('warning'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
-                )}
-                {match.playingAreaVerificationStatus === 'REJECTED' && (
-                  <Chip size="small" label="Field rejected" data-testid="match-field-flag" sx={{ ...badgeSx('closed'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
-                )}
-              </>
-            }
-          />
-        )}
-        {weather.summary && <DetailLine icon={<CloudOutlinedIcon fontSize="small" />} label="Forecast" value={<WeatherBadge summary={weather.summary} variant="compact" testId="match-card-weather" />} />}
+        {/* docs/specs/137: the forecast is its own strip card (like the Starts strip) and the Team Manager is a placeholder card until a team can
+            have a manager (roadmap: full spec required). */}
+        <CardForecastStrip testId="match-card-weather" weather={weather} matchDate={match.matchDate} />
+        <CardTimeStrip testId="match-card-manager" icon={<PersonOutlineOutlinedIcon fontSize="small" />} label="Team Manager" value={<Box component="span" sx={{ color: 'text.secondary' }}>–</Box>} />
         <SelectionBlock rows={selectionRows(match, teamsById)} />
         {pollMenu}
     </RecordCard>

@@ -278,6 +278,23 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
     }
   }
 
+  // docs/specs/137: one-click add from the Available Players section. The same atomic apply the dialog uses (so the same server rules and
+  // messages), with the current team plus this player; the new player goes to the end of the batting order while a place is free.
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
+  const addAvailablePlayer = async (playerId: string) => {
+    if (!side || addingId !== null || side.players.some((player) => player.playerProfileId === playerId)) {
+      return
+    }
+    setAddingId(playerId)
+    setAddError(null)
+    const outcome = await handleApply([...side.players.map((player) => player.playerProfileId), playerId])
+    if (!outcome.ok) {
+      setAddError(outcome.rejections?.[0]?.message ?? outcome.message ?? "Couldn't add that player.")
+    }
+    setAddingId(null)
+  }
+
   // The group poll's override needs the match's own window id; the squad endpoint (the same key the Availability
   // button's coverage read uses) carries it.
   const coverageQuery = useQuery({
@@ -335,6 +352,8 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
       queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
       invalidateTeamSelection(queryClient, clubId)
       setAddPlayerOpen(false)
+      // From the page's Create New Player button the Select Players dialog is not open yet: open it on the new player so they can be ticked.
+      setSelectOpen(true)
       setSource('section')
       const fullName = `${player.firstName} ${player.lastName}`
       setSearch(fullName)
@@ -435,8 +454,13 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
     side,
     nameOf,
     poolLoading: pageQuery.isLoading,
+    // The page's own pool (the squad, with every player's answer): the Available Players section reads it (docs/specs/137).
+    pool,
     covered,
     poolLoaded: Boolean(pool),
+    addAvailablePlayer,
+    addingId,
+    addError,
     listPlayers,
     selectedCount: side?.players.length ?? 0,
     unconfirmed,
@@ -492,6 +516,11 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
     dialog: {
       open: selectOpen,
       openDialog: () => setSelectOpen(true),
+      // docs/specs/137: the Available Players section's "Select Other Player" opens the same dialog on its Whole section option.
+      openDialogOnWholeSection: () => {
+        setSource('section')
+        setSelectOpen(true)
+      },
       close: closeSelectDialog,
       pool: dialogQuery.data,
       poolLoading: dialogQuery.isLoading,

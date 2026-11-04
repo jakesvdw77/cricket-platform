@@ -4,7 +4,7 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import { Alert, Box, IconButton, Link, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
-import { CompactSwitch } from '../../../components/CompactSwitch'
+import { ToolbarToggle } from '../../../components/ToolbarCard'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { SelectionGauge } from '../../../components/SelectionGauge'
 import type { TeamSelectionMatch, TeamSelectionPick, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
@@ -178,9 +178,9 @@ function BattingMatrix({
     '&:nth-of-type(odd) > th, &:nth-of-type(odd) > td': { bgcolor: zebraTint },
     '&:hover > th, &:hover > td': { bgcolor: hoverTint },
   } as const
-  const rowHeadSx = { ...stickyFirstColSx, ...POSITION_COL, bgcolor: undefined, zIndex: 2, px: 1, py: 0.375 } as const
-  const bodyCellSx = { px: 0.75, py: 0.375, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
-  const footCellSx = { position: 'sticky', bottom: 0, zIndex: 3, bgcolor: 'background.paper', borderTop: 1, borderTopColor: 'divider', px: 0.75, py: 0.75 } as const
+  const rowHeadSx = { ...stickyFirstColSx, ...POSITION_COL, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 } as const
+  const bodyCellSx = { px: 0.75, py: 0.25, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
+  const footCellSx = { position: 'sticky', bottom: 0, zIndex: 3, bgcolor: 'background.paper', borderTop: 1, borderTopColor: 'divider', px: 0.75, py: 0.5 } as const
 
   const arrowSx = { p: 0.25, fontSize: 18 } as const
   const lastFilled = ({ side }: Column) =>
@@ -324,7 +324,7 @@ function BattingMatrix({
                         data-testid={`add-${match.matchId}-${side.teamId}-${position}`}
                         aria-label={`Add a player at position ${position}, ${columnLabel(column)}`}
                         onClick={(event) => onAdd({ ...column, position, anchor: event.currentTarget })}
-                        sx={{ minWidth: 0, minHeight: 26, py: 0, px: 0.75, fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'nowrap' }}
+                        sx={{ minWidth: 0, minHeight: 22, py: 0, px: 0.75, fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'nowrap' }}
                       >
                         + Add
                       </MuiButton>
@@ -402,10 +402,10 @@ function BattingMatrix({
                       variant="outlined"
                       component={RouterLink}
                       to={selectTeamPath(match.matchId, side.sideId, side.home)}
-                      aria-label={`Select players, ${columnLabel(column)}`}
+                      aria-label={`Select Players, ${columnLabel(column)}`}
                       sx={footActionSx}
                     >
-                      Select players
+                      Select Players
                     </MuiButton>
                     {side.sideId !== null && side.picks.length >= 2 && (
                       <MuiButton
@@ -464,18 +464,17 @@ export default function BattingOrderView() {
 
   return (
     <MatchesFrame
-      controls={
-        <>
-          <CompactSwitch
-            checked={shortNames}
-            onChange={(value) => {
-              setShortNames(value)
-              writeShortNames(value)
-            }}
-            label="Short names"
-          />
-        </>
-      }
+      extraControls={(placement) => (
+        <ToolbarToggle
+          placement={placement}
+          checked={shortNames}
+          onChange={(value) => {
+            setShortNames(value)
+            writeShortNames(value)
+          }}
+          label="Short Names"
+        />
+      )}
       pinned={<SlotNavigator scrollBox={scrollBox} />}
       notices={
         <>

@@ -25,7 +25,7 @@ const getTeamSelection = {
   mockResolvedValue: (value: unknown) => get.mockResolvedValue({ data: value }),
   mockRejectedValue: (error: unknown) => get.mockRejectedValue(error),
 }
-const lastParams = () => get.mock.lastCall?.[1].params
+const lastParams = () => get.mock.calls.filter((call) => String(call[0]).endsWith('/team-selection')).at(-1)?.[1].params
 vi.mock('../../../api/matchSideApi', () => ({ announceMatchSide: vi.fn() }))
 
 function season(id: string, label: string, startDate: string, endDate: string): Season {
@@ -69,12 +69,12 @@ beforeEach(() => {
 })
 
 describe('TeamSelectionHubLayout', () => {
-  it('shows the Team selection header, the four-way switch and lands on Matches from the bare address', async () => {
+  it('shows the Team Selection header, the four-tab row and lands on Matches from the bare address', async () => {
     renderHub()
-    expect(screen.getByRole('heading', { name: 'Team selection' })).toBeInTheDocument()
-    const nav = screen.getByRole('navigation', { name: 'Team selection views' })
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Matches', 'Time slots', 'Players', 'Batting order'])
-    expect(within(nav).getByRole('link', { name: 'Matches' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('heading', { name: 'Team Selection' })).toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Team Selection views' })
+    expect(within(nav).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Matches', 'Time Slots', 'Players', 'Batting Order'])
+    expect(within(nav).getByRole('tab', { name: 'Matches' })).toHaveAttribute('aria-current', 'page')
     expect(await screen.findByRole('table', { name: 'Team selection by match' })).toBeInTheDocument()
   })
 
@@ -82,10 +82,10 @@ describe('TeamSelectionHubLayout', () => {
     localStorage.setItem('teamSelection:filters:club-1', JSON.stringify({ seasonId: 's-old', leagueId: 'lg-1', sectionId: null, teamId: null }))
     renderHub('/manage/team-selection/matches')
     await screen.findByRole('table', { name: 'Team selection by match' })
-    await userEvent.click(screen.getByRole('link', { name: 'Batting order' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Batting Order' }))
     expect(screen.getByText('Batting order stand-in')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Batting order' })).toHaveAttribute('aria-current', 'page')
-    await userEvent.click(screen.getByRole('link', { name: 'Matches' }))
+    expect(screen.getByRole('tab', { name: 'Batting Order' })).toHaveAttribute('aria-current', 'page')
+    await userEvent.click(screen.getByRole('tab', { name: 'Matches' }))
     await screen.findByRole('table', { name: 'Team selection by match' })
     expect(lastParams()).toEqual(expect.objectContaining({ seasonId: 's-old', leagueId: 'lg-1' }))
   })

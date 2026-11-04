@@ -158,12 +158,13 @@ describe('MatchCard', () => {
   })
 
   describe('subtitle and venue (docs/specs/087)', () => {
-    it('shows League · Season as the subtitle and Venue as the one detail line', () => {
+    it('shows League · Season and the Venue (with a place icon, no Venue label) as the sub-title, then the Team Manager placeholder card (137)', () => {
       renderCard(makeMatch({ leagueId: 'league-1' }), { withLeague: true })
 
       expect(screen.getByText('Premier League · 2026/27')).toBeInTheDocument()
-      expect(screen.getByText('Venue')).toBeInTheDocument()
-      expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
+      expect(screen.getByTestId('card-venue-line')).toHaveTextContent('Riverside Oval')
+      expect(screen.queryByText('Venue')).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-card-manager')).toHaveTextContent('Team Manager')
       // When and League no longer have their own lines: the date is in the strip, the league in the subtitle.
       expect(screen.queryByText('When')).not.toBeInTheDocument()
       expect(screen.queryByText('League')).not.toBeInTheDocument()

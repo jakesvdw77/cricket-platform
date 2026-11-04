@@ -18,7 +18,8 @@ vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await
 const get = vi.fn()
 vi.mock('../../../api/axiosConfig', () => ({ default: { get: (...args: unknown[]) => get(...args) } }))
 
-const lastParams = () => get.mock.lastCall?.[1].params
+// The overview request only: a card also reads its match for directions and the forecast (docs/specs/137).
+const lastParams = () => get.mock.calls.filter((call) => String(call[0]).endsWith('/team-selection')).at(-1)?.[1].params
 
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -55,11 +56,13 @@ describe('SlotsView', () => {
     )
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
-    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(announced.length)
     const { match, side } = announced[0]
-    expect(within(card(match.matchId, side.teamId)).getByRole('button', { name: 'Share' })).toBeInTheDocument()
-    expect(within(card('m-1')).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
-    await userEvent.click(within(card(match.matchId, side.teamId)).getByRole('button', { name: 'Share' }))
+    // Share Team is the last item of each card's kebab, enabled for an announced side only (docs/specs/137).
+    await userEvent.click(within(card('m-1')).getByRole('button', { name: /^Actions for/ }))
+    expect(await screen.findByRole('menuitem', { name: /^Share Team/ })).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(within(card(match.matchId, side.teamId)).getByRole('button', { name: /^Actions for/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /^Share Team/ }))
     const dialog = await screen.findByTestId('share-dialog')
     expect(dialog).toHaveAttribute('data-match-id', match.matchId)
     expect(dialog).toHaveAttribute('data-scope', side.home ? 'home' : 'away')
@@ -70,8 +73,19 @@ describe('SlotsView', () => {
     await screen.findByTestId('slot-card-m-1-team-1')
     const blocks = screen.getAllByRole('region').filter((region) => /^(Sat|Sun) /.test(region.getAttribute('aria-label') ?? ''))
     expect(blocks.map((block) => block.getAttribute('aria-label'))).toEqual(['Sat 17 Oct Morning', 'Sun 18 Oct Afternoon'])
-    expect(within(blocks[0]).getAllByTestId(/slot-card-/)).toHaveLength(2)
-    expect(within(blocks[1]).getAllByTestId(/slot-card-/)).toHaveLength(2)
+    expect(within(blocks[0]).getAllByTestId(/^slot-card-m-/)).toHaveLength(2)
+    expect(within(blocks[1]).getAllByTestId(/^slot-card-m-/)).toHaveLength(2)
+  })
+
+  it('has a Hide Team / Show Team link that folds the picks so the card stays short (137)', async () => {
+    renderView()
+    await screen.findByTestId('slot-card-m-1-team-1')
+    const inCard = within(card('m-1'))
+    expect(inCard.getAllByTestId('slot-pick').length).toBeGreaterThan(0)
+    await userEvent.click(inCard.getByRole('button', { name: 'Hide Team' }))
+    await waitFor(() => expect(inCard.queryAllByTestId('slot-pick')).toHaveLength(0))
+    await userEvent.click(inCard.getByRole('button', { name: 'Show Team' }))
+    expect((await inCard.findAllByTestId('slot-pick')).length).toBeGreaterThan(0)
   })
 
   it('lists the picks in batting order with C and WK markers and the 12th man labelled', async () => {
@@ -86,8 +100,11 @@ describe('SlotsView', () => {
     await screen.findByTestId('slot-card-m-1-team-1')
     expect(within(card('m-1')).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '4')
     expect(within(card('m-2', 'team-2')).getByText('Nobody picked yet.')).toBeInTheDocument()
-    expect(within(card('m-1')).getByRole('link', { name: 'Select players' })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
-    expect(within(card('m-2', 'team-2')).getByRole('link', { name: 'Select players' })).toHaveAttribute('href', '/manage/team-selection/matches/m-2/sides/home')
+    await userEvent.click(within(card('m-1')).getByRole('button', { name: /^Actions for/ }))
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(within(card('m-2', 'team-2')).getByRole('button', { name: /^Actions for/ }))
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-2/sides/home')
   })
 
   it('shows the announced chip only on an announced side and one card per side of a derby', async () => {
@@ -95,14 +112,15 @@ describe('SlotsView', () => {
     await screen.findByTestId('slot-card-m-3-team-a')
     expect(within(card('m-3', 'team-b')).getByText('Announced')).toBeInTheDocument()
     expect(within(card('m-3', 'team-a')).queryByText('Announced')).not.toBeInTheDocument()
-    expect(within(card('m-3', 'team-b')).getByRole('link', { name: 'Select players' })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
+    await userEvent.click(within(card('m-3', 'team-b')).getByRole('button', { name: /^Actions for/ }))
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
   })
 
   it('sends the hub filters and Show past, and filters by the search text', async () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
     expect(lastParams()).toEqual({ seasonId: 's-now' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /view entire season/i }))
+    await userEvent.click(screen.getByRole('button', { name: /view entire season/i }))
     await waitFor(() => expect(lastParams()).toEqual({ seasonId: 's-now', includePast: true }))
     await userEvent.type(screen.getByPlaceholderText('Search by team or opponent'), 'hillside')
     expect(screen.queryByTestId('slot-card-m-1-team-1')).not.toBeInTheDocument()

@@ -4,10 +4,11 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
+import { compactCardSx } from '../PageCounters/keyFigureStyle'
 
 export interface KeyFigureTileProps {
-  // A 20 px MUI outlined icon, drawn on the tinted tile.
-  icon: ReactNode
+  // A 20 px MUI outlined icon, drawn on the tinted tile (not drawn in the counter look).
+  icon?: ReactNode
   value: ReactNode
   label: ReactNode
   // 'warning' tints the icon tile amber (a time that is close); anything else is the primary tint.
@@ -31,11 +32,14 @@ export interface KeyFigureTileProps {
   compact?: boolean
   // With `compact`: the figure's meaning. Draws a faint tint of that colour, the value in its dark colour and a stronger icon tile.
   emphasis?: 'primary' | 'success' | 'error'
+  // docs/specs/137 (owner, 2026-11-05): the compact counter look of PageCounters, for a detail page's figures (page-anatomy section 1): no icon
+  // tile, the value then its label on one line, about 44 px tall. A picker keeps its dropdown arrow at the right.
+  counter?: boolean
 }
 
 // docs/specs/088 (Player page) and docs/specs/089 (match page): one non-clickable tile of a key-figure strip - a tinted
 // icon tile, a large value and a caption. The strip itself (a 4-up / 2-up grid) belongs to the page.
-export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to, action, compact = false, emphasis }: KeyFigureTileProps) {
+export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to, action, compact = false, emphasis, counter = false }: KeyFigureTileProps) {
   const warn = tone === 'warning'
   const asLink = Boolean(to) && !onClick
   const interactive = Boolean(onClick) || asLink
@@ -73,9 +77,10 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         boxShadow: 1,
         px: compact ? 1.5 : { xs: 1.5, md: 2 },
         py: compact ? 1.25 : { xs: 1.25, md: 1.75 },
+        ...(counter && { ...compactCardSx, alignItems: 'center', borderRadius: 1 }),
       }}
     >
-      <Box
+      {!counter && <Box
         component="span"
         aria-hidden
         sx={(theme) => ({
@@ -91,13 +96,13 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         })}
       >
         {icon}
-      </Box>
-      <Box component="span" sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+      </Box>}
+      <Box component="span" sx={{ display: 'flex', flexDirection: counter ? 'row' : 'column', alignItems: counter ? 'baseline' : undefined, columnGap: counter ? 1 : undefined, minWidth: 0, flex: 1 }}>
         <Typography
           component="b"
           data-testid={testId ? `${testId}-value` : undefined}
           sx={{
-            fontSize: textValue ? { xs: '0.95rem', md: '1.05rem' } : compact ? { xs: '1.25rem', md: '1.375rem' } : { xs: '1.3rem', md: '1.6rem' },
+            fontSize: counter ? (textValue ? '1rem' : '1.5rem') : textValue ? { xs: '0.95rem', md: '1.05rem' } : compact ? { xs: '1.25rem', md: '1.375rem' } : { xs: '1.3rem', md: '1.6rem' },
             lineHeight: 1.15,
             fontWeight: 700,
             // docs/specs/120 Decision 14: numerals take the display face; the icon tile is unchanged.
@@ -114,7 +119,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         </Typography>
         {action && !interactive && <Box sx={{ mt: 1 }}>{action}</Box>}
       </Box>
-      {onClick && <ArrowDropDownIcon aria-hidden sx={{ flex: 'none', color: 'text.secondary' }} />}
+      {onClick && <ArrowDropDownIcon aria-hidden sx={{ flex: 'none', color: 'text.secondary', alignSelf: 'center' }} />}
     </Box>
   )
 }

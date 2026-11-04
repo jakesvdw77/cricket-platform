@@ -30,7 +30,7 @@ vi.mock('../../../api/matchSideApi', () => ({
   reorderMatchSidePlayers: (...args: unknown[]) => reorderMatchSidePlayers(...args),
 }))
 
-const lastParams = () => get.mock.lastCall?.[1].params
+const lastParams = () => get.mock.calls.filter((call) => String(call[0]).endsWith('/team-selection')).at(-1)?.[1].params
 
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -159,8 +159,8 @@ describe('BattingOrderView', () => {
   it('links each column to the Select team page and offers Announce only on a column that is ready', async () => {
     renderView()
     await screen.findByTestId('batting-cell-m-1-team-1-1')
-    expect(screen.getByRole('link', { name: 'Select players, Vets A v Oakfield' })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
-    expect(screen.getByRole('link', { name: 'Select players, Vets A v Vets B, Vets B' })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
+    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Oakfield' })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
+    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Vets B, Vets B' })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
     expect(screen.getAllByRole('button', { name: /^Announce team/ })).toHaveLength(1)
   })
 
@@ -185,7 +185,7 @@ describe('BattingOrderView', () => {
     renderView()
     await screen.findByTestId('batting-cell-m-1-team-1-1')
     expect(lastParams()).toEqual({ seasonId: 's-now' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /view entire season/i }))
+    await userEvent.click(screen.getByRole('button', { name: /view entire season/i }))
     await waitFor(() => expect(lastParams()).toEqual({ seasonId: 's-now', includePast: true }))
     await userEvent.type(screen.getByPlaceholderText('Search by team or opponent'), 'hillside')
     expect(screen.queryByTestId('batting-cell-m-1-team-1-1')).not.toBeInTheDocument()
@@ -385,7 +385,7 @@ describe('BattingOrderView', () => {
       renderView()
       await screen.findByTestId('batting-cell-x-1-team-1-1')
       expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('Johan van der Westhuizen')
-      await userEvent.click(screen.getByRole('checkbox', { name: 'Short names' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Short Names' }))
       expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('J van der Westhuizen')
       const name = within(cellAt('x-1', 'team-1', 1)).getByText('J van der Westhuizen')
       expect(name).toHaveAttribute('title', 'Johan van der Westhuizen')
@@ -396,7 +396,7 @@ describe('BattingOrderView', () => {
     it('keeps the first name for two players in the same column who would look the same', async () => {
       named([makePick('ann', 1, { firstName: 'John', lastName: 'Smith' }), makePick('bob', 2, { firstName: 'Jane', lastName: 'Smith' }), makePick('cy', 3, { firstName: 'Cy', lastName: 'Jones' })])
       renderView()
-      await userEvent.click(await screen.findByRole('checkbox', { name: 'Short names' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Short Names' }))
       expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('John Smith')
       expect(cellAt('x-1', 'team-1', 2)).toHaveTextContent('Jane Smith')
       expect(cellAt('x-1', 'team-1', 3)).toHaveTextContent('C Jones')
@@ -404,7 +404,7 @@ describe('BattingOrderView', () => {
 
     it('is remembered per browser', async () => {
       renderView()
-      await userEvent.click(await screen.findByRole('checkbox', { name: 'Short names' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Short Names' }))
       expect(localStorage.getItem('teamSelection:battingShortNames')).toBe('true')
     })
 
@@ -412,7 +412,7 @@ describe('BattingOrderView', () => {
       localStorage.setItem('teamSelection:battingShortNames', 'true')
       renderView()
       await screen.findByTestId('batting-cell-m-1-team-1-1')
-      expect(screen.getByRole('checkbox', { name: 'Short names' })).toBeChecked()
+      expect(screen.getByRole('button', { name: 'Short Names' })).toHaveAttribute('aria-pressed', 'true')
       expect(cellAt('m-1', 'team-1', 1)).toHaveTextContent('A Smith')
     })
   })

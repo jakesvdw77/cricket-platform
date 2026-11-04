@@ -384,15 +384,16 @@ export function SelectPlayersDialog({
             </Typography>
           }
         />
+        {/* The message sits left of the badge (owner, 2026-11-05), so the badges stay in one column at the right. */}
+        {disabled && (
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+            Team is full
+          </Typography>
+        )}
         <AvailabilityBadge availability={entry.availability} />
         {renderSetAnswer(entry)}
         {entry.taken && entry.selected && (
           <Chip size="small" variant="outlined" label={`Also in ${entry.taken.teamName}`} sx={infoChipSx(theme)} />
-        )}
-        {disabled && (
-          <Typography variant="caption" color="text.secondary">
-            Team is full
-          </Typography>
         )}
         {message && (
           <Typography variant="caption" color="error.main" sx={{ flexBasis: '100%', pl: 4.5 }}>
@@ -450,9 +451,15 @@ export function SelectPlayersDialog({
           dividers
           sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, px: { xs: 1.5, sm: 3 }, '& > *': { flexShrink: 0 } }}
         >
-          <Typography variant="body2" color="text.secondary">
-            {`${kickoffLabel} · tick up to ${maxSelected}. Unticking removes a player from the team.`}
-          </Typography>
+          {/* docs/specs/137 (owner, 2026-11-05): Create New Player is at the top, beside the instructions, not at the bottom of a long list. */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
+              {`${kickoffLabel} · tick up to ${maxSelected}. Unticking removes a player from the team.`}
+            </Typography>
+            <Button size="compact" variant="secondary" startIcon={<PersonAddAltOutlinedIcon fontSize="small" />} onClick={onAddNewPlayer}>
+              Create New Player
+            </Button>
+          </Box>
 
           {alertLines.length > 0 && (
             <Alert severity="error">
@@ -565,11 +572,6 @@ export function SelectPlayersDialog({
             </Box>
           )}
 
-          <Box>
-            <Button size="compact" variant="ghost" startIcon={<PersonAddAltOutlinedIcon fontSize="small" />} onClick={onAddNewPlayer}>
-              Add new player
-            </Button>
-          </Box>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'space-between', px: { xs: 1.5, sm: 3 }, flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="body2" color="text.secondary" component="div" aria-live="polite">

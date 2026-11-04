@@ -1,3 +1,4 @@
+import { EmptyStateLink } from '../EmptyState'
 import { useState } from 'react'
 import type { DragEvent, MouseEvent } from 'react'
 import { ButtonBase, Box, Card, Chip, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material'
@@ -81,6 +82,8 @@ export interface TeamSelectionListProps {
   onMakeTwelfthMan: (playerProfileId: string) => void
   onChangeRole: (playerProfileId: string, role: PlayingRole) => void
   onRemove: (playerProfileId: string) => void
+  // docs/specs/137: when given, the empty list offers a "Select Players" link that runs it.
+  onSelectPlayers?: () => void
 }
 
 const SECTION_LABEL_SX = {
@@ -166,6 +169,7 @@ export function TeamSelectionList({
   onMakeTwelfthMan,
   onChangeRole,
   onRemove,
+  onSelectPlayers,
 }: TeamSelectionListProps) {
   const [menu, setMenu] = useState<{ anchor: HTMLElement; playerId: string } | null>(null)
   const [roleAnchor, setRoleAnchor] = useState<HTMLElement | null>(null)
@@ -345,9 +349,12 @@ export function TeamSelectionList({
       data-testid="team-selection-list"
     >
       {players.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
-          No players selected yet.
-        </Typography>
+        <Box sx={{ p: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            No players selected yet.
+          </Typography>
+          {onSelectPlayers && <EmptyStateLink onClick={onSelectPlayers}>Select Players</EmptyStateLink>}
+        </Box>
       ) : (
         <>
           <Box data-testid="batting-places" sx={{ mt: waiting.length > 0 ? 1 : 0 }}>

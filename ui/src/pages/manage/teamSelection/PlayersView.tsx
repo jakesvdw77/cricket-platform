@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Alert, Box, CircularProgress } from '@mui/material'
-import { CompactSwitch } from '../../../components/CompactSwitch'
-import { ContentControlsLine } from '../../../components/ContentControlsLine'
-import { EmptyState } from '../../../components/EmptyState'
+import { BrandIcon } from '../../../components/BrandIcon'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
+import { ToolbarCard } from '../../../components/ToolbarCard'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { useTeamSelectionHub } from './hubContext'
 import { Legend } from '../playerAvailability/Legend'
 import { SlotNavigator } from '../playerAvailability/SlotNavigator'
@@ -14,7 +16,9 @@ import { usePlayerPick } from './usePlayerPick'
 // under the spec 076 rules, each cell shows the player's availability answer with the picked state on top, and a muted
 // cell says why the player cannot be picked.
 export default function PlayersView() {
-  const { clubId, overview, showPast, setShowPast, search } = useTeamSelectionHub()
+  const { clubId, overview, showPast, search } = useTeamSelectionHub()
+  const navigate = useNavigate()
+  const location = useLocation()
   const picker = usePlayerPick(clubId as string)
   const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
 
@@ -25,17 +29,13 @@ export default function PlayersView() {
     [data, term],
   )
 
-  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="View entire season" />
   const matches = data?.matches ?? []
-  const scope = data
-    ? `Showing ${players.length} ${players.length === 1 ? 'player' : 'players'} · ${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`
-    : ''
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <TeamSelectionFilterBar searchPlaceholder="Search players" viewControls={pastToggle} />
-
-      <ContentControlsLine scope={scope} controls={pastToggle} pinned={<SlotNavigator scrollBox={scrollBox} />} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ToolbarCard>
+        <TeamSelectionFilterBar searchPlaceholder="Search players" />
+      </ToolbarCard>
 
       {overview.isPending && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -61,14 +61,20 @@ export default function PlayersView() {
 
       {data && matches.length === 0 && (
         <EmptyState
+          icon={<BrandIcon name="nav/upcoming-matches" size={48} />}
           title={showPast ? 'No matches' : 'No upcoming matches'}
-          description="Nothing to pick a team for. Turn on View entire season to see earlier fixtures."
+          description="Nothing to pick a team for. Turn on View Entire Season to see earlier fixtures."
+          action={<EmptyStateLink onClick={() => navigate(withReturnTo('/manage/fixtures/matches/new', currentOrigin(location), 'Team Selection'))}>Create New Match</EmptyStateLink>}
         />
       )}
 
       {data && matches.length > 0 && (
         <>
-          <Legend />
+          {/* docs/specs/137: the slot navigator belongs to the game columns, so it sits at the right of the legend row. */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 2, rowGap: 1 }}>
+            <Legend />
+            <SlotNavigator scrollBox={scrollBox} />
+          </Box>
           <PlayersGrid
             matches={matches}
             players={players}

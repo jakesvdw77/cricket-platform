@@ -9,12 +9,14 @@ export interface DetailLineProps {
   labelWidth?: number
   // Secondary-colour, regular-weight value for a placeholder such as "Not scheduled yet".
   muted?: boolean
+  // docs/specs/137: a control at the right end of the row (the venue's Get Directions button); lifted above a card's stretched link by its own styles.
+  trailing?: ReactNode
 }
 
 // docs/specs/071-league-card-redesign.md: one stacked detail line - a small icon, a label and the
 // value - extracted from MatchCard (069). The card body is not lifted above the title's stretched
 // link, so a value should be plain text (a non-interactive badge is fine).
-export function DetailLine({ icon, label, value, labelWidth = 56, muted = false }: DetailLineProps) {
+export function DetailLine({ icon, label, value, labelWidth = 56, muted = false, trailing }: DetailLineProps) {
   return (
     <Stack direction="row" spacing={1.25} alignItems="flex-start">
       <Stack sx={{ color: 'text.secondary', pt: '1px', flexShrink: 0 }} aria-hidden>
@@ -32,6 +34,7 @@ export function DetailLine({ icon, label, value, labelWidth = 56, muted = false 
       >
         {value}
       </Typography>
+      {trailing && <Stack sx={{ ml: 'auto !important', flexShrink: 0, alignSelf: 'center' }}>{trailing}</Stack>}
     </Stack>
   )
 }

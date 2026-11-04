@@ -20,6 +20,7 @@ import { resultActionFor, resultImportActionFor } from './matchResultHelpers'
 import { NO_CLUB_TEAM_REASON, ownSides, pollDestination, sideName } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
 import { useTeamSheetShare } from './useTeamSheetShare'
+import { useMatchLocationItems } from '../../../hooks/useMatchLocationItems'
 
 export interface MatchRowMenuProps {
   clubId: string
@@ -71,6 +72,8 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
   // docs/specs/127: every destination returns to the list the menu is on.
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Matches')
   const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
+  // docs/specs/137: Get Directions and Show Weather Forecast (each hidden when there is nothing to show).
+  const location_ = useMatchLocationItems(clubId, match, { title: `${home} v ${away}`, leagueFormat: match.leagueId ? leaguesById.get(match.leagueId)?.format : null })
 
   const hasOwnTeam = ownSides(match).length > 0
   const noTeamReason = hasOwnTeam ? null : NO_CLUB_TEAM_REASON
@@ -97,6 +100,7 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
     ...(match.streamingUrl
       ? [{ id: 'watch-live', title: 'Watch Live', icon: <LiveTvOutlinedIcon fontSize="small" />, onClick: () => window.open(match.streamingUrl as string, '_blank', 'noopener,noreferrer') }]
       : []),
+    ...location_.items,
     // docs/specs/131: Share Match is last (page-anatomy section 6b); a played match hands over to the result share.
     { id: 'share-match', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: openShare },
   ]
@@ -110,6 +114,7 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
         groups={[{ id: 'actions', heading: 'Actions', items }]}
       />
       {shareDialog}
+      {location_.dialogs}
     </>
   )
 }

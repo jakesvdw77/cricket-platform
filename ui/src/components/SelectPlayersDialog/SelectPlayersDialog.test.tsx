@@ -451,7 +451,7 @@ describe('SelectPlayersDialog', () => {
 
   it('Add new player calls onAddNewPlayer', async () => {
     const props = setup()
-    await userEvent.click(screen.getByRole('button', { name: 'Add new player' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Create New Player' }))
     expect(props.onAddNewPlayer).toHaveBeenCalledTimes(1)
   })
 

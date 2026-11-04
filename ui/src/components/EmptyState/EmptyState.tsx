@@ -20,7 +20,8 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         border: 1,
         borderColor: 'divider',
         borderRadius: 2,
-        bgcolor: 'action.hover',
+        // Opaque (owner, 2026-11-05): the translucent action.hover looked darker over the cream page than inside a white table card.
+        bgcolor: 'grey.100',
         p: 4,
         textAlign: 'center',
       }}
