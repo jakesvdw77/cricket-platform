@@ -13,13 +13,18 @@ export interface SideMenuProps {
   // Count badge per item id (e.g. open polls). Zero or missing renders nothing.
   badges?: Record<string, number>
   'aria-label'?: string
+  // docs/specs/139 (owner, 2026-11-04, experiment): 'quiet' (default) puts the icons straight on the dark green, calms the labels and marks the
+  // active row with a lighter green row, a gold left bar and gold text; 'classic' is the 120 look (icons on a cream-ringed tile, gold tint).
+  look?: 'classic' | 'quiet'
+  // The quiet look's faint ghost tile behind each icon (cream at 6%, no ring). Off draws the artwork bare.
+  ghost?: boolean
 }
 
 // docs/specs/079-manager-shell-and-overview.md: the manager's persistent menu, grouped, with the
 // active row (by route prefix, see managerNav) marked. docs/specs/120: the platform chrome, dark green for every club, labels in
 // the display face, the active row gold text on a gold tint (and bold, with aria-current, so it is never colour alone), brand
 // icons on a cream tile.
-export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label': ariaLabel = 'Manager' }: SideMenuProps) {
+export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label': ariaLabel = 'Manager', look = 'quiet', ghost = true }: SideMenuProps) {
   const { pathname } = useLocation()
   const activeId = activeNavId(groups, pathname)
 
@@ -56,7 +61,7 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
               </Typography>
             ))}
           {group.items.map((item) => (
-            <SideMenuRow key={item.id} item={item} active={item.id === activeId} collapsed={collapsed} badge={badges[item.id]} />
+            <SideMenuRow key={item.id} item={item} active={item.id === activeId} collapsed={collapsed} badge={badges[item.id]} look={look} ghost={ghost} />
           ))}
         </Box>
       ))}
@@ -64,7 +69,8 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
   )
 }
 
-function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active: boolean; collapsed: boolean; badge?: number }) {
+function SideMenuRow({ item, active, collapsed, badge, look, ghost }: { item: NavItem; active: boolean; collapsed: boolean; badge?: number; look: 'classic' | 'quiet'; ghost: boolean }) {
+  const quiet = look === 'quiet'
   const hasBadge = typeof badge === 'number' && badge > 0
   const link = (
     <Box
@@ -80,19 +86,38 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
         gap: 1.25,
         px: collapsed ? 0 : 1,
         py: 0.5,
+        minHeight: quiet ? 44 : undefined,
         borderRadius: 1,
         ...displayLabelSx,
-        color: active ? 'chrome.selected' : 'chrome.text',
+        color: active ? 'chrome.selected' : quiet ? 'chrome.inactiveText' : 'chrome.text',
         fontWeight: active ? 700 : 600,
-        fontSize: 17,
+        fontSize: quiet ? 14 : 17,
         textDecoration: 'none',
-        bgcolor: active ? 'chrome.selectedBg' : 'transparent',
-        '&:hover': { bgcolor: active ? 'chrome.selectedBg' : 'chrome.hover' },
+        bgcolor: active ? (quiet ? 'chrome.activeRow' : 'chrome.selectedBg') : 'transparent',
+        '&:hover': { bgcolor: active ? (quiet ? 'chrome.activeRow' : 'chrome.selectedBg') : 'chrome.hover' },
         '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 },
         '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color 120ms ease' },
+        // The gold bar of the active row (quiet look): 3 px, on the row's left edge.
+        ...(quiet && active ? { '&::before': { content: '""', position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, borderRadius: 2, bgcolor: 'chrome.selected' } } : {}),
       }}
     >
-      <NavItemIcon name={item.icon} size={32} padding={2} onDark />
+      {quiet ? (
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            flex: 'none',
+            display: 'grid',
+            placeItems: 'center',
+            borderRadius: 1,
+            bgcolor: ghost ? 'chrome.ghostTile' : 'transparent',
+          }}
+        >
+          <NavItemIcon name={item.icon} size={28} surface="none" onDark />
+        </Box>
+      ) : (
+        <NavItemIcon name={item.icon} size={32} padding={2} onDark />
+      )}
       {!collapsed && <Box component="span" sx={{ flex: 1, minWidth: 0 }}>{item.label}</Box>}
       {hasBadge && (
         <Box

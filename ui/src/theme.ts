@@ -17,6 +17,10 @@ export interface ChromePalette {
   selected: string
   selectedBg: string
   hover: string
+  // docs/specs/139: the quiet side menu.
+  activeRow: string
+  inactiveText: string
+  ghostTile: string
 }
 
 declare module '@mui/material/styles' {
