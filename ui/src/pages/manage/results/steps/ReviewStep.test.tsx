@@ -125,7 +125,7 @@ describe('Review step: PLAYER_NOT_IN_SQUAD', () => {
 })
 
 describe('Review step: preview card', () => {
-  it('has Preview result and the Full name / First name toggle in the card header, before the card, with no separate row', async () => {
+  it('has Preview result and the Full name / Initials toggle in the card header, before the card, with no separate row', async () => {
     const user = userEvent.setup()
     const props = renderReview()
     const heading = screen.getByText('This is how the result will look')
@@ -133,7 +133,7 @@ describe('Review step: preview card', () => {
     const preview = screen.getByRole('button', { name: 'Preview result' })
     expect(header).toContainElement(preview)
     expect(within(header).getByRole('button', { name: 'Full name' })).toBeInTheDocument()
-    expect(within(header).getByRole('button', { name: 'First name' })).toBeInTheDocument()
+    expect(within(header).getByRole('button', { name: 'Initials' })).toBeInTheDocument()
     // The header row is immediately followed by the card: nothing sits between them.
     expect(header.nextElementSibling).toBe(screen.getByTestId('result-preview'))
 
@@ -147,9 +147,9 @@ describe('Review step: preview card', () => {
     renderReview()
     const header = screen.getByText('This is how the result will look').closest('div[class]')?.parentElement as HTMLElement
     expect(within(header).getByRole('button', { name: 'Full name' })).toHaveAttribute('aria-pressed', 'true')
-    await user.click(within(header).getByRole('button', { name: 'First name' }))
-    expect(within(header).getByRole('button', { name: 'First name' })).toHaveAttribute('aria-pressed', 'true')
-    expect(window.localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('first')
+    await user.click(within(header).getByRole('button', { name: 'Initials' }))
+    expect(within(header).getByRole('button', { name: 'Initials' })).toHaveAttribute('aria-pressed', 'true')
+    expect(window.localStorage.getItem(PLAYER_NAME_MODE_KEY)).toBe('initials')
   })
 
   it('does not open the preview when the draft could not be saved', async () => {

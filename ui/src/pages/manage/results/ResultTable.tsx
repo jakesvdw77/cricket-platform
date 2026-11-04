@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
-import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import { badgeSx } from '../../../components/RecordCard'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import { ResultScoreLine } from '../../../components/ResultScoreLine'
 import type { ResultListItem } from '../../../api/matchResultApi'
 import type { Team } from '../../../api/teamApi'
@@ -16,6 +17,12 @@ import { ownSidesOf, PERSPECTIVE_COLOR, resultSides, resultViewTo } from './resu
 export interface ResultTableProps {
   items: ResultListItem[]
   teamsById: Map<string, Team>
+  // docs/specs/138: the page's filter bar. Given, the table renders ONE flat card: this toolbar, a hairline, then the header and rows.
+  toolbar?: ReactNode
+  // With a toolbar and no rows: this message replaces the table inside the same card, so the toolbar never remounts.
+  empty?: ReactNode
+  // The row's actions button (ResultRowMenu), rendered in the last cell; it never navigates the row.
+  renderActions?: (item: ResultListItem) => ReactNode
 }
 
 const NOT_ON_FILE = '–'
@@ -23,8 +30,8 @@ const NOT_ON_FILE = '–'
 // Desktop: Date, Match, Result, Scores, Field, Status, chevron. A phone keeps Match (result line and date under the
 // names), Status and the chevron.
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 76px 24px',
-  sm: '130px minmax(200px, 2fr) minmax(200px, 2fr) 190px minmax(120px, 1fr) 96px 32px',
+  xs: 'minmax(0, 1fr) 76px 44px',
+  sm: '130px minmax(200px, 2fr) minmax(200px, 2fr) 190px minmax(120px, 1fr) 96px 44px',
 }
 
 const gridSx = {
@@ -40,9 +47,12 @@ const phoneOnly = { display: { xs: 'block', sm: 'none' } } as const
 // Marks those cells for assistive tooling and tests (jsdom does not evaluate responsive CSS).
 const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
 
+// A flat card with a hairline and no shadow (page-anatomy section 3).
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
+
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
-function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<string, Team> }) {
+function ResultRow({ item, teamsById, actions }: { item: ResultListItem; teamsById: Map<string, Team>; actions?: ReactNode }) {
   const { match, result } = item
   const sides = resultSides(match, teamsById)
   const names = { home: sides[0].name, away: sides[1].name }
@@ -132,22 +142,20 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
           sx={{ ...badgeSx(draft ? 'warning' : 'active'), height: 22, fontSize: '0.75rem' }}
         />
       </Box>
-      <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
-        <ChevronRightOutlinedIcon fontSize="small" />
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
+        {actions}
       </Box>
     </Box>
   )
 }
 
-// docs/specs/100-match-results-core.md: the list view of the Results page, built like MatchTable (docs/specs/089): one
-// bordered panel, a header row that sticks to the top of the scrolling page, zebra rows, the whole row opens the result.
-export function ResultTable({ items, teamsById }: ResultTableProps) {
-  return (
-    <Box
-      role="table"
-      aria-label="Results"
-      sx={{ border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 2, overflow: 'clip' }}
-    >
+// docs/specs/100-match-results-core.md, revamped by docs/specs/138: the list view of the Results page, built like MatchTable and PollTable: one
+// flat card (hairline, no shadow), a tinted header row that sticks to the top of the scrolling page, zebra rows, the whole row opens the
+// result and the last cell is the row's kebab (no chevron). Given a toolbar, ONE card: the toolbar, a hairline, then the header and rows (or
+// `empty`).
+export function ResultTable({ items, teamsById, toolbar, empty, renderActions }: ResultTableProps) {
+  const table = (
+    <Box role="table" aria-label="Results" sx={toolbar ? undefined : cardSx}>
       <Box
         role="row"
         sx={{
@@ -156,7 +164,7 @@ export function ResultTable({ items, teamsById }: ResultTableProps) {
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
           fontSize: { xs: '0.75rem', sm: '0.75rem' },
@@ -172,13 +180,22 @@ export function ResultTable({ items, teamsById }: ResultTableProps) {
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Scores</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Field</Box>
         <Box role="columnheader">Status</Box>
-        <Box role="columnheader" aria-label="Open" />
+        <Box role="columnheader" aria-label="Actions" />
       </Box>
       <Box role="rowgroup">
         {items.map((item) => (
-          <ResultRow key={item.match.id} item={item} teamsById={teamsById} />
+          <ResultRow key={item.match.id} item={item} teamsById={teamsById} actions={renderActions?.(item)} />
         ))}
       </Box>
     </Box>
   )
+  if (toolbar) {
+    return (
+      <Box data-testid="results-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {items.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return table
 }

@@ -28,12 +28,12 @@ export const FullName: Story = {
   ),
 }
 
-// Two Sams in the view get a surname tag; Thabo does not need one.
-export const FirstNameWithTags: Story = {
+// Initials mode: the first initial plus the whole surname.
+export const Initials: Story = {
   render: () => (
     <Stack>
       {VIEW.map((person) => (
-        <PlayerName key={person.id} person={person} view={VIEW} mode="first" />
+        <PlayerName key={person.id} person={person} view={VIEW} mode="initials" />
       ))}
     </Stack>
   ),

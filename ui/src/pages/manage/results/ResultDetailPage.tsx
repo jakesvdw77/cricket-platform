@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, Navigate, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { alpha, Box, Button as MuiButton, Chip, Stack, Tooltip, Typography } from '@mui/material'
-import type { Theme } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { Box, Button as MuiButton, Chip, Typography } from '@mui/material'
+import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import UnpublishedOutlinedIcon from '@mui/icons-material/UnpublishedOutlined'
-import { compactButtonSx } from '../../../components/Button'
+import { HeaderActions, HeaderShareButton } from '../../../components/HeaderShareButton'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { EmptyState } from '../../../components/EmptyState'
-import { PageHeaderBand } from '../../../components/PageHeaderBand'
+import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { ManageMenu } from '../../../components/ManageMenu'
+import type { ManageMenuItem } from '../../../components/ManageMenu'
 import { ShareResultDialog } from '../../../components/ShareResultDialog'
 import { badgeSx } from '../../../components/RecordCard'
 import { getMatch } from '../../../api/matchApi'
@@ -23,10 +24,8 @@ import { listLeagues } from '../../../api/leagueApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { isNotFound } from '../../../utils/errorDetail'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
-import { resultLine, resultPerspective } from '../../../utils/resultLine'
 import { TeamLogo } from '../matches/TeamLogo'
 import {
-  ownSidesOf,
   resultCaptureTo,
   resultEditTo,
   resultSides,
@@ -39,22 +38,6 @@ import { backTarget } from '../../../utils/backTarget'
 
 const RESULTS_PATH = '/manage/results'
 const MATCHES_PATH = '/manage/fixtures/matches'
-
-// The result label and the status chip are the same pill: same height, type size and radius.
-const pillSx = { height: 32, borderRadius: 16, px: 1.5, fontSize: '0.9375rem', display: 'inline-flex', alignItems: 'center', lineHeight: 1.2 } as const
-
-type ResultTone = 'success' | 'error' | 'primary' | 'neutral'
-
-// Tinted by outcome with theme tokens: won green and lost red from the club team's point of view; a decided result
-// with no club side (or one that is not the club's) primary; a tie, draw or no result neutral.
-function resultPillSx(tone: ResultTone) {
-  if (tone === 'neutral') {
-    return { bgcolor: (theme: Theme) => alpha(theme.palette.text.secondary, 0.12), color: 'text.primary' }
-  }
-  return { bgcolor: (theme: Theme) => alpha(theme.palette[tone].main, 0.14), color: `${tone}.dark` }
-}
-
-const visuallyHidden = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 const DEFAULT_BACK = { to: RESULTS_PATH, label: 'Results' }
 
@@ -180,172 +163,92 @@ export default function ResultDetailPage() {
   const [home, away] = resultSides(match, teamsById)
   const names = { home: home.name, away: away.name }
   const draft = result.status === 'DRAFT'
-  const perspective = resultPerspective(result, ownSidesOf(match, teamsById))
   const title = `${names.home} vs ${names.away}`
-  const line = result.outcomeType ? resultLine(result, names) : 'Result not entered yet'
   const field = result.playingAreaName ?? match.playingAreaName ?? match.venue
   const leagueName = match.leagueId ? (leaguesQuery.data?.find((league) => league.id === match.leagueId)?.name ?? null) : null
-  const resultTone: ResultTone =
-    perspective === 'won' ? 'success' : perspective === 'lost' ? 'error' : result.outcomeType === 'WON' ? 'primary' : 'neutral'
   const statusLabel = draft ? 'Draft' : 'Published'
-  // docs/specs/114: Share is a filled primary button like Edit, offered on a published result only (as Publish is on a draft).
-  const sharePair = draft ? null : (
-    <MuiButton variant="contained" size="small" sx={compactButtonSx} startIcon={<ShareOutlinedIcon />} onClick={() => setShareOpen(true)}>
-      Share
-    </MuiButton>
-  )
+  // docs/specs/138 (owner, 2026-11-05): the page header is the one every detail page has (ManageScreenHeader): Back alone, the title with the
+  // logos, the result and the status beside it, the date, league and field as the sub-header, ONE filled Manage Result menu with Share last.
+  const manageItems: ManageMenuItem[] = [
+    {
+      id: 'edit',
+      title: 'Edit Result',
+      icon: <EditOutlinedIcon fontSize="small" />,
+      to: draft ? resultEditTo(match.id) : undefined,
+      disabled: !draft,
+      reason: UNPUBLISH_TO_EDIT_REASON,
+    },
+    draft
+      ? {
+          id: 'publish',
+          title: 'Publish Result',
+          icon: <CloudUploadOutlinedIcon fontSize="small" />,
+          onClick: () => {
+            setFailed(false)
+            publish(match.id)
+          },
+        }
+      : {
+          id: 'unpublish',
+          title: 'Unpublish Result',
+          icon: <UnpublishedOutlinedIcon fontSize="small" />,
+          onClick: () => {
+            setFailed(false)
+            setConfirm('unpublish')
+          },
+        },
+    { id: 'match', title: 'View Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: `${MATCHES_PATH}/${match.id}` },
+    ...(draft
+      ? [{ id: 'delete', title: 'Delete Draft', icon: <DeleteOutlineIcon fontSize="small" />, tone: 'error' as const, onClick: () => setConfirm('delete') }]
+      : []),
+    {
+      id: 'share',
+      title: 'Share Result',
+      icon: <ShareOutlinedIcon fontSize="small" />,
+      onClick: () => setShareOpen(true),
+      disabled: draft,
+      reason: 'Publish the result to share it',
+    },
+  ]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
-      <PageHeaderBand>
-        <Stack spacing={2}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
-            <MuiButton
-              component={RouterLink}
-              to={back.to}
-              variant="text"
-              color="inherit"
-              size="small"
-              startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ml: -1, color: 'text.secondary' }}
-            >
-              Back to {back.label}
-            </MuiButton>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-              <MuiButton component={RouterLink} to={`${MATCHES_PATH}/${match.id}`} variant="text" size="small">
-                View match
-              </MuiButton>
-              <ImportedChip source={result.source} />
+      <ManageScreenHeader
+        title={title}
+        backTo={back.to}
+        backLabel={`Back to ${back.label}`}
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
+              <TeamLogo logo={home.logo} testId="result-logo-home" />
+              <TeamLogo logo={away.logo} testId="result-logo-away" />
             </Box>
+            <Chip size="small" label={statusLabel} variant="filled" sx={badgeSx(draft ? 'warning' : 'active')} data-testid="result-status-chip" />
           </Box>
-
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="h4"
-              component="h1"
-              aria-label={title}
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                columnGap: 1,
-                rowGap: 0.75,
-                fontWeight: 700,
-                lineHeight: 1.2,
-                fontSize: { xs: '1.4rem', md: '1.75rem' },
-              }}
-            >
-              {[home, away].map((side, index) => (
-                <Box key={side.side} component="span" sx={{ display: 'contents' }} aria-hidden>
-                  {index === 1 && <Box component="span">vs</Box>}
-                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                    <TeamLogo logo={side.logo} testId={`result-logo-${side.side.toLowerCase()}`} />
-                    <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                      {side.name}
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        }
+        subtitle={
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600} color="text.primary" component="span">
               {[formatMatchDateTime(match.matchDate), leagueName, field].filter(Boolean).join(' · ')}
             </Typography>
+            {failed && (
+              <Typography color="error" variant="body2" role="alert">
+                That didn&apos;t work. Please try again.
+              </Typography>
+            )}
           </Box>
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, minWidth: 0 }}>
-              <Box
-                component="p"
-                data-testid="result-line"
-                data-perspective={perspective}
-                sx={[pillSx, resultPillSx(resultTone), { m: 0, fontWeight: 700 }]}
-              >
-                {line}
-              </Box>
-              <Chip
-                label={statusLabel}
-                sx={[badgeSx(draft ? 'warning' : 'active'), pillSx]}
-                data-testid="result-status-chip"
-              />
-            </Box>
-            <Box
-              data-testid="result-actions"
-              sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { sm: 'flex-end' } }}
-            >
-              {draft ? (
-                <>
-                  <MuiButton component={RouterLink} to={resultEditTo(match.id)} variant="contained" size="small" sx={compactButtonSx} startIcon={<EditOutlinedIcon />}>
-                    Edit
-                  </MuiButton>
-                  <MuiButton
-                    variant="outlined"
-                    size="small"
-                    sx={compactButtonSx}
-                    startIcon={<CloudUploadOutlinedIcon />}
-                    onClick={() => {
-                      setFailed(false)
-                      publish(match.id)
-                    }}
-                  >
-                    Publish
-                  </MuiButton>
-                  <MuiButton
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    sx={compactButtonSx}
-                    startIcon={<DeleteOutlineIcon />}
-                    onClick={() => setConfirm('delete')}
-                  >
-                    Delete draft
-                  </MuiButton>
-                  {sharePair}
-                </>
-              ) : (
-                <>
-                  {/* A disabled button takes no hover, so the tooltip sits on a wrapper; the reason is also its description. */}
-                  <Tooltip title={UNPUBLISH_TO_EDIT_REASON}>
-                    <Box component="span" sx={{ display: 'flex' }}>
-                      <MuiButton
-                        variant="contained"
-                        size="small"
-                        disabled
-                        aria-describedby="unpublish-to-edit-reason"
-                        sx={[compactButtonSx, { flex: 1 }]}
-                        startIcon={<EditOutlinedIcon />}
-                      >
-                        Edit
-                      </MuiButton>
-                    </Box>
-                  </Tooltip>
-                  <Box component="span" id="unpublish-to-edit-reason" sx={visuallyHidden}>
-                    {UNPUBLISH_TO_EDIT_REASON}
-                  </Box>
-                  <MuiButton
-                    variant="outlined"
-                    size="small"
-                    sx={compactButtonSx}
-                    startIcon={<UnpublishedOutlinedIcon />}
-                    onClick={() => {
-                      setFailed(false)
-                      setConfirm('unpublish')
-                    }}
-                  >
-                    Unpublish
-                  </MuiButton>
-                  {sharePair}
-                </>
-              )}
-            </Box>
+        }
+        // The Imported badge sits above the Manage Result button, at the right.
+        action={
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', sm: 'flex-end' }, gap: 1 }}>
+            <ImportedChip source={result.source} matchButton />
+            {/* docs/specs/138 (owner, 2026-11-05): the one exception to a single header button: a published result shows Share beside the menu. */}
+            <HeaderActions beside={!draft ? <HeaderShareButton onClick={() => setShareOpen(true)} testId="result-share" /> : null}>
+              <ManageMenu label="Manage Result" fixedWidth testId="manage-result" groups={[{ id: 'result', heading: 'Result', items: manageItems }]} />
+            </HeaderActions>
           </Box>
-
-          {failed && (
-            <Typography color="error" variant="body2" role="alert">
-              That didn&apos;t work. Please try again.
-            </Typography>
-          )}
-        </Stack>
-      </PageHeaderBand>
+        }
+      />
 
       <ResultBody clubId={clubId} match={match} result={result} teamsById={teamsById} />
 

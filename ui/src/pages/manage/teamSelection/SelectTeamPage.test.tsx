@@ -899,6 +899,32 @@ describe('SelectTeamPage', () => {
       })
     })
 
+    describe('the header button beside Manage Team (138)', () => {
+      it('shows Share on an announced side and opens the team sheet dialog', async () => {
+        const user = await openHomeXi({ announced: true })
+        expect(screen.queryByTestId('select-announce')).not.toBeInTheDocument()
+        await user.click(await screen.findByTestId('select-share'))
+        expect(await screen.findByTestId('share-dialog')).toHaveAttribute('data-scope', 'home')
+      })
+
+      it('shows no Share on a side that is not announced', async () => {
+        await openHomeXi()
+        expect(screen.queryByTestId('select-share')).not.toBeInTheDocument()
+      })
+
+      it('shows Announce Team instead of Share on a complete side that is not announced, and it opens the confirmation', async () => {
+        const user = await openHomeXi()
+        await user.click(await screen.findByTestId('select-announce'))
+        expect(within(await screen.findByRole('dialog')).getByText('Announce this team?')).toBeInTheDocument()
+      })
+
+      it('shows neither button on an incomplete side', async () => {
+        await openHomeXi({ players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }, { playerProfileId: 'player-2', battingOrder: null, role: 'BOWLER' }] })
+        expect(screen.queryByTestId('select-announce')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('select-share')).not.toBeInTheDocument()
+      })
+    })
+
     it('shows Un-announce instead of Announce for an announced side', async () => {
       const user = await openHomeXi({ announced: true })
       await manageItem(user, 'Un-announce Team')

@@ -353,6 +353,8 @@ A two-tile toggle in the **Who-won** style (`TileChoiceGroup`, the side's logo a
 
 ### Player name display toggle (Full name / First name)
 
+> **Superseded 2026-11-05 by `docs/specs/138`:** the second option is **Initials** (first initial plus the whole surname, "J. Smith", the same form as the share exports), not a first name with surname tags. The collision rules below no longer apply.
+
 A small `CompactToggleGroup` at the top of the scorecard steps, the Review step and the result page: **Full name** | **First name**. Junior coaches often do not know players' surnames.
 
 - **First-name mode:** the plain first name. Where two players *visible in the same view* share a first name, a short surname tag is added: the first letter of the surname ("Sam V"); for particle surnames the particles' initials in lower case plus the first letter of the main surname ("Sam vdW"). If two tags still collide, the tag lengthens one letter at a time; last resort the full surname. A name whose first word is a single initial ("J Smith", "J. Smith") shows the whole typed name in first-name mode, because an initial cannot be shortened further (applies to guests and opposition names).

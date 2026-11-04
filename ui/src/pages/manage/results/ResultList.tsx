@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Link, Stack, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Box, Link, Stack, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { AddCard } from '../../../components/AddCard'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { Button } from '../../../components/Button'
-import { ContentControlsLine, SortLink } from '../../../components/ContentControlsLine'
-import { EmptyState } from '../../../components/EmptyState'
+import { SplitButton } from '../../../components/SplitButton'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import { SortMenu } from '../../../components/ContentControlsLine'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
+import { ToolbarCard, ToolbarSortButton } from '../../../components/ToolbarCard'
 import { FilterBar } from '../../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../../components/ListViewToggle'
@@ -36,10 +40,10 @@ import type { Season } from '../../../api/seasonApi'
 import { listSections } from '../../../api/sectionApi'
 import { useListViewPreference } from '../../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
-import { scopeFilterText } from '../../../utils/availabilityScope'
-import { cardGridSx } from '../../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../../utils/cardGrid'
 import { CaptureResultDialog } from './CaptureResultDialog'
-import { resultImportTo } from './resultListHelpers'
+import { ResultRowMenu } from './ResultRowMenu'
+import { resultImportTo, resultTitle } from './resultListHelpers'
 import { ResultCard } from './ResultCard'
 import { ResultTable } from './ResultTable'
 import { usePublishResult } from './usePublishResult'
@@ -55,7 +59,7 @@ const FOCUS_LABELS: Record<ResultListFocus, string> = {
   played: 'Played',
   won: 'Won',
   lost: 'Lost',
-  'tied-or-none': 'Tied / no result',
+  'tied-or-none': 'Tied / No Result',
   drafts: 'Drafts',
 }
 
@@ -63,7 +67,7 @@ const OUTCOME_OPTIONS: { value: ResultOutcomeType; label: string }[] = [
   { value: 'WON', label: 'Won' },
   { value: 'TIE', label: 'Tie' },
   { value: 'DRAW', label: 'Draw' },
-  { value: 'NO_RESULT', label: 'No result' },
+  { value: 'NO_RESULT', label: 'No Result' },
   { value: 'ABANDONED', label: 'Abandoned' },
   { value: 'FORFEIT', label: 'Forfeit' },
 ]
@@ -78,11 +82,27 @@ const STATUS_OPTIONS: { value: ResultStatus; label: string }[] = [
 // backend parameter; the counters come from GET /results/summary for the same filters.
 export default function ResultList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
-  const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [sort, setSort] = useState(SORT_DESC)
+  // docs/specs/138: the sort and the counters' quick filter live in the address, so Back from a result restores them.
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const sort = params.get('sort') === 'asc' ? SORT_ASC : SORT_DESC
+  const focusParam = params.get('focus')
+  const focus = (Object.keys(FOCUS_LABELS) as ResultListFocus[]).find((key) => key === focusParam) ?? null
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+  const setSort = (next: string) => setParam('sort', next === SORT_ASC ? 'asc' : null)
+  const setFocus = (next: ResultListFocus | null) => setParam('focus', next)
   // Section, League and Season are saved per club; Team, Outcome, Status and the counters' quick filter are per visit.
   const [{ sectionId, leagueId, seasonId }, setSaved] = usePersistedListFilters(`resultList:filters:${clubId}`, {
     sectionId: null as string | null,
@@ -92,9 +112,9 @@ export default function ResultList() {
   const [teamId, setTeamId] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<ResultOutcomeType | null>(null)
   const [status, setStatus] = useState<ResultStatus | null>(null)
-  const [focus, setFocus] = useState<ResultListFocus | null>(null)
   const [view, setView] = useListViewPreference('resultList:view')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   // docs/specs/114: the result whose Share dialog is open.
   const [shareItem, setShareItem] = useState<ResultListItem | null>(null)
 
@@ -240,15 +260,8 @@ export default function ResultList() {
   const hasResults = data.content.length > 0
   const isSearching = debouncedSearch.length > 0
   const hasFilters = Boolean(sectionId || leagueId || teamId || outcome || status || focus)
-  const seasonLabel = seasonId ? seasonsById.get(seasonId)?.label : undefined
-  const scope = [
-    scopeFilterText({ sections: sections ?? [], sectionId, leagues: leagues ?? [], leagueId, teams: filterableTeams, teamId }),
-    seasonLabel,
-  ]
-    .filter(Boolean)
-    .join(' · ')
   // Choosing the active counter again turns its filter off; choosing another replaces it.
-  const toggleFocus = (next: ResultListFocus) => setFocus((current) => (current === next ? null : next))
+  const toggleFocus = (next: ResultListFocus) => setFocus(focus === next ? null : next)
   const summary = summaryQuery.data
   const filterCounter = (id: ResultListFocus, value: number, extra: Partial<PageCounterItem> = {}): PageCounterItem => ({
     id,
@@ -271,7 +284,7 @@ export default function ResultList() {
         {
           id: 'awaiting',
           value: summary.awaiting,
-          label: 'Awaiting result',
+          label: 'Awaiting Result',
           shortLabel: 'Awaiting',
           tone: summary.awaiting > 0 ? 'warning' : 'default',
           kind: 'drill',
@@ -281,77 +294,55 @@ export default function ResultList() {
       ]
     : []
   const showCounters = !summaryQuery.isError && (summaryQuery.isPending || Boolean(summary))
-  const sortLink = (
-    <SortLink
-      label={sort === SORT_DESC ? 'latest first' : 'oldest first'}
-      onToggle={() => setSort(sort === SORT_DESC ? SORT_ASC : SORT_DESC)}
-    />
-  )
   const awaitingCount = summary?.awaiting ?? 0
+  const sortOptions = [
+    { value: SORT_DESC, label: 'Latest First', linkLabel: 'Latest First' },
+    { value: SORT_ASC, label: 'Oldest First', linkLabel: 'Oldest First' },
+  ]
+  const openCreate = () => setPickerOpen(true)
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title="Results"
-        subtitle={scope ? `Showing: ${scope}` : undefined}
-        titleAdornment={
-          <HeaderSeasonSelect
-            seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
-            value={seasonId}
-            onChange={(next) => setSaved({ seasonId: next })}
-          />
-        }
-        action={
-          // docs/specs/104: Import result sits beside Capture result; the capture picker also offers it.
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button size="compact" variant="secondary" startIcon={<EmojiEventsOutlinedIcon />} onClick={() => navigate('/manage/leaderboards')}>
-              Leaderboards
-            </Button>
-            <Button size="compact" variant="secondary" onClick={() => navigate(resultImportTo())}>
-              Import result
-            </Button>
-            <Button size="compact" onClick={() => setPickerOpen(true)}>Capture result</Button>
-          </Box>
-        }
-      />
-
-      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
-
-      <FilterBar
-        density="compact"
-        leagues={filterableLeagues}
-        sections={filterableSections}
-        teams={filterableTeams}
-        leagueId={leagueId}
-        sectionId={sectionId}
-        teamId={teamId}
-        onLeagueChange={(next) => setSaved({ leagueId: next })}
-        onSectionChange={(next) => setSaved({ sectionId: next })}
-        onTeamChange={setTeamId}
-        searchValue={search}
-        onSearchChange={setSearch}
-        extraSelects={[
-          {
-            key: 'outcome',
-            label: 'Outcome',
-            allLabel: 'All outcomes',
-            options: OUTCOME_OPTIONS,
-            value: outcome ?? '',
-            onChange: (value: string) => setOutcome((value || null) as ResultOutcomeType | null),
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            allLabel: 'All statuses',
-            options: STATUS_OPTIONS,
-            value: status ?? '',
-            onChange: (value: string) => setStatus((value || null) as ResultStatus | null),
-          },
-        ]}
-        searchPlaceholder="Search by opponent or team name"
-        searchOptions={searchSuggestions}
-        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
-        viewControls={
+  // docs/specs/138 and page-anatomy section 3: one flat toolbar, desktop order: the shared filters (League, Section, Team, Outcome, Status),
+  // search, then Sort, then Cards | List last. A phone: Filters and search on the row, the toggle then the quick filter and Sort in the sheet.
+  const bar = (
+    <FilterBar
+      bare
+      inCard
+      viewControlsInline
+      density="compact"
+      leagues={filterableLeagues}
+      sections={filterableSections}
+      teams={filterableTeams}
+      leagueId={leagueId}
+      sectionId={sectionId}
+      teamId={teamId}
+      onLeagueChange={(next) => setSaved({ leagueId: next })}
+      onSectionChange={(next) => setSaved({ sectionId: next })}
+      onTeamChange={setTeamId}
+      searchValue={search}
+      onSearchChange={setSearch}
+      extraSelects={[
+        {
+          key: 'outcome',
+          label: 'Outcome',
+          allLabel: 'All Outcomes',
+          options: OUTCOME_OPTIONS,
+          value: outcome ?? '',
+          onChange: (value: string) => setOutcome((value || null) as ResultOutcomeType | null),
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          allLabel: 'All Statuses',
+          options: STATUS_OPTIONS,
+          value: status ?? '',
+          onChange: (value: string) => setStatus((value || null) as ResultStatus | null),
+        },
+      ]}
+      searchPlaceholder="Search by opponent or team name"
+      searchOptions={searchSuggestions}
+      extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
@@ -366,28 +357,90 @@ export default function ResultList() {
                 </Link>
               </Box>
             )}
-            {sortLink}
+            <SortMenu value={sort} options={sortOptions} onChange={setSort} />
           </>
+        ) : (
+          <>
+            <ToolbarSortButton value={sort} onChange={setSort} options={sortOptions.map(({ value, label }) => ({ value, label }))} />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
+          </>
+        )
+      }
+      onClearAll={() => {
+        setSaved({ leagueId: null, sectionId: null })
+        setTeamId(null)
+        setOutcome(null)
+        setStatus(null)
+        setFocus(null)
+      }}
+    />
+  )
+
+  // Empty states (page-anatomy section 5): the section's icon, and one text link to create a result only where nothing exists yet; a
+  // filtered or searched-out list has no link, because adding is not the fix.
+  const emptyState = hasResults ? null : isSearching ? (
+    <EmptyState icon={<BrandIcon name="nav/result-scorecard" size={48} padding={4} />} title="No matching results" description={`No results match "${debouncedSearch}". Try a different search.`} />
+  ) : hasFilters ? (
+    <EmptyState icon={<BrandIcon name="nav/result-scorecard" size={48} padding={4} />} title="No results match these filters" description="Try clearing a filter or choosing another counter." />
+  ) : (
+    <EmptyState
+      icon={<BrandIcon name="nav/result-scorecard" size={48} padding={4} />}
+      title="No results yet"
+      description={
+        awaitingCount > 0
+          ? `${awaitingCount} ${awaitingCount === 1 ? 'match is' : 'matches are'} waiting for a result.`
+          : 'Results you capture for your matches will appear here.'
+      }
+      action={<EmptyStateLink onClick={openCreate}>Capture New Result</EmptyStateLink>}
+    />
+  )
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader
+        title="Results"
+        titleAdornment={
+          <HeaderSeasonSelect
+            seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
+            value={seasonId}
+            onChange={(next) => setSaved({ seasonId: next })}
+          />
         }
-        onClearAll={() => {
-          setSaved({ leagueId: null, sectionId: null })
-          setTeamId(null)
-          setOutcome(null)
-          setStatus(null)
-          setFocus(null)
-        }}
+        // ONE filled button on the title row (page-anatomy section 1). It opens the capture picker, which also offers Import (docs/specs/104).
+        action={
+          <SplitButton
+            label="Capture New Result"
+            onClick={openCreate}
+            testId="capture-result"
+            items={[
+              { id: 'import', label: 'Import Result', icon: <UploadFileOutlinedIcon fontSize="small" />, onClick: () => navigate(resultImportTo()) },
+            ]}
+          />
+        }
       />
 
-      <ContentControlsLine
-        scope={`Showing ${data.totalElements} ${data.totalElements === 1 ? 'result' : 'results'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={<ListViewToggle value={view} onChange={setView} />}
-      />
+      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
 
-      {hasResults && view === 'list' && <ResultTable items={data.content} teamsById={teamsById} />}
+      {!fused && <ToolbarCard>{bar}</ToolbarCard>}
 
-      {hasResults && view === 'cards' && (
-        <Box sx={cardGridSx}>
+      {fused && (
+        <ResultTable
+          items={data.content}
+          teamsById={teamsById}
+          toolbar={bar}
+          empty={emptyState}
+          renderActions={(item) => (
+            <ResultRowMenu item={item} title={resultTitle(item, teamsById)} onPublish={(picked) => publish(picked.match.id)} onShare={setShareItem} />
+          )}
+        />
+      )}
+
+      {!fused && emptyState}
+
+      {!fused && hasResults && (
+        <Box sx={dynamicCardGridSx}>
           {data.content.map((item) => (
             <ResultCard
               key={item.match.id}
@@ -399,41 +452,9 @@ export default function ResultList() {
               onShare={setShareItem}
             />
           ))}
+          {/* The grid ends with a dashed Create card (same action as the title-row button); with no cards it is not shown (the empty message carries the link). */}
+          <AddCard label="Capture New Result" onClick={openCreate} testId="add-result-card" />
         </Box>
-      )}
-
-      {!hasResults && isSearching && (
-        <EmptyState
-          title="No matching results"
-          description={`No results match "${debouncedSearch}". Try a different search.`}
-        />
-      )}
-
-      {!hasResults && !isSearching && hasFilters && (
-        <EmptyState
-          title="No results match these filters"
-          description="Try clearing a filter or choosing another counter."
-        />
-      )}
-
-      {!hasResults && !isSearching && !hasFilters && (
-        <EmptyState
-          icon={<BrandIcon name="nav/result-scorecard" size={48} padding={4} />}
-          title="No results yet"
-          description={
-            awaitingCount > 0
-              ? `${awaitingCount} ${awaitingCount === 1 ? 'match is' : 'matches are'} waiting for a result.`
-              : 'Results you capture for your matches will appear here.'
-          }
-          action={
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button size="compact" variant="secondary" onClick={() => navigate(resultImportTo())}>
-                Import result
-              </Button>
-              <Button size="compact" onClick={() => setPickerOpen(true)}>Capture result</Button>
-            </Box>
-          }
-        />
       )}
 
       {hasResults && data.totalPages > 1 && (
@@ -444,12 +465,7 @@ export default function ResultList() {
           <Typography variant="body2" color="text.secondary">
             Page {data.number + 1} of {data.totalPages}
           </Typography>
-          <Button
-            size="compact"
-            variant="secondary"
-            disabled={page + 1 >= data.totalPages}
-            onClick={() => setPage((prev) => prev + 1)}
-          >
+          <Button size="compact" variant="secondary" disabled={page + 1 >= data.totalPages} onClick={() => setPage((prev) => prev + 1)}>
             Next
           </Button>
         </Stack>

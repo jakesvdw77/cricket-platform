@@ -38,6 +38,22 @@ import { isScorecardStep, issuesOf, stepIdForIssue } from './reviewIssues'
 import type { ScorecardStepProps } from './stepTypes'
 import { officialAward, playersByKey, playersOfSide, scorecardOf, sideStatus, teamAward } from '../scorecardDraft'
 
+// docs/specs/138 (owner, 2026-11-05): ONE label column for the preview card's lines (wide enough for "Player of the match"), so every value starts at the same x.
+const REVIEW_LABEL_WIDTH = 132
+
+// docs/specs/138 (owner, 2026-11-05): Scorecard and Checks are two separate cards, so it is clear which lines belong to which.
+const reviewCardSx = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 0.5,
+  bgcolor: 'background.paper',
+  border: 1,
+  borderColor: 'divider',
+  borderRadius: 2,
+  p: { xs: 1.5, md: 2 },
+  boxShadow: 1,
+} as const
+
 export interface ReviewStepProps extends ScorecardStepProps {
   check: MarginCheck
   needsAck: boolean
@@ -235,28 +251,31 @@ export function ReviewStep({
           ballsPerOver={ballsPerOver}
           resultLine={line}
         >
-          <DetailLine icon={toss ? <SportsCricketOutlinedIcon fontSize="small" /> : missingIcon(<SportsCricketOutlinedIcon fontSize="small" />)} label="Toss" value={toss ?? missingValue('toss')} />
+          <DetailLine align="center" labelWidth={REVIEW_LABEL_WIDTH} icon={toss ? <SportsCricketOutlinedIcon fontSize="small" /> : missingIcon(<SportsCricketOutlinedIcon fontSize="small" />)} label="Toss" value={toss ?? missingValue('toss')} />
           <DetailLine
+            align="center"
+            labelWidth={REVIEW_LABEL_WIDTH}
             icon={match.matchDate ? <EventOutlinedIcon fontSize="small" /> : missingIcon(<EventOutlinedIcon fontSize="small" />)}
             label="Played"
             value={match.matchDate ? formatMatchDateTime(match.matchDate) : missingValue('')}
           />
-          <DetailLine icon={fieldName ? <PlaceOutlinedIcon fontSize="small" /> : missingIcon(<PlaceOutlinedIcon fontSize="small" />)} label="Field" value={fieldName ?? missingValue('toss')} />
-          {officialValue && <DetailLine icon={<EmojiEventsOutlinedIcon fontSize="small" />} label="Player of the match" value={officialValue} labelWidth={110} />}
+          <DetailLine align="center" labelWidth={REVIEW_LABEL_WIDTH} icon={fieldName ? <PlaceOutlinedIcon fontSize="small" /> : missingIcon(<PlaceOutlinedIcon fontSize="small" />)} label="Field" value={fieldName ?? missingValue('toss')} />
+          {officialValue && <DetailLine align="center" labelWidth={REVIEW_LABEL_WIDTH} icon={<EmojiEventsOutlinedIcon fontSize="small" />} label="Player of the match" value={officialValue} />}
           {(scorecardAvailable ? teamAwards : teamAwards.filter((item) => item.value)).map(({ ours, value }) => (
             <DetailLine
+              align="center"
+              labelWidth={REVIEW_LABEL_WIDTH}
               key={ours.side}
               icon={value ? <EmojiEventsOutlinedIcon fontSize="small" /> : missingIcon(<EmojiEventsOutlinedIcon fontSize="small" />)}
               label={derby ? `${ours.teamName} player` : 'Team player'}
               value={value ?? missingValue('awards', ours.side)}
-              labelWidth={110}
             />
           ))}
         </ResultSummary>
       </Box>
 
       {scorecardAvailable && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={reviewCardSx}>
           <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title="Scorecard" />
           <Box component="ul" aria-label="Scorecard status" sx={{ m: 0, p: 0 }}>
             {sides.map((info) => {
@@ -286,7 +305,7 @@ export function ReviewStep({
         </Box>
       )}
 
-      <Box aria-live="polite" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Box aria-live="polite" sx={reviewCardSx}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
           <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
           {leagueRules && (

@@ -103,5 +103,7 @@ Reuse `ViewTabsRow`, `ToolbarCard`, `ToolbarToggle`, `ManageMenu`, `EmptyStateLi
 - Cards never show more than three in a row (the three-card rule, page-anatomy section 6).
 - The Select Team page's four figures are compact counters (no icons).
 
+- Owner, 2026-11-05 (recorded by spec `138`): beside Manage Team the page shows Share once the side is announced, or Announce Team while a complete side is not yet announced (`HeaderActions`).
+
 ## Rollout Notes
 Frontend only; no migration. Update `page-anatomy.md`, `frontend.md` and `roadmap.md` (including the later "choosing available players" item) in the same PR.

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Chip, Stack, Typography } from '@mui/material'
+import { HeaderActions, HeaderShareButton } from '../../components/HeaderShareButton'
 import { ManageMenu } from '../../components/ManageMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -181,7 +182,11 @@ export default function SquadPollResponsesPage() {
           <Chip size="small" label={squadPollSideLabel(sides)} variant="filled" sx={badgeSx('side')} />
         </Box>
       }
-      headerAction={<ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />}
+      headerAction={
+        <HeaderActions beside={actions.share ? <HeaderShareButton onClick={actions.share} testId="poll-share" /> : null}>
+          <ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />
+        </HeaderActions>
+      }
       meta={
         <Stack spacing={0.5}>
           <Typography variant="subtitle1" fontWeight={600} color="text.primary">

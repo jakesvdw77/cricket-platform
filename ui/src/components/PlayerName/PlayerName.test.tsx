@@ -21,20 +21,17 @@ describe('PlayerName', () => {
     expect(screen.getByText('Sam Venter')).toBeInTheDocument()
   })
 
-  it('shows the first name, tagged only where the view holds a collision', () => {
-    const { rerender } = render(<PlayerName person={venter} view={[venter]} mode="first" />)
-    expect(screen.getByText('Sam')).toBeInTheDocument()
+  it('shows the first initial and the whole surname in initials mode', () => {
+    const { rerender } = render(<PlayerName person={venter} view={[venter]} mode="initials" />)
+    expect(screen.getByText('S. Venter')).toBeInTheDocument()
 
-    rerender(<PlayerName person={venter} view={[venter, vdw]} mode="first" />)
-    expect(screen.getByText('Sam V')).toBeInTheDocument()
-
-    rerender(<PlayerName person={vdw} view={[venter, vdw]} mode="first" />)
-    expect(screen.getByText('Sam vdW')).toBeInTheDocument()
+    rerender(<PlayerName person={vdw} view={[venter, vdw]} mode="initials" />)
+    expect(screen.getByText('S. van der Westhuizen')).toBeInTheDocument()
   })
 
-  it('tags a guest against a registered player', () => {
-    render(<PlayerName person={guest} view={[venter, guest]} mode="first" />)
-    expect(screen.getByText('Sam B')).toBeInTheDocument()
+  it('shows a guest the same way', () => {
+    render(<PlayerName person={guest} view={[venter, guest]} mode="initials" />)
+    expect(screen.getByText(/^S\. /)).toBeInTheDocument()
   })
 
   it('follows the remembered mode, and changes with it', () => {
@@ -42,13 +39,13 @@ describe('PlayerName', () => {
     const toggle = renderHook(() => usePlayerNameMode())
     expect(screen.getByText('Sam Venter')).toBeInTheDocument()
 
-    act(() => toggle.result.current[1]('first'))
-    expect(screen.getByText('Sam V')).toBeInTheDocument()
+    act(() => toggle.result.current[1]('initials'))
+    expect(screen.getByText('S. Venter')).toBeInTheDocument()
   })
 
   it('usePlayerLabeler gives the same label as a string', () => {
-    const { result } = renderHook(() => usePlayerLabeler([venter, vdw], 'first'))
-    expect(result.current(venter)).toBe('Sam V')
-    expect(result.current(vdw)).toBe('Sam vdW')
+    const { result } = renderHook(() => usePlayerLabeler([venter, vdw], 'initials'))
+    expect(result.current(venter)).toBe('S. Venter')
+    expect(result.current(vdw)).toBe('S. van der Westhuizen')
   })
 })

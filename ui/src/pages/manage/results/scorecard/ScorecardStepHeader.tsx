@@ -17,12 +17,14 @@ export interface ScorecardStepHeaderProps {
   ariaLabel?: string
   // One line under the toggles ("From the announced team").
   note?: string
+  // The Full name | Initials toggle beside the side picker (default). A step that carries it in its own controls row passes false (Teams, docs/specs/138).
+  nameToggle?: boolean
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Side toggle, Player name display toggle): the top of every scorecard
 // step. The side toggle (the Who-won tiles, each side's logo and team name) shows in every match, our side or the
 // opposition, with a dot on a side that is incomplete; beside it the Full name | First name toggle.
-export function ScorecardStepHeader({ sides, scorecardSide, onSideChange, incomplete = {}, label, ariaLabel, note }: ScorecardStepHeaderProps) {
+export function ScorecardStepHeader({ sides, scorecardSide, onSideChange, incomplete = {}, label, ariaLabel, note, nameToggle = true }: ScorecardStepHeaderProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
@@ -41,7 +43,7 @@ export function ScorecardStepHeader({ sides, scorecardSide, onSideChange, incomp
             dense
           />
         </Box>
-        <NameModeToggle />
+        {nameToggle && <NameModeToggle />}
       </Box>
       {note && (
         <Typography variant="caption" color="text.secondary">

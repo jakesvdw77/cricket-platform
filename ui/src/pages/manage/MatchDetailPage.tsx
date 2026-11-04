@@ -13,6 +13,7 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { badgeSx } from '../../components/RecordCard'
 import { compactButtonSx } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
+import { HeaderActions, HeaderShareButton } from '../../components/HeaderShareButton'
 import { ManageMenu } from '../../components/ManageMenu'
 import type { ManageMenuItem } from '../../components/ManageMenu'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
@@ -350,7 +351,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               </Stack>
             </Box>
             <Box data-testid="match-header-actions" sx={{ display: 'flex', flex: { xs: '1 1 100%', sm: 'none' }, ml: { sm: 'auto' } }}>
-              {manageMenu}
+              <HeaderActions beside={<HeaderShareButton onClick={share.openShare} testId="match-share" />}>{manageMenu}</HeaderActions>
             </Box>
           </Box>
 

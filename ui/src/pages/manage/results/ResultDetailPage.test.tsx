@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createTheme } from '@mui/material/styles'
 import { AxiosError } from 'axios'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,41 +73,43 @@ describe('ResultDetailPage', () => {
       renderPage()
 
       expect(await screen.findByRole('heading', { name: '1st XI vs Riverside Occasionals' })).toBeInTheDocument()
-      expect(screen.getByTestId('result-line')).toHaveTextContent('1st XI won by 24 runs')
-      expect(screen.getByTestId('result-line')).toHaveAttribute('data-perspective', 'won')
+      expect(screen.getByTestId('result-figure-result-value')).toHaveTextContent('1st XI won by 24 runs')
       expect(screen.getByTestId('result-status-chip')).toHaveTextContent('Published')
       expect(screen.getAllByTestId('innings-row')).toHaveLength(2)
       expect(screen.getByTestId('result-details')).toHaveTextContent('1st XI won the toss and chose to bat')
     })
 
-    it('tags a two-innings result Batted first / Chased and shows Tied for a tie without a margin', async () => {
+    it('lists the innings in batting order with no Batted first / Chased badge, and says Tied for a tie', async () => {
       getMatchResult.mockResolvedValue(makeResult({ outcomeType: 'TIE', winningSide: null, marginType: null, marginValue: null, note: null }))
       renderPage()
 
-      const tags = await screen.findAllByTestId('innings-order-tag')
-      expect(tags.map((tag) => tag.textContent)).toEqual(['Batted first', 'Chased'])
-      expect(screen.getByTestId('result-figure-margin-value')).toHaveTextContent('Tied')
+      const rows = await screen.findAllByTestId('innings-row')
+      expect(rows).toHaveLength(2)
+      expect(screen.queryByTestId('innings-order-tag')).not.toBeInTheDocument()
+      expect(screen.getByTestId('result-figure-result-value')).toHaveTextContent(/tied/i)
       expect(within(screen.getByTestId('result-details')).getAllByTestId('result-not-recorded').length).toBeGreaterThan(0)
     })
 
-    it('has Unpublish, and a disabled Edit carrying the "Unpublish to edit" reason; no Publish or Delete', async () => {
-      renderPage()
-      const actions = await screen.findByTestId('result-actions')
-
-      const edit = within(actions).getByRole('button', { name: 'Edit' })
-      expect(edit).toBeDisabled()
-      expect(edit).toHaveAccessibleDescription('Unpublish to edit')
-      expect(within(actions).getByRole('button', { name: 'Unpublish' })).toBeEnabled()
-      expect(within(actions).queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
-      expect(within(actions).queryByRole('button', { name: 'Delete draft' })).not.toBeInTheDocument()
-    })
-
-    it('has an enabled Share button that opens the Share dialog', async () => {
+    it('has Unpublish Result, and a disabled Edit Result carrying the "Unpublish to edit" reason; no Publish or Delete', async () => {
       const user = userEvent.setup()
       renderPage()
+      await user.click(await screen.findByTestId('manage-result'))
+      const menu = await screen.findByRole('menu')
 
-      const share = within(await screen.findByTestId('result-actions')).getByRole('button', { name: 'Share' })
-      expect(share).toBeEnabled()
+      expect(within(menu).getByRole('menuitem', { name: /Edit Result/ })).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByText('Unpublish to edit')).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: /Unpublish Result/ })).toBeEnabled()
+      expect(within(menu).queryByRole('menuitem', { name: /Publish Result/ })).not.toBeInTheDocument()
+      expect(within(menu).queryByRole('menuitem', { name: /Delete Draft/ })).not.toBeInTheDocument()
+    })
+
+    it('has Share Result last in the menu, and it opens the Share dialog', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await user.click(await screen.findByTestId('manage-result'))
+      const items = within(await screen.findByRole('menu')).getAllByRole('menuitem')
+      const share = items[items.length - 1]
+      expect(share).toHaveTextContent('Share Result')
       await user.click(share)
 
       expect(await screen.findByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
@@ -119,7 +120,8 @@ describe('ResultDetailPage', () => {
       unpublishResult.mockResolvedValue(makeResult({ status: 'DRAFT' }))
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Unpublish' }))
+      await user.click(await screen.findByTestId('manage-result'))
+      await user.click(await screen.findByRole('menuitem', { name: /Unpublish Result/ }))
       expect(unpublishResult).not.toHaveBeenCalled()
       expect(screen.getByText('Unpublish this result?')).toBeInTheDocument()
       await user.click(screen.getAllByRole('button', { name: 'Unpublish' }).at(-1) as HTMLElement)
@@ -142,7 +144,7 @@ describe('ResultDetailPage', () => {
       const rows = await screen.findAllByTestId('innings-row')
       expect(rows).toHaveLength(4)
       expect(rows[2]).toHaveTextContent('Super over 1')
-      expect(screen.getByTestId('result-line')).toHaveTextContent('Tied · 1st XI won in the super over')
+      expect(screen.getByTestId('result-figure-result-value')).toHaveTextContent('Tied · 1st XI won in the super over')
     })
   })
 
@@ -151,22 +153,27 @@ describe('ResultDetailPage', () => {
       getMatchResult.mockResolvedValue(makeResult({ status: 'DRAFT', publishedAt: null }))
     })
 
-    it('shows a Draft chip with Edit (a link to the wizard), Publish and Delete draft; no Unpublish', async () => {
+    it('shows a Draft chip with Edit Result (a link to the wizard), Publish Result and Delete Draft; no Unpublish', async () => {
+      const user = userEvent.setup()
       renderPage()
-      const actions = await screen.findByTestId('result-actions')
+      await user.click(await screen.findByTestId('manage-result'))
+      const menu = await screen.findByRole('menu')
 
       expect(screen.getByTestId('result-status-chip')).toHaveTextContent('Draft')
-      expect(within(actions).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/results/match-1/capture')
-      expect(within(actions).getByRole('button', { name: 'Publish' })).toBeEnabled()
-      expect(within(actions).getByRole('button', { name: 'Delete draft' })).toBeEnabled()
-      expect(within(actions).queryByRole('button', { name: 'Unpublish' })).not.toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: /Edit Result/ })).toHaveAttribute('href', '/manage/results/match-1/capture')
+      expect(within(menu).getByRole('menuitem', { name: /Publish Result/ })).toBeEnabled()
+      expect(within(menu).getByRole('menuitem', { name: /Delete Draft/ })).toBeEnabled()
+      expect(within(menu).queryByRole('menuitem', { name: /Unpublish Result/ })).not.toBeInTheDocument()
     })
 
-    it('has no Share button on a draft (it appears once published)', async () => {
+    it('has Share Result disabled with its reason on a draft', async () => {
+      const user = userEvent.setup()
       renderPage()
-      const actions = await screen.findByTestId('result-actions')
+      await user.click(await screen.findByTestId('manage-result'))
+      const menu = await screen.findByRole('menu')
 
-      expect(within(actions).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: /Share Result/ })).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByText('Publish the result to share it')).toBeInTheDocument()
     })
 
     it('publishes after validation', async () => {
@@ -175,7 +182,8 @@ describe('ResultDetailPage', () => {
       publishResult.mockResolvedValue(makeResult())
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Publish' }))
+      await user.click(await screen.findByTestId('manage-result'))
+      await user.click(await screen.findByRole('menuitem', { name: /Publish Result/ }))
 
       await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', false))
     })
@@ -185,7 +193,8 @@ describe('ResultDetailPage', () => {
       deleteResultDraft.mockResolvedValue(undefined)
       renderPage()
 
-      await user.click(await screen.findByRole('button', { name: 'Delete draft' }))
+      await user.click(await screen.findByTestId('manage-result'))
+      await user.click(await screen.findByRole('menuitem', { name: /Delete Draft/ }))
       expect(deleteResultDraft).not.toHaveBeenCalled()
       await user.click(screen.getAllByRole('button', { name: 'Delete draft' }).at(-1) as HTMLElement)
 
@@ -196,138 +205,79 @@ describe('ResultDetailPage', () => {
 
   // docs/specs/118 owner items 11-16: the header and body of the Result page.
   describe('header layout', () => {
-    const pillColor = async (palette: 'success' | 'error' | 'primary' | 'neutral') => {
-      const theme = createTheme()
-      return palette === 'neutral' ? theme.palette.text.primary : theme.palette[palette].dark
-    }
-
-    it('puts each team badge inline next to its own name in the title, not as a pair of badges beside it', async () => {
+    it('shows both team badges beside the title, like the Select Team page', async () => {
       renderPage()
       const heading = await screen.findByRole('heading', { name: '1st XI vs Riverside Occasionals' })
-      const home = within(heading).getByTestId('result-logo-home')
-      const away = within(heading).getByTestId('result-logo-away')
-      expect(home.parentElement).toHaveTextContent('1st XI')
-      expect(home.parentElement).not.toHaveTextContent('Riverside')
-      expect(away.parentElement).toHaveTextContent('Riverside Occasionals')
-      expect(away.parentElement).not.toHaveTextContent('1st XI')
-      // Source order reads "[badge] home vs [badge] away".
+      const home = screen.getByTestId('result-logo-home')
+      const away = screen.getByTestId('result-logo-away')
+      expect(heading).not.toContainElement(home)
       expect(home.compareDocumentPosition(away) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(heading.textContent?.indexOf('vs')).toBeGreaterThan(heading.textContent?.indexOf('1st XI') ?? 0)
     })
 
-    it('shows the Imported chip in the top row beside View match, and none for a manual result', async () => {
+    it('shows the Imported chip beside the title, and none for a manual result', async () => {
       getMatchResult.mockResolvedValue(makeResult({ source: 'IMPORT:STUMPS' }))
       const { unmount } = renderPage()
-      const chip = await screen.findByTestId('imported-chip')
-      expect(chip).toHaveTextContent('Imported from STUMPS')
-      const viewMatch = screen.getByRole('link', { name: 'View match' })
-      expect(chip.parentElement).toBe(viewMatch.parentElement)
-      expect(screen.getByTestId('result-actions')).not.toContainElement(chip)
+      expect(await screen.findByTestId('imported-chip')).toHaveTextContent('Imported from STUMPS')
       unmount()
 
       getMatchResult.mockResolvedValue(makeResult({ source: 'MANUAL' }))
       renderPage()
-      await screen.findByTestId('result-line')
+      await screen.findByTestId('result-figure-result')
       expect(screen.queryByTestId('imported-chip')).not.toBeInTheDocument()
     })
 
-    it('has the result label and status chip on the left of the second line and the actions on the same line, with no text under them', async () => {
+    it('has one Manage Result button and no loose action buttons or View match link', async () => {
       renderPage()
-      const actions = await screen.findByTestId('result-actions')
-      const line = screen.getByTestId('result-line')
-      const chip = screen.getByTestId('result-status-chip')
-      const row = actions.parentElement as HTMLElement
-      expect(row).toContainElement(line)
-      expect(row).toContainElement(chip)
-      expect(row.children[0]).toContainElement(line)
-      expect(row.children[1]).toBe(actions)
-      expect(actions.nextElementSibling).toBeNull()
-      expect(screen.queryByText(/Unpublish to edit/, { selector: 'p, span:not([id])' })).not.toBeInTheDocument()
-      // The compact actions are 32 px high.
-      expect(within(actions).getByRole('button', { name: 'Unpublish' })).toHaveStyle({ minHeight: '32px' })
+      await screen.findByTestId('manage-result')
+      expect(screen.queryByTestId('result-actions')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'View match' })).not.toBeInTheDocument()
     })
 
-    it('makes the result label and the status chip the same pill size', async () => {
-      renderPage()
-      const line = await screen.findByTestId('result-line')
-      const chip = screen.getByTestId('result-status-chip')
-      const sizeOf = (node: HTMLElement) => {
-        const { height, borderRadius, fontSize } = window.getComputedStyle(node)
-        return { height, borderRadius, fontSize }
-      }
-      expect(sizeOf(line).height).toBe('32px')
-      expect(sizeOf(chip)).toEqual(sizeOf(line))
-    })
-
-    it.each([
-      ['won', { outcomeType: 'WON', winningSide: 'HOME' }, 'success'],
-      ['lost', { outcomeType: 'WON', winningSide: 'AWAY' }, 'error'],
-      ['tie', { outcomeType: 'TIE', winningSide: null, marginType: null, marginValue: null }, 'neutral'],
-      ['draw', { outcomeType: 'DRAW', winningSide: null, marginType: null, marginValue: null }, 'neutral'],
-      ['no result', { outcomeType: 'NO_RESULT', winningSide: null, marginType: null, marginValue: null }, 'neutral'],
-    ] as const)('tints a %s result pill by outcome with the theme tokens', async (_name, patch, palette) => {
-      getMatchResult.mockResolvedValue(makeResult(patch))
-      renderPage()
-      expect(await screen.findByTestId('result-line')).toHaveStyle({ color: await pillColor(palette) })
-    })
-
-    it('tints a decided result with no club side primary', async () => {
-      getMatch.mockResolvedValue(makeMatch({ id: 'match-1', homeTeamId: null, homeTeamName: 'Hawks', awayTeamId: null }))
-      renderPage()
-      const line = await screen.findByTestId('result-line')
-      expect(line).toHaveAttribute('data-perspective', 'neutral')
-      expect(line).toHaveStyle({ color: await pillColor('primary') })
-    })
   })
 
   describe('body layout', () => {
-    it('puts the Details card before the Innings card', async () => {
+    it('puts the Details card before the Scorecard card', async () => {
       renderPage()
       const details = await screen.findByRole('heading', { name: 'Details' })
-      const inningsCard = screen.getByRole('heading', { name: 'Innings' })
+      const inningsCard = screen.getByRole('heading', { name: 'Scorecard' })
       expect(details.compareDocumentPosition(inningsCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
-    it('shows the four key figures as compact tiles with a 12 px gap', async () => {
+    it('shows three key figures as compact counters (no icons) with a 6 px gap: the Result first, then the two scores, and no toss card', async () => {
       renderPage()
       const grid = await screen.findByTestId('result-key-figures')
-      expect(grid).toHaveStyle({ gap: '12px' })
-      for (const id of ['home', 'away', 'margin', 'toss']) expect(screen.getByTestId(`result-figure-${id}`)).toBeInTheDocument()
-      expect(grid.children).toHaveLength(4)
+      expect(grid).toHaveStyle({ gap: '6px' })
+      expect(Array.from(grid.children).map((node) => node.getAttribute('data-testid'))).toEqual(['result-figure-result', 'result-figure-home', 'result-figure-away'])
+      expect(screen.queryByTestId('result-figure-toss')).not.toBeInTheDocument()
     })
 
     it.each([
-      ['a no result', { outcomeType: 'NO_RESULT' }],
-      ['an abandoned match', { outcomeType: 'ABANDONED' }],
-      ['a draw', { outcomeType: 'DRAW' }],
-    ] as const)('says "No margin" for %s without a margin, and never a dash', async (_name, patch) => {
+      ['a no result', { outcomeType: 'NO_RESULT' }, /no result/i],
+      ['an abandoned match', { outcomeType: 'ABANDONED' }, /abandoned/i],
+      ['a draw', { outcomeType: 'DRAW' }, /draw/i],
+    ] as const)('says what happened in the Result figure for %s, never a dash', async (_name, patch, text) => {
       getMatchResult.mockResolvedValue(makeResult({ winningSide: null, marginType: null, marginValue: null, ...patch }))
       renderPage()
-      expect(await screen.findByTestId('result-figure-margin-value')).toHaveTextContent('No margin')
+      const value = await screen.findByTestId('result-figure-result-value')
+      expect(value).toHaveTextContent(text)
+      expect(value).not.toHaveTextContent(/^–$/)
     })
 
-    it('shows the margin itself when there is one', async () => {
+    it('says who won and by how much in the Result figure', async () => {
       renderPage()
-      expect(await screen.findByTestId('result-figure-margin-value')).toHaveTextContent('24 runs')
+      expect(await screen.findByTestId('result-figure-result-value')).toHaveTextContent('1st XI won by 24 runs')
     })
 
-    it('does not tag the innings of a one-innings result or of a super-over-only extra', async () => {
-      getMatchResult.mockResolvedValue(makeResult({ outcomeType: 'WON', innings: [innings(1, 'HOME', 200)] }))
-      const { unmount } = renderPage()
-      await screen.findAllByTestId('innings-row')
-      expect(screen.queryAllByTestId('innings-order-tag')).toHaveLength(0)
-      unmount()
-
+    it('shows no "Innings 1" label on a regular innings, and names only a super over', async () => {
       getMatchResult.mockResolvedValue(
         makeResult({ decidedBy: 'SUPER_OVER', marginType: null, marginValue: null, innings: [innings(1, 'HOME', 150), innings(2, 'AWAY', 150, 9), innings(3, 'AWAY', 12, 1, 6), innings(4, 'HOME', 8, 2, 6)] }),
       )
       renderPage()
       const rows = await screen.findAllByTestId('innings-row')
-      // Two regular innings are tagged; the super overs carry no tag.
-      expect(within(rows[0]).getByTestId('innings-order-tag')).toHaveTextContent('Batted first')
-      expect(within(rows[1]).getByTestId('innings-order-tag')).toHaveTextContent('Chased')
-      expect(within(rows[2]).queryByTestId('innings-order-tag')).not.toBeInTheDocument()
-      expect(within(rows[3]).queryByTestId('innings-order-tag')).not.toBeInTheDocument()
+      expect(within(rows[0]).queryByText(/^Innings \d/)).not.toBeInTheDocument()
+      expect(within(rows[1]).queryByText(/^Innings \d/)).not.toBeInTheDocument()
+      expect(within(rows[2]).getByText('Super over 1')).toBeInTheDocument()
+      expect(screen.queryByTestId('innings-order-tag')).not.toBeInTheDocument()
     })
 
     it('shows unrecorded details in the Review step\'s warning treatment, and recorded ones as plain values', async () => {

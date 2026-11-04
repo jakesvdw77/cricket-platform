@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import type { Match } from "../../api/matchApi";
 import type { MatchResult } from "../../api/matchResultApi";
 import type { Team } from "../../api/teamApi";
+import { usePlayerNameMode } from "../../hooks/usePlayerNameMode";
 import { useShareChoices } from "../../hooks/useShareChoices";
 import { useShareResultData } from "../../hooks/useShareResultData";
 import { useShareSettings } from "../../hooks/useShareSettings";
@@ -123,7 +124,9 @@ export function ShareResultDialog({
     }
   }, [open]);
 
-  const initials = resolveShareInitials({
+  // docs/specs/138 (owner, 2026-11-05): with the page's names set to Initials, every export shows initials too (locked on, with the reason).
+  const [nameMode] = usePlayerNameMode();
+  const resolved = resolveShareInitials({
     choices,
     updateChoices,
     junior: data.junior,
@@ -132,6 +135,10 @@ export function ShareResultDialog({
     clubDefaultSaving: settings.isSaving,
     clubDefaultFailed: settings.saveFailed,
   });
+  const initials =
+    nameMode === "initials" && !resolved.locked
+      ? { ...resolved, value: true, locked: true, followsClubDefault: false, lockReason: "Names are set to Initials on the result page." }
+      : resolved;
 
   const candidateIds = useMemo(
     () => new Set(data.sponsors.map((sponsor) => sponsor.id)),
@@ -287,46 +294,21 @@ export function ShareResultDialog({
               label="Share format"
               value={highlighted}
               onChange={choose}
+              // docs/specs/138 (owner, 2026-11-05): the same tile layout as the match share dialog (icon over the text, centred, 2 to 3 columns).
               columns={{
-                xs: "minmax(0, 1fr)",
-                sm: "repeat(2, minmax(0, 1fr))",
+                xs: "repeat(2, minmax(0, 1fr))",
                 md: "repeat(3, minmax(0, 1fr))",
               }}
-              tileSx={{
-                minHeight: 88,
-                py: 1.5,
-                textAlign: "left",
-                justifyContent: "flex-start",
-                alignItems: "center",
-              }}
+              tileSx={{ minHeight: 96, py: 1.5, alignItems: "center", justifyContent: "center" }}
               options={visibleTiles.map((item) => ({
                 value: item.value,
                 content: (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.5,
-                      width: "100%",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        color: "primary.main",
-                        display: "flex",
-                        "& svg": { fontSize: 32 },
-                      }}
-                    >
-                      {item.icon}
-                    </Box>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        {item.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.subtitle}
-                      </Typography>
-                    </Box>
+                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, textAlign: "center" }}>
+                    <Box sx={{ color: "primary.main", display: "flex", "& svg": { fontSize: 28 } }}>{item.icon}</Box>
+                    <Typography sx={{ fontWeight: 700 }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.25 }}>
+                      {item.subtitle}
+                    </Typography>
                   </Box>
                 ),
               }))}

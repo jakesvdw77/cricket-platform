@@ -415,11 +415,16 @@ describe('an imported draft in the capture wizard', () => {
       expect(screen.queryByText(/planned \d/)).not.toBeInTheDocument()
     })
 
-    it('keeps the planned number for a manual result', async () => {
+    it('offers the planned batting position as a switch-controlled column for a manual result, never under the name (138)', async () => {
+      const user = userEvent.setup()
       getMatchResult.mockResolvedValue(storedDraft({ source: 'MANUAL' }))
       getScorecard.mockResolvedValue({ ...importedScorecard(), players: [row('b', 'Bob', 'Bell', { plannedBattingOrder: 2 })] })
       renderPage()
-      expect((await screen.findAllByText('planned 2', {}, { timeout: 10000 })).length).toBeGreaterThan(0)
+      const toggle = await screen.findByRole('button', { name: 'Show planned batting position' }, { timeout: 10000 })
+      expect(screen.queryByText('planned 2')).not.toBeInTheDocument()
+      expect(screen.queryByRole('columnheader', { name: 'Planned batting' })).not.toBeInTheDocument()
+      await user.click(toggle)
+      expect(await screen.findByRole('columnheader', { name: 'Planned batting' })).toBeInTheDocument()
     })
   })
 

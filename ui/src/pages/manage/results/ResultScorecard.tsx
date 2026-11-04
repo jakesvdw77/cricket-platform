@@ -59,7 +59,7 @@ function ScoreTable<T>({ label, columns, rows, rowKey, phone }: { label: string;
       <Box role="table" aria-label={label} sx={{ minWidth: phone ? 420 : 0 }}>
         <Box
           role="row"
-          sx={{ ...rowSx, minHeight: 36, bgcolor: 'action.hover', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'text.secondary' }}
+          sx={{ ...rowSx, minHeight: 36, bgcolor: 'action.hover', fontSize: '0.75rem', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'text.secondary' }}
         >
           {shown.map((column) => (
             <Box key={column.key} role="columnheader" sx={{ textAlign: column.numeric ? 'right' : 'left' }}>
@@ -89,13 +89,19 @@ function Heading({ children }: { children: ReactNode }) {
   )
 }
 
+// docs/specs/138 (owner, 2026-11-05): a team's card is headed by its innings, "First Innings - Harlequins 1", when the batting order is known.
+const INNINGS_ORDINALS = ['First', 'Second', 'Third', 'Fourth']
+const sideTitle = (inningsNumber: number, name: string) => (inningsNumber > 0 && INNINGS_ORDINALS[inningsNumber - 1] ? `${INNINGS_ORDINALS[inningsNumber - 1]} Innings - ${name}` : name)
+
 export interface ResultScorecardProps {
   clubId: string
   match: Match
   result: MatchResult
   names: { home: string; away: string }
   ours: OwnSides
-  toss: string | null
+  toss?: string | null
+  // The innings summary table, drawn at the top of the first card (docs/specs/138).
+  summary?: ReactNode
   // The capture wizard's preview: no Link to player buttons, nothing that changes the result.
   readOnly?: boolean
   // The club team's section on each side, carried into a player created from the Link to player dialog.
@@ -107,7 +113,7 @@ export interface ResultScorecardProps {
 // the extras and total lines, (the standouts and the team's player of the match are in the Details card, `ResultStandouts`). Names go through
 // PlayerName (Full name | First name at the top). A guest row of our side offers Link to player, on a draft and on a
 // published result alike.
-export function ResultScorecard({ clubId, match, result, names, ours, toss, readOnly = false, sectionIds }: ResultScorecardProps) {
+export function ResultScorecard({ clubId, match, result, names, ours, toss, readOnly = false, sectionIds, summary }: ResultScorecardProps) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const queryClient = useQueryClient()
@@ -138,7 +144,8 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
   if (scorecardQuery.isError || !scorecard) {
     return (
       <ResultSection title="Scorecard">
-        <Alert severity="error">We couldn&apos;t load the scorecard. Please try again.</Alert>
+        {summary}
+        <Alert severity="error" sx={{ mt: summary ? 1.5 : 0 }}>We couldn&apos;t load the scorecard. Please try again.</Alert>
       </ResultSection>
     )
   }
@@ -250,7 +257,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
 
     const bowlingColumns: Array<Column<BowlingEntry>> = [
       { key: 'player', header: 'Bowler', width: 'minmax(120px, 1.4fr)', phone: true, render: (entry) => nameCell(playerOf(entry), entry) },
-      { key: 'overs', header: 'Overs', width: '52px', numeric: true, phone: true, render: (entry) => (entry.balls === null ? DASH : ballsToOvers(entry.balls, result.ballsPerOver)) },
+      { key: 'overs', header: 'Overs', width: '52px', numeric: true, phone: true, render: (entry) => <b>{entry.balls === null ? DASH : ballsToOvers(entry.balls, result.ballsPerOver)}</b> },
       { key: 'maidens', header: 'Maidens', width: '68px', numeric: true, phone: true, render: (entry) => num(entry.maidens) },
       ...(showDots ? [{ key: 'dots', header: 'Dots', width: '48px', numeric: true, render: (entry: BowlingEntry) => num(entry.dots) }] : []),
       { key: 'runs', header: 'Runs', width: '48px', numeric: true, phone: true, render: (entry) => num(entry.runs) },
@@ -262,7 +269,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
 
     const inningsNumber = regular.findIndex((candidate) => candidate.battingSide === side) + 1
     return (
-      <ResultSection key={side} title={names[side === 'HOME' ? 'home' : 'away']} testId={`scorecard-${side.toLowerCase()}`}>
+      <ResultSection key={side} collapsible defaultOpen={false} title={sideTitle(inningsNumber, names[side === 'HOME' ? 'home' : 'away'])} testId={`scorecard-${side.toLowerCase()}`}>
         {target && (
           <Typography variant="body2" fontWeight={600} data-testid="scorecard-target" sx={{ mb: 1 }}>
             {target}
@@ -339,12 +346,11 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
 
   return (
     <>
-      <ResultSection title="Scorecard" testId="scorecard-intro">
+      <ResultSection title="Scorecard" testId="scorecard-intro" action={<NameModeToggle />}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-          <Box sx={{ maxWidth: { sm: 320 } }}>
-            <NameModeToggle />
-          </Box>
+          {/* docs/specs/138 (owner, 2026-11-05): the innings summary and the scorecard are ONE card: the toss under the title, the name toggle top right on the title line. */}
           {toss && <Typography variant="body2">{toss}</Typography>}
+          {summary}
           {official && (
             <Box>
               <Chip icon={<EmojiEventsOutlinedIcon />} color="primary" data-testid="scorecard-official-award" label={<>Player of the match: {awardName(official)}</>} />

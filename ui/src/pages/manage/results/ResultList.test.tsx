@@ -109,13 +109,13 @@ describe('ResultList', () => {
     expect(getResultsSummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ search: 'Hillcrest' }))
   })
 
-  it('renders a card per result with a Draft badge only on the draft', async () => {
+  it('renders a card per result with a Draft badge only on the draft, and no "Showing N results" line (138)', async () => {
     renderPage()
 
     const cards = await screen.findAllByRole('heading', { name: /vs/ })
     expect(cards).toHaveLength(2)
     expect(screen.getAllByText('Draft')).toHaveLength(1)
-    expect(screen.getAllByText(/Showing 2 results/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Showing 2 results/)).not.toBeInTheDocument()
   })
 
   it('shows the player of the match on a card that has one, and nothing on a card that has not', async () => {
@@ -150,23 +150,53 @@ describe('ResultList', () => {
     expect(screen.getByText('4 matches are waiting for a result.')).toBeInTheDocument()
   })
 
-  it('offers Import result beside Capture result, and opens the import wizard', async () => {
+  it('has ONE filled Capture New Result button on the title row (no Leaderboards or Import button), and it opens the capture picker (138)', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByRole('button', { name: 'Import result' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Capture result' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Import result' }))
+    // The title-row button first, then the dashed card at the end of the cards.
+    const [create] = await screen.findAllByRole('button', { name: 'Capture New Result' })
+    expect(screen.queryByRole('button', { name: 'Leaderboards' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Import result/i })).not.toBeInTheDocument()
+    await user.click(create)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('offers Import Result in the caret of the title-row split button, and it opens the import page (138)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'More options for Capture New Result' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Import Result' }))
+
     expect(await screen.findByText('At: /manage/results/import')).toBeInTheDocument()
   })
 
-  it('offers Import result in the first-run empty state too', async () => {
+  it('offers a "Capture New Result" link in the first-run empty state, and no dashed Create card (138)', async () => {
     listResults.mockResolvedValue(makePage([]))
     renderPage()
 
     await screen.findByText('No results yet')
-    // The header's action and the empty state's own.
-    expect(screen.getAllByRole('button', { name: 'Import result' })).toHaveLength(2)
+    // The title-row button and the empty message's link.
+    expect(screen.getAllByRole('button', { name: 'Capture New Result' })).toHaveLength(2)
+    expect(screen.queryByTestId('add-result-card')).not.toBeInTheDocument()
+  })
+
+  it('ends the Cards view with a dashed Capture New Result card that opens the picker (138)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('add-result-card'))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('has a Sort button in the toolbar and sends the chosen sort (138)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /^Sort: Latest First/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Oldest First' }))
+    await waitFor(() => expect(listResults).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ sort: 'matchDate,asc' })))
   })
 
   it('says nothing is waiting when there are no awaiting matches', async () => {
@@ -203,16 +233,19 @@ describe('ResultList', () => {
   })
 
   describe('share from a card', () => {
-    it('offers Share on a published result only, and it opens the dialog', async () => {
+    it('lists Share Result last in the kebab, enabled on a published result and disabled on a draft, and it opens the dialog', async () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findAllByRole('heading', { name: /vs/ })
 
-      const shares = screen.getAllByRole('button', { name: 'Share' })
-      expect(shares).toHaveLength(1)
-      expect(shares[0]).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'Actions for 1st XI vs Hillcrest CC' }))
+      expect(await screen.findByRole('menuitem', { name: /^Share Result/ })).toHaveAttribute('aria-disabled', 'true')
+      await user.keyboard('{Escape}')
 
-      await user.click(shares[0])
+      await user.click(screen.getByRole('button', { name: 'Actions for 1st XI vs Riverside Occasionals' }))
+      const items = await screen.findAllByRole('menuitem')
+      expect(items[items.length - 1]).toHaveTextContent(/^Share Result/)
+      await user.click(items[items.length - 1])
       expect(await screen.findByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
     })
   })
@@ -220,9 +253,9 @@ describe('ResultList', () => {
   describe('publish from a card', () => {
     const publishDraft = async (user: ReturnType<typeof userEvent.setup>) => {
       await screen.findAllByRole('heading', { name: /vs/ })
-      // Only the draft has a Publish button.
-      expect(screen.getAllByRole('button', { name: 'Publish' })).toHaveLength(1)
-      await user.click(screen.getByRole('button', { name: 'Publish' }))
+      // Only the draft has a quick Publish Result button (the kebab also lists it).
+      expect(screen.getAllByRole('button', { name: 'Publish Result' })).toHaveLength(1)
+      await user.click(screen.getByRole('button', { name: 'Publish Result' }))
     }
 
     it('publishes a clean draft straight away, without acknowledging', async () => {
@@ -274,12 +307,18 @@ describe('ResultList', () => {
     expect(await screen.findByText('At: /manage/results/match-1')).toBeInTheDocument()
   })
 
-  it('disables Edit with the unpublish reason on a published card and enables it on a draft', async () => {
+  it('disables Edit Result with the unpublish reason on a published card and enables it on a draft, from the kebab', async () => {
+    const user = userEvent.setup()
     renderPage()
     await screen.findAllByRole('heading', { name: /vs/ })
 
-    const edits = screen.getAllByRole('button', { name: 'Edit' })
-    expect(edits.filter((button) => button.hasAttribute('disabled'))).toHaveLength(1)
-    expect(screen.getAllByText('Unpublish to edit').length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Actions for 1st XI vs Riverside Occasionals' }))
+    const published = await screen.findByRole('menuitem', { name: /^Edit Result/ })
+    expect(published).toHaveAttribute('aria-disabled', 'true')
+    expect(published).toHaveTextContent('Unpublish to edit')
+    await user.keyboard('{Escape}')
+
+    await user.click(screen.getByRole('button', { name: 'Actions for 1st XI vs Hillcrest CC' }))
+    expect(await screen.findByRole('menuitem', { name: /^Edit Result/ })).not.toHaveAttribute('aria-disabled', 'true')
   })
 })

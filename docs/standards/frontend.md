@@ -107,7 +107,7 @@ Team choice without a separate step (`docs/specs/125-editable-import-rows.md`, a
 - **File names, PDF metadata and share titles carry team names only**, never a player name (`shareFileName`: `<home> v <away> <yyyy-mm-dd>.<ext>`).
 - **Remembered choices live in `localStorage` under `share:choices:<clubId>`** (`shareChoicesKey`, read and written through `usePersistedListFilters`, passed through `sanitiseShareChoices`). Edited WhatsApp and Facebook text is never stored.
 - **The dialog's actions render in its footer.** `ShareFormatScreen` portals its `actions` into the footer element `ShareResultDialog` provides through `ShareFooterContext`, so Share and Download are always visible while the content scrolls; with no dialog around (Storybook, tests) they render inline.
-- **Share appears on published results only:** the filled Share button on the result page and the Share footer button on the Results card; never on a draft.
+- **Share appears on published results only:** an outlined Share button beside Manage Result on the result page and Share Result last in the card, row and result menus (disabled with its reason on a draft); never usable on a draft.
 - Section-scoped managers may not be able to read leagues, sections, sponsors or the club profile; a failed read fails safe (junior lock on, logos skipped), see the roadmap for the planned share-context read.
 
 ## Player statistics and leaderboards (`docs/specs/103-player-stats.md`)
@@ -185,3 +185,8 @@ On `/admin` and `/manage` (the auth-aware paths, listed once in `auth/keycloak.t
 **League names and contacts leave the app only through the share helpers** (`docs/specs/122-league-sharing.md`): text, PDF, poster and calendar output is built in `utils/share/*` from `LeagueShareModel`, which applies `shareName` (junior initials), contact privacy (never in the Player Hub) and the club's disabled formats. Do not format league data for sharing anywhere else.
 
 **Row and card actions (`docs/standards/page-anatomy.md` section 6).** A table row or record card has ONE actions button, `ManageMenu trigger="kebab" dense` (see `pages/manage/leagues/LeagueRowMenu`), never a footer bar or per-row icon buttons; card grids that fill the width use `dynamicCardGridSx` and end with `components/AddCard`.
+
+
+- **`HeaderShareButton` and `HeaderActions` (`ui/src/components/HeaderShareButton`, `docs/specs/138`):** the one exception to a single header button. `HeaderShareButton` is an outlined 32 px Share; `HeaderActions` places any `beside` button (Share, or Select Team's Announce Team) left of the filled Manage menu from `sm` and stacks both full width on a phone. Used by the Result, League, Match, Availability poll and Select Team pages; the menu keeps its own Share item, last.
+- **`SplitButton` (`ui/src/components/SplitButton`, `docs/specs/138`):** a filled compact main action joined to a caret that opens a menu: the main action first, then the `items` (related actions, not repeating the main one). Caret 44 px wide on a phone. Used by the Results title row (Capture New Result, Import Result).
+- **Results (`docs/specs/138`):** the list follows the page anatomy (flat toolbar fused into the table, one kebab per card and row built by `resultMenuItems`, three-card grid, dashed Capture New Result card, split-button title row). The result page uses `ManageScreenHeader` with ONE Manage Result menu, three compact counters, Details without icons, ONE Scorecard card and a collapsible `ResultSection` per team (closed by default, `aria-expanded`, `aria-controls`).
