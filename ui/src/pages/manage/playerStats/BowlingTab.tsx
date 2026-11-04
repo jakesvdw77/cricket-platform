@@ -85,7 +85,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Dot balls', value: dotsValue, caption: coverageCaption(cov.inningsWithDots, cov.inningsCounted) },
           ]}
         />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, '& > *': { height: 'auto', flex: '0 0 auto' } }}>
           <InfoCard flat fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
               <HaulCounter testId="haul-3" count={bowling.threeWicketHauls} label="3 wickets" />
