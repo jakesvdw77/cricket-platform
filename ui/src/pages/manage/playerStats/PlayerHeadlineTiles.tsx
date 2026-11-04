@@ -1,20 +1,22 @@
-import { Box } from '@mui/material'
-import { KeyFigureTile } from '../../../components/KeyFigureTile'
+import { PageCounters } from '../../../components/PageCounters'
 import type { PlayerStats } from '../../../api/playerStatsApi'
 import { NOT_ON_FILE } from '../../../utils/playerFormat'
 
-const tileValue = (value: number | null | undefined) => (value === null || value === undefined ? NOT_ON_FILE : String(value))
+const figure = (value: number | null | undefined) => (value === null || value === undefined ? NOT_ON_FILE : String(value))
 
-// docs/specs/115-player-match-list.md, 117-stats-dashboard.md (decision 14) and 141: the Matches, Runs, Wickets, Catches strip of a player's statistics, taken from
-// the PlayerStats the page already holds, as the compact counters every page uses (no icons, page-anatomy section 2). One shared part: the Matches tab and the
-// Overview tab render it, so both show the same figures with the same `tile-*` test ids.
-export function PlayerHeadlineTiles({ stats }: { stats: PlayerStats }) {
+// docs/specs/115, 117 (decision 14) and 141: the Matches, Runs, Wickets, Catches figures of a player's statistics, taken from the PlayerStats the page holds,
+// as the same static compact `PageCounters` row every page shows directly under its title row (page-anatomy section 1: title, figures, tabs, toolbar, data). The page
+// renders them once, above the tabs, so they are the same on every tab; the basis sentence is the Matches card's info icon, not a line of its own.
+export function PlayerHeadlineTiles({ stats, basis }: { stats: PlayerStats; basis?: string }) {
   return (
-    <Box data-testid="stat-tiles" sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
-      <KeyFigureTile counter testId="tile-matches" label="Matches" value={tileValue(stats.basis.matchesCounted)} />
-      <KeyFigureTile counter testId="tile-runs" label="Runs" value={tileValue(stats.batting.runs)} />
-      <KeyFigureTile counter testId="tile-wickets" label="Wickets" value={tileValue(stats.bowling.wickets)} />
-      <KeyFigureTile counter testId="tile-catches" label="Catches" value={tileValue(stats.fielding.catches)} />
-    </Box>
+    <PageCounters
+      density="compact"
+      items={[
+        { id: 'matches', testId: 'tile-matches', label: 'Matches', value: figure(stats.basis.matchesCounted), info: basis },
+        { id: 'runs', testId: 'tile-runs', label: 'Runs', value: figure(stats.batting.runs) },
+        { id: 'wickets', testId: 'tile-wickets', label: 'Wickets', value: figure(stats.bowling.wickets) },
+        { id: 'catches', testId: 'tile-catches', label: 'Catches', value: figure(stats.fielding.catches) },
+      ]}
+    />
   )
 }

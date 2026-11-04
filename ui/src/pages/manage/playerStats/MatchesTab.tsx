@@ -9,7 +9,6 @@ import { usePlayerMatches } from '../../../api/playerStatsApi'
 import type { MatchDirection, PlayerStats, PlayerStatsFilters } from '../../../api/playerStatsApi'
 import { MatchCard } from './MatchCard'
 import { MatchRow } from './MatchRow'
-import { PlayerHeadlineTiles } from './PlayerHeadlineTiles'
 import { MATCH_COLUMNS, matchGridSx, muted } from './matchLayout'
 import { Button } from '../../../components/Button'
 
@@ -143,7 +142,6 @@ export function MatchesTab({ clubId, playerId, stats, filters, direction, onTogg
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} data-testid="matches-tab">
-      {total > 0 && <PlayerHeadlineTiles stats={stats} />}
       {body}
       {firstPage && rows.length === 0 && (
         <Typography sx={{ ...muted, fontSize: '0.875rem' }}>No matches to show for these filters.</Typography>

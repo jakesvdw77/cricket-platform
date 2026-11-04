@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useBackLink } from '../../../hooks/useReturnTo'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Chip, Skeleton, Stack, Typography } from '@mui/material'
+import { Box, Chip, Skeleton, Stack } from '@mui/material'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { ToolbarCard } from '../../../components/ToolbarCard'
 import { badgeSx } from '../../../components/RecordCard'
@@ -19,6 +19,7 @@ import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { playerStatusBadge, playerStatusOf } from '../../../utils/playerStatus'
 import { fullName } from '../PlayerList'
 import { PlayerStatsTabs } from './PlayerStatsTabs'
+import { PlayerHeadlineTiles } from './PlayerHeadlineTiles'
 import { resolvePlayerStatsTab } from './playerStatsTabConfig'
 import { BattingTab } from './BattingTab'
 import { BowlingTab } from './BowlingTab'
@@ -191,9 +192,6 @@ export default function PlayerStatsPage() {
   } else {
     body = (
       <>
-        <Typography variant="caption" color="text.secondary" data-testid="stats-basis" sx={{ fontSize: '0.8125rem', lineHeight: 1.4 }}>
-          {basisLine(stats, tab)}
-        </Typography>
         {tab === 'dashboard' && <PlayerDashboardTab stats={stats} dashboard={dashboardQuery} backTo={backToFor('dashboard')} />}
         {tab === 'batting' && <BattingTab stats={stats} />}
         {tab === 'bowling' && <BowlingTab stats={stats} />}
@@ -214,6 +212,8 @@ export default function PlayerStatsPage() {
         backLabel={statsBack.label}
         titleAdornment={badge ? <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" /> : undefined}
       />
+
+      {stats && stats.basis.matchesCounted > 0 && <PlayerHeadlineTiles stats={stats} basis={basisLine(stats, tab)} />}
 
       <PlayerStatsTabs />
 

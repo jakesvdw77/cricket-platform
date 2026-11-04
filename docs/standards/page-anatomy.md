@@ -13,6 +13,7 @@ Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my sug
 6. **Data:** a table, cards or both, section 4.
 
 ## 2. Figure cards
+- **Order is fixed (Decided 2026-11-04, owner, after the Player stats page was built in the old order):** title row, then the figure cards, then the tabs, then the toolbar fused with the data. A page never puts the filters or a sentence of text between the title and its figures; a sentence that explains the figures (a basis line, an age note) is the info icon of the card it explains (`PageCounters` `info`), not a line of its own. Check this order before showing any page.
 - **One card: the Matches counter card** (`PageCounters`, `density="compact"`): raised (shadow 2, 1 px divider border), one fixed height (about 46 px), the number in the display face then its uppercase label on one line, **no icon**. **Decided 2026-10-30.**
 - **No "FILTER" tag.** A card that filters or drills shows a pointer cursor, a small lift on hover, and a green ring when selected. A static figure is the same card without the pointer. **Decided 2026-10-30.**
 - The icon-tile `KeyFigureTile` (72 px), the tinted `StatTile` are to be replaced by this card as each page is reviewed. **Proposed** (the owner liked the Matches cards and disliked mixed heights and icons; confirm the stats pages and profile pages when we reach them).
