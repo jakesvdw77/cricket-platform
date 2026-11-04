@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
-import { Link as RouterLink, useLocation, useOutletContext, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Chip, Stack, Typography } from '@mui/material'
@@ -49,6 +49,7 @@ export default function PlayerDetailPage() {
   const backLink = useBackLink('/manage/players', 'Back to Players')
   const { playerId } = useParams<{ playerId?: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
   const statusActions = usePlayerStatusActions(clubId)
   // docs/specs/088 section G: the games counts come from the list endpoint, and "this season" needs the season
@@ -118,10 +119,10 @@ export default function PlayerDetailPage() {
   // All three always show, so the card keeps its shape; one with nothing on file is drawn dashed and muted.
   const cricketChips: InfoCardChip[] = [
     {
-      label: `Bats: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
+      label: `Batting: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
       on: Boolean(player.battingStance),
     },
-    { label: `Bowls: ${bowling.length > 0 ? bowling.join(', ') : '–'}`, on: bowling.length > 0 },
+    { label: `Bowling: ${bowling.length > 0 ? bowling.join(', ') : '–'}`, on: bowling.length > 0 },
     { label: `Wicketkeeper: ${player.isWicketKeeper ? 'Yes' : 'No'}`, on: player.isWicketKeeper },
   ]
 
@@ -163,8 +164,7 @@ export default function PlayerDetailPage() {
           <HeaderActions
             beside={
               <Button
-                component={RouterLink}
-                to={withReturnTo(`/manage/players/${player.id}/stats`, currentOrigin(location), 'Player')}
+                onClick={() => navigate(withReturnTo(`/manage/players/${player.id}/stats`, currentOrigin(location), 'Player'))}
                 variant="secondary"
                 size="compact"
                 startIcon={<EqualizerOutlinedIcon />}
