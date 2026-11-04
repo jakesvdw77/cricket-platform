@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Stack, Typography } from '@mui/material'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { SectionTreeSelect } from '../../../components/SectionTreeSelect'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { EmptyState } from '../../../components/EmptyState'
+import { listTeamsForClub } from '../../../api/teamApi'
+import { NewPollFilters } from './NewPollFilters'
+import { sectionIdsUnder } from './sectionScope'
 import { getFixtureGroups } from '../../../api/sectionAvailabilityApi'
 import { listSections } from '../../../api/sectionApi'
+import { groupHeadingSx, sectionCardSx } from './groupHeadingSx'
 import { FixtureGroupCard } from './FixtureGroupCard'
 import { invalidateAvailabilityCounters } from '../../../api/availabilitySummaryApi'
 
@@ -25,20 +28,51 @@ export function GroupPollBranch({
   onCreated: () => void
 }) {
   const queryClient = useQueryClient()
-  const [sectionId, setSectionId] = useState<string | null>(initialSectionId ?? null)
+  const [pickedSectionId, setSectionId] = useState<string | null>(initialSectionId ?? null)
+  const [teamId, setTeamId] = useState('')
 
   const { data: sections } = useQuery({
     queryKey: ['managed-club', clubId, 'sections'],
     queryFn: () => listSections(clubId),
   })
 
-  const fixtureGroupsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-fixture-groups', sectionId],
-    queryFn: () => getFixtureGroups(clubId, sectionId as string),
-    enabled: Boolean(sectionId),
+  const { data: teams } = useQuery({
+    queryKey: ['managed-club', clubId, 'teams'],
+    queryFn: () => listTeamsForClub(clubId),
   })
 
-  const groups = useMemo(() => fixtureGroupsQuery.data ?? [], [fixtureGroupsQuery.data])
+  // docs/specs/136: the section is preselected when the manager can see one section only (and from ?sectionId=, the hub's filter).
+  const activeSections = (sections ?? []).filter((section) => section.active)
+  const sectionId = pickedSectionId ?? (activeSections.length === 1 ? activeSections[0].id : null)
+  const inSection = sectionId ? sectionIdsUnder(sections ?? [], sectionId) : null
+  const teamOptions = (teams ?? []).filter((team) => team.active && (!inSection || (team.sectionId ? inSection.has(team.sectionId) : false)))
+  const effectiveTeamId = teamOptions.some((team) => team.id === teamId) ? teamId : ''
+
+  // docs/specs/136 (mockup approved 2026-11-04): the page opens already showing the fixtures with no poll, grouped by section. One
+  // section (or ?sectionId=) means that section; several means "All Sections", a heading each, and the select narrows it.
+  const targetSections = inSection ? activeSections.filter((section) => inSection.has(section.id)) : activeSections
+  const fixtureQueries = useQueries({
+    queries: targetSections.map((section) => ({
+      queryKey: ['managed-club', clubId, 'section-availability-fixture-groups', section.id],
+      queryFn: () => getFixtureGroups(clubId, section.id),
+    })),
+  })
+  const isLoading = fixtureQueries.some((query) => query.isLoading)
+  const isError = fixtureQueries.some((query) => query.isError)
+
+  // Soonest first, with groups whose every fixture is already in a poll last (they are collapsed to a line).
+  const sectionGroups = targetSections
+    .map((section, index) => {
+      const covered = (group: { matches: { alreadyPolled: boolean }[] }) => group.matches.length > 0 && group.matches.every((match) => match.alreadyPolled)
+      const groups = [...(fixtureQueries[index]?.data ?? [])]
+        .filter((group) => !effectiveTeamId || group.matches.some((match) => match.teamId === effectiveTeamId))
+        .sort(
+        (a, b) => Number(covered(a)) - Number(covered(b)) || new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+      )
+      return { section, groups }
+    })
+    .filter((entry) => entry.groups.length > 0)
+  const showHeadings = !sectionId && activeSections.length > 1
 
   const handleCreated = () => {
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
@@ -49,43 +83,53 @@ export function GroupPollBranch({
 
   return (
     <Stack spacing={2} sx={{ gridColumn: '1 / -1' }}>
-      <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} />
+      <NewPollFilters
+        sections={sections ?? []}
+        teams={teamOptions}
+        sectionId={sectionId}
+        teamId={effectiveTeamId}
+        onSectionChange={setSectionId}
+        onTeamChange={setTeamId}
+        hint="Fixtures with no poll yet. Each card below opens one poll with one link."
+      />
 
-      {!sectionId && (
-        <EmptyState
-          title="Choose a section"
-          description="Pick a section to review its upcoming fixtures and choose which ones this poll should cover."
-        />
-      )}
-
-      {sectionId && fixtureGroupsQuery.isLoading && (
+      {isLoading && (
         <Typography variant="body2" color="text.secondary">
           Loading upcoming fixtures…
         </Typography>
       )}
 
-      {sectionId && !fixtureGroupsQuery.isLoading && fixtureGroupsQuery.isError && (
-        <EmptyState
-          title="Couldn't load upcoming fixtures"
-          description="Something went wrong loading this section's upcoming fixtures. Please try again."
-        />
+      {!isLoading && isError && (
+        <EmptyState title="Couldn't load upcoming fixtures" description="Something went wrong loading the upcoming fixtures. Please try again." />
       )}
 
-      {sectionId && !fixtureGroupsQuery.isLoading && !fixtureGroupsQuery.isError && groups.length === 0 && (
-        <EmptyState title="No upcoming fixtures" description="This section has no upcoming fixtures yet." />
+      {sections && !isLoading && !isError && sectionGroups.length === 0 && (
+        <EmptyState title="No upcoming fixtures" description="There are no upcoming fixtures to poll yet." />
       )}
 
-      {sectionId && groups.length > 0 && (
-        <Stack spacing={2}>
-          {groups.map((group) => (
-            <FixtureGroupCard
-              key={`${group.startDate}-${group.endDate}`}
-              clubId={clubId}
-              sectionId={sectionId}
-              group={group}
-              highlightMatchId={matchId}
-              onCreated={handleCreated}
-            />
+      {sectionGroups.length > 0 && (
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" component="h2" fontWeight={700}>
+            Upcoming Fixtures
+          </Typography>
+          {sectionGroups.map(({ section, groups }) => (
+            <Stack key={section.id} spacing={1.5} sx={showHeadings ? sectionCardSx : undefined}>
+              {showHeadings && (
+                <Typography component="h3" sx={groupHeadingSx}>
+                  {section.name}
+                </Typography>
+              )}
+              {groups.map((group) => (
+                <FixtureGroupCard
+                  key={`${section.id}-${group.startDate}-${group.endDate}`}
+                  clubId={clubId}
+                  sectionId={section.id}
+                  group={group}
+                  highlightMatchId={matchId}
+                  onCreated={handleCreated}
+                />
+              ))}
+            </Stack>
           ))}
         </Stack>
       )}

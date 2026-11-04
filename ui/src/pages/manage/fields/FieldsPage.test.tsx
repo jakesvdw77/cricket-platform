@@ -66,23 +66,23 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>, name: string) 
 
 // docs/specs/099-fields-directory.md (1) and docs/specs/134
 describe('FieldsPage', () => {
-  it('shows the header with Add Field, which opens the add page carrying the list as its origin', async () => {
+  it('shows the header with Create New Field, which opens the add page carrying the list as its origin', async () => {
     const user = userEvent.setup()
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Fields' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Add Field' }))
+    await user.click(screen.getByRole('button', { name: 'Create New Field' }))
 
     expect(await screen.findByText('Add field page')).toBeInTheDocument()
   })
 
-  it('has no count text, no Quick filter row and no icon on the Add Field button', async () => {
+  it('has no count text, no Quick filter row and no icon on the Create New Field button', async () => {
     renderPage()
 
     await screen.findByText('Riverside Oval')
     expect(screen.queryByText(/Showing/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Quick filter/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add Field' }).querySelector('svg')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Create New Field' }).querySelector('svg')).toBeNull()
   })
 
   it('shows the three counters from the summary, including the Our Fields count', async () => {
@@ -317,14 +317,14 @@ describe('FieldsPage', () => {
       expect(order(cards, list)).toBe(true)
     })
 
-    it('Cards view: a standalone toolbar card, flat cards with no footer bar, and a dashed Add Field card', async () => {
+    it('Cards view: a standalone toolbar card, flat cards with no footer bar, and a dashed Create New Field card', async () => {
       renderPage()
 
       await screen.findByRole('heading', { name: 'Riverside Oval' })
       expect(screen.getByTestId('toolbar-card')).toHaveAttribute('data-composition', 'standalone')
       expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
-      expect(screen.getByTestId('add-field-card')).toHaveTextContent('Add Field')
+      expect(screen.getByTestId('add-field-card')).toHaveTextContent('Create New Field')
       expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(1)
     })
 
@@ -446,14 +446,14 @@ describe('FieldsPage', () => {
   })
 
   describe('empty and error states', () => {
-    it('says the club has no fields of its own yet when Our Fields Only finds none, with no button in the message', async () => {
+    it('says the club has no fields of its own yet when Our Fields Only finds none, with a quick-action Create New Field link', async () => {
       listPlayingAreas.mockResolvedValue(fieldPage([]))
       renderPage()
       const title = await screen.findByText('No fields of your own yet')
       expect(title).toBeInTheDocument()
-      expect(within(title.parentElement as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
-      // the dashed Add Field card is the way in
-      expect(screen.getByTestId('add-field-card')).toBeInTheDocument()
+      expect(within(title.parentElement as HTMLElement).getByRole('button', { name: 'Create New Field' })).toBeInTheDocument()
+      // page-anatomy section 5 (2026-11-04): no dashed Add card on an empty Cards view, the message's button is enough
+      expect(screen.queryByTestId('add-field-card')).not.toBeInTheDocument()
     })
 
     it('says nothing matches a search', async () => {

@@ -255,7 +255,7 @@ describe('PlayersPhoneLists', () => {
 
       renderLists({ games: [NO_POLL] })
       expect(screen.getByText('No polls opened yet for these games')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Go to Availability Polls' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create New Poll' })).toBeInTheDocument()
     })
   })
 

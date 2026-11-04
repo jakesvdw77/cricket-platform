@@ -63,10 +63,10 @@ describe('LeagueTable Actions kebab', () => {
       'Open Schedule',
       'Open Teams',
       'Open Playing Conditions',
-      'Add Match',
+      'Create New Match',
       'Import Schedule',
     ])
-    expect(screen.getByRole('menuitem', { name: 'Add Match' })).toHaveAttribute('href', expect.stringContaining('leagueId=league-2&seasonId=season-1'))
+    expect(screen.getByRole('menuitem', { name: 'Create New Match' })).toHaveAttribute('href', expect.stringContaining('leagueId=league-2&seasonId=season-1'))
   })
 
   it('adds Duplicate League when the page gives a handler, and runs it for that row', async () => {
@@ -77,10 +77,10 @@ describe('LeagueTable Actions kebab', () => {
     await vi.waitFor(() => expect(onDuplicate).toHaveBeenCalledWith(expect.objectContaining({ id: 'league-2' })))
   })
 
-  it('disables Add Match and Import Schedule with their reasons without a season', async () => {
+  it('disables Create New Match and Import Schedule with their reasons without a season', async () => {
     renderTable([makeLeague()])
     await userEvent.click(screen.getByRole('button', { name: /^Actions for / }))
-    expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveTextContent('Create a season first')
+    expect(screen.getByRole('menuitem', { name: /Create New Match/ })).toHaveTextContent('Create a season first')
     expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveTextContent('Create a season first')
   })
 

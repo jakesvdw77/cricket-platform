@@ -377,7 +377,7 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
-      for (const name of ['Create match', 'Share', 'Duplicate League', 'Actions', 'Add Match']) {
+      for (const name of ['Create match', 'Share', 'Duplicate League', 'Actions', 'Create New Match']) {
         expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
       }
       expect(screen.queryByRole('link', { name: 'Edit League' })).not.toBeInTheDocument()
@@ -396,7 +396,7 @@ describe('LeagueViewLayout', () => {
     })
 
     it.each([
-      ['schedule', 'Manage Schedule', ['Add Match', 'Import Schedule', 'Share Schedule']],
+      ['schedule', 'Manage Schedule', ['Create New Match', 'Import Schedule', 'Share Schedule']],
       ['teams', 'Manage Teams', ['Add Team', 'Copy Teams', 'Share Teams']],
       ['conditions', 'Manage Playing Conditions', ['Edit Playing Conditions', 'Share Playing Conditions', 'View Document']],
     ])('the %s tab menu "%s" lists its items in order, Share never first', async (tab, label, expected) => {
@@ -541,13 +541,13 @@ describe('LeagueViewLayout', () => {
       expect(tile.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
     })
 
-    it('links Add Match and Import Schedule (Manage Schedule) to the prefilled Match form and the import wizard, and Edit League Details to the edit page', async () => {
+    it('links Create New Match and Import Schedule (Manage Schedule) to the prefilled Match form and the import wizard, and Edit League Details to the edit page', async () => {
       const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await user.click(await screen.findByRole('button', { name: 'Manage Schedule' }))
 
-      expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
+      expect(screen.getByRole('menuitem', { name: /Create New Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
       expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveAttribute('href', expect.stringContaining(`${LEAGUE_PATH}/schedule/import?seasonId=season-1&from=view`))
     })
 
@@ -950,7 +950,7 @@ describe('LeagueViewLayout', () => {
         const tabLabel = { schedule: 'Manage Schedule', teams: 'Manage Teams', conditions: 'Manage Playing Conditions' }[view] as string
         await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
         await user.click(screen.getByRole('button', { name: tabLabel }))
-        const linkNames = { schedule: [/Add Match/, /Import Schedule/], teams: [], conditions: [/Edit Playing Conditions/] }[view] as RegExp[]
+        const linkNames = { schedule: [/Create New Match/, /Import Schedule/], teams: [], conditions: [/Edit Playing Conditions/] }[view] as RegExp[]
         for (const name of linkNames) {
           const tabOrigin = view === 'conditions' ? { ...origin, label: 'Internal League playing conditions' } : origin
           expect(returnOf(screen.getByRole('menuitem', { name }).getAttribute('href'))).toEqual(tabOrigin)
@@ -971,7 +971,7 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-1&returnTo=${encodeURIComponent('/manage/fixtures/leagues')}&returnLabel=Leagues`)
 
       await user.click(await screen.findByRole('button', { name: 'Manage Schedule' }))
-      const href = screen.getByRole('menuitem', { name: /Add Match/ }).getAttribute('href')
+      const href = screen.getByRole('menuitem', { name: /Create New Match/ }).getAttribute('href')
       expect(new URLSearchParams((href ?? '').split('?')[1]).getAll('returnTo')).toEqual([`${LEAGUE_PATH}/schedule?seasonId=season-1`])
     })
   })

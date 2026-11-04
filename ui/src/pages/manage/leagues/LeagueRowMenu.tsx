@@ -41,7 +41,7 @@ export function LeagueRowMenu({ league, seasonId, onShare, onDuplicate, testId =
     { id: 'open-conditions', title: 'Open Playing Conditions', icon: <DescriptionOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/conditions${search}`) },
     {
       id: 'add-match',
-      title: 'Add Match',
+      title: 'Create New Match',
       icon: <AddOutlinedIcon fontSize="small" />,
       to: seasonId ? leaveTo(leagueAddMatchPath(league.id, seasonId)) : undefined,
       disabled: !seasonId,

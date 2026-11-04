@@ -146,6 +146,16 @@ function column(dayPart: 'Morning' | 'Afternoon', status: 'Available' | 'Unsure'
   return screen.getByRole('group', { name: new RegExp(`^${status} players, .*${dayPart}$`) })
 }
 
+// docs/specs/136: every poll action is in the one Manage Poll menu.
+async function manage(user: ReturnType<typeof userEvent.setup>, itemName: string | RegExp) {
+  await user.click(screen.getByRole('button', { name: 'Manage Poll' }))
+  await user.click(await screen.findByRole('menuitem', { name: itemName }))
+}
+
+async function openManage(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Manage Poll' }))
+}
+
 async function loaded() {
   await screen.findByRole('heading', { level: 1, name: 'Sat 6 Jun - U13 Boys fixtures' })
 }
@@ -156,9 +166,13 @@ describe('GroupPollResponsesPage', () => {
     await loaded()
 
     expect(screen.getByText('Open')).toBeInTheDocument()
-    expect(screen.getByText('Group poll')).toBeInTheDocument()
+    expect(screen.getByText('Group Poll')).toBeInTheDocument()
     expect(screen.getByText(/U13 Boys · Closes /)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to availability polls/i })).toHaveAttribute('href', '/manage/availability')
+    // Back alone on the top row, no pencils and no loose action buttons (docs/specs/136).
+    expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manage Poll' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to availability/i })).toHaveAttribute('href', '/manage/availability')
   })
 
   it('says "Closes manually" when the poll does not autoclose', async () => {
@@ -177,7 +191,7 @@ describe('GroupPollResponsesPage', () => {
     expect(headings).toHaveLength(2)
     expect(headings[0]).toMatch(/· Morning$/)
     expect(headings[1]).toMatch(/· Afternoon$/)
-    expect(screen.getByRole('button', { name: 'Time slot' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Time Slot' })).toHaveAttribute('aria-pressed', 'true')
     expect(slotSection('Morning').getByText(/U13 Boys A v Rivals CC/)).toBeInTheDocument()
     expect(slotSection('Morning').getByText(/Junior League/)).toBeInTheDocument()
     expect(slotSection('Afternoon').getByText(/U13 Boys B v Town CC/)).toBeInTheDocument()
@@ -318,7 +332,7 @@ describe('GroupPollResponsesPage', () => {
       expect(chips.getByRole('button', { name: 'Unsure 1' })).toBeInTheDocument()
       expect(chips.getByRole('button', { name: 'Unavailable 0' })).toBeInTheDocument()
       expect(chips.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Morning/)
+      expect(screen.getByRole('button', { name: /^Slot:/ })).toHaveTextContent(/Morning/)
     })
 
     it('a chip shows only those players, again or All shows everyone, and the counts ignore search and chip', async () => {
@@ -344,7 +358,7 @@ describe('GroupPollResponsesPage', () => {
     it('combines the chip with the hide-unanswered switch', async () => {
       const user = await openPlayerTab()
 
-      await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
+      await user.click(screen.getByRole('button', { name: 'Hide No Answers' }))
       await user.click(screen.getByRole('button', { name: 'No response 2' }))
       // Of the two with no answer in Morning, Cal has none at all (hidden); Amy answered Afternoon.
       expect(names()).toEqual(['Amy Lee'])
@@ -381,7 +395,7 @@ describe('GroupPollResponsesPage', () => {
 
       await user.click(within(screen.getByRole('columnheader', { name: /Afternoon/ })).getByRole('button'))
 
-      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Afternoon/)
+      expect(screen.getByRole('button', { name: /^Slot:/ })).toHaveTextContent(/Afternoon/)
       expect(screen.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
@@ -392,8 +406,8 @@ describe('GroupPollResponsesPage', () => {
     it('choosing a slot in the selector changes what the chips count', async () => {
       const user = await openPlayerTab()
 
-      await user.click(screen.getByRole('combobox', { name: 'Slot' }))
-      await user.click(screen.getByRole('option', { name: /Afternoon/ }))
+      await user.click(screen.getByRole('button', { name: /^Slot:/ }))
+      await user.click(await screen.findByRole('menuitem', { name: /Afternoon/ }))
 
       expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
     })
@@ -406,7 +420,7 @@ describe('GroupPollResponsesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
     expect(screen.getByText('Cal Ng')).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
+    await user.click(screen.getByRole('button', { name: 'Hide No Answers' }))
 
     expect(screen.queryByText('Cal Ng')).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
@@ -416,18 +430,18 @@ describe('GroupPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('button', { name: 'Time slot' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Time Slot' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Player' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Summary' })).not.toBeInTheDocument()
   })
 
-  it('puts the tabs and search inside the filter panel (085)', async () => {
+  it('puts the views and search inside the flat toolbar card (085, 136)', async () => {
     renderPage()
     await loaded()
 
     const panel = screen.getByLabelText('Search players').closest('div[class*="MuiBox-root"]')?.parentElement?.parentElement as HTMLElement
-    expect(within(panel).getByRole('button', { name: 'Time slot' })).toBeInTheDocument()
-    expect(getComputedStyle(panel).boxShadow).not.toBe('none')
+    expect(within(panel).getByRole('button', { name: 'Time Slot' })).toBeInTheDocument()
+    expect(getComputedStyle(panel).boxShadow).toMatch(/^(none|)$/)
   })
 
   it('shows the header gauge on both tabs: answered all / some / none for a poll with several slots, and a thin bar per slot (085)', async () => {
@@ -584,7 +598,7 @@ describe('GroupPollResponsesPage', () => {
     await loaded()
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
-    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    expect(screen.getByText('Changes are recorded as a manager correction.')).toBeInTheDocument()
     const chip = within(column('Morning', 'Available')).getByLabelText(/Set Jane Smith's.*morning availability/i)
     expect(chip).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(chip)
@@ -600,17 +614,17 @@ describe('GroupPollResponsesPage', () => {
     await loaded()
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
-    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    expect(screen.getByText('Changes are recorded as a manager correction.')).toBeInTheDocument()
     expect(screen.getByLabelText(/Set Jane Smith's.*afternoon availability/i)).not.toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('opens Edit close time from the header pencil and saves the chosen close time', async () => {
+  it('opens Edit Close Time from the Manage Poll menu and saves the chosen close time', async () => {
     const user = userEvent.setup()
     updateRoundCloseTime.mockResolvedValue(makeRound())
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    await manage(user, 'Edit Close Time')
     expect(await screen.findByRole('heading', { name: 'Edit close time' })).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -629,7 +643,7 @@ describe('GroupPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    await manage(user, 'Reopen Poll')
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
     await waitFor(() => expect(openRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
@@ -643,7 +657,7 @@ describe('GroupPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      await manage(user, 'Delete Poll')
       expect(await screen.findByRole('dialog', { name: 'Delete this group poll?' })).toBeInTheDocument()
       expect(deleteRound).not.toHaveBeenCalled()
 
@@ -666,7 +680,7 @@ describe('GroupPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      await manage(user, 'Delete Poll')
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete poll' }))
 
       await waitFor(() => expect(deleteRound).toHaveBeenCalled())
@@ -674,13 +688,13 @@ describe('GroupPollResponsesPage', () => {
       expect(screen.queryByText('Polls List')).not.toBeInTheDocument()
     })
 
-    it('puts an Edit description pencil after the title that renames the poll', async () => {
+    it('Edit Description in the Manage Poll menu renames the poll', async () => {
       const user = userEvent.setup()
       updateRoundDescription.mockResolvedValue({})
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Edit description' }))
+      await manage(user, 'Edit Description')
       const field = await screen.findByRole('textbox')
       expect(field).toHaveValue('Sat 6 Jun - U13 Boys fixtures')
 
@@ -697,13 +711,13 @@ describe('GroupPollResponsesPage', () => {
 
   // docs/specs/090: Close poll / Reopen poll in the header.
   describe('close and reopen from the page', () => {
-    it('closes an open poll after confirming, then shows it closed with Reopen poll', async () => {
+    it('closes an open poll after confirming, then offers Reopen Poll', async () => {
       const user = userEvent.setup()
       closeRound.mockResolvedValue({})
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      await manage(user, 'Close Poll')
       expect(await screen.findByRole('dialog', { name: 'Close this poll?' })).toBeInTheDocument()
       expect(closeRound).not.toHaveBeenCalled()
 
@@ -712,8 +726,11 @@ describe('GroupPollResponsesPage', () => {
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close poll' }))
 
       await waitFor(() => expect(closeRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
-      expect(await screen.findByRole('button', { name: 'Reopen poll' })).toBeEnabled()
-      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.getByText('Closed')).toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await openManage(user)
+      expect(await screen.findByRole('menuitem', { name: 'Reopen Poll' })).not.toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('menuitem', { name: 'Close Poll' })).not.toBeInTheDocument()
     })
 
     it('does nothing when the confirmation is cancelled', async () => {
@@ -721,68 +738,75 @@ describe('GroupPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      await manage(user, 'Close Poll')
       await user.click(await screen.findByRole('button', { name: 'Cancel' }))
 
       expect(closeRound).not.toHaveBeenCalled()
     })
 
-    it('offers Reopen poll on a closed poll, disabled with the reason when it cannot be reopened', async () => {
+    it('offers Reopen Poll on a closed poll, disabled with the reason when it cannot be reopened', async () => {
+      const user = userEvent.setup()
       listRounds.mockResolvedValue([makeRound({ open: false, canReopen: false })])
       getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
       renderPage()
       await loaded()
 
-      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
-      const reopen = screen.getByRole('button', { name: 'Reopen poll' })
-      expect(reopen).toBeDisabled()
-      expect(reopen.closest('span')).toHaveAttribute('title', 'The matches in this poll are in the past')
+      await openManage(user)
+      expect(screen.queryByRole('menuitem', { name: 'Close Poll' })).not.toBeInTheDocument()
+      const reopen = screen.getByRole('menuitem', { name: /Reopen Poll/ })
+      expect(reopen).toHaveAttribute('aria-disabled', 'true')
+      expect(reopen).toHaveTextContent('The matches in this poll are in the past')
     })
   })
 
-  it('disables the reopen pencil with the reason on a closed poll that cannot be reopened', async () => {
-    listRounds.mockResolvedValue([makeRound({ open: false, canReopen: false })])
-    getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
-    renderPage()
-    await loaded()
-
-    const pencil = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
-    expect(pencil).toBeDisabled()
-    expect(pencil.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
-    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
-  })
-
-  it('keeps the close-time pencil enabled on an open poll even when canReopen is false', async () => {
+  it('keeps Edit Close Time enabled on an open poll even when canReopen is false', async () => {
+    const user = userEvent.setup()
     listRounds.mockResolvedValue([makeRound({ canReopen: false })])
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeEnabled()
+    await openManage(user)
+    expect(screen.getByRole('menuitem', { name: 'Edit Close Time' })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('opens the share dialog', async () => {
+  it('lists the poll actions in order, Share Invite last', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: /share invite/i }))
+    await openManage(user)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Edit Description',
+      'Edit Close Time',
+      'Close Poll',
+      'Matches Covered',
+      'Delete Poll',
+      'Share Invite',
+    ])
+  })
+
+  it('opens the share dialog from Share Invite', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+
+    await manage(user, 'Share Invite')
 
     const textarea = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
     expect(textarea.value).toContain('/section-availability/round-1')
   })
 
-  it('disables the header Share invite with an explanation on a closed poll', async () => {
+  it('disables Share Invite with an explanation on a closed poll', async () => {
+    const user = userEvent.setup()
     listRounds.mockResolvedValue([makeRound({ open: false })])
     getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
     renderPage()
     await loaded()
 
-    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
-    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
-    expect(share).toBeDisabled()
-    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+    await openManage(user)
+    const share = screen.getByRole('menuitem', { name: /Share Invite/ })
+    expect(share).toHaveAttribute('aria-disabled', 'true')
+    expect(share).toHaveTextContent('Share invite is unavailable: this poll is closed')
   })
 
   it('goes back to the polls list', async () => {
@@ -790,7 +814,7 @@ describe('GroupPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('link', { name: /back to availability polls/i }))
+    await user.click(screen.getByRole('link', { name: /back to availability/i }))
 
     expect(await screen.findByText('Polls List')).toBeInTheDocument()
   })
@@ -800,7 +824,7 @@ describe('GroupPollResponsesPage', () => {
     renderPage('test-club-id', 'missing-round')
 
     expect(await screen.findByText("Couldn't load this poll")).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to availability polls/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to availability/i })).toBeInTheDocument()
   })
 
   it('shows the same state when the responses fail to load', async () => {
@@ -808,7 +832,7 @@ describe('GroupPollResponsesPage', () => {
     renderPage()
 
     expect(await screen.findByText("Couldn't load this poll")).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to availability polls/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to availability/i })).toBeInTheDocument()
   })
 
   it('renders "Not authorized" and fetches nothing without a club', () => {

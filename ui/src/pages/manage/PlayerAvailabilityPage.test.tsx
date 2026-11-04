@@ -149,10 +149,11 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.queryByRole('link', { name: 'Availability Polls' })).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Search players')).toBeInTheDocument()
-    expect(screen.getByText(/^Showing 2 players · 1 game/)).toBeInTheDocument()
+    // No count text (docs/specs/136).
+    expect(screen.queryByText(/^Showing /)).not.toBeInTheDocument()
   })
 
-  it('lays the filters out as League, Section, Team, then search, with the toggles on the line above the grid and no Season field (083)', async () => {
+  it('lays the filters out as League, Section, Team, then search, with the toggle chips in the same toolbar card and no Season field (083, 136)', async () => {
     renderPage()
     await loaded()
 
@@ -163,7 +164,7 @@ describe('PlayerAvailabilityPage', () => {
     const search = screen.getByPlaceholderText('Search players')
     expect(order[2].compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
-    const toggle = screen.getByRole('checkbox', { name: 'View entire season' })
+    const toggle = screen.getByRole('button', { name: 'View Entire Season' })
     expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
   })
@@ -212,7 +213,7 @@ describe('PlayerAvailabilityPage', () => {
     )
 
     await user.click(screen.getByLabelText('Team'))
-    expect(await screen.findByRole('option', { name: 'All teams in section' })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'All Teams In Section' })).toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: 'Juniors A' }))
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', {
@@ -284,13 +285,13 @@ describe('PlayerAvailabilityPage', () => {
     )
   })
 
-  it('View entire season sends includePast and is not persisted', async () => {
+  it('View Entire Season sends includePast and is not persisted', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('checkbox', { name: 'View entire season' })).not.toBeChecked()
-    await user.click(screen.getByRole('checkbox', { name: 'View entire season' }))
+    expect(screen.getByRole('button', { name: 'View Entire Season' })).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: 'View Entire Season' }))
 
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
@@ -298,17 +299,16 @@ describe('PlayerAvailabilityPage', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('Hide players with no answers hides only players without an answer', async () => {
+  it('Hide No Answers hides only players without an answer', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
     expect(screen.getByText('Bob Jones')).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: 'Hide players with no answers' }))
+    await user.click(screen.getByRole('button', { name: 'Hide No Answers' }))
 
     expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
-    expect(screen.getByText(/^Showing 1 player · 1 game/)).toBeInTheDocument()
     // Client-side only: no refetch.
     expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
   })
@@ -327,22 +327,24 @@ describe('PlayerAvailabilityPage', () => {
     expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
   })
 
-  it('puts Jump to today in the hub header action slot, not in the content controls line (085)', async () => {
+  it('puts Jump To Today in the legend row above the grid, before the slot navigator, not in the toolbar (136)', async () => {
     renderPage()
     await loaded()
 
-    const jump = screen.getByRole('button', { name: 'Jump to today' })
-    expect(screen.getByTestId('hub-header-action')).toContainElement(jump)
-    expect(screen.getByText(/^Showing 2 players/).parentElement).not.toContainElement(jump)
+    const jump = screen.getByRole('button', { name: 'Jump To Today' })
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    expect(jump.closest('div')?.parentElement).toContainElement(legend)
+    expect(screen.getByTestId('toolbar-card')).not.toContainElement(jump)
+    expect(screen.getByTestId('toolbar-card')).toContainElement(screen.getByRole('button', { name: 'View Entire Season' }))
   })
 
-  it('takes Jump to today away from the header when the view goes (085)', async () => {
+  it('takes Jump To Today away when the view goes', async () => {
     const view = renderPage()
     await loaded()
-    expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump To Today' })).toBeInTheDocument()
 
     view.unmount()
-    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump To Today' })).not.toBeInTheDocument()
   })
 
   it('changes an answer from a grid cell: saves with the looked-up window, refreshes the grid (085 F)', async () => {
@@ -375,7 +377,7 @@ describe('PlayerAvailabilityPage', () => {
     expect(within(screen.getByTestId('cell-p2-m-future')).getByRole('button', { name: /No response/ })).toBeInTheDocument()
   })
 
-  it('Jump to today scrolls the first upcoming game column into view', async () => {
+  it('Jump To Today scrolls the first upcoming game column into view', async () => {
     const user = userEvent.setup()
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [PAST, FUTURE], players: [makePlayer('p1', 'Jane', 'Smith', 7, [['m-past', 'AVAILABLE'], ['m-future', 'UNSURE']])] }))
     const scrollIntoView = vi.fn(function (this: HTMLElement) {
@@ -385,27 +387,27 @@ describe('PlayerAvailabilityPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Jump to today' }))
+    await user.click(screen.getByRole('button', { name: 'Jump To Today' }))
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('link', { name: 'Villagers 1 v CBC: open poll' }).closest('th'))
     delete Element.prototype.scrollIntoView
   })
 
-  it('disables Jump to today when every game is in the past, and does not throw without scrollIntoView', async () => {
+  it('disables Jump To Today when every game is in the past, and does not throw without scrollIntoView', async () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [PAST], players: [makePlayer('p1', 'Jane', 'Smith', 7, [['m-past', 'AVAILABLE']])] }))
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('button', { name: 'Jump to today' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Jump To Today' })).toBeDisabled()
   })
 
-  it('does not throw clicking Jump to today in jsdom (no scrollIntoView)', async () => {
+  it('does not throw clicking Jump To Today in jsdom (no scrollIntoView)', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Jump to today' }))
+    await user.click(screen.getByRole('button', { name: 'Jump To Today' }))
     expect(screen.getByRole('table')).toBeInTheDocument()
   })
 
@@ -423,14 +425,14 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('hides Jump to today while the grid is replaced by an empty state', async () => {
+  it('hides Jump To Today while the grid is replaced by an empty state', async () => {
     listPlayerAvailability.mockResolvedValue(
       makeResult({ games: [makeGame({ pollType: null, pollId: null, roundId: null })], players: [] }),
     )
     renderPage()
 
     await screen.findByText('No polls opened yet for these games')
-    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump To Today' })).not.toBeInTheDocument()
   })
 
   it('says so when no games match', async () => {
@@ -438,7 +440,7 @@ describe('PlayerAvailabilityPage', () => {
     renderPage()
 
     expect(await screen.findByText('No games match these filters')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump To Today' })).not.toBeInTheDocument()
   })
 
   it('says so when no game has a poll yet, linking to Availability Polls', async () => {
@@ -448,7 +450,7 @@ describe('PlayerAvailabilityPage', () => {
     renderPage()
 
     expect(await screen.findByText('No polls opened yet for these games')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Go to Availability Polls' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.getByRole('button', { name: 'Create New Poll' })).toBeInTheDocument()
   })
 
   it('shows a notice when the server truncated the result', async () => {
@@ -499,17 +501,17 @@ describe('PlayerAvailabilityPage', () => {
       expect(screen.getByPlaceholderText('Search players')).toBeVisible()
       // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
     expect(screen.queryByRole('combobox', { name: 'League' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('checkbox', { name: 'View entire season' })).not.toBeInTheDocument()
-      // No Jump to today on a phone (085): the header slot stays empty.
-      expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'View Entire Season' })).not.toBeInTheDocument()
+      // No Jump To Today on a phone (085): the header slot stays empty.
+      expect(screen.queryByRole('button', { name: 'Jump To Today' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Filters' }))
 
       expect(await screen.findByLabelText('League')).toBeInTheDocument()
       expect(screen.getByLabelText('Section')).toBeInTheDocument()
       expect(screen.getByLabelText('Team')).toBeInTheDocument()
-      expect(screen.getByRole('checkbox', { name: 'View entire season' })).toBeInTheDocument()
-      expect(screen.getByRole('checkbox', { name: 'Hide players with no answers' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'View Entire Season' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Hide No Answers' })).toBeInTheDocument()
     })
 
     it('shows the By game / By player lists instead of the grid, with the same data (085)', async () => {

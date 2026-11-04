@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
 import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
+import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
@@ -43,6 +44,7 @@ import type { InfoCardChip } from '../../components/InfoCard'
 // unverified or rejected player, a banner above the cards.
 export default function PlayerDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
+  const backLink = useBackLink('/manage/players', 'Back to Players')
   const { playerId } = useParams<{ playerId?: string }>()
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
   const statusActions = usePlayerStatusActions(clubId)
@@ -125,14 +127,14 @@ export default function PlayerDetailPage() {
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}
-          to="/manage/players"
+          to={backLink.to ?? '/manage/players'}
           variant="text"
           color="inherit"
           size="small"
           startIcon={<ArrowBackIcon fontSize="small" />}
           sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
         >
-          Back to Players
+          {backLink.label}
         </MuiButton>
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>

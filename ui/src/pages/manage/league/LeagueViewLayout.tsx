@@ -3,10 +3,10 @@ import { LogoAvatar } from '../../../components/LogoAvatar'
 import type { MouseEvent } from 'react'
 import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography, useMediaQuery } from '@mui/material'
+import { Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tooltip, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { pageTitleSx } from '../../../theme'
-import { VIEW_TABS_PROPS, viewTabSx } from '../../../utils/viewTabs'
+import { ViewTabsRow } from '../../../components/ViewTabsRow'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import { compactButtonSx } from '../../../components/Button'
@@ -477,31 +477,16 @@ export default function LeagueViewLayout() {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
         {/* The switcher is link navigation, so it is a nav landmark and the active link carries
             aria-current="page". */}
-        <Box
-          component="nav"
+        <ViewTabsRow
           aria-label="League views"
-          sx={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, borderBottom: 1, borderColor: 'divider' }}
+          value={activeTab}
+          tabs={VIEW_TABS.map((tab) => ({
+            value: tab.segment,
+            label: tab.label,
+            icon: tab.icon,
+            to: { pathname: `${leagueBasePath}/${tab.segment}`, search: location.search },
+          }))}
         >
-          <Tabs
-            value={activeTab}
-            {...VIEW_TABS_PROPS}
-            // The divider sits on the row (so it runs under the actions too), hence no borderBottom here.
-            sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: '1 1 0' }, minWidth: 0 }}
-          >
-            {VIEW_TABS.map((tab) => (
-              <Tab
-                key={tab.segment}
-                value={tab.segment}
-                label={tab.label}
-                icon={tab.icon}
-                iconPosition="start"
-                component={RouterLink}
-                to={{ pathname: `${leagueBasePath}/${tab.segment}`, search: location.search }}
-                aria-current={activeTab === tab.segment ? 'page' : undefined}
-                sx={viewTabSx}
-              />
-            ))}
-          </Tabs>
           {/* docs/specs/126: the active view's actions (LeagueTabActions portals into this). Under sm it wraps onto its own
               row under the tabs, buttons side by side at equal width and 44 px; from sm they are compact and right-aligned. */}
           <Box
@@ -522,7 +507,7 @@ export default function LeagueViewLayout() {
               '& .MuiButton-root': { width: { xs: '100%', sm: MANAGE_BUTTON_WIDTH }, minHeight: { xs: 44, sm: 32 }, justifyContent: 'center' },
             }}
           />
-        </Box>
+        </ViewTabsRow>
 
         <Outlet context={context} />
       </Box>

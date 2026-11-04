@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
+import { compactFieldsSx } from '../../../utils/filterPanel'
 import { useMutation } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
 import { Button } from '../../../components/Button'
@@ -86,6 +87,8 @@ export function FixtureGroupCard({
   // docs/specs/085: every fixture of this group is already in a poll, so there is nothing to open here: no editable
   // description, Autoclose or close time and no disabled action, just the list with the covering poll's link.
   const fullyCovered = group.matches.length > 0 && group.matches.every((match) => match.alreadyPolled)
+  // One link per covering poll (several fixtures may share one).
+  const coveringPolls = group.matches.filter((match, index, all) => all.findIndex((other) => (other.existingPollId ?? other.matchId) === (match.existingPollId ?? match.matchId)) === index)
 
   // Arriving from an "Open a poll" link (?matchId=): bring the outlined card into view, since later groups sit below the
   // fold and the manager would otherwise think the fixture is not there.
@@ -95,45 +98,17 @@ export function FixtureGroupCard({
   }, [highlighted])
 
   return (
-    <Card ref={cardRef} variant="outlined" sx={highlighted ? { borderColor: 'primary.main', borderWidth: 2 } : undefined}>
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Card ref={cardRef} variant="outlined" sx={{ boxShadow: 0, bgcolor: 'background.paper', ...(highlighted ? { borderColor: 'primary.main', borderWidth: 2 } : {}) }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...compactFieldsSx }}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" useFlexGap spacing={1}>
           <Typography variant="subtitle1" fontWeight={600}>
             {formatDateRange(group.startDate, group.endDate)}
           </Typography>
-          <Chip size="small" label={`${group.matches.length} fixture${group.matches.length === 1 ? '' : 's'}`} />
+          <Typography variant="body2" color="text.secondary">{`${group.matches.length} fixture${group.matches.length === 1 ? '' : 's'}`}</Typography>
         </Stack>
 
-        {fullyCovered ? (
-          <Typography variant="body2" color="text.secondary">
-            Every fixture here is already in a poll.
-          </Typography>
-        ) : (
-          <>
-            <Input label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-
-            <Stack spacing={0.5}>
-              <FormControlLabel
-                control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
-                label="Autoclose"
-              />
-              {autoClose && (
-                <DateTimeField
-                  label="Closes at"
-                  value={closeAtValue}
-                  onChange={setEditedCloseAt}
-                  error={Boolean(closeAtError)}
-                  helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
-                />
-              )}
-            </Stack>
-
-          </>
-        )}
-
-        <Divider />
-
-        <Stack spacing={1.5}>
+        {!fullyCovered && (
+        <Stack spacing={1}>
           {group.matches.map((match) => (
             <Stack
               key={match.matchId}
@@ -157,24 +132,66 @@ export function FixtureGroupCard({
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
                   {formatMatchDateTime(match.matchDate)}
-                  {match.leagueName ? ` - ${match.leagueName}` : ''}
                 </Typography>
                 <CoveredByNote match={match} />
               </Stack>
+              {/* The league is a badge on the right, as on the Squad match cards. */}
+              {match.leagueName && <Chip size="small" variant="outlined" label={match.leagueName} sx={{ flex: 'none', maxWidth: '40%' }} />}
             </Stack>
           ))}
         </Stack>
+        )}
+
+        {!fullyCovered && <Divider />}
+
+        {fullyCovered ? (
+          // docs/specs/136: a fully covered group is one line with its covering polls' links, no rows.
+          <Typography variant="body2" color="text.secondary">
+            Every fixture here is already in a poll.
+            {coveringPolls.map((match) => (
+              <Box key={match.existingPollId ?? match.matchId} component="span" sx={{ ml: 1 }}>
+                <CoveredByNote match={match} />
+              </Box>
+            ))}
+          </Typography>
+        ) : (
+          <>
+            <Input label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
+
+            {/* docs/specs/136: the close time is a compact date and time, with the Autoclose switch on the same row right after it. */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 2, rowGap: 1, mt: 1.5 }}>
+              {autoClose && (
+                <Box sx={{ width: { xs: '100%', sm: 360 } }}>
+                  <DateTimeField
+                    label="Closes At"
+                    value={closeAtValue}
+                    onChange={setEditedCloseAt}
+                    error={Boolean(closeAtError)}
+                    helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
+                  />
+                </Box>
+              )}
+              <FormControlLabel
+                control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
+                label="Autoclose"
+                sx={{ m: 0, minHeight: 36 }}
+              />
+            </Box>
+
+          </>
+        )}
+
 
         {createMutation.isError && (
           <Alert severity="error">
-            {errorDetail(createMutation.error, 'Something went wrong opening this poll. Please try again.')}
+            {errorDetail(createMutation.error, 'Something went wrong creating this poll. Please try again.')}
           </Alert>
         )}
 
         {!fullyCovered && (
-          <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button size="compact" disabled={!canSubmit} onClick={() => createMutation.mutate()}>
-              {createMutation.isPending ? 'Opening…' : `Open poll for ${selectedIds.size} selected fixture${selectedIds.size === 1 ? '' : 's'}`}
+              {createMutation.isPending ? 'Creating…' : `Create Poll For ${selectedIds.size} Fixture${selectedIds.size === 1 ? '' : 's'}`}
             </Button>
           </Box>
         )}

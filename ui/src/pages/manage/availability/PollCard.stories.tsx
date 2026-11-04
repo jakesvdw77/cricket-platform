@@ -29,7 +29,7 @@ const basePoll: OpenAvailabilityPoll = {
   unsureRespondents: [],
 }
 
-// The card owns its mutations, so stories need a React Query client; the router comes from preview.
+// The card's kebab (PollKebab) owns the poll's mutations, so stories need a React Query client; the router comes from preview.
 const meta: Meta<typeof PollCard> = {
   title: 'Pages/Manage/PollCard',
   component: PollCard,

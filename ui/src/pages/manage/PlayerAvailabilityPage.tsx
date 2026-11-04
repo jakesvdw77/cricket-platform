@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, CircularProgress, Typography, useMediaQuery } from '@mui/material'
+import { Alert, Box, CircularProgress, Link, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine } from '../../components/ContentControlsLine'
+import { useUrlFlag } from '../../hooks/useUrlFlag'
+import { ToolbarCard, ToolbarToggle } from '../../components/ToolbarCard'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
 import { SlotNavigator } from './playerAvailability/SlotNavigator'
@@ -23,7 +23,7 @@ import { useAvailabilityHub } from './availability/hubContext'
 // no "All seasons" option: the grid is one season's games by design (the spec bounds it to one season
 // and one section), and a multi-season grid would hit the server's hard cap for nothing.
 export default function PlayerAvailabilityPage() {
-  const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId, scopeText, setJumpToToday } =
+  const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId } =
     useAvailabilityHub()
   const gridRef = useRef<AvailabilityGridHandle>(null)
   const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
@@ -34,8 +34,9 @@ export default function PlayerAvailabilityPage() {
   const { handlers: changeAnswer, error: changeError } = useChangeAnswer(clubId)
 
   const [search, setSearch] = useState('')
-  const [includePast, setIncludePast] = useState(false)
-  const [hideUnanswered, setHideUnanswered] = useState(false)
+  // In the address (docs/specs/136), so Back from a player's page returns with them as they were.
+  const [includePast, setIncludePast] = useUrlFlag('past')
+  const [hideUnanswered, setHideUnanswered] = useUrlFlag('noanswer')
   const { leagueId, sectionId } = filters
 
   // Held until the seasons and the team list have finished their first load (and not at all if the team list
@@ -66,48 +67,41 @@ export default function PlayerAvailabilityPage() {
   const showsGrid = games.some((game) => game.pollType !== null)
   const loading = !gridQuery.data && !gridQuery.isError && !teamsError
 
-  // docs/specs/085 (D2): Jump to today lives in the hub header, not on this page: this view registers it with the hub
-  // (shown only where the grid is shown) and takes it away again when it goes.
+  // docs/specs/136: Jump To Today sits in the legend row above the grid, right-aligned, before the slot navigator (not on a phone, where
+  // the grid has no such button), shown only where the grid is shown.
   const upcomingMatchId = upcoming?.matchId
   const showJump = Boolean(showsGrid && gridQuery.data && !isPhone)
-  useEffect(() => {
-    setJumpToToday(
-      showJump ? { disabled: !upcomingMatchId, onClick: () => upcomingMatchId && gridRef.current?.scrollToGame(upcomingMatchId) } : null,
-    )
-    return () => setJumpToToday(null)
-  }, [showJump, upcomingMatchId, setJumpToToday])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  const toggles = (
+  // docs/specs/136 and page-anatomy section 3: toggle chips in the flat toolbar card (switches in the phone's Filters sheet), no count
+  // text. The slot navigator (desktop only) sits at the right end of the same toolbar, where the sort and view toggle would be.
+  const toggles = (placement: 'row' | 'sheet') => (
     <>
-      <CompactSwitch checked={includePast} onChange={setIncludePast} label="View entire season" />
-      <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players with no answers" />
+      <ToolbarToggle placement={placement} checked={includePast} onChange={setIncludePast} label="View Entire Season" />
+      <ToolbarToggle placement={placement} checked={hideUnanswered} onChange={setHideUnanswered} label="Hide No Answers" />
     </>
   )
 
-  const scopeFilters = scopeText({ withTeam: true })
-
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <AvailabilityFilterBar
-        show={{ league: true, section: true, team: true }}
-        teams={teams}
-        teamId={teamId}
-        teamAllLabel={sectionId ? 'All teams in section' : 'All teams'}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search players"
-        viewControls={toggles}
-      />
-
-      <ContentControlsLine
-        scope={!showsGrid ? '' : `Showing ${visiblePlayers.length} ${visiblePlayers.length === 1 ? 'player' : 'players'} · ${games.length} ${games.length === 1 ? 'game' : 'games'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
-        controls={toggles}
-        pinned={!isPhone ? <SlotNavigator scrollBox={scrollBox} /> : undefined}
-      />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ToolbarCard>
+        <AvailabilityFilterBar
+          bare
+          inCard
+          viewControlsInline
+          show={{ league: true, section: true, team: true }}
+          teams={teams}
+          teamId={teamId}
+          teamAllLabel={sectionId ? 'All Teams In Section' : 'All Teams'}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search players"
+          secondaryControls={toggles}
+        />
+      </ToolbarCard>
 
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -141,7 +135,33 @@ export default function PlayerAvailabilityPage() {
           {isPhone ? (
             <PlayersPhoneLists games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
           ) : (
-            <AvailabilityGrid ref={gridRef} onScrollBox={setScrollBox} games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
+            <AvailabilityGrid
+              ref={gridRef}
+              onScrollBox={setScrollBox}
+              games={games}
+              players={visiblePlayers}
+              changeAnswer={changeAnswer}
+              legendActions={
+                !isPhone ? (
+                  <>
+                    {showJump && (
+                      <Link
+                        component="button"
+                        type="button"
+                        variant="body2"
+                        underline="always"
+                        disabled={!upcomingMatchId}
+                        onClick={() => upcomingMatchId && gridRef.current?.scrollToGame(upcomingMatchId)}
+                        sx={{ fontWeight: 600, '&:disabled': { opacity: 0.5, cursor: 'default' } }}
+                      >
+                        Jump To Today
+                      </Link>
+                    )}
+                    <SlotNavigator scrollBox={scrollBox} />
+                  </>
+                ) : undefined
+              }
+            />
           )}
         </Box>
       )}

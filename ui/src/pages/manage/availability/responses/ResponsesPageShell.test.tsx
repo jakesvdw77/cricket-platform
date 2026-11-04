@@ -29,7 +29,7 @@ describe('ResponsesPageShell', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'A poll' })).toBeInTheDocument()
     expect(screen.getByText('Nobody here yet.')).toBeInTheDocument()
-    expect(screen.queryByText(/This poll is closed/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Changes are recorded as a manager correction/)).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -43,32 +43,29 @@ describe('ResponsesPageShell', () => {
   it('shows the closed note and the override error when given', () => {
     renderShell({ open: false, overrideError: 'Could not save.' })
 
-    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    expect(screen.getByText('Changes are recorded as a manager correction.')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Could not save.')
   })
 
-  it('fills the selected view button with the primary green and white text, and keeps the pressed state', async () => {
+  it('marks the selected view button as pressed', async () => {
     const user = userEvent.setup()
     renderShell()
 
     expect(screen.getByRole('group', { name: 'Responses view' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Time slot' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Time Slot' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: 'Player' }))
     expect(screen.getByRole('button', { name: 'Player' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Time slot' })).toHaveAttribute('aria-pressed', 'false')
-
-    // jsdom does not resolve selector specificity, so assert the emitted rule instead of a computed colour.
-    const css = Array.from(document.querySelectorAll('style')).map((style) => style.textContent).join('')
-    expect(css).toMatch(/\.MuiToggleButton-root\.Mui-selected[^{]*\{background-color:#[0-9a-f]{6};color:#fff;/i)
+    expect(screen.getByRole('button', { name: 'Time Slot' })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('has two tabs, Time slot and Player, and the tabs and search sit in the filter panel (085)', () => {
+  it('has two views, Time Slot and Player, and the views and search sit in the flat toolbar card (085, 136)', () => {
     renderShell()
 
-    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(['Time slot', 'Player'])
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(['Time Slot', 'Player'])
     const panel = screen.getByRole('group', { name: 'Responses view' }).parentElement?.parentElement as HTMLElement
     expect(within(panel).getByLabelText('Search players')).toBeInTheDocument()
-    expect(getComputedStyle(panel).boxShadow).not.toBe('none')
+    // Flat toolbar card (page-anatomy section 3): a hairline, no shadow.
+    expect(getComputedStyle(panel).boxShadow).toMatch(/^(none|)$/)
   })
 
   it('renders the poll title as the browser tab title (085)', () => {

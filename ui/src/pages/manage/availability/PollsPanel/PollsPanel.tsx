@@ -5,6 +5,7 @@ import { Countdown } from '../../../../components/Countdown'
 import { SidePanel } from '../../../../components/SidePanel'
 import { badgeSx } from '../../../../components/RecordCard'
 import { closesRowText } from '../pollHelpers'
+import { ProgressMeter } from '../../../../components/ProgressMeter'
 import { answeredText, closesWithin48Hours, pollsPanelHeader, sortPollRows } from '../pollPanelRows'
 import type { PollPanelRow } from '../pollPanelRows'
 
@@ -51,9 +52,9 @@ function PollRow({ row }: { row: PollPanelRow }) {
             </Typography>
           )}
           {answeredText(row) && (
-            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 'auto', whiteSpace: 'nowrap' }}>
-              {answeredText(row)}
-            </Typography>
+            <Box sx={{ ml: 'auto', width: 140 }}>
+              <ProgressMeter value={row.answered} max={row.total} label={answeredText(row) ?? undefined} ariaLabel={`Players answered for ${row.title}`} testId={`poll-panel-progress-${row.key}`} />
+            </Box>
           )}
         </Box>
       </Link>
@@ -118,7 +119,7 @@ function PanelContent({ kind, rows, showClosed, scope, now }: Omit<PollsPanelPro
 // page. Built from the polls the Polls page already loads, so it always agrees with the list; the chrome is the
 // shared SidePanel (right drawer from sm, bottom sheet below).
 export function PollsPanel({ open, onClose, ...content }: PollsPanelProps) {
-  const title = content.kind === 'closing-soon' ? 'Closing within 48 hours' : content.showClosed ? 'Polls shown' : 'Open polls'
+  const title = content.kind === 'closing-soon' ? 'Closing Within 48 Hours' : content.showClosed ? 'Polls Shown' : 'Open Polls'
   return (
     <SidePanel open={open} onClose={onClose} title={title} closeLabel="Close polls list">
       {() => <PanelContent {...content} />}

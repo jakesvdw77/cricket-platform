@@ -96,11 +96,20 @@ function renderCard(item: PollItem, open = true) {
   return { onChanged }
 }
 
-const FOOTER = ['Close poll', 'Matches', 'Responses', 'Share invite']
+// docs/specs/136: no footer bar and no pencils; every action is in the card's one kebab.
+const SQUAD_TITLE = 'Home Team vs Rivals CC'
 
-function footerNames(): (string | null)[] {
-  const footer = screen.getByRole('button', { name: 'Matches' }).parentElement as HTMLElement
-  return within(footer).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+async function openActions(user: ReturnType<typeof userEvent.setup>, title: string) {
+  await user.click(screen.getByRole('button', { name: `Actions for ${title}` }))
+}
+
+async function choose(user: ReturnType<typeof userEvent.setup>, title: string, itemName: string | RegExp) {
+  await openActions(user, title)
+  await user.click(await screen.findByRole('menuitem', { name: itemName }))
+}
+
+function menuItemNames(): string[] {
+  return screen.getAllByRole('menuitem').map((item) => (item.textContent ?? '').trim())
 }
 
 beforeEach(() => {
@@ -114,8 +123,8 @@ describe('PollCard - squad poll', () => {
   it('shows the header, the date and venue subtitle, one slot summary with bar widths and the Closes row', () => {
     renderCard({ kind: 'SQUAD', poll })
 
-    expect(screen.getByRole('heading', { level: 3, name: 'Home Team vs Rivals CC' })).toBeInTheDocument()
-    expect(screen.getByText('Squad poll')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: SQUAD_TITLE })).toBeInTheDocument()
+    expect(screen.getByText('Squad Poll')).toBeInTheDocument()
     expect(screen.getByText('Open')).toBeInTheDocument()
     expect(screen.getByText('Home')).toBeInTheDocument()
     expect(screen.getByText(/ · Home Ground$/)).toBeInTheDocument()
@@ -125,14 +134,12 @@ describe('PollCard - squad poll', () => {
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: '50%' })
     expect(screen.getByTestId('poll-1-bar-NONE')).toHaveStyle({ width: '25%' })
     expect(screen.getByText('Poll closes')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
   })
 
   it('clamps a long title to three lines rather than two', () => {
     renderCard({ kind: 'SQUAD', poll })
 
-    expect(screen.getByRole('heading', { level: 3, name: 'Home Team vs Rivals CC' })).toHaveStyle({ WebkitLineClamp: '3' })
+    expect(screen.getByRole('heading', { level: 3, name: SQUAD_TITLE })).toHaveStyle({ WebkitLineClamp: '3' })
   })
 
   it('shows Venue TBC when there is no venue', () => {
@@ -140,68 +147,84 @@ describe('PollCard - squad poll', () => {
     expect(screen.getByText(/ · Venue TBC$/)).toBeInTheDocument()
   })
 
-  it('has the four footer buttons in the fixed order', () => {
+  it('has no footer bar, no pencil and no corner Delete: one kebab holds every action', () => {
     renderCard({ kind: 'SQUAD', poll })
-    expect(footerNames()).toEqual(FOOTER)
+    expect(screen.getByRole('button', { name: `Actions for ${SQUAD_TITLE}` })).toBeInTheDocument()
+    for (const name of ['Close poll', 'Matches', 'Responses', 'Share invite', 'Edit close time', 'Delete']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
   })
 
-  it("Responses goes to the squad poll's own Responses page", async () => {
+  it('the kebab lists the squad poll actions in order, Share Invite last', async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll })
-    await user.click(screen.getByRole('button', { name: 'Responses' }))
-    expect(await screen.findByText('At /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
+    await openActions(user, SQUAD_TITLE)
+    expect(menuItemNames()).toEqual(['Open Responses', 'Edit Close Time', 'Matches Covered', 'Close Poll', 'Delete Poll', 'Share Invite'])
   })
 
-  it('Share opens the invite dialog with the poll link and the side\'s team name', async () => {
+  it("Open Responses goes to the squad poll's own Responses page", async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll })
-    await user.click(screen.getByRole('button', { name: 'Share invite' }))
+    await choose(user, SQUAD_TITLE, 'Open Responses')
+    expect(await screen.findByText(/^At \/manage\/availability\/squad\/match-1\/poll-1/)).toBeInTheDocument()
+  })
+
+  it("Share Invite opens the invite dialog with the poll link and the side's team name", async () => {
+    const user = userEvent.setup()
+    renderCard({ kind: 'SQUAD', poll })
+    await choose(user, SQUAD_TITLE, 'Share Invite')
     const text = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
     expect(text.value).toContain('Availability: Home Team vs')
     expect(text.value).toContain('/poll/poll-1')
   })
 
-  it('Share is disabled with an explanation on a closed squad poll and does nothing when clicked', async () => {
+  it('Share Invite is disabled with its reason on a closed squad poll', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll }, false)
-    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
-    expect(share).toBeDisabled()
-    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
-    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+    await openActions(user, SQUAD_TITLE)
+    const share = screen.getByRole('menuitem', { name: /Share Invite/ })
+    expect(share).toHaveAttribute('aria-disabled', 'true')
+    expect(share).toHaveTextContent('Share invite is unavailable: this poll is closed')
   })
 
-  it('Close confirms before calling closePoll, then reports the change', async () => {
+  it('Close Poll confirms before calling closePoll, then reports the change', async () => {
     const user = userEvent.setup()
     const { onChanged } = renderCard({ kind: 'SQUAD', poll })
-    await user.click(screen.getByRole('button', { name: 'Close poll' }))
+    await choose(user, SQUAD_TITLE, 'Close Poll')
     expect(closePoll).not.toHaveBeenCalled()
     await user.click(await screen.findByRole('button', { name: 'Close poll' }))
     await waitFor(() => expect(closePoll).toHaveBeenCalledWith('club-1', 'match-1', 'poll-1'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('a closed poll shows Closed, a Closed row and Reopen in the same footer slot, opening the Reopen dialog', async () => {
+  it('a closed poll shows Closed and a Closed row, and the kebab offers Reopen Poll instead of Close Poll, opening the Reopen dialog', async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll }, false)
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
     expect(screen.getByText('Poll closed')).toBeInTheDocument()
-    expect(footerNames()).toEqual(['Reopen poll', 'Matches', 'Responses', 'Share invite is unavailable: this poll is closed'])
-    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
+    await openActions(user, SQUAD_TITLE)
+    expect(menuItemNames().map((name) => name.replace(/The matches.*$|Share invite is unavailable.*$/, ''))).toEqual([
+      'Open Responses',
+      'Reopen Poll',
+      'Matches Covered',
+      'Delete Poll',
+      'Share Invite',
+    ])
+    await user.click(screen.getByRole('menuitem', { name: 'Reopen Poll' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
   })
 })
 
 describe('PollCard - group poll', () => {
-  it('shows the description title with a pencil, the section and match count, and one slot summary per bracket', () => {
+  it('shows the description title, the section and match count, and one slot summary per bracket, with no pencil', () => {
     renderCard({ kind: 'GROUP', round })
 
     expect(screen.getByRole('heading', { level: 3, name: 'Weekend fixtures' })).toBeInTheDocument()
-    expect(screen.getByText('Group poll')).toBeInTheDocument()
+    expect(screen.getByText('Group Poll')).toBeInTheDocument()
     expect(screen.queryByText('Home')).not.toBeInTheDocument()
     expect(screen.getByText('U13 Boys · 3 matches')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit description' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(2)
     expect(screen.getByTestId('w1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
     expect(screen.getByTestId('w2-bar-NONE')).toHaveStyle({ width: '100%' })
@@ -209,47 +232,56 @@ describe('PollCard - group poll', () => {
     expect(screen.getByText('Manually')).toBeInTheDocument()
   })
 
-  it('has the identical four footer buttons in the same order as the squad card', () => {
+  it('the kebab lists the group poll actions in order, with Edit Description and Matches Covered, Share Invite last', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round })
-    expect(footerNames()).toEqual(FOOTER)
+    await openActions(user, 'Weekend fixtures')
+    expect(menuItemNames()).toEqual([
+      'Open Responses',
+      'Edit Close Time',
+      'Edit Description',
+      'Matches Covered',
+      'Close Poll',
+      'Delete Poll',
+      'Share Invite',
+    ])
   })
 
-  it('Share is enabled on an open group poll and disabled with an explanation on a closed one', async () => {
+  it('Share Invite is disabled with its reason on a closed group poll', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round: { ...round, open: false } })
-    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
-    expect(share).toBeDisabled()
-    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await openActions(user, 'Weekend fixtures')
+    const share = screen.getByRole('menuitem', { name: /Share Invite/ })
+    expect(share).toHaveAttribute('aria-disabled', 'true')
+    expect(share).toHaveTextContent('Share invite is unavailable: this poll is closed')
   })
 
-  it('Share opens the group invite dialog on an open group poll', async () => {
+  it('Share Invite opens the group invite dialog on an open group poll', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round })
-    const share = screen.getByRole('button', { name: 'Share invite' })
-    expect(share).toBeEnabled()
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    await choose(user, 'Weekend fixtures', 'Share Invite')
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
-  it('Responses navigates to the group responses page', async () => {
+  it('Open Responses navigates to the group responses page', async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round })
-    await user.click(screen.getByRole('button', { name: 'Responses' }))
-    expect(await screen.findByText('At /manage/availability/group/round-1')).toBeInTheDocument()
+    await choose(user, 'Weekend fixtures', 'Open Responses')
+    expect(await screen.findByText(/^At \/manage\/availability\/group\/round-1/)).toBeInTheDocument()
   })
 
-  it('Matches opens the matches dialog', async () => {
+  it('Matches Covered opens the matches dialog', async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round })
-    await user.click(screen.getByRole('button', { name: 'Matches' }))
+    await choose(user, 'Weekend fixtures', 'Matches Covered')
     expect(await screen.findByRole('dialog', { name: 'Matches' })).toBeInTheDocument()
     expect(getRoundMatches).toHaveBeenCalledWith('club-1', 'round-1')
   })
 
-  it('the description pencil opens a dialog and no inline panel appears', async () => {
+  it('Edit Description opens a dialog and no inline panel appears', async () => {
     const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round })
-    await user.click(screen.getByRole('button', { name: 'Edit description' }))
+    await choose(user, 'Weekend fixtures', 'Edit Description')
     expect(await screen.findByRole('dialog', { name: 'Edit description' })).toBeInTheDocument()
     expect(screen.getByLabelText('Description')).toHaveValue('Weekend fixtures')
   })
@@ -278,63 +310,61 @@ describe('PollCard - whole-card click-through', () => {
     expect(await screen.findByText('At /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
   })
 
-  it('the Responses button goes to the same place as the title link', async () => {
+  it('Open Responses goes to the same place as the title link', async () => {
+    const user = userEvent.setup()
     renderCard(group)
     const href = screen.getByRole('link', { name: 'Weekend fixtures' }).getAttribute('href')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Responses' }))
+    await choose(user, 'Weekend fixtures', 'Open Responses')
     expect(await screen.findByText(`At ${href}`)).toBeInTheDocument()
   })
 
   it.each([
-    ['Close poll', 'Close this poll?'],
-    ['Edit description', 'Edit description'],
-    ['Delete', 'Delete this group poll?'],
-    ['Edit close time', 'Edit close time'],
-  ])('%s runs only its own action and does not navigate', async (buttonName, dialogName) => {
+    ['Close Poll', 'Close this poll?'],
+    ['Edit Description', 'Edit description'],
+    ['Delete Poll', 'Delete this group poll?'],
+    ['Edit Close Time', 'Edit close time'],
+  ])('%s runs only its own action and does not navigate', async (itemName, dialogName) => {
+    const user = userEvent.setup()
     renderCard(group)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: buttonName }))
+    await choose(user, 'Weekend fixtures', itemName)
 
     expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument()
     expect(screen.queryByText(/^At /)).not.toBeInTheDocument()
   })
 
-  it('every interactive element that sits over the card link is positioned above it', () => {
+  it('the kebab is positioned above the card link', () => {
     renderCard(group)
-    for (const name of ['Edit description', 'Delete', 'Edit close time']) {
-      expect(screen.getByRole('button', { name })).toHaveStyle({ position: 'relative' })
-    }
+    expect(screen.getByRole('button', { name: 'Actions for Weekend fixtures' })).toHaveStyle({ position: 'relative' })
   })
 })
 
 describe('PollCard - Poll closes line', () => {
-  it('shows the label with the formatted date and time and the pencil inside the value while open', () => {
+  it('shows the label with the formatted date and time while open, with no pencil', () => {
     renderCard({ kind: 'SQUAD', poll })
 
     const label = screen.getByText('Poll closes')
     const row = screen.getByTestId('poll-closes-row')
     expect(row).toHaveTextContent(new Date(poll.scheduledCloseAt as string).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))
-    // The row has the calendar-cross icon and shares one strip with its label, value and pencil.
+    // The row has the calendar-cross icon and shares one strip with its label and value.
     expect(row.querySelector('[data-testid="EventBusyOutlinedIcon"]')).toBeInTheDocument()
     expect(row).toContainElement(label)
-    expect(row).toContainElement(screen.getByRole('button', { name: 'Edit close time' }))
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('reads Manually with the pencil when an open poll has Autoclose off', () => {
+  it('reads Manually when an open poll has Autoclose off', () => {
     renderCard({ kind: 'GROUP', round })
 
     expect(screen.getByText('Manually')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
   })
 
-  it('reads Poll closed with the date only and no pencil once closed', () => {
+  it('reads Poll closed with the date only once closed', () => {
     renderCard({ kind: 'SQUAD', poll }, false)
 
     expect(screen.getByText('Poll closed')).toBeInTheDocument()
     expect(screen.queryByText('Poll closes')).not.toBeInTheDocument()
     const date = new Date(poll.scheduledCloseAt as string).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
     expect(screen.getByText(date)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
   })
 
   it('reads Poll closed, Manually for a closed poll without Autoclose', () => {
@@ -344,9 +374,10 @@ describe('PollCard - Poll closes line', () => {
     expect(screen.getByText('Manually')).toBeInTheDocument()
   })
 
-  it('the close-time pencil opens the close time dialog', async () => {
+  it('Edit Close Time in the kebab opens the close time dialog', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll })
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Edit close time' }))
+    await choose(user, SQUAD_TITLE, 'Edit Close Time')
     expect(await screen.findByRole('dialog', { name: 'Edit close time' })).toBeInTheDocument()
   })
 })
@@ -361,7 +392,6 @@ describe('PollCard - spec 082', () => {
     const indicator = screen.getByTestId('poll-1-bar-AVAILABLE')
     expect(row.compareDocumentPosition(indicator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(row).getByText('Poll closes')).toBeInTheDocument()
-    expect(within(row).getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
   })
 
   it('is amber with a countdown within 24 hours of closing', () => {
@@ -390,23 +420,27 @@ describe('PollCard - spec 082', () => {
     expect(screen.getByTestId('poll-closes-row')).toHaveAttribute('data-tone', 'neutral')
   })
 
-  it('disables Reopen poll with its reason when the matches are in the past', async () => {
+  it('disables Reopen Poll with its reason when the matches are in the past', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll: { ...poll, canReopen: false } }, false)
-    const reopen = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
-    expect(reopen).toBeDisabled()
-    expect(reopen.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(reopen)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await openActions(user, SQUAD_TITLE)
+    const reopen = screen.getByRole('menuitem', { name: /Reopen Poll/ })
+    expect(reopen).toHaveAttribute('aria-disabled', 'true')
+    expect(reopen).toHaveTextContent('The matches in this poll are in the past')
   })
 
-  it('disables Reopen poll on a closed group poll that cannot be reopened', () => {
+  it('disables Reopen Poll on a closed group poll that cannot be reopened', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round: { ...round, open: false, canReopen: false } })
-    expect(screen.getByRole('button', { name: 'The matches in this poll are in the past' })).toBeDisabled()
+    await openActions(user, 'Weekend fixtures')
+    expect(screen.getByRole('menuitem', { name: /Reopen Poll/ })).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('enables Reopen poll when canReopen is true', () => {
+  it('enables Reopen Poll when canReopen is true', async () => {
+    const user = userEvent.setup()
     renderCard({ kind: 'GROUP', round: { ...round, open: false, canReopen: true } })
-    expect(screen.getByRole('button', { name: 'Reopen poll' })).toBeEnabled()
+    await openActions(user, 'Weekend fixtures')
+    expect(screen.getByRole('menuitem', { name: 'Reopen Poll' })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('draws the brand availability icon tile instead of an avatar', () => {

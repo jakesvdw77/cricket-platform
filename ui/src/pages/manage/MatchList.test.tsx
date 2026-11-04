@@ -171,7 +171,7 @@ describe('MatchList', () => {
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
   })
 
-  it('lays the cards out on the dynamic grid with stretched equal heights, ending with a dashed Add Match card carrying returnTo', async () => {
+  it('lays the cards out on the dynamic grid with stretched equal heights, ending with a dashed Create New Match card carrying returnTo', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 
     renderPage('test-club-id')
@@ -405,13 +405,14 @@ describe('MatchList', () => {
       expect(within(fused).getByLabelText('Search')).toBeInTheDocument()
     })
 
-    it('shows the empty message with no action button, keeping the dashed Add card, and the toolbar stays mounted', async () => {
+    it('shows the empty message with a quick-action Create New Match, with no dashed Add card, and the toolbar stays mounted', async () => {
       listMatches.mockResolvedValue(makePage([]))
       renderPage('test-club-id')
       expect(await screen.findByText('No upcoming matches')).toBeInTheDocument()
       expect(screen.getByText(/Turn on "View Entire Season"/)).toBeInTheDocument()
-      expect(screen.getAllByRole('button', { name: 'Add Match' })).toHaveLength(1)
-      expect(screen.getByTestId('add-match-card')).toBeInTheDocument()
+      // Title-row button plus the empty message's quick action (page-anatomy section 5, decided 2026-11-04).
+      expect(screen.getAllByRole('button', { name: 'Create New Match' })).toHaveLength(2) // the title-row button and the empty message's link
+      expect(screen.queryByTestId('add-match-card')).not.toBeInTheDocument()
       expect(screen.getByLabelText('Search')).toBeInTheDocument()
     })
 
@@ -626,7 +627,7 @@ describe('MatchList', () => {
 
     renderPage('test-club-id')
 
-    await user.click(await screen.findByRole('button', { name: 'Add Match' }))
+    await user.click((await screen.findAllByRole('button', { name: 'Create New Match' }))[0])
     expect(await screen.findByText('New Match Page')).toBeInTheDocument()
   })
 

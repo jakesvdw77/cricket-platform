@@ -88,15 +88,14 @@ beforeEach(() => {
 })
 
 describe('PollMatchesDialog', () => {
-  it('lists a group poll\'s matches under their slot, with an empty note for a slot without any', async () => {
+  it('lists a group poll\'s matches as rows with a date tile, a part-of-day chip and the league badge', async () => {
     getRoundMatches.mockResolvedValue([match()])
     renderDialog({ kind: 'GROUP', round })
 
     expect(await screen.findByText('U13 A vs Rivals CC')).toBeInTheDocument()
-    expect(screen.getByText(/Junior League/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /· Morning$/ })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /· Afternoon$/ })).toBeInTheDocument()
-    expect(screen.getByText('No matches in this slot.')).toBeInTheDocument()
+    expect(screen.getByText('Junior League')).toBeInTheDocument()
+    expect(screen.getByText('Morning')).toBeInTheDocument()
+    expect(screen.getByTestId('date-tile')).toBeInTheDocument()
     expect(getRoundMatches).toHaveBeenCalledWith('club-1', 'round-1')
   })
 
@@ -110,6 +109,12 @@ describe('PollMatchesDialog', () => {
     expect(link).not.toHaveAttribute('target')
     await user.click(link)
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('says so when a group poll has no matches', async () => {
+    getRoundMatches.mockResolvedValue([])
+    renderDialog({ kind: 'GROUP', round })
+    expect(await screen.findByText('No matches in this poll.')).toBeInTheDocument()
   })
 
   it('shows an error when the matches cannot be loaded', async () => {

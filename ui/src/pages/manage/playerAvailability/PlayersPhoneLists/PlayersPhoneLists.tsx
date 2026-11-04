@@ -1,3 +1,4 @@
+import { PlayerNameLink } from '../PlayerNameLink'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -212,9 +213,7 @@ function ByGame({ games, players, now, changeAnswer }: { games: GameColumn[]; pl
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                    {playerFullName(player)}
-                  </Typography>
+                  <PlayerNameLink playerId={player.playerProfileId} name={playerFullName(player)} />
                   {picked && <PickedDot />}
                 </Box>
                 {changeAnswer && canChangeAnswer(game, { matchId: game.matchId, status, picked }) ? (

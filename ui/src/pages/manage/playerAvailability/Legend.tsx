@@ -6,7 +6,7 @@ function Item({ mark, children }: { mark: ReactNode; children: string }) {
   return (
     <Box component="li" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, listStyle: 'none' }}>
       {mark}
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="text.primary" sx={{ fontWeight: 600 }}>
         {children}
       </Typography>
     </Box>

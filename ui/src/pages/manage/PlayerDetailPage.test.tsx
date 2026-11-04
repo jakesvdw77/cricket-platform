@@ -150,6 +150,28 @@ describe('PlayerDetailPage', () => {
     expect(listPlayers).not.toHaveBeenCalled()
   })
 
+  it('Back returns to the origin carried in returnTo, with its filters, and reads "Back to <label>" (127, 136)', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+    listPlayerSections.mockResolvedValueOnce([])
+    listSections.mockResolvedValueOnce([])
+    const origin = encodeURIComponent('/manage/availability/players?league=l1&section=s1&past=1')
+
+    renderPage(`/manage/players/player-1?returnTo=${origin}&returnLabel=Availability`, 'test-club-id')
+
+    const back = await screen.findByRole('link', { name: 'Back to Availability' })
+    expect(back).toHaveAttribute('href', '/manage/availability/players?league=l1&section=s1&past=1')
+  })
+
+  it('Back goes to the Players list when there is no origin', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+    listPlayerSections.mockResolvedValueOnce([])
+    listSections.mockResolvedValueOnce([])
+
+    renderPage('/manage/players/player-1', 'test-club-id')
+
+    expect(await screen.findByRole('link', { name: 'Back to Players' })).toHaveAttribute('href', '/manage/players')
+  })
+
   it('loads the matching player and renders the three cards, with tagged sections as header chips', async () => {
     listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' }), makePlayer({ id: 'player-2' })])
     listPlayerSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'U15' })])

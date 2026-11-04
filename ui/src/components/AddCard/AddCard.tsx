@@ -5,7 +5,7 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 
 export interface AddCardProps {
-  // Title Case, e.g. "Add League".
+  // Title Case, e.g. "Create New League".
   label: string
   // A link (a real anchor) or a click handler.
   to?: string

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box } from '@mui/material'
-import { CompactSwitch } from '../../components/CompactSwitch'
+import { Box, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { ListViewToggle } from '../../components/ListViewToggle'
-import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
-import { EmptyState } from '../../components/EmptyState'
-import { Button } from '../../components/Button'
+import { AddCard } from '../../components/AddCard'
+import { BrandIcon } from '../../components/BrandIcon'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
+import { SortMenu } from '../../components/ContentControlsLine'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import ViewListOutlinedIcon from '@mui/icons-material/ViewListOutlined'
+import { ToolbarCard, ToolbarMultiToggle, ToolbarSortButton, ToolbarToggle } from '../../components/ToolbarCard'
 import { listClosedPolls, listOpenPolls } from '../../api/matchAvailabilityApi'
 import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { listRounds } from '../../api/sectionAvailabilityApi'
@@ -15,10 +18,12 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { PollCard } from './availability/PollCard'
 import { PollTable } from './availability/PollTable'
+import { PollRowMenu } from './availability/PollRowMenu'
+import { AddPollChooserDialog } from './availability/AddPollChooserDialog'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { AvailabilityFilterBar } from './availability/AvailabilityFilterBar'
 import { useAvailabilityHub } from './availability/hubContext'
-import { pollCardGridSx } from '../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
 import { groupPollRow, squadPollRow } from './availability/pollPanelRows'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
@@ -54,7 +59,9 @@ export default function AvailabilityPollsDashboard() {
   // Held until the team list and the season resolved (and not at all if the teams failed), so the requests carry a
   // validated team and the hub's season, and never go out unscoped first.
   const ready = Boolean(clubId) && !teamsLoading && !teamsError && !seasonsLoading
-  const navigate = useNavigate()
+  const [chooserOpen, setChooserOpen] = useState(false)
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
@@ -209,118 +216,148 @@ export default function AvailabilityPollsDashboard() {
   }
 
   const isSearching = search.trim().length > 0
-  const pollWord = showClosed ? 'polls' : 'open polls'
   const typeLimited = !(showGroup && showSquad)
   const isFiltering = isSearching || typeLimited || sectionId !== null || leagueId !== null || teamId !== null
 
-  // The last type toggle left on cannot be switched off.
-  const typeToggles = (
-    <>
-      <CompactSwitch checked={showGroup} disabled={showGroup && !showSquad} onChange={setShowGroup} label="Group polls" />
-      <CompactSwitch checked={showSquad} disabled={showSquad && !showGroup} onChange={setShowSquad} label="Squad polls" />
-    </>
-  )
-  const closedToggle = (
-    <CompactSwitch checked={showClosed} onChange={setShowClosed} label="Show closed polls" />
-  )
-  const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
+  const sortOptions = [
+    { value: 'asc', label: 'Soonest First', linkLabel: 'Soonest First' },
+    { value: 'desc', label: 'Latest First', linkLabel: 'Latest First' },
+  ]
+  const sortValue = sort
+  const onSort = (value: string) => setSort(value === 'desc' ? 'desc' : 'asc')
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <AvailabilityFilterBar
-        show={{ league: true, section: true, team: true }}
-        teams={teamOptions}
-        teamId={teamId}
-        teamAllLabel={sectionId ? 'All teams in section' : 'All teams'}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by team, opponent or description"
-        extraChips={[
-          ...(typeLimited
-            ? [
-                {
-                  key: 'type',
-                  label: showGroup ? 'Group polls only' : 'Squad polls only',
-                  onRemove: () => {
-                    setShowGroup(true)
-                    setShowSquad(true)
-                  },
-                },
-              ]
-            : []),
-        ]}
-        viewControls={
+  // docs/specs/136 and page-anatomy section 3: one flat toolbar, desktop order: the poll-type segmented toggle (the last type left on cannot be
+  // switched off) and the Show Closed chip, then Sort, then Cards | List last. A phone: Filters and Search on the row, the rest in the sheet (toggle first).
+  const chips = (placement: 'row' | 'sheet') =>
+    placement === 'row' ? (
+      <>
+        <ToolbarMultiToggle
+          ariaLabel="Poll types"
+          options={[
+            { value: 'group', label: 'Group Polls', icon: <ViewListOutlinedIcon sx={{ fontSize: 16 }} /> },
+            { value: 'squad', label: 'Squad Polls', icon: <GroupsOutlinedIcon sx={{ fontSize: 16 }} /> },
+          ]}
+          selected={[...(showGroup ? ['group'] : []), ...(showSquad ? ['squad'] : [])]}
+          onChange={(next) => {
+            setShowGroup(next.includes('group'))
+            setShowSquad(next.includes('squad'))
+          }}
+        />
+        <ToolbarToggle placement="row" checked={showClosed} onChange={setShowClosed} label="Show Closed Polls" />
+      </>
+    ) : (
+      <>
+        <ToolbarToggle placement="sheet" checked={showGroup} disabled={showGroup && !showSquad} onChange={setShowGroup} label="Group Polls" />
+        <ToolbarToggle placement="sheet" checked={showSquad} disabled={showSquad && !showGroup} onChange={setShowSquad} label="Squad Polls" />
+        <ToolbarToggle placement="sheet" checked={showClosed} onChange={setShowClosed} label="Show Closed Polls" />
+      </>
+    )
+
+  const bar = (
+    <AvailabilityFilterBar
+      bare
+      inCard
+      viewControlsInline
+      show={{ league: true, section: true, team: true }}
+      teams={teamOptions}
+      teamId={teamId}
+      teamAllLabel={sectionId ? 'All Teams In Section' : 'All Teams'}
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by team, opponent or description"
+      secondaryControls={chips}
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
             </Box>
-            {typeToggles}
-            {closedToggle}
-            {sortLink}
+            <SortMenu value={sortValue} options={sortOptions} onChange={onSort} />
           </>
-        }
-        onClearedAll={() => {
-          setShowGroup(true)
-          setShowSquad(true)
-        }}
-      />
-
-      <ContentControlsLine
-        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}`}
-        sortAction={sortLink}
-        controls={
+        ) : (
           <>
-            <ListViewToggle value={view} onChange={setView} />
-            {typeToggles}
-            {closedToggle}
+            <ToolbarSortButton value={sortValue} onChange={onSort} options={sortOptions} />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
           </>
+        )
+      }
+      onClearedAll={() => {
+        setShowGroup(true)
+        setShowSquad(true)
+      }}
+    />
+  )
+
+  // Empty states (docs/specs/136, page-anatomy section 5): the section's BrandIcon and, where nothing exists yet, a quick-action Add Poll.
+  const addPollAction = <EmptyStateLink onClick={() => setChooserOpen(true)}>Create New Poll</EmptyStateLink>
+  const icon = <BrandIcon name="nav/availability-polls" size={48} />
+  const emptyState =
+    visibleItems.length > 0 ? null : isFiltering ? (
+      <EmptyState
+        icon={icon}
+        title="No matching polls"
+        description={
+          isSearching
+            ? `No ${showClosed ? 'polls' : 'open polls'} match "${search.trim()}". Try a different search.`
+            : `No ${showClosed ? 'polls' : 'open polls'} match the current filters. Try a different type, section, league or team.`
         }
       />
+    ) : showClosed ? (
+      <EmptyState icon={icon} title="No polls" description="No polls match this scope yet." action={addPollAction} />
+    ) : (
+      <EmptyState
+        icon={icon}
+        title="No open polls"
+        description="Nothing is collecting answers right now. Ask a team or a section about their matches, or turn on Show Closed Polls to review earlier ones."
+        action={addPollAction}
+      />
+    )
 
-      {visibleItems.length > 0 && view === 'list' && <PollTable rows={visibleItems.map(rowFor)} />}
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+  const itemByKey = new Map(visibleItems.map((item) => [item.key, item]))
 
-      {visibleItems.length > 0 && view === 'cards' && (
-        <Box sx={pollCardGridSx}>
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      {!fused && <ToolbarCard>{bar}</ToolbarCard>}
+
+      {view === 'list' && (
+        <PollTable
+          rows={visibleItems.map(rowFor)}
+          toolbar={bar}
+          empty={emptyState}
+          renderActions={(row) => {
+            const item = itemByKey.get(row.key)
+            if (!item) return null
+            return (
+              <PollRowMenu
+                clubId={clubId}
+                item={item.kind === 'SQUAD' ? { kind: 'SQUAD', poll: item.poll } : { kind: 'GROUP', round: item.round }}
+                open={item.kind === 'SQUAD' ? item.open : undefined}
+                teamsById={teamsById}
+                onChanged={invalidatePolls}
+              />
+            )
+          }}
+        />
+      )}
+
+      {view === 'cards' && emptyState}
+
+      <AddPollChooserDialog open={chooserOpen} onClose={() => setChooserOpen(false)} sectionId={sectionId} />
+
+      {view === 'cards' && (
+        <Box sx={dynamicCardGridSx}>
           {visibleItems.map((item) =>
             item.kind === 'SQUAD' ? (
-              <PollCard
-                key={item.key}
-                clubId={clubId}
-                item={{ kind: 'SQUAD', poll: item.poll }}
-                open={item.open}
-                teamsById={teamsById}
-                onChanged={invalidatePolls}
-              />
+              <PollCard key={item.key} clubId={clubId} item={{ kind: 'SQUAD', poll: item.poll }} open={item.open} teamsById={teamsById} onChanged={invalidatePolls} />
             ) : (
-              <PollCard
-                key={item.key}
-                clubId={clubId}
-                item={{ kind: 'GROUP', round: item.round }}
-                teamsById={teamsById}
-                onChanged={invalidatePolls}
-              />
+              <PollCard key={item.key} clubId={clubId} item={{ kind: 'GROUP', round: item.round }} teamsById={teamsById} onChanged={invalidatePolls} />
             ),
           )}
+          {/* The grid ends with a dashed Add card (same route as Add Poll); with no cards it is not shown (the empty message carries the quick-action button). */}
+          {visibleItems.length > 0 && <AddCard label="Create New Poll" onClick={() => setChooserOpen(true)} testId="add-poll-card" />}
         </Box>
-      )}
-
-      {visibleItems.length === 0 && isFiltering && (
-        <EmptyState
-          title="No matching polls"
-          description={
-            isSearching
-              ? `No ${pollWord} match "${search.trim()}". Try a different search.`
-              : `No ${pollWord} match the current filters. Try a different type, section, league or team.`
-          }
-        />
-      )}
-
-      {visibleItems.length === 0 && !isFiltering && (
-        <EmptyState
-          title={showClosed ? 'No polls' : 'No open polls'}
-          description="Open a squad poll for one team's match, or a group poll for a whole section's fixtures."
-          action={<Button size="compact" onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
-        />
       )}
     </Box>
   )

@@ -100,3 +100,35 @@ describe('PollTable', () => {
     expect(screen.getByRole('link', { name: 'Irene Villagers 1 vs POHBS' })).toHaveAttribute('href', '/manage/availability/squad/m1/p1')
   })
 })
+
+// docs/specs/136 and page-anatomy sections 3 and 6: one toolbar card fused into the table, one kebab per row, no chevron.
+describe('PollTable - fused toolbar, row actions and empty state (136)', () => {
+  it('renders the toolbar fused above the rows and the actions node in each row, never navigating the row', () => {
+    render(
+      <MemoryRouter>
+        <PollTable
+          rows={[row(), row({ key: 'k2', title: 'Second poll', path: '/manage/availability/group/r2' })]}
+          toolbar={<div>the toolbar</div>}
+          renderActions={(r) => <button type="button">{`Actions for ${r.title}`}</button>}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('toolbar-card-fused')).toHaveTextContent('the toolbar')
+    expect(screen.getByRole('button', { name: 'Actions for Irene Villagers 1 vs POHBS' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actions for Second poll' })).toBeInTheDocument()
+    expect(screen.queryByTestId('ChevronRightIcon')).not.toBeInTheDocument()
+  })
+
+  it('shows the empty message inside the same card, keeping the toolbar', () => {
+    render(
+      <MemoryRouter>
+        <PollTable rows={[]} toolbar={<div>the toolbar</div>} empty={<p>Nothing here</p>} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('the toolbar')).toBeInTheDocument()
+    expect(screen.getByText('Nothing here')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+})

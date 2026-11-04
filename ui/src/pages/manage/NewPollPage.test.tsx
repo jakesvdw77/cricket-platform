@@ -121,6 +121,7 @@ function renderPage(initialPath = '/manage/availability/new', clubId: string | u
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="availability" element={<div>Polls Dashboard</div>} />
+            <Route path="availability/players" element={<div>Players Page</div>} />
             <Route path="availability/new" element={<NewPollPage />} />
           </Route>
         </Routes>
@@ -147,51 +148,54 @@ describe('NewPollPage', () => {
   })
 
   describe('chooser', () => {
-    it('shows two choice cards with their bullets, Continue disabled until one is chosen', async () => {
-      const user = userEvent.setup()
+    it('shows the two kinds as tiles with their explanations, no radio and no Continue', () => {
       renderPage()
 
-      expect(screen.getByRole('radio', { name: /Squad poll/ })).toHaveAttribute('aria-checked', 'false')
-      expect(screen.getByText("Ask one team's roster about one match.")).toBeInTheDocument()
-      expect(screen.getByText('Ask a whole section about several fixtures at once.')).toBeInTheDocument()
-      expect(screen.getByText('One link covers all of them')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
-
-      await user.click(screen.getByRole('radio', { name: /Group poll/ }))
-
-      expect(screen.getByRole('radio', { name: /Group poll/ })).toHaveAttribute('aria-checked', 'true')
-      expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /^Squad Poll/ })).toBeInTheDocument()
+      expect(screen.getByText("Ask one team's squad about one or more of its matches. Each match gets its own link.")).toBeInTheDocument()
+      expect(screen.getByText('Ask a whole section about several fixtures. One link covers them all.')).toBeInTheDocument()
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
     })
 
-    it('Continue routes to the Squad branch', async () => {
+    it('a tile goes straight to the Squad branch', async () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.click(screen.getByRole('radio', { name: /Squad poll/ }))
-      await user.click(screen.getByRole('button', { name: 'Continue' }))
+      await user.click(screen.getByRole('button', { name: /^Squad Poll/ }))
 
       expect(await screen.findByLabelText('Team')).toBeInTheDocument()
-      expect(screen.getByText('Choose a team')).toBeInTheDocument()
+      expect(screen.getByText('Matches with no poll yet. Each ticked match gets its own link.')).toBeInTheDocument()
     })
 
-    it('Continue routes to the Group branch, and "Change poll type" returns to the chooser', async () => {
+    it('a tile goes straight to the Group branch, and "Change Poll Type" returns to the tiles', async () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.click(screen.getByRole('radio', { name: /Group poll/ }))
-      await user.click(screen.getByRole('button', { name: 'Continue' }))
+      await user.click(screen.getByRole('button', { name: /^Group Poll/ }))
 
-      expect(await screen.findByText('Choose a section')).toBeInTheDocument()
+      // One section only: it is preselected, so there is no hint line (docs/specs/136).
+      expect(await screen.findByText(/Each card below opens one poll with one link/)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: 'New Group Poll' })).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Change poll type' }))
-      expect(screen.getByRole('radio', { name: /Squad poll/ })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Change Poll Type' }))
+      expect(screen.getByRole('button', { name: /^Squad Poll/ })).toBeInTheDocument()
     })
 
-    it('?type=squad skips the chooser', async () => {
+    it('?type=squad skips the tiles', async () => {
       renderPage('/manage/availability/new?type=squad')
 
       expect(await screen.findByLabelText('Team')).toBeInTheDocument()
-      expect(screen.queryByRole('radio', { name: /Squad poll/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Group Poll/ })).not.toBeInTheDocument()
+    })
+
+    it('Cancel returns to where the manager came from (returnTo), else to Availability', async () => {
+      const user = userEvent.setup()
+      renderPage('/manage/availability/new?returnTo=/manage/availability/players&returnLabel=Players')
+
+      expect(screen.getByRole('link', { name: /Back to Players/ })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(await screen.findByText('Players Page')).toBeInTheDocument()
     })
   })
 
@@ -200,6 +204,37 @@ describe('NewPollPage', () => {
       await user.click(await screen.findByLabelText('Team'))
       await user.click(await screen.findByRole('option', { name: 'U13 Boys A' }))
     }
+
+    it('has a Section filter beside the Team filter (136)', async () => {
+      getFixtureGroups.mockResolvedValue([])
+      renderPage('/manage/availability/new?type=squad')
+      expect(await screen.findByLabelText('Section')).toBeInTheDocument()
+      expect(screen.getByLabelText('Team')).toBeInTheDocument()
+    })
+
+    it('with several teams opens on All My Teams: a heading per team with its matches, Select All clears and re-ticks that team', async () => {
+      const user = userEvent.setup()
+      getFixtureGroups.mockResolvedValue([
+        makeGroup({
+          matches: [
+            makeMatch({ matchId: 'a1', opponentLabel: 'Alpha CC' }),
+            makeMatch({ matchId: 'b1', teamId: 'team-2', teamName: 'U13 Boys B', opponentLabel: 'Beta CC' }),
+          ],
+        }),
+      ])
+      renderPage('/manage/availability/new?type=squad')
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'U13 Boys A' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'U13 Boys B' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create 2 Polls' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Select all matches for U13 Boys B' }))
+      expect(screen.getByLabelText('Include U13 Boys B vs Beta CC')).not.toBeChecked()
+      expect(screen.getByRole('button', { name: 'Create 1 Poll' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Select all matches for U13 Boys B' }))
+      expect(screen.getByRole('button', { name: 'Create 2 Polls' })).toBeInTheDocument()
+    })
 
     function squadGroups() {
       return [
@@ -234,10 +269,10 @@ describe('NewPollPage', () => {
       expect(screen.getByLabelText('Include U13 Boys A vs United CC')).toBeChecked()
       expect(screen.queryByText('U13 Boys B vs Other CC')).not.toBeInTheDocument()
       expect(getFixtureGroups).toHaveBeenCalledWith('test-club-id', 'section-1')
-      // docs/specs/066: each ticked row has its own editable 'Closes at', defaulting to kickoff - 24h.
-      expectDateTime('Closes at for U13 Boys A vs Rivals CC', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
-      expectDateTime('Closes at for U13 Boys A vs United CC', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
-      expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeEnabled()
+      // docs/specs/066: each ticked row has its own editable 'Closes At', defaulting to kickoff - 24h.
+      expectDateTime('Closes At For U13 Boys A vs Rivals CC', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
+      expectDateTime('Closes At For U13 Boys A vs United CC', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
+      expect(screen.getByRole('button', { name: 'Create 2 Polls' })).toBeEnabled()
     })
 
     it('renders a covered match disabled with a link to the covering squad poll', async () => {
@@ -256,14 +291,14 @@ describe('NewPollPage', () => {
       )
     })
 
-    it('Open N polls issues one createPoll per ticked match with autoClose true, then returns to the dashboard', async () => {
+    it('Create N Polls issues one createPoll per ticked match with autoClose true, then returns to the dashboard', async () => {
       const user = userEvent.setup()
       getFixtureGroups.mockResolvedValue(squadGroups())
       createPoll.mockResolvedValue({})
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      await user.click(await screen.findByRole('button', { name: 'Open 2 polls' }))
+      await user.click(await screen.findByRole('button', { name: 'Create 2 Polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
       expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T09:00:00.000Z')
@@ -279,19 +314,19 @@ describe('NewPollPage', () => {
 
       await pickTeam(user)
       await user.click(await screen.findByLabelText('Include U13 Boys A vs United CC'))
-      expect(screen.getByRole('button', { name: 'Open 1 poll' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Create 1 Poll' })).toBeEnabled()
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
-      expect(screen.getByRole('button', { name: 'Open 0 polls' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create 0 Polls' })).toBeDisabled()
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
-      await user.click(screen.getByRole('button', { name: 'Open 1 poll' }))
+      await user.click(screen.getByRole('button', { name: 'Create 1 Poll' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(1))
       expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T09:00:00.000Z')
     })
 
-    it('Autoclose switch (default on, with the helper text) sends autoClose false when turned off and hides the close times', async () => {
+    it('Autoclose is per poll like the Group page: on by default, off for one match sends autoClose false for that match only and hides its close time (136)', async () => {
       const user = userEvent.setup()
       getFixtureGroups.mockResolvedValue(squadGroups())
       createPoll.mockResolvedValue({})
@@ -299,18 +334,19 @@ describe('NewPollPage', () => {
 
       await pickTeam(user)
       await screen.findByLabelText('Include U13 Boys A vs Rivals CC')
-      expect(screen.getByRole('checkbox', { name: 'Autoclose' })).toBeChecked()
-      expect(
-        screen.getByText(/Each poll closes by itself at the time shown/),
-      ).toBeInTheDocument()
+      const first = 'U13 Boys A vs Rivals CC'
+      expect(screen.getByRole('checkbox', { name: `Autoclose ${first}` })).toBeChecked()
+      expect(screen.getAllByText('Defaults to 24 hours before this match.').length).toBeGreaterThan(1)
 
-      await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-      expect(screen.queryByLabelText(/^Closes at for/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: `Autoclose ${first}` }))
+      expect(screen.queryByLabelText(`Closes At For ${first} (date)`)).not.toBeInTheDocument()
+      expect(screen.getAllByLabelText(/^Closes At For .* \(date\)$/).length).toBeGreaterThan(0)
 
-      await user.click(screen.getByRole('button', { name: 'Open 2 polls' }))
+      await user.click(screen.getByRole('button', { name: 'Create 2 Polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
       expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', false, undefined)
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-2', 'team-1', true, expect.any(String))
     })
 
     it('sends an edited per-match close time and blocks a close time after that match starts', async () => {
@@ -320,14 +356,14 @@ describe('NewPollPage', () => {
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      const field = 'Closes at for U13 Boys A vs Rivals CC'
+      const field = 'Closes At For U13 Boys A vs Rivals CC'
       await screen.findByLabelText(`${field} (date)`)
       setDateTime(field, toDatetimeLocal('2030-06-07T09:00:00.000Z'))
       expect(await screen.findByText('Choose a closing time before the first match starts.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create 2 Polls' })).toBeDisabled()
 
       setDateTime(field, toDatetimeLocal('2030-06-05T20:00:00.000Z'))
-      await user.click(screen.getByRole('button', { name: 'Open 2 polls' }))
+      await user.click(screen.getByRole('button', { name: 'Create 2 Polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
       expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T20:00:00.000Z')
@@ -343,7 +379,7 @@ describe('NewPollPage', () => {
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      await user.click(await screen.findByRole('button', { name: 'Open 2 polls' }))
+      await user.click(await screen.findByRole('button', { name: 'Create 2 Polls' }))
 
       expect(await screen.findByText(/already covered by the group poll "Weekend"/)).toBeInTheDocument()
       expect(screen.queryByText('Polls Dashboard')).not.toBeInTheDocument()
@@ -360,7 +396,7 @@ describe('NewPollPage', () => {
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      await user.click(await screen.findByRole('button', { name: 'Open 2 polls' }))
+      await user.click(await screen.findByRole('button', { name: 'Create 2 Polls' }))
 
       expect(
         await screen.findByText('U13 Boys A vs United CC: This match is already covered by the group poll "Weekend".'),
@@ -376,7 +412,7 @@ describe('NewPollPage', () => {
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      await user.click(await screen.findByRole('button', { name: 'Open 2 polls' }))
+      await user.click(await screen.findByRole('button', { name: 'Create 2 Polls' }))
 
       expect(await screen.findByText(/U13 Boys A vs Rivals CC: /)).toBeInTheDocument()
       expect(screen.getByText(/U13 Boys A vs United CC: /)).toBeInTheDocument()
@@ -402,7 +438,7 @@ describe('NewPollPage', () => {
 
       expect(await screen.findByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
       expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability/group/round-9')
-      expect(screen.getByRole('button', { name: 'Open 0 polls' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create 0 Polls' })).toBeDisabled()
     })
 
     it('shows an empty state when the team has no upcoming matches', async () => {
@@ -421,11 +457,58 @@ describe('NewPollPage', () => {
   describe('group branch (063 fixture-group review)', () => {
     const GROUP_PATH = '/manage/availability/new?type=group&sectionId=section-1'
 
-    it('prompts for a section and does not fetch fixture groups until one is chosen', async () => {
+    it('with several sections opens on All Sections: every section\'s fixtures, a heading each, fetched without choosing first', async () => {
+      listSections.mockResolvedValue([SECTION, { ...SECTION, id: 'section-2', name: 'U15 Boys' }])
+      getFixtureGroups.mockImplementation(async (_clubId: string, sectionId: string) => [
+        makeGroup({ matches: [makeMatch({ matchId: `m-${sectionId}`, opponentLabel: `Rivals of ${sectionId}` })] }),
+      ])
       renderPage('/manage/availability/new?type=group')
 
-      expect(await screen.findByText('Choose a section')).toBeInTheDocument()
-      expect(getFixtureGroups).not.toHaveBeenCalled()
+      expect(await screen.findByRole('heading', { level: 3, name: SECTION.name })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 3, name: 'U15 Boys' })).toBeInTheDocument()
+      expect(getFixtureGroups).toHaveBeenCalledWith('test-club-id', 'section-1')
+      expect(getFixtureGroups).toHaveBeenCalledWith('test-club-id', 'section-2')
+      expect(screen.getAllByRole('button', { name: /^Create Poll For/ })).toHaveLength(2)
+    })
+
+    it('has Section and Team filters like the Squad page: choosing a team keeps only the groups that team plays in (136)', async () => {
+      const user = userEvent.setup()
+      const groupA = makeGroup({ startDate: '2026-06-06', endDate: '2026-06-07', matches: [makeMatch({ matchId: 'a1', opponentLabel: 'Alpha CC' })] })
+      const groupB = makeGroup({
+        startDate: '2026-06-13',
+        endDate: '2026-06-14',
+        matches: [makeMatch({ matchId: 'b1', teamId: 'team-2', teamName: 'U13 Boys B', opponentLabel: 'Beta CC' })],
+      })
+      getFixtureGroups.mockResolvedValue([groupA, groupB])
+      renderPage(GROUP_PATH)
+
+      expect(await screen.findAllByRole('button', { name: /^Create Poll For/ })).toHaveLength(2)
+      expect(screen.getByLabelText('Section')).toBeInTheDocument()
+      await user.click(screen.getByLabelText('Team'))
+      await user.click(await screen.findByRole('option', { name: 'U13 Boys B' }))
+
+      expect(await screen.findAllByRole('button', { name: /^Create Poll For/ })).toHaveLength(1)
+      expect(screen.getByText(/Beta CC/)).toBeInTheDocument()
+      expect(screen.queryByText(/Alpha CC/)).not.toBeInTheDocument()
+    })
+
+    it('lists soonest first and puts a fully covered group last, as one line with its poll link', async () => {
+      const covered = makeGroup({
+        startDate: '2026-06-01',
+        endDate: '2026-06-02',
+        suggestedDescription: 'Covered weekend',
+        matches: [makeMatch({ matchId: 'c1', alreadyPolled: true, existingPollType: 'GROUP', existingPollId: 'round-9', existingPollLabel: 'Weekend poll' })],
+      })
+      const later = makeGroup({ startDate: '2026-06-20', endDate: '2026-06-21', suggestedDescription: 'Later weekend', matches: [makeMatch({ matchId: 'l1', opponentLabel: 'Later CC' })] })
+      const sooner = makeGroup({ startDate: '2026-06-06', endDate: '2026-06-07', suggestedDescription: 'Sooner weekend', matches: [makeMatch({ matchId: 's1', opponentLabel: 'Sooner CC' })] })
+      getFixtureGroups.mockResolvedValueOnce([covered, later, sooner])
+      renderPage(GROUP_PATH)
+
+      await screen.findByText(/Sooner CC/)
+      const buttons = screen.getAllByRole('button', { name: /^Create Poll For/ })
+      expect(buttons).toHaveLength(2)
+      const text = document.body.textContent ?? ''
+      expect(text.indexOf('Sooner CC')).toBeLessThan(text.indexOf('Later CC'))
     })
 
     it('pre-selects the section from the sectionId query param, fetching immediately', async () => {
@@ -444,7 +527,7 @@ describe('NewPollPage', () => {
       expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).toBeChecked()
       expect(screen.getByLabelText('Include U13 Boys A vs United CC')).toBeChecked()
       expect(screen.getByLabelText('Description')).toHaveValue('Sat 6 - Sun 7 Jun - U13 Boys fixtures')
-      expect(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create Poll For 2 Fixtures' })).toBeInTheDocument()
     })
 
     it('unchecking a match excludes it from the count and the create payload, then returns to the dashboard on success', async () => {
@@ -455,7 +538,7 @@ describe('NewPollPage', () => {
 
       await screen.findByText('U13 Boys A vs Rivals CC')
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
-      await user.click(screen.getByRole('button', { name: 'Open poll for 1 selected fixture' }))
+      await user.click(screen.getByRole('button', { name: 'Create Poll For 1 Fixture' }))
 
       await waitFor(() =>
         expect(createRound).toHaveBeenCalledWith('test-club-id', {
@@ -470,7 +553,7 @@ describe('NewPollPage', () => {
       expect(await screen.findByText('Polls Dashboard')).toBeInTheDocument()
     })
 
-    it('renders a match covered by a GROUP poll disabled, linking to the polls list with the poll label', async () => {
+    it('collapses a fully covered group to one line with the covering poll link, sorted after open groups', async () => {
       getFixtureGroups.mockResolvedValueOnce([
         makeGroup({
           matches: [
@@ -485,21 +568,20 @@ describe('NewPollPage', () => {
       ])
       renderPage(GROUP_PATH)
 
-      await screen.findByText('U13 Boys A vs Rivals CC')
-      expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
-      expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).not.toBeChecked()
+      await screen.findByText('Every fixture here is already in a poll.')
+      expect(screen.queryByLabelText('Include U13 Boys A vs Rivals CC')).toBeNull()
       expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability/group/round-9')
       // docs/specs/085: a group whose fixtures are all covered has nothing to open: no editable fields, no red error and
       // no disabled "0 selected" action, just a note.
       expect(screen.getByText('Every fixture here is already in a poll.')).toBeInTheDocument()
       expect(screen.queryByLabelText('Description')).toBeNull()
       expect(screen.queryByLabelText('Autoclose')).toBeNull()
-      expect(screen.queryByRole('group', { name: 'Closes at' })).toBeNull()
+      expect(screen.queryByRole('group', { name: 'Closes At' })).toBeNull()
       expect(screen.queryByText(/A closing time is required/)).toBeNull()
-      expect(screen.queryByRole('button', { name: /Open poll for/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Create Poll For/ })).toBeNull()
     })
 
-    it("renders a match covered by a SQUAD poll disabled, linking to that match's Availability tab", async () => {
+    it("renders a covered match in a partly covered group disabled, linking to that match's Availability tab", async () => {
       getFixtureGroups.mockResolvedValueOnce([
         makeGroup({
           matches: [
@@ -509,12 +591,14 @@ describe('NewPollPage', () => {
               existingPollId: 'poll-3',
               existingPollLabel: 'U13 Boys A v Rivals CC',
             }),
+            makeMatch({ matchId: 'match-2', opponentLabel: 'United CC', matchDate: '2030-06-07T09:00:00Z' }),
           ],
         }),
       ])
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
+      expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
       expect(screen.getByRole('link', { name: 'U13 Boys A v Rivals CC' })).toHaveAttribute(
         'href',
         '/manage/availability/squad/match-1/poll-3',
@@ -528,12 +612,12 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      expect(screen.getByRole('group', { name: 'Closes at' })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Closes At' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-      expect(screen.queryByRole('group', { name: 'Closes at' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'Closes At' })).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' }))
+      await user.click(screen.getByRole('button', { name: 'Create Poll For 2 Fixtures' }))
       await waitFor(() => expect(createRound).toHaveBeenCalledTimes(1))
       expect(createRound.mock.calls[0][1]).toEqual({
         sectionId: 'section-1',
@@ -549,10 +633,10 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      expectDateTime('Closes at', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
+      expectDateTime('Closes At', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
-      expectDateTime('Closes at', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
+      expectDateTime('Closes At', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
     })
 
     it('keeps an edited close time when ticks change, sends it, and rejects one in the past', async () => {
@@ -562,16 +646,16 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      const field = 'Closes at'
+      const field = 'Closes At'
       setDateTime(field, '2020-01-01T09:00')
       expect(await screen.findByText('Choose a closing time in the future.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create Poll For 2 Fixtures' })).toBeDisabled()
 
       setDateTime(field, toDatetimeLocal('2030-06-05T18:00:00.000Z'))
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
       expectDateTime(field, toDatetimeLocal('2030-06-05T18:00:00.000Z'))
 
-      await user.click(screen.getByRole('button', { name: 'Open poll for 1 selected fixture' }))
+      await user.click(screen.getByRole('button', { name: 'Create Poll For 1 Fixture' }))
       await waitFor(() =>
         expect(createRound).toHaveBeenCalledWith(
           'test-club-id',
@@ -588,10 +672,10 @@ describe('NewPollPage', () => {
       await screen.findByText('U13 Boys A vs Rivals CC')
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
-      expect(screen.getByRole('button', { name: 'Open poll for 0 selected fixtures' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create Poll For 0 Fixtures' })).toBeDisabled()
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
-      expect(screen.getByRole('button', { name: 'Open poll for 1 selected fixture' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Create Poll For 1 Fixture' })).toBeEnabled()
     })
 
     it('sends the edited description and shows a 409 from createRound inline', async () => {
@@ -604,7 +688,7 @@ describe('NewPollPage', () => {
       const input = screen.getByLabelText('Description')
       await user.clear(input)
       await user.type(input, 'A custom title')
-      await user.click(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' }))
+      await user.click(screen.getByRole('button', { name: 'Create Poll For 2 Fixtures' }))
 
       expect(await screen.findByText(/already covered by the squad poll/)).toBeInTheDocument()
       expect(createRound).toHaveBeenCalledWith(
@@ -648,7 +732,7 @@ describe('NewPollPage', () => {
       await user.click(await screen.findByLabelText('Include U13 Boys A vs Rivals CC'))
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
       expect(screen.queryByText(/A closing time is required/)).toBeNull()
-      expect(screen.getByRole('button', { name: 'Open poll for 0 selected fixtures' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Create Poll For 0 Fixtures' })).toBeDisabled()
     })
   })
 })

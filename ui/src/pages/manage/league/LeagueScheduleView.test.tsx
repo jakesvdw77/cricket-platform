@@ -156,7 +156,7 @@ describe('LeagueScheduleView', () => {
     expect(within(inline).getByRole('button', { name: /only our matches/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('puts one white Manage Schedule menu on the tab row: Add Match, Import Schedule, Share Schedule', async () => {
+  it('puts one white Manage Schedule menu on the tab row: Create New Match, Import Schedule, Share Schedule', async () => {
     mocks.listMatches.mockResolvedValue({
       ...emptyPage(),
       content: [makeMatch({ matchDate: future(1), homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
@@ -172,31 +172,31 @@ describe('LeagueScheduleView', () => {
     expect(screen.getByRole('navigation', { name: 'League views' })).toContainElement(actions)
     await userEvent.click(trigger)
     const items = (await screen.findAllByRole('menuitem')).map((item) => item.querySelector('span')?.textContent)
-    expect(items).toEqual(['Add Match', 'Import Schedule', 'Share Schedule'])
-    expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
+    expect(items).toEqual(['Create New Match', 'Import Schedule', 'Share Schedule'])
+    expect(screen.getByRole('menuitem', { name: /Create New Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
     expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveAttribute('href', expect.stringContaining('/schedule/import?seasonId=season-1&from=view'))
   })
 
-  it('shows Import Schedule and Add Match in the empty state as well as the Manage Schedule menu', async () => {
+  it('shows Import Schedule and Create New Match in the empty state as well as the Manage Schedule menu', async () => {
     const user = userEvent.setup()
     renderLeagueView(SCHEDULE_PATH)
 
     expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
     expect(within(screen.getByTestId('league-tab-actions')).getByRole('button', { name: 'Manage Schedule' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Import Schedule' })).toHaveLength(1)
-    const add = screen.getByRole('link', { name: 'Add Match' })
+    const add = screen.getByRole('link', { name: 'Create New Match' })
     expect(add.className).toContain('MuiButton-contained')
     expect(add).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
     await user.click(add)
     expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1')
   })
 
-  it('disables Add Match and Import Schedule while the league has no season', async () => {
+  it('disables Create New Match and Import Schedule while the league has no season', async () => {
     mocks.listSeasons.mockResolvedValue([])
     renderLeagueView(SCHEDULE_PATH)
 
     await screen.findByText(/No seasons yet/)
-    expect(screen.queryByRole('link', { name: 'Add Match' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Create New Match' })).not.toBeInTheDocument()
   })
 
   it('opens our matches from the row and shows an "Our match" chip, while a league-only match is a plain row', async () => {
@@ -381,11 +381,11 @@ describe('LeagueScheduleView', () => {
       for (const item of screen.getAllByRole('menuitem').filter((entry) => entry.hasAttribute('href'))) expect(returnOf(item.getAttribute('href'))).toEqual(origin)
     })
 
-    it('the empty state Add Match carries the schedule as its origin', async () => {
+    it('the empty state Create New Match carries the schedule as its origin', async () => {
       mocks.listMatches.mockResolvedValue(emptyPage())
       renderLeagueView(`${SCHEDULE_PATH}?seasonId=season-1`)
 
-      const add = await screen.findByRole('link', { name: 'Add Match' })
+      const add = await screen.findByRole('link', { name: 'Create New Match' })
       expect(returnOf(add.getAttribute('href'))).toEqual({ to: `${SCHEDULE_PATH}?seasonId=season-1`, label: 'Internal League schedule' })
     })
   })

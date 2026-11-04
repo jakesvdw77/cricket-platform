@@ -137,29 +137,38 @@ function column(status: 'Available' | 'Unsure' | 'Unavailable') {
   return screen.getByRole('group', { name: new RegExp(`^${status} players, .*(Morning|Afternoon)$`) })
 }
 
+// docs/specs/136: every poll action is in the one Manage Poll menu.
+async function manage(user: ReturnType<typeof userEvent.setup>, itemName: string | RegExp) {
+  await user.click(screen.getByRole('button', { name: 'Manage Poll' }))
+  await user.click(await screen.findByRole('menuitem', { name: itemName }))
+}
+
+async function openManage(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Manage Poll' }))
+}
+
 async function loaded() {
   await screen.findByRole('heading', { level: 1, name: 'Home Team vs Rivals CC' })
 }
 
 describe('SquadPollResponsesPage', () => {
-  it('renders the header with title, badges, subtitle, close time and the Open match link', async () => {
+  it('renders the header with title, badges, subtitle, close time and the Manage Poll menu with Open Match', async () => {
+    const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    expect(screen.getByText('Squad poll')).toBeInTheDocument()
+    expect(screen.getByText('Squad Poll')).toBeInTheDocument()
     expect(screen.getByText('Open')).toBeInTheDocument()
     expect(screen.getByText('Home')).toBeInTheDocument()
     expect(screen.getByText(`${formatMatchDateTime(MATCH_DATE)} · Home Ground`)).toBeInTheDocument()
     expect(screen.getByText(/^Closes /)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open match/i })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/matches/match-1',
-    )
-    expect(screen.getByRole('link', { name: /back to availability polls/i })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to availability/i })).toHaveAttribute('href', '/manage/availability')
+    await openManage(user)
+    expect(screen.getByRole('menuitem', { name: 'Open Match' })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/match-1'))
   })
 
-  it('shows Venue TBC, the Away badge and the away side in the Open match link', async () => {
+  it('shows Venue TBC and the Away badge', async () => {
     listPolls.mockResolvedValue([makePoll({ teamId: 'team-away' })])
     getPollResponses.mockResolvedValue(makeResponses({ teamId: 'team-away' }))
     getMatch.mockResolvedValue(makeMatch({ venue: null, homeTeamId: 'team-other', awayTeamId: 'team-away', awayTeamName: null, homeTeamName: null }))
@@ -172,10 +181,6 @@ describe('SquadPollResponsesPage', () => {
 
     expect(screen.getByText('Away')).toBeInTheDocument()
     expect(screen.getByText(/ · Venue TBC$/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open match/i })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/matches/match-1',
-    )
   })
 
   it('waits for the teams before painting, so the title is never "Unknown team"', async () => {
@@ -210,7 +215,7 @@ describe('SquadPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('button', { name: 'Time slot' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Time Slot' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 3, name: SLOT })).toBeInTheDocument()
     expect(screen.getByText(/Home Team v Rivals CC/)).toBeInTheDocument()
@@ -257,7 +262,7 @@ describe('SquadPollResponsesPage', () => {
     const bodyRows = within(table).getAllByRole('row').slice(1)
     expect(bodyRows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
 
-    await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
+    await user.click(screen.getByRole('button', { name: 'Hide No Answers' }))
     expect(screen.queryByText('Cal Ng')).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
   })
@@ -285,7 +290,7 @@ describe('SquadPollResponsesPage', () => {
     await loaded()
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
-    expect(screen.queryByRole('combobox', { name: 'Slot' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Slot:/ })).not.toBeInTheDocument()
     const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
     expect(chips.getByRole('button', { name: 'All 4' })).toBeInTheDocument()
     expect(chips.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
@@ -351,7 +356,7 @@ describe('SquadPollResponsesPage', () => {
     await loaded()
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
-    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    expect(screen.getByText('Changes are recorded as a manager correction.')).toBeInTheDocument()
     const chip = within(column('Available')).getByLabelText(/Set Jane Smith's.*availability/i)
     expect(chip).not.toHaveAttribute('aria-disabled', 'true')
     getPollResponses.mockResolvedValue(updated)
@@ -382,13 +387,13 @@ describe('SquadPollResponsesPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Poll is closed.')
   })
 
-  it('opens Edit close time in squad mode and saves the chosen close time', async () => {
+  it('opens Edit Close Time in squad mode and saves the chosen close time', async () => {
     const user = userEvent.setup()
     updatePollCloseTime.mockResolvedValue(makePoll())
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    await manage(user, 'Edit Close Time')
     expect(await screen.findByRole('heading', { name: 'Edit close time' })).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -406,7 +411,7 @@ describe('SquadPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      await manage(user, 'Delete Poll')
       expect(await screen.findByRole('dialog', { name: 'Delete this squad poll?' })).toBeInTheDocument()
       expect(deletePoll).not.toHaveBeenCalled()
 
@@ -420,22 +425,22 @@ describe('SquadPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      await manage(user, 'Delete Poll')
       await user.click(await screen.findByRole('button', { name: 'Cancel' }))
       expect(deletePoll).not.toHaveBeenCalled()
       expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
     })
   })
 
-  // docs/specs/090: Close poll / Reopen poll in the header.
+  // docs/specs/090, 136: Close Poll / Reopen Poll in the Manage Poll menu.
   describe('close and reopen from the page', () => {
-    it('closes an open poll after confirming, then shows it closed with Reopen poll', async () => {
+    it('closes an open poll after confirming, then offers Reopen Poll', async () => {
       const user = userEvent.setup()
       closePoll.mockResolvedValue({})
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      await manage(user, 'Close Poll')
       expect(await screen.findByRole('dialog', { name: 'Close this poll?' })).toBeInTheDocument()
       expect(closePoll).not.toHaveBeenCalled()
 
@@ -444,8 +449,11 @@ describe('SquadPollResponsesPage', () => {
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close poll' }))
 
       await waitFor(() => expect(closePoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1'))
-      expect(await screen.findByRole('button', { name: 'Reopen poll' })).toBeEnabled()
-      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.getByText('Closed')).toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await openManage(user)
+      expect(await screen.findByRole('menuitem', { name: 'Reopen Poll' })).not.toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('menuitem', { name: 'Close Poll' })).not.toBeInTheDocument()
     })
 
     it('does nothing when the confirmation is cancelled', async () => {
@@ -453,55 +461,59 @@ describe('SquadPollResponsesPage', () => {
       renderPage()
       await loaded()
 
-      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      await manage(user, 'Close Poll')
       await user.click(await screen.findByRole('button', { name: 'Cancel' }))
 
       expect(closePoll).not.toHaveBeenCalled()
-      expect(screen.getByRole('button', { name: 'Close poll' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await openManage(user)
+      expect(screen.getByRole('menuitem', { name: 'Close Poll' })).toBeInTheDocument()
     })
 
-    it('offers Reopen poll on a closed poll, opening the close-time dialog', async () => {
+    it('offers Reopen Poll on a closed poll, opening the close-time dialog', async () => {
       const user = userEvent.setup()
       listPolls.mockResolvedValue([makePoll({ open: false })])
       getPollResponses.mockResolvedValue(makeResponses({ open: false }))
       renderPage()
       await loaded()
 
-      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
+      await openManage(user)
+      expect(screen.queryByRole('menuitem', { name: 'Close Poll' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('menuitem', { name: 'Reopen Poll' }))
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
     })
 
-    it('disables Reopen poll with the reason when the poll cannot be reopened', async () => {
+    it('disables Reopen Poll with the reason when the poll cannot be reopened', async () => {
+      const user = userEvent.setup()
       listPolls.mockResolvedValue([makePoll({ open: false, canReopen: false })])
       getPollResponses.mockResolvedValue(makeResponses({ open: false }))
       renderPage()
       await loaded()
 
-      const reopen = screen.getByRole('button', { name: 'Reopen poll' })
-      expect(reopen).toBeDisabled()
-      expect(reopen.closest('span')).toHaveAttribute('title', 'The matches in this poll are in the past')
+      await openManage(user)
+      const reopen = screen.getByRole('menuitem', { name: /Reopen Poll/ })
+      expect(reopen).toHaveAttribute('aria-disabled', 'true')
+      expect(reopen).toHaveTextContent('The matches in this poll are in the past')
     })
   })
 
-  it('disables the reopen pencil with the reason on a closed poll that cannot be reopened', async () => {
-    listPolls.mockResolvedValue([makePoll({ open: false, canReopen: false })])
-    getPollResponses.mockResolvedValue(makeResponses({ open: false }))
-    renderPage()
-    await loaded()
-
-    const pencil = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
-    expect(pencil).toBeDisabled()
-    expect(pencil.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
-    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
-  })
-
-  it('keeps the close-time pencil enabled on an open poll even when canReopen is false', async () => {
+  it('keeps Edit Close Time enabled on an open poll even when canReopen is false', async () => {
+    const user = userEvent.setup()
     listPolls.mockResolvedValue([makePoll({ canReopen: false })])
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeEnabled()
+    await openManage(user)
+    expect(screen.getByRole('menuitem', { name: 'Edit Close Time' })).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('lists the poll actions in order (no description or matches for a squad poll), Share Invite last', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+
+    await openManage(user)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit Close Time', 'Close Poll', 'Open Match', 'Delete Poll', 'Share Invite'])
   })
 
   it('opens the dialog in Reopen mode on a closed poll, saving then opening', async () => {
@@ -513,7 +525,7 @@ describe('SquadPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    await manage(user, 'Reopen Poll')
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
 
@@ -521,18 +533,17 @@ describe('SquadPollResponsesPage', () => {
     expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null })
   })
 
-  it('disables the header Share invite with an explanation on a closed poll', async () => {
+  it('disables Share Invite with an explanation on a closed poll', async () => {
+    const user = userEvent.setup()
     listPolls.mockResolvedValue([makePoll({ open: false })])
     getPollResponses.mockResolvedValue(makeResponses({ open: false }))
     renderPage()
     await loaded()
 
-    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
-    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
-    expect(share).toBeDisabled()
-    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+    await openManage(user)
+    const share = screen.getByRole('menuitem', { name: /Share Invite/ })
+    expect(share).toHaveAttribute('aria-disabled', 'true')
+    expect(share).toHaveTextContent('Share invite is unavailable: this poll is closed')
   })
 
   it('opens the share dialog with the side\'s team name and the poll link', async () => {
@@ -540,7 +551,7 @@ describe('SquadPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: /share invite/i }))
+    await manage(user, 'Share Invite')
 
     const textarea = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
     expect(textarea.value).toContain('Availability: Home Team vs')
@@ -552,7 +563,7 @@ describe('SquadPollResponsesPage', () => {
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('link', { name: /back to availability polls/i }))
+    await user.click(screen.getByRole('link', { name: /back to availability/i }))
 
     expect(await screen.findByText('Polls List')).toBeInTheDocument()
   })
@@ -561,8 +572,8 @@ describe('SquadPollResponsesPage', () => {
     renderPage('test-club-id', 'match-1', 'missing-poll')
 
     expect(await screen.findByText("Couldn't load this poll")).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Squad poll' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to availability polls/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Squad Poll' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to availability/i })).toBeInTheDocument()
   })
 
   it('shows the same state when the match is missing', async () => {
