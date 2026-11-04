@@ -20,6 +20,9 @@ export interface ManageMenuItem {
   to?: string
   disabled?: boolean
   reason?: string
+  // Optional: 'error' draws the title and icon in the error colour (a destructive item such as Delete Poll).
+  // docs/specs/136: an error tone for a destructive item (Delete Poll): red icon and text.
+  tone?: 'error'
 }
 
 export interface ManageMenuGroup {
@@ -127,11 +130,11 @@ export function ManageMenu({ label, groups, openFirstGroupId, testId = 'manage-m
                 if (!item.to && item.onClick) pending.current = item.onClick
               }}
             >
-              {item.icon && <ListItemIcon sx={{ minWidth: 0, ...(!dense && { mt: 0.25 }), color: 'primary.main' }}>{item.icon}</ListItemIcon>}
+              {item.icon && <ListItemIcon sx={{ minWidth: 0, ...(!dense && { mt: 0.25 }), color: item.tone === 'error' ? 'error.main' : 'primary.main' }}>{item.icon}</ListItemIcon>}
               {dense ? (
                 // No description in a dense menu; a disabled item still says why, in one small line (a phone has no hover to show it).
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="body2" fontWeight={600} component="span" sx={{ display: 'block' }}>
+                  <Typography variant="body2" fontWeight={600} component="span" sx={{ display: 'block', ...(item.tone === 'error' && { color: 'error.main' }) }}>
                     {item.title}
                   </Typography>
                   {blocked && item.reason && (
@@ -142,7 +145,7 @@ export function ManageMenu({ label, groups, openFirstGroupId, testId = 'manage-m
                 </Box>
               ) : (
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="body2" fontWeight={700} component="span" sx={{ display: 'block' }}>
+                  <Typography variant="body2" fontWeight={700} component="span" sx={{ display: 'block', ...(item.tone === 'error' && { color: 'error.main' }) }}>
                     {item.title}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block', lineHeight: 1.35 }}>

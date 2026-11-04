@@ -105,7 +105,7 @@ function renderList(clubId?: string) {
         <Routes>
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="leagues" element={<LeagueList />} />
-            <Route path="leagues/new" element={<div>Add League Page</div>} />
+            <Route path="leagues/new" element={<div>Create New League Page</div>} />
             <Route path="leagues/:id/schedule" element={<div>League Schedule Page</div>} />
             <Route path="leagues/:id/edit" element={<div>Edit League Page</div>} />
           </Route>
@@ -174,15 +174,15 @@ describe('LeagueList', () => {
     expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
   })
 
-  it('clicking Add League navigates to the create route', async () => {
+  it('clicking Create New League navigates to the create route', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValue([makeLeague()])
 
     renderList('test-club-id')
 
     await screen.findByText('Internal League')
-    await user.click(screen.getByRole('button', { name: 'Add League' }))
-    expect(await screen.findByText('Add League Page')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Create New League' }))
+    expect(await screen.findByText('Create New League Page')).toBeInTheDocument()
   })
 
   describe('season pill (091)', () => {
@@ -335,26 +335,27 @@ describe('LeagueList', () => {
       expect(await screen.findByText('Edit League Page')).toBeInTheDocument()
     })
 
-    it('ends the cards grid with a dashed Add League card linking to the add route', async () => {
+    it('ends the cards grid with a dashed Create New League card linking to the add route', async () => {
       listLeagues.mockResolvedValue([makeLeague({ id: 'a', name: 'Alpha' }), makeLeague({ id: 'b', name: 'Beta' })])
 
       renderList('test-club-id')
 
       await screen.findByRole('heading', { name: 'Alpha' })
       const add = screen.getByTestId('add-league-card')
-      // docs/specs/127: Add League returns to this list.
+      // docs/specs/127: Create New League returns to this list.
       expect(add).toHaveAttribute('href', '/manage/fixtures/leagues/new?returnTo=%2Fmanage%2Ffixtures%2Fleagues&returnLabel=Leagues')
-      expect(add).toHaveTextContent('Add League')
+      expect(add).toHaveTextContent('Create New League')
       expect(add.parentElement?.lastElementChild).toBe(add)
     })
 
-    it('shows the Add League card with the empty message when no card matches', async () => {
+    it('shows the empty message with a quick-action Create New League, and no dashed Add card, when no card matches', async () => {
       listLeagues.mockResolvedValue([])
 
       renderList('test-club-id')
 
-      expect(await screen.findByTestId('add-league-card')).toBeInTheDocument()
-      expect(screen.getByText('No league available')).toBeInTheDocument()
+      expect(await screen.findByText('No league available')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-league-card')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Create New League' })).toHaveLength(2) // the title-row button and the empty message's link
     })
 
     it('never renders a Deactivate/Reactivate button on the card', async () => {

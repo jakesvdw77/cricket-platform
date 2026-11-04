@@ -1,0 +1,142 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 136 New poll pages mockup</title><style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+.lede{color:var(--inkMuted);max-width:820px;margin:0 0 28px;font-size:15px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.note{color:var(--inkMuted);font-size:13px;margin:0 0 14px;max-width:900px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;position:relative;overflow:hidden}
+.frame.d{width:1280px;height:640px;zoom:.62}
+.frame.p{width:375px;height:700px;zoom:.9}
+.frame.d.tall{height:760px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center}
+
+.page{padding:20px 24px}
+.back{font:600 13px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin-bottom:6px}
+.ttl{font-family:var(--display);font-weight:700;font-size:40px;color:var(--green900);margin:0 0 12px;text-transform:uppercase;line-height:1}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:14px}
+.tb{display:flex;gap:10px;align-items:center;border:1px solid var(--cardLine);border-radius:6px;padding:8px;margin-bottom:12px}
+.sel2{height:36px;min-width:200px;border:1px solid var(--cardLine);border-radius:6px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;color:var(--ink900);background:#fff;gap:12px}
+.sel2:after{content:"\25BE";color:var(--inkMuted)}
+.hint{font-size:13px;color:var(--inkMuted)}
+.sh{font-family:var(--display);font-weight:700;font-size:20px;color:var(--green800);margin:14px 0 8px;display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.sh small{font:500 13px var(--body);color:var(--inkMuted);text-transform:none}
+.g{border:1px solid var(--cardLine);border-radius:6px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.gh{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.gh b{font-size:15px}
+.fx{font-size:13.5px;color:var(--ink900);padding:5px 0;border-top:1px solid var(--cardLine);margin-top:6px;display:flex;gap:10px}
+.fx span:first-child{color:var(--inkMuted);width:104px;flex:none}
+.cov{color:var(--inkMuted);font-size:13px}
+.ok{color:var(--green700);font-weight:600}
+.mrow{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--cardLine);font-size:14px}
+.mrow:first-of-type{border-top:0}
+.mrow .box{margin:0}
+.mrow .d{color:var(--inkMuted);width:104px;flex:none;font-size:13px}
+.sticky{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--cardLine);padding:10px 16px;display:flex;justify-content:flex-end;gap:8px;align-items:center}
+.box{width:18px;height:18px;border:2px solid var(--inkMuted);border-radius:3px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+.on2 .box{background:var(--green700);border-color:var(--green700)}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);letter-spacing:.02em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.btn.c{background:var(--green700);color:#fff}
+.btn.o{background:transparent;color:var(--green700);border-color:var(--green700)}
+.btn.dis{background:color-mix(in srgb,var(--ink900) 12%,transparent);color:color-mix(in srgb,var(--ink900) 38%,transparent)}
+.p .tb{flex-wrap:wrap}.p .sel2{min-width:0;flex:1}
+.p .page{padding:14px 12px}.p .ttl{font-size:30px}
+</style></head><body>
+<h1>New Group Poll and New Squad Poll, showing the matches first</h1>
+<p class="lede">Today both pages open empty until a section or team is picked. Here they open already showing every upcoming match that has no poll yet, grouped for you. A manager of one section or one team never picks anything: the page is already scoped to theirs. A manager of several sees all of them, one heading each, with the select as an optional filter ("All Sections", "All Teams"). Mockup only, nothing built from this yet.</p>
+
+<h2>1. New Group Poll</h2>
+<p class="note">Fixtures that no group poll covers yet, grouped by section, then by weekend. Soonest first. A group already covered by a poll shows its link instead of a button, so nothing is offered twice.</p>
+<div class="row">
+<div><p class="cap">Desktop, manager of one section</p>
+<div class="frame d tall"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Group Poll</div>
+<div class="card">
+<div class="tb"><div class="sel2">Over 40s (your section)</div><span class="hint">3 weekends have fixtures with no poll. Each card opens one poll with one link.</span></div>
+<div class="g"><div class="gh"><b>Sat 14 &ndash; Sun 15 Nov &middot; 3 fixtures</b><span class="btn c">Create Poll For 3 Fixtures</span></div>
+<div class="fx"><span>Sat 14 Nov 13:00</span><span>Villagers 1 vs CBC &middot; Central Oval</span></div>
+<div class="fx"><span>Sat 14 Nov 13:00</span><span>Villagers 2 vs Pirates &middot; Field 2</span></div>
+<div class="fx"><span>Sun 15 Nov 10:00</span><span>Villagers 1 vs Eagles &middot; Central Oval</span></div></div>
+<div class="g"><div class="gh"><b>Sat 21 &ndash; Sun 22 Nov &middot; 2 fixtures</b><span class="btn c">Create Poll For 2 Fixtures</span></div>
+<div class="fx"><span>Sat 21 Nov 13:00</span><span>Villagers 1 vs Hawks &middot; Away</span></div>
+<div class="fx"><span>Sun 22 Nov 10:00</span><span>Villagers 2 vs CBC &middot; Central Oval</span></div></div>
+<div class="g"><div class="gh"><b>Sat 28 Nov &middot; 1 fixture</b><span class="cov ok">Covered by Over 40s weekend 28 Nov &middot; Open Responses</span></div></div>
+</div></div></div></div>
+<div><p class="cap">Desktop, manager of several sections</p>
+<div class="frame d tall"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Group Poll</div>
+<div class="card">
+<div class="tb"><div class="sel2">All My Sections</div><span class="hint">Filter by section if you want fewer. Soonest first.</span></div>
+<div class="sh">Over 40s <small>2 weekends without a poll</small></div>
+<div class="g"><div class="gh"><b>Sat 14 &ndash; Sun 15 Nov &middot; 3 fixtures</b><span class="btn c">Create Poll For 3 Fixtures</span></div></div>
+<div class="g"><div class="gh"><b>Sat 21 &ndash; Sun 22 Nov &middot; 2 fixtures</b><span class="btn c">Create Poll For 2 Fixtures</span></div></div>
+<div class="sh">Under 15 <small>1 weekend without a poll</small></div>
+<div class="g"><div class="gh"><b>Sat 14 Nov &middot; 2 fixtures</b><span class="btn c">Create Poll For 2 Fixtures</span></div></div>
+</div></div></div></div>
+<div><p class="cap">Phone</p>
+<div class="frame p"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Group Poll</div>
+<div class="tb"><div class="sel2">Over 40s</div></div>
+<div class="g"><b>Sat 14 &ndash; Sun 15 Nov</b><div class="cov">3 fixtures</div>
+<div class="fx"><span>Sat 13:00</span><span>Villagers 1 vs CBC</span></div>
+<div class="fx"><span>Sat 13:00</span><span>Villagers 2 vs Pirates</span></div>
+<div class="fx"><span>Sun 10:00</span><span>Villagers 1 vs Eagles</span></div>
+<div style="margin-top:10px"><span class="btn c" style="width:100%;justify-content:center;height:44px">Create Poll For 3 Fixtures</span></div></div>
+<div class="g"><b>Sat 21 &ndash; Sun 22 Nov</b><div class="cov">2 fixtures</div><div style="margin-top:10px"><span class="btn c" style="width:100%;justify-content:center;height:44px">Create Poll For 2 Fixtures</span></div></div>
+</div></div></div></div>
+
+<h2>2. New Squad Poll</h2>
+<p class="note">Matches of the manager's own teams that have no squad poll yet, grouped by team. Tick the matches to poll, then Create. A team with a single match is ticked already. One tap per team for the common case: "Select All" on the heading.</p>
+<div class="row">
+<div><p class="cap">Desktop, manager of one team</p>
+<div class="frame d tall"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Squad Poll</div>
+<div class="card">
+<div class="tb"><div class="sel2">Villagers 1 (your team)</div><span class="hint">4 matches have no poll. Each ticked match gets its own link.</span></div>
+<div class="mrow on2"><span class="box">&#10003;</span><span class="d">Sat 14 Nov 13:00</span><span>vs CBC &middot; Home &middot; Central Oval</span></div>
+<div class="mrow on2"><span class="box">&#10003;</span><span class="d">Sun 15 Nov 10:00</span><span>vs Eagles &middot; Home &middot; Central Oval</span></div>
+<div class="mrow on2"><span class="box">&#10003;</span><span class="d">Sat 21 Nov 13:00</span><span>vs Hawks &middot; Away</span></div>
+<div class="mrow"><span class="box"></span><span class="d">Sat 28 Nov 13:00</span><span>vs Pirates &middot; Home &middot; <span class="cov">more than 14 days away</span></span></div>
+</div><div class="sticky"><span class="hint" style="margin-right:auto">3 selected &middot; Closes At is set per poll, default 24 hours before kickoff</span><span class="btn c">Create 3 Polls</span></div></div></div></div>
+<div><p class="cap">Desktop, manager of several teams</p>
+<div class="frame d tall"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Squad Poll</div>
+<div class="card">
+<div class="tb"><div class="sel2">All My Teams</div><span class="hint">Filter by team if you want fewer.</span></div>
+<div class="sh">Villagers 1 <small>3 matches</small><span class="btn o" style="margin-left:auto">Select All</span></div>
+<div class="mrow on2"><span class="box">&#10003;</span><span class="d">Sat 14 Nov</span><span>vs CBC</span></div>
+<div class="mrow on2"><span class="box">&#10003;</span><span class="d">Sun 15 Nov</span><span>vs Eagles</span></div>
+<div class="mrow"><span class="box"></span><span class="d">Sat 21 Nov</span><span>vs Hawks</span></div>
+<div class="sh">Villagers 2 <small>1 match</small><span class="btn o" style="margin-left:auto">Select All</span></div>
+<div class="mrow"><span class="box"></span><span class="d">Sat 14 Nov</span><span>vs Pirates</span></div>
+</div><div class="sticky"><span class="hint" style="margin-right:auto">2 selected</span><span class="btn c">Create 2 Polls</span></div></div></div></div>
+<div><p class="cap">Phone</p>
+<div class="frame p"><div class="page">
+<div class="back">&larr; Back to Availability</div><div class="ttl">New Squad Poll</div>
+<div class="tb"><div class="sel2">Villagers 1</div></div>
+<div class="mrow on2" style="min-height:44px"><span class="box">&#10003;</span><span><b>Sat 14 Nov 13:00</b><br><span class="cov">vs CBC &middot; Home</span></span></div>
+<div class="mrow on2" style="min-height:44px"><span class="box">&#10003;</span><span><b>Sun 15 Nov 10:00</b><br><span class="cov">vs Eagles &middot; Home</span></span></div>
+<div class="mrow" style="min-height:44px"><span class="box"></span><span><b>Sat 21 Nov 13:00</b><br><span class="cov">vs Hawks &middot; Away</span></span></div>
+<div class="sticky"><span class="btn c" style="width:100%;justify-content:center;height:44px">Create 2 Polls</span></div>
+</div></div></div></div>
+
+<h2>Rules in this mockup</h2>
+<ul class="note"><li>Scope comes from the manager's role: one section or team means no select to use (it shows what they manage, as a quiet filter); several means "All My Sections" or "All My Teams" with a heading per section or team.</li>
+<li>Only upcoming matches with no poll are offered. Matches already covered are folded into one line with a link to the poll, never a second Create button.</li>
+<li>The page always lands with something to do, or a plain "Every upcoming match already has a poll" message with a link back to the list.</li>
+<li>The hub's Section filter still carries across when you arrive from it.</li></ul>
+</body></html>

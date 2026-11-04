@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Theme } from '@mui/material'
-import { Box, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, InputAdornment, Stack, ToggleButton, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../../hooks/useDocumentTitle'
 import { Input } from '../../../../components/Input'
+import { MANAGE_BUTTON_WIDTH } from '../../../../components/ManageMenu'
 import { ResponseGauge } from '../../../../components/ResponseGauge'
-import { compactFieldsSx, compactFilterPanelSx } from '../../../../utils/filterPanel'
-import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
+import { compactFieldsSx } from '../../../../utils/filterPanel'
+import { ToolbarCard } from '../../../../components/ToolbarCard'
+import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
 import type { SectionAvailabilityRoundBracket, SectionAvailabilityRoundMatch } from '../../../../api/sectionAvailabilityApi'
 import { answeredCoverage, filterPlayers, groupBySlot } from './responseHelpers'
@@ -87,20 +88,28 @@ export function ResponsesPageShell({
   const single = responses.brackets[0]
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <ManageScreenHeader
         title={title}
         backTo={returnTo ?? backTo}
-        backLabel={returnTo ? 'Back to team selection' : backLabel}
+        backLabel={returnTo ? 'Back to Team Selection' : backLabel}
         action={headerAction}
         titleAdornment={titleAdornment}
       />
 
-      {(meta || single) && (
+      {(meta || single || !open) && (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: { sm: 'wrap' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', gap: 1.5 }}>
-          <Box sx={{ minWidth: 0 }}>{meta}</Box>
+          <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+            {meta}
+            {/* docs/specs/136: the closed note is part of the sub-header, not a line of its own under the toolbar. */}
+            {!open && (
+              <Typography variant="body2" color="text.secondary">
+                Changes are recorded as a manager correction.
+              </Typography>
+            )}
+          </Stack>
           {single && (
-            <Box sx={{ ml: { sm: 'auto' }, flex: '0 0 auto', maxWidth: '100%' }}>
+            <Box sx={{ ml: { sm: 'auto' }, flex: '0 0 auto', maxWidth: '100%', minWidth: { sm: MANAGE_BUTTON_WIDTH } /* never narrower than the Manage Poll button above it */, '& > *': { width: '100%' } }}>
               {multiSlot ? (
                 <ResponseGauge mode="poll" coverage={coverage} />
               ) : (
@@ -119,22 +128,19 @@ export function ResponsesPageShell({
         </Box>
       )}
 
-      <Box sx={[compactFilterPanelSx as object, (theme: Theme) => ({ [theme.breakpoints.up('sm')]: compactFieldsSx })]}>
+      <ToolbarCard>
+        <Box sx={compactFieldsSx}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
-          <ToggleButtonGroup
-            value={view}
-            exclusive
-            size="small"
-            aria-label="Responses view"
-            sx={segmentedSwitchSx}
-            onChange={(_event, next: View | null) => next && setView(next)}
-          >
-            <ToggleButton value="slot">Time slot</ToggleButton>
+          <CompactToggleGroup toolbar value={view} onChange={(next) => setView(next as View)} ariaLabel="Responses view">
+            <ToggleButton value="slot">Time Slot</ToggleButton>
             <ToggleButton value="player">Player</ToggleButton>
-          </ToggleButtonGroup>
+          </CompactToggleGroup>
           <Box sx={{ flex: { sm: '1 1 0' }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
             <Input
-              label="Search players"
+              label=""
+              InputLabelProps={{ shrink: false }}
+              inputProps={{ 'aria-label': 'Search players' }}
+              placeholder="Search players"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               InputProps={{
@@ -147,13 +153,9 @@ export function ResponsesPageShell({
             />
           </Box>
         </Stack>
-      </Box>
+        </Box>
+      </ToolbarCard>
 
-      {!open && (
-        <Typography variant="body2" color="text.secondary">
-          This poll is closed. Changes are recorded as a manager correction.
-        </Typography>
-      )}
       {overrideError && (
         <Typography variant="body2" color="error.main" role="alert">
           {overrideError}

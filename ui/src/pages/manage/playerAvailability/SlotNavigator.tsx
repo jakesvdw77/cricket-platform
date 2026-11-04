@@ -17,6 +17,7 @@ export interface SlotNavigatorProps {
   scrollBox: HTMLElement | null
 }
 
+// The arrows and the label are the primary green (docs/specs/136) so they read as something to use, like the Jump To Today link.
 // docs/specs/093: "Previous slot" / "Next slot" for a sideways-scrolling match grid. Ordinary scrolling is untouched; the
 // arrows scroll to the start of the previous or next day-and-slot group, and the label says which group is at the left.
 export function SlotNavigator({ scrollBox }: SlotNavigatorProps) {
@@ -83,13 +84,13 @@ export function SlotNavigator({ scrollBox }: SlotNavigatorProps) {
 
   return (
     <Box role="group" aria-label="Slot navigation" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-      <IconButton size="small" aria-label="Previous slot" disabled={nav.previousLeft === null} onClick={() => go(nav.previousLeft)}>
+      <IconButton size="small" color="primary" aria-label="Previous slot" disabled={nav.previousLeft === null} onClick={() => go(nav.previousLeft)}>
         <ChevronLeft fontSize="small" />
       </IconButton>
-      <Typography variant="body2" component="span" sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+      <Typography variant="body2" component="span" sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: 'primary.main', fontWeight: 600 }}>
         {slotLabelText(labels[nav.index] ?? '', nav.index, labels.length)}
       </Typography>
-      <IconButton size="small" aria-label="Next slot" disabled={nav.nextLeft === null} onClick={() => go(nav.nextLeft)}>
+      <IconButton size="small" color="primary" aria-label="Next slot" disabled={nav.nextLeft === null} onClick={() => go(nav.nextLeft)}>
         <ChevronRight fontSize="small" />
       </IconButton>
     </Box>

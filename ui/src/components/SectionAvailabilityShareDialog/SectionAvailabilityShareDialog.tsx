@@ -1,11 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material'
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
-import { Button } from '../Button'
-import { Input } from '../Input'
-import { WhatsAppSendActions } from '../WhatsAppSendActions'
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
+import { InviteShareDialog } from '../InviteShareDialog'
 import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 import { formatBracketLabel } from '../../utils/dayPart'
 import { closeTimeLine } from '../../utils/pollShareText'
@@ -16,78 +9,32 @@ export interface SectionAvailabilityShareDialogProps {
   round: SectionAvailabilityRound
 }
 
-// WhatsApp-style: emojis, *bold* for the title and the deadline, one line per slot of the round. The
-// deadline line is left out when the round has no automatic close time.
-function buildInviteText(round: SectionAvailabilityRound): string {
+// WhatsApp-style: emojis (optional), *bold* for the title and the deadline, one line per slot of the round. The deadline line is left out
+// when the round has no automatic close time.
+function buildInviteText(round: SectionAvailabilityRound, emoji: boolean): string {
   const link = `${window.location.origin}/section-availability/${round.id}`
-  const lines = [`🏏 *${round.description}*`, `📍 ${round.sectionName}`]
+  const mark = (symbol: string) => (emoji ? `${symbol} ` : '')
+  const lines = [`${mark('🏏')}*${round.description}*`, `${mark('📍')}${round.sectionName}`]
   for (const bracket of round.brackets) {
-    lines.push(`📅 ${formatBracketLabel(bracket.windowDate, bracket.dayPart, ' · ')}`)
+    lines.push(`${mark('📅')}${formatBracketLabel(bracket.windowDate, bracket.dayPart, ' · ')}`)
   }
-  const closeLine = closeTimeLine(round.autoClose, round.scheduledCloseAt)
+  const closeLine = closeTimeLine(round.autoClose, round.scheduledCloseAt, emoji)
   if (closeLine) {
     lines.push(closeLine)
   }
-  lines.push('', '👇 Tap your name and set your status for each slot:', link, '', 'Thanks! 🙌')
+  lines.push('', `${mark('👇')}Tap your name and set your status for each slot:`, link, '', `Thanks!${emoji ? ' 🙌' : ''}`)
   return lines.join('\n')
 }
 
-// docs/specs/063-section-availability-and-flexible-squads.md Part A (fixture-group-selection
-// revision) - mirrors PollShareDialog's own shape exactly (editable, regenerable plain text
-// embedding one public link), scoped to a SectionAvailabilityRound instead of a
-// MatchAvailabilityPoll. One shared link per admin-selected set of fixtures, covering however
-// many brackets those matches resolve to, rather than one link per bracket. The round's own
-// editable `description` is the title everywhere, including here, rather than a formatted date
-// range. Channel-agnostic: plain, copy-paste-into-any-chat text, not a real send integration.
+// docs/specs/063 Part A; since docs/specs/136 the dialog is the shared InviteShareDialog (the Message templates look), scoped to one
+// SectionAvailabilityRound: one shared link per round, the round's own editable description as the title.
 export function SectionAvailabilityShareDialog({ open, onClose, round }: SectionAvailabilityShareDialogProps) {
-  const [text, setText] = useState('')
-  const clipboard = useCopyToClipboard()
-  const { copy, copiedKey } = clipboard
-  const link = `${window.location.origin}/section-availability/${round.id}`
-
-  // Regenerates fresh invite text every time the dialog opens, so a previous edit never leaks into
-  // a later open - same reset-on-open pattern PollShareDialog already uses.
-  useEffect(() => {
-    if (open) {
-      setText(buildInviteText(round))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, round.id, round.autoClose, round.scheduledCloseAt])
-
-  const handleRegenerate = () => {
-    setText(buildInviteText(round))
-  }
-
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Share invite</DialogTitle>
-      <DialogContent>
-        <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
-            Send it in WhatsApp, or copy it into SMS, email or a team group chat. You choose who
-            receives it and press send yourself.
-          </Typography>
-          <Input
-            label="Invite text"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            multiline
-            minRows={8}
-          />
-          <WhatsAppSendActions text={text} shareTitle="Availability" clipboard={clipboard} />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2, '& > :not(:first-of-type)': { ml: 0 } }}>
-        <Button size="compact" variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
-          {copiedKey === 'link' ? 'Copied' : 'Copy link'}
-        </Button>
-        <Button size="compact" variant="ghost" startIcon={<RefreshOutlinedIcon />} onClick={handleRegenerate}>
-          Regenerate
-        </Button>
-        <Button size="compact" variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <InviteShareDialog
+      open={open}
+      onClose={onClose}
+      buildText={(emoji) => buildInviteText(round, emoji)}
+      link={`${window.location.origin}/section-availability/${round.id}`}
+    />
   )
 }

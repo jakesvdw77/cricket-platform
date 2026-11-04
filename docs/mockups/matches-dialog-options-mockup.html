@@ -1,0 +1,63 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Matches dialog options</title><style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+.lede{color:var(--inkMuted);max-width:820px;margin:0 0 28px;font-size:15px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.note{color:var(--inkMuted);font-size:13px;margin:0 0 14px;max-width:900px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;position:relative;overflow:hidden}
+.frame.d{width:1280px;height:640px;zoom:.62}
+.frame.p{width:375px;height:700px;zoom:.9}
+.frame.d.tall{height:760px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center}
+
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.back{background:color-mix(in srgb,var(--ink) 55%,transparent);padding:28px;border-radius:6px}
+.dlg{background:#fff;border-radius:8px;width:520px;max-width:100%;box-shadow:0 8px 32px color-mix(in srgb,var(--ink) 35%,transparent);display:flex;flex-direction:column}
+.dlg.cream{background:var(--cream)}
+.dh{padding:18px 22px 6px;font-family:var(--display);font-weight:700;font-size:28px;color:var(--green900);text-transform:uppercase;letter-spacing:.04em}
+.db{padding:8px 22px 14px;display:flex;flex-direction:column;gap:10px}
+.df{padding:12px 22px;display:flex;justify-content:flex-end}
+.btn{height:32px;padding:0 14px;border-radius:6px;font:600 14px/1 var(--body);display:inline-flex;align-items:center;border:1px solid var(--green700);color:var(--green700);background:transparent}
+.link{color:var(--green700);font-weight:600;font-size:15px;text-decoration:underline}
+.mut{color:var(--inkMuted);font-size:13px}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border:1px solid var(--cardLine);border-radius:11px;font-size:12px;font-weight:600;background:#fff;white-space:nowrap}
+/* A: date tile */
+.a-row{display:flex;gap:14px;align-items:center;padding:10px 12px;border:1px solid var(--cardLine);border-radius:8px;background:#fff}
+.tile{width:56px;flex:none;text-align:center;border-radius:8px;background:color-mix(in srgb,var(--green700) 12%,#fff);color:var(--green800);padding:6px 0;line-height:1}
+.tile small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.tile b{display:block;font-family:var(--display);font-size:28px;margin:2px 0}
+.a-main{flex:1;min-width:0}
+.a-main .t{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* B: accent bar + date pill */
+.b-card{border:1px solid var(--cardLine);border-left:4px solid var(--green700);border-radius:8px;padding:10px 14px;background:#fff}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:13px;background:var(--green700);color:#fff;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+/* C: tinted date band */
+.c-group{border:1px solid var(--cardLine);border-radius:8px;overflow:hidden;background:#fff}
+.band{display:flex;align-items:center;gap:8px;padding:8px 14px;background:color-mix(in srgb,var(--green700) 12%,#fff);color:var(--green800);font:700 13px var(--body);letter-spacing:.06em;text-transform:uppercase}
+.c-body{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ico{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-radius:3px;position:relative}
+.ico:before{content:"";position:absolute;left:1px;right:1px;top:3px;border-top:2px solid currentColor}
+</style></head><body>
+<h1>Matches dialog: three ways to make it less dull</h1>
+<p class="lede">The dialog today is white with plain bold dates. All three options keep the same content (date and part of day, the match as a link, time, league) and use only the brand green tints already in the app. Option D shows the dialog background as the app's warm cream instead of white, which would apply to every dialog (an old open question).</p>
+<div class="row">
+<div><p class="cap">A. Date tile (recommended)</p><div class="back"><div class="dlg "><div class="dh">Matches</div><div class="db"><div class="a-row"><div class="tile"><small>Sat</small><b>17</b><small>Oct</small></div><div class="a-main"><div class="t"><span class="link">IRENE VILLAGERS U15 vs Pretoria A</span><span class="chip">Morning</span></div><div class="mut">10:00</div></div><span class="chip">Diamond League U15 T20</span></div><div class="a-row"><div class="tile"><small>Sun</small><b>18</b><small>Oct</small></div><div class="a-main"><div class="t"><span class="link">IRENE VILLAGERS U15 vs CBC</span><span class="chip">Morning</span></div><div class="mut">09:00</div></div><span class="chip">Diamond League U15 T20</span></div></div><div class="df"><span class="btn">Done</span></div></div></div><p class="mut" style="max-width:520px">A calendar-style tile with weekday, day number and month in a light green tint, the match and day-part chip beside it, the league as a badge on the right. Same badge as the New Poll cards, so the two read as one family. Works on a phone (tile stays 56 px).</p></div>
+<div><p class="cap">B. Accent bar and date pill</p><div class="back"><div class="dlg "><div class="dh">Matches</div><div class="db"><div class="b-card"><div class="pill"><span class="ico" style="width:13px;height:13px"></span>Sat 17 Oct &middot; Morning</div><div class="c-body" style="padding:0"><div><div class="link">IRENE VILLAGERS U15 vs Pretoria A</div><div class="mut">10:00</div></div><span class="chip">Diamond League U15 T20</span></div></div><div class="b-card"><div class="pill"><span class="ico" style="width:13px;height:13px"></span>Sun 18 Oct &middot; Morning</div><div class="c-body" style="padding:0"><div><div class="link">IRENE VILLAGERS U15 vs CBC</div><div class="mut">09:00</div></div><span class="chip">Diamond League U15 T20</span></div></div></div><div class="df"><span class="btn">Done</span></div></div></div><p class="mut" style="max-width:520px">A solid green pill carries the date and part of day, and a green bar marks the card. Strongest highlight, but heavier if a poll covers many matches.</p></div>
+<div><p class="cap">C. Tinted date band with a calendar icon</p><div class="back"><div class="dlg "><div class="dh">Matches</div><div class="db"><div class="c-group"><div class="band"><span class="ico"></span>Sat 17 Oct &middot; Morning</div><div class="c-body"><div><div class="link">IRENE VILLAGERS U15 vs Pretoria A</div><div class="mut">10:00</div></div><span class="chip">Diamond League U15 T20</span></div></div><div class="c-group"><div class="band"><span class="ico"></span>Sun 18 Oct &middot; Morning</div><div class="c-body"><div><div class="link">IRENE VILLAGERS U15 vs CBC</div><div class="mut">09:00</div></div><span class="chip">Diamond League U15 T20</span></div></div></div><div class="df"><span class="btn">Done</span></div></div></div><p class="mut" style="max-width:520px">Each date is a light green band with a small calendar icon, the match beneath. Calm and tidy, closest to a table; less eye-catching than A.</p></div>
+<div><p class="cap">D. Option A on a cream dialog</p><div class="back"><div class="dlg cream"><div class="dh">Matches</div><div class="db"><div class="a-row"><div class="tile"><small>Sat</small><b>17</b><small>Oct</small></div><div class="a-main"><div class="t"><span class="link">IRENE VILLAGERS U15 vs Pretoria A</span><span class="chip">Morning</span></div><div class="mut">10:00</div></div><span class="chip">Diamond League U15 T20</span></div><div class="a-row"><div class="tile"><small>Sun</small><b>18</b><small>Oct</small></div><div class="a-main"><div class="t"><span class="link">IRENE VILLAGERS U15 vs CBC</span><span class="chip">Morning</span></div><div class="mut">09:00</div></div><span class="chip">Diamond League U15 T20</span></div></div><div class="df"><span class="btn">Done</span></div></div></div><p class="mut" style="max-width:520px">The same dialog on the cream used by the page background. Not a per-dialog choice: if you like it, every dialog would follow (one shared Dialog style), so I would do it once for all.</p></div>
+</div></body></html>

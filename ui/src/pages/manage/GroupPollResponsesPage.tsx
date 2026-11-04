@@ -1,13 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { Button, compactButtonSx } from '../../components/Button'
+import { Box, Chip, Typography } from '@mui/material'
+import { ManageMenu } from '../../components/ManageMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { badgeSx } from '../../components/RecordCard'
@@ -16,11 +11,9 @@ import { getRoundMatches, getRoundResponses, listRounds, setRoundPlayerStatus } 
 import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailabilityApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
-import { usePollClose } from '../../hooks/usePollClose'
-import { usePollDelete } from '../../hooks/usePollDelete'
-import { usePollDescription } from './availability/usePollDescription'
-import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
-import { REOPEN_PAST_REASON, SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
+import { PollMatchesDialog } from './availability/PollMatchesDialog'
+import { closesRowText } from './availability/pollHelpers'
+import { usePollActions } from './availability/usePollActions'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
@@ -34,8 +27,6 @@ export default function GroupPollResponsesPage() {
   const { roundId } = useParams<{ roundId?: string }>()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [shareOpen, setShareOpen] = useState(false)
-  const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
 
   const roundsKey = ['managed-club', clubId, 'section-availability-rounds']
@@ -72,33 +63,33 @@ export default function GroupPollResponsesPage() {
   })
 
   const responses = responsesQuery.data
-  // docs/specs/090: Delete poll and Edit description from this page (hooks are called before the loading returns below).
-  // Delete leaves for the list first, so this page never refetches the deleted poll.
-  const pollDelete = usePollDelete({
+  // docs/specs/136: every action of this poll (Edit Description, Edit Close Time or Reopen Poll, Close Poll, Matches Covered, Delete Poll,
+  // Share Invite last) is ONE Manage Poll menu, built by the same hook as the list's row kebab so the two cannot drift. Delete leaves
+  // for the list first, so this page never refetches the deleted poll. The hook is called before the loading returns below.
+  const round = roundQuery.data
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: roundsKey })
+    invalidateAvailabilityCounters(queryClient, clubId)
+  }
+  const actions = usePollActions({
     clubId: clubId as string,
     target: { kind: 'GROUP', roundId: roundId as string },
-    title: roundQuery.data?.description ?? '',
+    title: round?.description ?? '',
+    open: responses?.open ?? true,
+    autoClose: round?.autoClose ?? true,
+    scheduledCloseAt: round?.scheduledCloseAt ?? null,
+    kickoff: round?.firstMatchKickoff ?? '',
+    canReopen: round?.canReopen ?? false,
+    description: { roundId: roundId as string, text: round?.description ?? '' },
+    onChanged: refresh,
     onDeleted: () => {
       navigate('/manage/availability')
-      queryClient.invalidateQueries({ queryKey: roundsKey })
-      invalidateAvailabilityCounters(queryClient, clubId)
+      refresh()
     },
-  })
-  const pollDescription = usePollDescription({
-    clubId: clubId as string,
-    roundId: roundId as string,
-    description: roundQuery.data?.description ?? '',
-    onSaved: () => queryClient.invalidateQueries({ queryKey: roundsKey }),
-  })
-  // docs/specs/090: Close poll from this page (the hook is called before the loading returns below).
-  const pollClose = usePollClose({
-    clubId: clubId as string,
-    target: { kind: 'GROUP', roundId: roundId as string },
-    autoClose: roundQuery.data?.autoClose ?? true,
-    onClosed: () => {
-      queryClient.invalidateQueries({ queryKey: roundsKey })
-      invalidateAvailabilityCounters(queryClient, clubId)
-    },
+    placement: 'page',
+    renderMatches: (open, onClose) =>
+      round ? <PollMatchesDialog open={open} onClose={onClose} clubId={clubId as string} item={{ kind: 'GROUP', round }} teamsById={new Map()} /> : null,
+    renderShare: (open, onClose) => (round ? <SectionAvailabilityShareDialog open={open} onClose={onClose} round={round} /> : null),
   })
 
   if (!clubId) {
@@ -109,18 +100,15 @@ export default function GroupPollResponsesPage() {
     return null
   }
 
-  const round = roundQuery.data
   if (roundQuery.isError || responsesQuery.isError || !round || !responses) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <ManageScreenHeader title="Group poll" backTo="/manage/availability" backLabel="Back to Availability Polls" />
+        <ManageScreenHeader title="Group Poll" backTo="/manage/availability" backLabel="Back to Availability" />
         <EmptyState title="Couldn't load this poll" description="It may have been deleted, or something went wrong. Please try again." />
       </Box>
     )
   }
 
-  const closed = !responses.open
-  const reopenBlocked = closed && !round.canReopen
   const override: OverrideProps = {
     pendingKey,
     onOverride: async (row, windowId, status) => {
@@ -139,121 +127,31 @@ export default function GroupPollResponsesPage() {
     <ResponsesPageShell
       title={responses.description}
       backTo="/manage/availability"
-      backLabel="Back to Availability Polls"
+      backLabel="Back to Availability"
+      // Badges inline beside the title (page-anatomy section 1).
       titleAdornment={
-        <IconButton size="small" aria-label="Edit description" title="Edit description" onClick={pollDescription.openEditor}>
-          <EditOutlinedIcon fontSize="small" />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Chip size="small" label="Group Poll" variant="filled" sx={badgeSx('groupPoll')} />
+          <Chip size="small" label={responses.open ? 'Open' : 'Closed'} variant="filled" sx={badgeSx(responses.open ? 'open' : 'closed')} />
+        </Box>
       }
-      headerAction={
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-          <span title={closed ? SHARE_CLOSED_REASON : undefined}>
-            <Button
-              size="compact"
-              variant="secondary"
-              startIcon={<ShareOutlinedIcon fontSize="small" />}
-              disabled={closed}
-              aria-label={closed ? SHARE_CLOSED_REASON : undefined}
-              title={closed ? SHARE_CLOSED_REASON : undefined}
-              onClick={() => setShareOpen(true)}
-            >
-              Share invite
-            </Button>
-          </span>
-          {closed ? (
-            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
-              <Button
-                size="compact"
-                variant="secondary"
-                startIcon={<LockOpenOutlinedIcon fontSize="small" />}
-                disabled={reopenBlocked}
-                onClick={() => setCloseTimeOpen(true)}
-              >
-                Reopen poll
-              </Button>
-            </span>
-          ) : (
-            <Button
-              size="compact"
-              variant="secondary"
-              startIcon={<LockOutlinedIcon fontSize="small" />}
-              disabled={pollClose.closing}
-              onClick={pollClose.requestClose}
-            >
-              Close poll
-            </Button>
-          )}
-          <MuiButton
-            variant="outlined"
-            color="error"
-            size="small"
-            startIcon={<DeleteOutlineIcon fontSize="small" />}
-            disabled={pollDelete.deleting}
-            onClick={pollDelete.requestDelete}
-            sx={compactButtonSx}
-          >
-            Delete poll
-          </MuiButton>
-        </Stack>
-      }
+      headerAction={<ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />}
       meta={
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Chip size="small" label="Group poll" variant="filled" sx={badgeSx('groupPoll')} />
-          <Chip
-            size="small"
-            label={responses.open ? 'Open' : 'Closed'}
-            variant="filled"
-            sx={badgeSx(responses.open ? 'open' : 'closed')}
-          />
-          <Typography variant="body2" color="text.secondary">
-            {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
-          </Typography>
-          {/* docs/specs/082: on a closed poll this pencil is the Reopen path, so it is disabled with the reason
-              when the matches are in the past (the span carries the tooltip, a disabled button gets none). */}
-          <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
-            <IconButton
-              size="small"
-              aria-label={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
-              title={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
-              disabled={reopenBlocked}
-              onClick={() => setCloseTimeOpen(true)}
-            >
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Stack>
+        <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+          {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
+        </Typography>
       }
       open={responses.open}
       responses={{ brackets: responses.brackets, rows: responses.responses }}
       matches={matchesQuery.data ?? []}
       override={override}
       overrideError={
-        pollClose.closeError
-          ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.')
-          : pollDelete.deleteError
-            ? errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.')
-            : overrideMutation.isError
-            ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.")
-            : null
+        actions.errorMessage ??
+        (overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null)
       }
       emptyText="No eligible players for this section yet."
     >
-      {pollClose.confirmDialog}
-      {pollDelete.dialogs}
-      {pollDescription.dialog}
-
-      <EditCloseTimeDialog
-        open={closeTimeOpen}
-        onClose={() => setCloseTimeOpen(false)}
-        clubId={clubId}
-        target={{ kind: 'GROUP', roundId: round.id }}
-        autoClose={round.autoClose}
-        scheduledCloseAt={round.scheduledCloseAt}
-        kickoff={round.firstMatchKickoff}
-        reopen={closed}
-      />
-
-      <SectionAvailabilityShareDialog open={shareOpen} onClose={() => setShareOpen(false)} round={round} />
+      {actions.dialogs}
     </ResponsesPageShell>
   )
 }

@@ -107,7 +107,7 @@ export default function LeagueScheduleView() {
         <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 1 }}>
           <ImportScheduleButton leagueId={leagueId} seasonId={selectedSeasonId} leagueActive={league.active} from="view" originLabel={originLabel} />
           <MuiButton component={RouterLink} to={withReturnTo(leagueAddMatchPath(leagueId, selectedSeasonId), currentOrigin(location), originLabel)} variant="contained" size="small" sx={compactButtonSx}>
-            Add Match
+            Create New Match
           </MuiButton>
         </Box>
       }
@@ -141,7 +141,7 @@ export default function LeagueScheduleView() {
         items={[
           {
             id: 'add-match',
-            title: 'Add Match',
+            title: 'Create New Match',
             description: 'Create one fixture for this league and season.',
             icon: <AddOutlinedIcon fontSize="small" />,
             to: selectedSeasonId ? withReturnTo(leagueAddMatchPath(leagueId, selectedSeasonId), currentOrigin(location), originLabel) : undefined,

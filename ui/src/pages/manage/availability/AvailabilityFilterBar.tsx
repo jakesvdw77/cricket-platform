@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { FilterBar } from '../../../components/FilterBar'
-import type { FilterBarChip } from '../../../components/FilterBar'
+import type { FilterBarChip, FilterBarProps } from '../../../components/FilterBar'
 import { useAvailabilityHub } from './hubContext'
 
 export interface AvailabilityFilterBarProps {
@@ -15,6 +15,11 @@ export interface AvailabilityFilterBarProps {
   searchPlaceholder?: string
   viewControls?: ReactNode
   extraChips?: FilterBarChip[]
+  // docs/specs/136: the flat fused toolbar (see FilterBar): no card chrome, view controls inline, switches left of them.
+  bare?: boolean
+  inCard?: boolean
+  viewControlsInline?: boolean
+  secondaryControls?: FilterBarProps['secondaryControls']
   // Runs after the shared filters are cleared (the sheet's "Clear all"), to reset the view's own choices.
   onClearedAll?: () => void
 }

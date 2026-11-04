@@ -1,14 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
-import { Button, compactButtonSx } from '../../components/Button'
+import { Box, Chip, Stack, Typography } from '@mui/material'
+import { ManageMenu } from '../../components/ManageMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PollShareDialog } from '../../components/PollShareDialog'
@@ -19,9 +13,8 @@ import { getMatch } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { errorDetail } from '../../utils/errorDetail'
-import { usePollClose } from '../../hooks/usePollClose'
-import { usePollDelete } from '../../hooks/usePollDelete'
-import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
+import { usePollActions } from './availability/usePollActions'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import {
   closesRowText,
   formatMatchDateTime,
@@ -29,7 +22,6 @@ import {
   squadPollSideLabel,
   squadPollTeamName,
   squadPollTitle,
-  REOPEN_PAST_REASON, SHARE_CLOSED_REASON,
 } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
@@ -37,7 +29,7 @@ import { toSquadResponsesModel } from './availability/responses/squadResponsesAd
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
 const BACK_TO = '/manage/availability'
-const BACK_LABEL = 'Back to Availability Polls'
+const BACK_LABEL = 'Back to Availability'
 
 // docs/specs/067-squad-poll-responses-page.md: a squad poll's responses on the same page and views
 // a group poll uses (as a poll with one time slot). The poll's own details come from listPolls +
@@ -47,8 +39,7 @@ export default function SquadPollResponsesPage() {
   const { matchId, pollId } = useParams<{ matchId?: string; pollId?: string }>()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [shareOpen, setShareOpen] = useState(false)
-  const [closeTimeOpen, setCloseTimeOpen] = useState(false)
+  const location = useLocation()
   const [pendingKey, setPendingKey] = useState<string | null>(null)
 
   const matchKey = ['managed-club', clubId, 'matches', matchId]
@@ -92,33 +83,47 @@ export default function SquadPollResponsesPage() {
 
   const responses = responsesQuery.data
   const poll = pollQuery.data
-  // docs/specs/090: Close poll from this page (the hook is called before the loading returns below).
-  const pollClose = usePollClose({
-    clubId: clubId as string,
-    target: { kind: 'SQUAD', matchId: matchId as string, pollId: pollId as string },
-    autoClose: poll?.autoClose ?? true,
-    onClosed: () => {
-      // The match key covers this poll, its responses and the match; the dashboard cards, the counters follow.
-      queryClient.invalidateQueries({ queryKey: matchKey })
-      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
-      invalidateAvailabilityCounters(queryClient, clubId)
-    },
-  })
   const match = matchQuery.data
   const teams = teamsQuery.data
   const teamsById = useMemo(() => new Map<string, Team>((teams ?? []).map((team) => [team.id, team])), [teams])
-  // docs/specs/090: Delete poll from this page. It leaves for the list first (so this page never refetches the deleted
-  // poll), then refreshes the lists, the counters and the match's own poll data.
-  const pollDelete = usePollDelete({
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: matchKey })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+    invalidateAvailabilityCounters(queryClient, clubId)
+  }
+  // docs/specs/136: every action of this poll (Edit Close Time or Reopen Poll, Close Poll, Open Match, Delete Poll, Share Invite last)
+  // is ONE Manage Poll menu, built by the hook the list's row kebab uses. Delete leaves for the list first, so this page never
+  // refetches the deleted poll. The hook is called before the loading returns below.
+  const sidesForShare = { teamId: poll?.teamId ?? '', homeTeamId: match?.homeTeamId, homeTeamName: match?.homeTeamName, awayTeamId: match?.awayTeamId, awayTeamName: match?.awayTeamName }
+  const actions = usePollActions({
     clubId: clubId as string,
     target: { kind: 'SQUAD', matchId: matchId as string, pollId: pollId as string },
     title: poll && match ? squadPollTitle(match, teamsById) : '',
+    open: responses?.open ?? true,
+    autoClose: poll?.autoClose ?? true,
+    scheduledCloseAt: poll?.scheduledCloseAt ?? null,
+    kickoff: match?.matchDate ?? '',
+    canReopen: poll?.canReopen ?? false,
+    onChanged: refresh,
     onDeleted: () => {
       navigate(BACK_TO)
-      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
-      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
-      invalidateAvailabilityCounters(queryClient, clubId)
+      refresh()
     },
+    placement: 'page',
+    openMatchTo: match ? withReturnTo(squadPollHref({ matchId: match.id }), currentOrigin(location), 'Poll Responses') : undefined,
+    renderShare: (open, onClose) =>
+      match && poll ? (
+        <PollShareDialog
+          open={open}
+          onClose={onClose}
+          match={match}
+          teamName={squadPollTeamName(sidesForShare, teamsById)}
+          pollId={poll.id}
+          autoClose={poll.autoClose}
+          scheduledCloseAt={poll.scheduledCloseAt}
+        />
+      ) : null,
   })
   const model = useMemo(
     () => (responses && poll && match ? toSquadResponsesModel({ responses, poll, match, teamsById }) : null),
@@ -137,7 +142,7 @@ export default function SquadPollResponsesPage() {
   if (pollQuery.isError || responsesQuery.isError || matchQuery.isError || !poll || !responses || !match || !model) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <ManageScreenHeader title="Squad poll" backTo={BACK_TO} backLabel={BACK_LABEL} />
+        <ManageScreenHeader title="Squad Poll" backTo={BACK_TO} backLabel={BACK_LABEL} />
         <EmptyState title="Couldn't load this poll" description="It may have been deleted, or something went wrong. Please try again." />
       </Box>
     )
@@ -150,8 +155,6 @@ export default function SquadPollResponsesPage() {
     awayTeamId: match.awayTeamId,
     awayTeamName: match.awayTeamName,
   }
-  const closed = !responses.open
-  const reopenBlocked = closed && !poll.canReopen
   const override: OverrideProps = {
     pendingKey,
     onOverride: async (row, _windowId, status) => {
@@ -171,101 +174,22 @@ export default function SquadPollResponsesPage() {
       title={squadPollTitle(sides, teamsById)}
       backTo={BACK_TO}
       backLabel={BACK_LABEL}
-      headerAction={
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-          <MuiButton
-            component={RouterLink}
-            to={squadPollHref({ matchId: match.id })}
-            variant="outlined"
-            color="primary"
-            size="small"
-            startIcon={<EventNoteOutlinedIcon fontSize="small" />}
-            sx={compactButtonSx}
-          >
-            Open match
-          </MuiButton>
-          {closed ? (
-            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
-              <Button
-                size="compact"
-                variant="secondary"
-                startIcon={<LockOpenOutlinedIcon fontSize="small" />}
-                disabled={reopenBlocked}
-                onClick={() => setCloseTimeOpen(true)}
-              >
-                Reopen poll
-              </Button>
-            </span>
-          ) : (
-            <Button
-              size="compact"
-              variant="secondary"
-              startIcon={<LockOutlinedIcon fontSize="small" />}
-              disabled={pollClose.closing}
-              onClick={pollClose.requestClose}
-            >
-              Close poll
-            </Button>
-          )}
-          <MuiButton
-            variant="outlined"
-            color="error"
-            size="small"
-            startIcon={<DeleteOutlineIcon fontSize="small" />}
-            disabled={pollDelete.deleting}
-            onClick={pollDelete.requestDelete}
-            sx={compactButtonSx}
-          >
-            Delete poll
-          </MuiButton>
-          <span title={closed ? SHARE_CLOSED_REASON : undefined}>
-            <Button
-                      size="compact"
-                      variant="secondary"
-                      startIcon={<ShareOutlinedIcon fontSize="small" />}
-                      disabled={closed}
-                      aria-label={closed ? SHARE_CLOSED_REASON : undefined}
-                      title={closed ? SHARE_CLOSED_REASON : undefined}
-                      onClick={() => setShareOpen(true)}
-                    >
-              Share invite
-            </Button>
-          </span>
-        </Stack>
+      titleAdornment={
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Chip size="small" label="Squad Poll" variant="filled" sx={badgeSx('squadPoll')} />
+          <Chip size="small" label={responses.open ? 'Open' : 'Closed'} variant="filled" sx={badgeSx(responses.open ? 'open' : 'closed')} />
+          <Chip size="small" label={squadPollSideLabel(sides)} variant="filled" sx={badgeSx('side')} />
+        </Box>
       }
+      headerAction={<ManageMenu label="Manage Poll" fixedWidth testId="manage-poll" groups={[{ id: 'poll', heading: 'Poll', items: actions.items }]} />}
       meta={
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip size="small" label="Squad poll" variant="filled" sx={badgeSx('squadPoll')} />
-            <Chip
-              size="small"
-              label={responses.open ? 'Open' : 'Closed'}
-              variant="filled"
-              sx={badgeSx(responses.open ? 'open' : 'closed')}
-            />
-            <Chip size="small" label={squadPollSideLabel(sides)} variant="filled" sx={badgeSx('side')} />
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
+        <Stack spacing={0.5}>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
             {formatMatchDateTime(match.matchDate)} · {match.venue ?? 'Venue TBC'}
           </Typography>
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            <Typography variant="body2" color="text.secondary">
-              {closesRowText(responses.open, poll.autoClose, poll.scheduledCloseAt)}
-            </Typography>
-            {/* docs/specs/082: on a closed poll this pencil is the Reopen path, so it is disabled with the reason
-                when the matches are in the past (the span carries the tooltip, a disabled button gets none). */}
-            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
-              <IconButton
-                size="small"
-                aria-label={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
-                title={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
-                disabled={reopenBlocked}
-                onClick={() => setCloseTimeOpen(true)}
-              >
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {closesRowText(responses.open, poll.autoClose, poll.scheduledCloseAt)}
+          </Typography>
         </Stack>
       }
       open={responses.open}
@@ -273,33 +197,12 @@ export default function SquadPollResponsesPage() {
       matches={model.matches}
       override={override}
       overrideError={
-        pollClose.closeError ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.') : pollDelete.deleteError ? errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.') : overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null
+        actions.errorMessage ??
+        (overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null)
       }
       emptyText="No players in this squad yet."
     >
-      {pollClose.confirmDialog}
-      {pollDelete.dialogs}
-
-      <EditCloseTimeDialog
-        open={closeTimeOpen}
-        onClose={() => setCloseTimeOpen(false)}
-        clubId={clubId}
-        target={{ kind: 'SQUAD', matchId: match.id, pollId: poll.id }}
-        autoClose={poll.autoClose}
-        scheduledCloseAt={poll.scheduledCloseAt}
-        kickoff={match.matchDate}
-        reopen={closed}
-      />
-
-      <PollShareDialog
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        match={match}
-        teamName={squadPollTeamName(sides, teamsById)}
-        pollId={poll.id}
-        autoClose={poll.autoClose}
-        scheduledCloseAt={poll.scheduledCloseAt}
-      />
+      {actions.dialogs}
     </ResponsesPageShell>
   )
 }

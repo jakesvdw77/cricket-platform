@@ -9,7 +9,7 @@ import { Button } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { SortMenu } from '../../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../../components/ContentControlsLine'
-import { EmptyState } from '../../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
 import { FieldCard } from '../../../components/FieldCard'
 import { FieldTable } from '../../../components/FieldTable'
 import { FilterBar } from '../../../components/FilterBar'
@@ -242,6 +242,7 @@ export default function FieldsPage() {
           icon={icon}
           title="No fields of your own yet"
           description="Add the first field you play on, or turn off Our Fields Only to browse every club's fields."
+          action={<EmptyStateLink onClick={() => navigate(addFieldPath)}>Create New Field</EmptyStateLink>}
         />
       )
     }
@@ -301,7 +302,7 @@ export default function FieldsPage() {
         title="Fields"
         action={
           <Button size="compact" onClick={() => navigate(addFieldPath)} sx={{ flex: 'none' }}>
-            Add Field
+            Create New Field
           </Button>
         }
       />
@@ -328,8 +329,8 @@ export default function FieldsPage() {
             {data.content.map((field) => (
               <FieldCard key={field.id} field={field} viewTo={leaveTo(`${MANAGER_FIELDS_PATH}/${field.id}`)} actions={rowMenu(field, 'field-card-actions')} />
             ))}
-            {/* The grid ends with a dashed Add card (same route as the page's Add Field button); with no cards it is the only one. */}
-            <AddCard label="Add Field" to={addFieldPath} testId="add-field-card" />
+            {/* The grid ends with a dashed Add card (same route as the page's Add Field button); with no cards it is not shown (the empty message carries the quick-action button). */}
+            {data.content.length > 0 && <AddCard label="Create New Field" to={addFieldPath} testId="add-field-card" />}
           </Box>
         )}
 

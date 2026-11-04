@@ -9,7 +9,7 @@ import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
 import { AddCard } from '../../components/AddCard'
 import { BrandIcon } from '../../components/BrandIcon'
-import { EmptyState } from '../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../components/ListViewToggle'
@@ -79,7 +79,7 @@ export default function MatchList({
   title = 'Matches',
   backTo,
   backLabel,
-  createLabel = 'Add Match',
+  createLabel = 'Create New Match',
   viewTo = (matchId: string) => `/manage/fixtures/matches/${matchId}`,
   onCreate,
 }: MatchListProps) {
@@ -425,6 +425,7 @@ export default function MatchList({
             ? 'Nothing scheduled ahead. Turn on "View Entire Season" to see earlier fixtures, or schedule a new one.'
             : "Schedule your club's first match to get started."
         }
+        action={<EmptyStateLink onClick={onCreate ?? (() => navigate(addMatchPath))}>{createLabel}</EmptyStateLink>}
       />
     )
   })()
@@ -566,8 +567,8 @@ export default function MatchList({
                 viewTo={viewTo ? viewTo(match.id) : undefined}
               />
             ))}
-            {/* The grid ends with a dashed Add card (same route as the page's Add Match button); with no cards it is the only one. */}
-            <AddCard label="Add Match" to={onCreate ? undefined : addMatchPath} onClick={onCreate} testId="add-match-card" />
+            {/* The grid ends with a dashed Add card (same route as the page's Add Match button); with no cards it is not shown (the empty message carries the quick-action button). */}
+            {data.content.length > 0 && <AddCard label="Create New Match" to={onCreate ? undefined : addMatchPath} onClick={onCreate} testId="add-match-card" />}
           </Box>
         )}
       </Box>

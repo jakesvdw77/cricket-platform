@@ -9,7 +9,7 @@ import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
 import { AddCard } from '../../components/AddCard'
 import { BrandIcon } from '../../components/BrandIcon'
-import { EmptyState } from '../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -172,7 +172,12 @@ export default function SeasonList() {
     }
     const icon = <BrandIcon name="nav/season-cricket" size={48} />
     if (!hasSeasons) {
-      return <EmptyState icon={icon} title="No seasons yet" description="Create your club's first season to get started." />
+      return <EmptyState
+          icon={icon}
+          title="No seasons yet"
+          description="Create your club's first season to get started."
+          action={<EmptyStateLink onClick={() => navigate(addSeasonPath)}>Create New Season</EmptyStateLink>}
+        />
     }
     if (isSearching) {
       return <EmptyState icon={icon} title="No matching seasons" description={`No seasons match "${search.trim()}". Try a different search.`} />
@@ -243,7 +248,7 @@ export default function SeasonList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
-      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={() => navigate(addSeasonPath)} sx={{ flex: 'none' }}>Add Season</Button>} />
+      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={() => navigate(addSeasonPath)} sx={{ flex: 'none' }}>Create New Season</Button>} />
 
       <PageCounters density="compact" items={counterItems} />
 
@@ -259,8 +264,8 @@ export default function SeasonList() {
             {visibleSeasons.map((season) => (
               <SeasonCard key={season.id} season={season} summary={summaries?.[season.id] ?? null} today={today} />
             ))}
-            {/* The grid ends with a dashed Add card (same route as the page's Add Season button); with no cards it is the only one. */}
-            <AddCard label="Add Season" to={addSeasonPath} testId="add-season-card" />
+            {/* The grid ends with a dashed Add card (same route as the page's Add Season button); with no cards it is not shown (the empty message carries the quick-action button). */}
+            {visibleSeasons.length > 0 && <AddCard label="Create New Season" to={addSeasonPath} testId="add-season-card" />}
           </Box>
         )}
       </Box>

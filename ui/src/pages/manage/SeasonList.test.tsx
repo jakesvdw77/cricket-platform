@@ -63,7 +63,7 @@ function renderList(clubId?: string) {
         <Routes>
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="seasons" element={<SeasonList />} />
-            <Route path="seasons/new" element={<div>Add Season Page</div>} />
+            <Route path="seasons/new" element={<div>Create New Season Page</div>} />
             <Route path="seasons/:id" element={<div>Season Page</div>} />
             <Route path="seasons/:id/edit" element={<div>Edit Season Page</div>} />
           </Route>
@@ -109,7 +109,7 @@ describe('SeasonList', () => {
       expect(screen.queryByTestId('page-counter-current')).not.toBeInTheDocument()
     })
 
-    it('has no back link and a filled Add Season button that opens the create route', async () => {
+    it('has no back link and a filled Create New Season button that opens the create route', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValue([CURRENT])
 
@@ -117,10 +117,10 @@ describe('SeasonList', () => {
 
       await screen.findAllByRole('heading', { level: 3 })
       expect(screen.queryByRole('link', { name: /back to/i })).not.toBeInTheDocument()
-      const add = screen.getByRole('button', { name: 'Add Season' })
+      const add = screen.getByRole('button', { name: 'Create New Season' })
       expect(add.className).toContain('MuiButton-contained')
       await user.click(add)
-      expect(await screen.findByText('Add Season Page')).toBeInTheDocument()
+      expect(await screen.findByText('Create New Season Page')).toBeInTheDocument()
     })
 
     it('has no Season pill', async () => {
@@ -364,16 +364,17 @@ describe('SeasonList', () => {
   })
 
   describe('empty states', () => {
-    it('shows "No seasons yet" with no button in the message, and the dashed Add Season card as the only card', async () => {
+    it('shows "No seasons yet" with a quick-action Create New Season and no dashed Add card', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValue([])
       renderList('test-club-id')
 
       expect(await screen.findByText('No seasons yet')).toBeInTheDocument()
       expect(screen.getByText("Create your club's first season to get started.")).toBeInTheDocument()
-      expect(screen.getAllByRole('button', { name: 'Add Season' })).toHaveLength(1)
-      await user.click(screen.getByTestId('add-season-card'))
-      expect(await screen.findByText('Add Season Page')).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Create New Season' })).toHaveLength(2) // the title-row button and the empty message's link
+      expect(screen.queryByTestId('add-season-card')).not.toBeInTheDocument()
+      await user.click(screen.getAllByRole('button', { name: 'Create New Season' })[1])
+      expect(await screen.findByText('Create New Season Page')).toBeInTheDocument()
     })
 
     it('shows "No matching seasons" for a search with no result', async () => {
@@ -420,7 +421,7 @@ describe('SeasonList', () => {
       expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
 
-    it('ends the Cards grid with a dashed Add Season card carrying returnTo', async () => {
+    it('ends the Cards grid with a dashed Create New Season card carrying returnTo', async () => {
       renderList('test-club-id')
       await screen.findAllByRole('heading', { level: 3 })
       const card = screen.getByTestId('add-season-card')

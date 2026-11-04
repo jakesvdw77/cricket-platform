@@ -256,7 +256,7 @@ describe('AvailabilityGrid', () => {
   it('says so, with a link to Availability Polls, when no game has a poll', () => {
     renderGrid({ games: [NO_POLL_PM], players: [] })
     expect(screen.getByText('No polls opened yet for these games')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Go to Availability Polls' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.getByRole('button', { name: 'Create New Poll' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 

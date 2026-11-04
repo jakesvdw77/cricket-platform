@@ -15,7 +15,7 @@ describe('LeagueTabMenu', () => {
           heading="Schedule"
           testId="schedule-menu"
           items={[
-            { id: 'add', title: 'Add Match', to: '/add' },
+            { id: 'add', title: 'Create New Match', to: '/add' },
             { id: 'import', title: 'Import Schedule', to: '/import' },
             { id: 'share', title: 'Share Schedule', onClick: onShare },
           ]}
@@ -29,7 +29,7 @@ describe('LeagueTabMenu', () => {
     const menu = screen.getByRole('menu')
     expect(within(menu).getByText('Schedule')).toBeInTheDocument()
     expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      expect.stringContaining('Add Match'),
+      expect.stringContaining('Create New Match'),
       expect.stringContaining('Import Schedule'),
       expect.stringContaining('Share Schedule'),
     ])

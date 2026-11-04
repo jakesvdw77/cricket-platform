@@ -157,7 +157,7 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
         aria-label="Players list"
       >
         <Tab value="responded" label={`Responded · ${counts.responded}`} id="players-tab-responded" aria-controls="players-tabpanel" />
-        <Tab value="awaiting" label={`Still to answer · ${counts.awaiting}`} id="players-tab-awaiting" aria-controls="players-tabpanel" />
+        <Tab value="awaiting" label={`Still To Answer · ${counts.awaiting}`} id="players-tab-awaiting" aria-controls="players-tabpanel" />
       </Tabs>
       <Input
         label="Search players"

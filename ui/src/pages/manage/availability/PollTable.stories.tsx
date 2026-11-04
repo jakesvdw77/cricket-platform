@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { Box } from '@mui/material'
 import { PollTable } from './PollTable'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import type { PollPanelRow } from './pollPanelRows'
 
 const HOUR = 3_600_000
@@ -23,3 +25,24 @@ const rows: PollPanelRow[] = [
 
 // docs/specs/090 (A): zebra rows; the second closes within 24 hours (amber); the third has no auto-close; the last is closed.
 export const Default: Story = { args: { rows } }
+
+// docs/specs/136: the fused card, a toolbar above the rows (one card, one hairline).
+export const WithToolbar: Story = {
+  args: { rows, toolbar: <ToolbarCard fused><Box sx={{ p: 1 }}>Filters, sort and Cards | List go here</Box></ToolbarCard> },
+}
+
+// With a toolbar and no rows the message replaces the table inside the same card.
+export const EmptyWithToolbar: Story = {
+  args: {
+    rows: [],
+    toolbar: <ToolbarCard fused><Box sx={{ p: 1 }}>Filters, sort and Cards | List go here</Box></ToolbarCard>,
+    empty: <Box sx={{ p: 3, textAlign: 'center' }}>No matching polls</Box>,
+  },
+}
+
+// The last cell's actions button (the page passes PollRowMenu; a plain button stands in so the story needs no data).
+export const WithActions: Story = {
+  args: { rows, renderActions: (row) => <button type="button" aria-label={`Actions for ${row.title}`}>⋮</button> },
+}
+
+export const Phone: Story = { args: { rows }, parameters: { viewport: { defaultViewport: 'mobile1' } } }

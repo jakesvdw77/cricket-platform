@@ -89,7 +89,7 @@ describe('PlayersPanel (084)', () => {
     const user = userEvent.setup()
     renderPanel({ initialTab: 'awaiting' })
 
-    expect(await screen.findByRole('tab', { name: 'Still to answer · 6' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('tab', { name: 'Still To Answer · 6' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Responded · 12' })).toHaveAttribute('aria-selected', 'false')
     await waitFor(() => expect(listAvailabilitySummaryPlayers).toHaveBeenCalledTimes(1))
     expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toMatchObject({ kind: 'awaiting', leagueId: 'lg-1' })
@@ -196,7 +196,7 @@ describe('PlayersPanel (084)', () => {
     renderPanel()
 
     expect(await screen.findByTestId('players-panel-loading')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Still to answer/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Still To Answer/ })).toBeInTheDocument()
   })
 
   it('says "Everyone has answered." on Still to answer and "No answers yet." on Responded when empty', async () => {

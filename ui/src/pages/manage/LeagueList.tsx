@@ -7,7 +7,7 @@ import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { SortLink } from '../../components/ContentControlsLine'
 import { BrandIcon } from '../../components/BrandIcon'
-import { EmptyState } from '../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../components/ListViewToggle'
@@ -61,6 +61,9 @@ export default function LeagueList() {
   const location = useLocation()
   // docs/specs/127: Add League returns to this list.
   const addLeaguePath = withReturnTo('/manage/fixtures/leagues/new', currentOrigin(location), 'Leagues')
+  const addLeagueAction = (
+    <EmptyStateLink onClick={() => navigate(addLeaguePath)}>Create New League</EmptyStateLink>
+  )
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [search, setSearch] = useState('')
@@ -260,7 +263,7 @@ export default function LeagueList() {
     }
     if (!hasLeagues && !isFiltering && !showInactive) {
       return (
-        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." />
+        <EmptyState icon={<BrandIcon name="nav/cricket-leagues" size={48} />} title="No league available" description="Create your club's first league to get started." action={addLeagueAction} />
       )
     }
     if (!hasLeagues && (isFiltering || showInactive)) {
@@ -269,6 +272,7 @@ export default function LeagueList() {
           icon={<BrandIcon name="nav/cricket-leagues" size={48} />}
           title={focus ? 'No matching leagues' : 'No league available'}
           description={focus ? `No leagues match ${FOCUS_LABELS[focus].toLowerCase()}.` : 'Create your club\'s first league to get started.'}
+          action={focus ? undefined : addLeagueAction}
         />
       )
     }
@@ -292,7 +296,7 @@ export default function LeagueList() {
             />
           ) : undefined
         }
-        action={<Button size="compact" onClick={() => navigate(addLeaguePath)} sx={{ flex: 'none' }}>Add League</Button>}
+        action={<Button size="compact" onClick={() => navigate(addLeaguePath)} sx={{ flex: 'none' }}>Create New League</Button>}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
@@ -309,8 +313,8 @@ export default function LeagueList() {
           {visibleLeagues.map((league) => (
             <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} onDuplicate={setDuplicateLeague} />
           ))}
-          {/* The grid ends with a dashed Add card (same route as the page's Add League button); with no cards it is the only one. */}
-          <AddCard label="Add League" to={addLeaguePath} testId="add-league-card" />
+          {/* The grid ends with a dashed Add card (same route as the page's Add League button); with no cards it is not shown (the empty message carries the quick-action button). */}
+          {visibleLeagues.length > 0 && <AddCard label="Create New League" to={addLeaguePath} testId="add-league-card" />}
         </Box>
       )}
 

@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
-import JoinInnerOutlinedIcon from '@mui/icons-material/JoinInnerOutlined'
+import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
+import { Box } from '@mui/material'
 import { Button } from '../../../components/Button'
 import { EmptyState } from '../../../components/EmptyState'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
@@ -15,8 +11,8 @@ import { availabilitySummaryKey, getAvailabilitySummary, typeFilterFor } from '.
 import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../api/availabilitySummaryApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
-import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
-import { JumpToTodayButton } from './JumpToTodayButton'
+import { ViewTabsRow } from '../../../components/ViewTabsRow'
+import { AddPollChooserDialog } from './AddPollChooserDialog'
 import { useAvailabilityHubState } from './hubContext'
 import { PlayersPanel } from './PlayersPanel'
 import { PollsPanel } from './PollsPanel'
@@ -25,11 +21,12 @@ import type { PlayersPanelTab } from './PlayersPanel'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
-// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds it (as Coverage, renamed Match-day cover in the 083 follow-up).
-const VIEWS: { value: HubView; label: string; to: string; icon: ReactNode }[] = [
-  { value: 'polls', label: 'Polls', to: '/manage/availability', icon: <EventAvailableOutlinedIcon fontSize="small" /> },
-  { value: 'players', label: 'Players', to: '/manage/availability/players', icon: <GridOnOutlinedIcon fontSize="small" /> },
-  { value: 'coverage', label: 'Match-day cover', to: '/manage/availability/coverage', icon: <JoinInnerOutlinedIcon fontSize="small" /> },
+// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds Coverage (Match-Day Cover since the 083 follow-up).
+// docs/specs/136: a real tab row (page-anatomy section 1), Title Case labels, no icons.
+const VIEWS: { value: HubView; label: string; to: string }[] = [
+  { value: 'polls', label: 'Polls', to: '/manage/availability' },
+  { value: 'players', label: 'Players', to: '/manage/availability/players' },
+  { value: 'coverage', label: 'Match-Day Cover', to: '/manage/availability/coverage' },
 ]
 
 // The active view comes from the pathname: ending in /players is Players, /coverage is Coverage,
@@ -57,7 +54,7 @@ function counterItems(
     {
       id: 'open-polls',
       value: summary.openPolls,
-      label: showClosed ? 'Polls shown' : 'Open polls',
+      label: showClosed ? 'Polls Shown' : 'Open Polls',
       kind: 'drill',
       hint: 'See polls',
       onSelect: () => openPolls('all'),
@@ -65,7 +62,7 @@ function counterItems(
     {
       id: 'players-responded',
       value: `${summary.playersResponded} / ${summary.playersInAudience}`,
-      label: 'Players responded',
+      label: 'Players Responded',
       kind: 'drill',
       hint: 'See who',
       onSelect: () => openPlayers('responded'),
@@ -73,7 +70,7 @@ function counterItems(
     {
       id: 'players-still-to-answer',
       value: summary.playersStillToAnswer,
-      label: 'Players still to answer',
+      label: 'Players Still To Answer',
       tone: summary.playersStillToAnswer > 0 ? 'warning' : 'default',
       kind: 'drill',
       hint: 'See who',
@@ -82,7 +79,7 @@ function counterItems(
     {
       id: 'closing-soon',
       value: summary.closingSoon,
-      label: 'Close in 48 hours',
+      label: 'Close In 48 Hours',
       tone: summary.closingSoon > 0 ? 'warning' : 'default',
       kind: 'drill',
       hint: 'See polls',
@@ -97,8 +94,9 @@ function counterItems(
 // default season (saved per club, mirrored in the address) and hands them to the three views through that context.
 export default function AvailabilityHubLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
-  const { pathname } = useLocation()
-  const navigate = useNavigate()
+  const location = useLocation()
+  const { pathname } = location
+  const [chooserOpen, setChooserOpen] = useState(false)
   const view = activeView(pathname)
   // docs/specs/085 (C8): the browser tab names the view; the visible page title stays "Availability".
   useDocumentTitle(`${VIEWS.find((entry) => entry.value === view)?.label ?? 'Polls'} · Availability`)
@@ -150,53 +148,16 @@ export default function AvailabilityHubLayout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <ManageScreenHeader
         title="Availability"
-        // The scope of the Polls list and counters, under the title; only on Polls and only when a filter is set.
-        // Shown even if the counters failed to load, because it describes the list too.
-        subtitle={view === 'polls' && scope ? `Showing: ${scope}` : undefined}
-        middle={
-          <Box component="nav" aria-label="Availability views" sx={{ display: 'flex', flexDirection: 'column', alignSelf: { xs: 'stretch', sm: 'auto' } }}>
-            <ToggleButtonGroup value={view} exclusive size="small" aria-label="Availability views" sx={segmentedSwitchSx}>
-              {VIEWS.map((entry) => (
-                <ToggleButton
-                  key={entry.value}
-                  component={RouterLink}
-                  to={entry.to}
-                  value={entry.value}
-                  aria-current={entry.value === view ? 'page' : undefined}
-                  // Tighter side padding on a phone so the longer "Match-day cover" label fits three equal parts at 375 px;
-                  // the extra ampersands beat the shared switch's own padding.
-                  sx={{ gap: 0.75, '&&&': { px: { xs: 1.25, sm: 2 } } }}
-                >
-                  {entry.icon}
-                  {entry.label}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </Box>
-        }
         action={
-          view === 'polls' ? (
-            <Button size="compact" onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              New poll
-            </Button>
-          ) : view === 'players' && hub.jumpToToday ? (
-            // docs/specs/085 (D2): the Players view registers Jump to today; it takes the place of the placeholder
-            // below (not on a phone: the phone lists have no such button, and the view does not register it).
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-              <JumpToTodayButton action={hub.jumpToToday} />
-            </Box>
-          ) : (
-            // Reserves the New poll button's width from sm up so the switch stays put when you move between
-            // views instead of jumping to the right edge. visibility: hidden keeps it out of the tab order
-            // and the accessibility tree, so the button is still effectively absent on Players and Coverage.
-            <Box aria-hidden sx={{ visibility: 'hidden', display: { xs: 'none', sm: 'block' } }}>
-              <Button size="compact" tabIndex={-1} disabled>
-                New poll
-              </Button>
-            </Box>
-          )
+          <Button size="compact" onClick={() => setChooserOpen(true)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            Create New Poll
+          </Button>
         }
       />
+
+      {/* docs/specs/136: the views are link navigation, so a nav landmark with aria-current on the active tab. The active view's own
+          action sits right-aligned on the same row (Jump To Today on Players; not on a phone, where the lists have no such button). */}
+      <ViewTabsRow aria-label="Availability views" value={view} tabs={VIEWS.map((entry) => ({ value: entry.value, label: entry.label, to: entry.to }))} />
 
       {showCounters && (
         <PageCounters
@@ -240,6 +201,8 @@ export default function AvailabilityHubLayout() {
           scope={scope}
         />
       )}
+
+      <AddPollChooserDialog open={chooserOpen} onClose={() => setChooserOpen(false)} sectionId={hub.filters.sectionId} />
 
       <Outlet context={hub} />
     </Box>

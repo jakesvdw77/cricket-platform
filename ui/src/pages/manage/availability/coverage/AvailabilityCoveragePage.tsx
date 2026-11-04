@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Box, CircularProgress } from '@mui/material'
-import { Button } from '../../../../components/Button'
-import { CompactSwitch } from '../../../../components/CompactSwitch'
-import { ContentControlsLine } from '../../../../components/ContentControlsLine'
+import { BrandIcon } from '../../../../components/BrandIcon'
+import { AddPollAction } from '../AddPollAction'
+import { ToolbarCard, ToolbarToggle } from '../../../../components/ToolbarCard'
 import { EmptyState } from '../../../../components/EmptyState'
 import { listPlayerAvailability } from '../../../../api/playerAvailabilityApi'
 import { listTeamsForClub } from '../../../../api/teamApi'
-import { cardGridSx } from '../../../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../../../utils/cardGrid'
 import { AvailabilityFilterBar } from '../AvailabilityFilterBar'
 import { useAvailabilityHub } from '../hubContext'
 import { CoverageLegend } from './CoverageLegend'
@@ -20,10 +19,11 @@ import { computeSlotCoverage } from './slotCoverage'
 // sizes. docs/specs/083: League and Section are the hub's shared filters (the same ones the Polls and
 // Players views use, in the shared FilterBar; there is no Team here) and the season is always the default one; View entire season is a per-visit toggle on the line above the cards, not persisted.
 export default function AvailabilityCoveragePage() {
-  const { clubId, filters, seasonId, seasonsLoading, leagues, leaguesLoading, leaguesError, scopeText } = useAvailabilityHub()
-  const navigate = useNavigate()
+  const { clubId, filters, seasonId, seasonsLoading, leagues, leaguesLoading, leaguesError } = useAvailabilityHub()
 
   const [includePast, setIncludePast] = useState(false)
+  // docs/specs/136: a team search in the top row; it narrows the teams shown inside each slot card (a slot with no matching team is hidden).
+  const [search, setSearch] = useState('')
   const { leagueId, sectionId } = filters
 
   const teamsQuery = useQuery({
@@ -80,21 +80,32 @@ export default function AvailabilityCoveragePage() {
   const metaLoading = leaguesLoading || teamsQuery.isLoading
   const ready = Boolean(gridQuery.data) && !metaLoading && !loadError
   const loading = !loadError && (!gridQuery.data || metaLoading)
+  const searchTerm = search.trim().toLowerCase()
+  const visibleSlots = searchTerm
+    ? slots
+        .map((slot) => ({ ...slot, teams: slot.teams.filter((team) => teamName(team.teamId).toLowerCase().includes(searchTerm)) }))
+        .filter((slot) => slot.teams.length > 0)
+    : slots
   const anyPoll = slots.some((slot) => slot.teams.some((team) => team.hasPoll))
 
-  const pastToggle = (
-    <CompactSwitch checked={includePast} onChange={setIncludePast} label="View entire season" />
-  )
-  const scopeFilters = scopeText()
+  // docs/specs/136: the toggle is a chip in the flat toolbar card (a switch in the phone's Filters sheet); no "Showing N slots" text.
+  const pastToggle = (placement: 'row' | 'sheet') => <ToolbarToggle placement={placement} checked={includePast} onChange={setIncludePast} label="View Entire Season" />
+  const icon = <BrandIcon name="nav/availability-polls" size={48} />
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <AvailabilityFilterBar show={{ league: true, section: true }} viewControls={pastToggle} />
-
-      <ContentControlsLine
-        scope={`Showing ${ready ? slots.length : 0} ${ready && slots.length === 1 ? 'slot' : 'slots'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
-        controls={pastToggle}
-      />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ToolbarCard>
+        <AvailabilityFilterBar
+          bare
+          inCard
+          viewControlsInline
+          show={{ league: true, section: true }}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search teams"
+          secondaryControls={pastToggle}
+        />
+      </ToolbarCard>
 
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -118,23 +129,29 @@ export default function AvailabilityCoveragePage() {
 
       {ready && slots.length === 0 && (
         <EmptyState
+          icon={icon}
           title="No games to cover"
-          description="No games match the current filters. Try another section or league, or turn on View entire season."
+          description="No games match the current filters. Try another section or league, or turn on View Entire Season."
         />
       )}
 
       {ready && slots.length > 0 && !anyPoll && (
         <EmptyState
+          icon={icon}
           title="No polls yet"
-          description="Open a poll for these games to see how many players you have."
-          action={<Button size="compact" onClick={() => navigate('/manage/availability')}>Go to Polls</Button>}
+          description="Ask about these games and see how many players you have."
+          action={<AddPollAction sectionId={sectionId} />}
         />
       )}
 
-      {ready && slots.length > 0 && anyPoll && (
+      {ready && slots.length > 0 && anyPoll && visibleSlots.length === 0 && (
+        <EmptyState icon={icon} title="No matching teams" description={`No team matches "${search.trim()}". Try a different search.`} />
+      )}
+
+      {ready && visibleSlots.length > 0 && anyPoll && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box sx={cardGridSx}>
-            {slots.map((slot) => (
+          <Box sx={dynamicCardGridSx}>
+            {visibleSlots.map((slot) => (
               <SlotCoverageCard key={slot.key} slot={slot} teamName={teamName} playersById={playersById} />
             ))}
           </Box>

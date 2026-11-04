@@ -93,11 +93,11 @@ function renderPage(clubId: string | null = 'test-club-id', path = '/manage/avai
 }
 
 async function loaded() {
-  await screen.findByText(/^Showing 3 slots/)
+  await waitFor(() => expect(screen.getAllByTestId('slot-coverage-card')).toHaveLength(3))
 }
 
 describe('AvailabilityCoveragePage (docs/specs/074)', () => {
-  it('renders one card per slot in date order, the count line and the legend once', async () => {
+  it('renders one card per slot in date order and the legend once, with no count line', async () => {
     renderPage()
     await loaded()
 
@@ -109,12 +109,29 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     ])
     expect(screen.getAllByRole('list', { name: 'Legend' })).toHaveLength(1)
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Showing /)).not.toBeInTheDocument()
   })
 
-  it('uses the singular count line for a single slot', async () => {
+  it('has a team search in the top row that narrows the teams in each card and hides slots with no match (136)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+
+    await user.type(screen.getByLabelText('Search'), 'Villagers 2')
+    const cards = screen.getAllByTestId('slot-coverage-card')
+    expect(cards).toHaveLength(1)
+    expect(within(cards[0]).getAllByText('Villagers 2').length).toBeGreaterThan(0)
+    expect(within(cards[0]).queryByText('Villagers 1')).not.toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('Search'))
+    await user.type(screen.getByLabelText('Search'), 'zzz')
+    expect(await screen.findByText('No matching teams')).toBeInTheDocument()
+  })
+
+  it('renders a single card for a single slot', async () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [SAT_V1, SAT_V2] }))
     renderPage()
-    expect(await screen.findByText(/^Showing 1 slot\b/)).toBeInTheDocument()
+    expect(await screen.findAllByTestId('slot-coverage-card')).toHaveLength(1)
   })
 
   it('computes the verdict from the leagues\' XI sizes and resolves team names, with Unknown team as a fallback', async () => {
@@ -231,8 +248,8 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('checkbox', { name: 'View entire season' })).not.toBeChecked()
-    await user.click(screen.getByRole('checkbox', { name: 'View entire season' }))
+    expect(screen.getByRole('button', { name: 'View Entire Season' })).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: 'View Entire Season' }))
 
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
@@ -294,12 +311,12 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     expect(screen.queryByText('Unknown team')).not.toBeInTheDocument()
   })
 
-  it('ignores a team chosen on Polls or Players: it is not in the caption and the hub does not load teams for it', async () => {
+  it('ignores a team chosen on Polls or Players: it shows no scope text', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: null, sectionId: null, teamId: 'team-2' }))
     renderPage()
 
-    const caption = await screen.findByText(/^Showing 3 slots/)
-    expect(caption).not.toHaveTextContent('Villagers 2')
+    await loaded()
+    expect(screen.queryByText(/^Showing /)).not.toBeInTheDocument()
   })
 
   it('shows an error state when the grid fails', async () => {
@@ -313,7 +330,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [], players: [] }))
     const empty = renderPage()
     expect(await screen.findByText('No games to cover')).toBeInTheDocument()
-    expect(screen.getByText(/Try another section or league, or turn on View entire season/)).toBeInTheDocument()
+    expect(screen.getByText(/Try another section or league, or turn on View Entire Season/)).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Legend' })).not.toBeInTheDocument()
     empty.unmount()
 
@@ -322,15 +339,14 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     expect(await screen.findByText('No games to cover')).toBeInTheDocument()
   })
 
-  it('says No polls yet with a Go to Polls button when games exist but none has a poll', async () => {
-    const user = userEvent.setup()
+  it('says No polls yet, pointing to Add Poll with no button of its own, when games exist but none has a poll', async () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [SUN_NO_POLL], players: [] }))
     renderPage()
 
     expect(await screen.findByText('No polls yet')).toBeInTheDocument()
-    expect(screen.getByText('Open a poll for these games to see how many players you have.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Go to Polls' }))
-    expect(await screen.findByText('Polls List')).toBeInTheDocument()
+    expect(screen.getByText('Ask about these games and see how many players you have.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create New Poll' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Go to Polls' })).not.toBeInTheDocument()
   })
 
   it('renders Not authorized without a club', () => {

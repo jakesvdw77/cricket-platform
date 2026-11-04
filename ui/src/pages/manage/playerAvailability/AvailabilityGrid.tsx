@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
@@ -11,6 +12,7 @@ import { GridEmptyState } from './GridEmptyState'
 import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from './slotNavigation'
 import type { SlotAttrs } from './slotNavigation'
 import { Legend } from './Legend'
+import { PlayerNameLink } from './PlayerNameLink'
 import {
   COUNT_COL_WIDTH,
   DATE_ROW_HEIGHT,
@@ -141,8 +143,8 @@ function GameHeader({
 // the keyboard-reachable link.
 export const AvailabilityGrid = forwardRef<
   AvailabilityGridHandle,
-  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers; onScrollBox?: (element: HTMLDivElement | null) => void }
->(function AvailabilityGrid({ games, players, now, changeAnswer, onScrollBox }, ref) {
+  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers; onScrollBox?: (element: HTMLDivElement | null) => void; legendActions?: ReactNode }
+>(function AvailabilityGrid({ games, players, now, changeAnswer, onScrollBox, legendActions }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
@@ -176,7 +178,11 @@ export const AvailabilityGrid = forwardRef<
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Legend />
+      {/* docs/specs/136: the slot navigator and Jump To Today belong to the game columns, so they sit at the right of the legend row. */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 2, rowGap: 1 }}>
+        <Legend />
+        {legendActions && <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, ml: 'auto' }}>{legendActions}</Box>}
+      </Box>
       <Box
         ref={boxRef}
         role="region"
@@ -306,9 +312,7 @@ export const AvailabilityGrid = forwardRef<
                 }}
               >
                 <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
-                    {playerFullName(player)}
-                  </Typography>
+                  <PlayerNameLink playerId={player.playerProfileId} name={playerFullName(player)} />
                 </TableCell>
                 {columns.map((game) => {
                   const cell = cellFor(player, game.matchId)

@@ -15,12 +15,14 @@ export interface ToolbarSortButtonProps {
   value: string
   options: ToolbarSortOption[]
   onChange: (value: string) => void
+  // The word before the current choice and the menu's accessible name. Default "Sort"; "Slot" on a poll's Responses page.
+  prefix?: string
 }
 
 // docs/standards/page-anatomy.md section 3: the sort control of a toolbar card, a 36 px white outlined button reading
 // "Sort: Name, A to Z" with a caret that opens the sort orders as a menu (the current one ticked). A real button: Enter, Space and
 // the arrow keys work through the MUI menu. Outside a toolbar the quiet SortLink / SortMenu stay.
-export function ToolbarSortButton({ value, options, onChange }: ToolbarSortButtonProps) {
+export function ToolbarSortButton({ value, options, onChange, prefix = 'Sort' }: ToolbarSortButtonProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const current = options.find((option) => option.value === value) ?? options[0]
   return (
@@ -32,10 +34,10 @@ export function ToolbarSortButton({ value, options, onChange }: ToolbarSortButto
         onClick={(event) => setAnchor(event.currentTarget)}
         sx={[toolbarControlSx, { pr: 0.5, justifyContent: 'center', '&.Mui-focusVisible': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: 1 } }]}
       >
-        {`Sort: ${current.label}`}
+        {`${prefix}: ${current.label}`}
         <ArrowDropDownIcon fontSize="small" aria-hidden />
       </ButtonBase>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} MenuListProps={{ 'aria-label': 'Sort order' }}>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} MenuListProps={{ 'aria-label': prefix === 'Sort' ? 'Sort order' : prefix }}>
         {options.map((option) => (
           <MenuItem
             key={option.value}

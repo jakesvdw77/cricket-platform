@@ -22,7 +22,8 @@ export function CoverageLegend() {
         m: 0,
         p: 0,
         fontSize: 12,
-        color: 'text.secondary',
+        fontWeight: 600,
+        color: 'text.primary',
       }}
     >
       {ITEMS.map((item) => (

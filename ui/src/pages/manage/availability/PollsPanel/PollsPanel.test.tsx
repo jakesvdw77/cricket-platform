@@ -52,6 +52,7 @@ describe('PollsPanel', () => {
     expect(within(soon).getByText('Open')).toBeInTheDocument()
     expect(within(soon).getByRole('timer')).toBeInTheDocument()
     expect(within(soon).getByText('15 of 18 answered')).toBeInTheDocument()
+    expect(within(soon).getByRole('progressbar')).toBeInTheDocument()
 
     const closed = rows.find((row) => row.textContent?.includes('Lions vs Old')) as HTMLElement
     expect(within(closed).getByText('Squad')).toBeInTheDocument()
@@ -76,7 +77,7 @@ describe('PollsPanel', () => {
   it('titles the panel Polls shown with Show closed on, with a header naming open and closed', () => {
     renderPanel()
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Polls shown' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Polls Shown' })).toBeInTheDocument()
     expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('4 polls shown, 3 open and 1 closed')
     expect(screen.getByTestId('polls-panel-scope')).toHaveTextContent('Showing: Vets › Over 40')
   })
@@ -84,7 +85,7 @@ describe('PollsPanel', () => {
   it('titles the panel Open polls with Show closed off and counts the open polls', () => {
     renderPanel({ showClosed: false, rows: ROWS.filter((row) => row.open), scope: '' })
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Open polls' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Open Polls' })).toBeInTheDocument()
     expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('3 open polls')
     expect(screen.queryByTestId('polls-panel-scope')).not.toBeInTheDocument()
   })
@@ -92,7 +93,7 @@ describe('PollsPanel', () => {
   it('the closing-soon panel lists only open polls closing within 48 hours', () => {
     renderPanel({ kind: 'closing-soon', showClosed: false })
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Closing within 48 hours' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Closing Within 48 Hours' })).toBeInTheDocument()
     expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('1 open poll closing within 48 hours')
     expect(screen.getAllByTestId('polls-panel-row')).toHaveLength(1)
   })

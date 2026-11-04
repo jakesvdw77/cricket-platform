@@ -346,7 +346,7 @@ describe('LeagueCard', () => {
         'Open Schedule',
         'Open Teams',
         'Open Playing Conditions',
-        'Add Match',
+        'Create New Match',
         'Import Schedule',
       ])
       expect(items[1]).toHaveAttribute('href', expect.stringContaining(`${BASE}/edit?seasonId=season-9`))
@@ -355,11 +355,11 @@ describe('LeagueCard', () => {
       expect(items[4]).toHaveAttribute('href', expect.stringContaining(`${BASE}/conditions?seasonId=season-9`))
     })
 
-    it('disables Add Match and Import Schedule with their reasons when there is no season or the league is inactive', async () => {
+    it('disables Create New Match and Import Schedule with their reasons when there is no season or the league is inactive', async () => {
       const user = userEvent.setup()
       renderCard(makeLeague())
       await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
-      expect(screen.getByRole('menuitem', { name: /Add Match/ })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /Create New Match/ })).toHaveAttribute('aria-disabled', 'true')
       expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveTextContent('Create a season first')
     })
 
@@ -368,7 +368,7 @@ describe('LeagueCard', () => {
       renderCard(makeLeague({ active: false }), 'season-9')
       await user.click(screen.getByRole('button', { name: 'Actions for Riverside Premier League' }))
       expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveTextContent('League is inactive')
-      expect(screen.getByRole('menuitem', { name: /Add Match/ })).not.toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /Create New Match/ })).not.toHaveAttribute('aria-disabled', 'true')
     })
 
     it('the kebab opens a menu without navigating the card', async () => {

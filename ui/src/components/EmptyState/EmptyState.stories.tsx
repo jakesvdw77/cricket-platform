@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { BrandIcon } from '../BrandIcon'
 import { Button } from '../Button'
 import { EmptyState } from './EmptyState'
+import { EmptyStateLink } from './EmptyStateLink'
 
 const meta: Meta<typeof EmptyState> = {
   title: 'Components/EmptyState',
@@ -36,5 +37,14 @@ export const WithIcon: Story = {
     icon: <BrandIcon name="nav/result-scorecard" size={48} padding={4} />,
     title: 'No results yet',
     description: 'Captured results will show up here.',
+  },
+}
+
+// docs/specs/136: the standard empty-state action is an underlined text link worded "Create New <Record>".
+export const WithLink: Story = {
+  args: {
+    title: 'No seasons yet',
+    description: "Create your club's first season to get started.",
+    action: <EmptyStateLink onClick={() => undefined}>Create New Season</EmptyStateLink>,
   },
 }

@@ -1,9 +1,9 @@
-import { ButtonBase, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { Button } from '../Button'
+import { ChoiceTile } from '../ChoiceTile'
 
 export interface AddTeamChooserDialogProps {
   open: boolean
@@ -16,54 +16,6 @@ export interface AddTeamChooserDialogProps {
   onChooseCopy?: () => void
   // When set, the Copy teams tile is disabled and shows this reason.
   copyDisabledReason?: string
-}
-
-interface ChoiceTileProps {
-  icon: ReactNode
-  label: string
-  description: string
-  onClick: () => void
-  disabled?: boolean
-}
-
-// A large tile button: at least 44 px high, a native button so Tab, Enter and Space work.
-function ChoiceTile({ icon, label, description, onClick, disabled }: ChoiceTileProps) {
-  return (
-    <ButtonBase
-      onClick={onClick}
-      disabled={disabled}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        gap: 1.5,
-        width: '100%',
-        minHeight: 72,
-        px: 2,
-        py: 1.5,
-        textAlign: 'left',
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 2,
-        bgcolor: 'background.paper',
-        '&.Mui-disabled': { opacity: 0.6 },
-        '&:hover': { borderColor: 'primary.main', boxShadow: 2 },
-        '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
-      }}
-    >
-      <span aria-hidden style={{ display: 'flex' }}>
-        {icon}
-      </span>
-      <span>
-        <Typography variant="subtitle2" component="span" display="block" fontWeight={700}>
-          {label}
-        </Typography>
-        <Typography variant="caption" component="span" display="block" color="text.secondary">
-          {description}
-        </Typography>
-      </span>
-    </ButtonBase>
-  )
 }
 
 // The league page's Teams tab "Add Team" chooser: one of our own teams, an opponent (league) team, or copy teams across. It only chooses; the

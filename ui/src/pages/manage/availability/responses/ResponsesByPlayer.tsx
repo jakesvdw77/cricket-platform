@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Box, ButtonBase, Chip, lighten, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { Box, ButtonBase, Chip, lighten, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, Typography, useMediaQuery } from '@mui/material'
 import type { Theme } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { Input } from '../../../../components/Input'
 import { compactFieldsSx } from '../../../../utils/filterPanel'
 import { zebraTint } from '../../../../utils/zebraTint'
-import { CompactSwitch } from '../../../../components/CompactSwitch'
+import { ToolbarSortButton, ToolbarToggle } from '../../../../components/ToolbarCard'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { ViaLinkMarker } from './ViaLinkMarker'
@@ -88,6 +89,7 @@ export function ResponsesByPlayer({
   const [hideUnanswered, setHideUnanswered] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null)
   const [slotId, setSlotId] = useState<string | null>(null)
+  const isPhone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   const [sortKey, setSortKey] = useState<'player' | 'status'>('player')
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc')
 
@@ -121,8 +123,8 @@ export function ResponsesByPlayer({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-        {brackets.length > 1 && (
-          <Box sx={[{ width: { xs: '100%', sm: 220 } }, (theme: Theme) => ({ [theme.breakpoints.up('sm')]: compactFieldsSx })]}>
+        {brackets.length > 1 && isPhone && (
+          <Box sx={[{ width: '100%' }, (theme: Theme) => ({ [theme.breakpoints.up('sm')]: compactFieldsSx })]}>
             <Input select label="Slot" value={slotWindowId} onChange={(event) => setSlotId(event.target.value)}>
               {brackets.map((bracket) => (
                 <MenuItem key={bracket.windowId} value={bracket.windowId} sx={{ minHeight: 44 }}>
@@ -154,8 +156,17 @@ export function ResponsesByPlayer({
             )
           })}
         </Box>
-        <Box sx={{ ml: { sm: 'auto' } }}>
-          <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players who haven't answered" noWrap={false} />
+        {/* docs/specs/136: on a tablet or desktop the slot picker and the hide toggle sit at the right as the same toolbar controls other pages use. */}
+        <Box sx={{ ml: { sm: 'auto' }, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+          {brackets.length > 1 && !isPhone && (
+            <ToolbarSortButton
+              prefix="Slot"
+              value={slotWindowId}
+              onChange={setSlotId}
+              options={brackets.map((bracket) => ({ value: bracket.windowId, label: slotHeading(bracket) }))}
+            />
+          )}
+          <ToolbarToggle placement={isPhone ? 'sheet' : 'row'} checked={hideUnanswered} onChange={setHideUnanswered} label={isPhone ? "Hide players who haven't answered" : 'Hide No Answers'} />
         </Box>
       </Box>
       <Box sx={{ overflowX: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>

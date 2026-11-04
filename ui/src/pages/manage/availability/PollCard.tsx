@@ -1,37 +1,21 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { IconButton, Stack } from '@mui/material'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
-import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import { useLocation } from 'react-router-dom'
+import { Stack } from '@mui/material'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { SlotSummary } from '../../../components/SlotSummary'
-import { PollShareDialog } from '../../../components/PollShareDialog'
-import { SectionAvailabilityShareDialog } from '../../../components/SectionAvailabilityShareDialog'
 import type { Team } from '../../../api/teamApi'
 import { dayPartForDate, formatBracketLabel } from '../../../utils/dayPart'
-import { errorDetail } from '../../../utils/errorDetail'
-import { usePollClose } from '../../../hooks/usePollClose'
-import { usePollDelete } from '../../../hooks/usePollDelete'
-import { usePollDescription } from './usePollDescription'
-import { EditCloseTimeDialog } from './EditCloseTimeDialog'
-import { PollMatchesDialog } from './PollMatchesDialog'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
+import { PollKebab } from './PollKebab'
+import { usePollItemActions } from './usePollItemActions'
 import {
-  REOPEN_PAST_REASON,
-  SHARE_CLOSED_REASON,
   closesRow,
   formatMatchDateTime,
   pollResponsesPath,
   squadPollSideLabel,
-  squadPollTeamName,
   squadPollTitle,
 } from './pollHelpers'
 import type { PollItem } from './pollItem'
@@ -75,14 +59,13 @@ function matchCountLabel(count: number): string {
   return `${count} match${count === 1 ? '' : 'es'}`
 }
 
-// docs/specs/066-poll-close-time-and-unified-cards.md: the one card both poll kinds render as, on
-// RecordCard: header (avatar, title, badges, delete), a subtitle, one SlotSummary per time slot, a
-// highlighted "Poll closes" strip above them with its pencil and a live countdown (073, 082), and the
-// same four footer buttons in the same order - Close poll (Reopen poll once closed), Matches,
-// Responses, Share. It returns the RecordCard itself as the grid item (no
-// wrapper) so the dashboard grid can stretch every card in a row to the tallest; every expansion is
-// a dialog rendered as a sibling, so a card never changes height on its own. Each card owns its own
-// mutations so one card's pending state never leaks onto another's.
+// docs/specs/066-poll-close-time-and-unified-cards.md, revamped by docs/specs/136: the one card both poll kinds render as, on a flat
+// RecordCard: header (avatar, title, badges, ONE actions kebab in the corner), a subtitle, a highlighted "Poll closes" strip with a
+// live countdown (073, 082) and one SlotSummary per time slot. No footer bar and no pencils: every action (Open Responses, Edit
+// Close Time or Reopen Poll, Edit Description, Matches Covered, Close Poll, Delete Poll, Share Invite) is in the kebab. It returns
+// the RecordCard itself as the grid item (no wrapper) so the grid can stretch every card in a row to the tallest; every expansion is
+// a dialog rendered as a sibling, so a card never changes height on its own. Each card owns its own mutations so one card's pending
+// state never leaks onto another's.
 export function PollCard({
   clubId,
   item,
@@ -98,46 +81,14 @@ export function PollCard({
   teamsById: Map<string, Team>
   onChanged: () => void
 }) {
-  const navigate = useNavigate()
+  const location = useLocation()
   const isOpen = item.kind === 'GROUP' ? item.round.open : open
-  const [closeTimeOpen, setCloseTimeOpen] = useState(false)
-  const [matchesOpen, setMatchesOpen] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
 
   const autoClose = item.kind === 'GROUP' ? item.round.autoClose : item.poll.autoClose
   const scheduledCloseAt = item.kind === 'GROUP' ? item.round.scheduledCloseAt : item.poll.scheduledCloseAt
-  const kickoff = item.kind === 'GROUP' ? item.round.firstMatchKickoff : item.poll.matchDate
   const title = item.kind === 'GROUP' ? item.round.description : squadPollTitle(item.poll, teamsById)
 
-  // Delete, Close and the group description are the shared hooks (docs/specs/090), also used by both poll pages.
-  const pollDelete = usePollDelete({
-    clubId,
-    target:
-      item.kind === 'GROUP'
-        ? { kind: 'GROUP', roundId: item.round.id }
-        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
-    title,
-    onDeleted: onChanged,
-  })
-
-  // Closing is the shared hook (docs/specs/090); reopening goes through EditCloseTimeDialog (a new close time is saved
-  // first, since the server refuses a reopen once an automatic close time has passed).
-  const pollClose = usePollClose({
-    clubId,
-    target:
-      item.kind === 'GROUP'
-        ? { kind: 'GROUP', roundId: item.round.id }
-        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
-    autoClose,
-    onClosed: onChanged,
-  })
-
-  const pollDescription = usePollDescription({
-    clubId,
-    roundId: item.kind === 'GROUP' ? item.round.id : '',
-    description: item.kind === 'GROUP' ? item.round.description : '',
-    onSaved: onChanged,
-  })
+  const actions = usePollItemActions({ clubId, item, open, teamsById, onChanged })
 
   const subtitle =
     item.kind === 'GROUP'
@@ -145,78 +96,38 @@ export function PollCard({
       : `${formatMatchDateTime(item.poll.matchDate)} · ${item.poll.venue ?? 'Venue TBC'}`
 
   const closes = closesRow(isOpen, autoClose, scheduledCloseAt)
-  const canReopen = item.kind === 'GROUP' ? item.round.canReopen : item.poll.canReopen
   // docs/specs/082: the countdown (and the amber tone) exist only for an open poll with a close time.
   const countdownTarget = isOpen && autoClose && scheduledCloseAt ? scheduledCloseAt : null
   const closingSoon = useCountdown(countdownTarget).warn
 
-  const squadTeamName = item.kind === 'SQUAD' ? squadPollTeamName(item.poll, teamsById) : ''
-
   const badges = [
+    { label: item.kind === 'GROUP' ? 'Group Poll' : 'Squad Poll', tone: item.kind === 'GROUP' ? ('groupPoll' as const) : ('squadPoll' as const) },
     { label: isOpen ? 'Open' : 'Closed', tone: isOpen ? ('open' as const) : ('closed' as const) },
     ...(item.kind === 'SQUAD' ? [{ label: squadPollSideLabel(item.poll), tone: 'side' as const }] : []),
   ]
+  const kebabKey = item.kind === 'GROUP' ? item.round.id : item.poll.pollId
 
   return (
     <>
       <RecordCard
+        flat
         title={title}
-        // docs/specs/073: the whole card opens the Responses page, like the Match card.
-        viewTo={pollResponsesPath(item)}
+        // docs/specs/073: the whole card opens the Responses page, like the Match card (docs/specs/127: and returns here).
+        viewTo={withReturnTo(pollResponsesPath(item), currentOrigin(location), 'Availability')}
         description={subtitle}
         // docs/specs/082: the brand availability icon on its standard tile; 48px icon + 4px padding on
         // each side is the 56px avatar box.
         avatar={{ element: <BrandIcon name="nav/availability-polls" size={48} padding={4} /> }}
-        badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: item.kind === 'GROUP' ? 'groupPoll' : 'squadPoll' }}
+        // The badges sit under the title row, the kebab stays top right.
+        badgesBelow
         badges={badges}
-        // Long titles wrap (up to three lines) instead of truncating beside the pencil.
+        // Long titles wrap (up to three lines).
         titleWrap
         titleLines={3}
-        // A pencil after a group poll's title edits its description (matches can't be changed after
-        // creation, docs/specs/064 Non-goals); a squad poll's title is derived from its match.
-        titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: pollDescription.openEditor } : undefined}
-        cornerAction={{
-          label: 'Delete',
-          pendingLabel: 'Deleting…',
-          pending: pollDelete.deleting,
-          onClick: pollDelete.requestDelete,
-          icon: <DeleteOutlineIcon fontSize="small" />,
-        }}
-        footerButtons={[
-          isOpen
-            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: pollClose.requestClose, disabled: pollClose.closing }
-            : {
-                label: 'Reopen poll',
-                // Same disabled + reason pattern as Share on a closed poll (docs/specs/082).
-                ariaLabel: canReopen ? undefined : REOPEN_PAST_REASON,
-                title: canReopen ? undefined : REOPEN_PAST_REASON,
-                icon: <LockOpenOutlinedIcon fontSize="small" />,
-                disabled: !canReopen,
-                onClick: () => setCloseTimeOpen(true),
-              },
-          { label: 'Matches', icon: <EventNoteOutlinedIcon fontSize="small" />, onClick: () => setMatchesOpen(true) },
-          {
-            label: 'Responses',
-            icon: <PeopleAltOutlinedIcon fontSize="small" />,
-            // docs/specs/065 + 067: each poll kind's responses live on their own page.
-            onClick: () => navigate(pollResponsesPath(item)),
-          },
-          {
-            label: 'Share',
-            ariaLabel: isOpen ? 'Share invite' : SHARE_CLOSED_REASON,
-            title: isOpen ? undefined : SHARE_CLOSED_REASON,
-            icon: <ShareOutlinedIcon fontSize="small" />,
-            disabled: !isOpen,
-            onClick: () => setShareOpen(true),
-          },
-        ]}
-        feedback={
-          pollClose.closeError
-            ? { message: errorDetail(pollClose.closeError, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
-            : pollDelete.deleteError
-              ? { message: errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
-              : null
-        }
+        headerActions={<PollKebab actions={actions} title={title} testId={`poll-card-actions-${kebabKey}`} />}
+        // No footer action bar (page-anatomy section 6): the kebab in the corner holds every action.
+        footerActions={null}
+        feedback={actions.errorMessage ? { message: actions.errorMessage, tone: 'error' } : null}
       >
         {/* docs/specs/082: the close time is read first - a tinted strip above the response indicator,
             amber within 24 hours of closing, neutral otherwise (and once closed). docs/specs/087: the strip
@@ -227,24 +138,9 @@ export function PollCard({
           icon={<EventBusyOutlinedIcon fontSize="small" />}
           label={closes.label}
           value={closes.value}
-          // Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
-          // position: relative keeps it above the card's stretched link.
-          action={
-            isOpen ? (
-              <IconButton
-                size="small"
-                aria-label="Edit close time"
-                title="Edit close time"
-                onClick={() => setCloseTimeOpen(true)}
-                sx={{ position: 'relative', p: '2px', color: 'inherit' }}
-              >
-                <EditOutlinedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            ) : undefined
-          }
           trailing={countdownTarget ? <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" /> : undefined}
         />
-        {/* The summary area grows (flex: 1) so the footer below lines up across the cards of a row. */}
+        {/* The summary area grows (flex: 1) so the cards of a row line up. */}
         <Stack spacing={1.5} sx={{ flex: 1 }}>
           {slotsFor(item).map((slot) => (
             <SlotSummary key={slot.key} heading={slot.heading} counts={slot.counts} testIdPrefix={slot.key} compact />
@@ -252,48 +148,7 @@ export function PollCard({
         </Stack>
       </RecordCard>
 
-      {item.kind === 'GROUP' && pollDescription.dialog}
-
-      <EditCloseTimeDialog
-        open={closeTimeOpen}
-        onClose={() => setCloseTimeOpen(false)}
-        clubId={clubId}
-        target={
-          item.kind === 'GROUP'
-            ? { kind: 'GROUP', roundId: item.round.id }
-            : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId }
-        }
-        autoClose={autoClose}
-        scheduledCloseAt={scheduledCloseAt}
-        kickoff={kickoff}
-        reopen={!isOpen}
-        onSaved={onChanged}
-      />
-
-      <PollMatchesDialog
-        open={matchesOpen}
-        onClose={() => setMatchesOpen(false)}
-        clubId={clubId}
-        item={item}
-        teamsById={teamsById}
-      />
-
-      {item.kind === 'GROUP' ? (
-        <SectionAvailabilityShareDialog open={shareOpen} onClose={() => setShareOpen(false)} round={item.round} />
-      ) : (
-        <PollShareDialog
-          open={shareOpen}
-          onClose={() => setShareOpen(false)}
-          match={item.poll}
-          teamName={squadTeamName}
-          pollId={item.poll.pollId}
-          autoClose={item.poll.autoClose}
-          scheduledCloseAt={item.poll.scheduledCloseAt}
-        />
-      )}
-
-      {pollClose.confirmDialog}
-      {pollDelete.dialogs}
+      {actions.dialogs}
     </>
   )
 }

@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ToolbarCard } from './ToolbarCard'
 import { ToolbarSortButton } from './ToolbarSortButton'
+import { ToolbarMultiToggle } from './ToolbarMultiToggle'
+import { ToolbarToggle } from './ToolbarToggle'
 import { ToolbarToggleChip } from './ToolbarToggleChip'
 import { toolbarControlSx, toolbarSegmentedSx } from './toolbarControlSx'
 import { ListViewToggle } from '../ListViewToggle'
@@ -60,6 +62,19 @@ describe('ToolbarSortButton', () => {
   })
 })
 
+describe('ToolbarToggleChip disabled (docs/specs/136)', () => {
+  it('a disabled chip stays as it is and cannot be pressed', async () => {
+    const onChange = vi.fn()
+    render(<ToolbarToggleChip pressed disabled onChange={onChange} label="Squad Polls" />)
+
+    const chip = screen.getByRole('button', { name: 'Squad Polls' })
+    expect(chip).toBeDisabled()
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(chip)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
 describe('ToolbarToggleChip', () => {
   it('is a 36 px toggle button with aria-pressed that flips on click and on Space', async () => {
     const onChange = vi.fn()
@@ -107,5 +122,51 @@ describe('toolbar controls share one style helper', () => {
     expect(toolbarSegmentedSx['& .MuiToggleButtonGroup-grouped'].color).toBe(toolbarControlSx.color)
     expect(toolbarSegmentedSx['& .MuiToggleButtonGroup-grouped'].fontSize).toBe(toolbarControlSx.fontSize)
     expect(toolbarSegmentedSx['& .MuiToggleButtonGroup-grouped'].fontWeight).toBe(toolbarControlSx.fontWeight)
+  })
+})
+
+describe('ToolbarToggle', () => {
+  it('is a pressed-state chip in the toolbar row', async () => {
+    const onChange = vi.fn()
+    render(<ToolbarToggle placement="row" checked={false} onChange={onChange} label="Show Closed" />)
+    const chip = screen.getByRole('button', { name: 'Show Closed' })
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(chip)
+    expect(onChange).toHaveBeenCalledWith(true)
+  })
+
+  it('is a switch in the phone sheet', async () => {
+    const onChange = vi.fn()
+    render(<ToolbarToggle placement="sheet" checked={false} onChange={onChange} label="Show Closed" />)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Show Closed' }))
+    expect(onChange).toHaveBeenCalledWith(true)
+  })
+
+  it('passes disabled to both', () => {
+    const { rerender } = render(<ToolbarToggle placement="row" checked onChange={() => undefined} label="Squad" disabled />)
+    expect(screen.getByRole('button', { name: 'Squad' })).toBeDisabled()
+    rerender(<ToolbarToggle placement="sheet" checked onChange={() => undefined} label="Squad" disabled />)
+    expect(screen.getByRole('checkbox', { name: 'Squad' })).toBeDisabled()
+  })
+})
+
+describe('ToolbarMultiToggle', () => {
+  const options = [
+    { value: 'a', label: 'Alpha', icon: <span /> },
+    { value: 'b', label: 'Beta', icon: <span /> },
+  ]
+
+  it('toggles each part on its own and reports the selected set', async () => {
+    const onChange = vi.fn()
+    render(<ToolbarMultiToggle ariaLabel="Kinds" options={options} selected={['a', 'b']} onChange={onChange} />)
+    expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'Beta' }))
+    expect(onChange).toHaveBeenCalledWith(['a'])
+  })
+
+  it('disables the last part left on', () => {
+    render(<ToolbarMultiToggle ariaLabel="Kinds" options={options} selected={['a']} onChange={() => undefined} />)
+    expect(screen.getByRole('button', { name: 'Alpha' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Beta' })).toBeEnabled()
   })
 })

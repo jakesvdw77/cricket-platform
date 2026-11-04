@@ -1,11 +1,12 @@
-import { Dialog, DialogActions, DialogContent, DialogTitle, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Link as MuiLink, Stack, Typography } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { getRoundMatches } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
-import { formatBracketLabel } from '../../../utils/dayPart'
+import { DateTile } from '../../../components/DateTile'
+import { DAY_PART_LABEL } from '../../../utils/dayPart'
 import { formatMatchDateTime, matchLabel, squadPollHref, squadPollTitle } from './pollHelpers'
 import type { PollItem } from './pollItem'
 
@@ -36,28 +37,20 @@ export function PollMatchesDialog({
   teamsById: Map<string, Team>
 }) {
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="poll-matches-title">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="poll-matches-title">
       <DialogTitle id="poll-matches-title">Matches</DialogTitle>
       <DialogContent>
         {item.kind === 'GROUP' ? (
           <GroupMatches clubId={clubId} round={item.round} open={open} onClose={onClose} />
         ) : (
-          <Stack spacing={0.5}>
-            <MuiLink
-              component={RouterLink}
-              to={squadPollHref(item.poll)}
-              variant="body2"
-              fontWeight={600}
-              underline="always"
-              onClick={onClose}
-              sx={matchLinkSx}
-            >
-              {squadPollTitle(item.poll, teamsById)}
-            </MuiLink>
-            <Typography variant="body2" color="text.secondary">
-              {formatMatchDateTime(item.poll.matchDate)} · {item.poll.venue ?? 'Venue TBC'}
-            </Typography>
-          </Stack>
+          <MatchRow
+            date={item.poll.matchDate}
+            title={squadPollTitle(item.poll, teamsById)}
+            to={squadPollHref(item.poll)}
+            caption={formatMatchDateTime(item.poll.matchDate)}
+            badge={item.poll.venue ?? 'Venue TBC'}
+            onClose={onClose}
+          />
         )}
       </DialogContent>
       <DialogActions>
@@ -102,42 +95,70 @@ function GroupMatches({
     )
   }
 
+  // Each match is a row with a date tile; the slot's part of day is a chip beside the match (docs/specs/136, mockup option A).
+  const rows = round.brackets.flatMap((bracket) =>
+    (matchesQuery.data ?? []).filter((match) => match.windowId === bracket.windowId).map((match) => ({ match, dayPart: bracket.dayPart })),
+  )
+  if (rows.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        No matches in this poll.
+      </Typography>
+    )
+  }
   return (
-    <Stack spacing={2}>
-      {round.brackets.map((bracket) => {
-        const matches = (matchesQuery.data ?? []).filter((match) => match.windowId === bracket.windowId)
-        return (
-          <Stack key={bracket.windowId} spacing={0.75}>
-            <Typography variant="subtitle2" component="h3" fontWeight={700}>
-              {formatBracketLabel(bracket.windowDate, bracket.dayPart, ' · ')}
-            </Typography>
-            {matches.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No matches in this slot.
-              </Typography>
-            )}
-            {matches.map((match) => (
-              <Stack key={`${match.matchId}-${match.teamId}`} spacing={0.25}>
-                <MuiLink
-                  component={RouterLink}
-                  to={squadPollHref(match)}
-                  variant="body2"
-                  fontWeight={600}
-                  underline="always"
-                  onClick={onClose}
-                  sx={matchLinkSx}
-                >
-                  {matchLabel(match)}
-                </MuiLink>
-                <Typography variant="caption" color="text.secondary">
-                  {formatMatchDateTime(match.matchDate)}
-                  {match.leagueName ? ` · ${match.leagueName}` : ''}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        )
-      })}
+    <Stack spacing={1.25}>
+      {rows.map(({ match, dayPart }) => (
+        <MatchRow
+          key={`${match.matchId}-${match.teamId}`}
+          date={match.matchDate}
+          title={matchLabel(match)}
+          to={squadPollHref(match)}
+          chip={DAY_PART_LABEL[dayPart]}
+          caption={formatMatchDateTime(match.matchDate)}
+          badge={match.leagueName ?? undefined}
+          onClose={onClose}
+        />
+      ))}
     </Stack>
+  )
+}
+
+function MatchRow({
+  date,
+  title,
+  to,
+  chip,
+  caption,
+  badge,
+  onClose,
+}: {
+  date: string
+  title: string
+  to: string
+  chip?: string
+  caption: string
+  badge?: string
+  onClose: () => void
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75, p: 1.25, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
+      <DateTile date={date} />
+      <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <MuiLink component={RouterLink} to={to} variant="body2" fontWeight={600} underline="always" onClick={onClose} sx={matchLinkSx}>
+            {title}
+          </MuiLink>
+          {chip && <Chip size="small" variant="outlined" label={chip} />}
+        </Stack>
+        {/* The league (or venue) badge sits at the bottom right, on the caption line, so it never competes with the part-of-day chip. */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+          <Typography variant="caption" color="text.secondary">
+            {caption}
+          </Typography>
+          {badge && <Chip size="small" variant="outlined" label={badge} sx={{ flex: 'none', maxWidth: '60%' }} />}
+        </Stack>
+      </Stack>
+    </Box>
   )
 }

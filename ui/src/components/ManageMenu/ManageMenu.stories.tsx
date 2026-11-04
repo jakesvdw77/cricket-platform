@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MemoryRouter } from 'react-router-dom'
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -11,7 +10,6 @@ const meta: Meta<typeof ManageMenu> = {
   title: 'Components/ManageMenu',
   component: ManageMenu,
   parameters: { layout: 'padded' },
-  decorators: [(Story) => <MemoryRouter><Story /></MemoryRouter>],
 }
 export default meta
 
