@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
-import { Box, Button as MuiButton, Checkbox, FormControlLabel, Popover, Typography, useMediaQuery } from '@mui/material'
+import { Box, Checkbox, FormControlLabel, Popover, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import TuneIcon from '@mui/icons-material/Tune'
 import { BottomSheet } from '../../../components/BottomSheet'
 import type { LeaderboardBoardInfo } from '../../../api/leaderboardApi'
 import { useLeaderboardSettings, useSaveLeaderboardSettings } from '../../../api/leaderboardSettingsApi'
-import { compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 
 const humanise = (code: string) => code.toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 
@@ -61,9 +61,9 @@ function ChooserForm({ clubId, catalogue, onDone }: ChooserFormProps) {
       {settingsQuery.isError ? (
         <Typography role="alert" sx={{ color: 'error.main', fontSize: '0.9375rem' }}>
           Could not load the categories.{' '}
-          <MuiButton variant="text" onClick={() => settingsQuery.refetch()} size="small" sx={compactButtonSx}>
+          <Button size="compact" variant="ghost" onClick={() => settingsQuery.refetch()}>
             Try again
-          </MuiButton>
+          </Button>
         </Typography>
       ) : !settings ? (
         <Typography sx={{ fontSize: '0.9375rem', color: 'text.secondary' }}>Loading...</Typography>
@@ -84,17 +84,17 @@ function ChooserForm({ clubId, catalogue, onDone }: ChooserFormProps) {
         </Typography>
       )}
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <MuiButton
-          variant="contained"
-          sx={{ flex: 1, minHeight: 44 }}
+        <Button
+          size="compact"
+          sx={{ flex: 1 }}
           disabled={!settings || selected.length === 0 || save.isPending}
           onClick={() => save.mutate(selected, { onSuccess: onDone })}
         >
-          Save for club
-        </MuiButton>
-        <MuiButton variant="outlined" sx={{ minHeight: 44 }} onClick={onDone}>
+          Save For Club
+        </Button>
+        <Button size="compact" variant="secondary" onClick={onDone}>
           Cancel
-        </MuiButton>
+        </Button>
       </Box>
     </Box>
   )
@@ -119,8 +119,9 @@ export function CategoryChooser({ clubId, catalogue }: CategoryChooserProps) {
 
   return (
     <>
-      <MuiButton
-        variant="contained"
+      <Button
+        size="compact"
+        variant="secondary"
         startIcon={<TuneIcon />}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -128,10 +129,9 @@ export function CategoryChooser({ clubId, catalogue }: CategoryChooserProps) {
           setAnchor(event.currentTarget)
           setOpen(true)
         }}
-        sx={{ minHeight: 44 }}
       >
         Choose Categories
-      </MuiButton>
+      </Button>
       {phone ? (
         <BottomSheet open={open} onOpen={() => setOpen(true)} onClose={close} ariaLabel="Choose Categories" closeLabel="Close">
           {open && <ChooserForm clubId={clubId} catalogue={catalogue} onDone={close} />}
