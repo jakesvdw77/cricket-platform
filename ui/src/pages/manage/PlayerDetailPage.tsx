@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
-import { useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Chip, Stack, Typography } from '@mui/material'
@@ -11,6 +11,9 @@ import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import { Button } from '../../components/Button'
+import { HeaderActions } from '../../components/HeaderShareButton'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PlayerActionsMenu } from '../../components/PlayerActionsMenu'
 import { badgeSx } from '../../components/RecordCard'
@@ -45,6 +48,7 @@ export default function PlayerDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const backLink = useBackLink('/manage/players', 'Back to Players')
   const { playerId } = useParams<{ playerId?: string }>()
+  const location = useLocation()
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
   const statusActions = usePlayerStatusActions(clubId)
   // docs/specs/088 section G: the games counts come from the list endpoint, and "this season" needs the season
@@ -153,7 +157,26 @@ export default function PlayerDetailPage() {
             </Stack>
           ) : undefined
         }
-        action={<PlayerActionsMenu player={player} trigger="button" onStatusAction={(action) => statusActions.requestAction(player, action)} />}
+        // docs/specs/141 (owner, 2026-11-04): View Stats is its own outlined button beside the Manage menu so it is not missed, as Share is
+        // on a result (the menu keeps its own View Stats item).
+        action={
+          <HeaderActions
+            beside={
+              <Button
+                component={RouterLink}
+                to={withReturnTo(`/manage/players/${player.id}/stats`, currentOrigin(location), 'Player')}
+                variant="secondary"
+                size="compact"
+                startIcon={<EqualizerOutlinedIcon />}
+                data-testid="player-view-stats"
+              >
+                View Stats
+              </Button>
+            }
+          >
+            <PlayerActionsMenu player={player} trigger="button" onStatusAction={(action) => statusActions.requestAction(player, action)} />
+          </HeaderActions>
+        }
       />
 
       {/* docs/specs/088: an unverified or rejected player shows a banner above the cards, with the same Status menu. */}
