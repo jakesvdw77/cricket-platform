@@ -72,6 +72,9 @@ export function LineSeriesChart({ labels, series, referenceValue, referenceLabel
     () => ({ shapes: Object.fromEntries(series.map((entry) => [entry.key, entry.marker])), texts: Object.fromEntries(series.map((entry) => [entry.key, entry.pointTexts])) }),
     [series],
   )
+  // docs/specs/141: with no value to draw (an average before the first dismissal) the scale has no maximum and invents one in the hundred thousands,
+  // whose tick label is cut off; give an empty chart a plain 0 to 10 scale.
+  const hasValues = series.some((entry) => entry.values.some((value) => value !== null && Number.isFinite(value)))
   const lineSx = Object.fromEntries(
     series.map((entry) => [`& .MuiLineElement-series-${entry.key}`, { strokeWidth: 2.5, strokeDasharray: entry.dashed ? '7 5' : 'none' }]),
   )
@@ -93,7 +96,7 @@ export function LineSeriesChart({ labels, series, referenceValue, referenceLabel
           connectNulls: false,
         }))}
         xAxis={[bandAxis(labels, { axisText: palette.axisText })]}
-        yAxis={[{ id: 'y', min: 0, tickLabelStyle: { fontSize: AXIS_FONT, fill: palette.axisText } }]}
+        yAxis={[{ id: 'y', min: 0, ...(hasValues ? {} : { max: 10 }), tickLabelStyle: { fontSize: AXIS_FONT, fill: palette.axisText } }]}
       >
         <ChartsGrid horizontal />
         <LinePlot skipAnimation={reduced} />

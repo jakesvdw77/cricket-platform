@@ -1,6 +1,7 @@
 import { LogoAvatar } from '../LogoAvatar'
 import { Box, Card as MuiCard, CardContent, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import { badgeSx } from '../RecordCard'
 import { cardTitleSx } from '../../theme'
 import { DetailLine } from '../DetailLine'
@@ -22,6 +23,8 @@ export interface PlayerCardProps {
   sectionNames: string[]
   // Already carries returnTo (the list adds it).
   viewTo: string
+  // docs/specs/141 (owner): View Stats is used often, so it stays a button on the card (it is also in the kebab); already carries returnTo.
+  statsTo: string
   // docs/specs/088: called when the manager picks a change in the Status menu; the caller does the work and the
   // confirmations (usePlayerStatusActions).
   onStatusAction: (action: PlayerStatusAction) => void
@@ -52,7 +55,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 // two games-played chips in the header's corner; five zebra rows (Number, Born, Phone, Bat, Bowl) that show "–" when
 // empty; and the same four footer columns, Status,
 // Edit, View and Stats (docs/specs/103). Nothing appears or disappears with the status; the Status button's menu offers only the valid changes.
-export function PlayerCard({ player, sectionNames, viewTo, onStatusAction }: PlayerCardProps) {
+export function PlayerCard({ player, sectionNames, viewTo, statsTo, onStatusAction }: PlayerCardProps) {
   const name = `${player.firstName} ${player.lastName}`
   const status = playerStatusOf(player)
   const badge = playerStatusBadge(status)
@@ -178,21 +181,25 @@ export function PlayerCard({ player, sectionNames, viewTo, onStatusAction }: Pla
         </Stack>
       </CardContent>
 
-      <PlayerStatusQuickAction status={status} onVerify={() => onStatusAction('verify')} />
+      <PlayerQuickActions status={status} statsTo={statsTo} onVerify={() => onStatusAction('verify')} />
     </MuiCard>
   )
 }
 
-// docs/specs/141: an unverified player's one frequent action stays one click away, as Announce Team does on a ready side. Every card keeps
-// the same height, so the other statuses reserve the row.
-function PlayerStatusQuickAction({ status, onVerify }: { status: string; onVerify: () => void }) {
+// docs/specs/141: the card's frequent actions sit in one row at the foot, lifted above the title's stretched link: View Stats always, and Verify Player first on an
+// unverified player (as Announce Team does on a ready side). The row is always there, so every card keeps the same height.
+function PlayerQuickActions({ status, statsTo, onVerify }: { status: string; statsTo: string; onVerify: () => void }) {
+  const navigate = useNavigate()
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', minHeight: 32, px: 2, pb: 1.5, position: 'relative' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, minHeight: 32, px: 2, pb: 1.5, position: 'relative' }}>
       {status === 'unverified' && (
         <Button size="compact" onClick={onVerify}>
           Verify Player
         </Button>
       )}
+      <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(statsTo)} data-testid="player-card-stats">
+        View Stats
+      </Button>
     </Box>
   )
 }

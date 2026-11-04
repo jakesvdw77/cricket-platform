@@ -359,6 +359,7 @@ export default function PlayerList() {
           players={visiblePlayers}
           sectionNamesFor={sectionNamesFor}
           viewTo={(player) => leaveTo(`/manage/players/${player.id}`)}
+          statsTo={(player) => leaveTo(`/manage/players/${player.id}/stats`)}
           toolbar={bar}
           empty={emptyState}
           renderActions={(player) => <PlayerActionsMenu player={player} onStatusAction={(action) => statusActions.requestAction(player, action)} />}
@@ -375,6 +376,7 @@ export default function PlayerList() {
               player={player}
               sectionNames={sectionNamesFor(player)}
               viewTo={leaveTo(`/manage/players/${player.id}`)}
+              statsTo={leaveTo(`/manage/players/${player.id}/stats`)}
               onStatusAction={(action) => statusActions.requestAction(player, action)}
             />
           ))}

@@ -1,9 +1,11 @@
 import { LogoAvatar } from '../LogoAvatar'
 import type { ReactNode } from 'react'
-import { Box, Chip, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Chip, IconButton, Link as MuiLink, Tooltip, Typography } from '@mui/material'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
+import { Button } from '../Button'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { badgeSx } from '../RecordCard'
 import { ToolbarCard } from '../ToolbarCard'
 import { playerAvatarSrc } from '../BrandIcon'
@@ -19,6 +21,8 @@ export interface PlayerTableProps {
   sectionNamesFor: (player: Player) => string[]
   viewTo: (player: Player) => string
   // docs/specs/141: the row's ONE kebab (the caller builds it, see PlayerActionsMenu).
+  // docs/specs/141 (owner): View Stats stays a button on the row (an icon on a phone); it is also in the kebab. Already carries returnTo.
+  statsTo?: (player: Player) => string
   renderActions?: (player: Player) => ReactNode
   // Given a toolbar the table is ONE card: the toolbar, a hairline, then the header and rows (or `empty`).
   toolbar?: ReactNode
@@ -33,8 +37,8 @@ const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'b
 // Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, kebab. A phone keeps Player (the
 // status badge moves under the name), Season, Phone and the button, in that order (see `phoneOrder`).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 104px 44px',
-  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px',
+  xs: 'minmax(0, 1fr) 54px 104px 44px 44px',
+  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 112px 44px',
 }
 
 const gridSx = {
@@ -83,13 +87,16 @@ function PlayerRow({
   player,
   sections,
   viewTo,
+  statsTo,
   actions,
 }: {
   player: Player
   sections: string[]
   viewTo: string
+  statsTo?: string
   actions?: ReactNode
 }) {
+  const navigate = useNavigate()
   const name = `${player.firstName} ${player.lastName}`
   const status = playerStatusOf(player)
   const badge = playerStatusBadge(status)
@@ -158,6 +165,22 @@ function PlayerRow({
       {/* Overall is a desktop column; a phone shows the phone number instead */}
       <Cell hiddenOnPhone sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesOverall}</Cell>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(3) }}>
+        {statsTo && (
+          <>
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(statsTo)} data-testid="player-row-stats">
+                View Stats
+              </Button>
+            </Box>
+            <Tooltip title="View Stats">
+              <IconButton aria-label={`View stats for ${name}`} size="small" onClick={() => navigate(statsTo)} sx={{ display: { xs: 'inline-flex', sm: 'none' }, color: 'primary.dark', width: 44, height: 44 }}>
+                <EqualizerOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+      </Box>
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(4) }}>
         {actions}
       </Box>
     </Box>
@@ -168,7 +191,7 @@ function PlayerRow({
 // bordered panel with a header row that sticks to the top of the scrolling page and zebra rows of equal height; the whole
 // row opens the player, and each row has the same Status button and menu as the card. A value that is not on file
 // shows "-"; a phone keeps only Player, Season, Phone and the Status button.
-export function PlayerTable({ players, sectionNamesFor, viewTo, renderActions, toolbar, empty }: PlayerTableProps) {
+export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, renderActions, toolbar, empty }: PlayerTableProps) {
   const table = (
     <Box role="table" aria-label="Players" sx={toolbar ? undefined : cardSx}>
       <Box
@@ -198,11 +221,12 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, renderActions, t
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bowl</Box>
         <Box role="columnheader" sx={{ ...phoneOrder(1), textAlign: 'right' }}>Season</Box>
         <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Overall</Box>
-        <Box role="columnheader" aria-label="Actions" sx={phoneOrder(3)} />
+        <Box role="columnheader" aria-label="Stats" sx={phoneOrder(3)} />
+        <Box role="columnheader" aria-label="Actions" sx={phoneOrder(4)} />
       </Box>
       <Box role="rowgroup">
         {players.map((player) => (
-          <PlayerRow key={player.id} player={player} sections={sectionNamesFor(player)} viewTo={viewTo(player)} actions={renderActions?.(player)} />
+          <PlayerRow key={player.id} player={player} sections={sectionNamesFor(player)} viewTo={viewTo(player)} statsTo={statsTo?.(player)} actions={renderActions?.(player)} />
         ))}
       </Box>
     </Box>
