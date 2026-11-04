@@ -35,6 +35,8 @@ export interface DashboardCardProps {
   children?: ReactNode
   // a short direction label above the chart ("Lower is better")
   note?: string
+  // docs/specs/141 (owner, 2026-11-04): the card's own controls (a measure switch) sit in the header, left of View As Table, not under the chart.
+  headerAction?: ReactNode
   legend?: ReactNode
   // text under the chart (the server's trend sentence)
   footer?: ReactNode
@@ -82,6 +84,7 @@ export function DashboardCard({
   description,
   children,
   note,
+  headerAction,
   legend,
   footer,
   coverage,
@@ -213,6 +216,8 @@ export function DashboardCard({
             </Typography>
           )}
         </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 'none', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {hasData && headerAction}
         {hasData && table && (
           <MuiButton
             variant={showTable ? 'contained' : 'outlined'}
@@ -226,6 +231,7 @@ export function DashboardCard({
             View As Table
           </MuiButton>
         )}
+        </Box>
       </Box>
       {body}
       {hasData && description && (

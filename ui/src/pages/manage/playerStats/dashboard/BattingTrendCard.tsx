@@ -66,8 +66,7 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
         })),
       }}
       note={mode === 'average' ? 'Running average (runs per dismissal)' : 'Cumulative runs'}
-      legend={
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      headerAction={
           <Box>
             <CompactToggleGroup<Mode> value={mode} onChange={setMode} ariaLabel="Batting trend measure">
               <ToggleButton value="average" aria-label="Average">
@@ -78,6 +77,9 @@ export function BattingTrendCard({ data, backTo, dimmed }: PlayerCardProps) {
               </ToggleButton>
             </CompactToggleGroup>
           </Box>
+      }
+      legend={
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <ChartLegend
             label="Batting trend"
             items={[
