@@ -1,4 +1,5 @@
-import { Box, Tooltip, Typography } from '@mui/material'
+import { Box, IconButton, Tooltip, Typography } from '@mui/material'
+import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { CHROME } from '../../brandTokens'
 import { displayLabelSx } from '../../theme'
@@ -18,13 +19,15 @@ export interface SideMenuProps {
   look?: 'classic' | 'quiet'
   // The quiet look's faint ghost tile behind each icon (cream at 6%, no ring). Off draws the artwork bare.
   ghost?: boolean
+  // docs/specs/139: shows a collapse / expand control at the top of the menu (from lg, where the full menu fits). Omitted, no control.
+  onToggleCollapsed?: () => void
 }
 
 // docs/specs/079-manager-shell-and-overview.md: the manager's persistent menu, grouped, with the
 // active row (by route prefix, see managerNav) marked. docs/specs/120: the platform chrome, dark green for every club, labels in
 // the display face, the active row gold text on a gold tint (and bold, with aria-current, so it is never colour alone), brand
 // icons on a cream tile.
-export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label': ariaLabel = 'Manager', look = 'quiet', ghost = true }: SideMenuProps) {
+export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label': ariaLabel = 'Manager', look = 'quiet', ghost = true, onToggleCollapsed }: SideMenuProps) {
   const { pathname } = useLocation()
   const activeId = activeNavId(groups, pathname)
 
@@ -46,6 +49,19 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
         gap: 0.25,
       }}
     >
+      {onToggleCollapsed && (
+        <Tooltip title={collapsed ? 'Expand menu' : 'Collapse menu'} placement="right">
+          <IconButton
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-expanded={!collapsed}
+            size="small"
+            sx={{ alignSelf: collapsed ? 'center' : 'flex-end', color: 'chrome.inactiveText', minWidth: 44, minHeight: 44, '&:hover': { bgcolor: 'chrome.hover', color: 'chrome.text' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text' } }}
+          >
+            {collapsed ? <MenuOpenIcon sx={{ transform: 'scaleX(-1)' }} /> : <MenuOpenIcon />}
+          </IconButton>
+        </Tooltip>
+      )}
       {groups.map((group, index) => (
         <Box key={group.label ?? `group-${index}`} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           {group.label &&

@@ -45,3 +45,8 @@ export const SideBySide: Story = {
     </div>
   ),
 }
+
+// docs/specs/139: the collapse control at the top (from lg), open by default and collapsed to the icon rail.
+export const WithCollapseControl: Story = { args: { groups: MANAGER_NAV, onToggleCollapsed: () => undefined } }
+
+export const CollapsedWithControl: Story = { args: { groups: MANAGER_NAV, collapsed: true, onToggleCollapsed: () => undefined } }

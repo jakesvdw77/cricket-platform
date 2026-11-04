@@ -7,6 +7,7 @@ import { MenuSheet } from '../MenuSheet'
 import { ShellHeader } from '../ShellHeader'
 import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { SideMenu } from '../SideMenu'
+import { useSideMenuCollapsed } from '../../hooks/useSideMenuCollapsed'
 import { MANAGER_NAV, managerTabs } from './managerNav'
 import { pageBackgroundGradient } from '../../theme'
 
@@ -36,6 +37,8 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
   const theme = useTheme()
   const showSide = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const fullSide = useMediaQuery(theme.breakpoints.up('lg'), { noSsr: true })
+  // docs/specs/139: from lg the user can collapse the menu to the icon rail (open by default); from md to lg it is a rail anyway.
+  const [userCollapsed, toggleCollapsed] = useSideMenuCollapsed()
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -52,7 +55,7 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
       />
 
       <Box sx={{ flex: 1, display: 'flex', minWidth: 0 }}>
-        {showSide && <SideMenu groups={MANAGER_NAV} collapsed={!fullSide} badges={badges} />}
+        {showSide && <SideMenu groups={MANAGER_NAV} collapsed={!fullSide || userCollapsed} badges={badges} onToggleCollapsed={fullSide ? toggleCollapsed : undefined} />}
         <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 }, backgroundImage: pageBackgroundGradient }}>
           {children}
         </Box>
