@@ -4,6 +4,20 @@ The one place where the owner's decisions about how every manager page is laid o
 
 Status of each rule: **Decided** (owner said so, apply it), **Proposed** (my suggestion, not yet confirmed, ask once), **Open** (needs a decision).
 
+## 0. Build checklist (run it BEFORE showing the owner any page; Decided 2026-11-04)
+Every point below was a correction the owner had to send by hand. If any answer is "no", fix it first.
+1. **Order:** title row, figure cards, tabs, ONE flat toolbar fused with the data. No filter, label or sentence between the title and its figures (an explanation is a counter's info icon).
+2. **Title row:** shared `ManageScreenHeader`; Back alone above it; ONE filled button (list: "Add New X" / "Create New X", detail: "Manage X"), plus at most one outlined button beside it (Share, View Stats). Status badge beside the name. Sub-header is plain text, never pills.
+3. **Figures:** static or filtering `PageCounters` (compact), no icon tiles, no count text anywhere ("Showing N").
+4. **Toolbar:** filters, search, toggle chips, Sort, then Cards | List last.
+5. **Records:** flat cards (no footer bar), ONE kebab per card and row, no chevron, a dashed Add card only when there is a card, at most three cards a row; names are links with `returnTo`.
+6. **Buttons and switches:** the shared compact `Button` (32 px, Title Case) and `CompactToggleGroup`; never a raw MUI `Button`, never `fullWidth` on a desktop. `src/standards/pageAnatomyGuard.test.ts` fails the build on a new offender.
+7. **Wording:** Title Case for labels, owner's wording for the record ("Add New Player", "Capture New Result"), no em dashes.
+8. **Wide screens:** content fills the width (three columns from `lg` on a detail page), nothing needs scrolling on a large display.
+9. **Empty and filtered states:** one underlined link only when nothing exists; "Clear Filters" as a link when filtered out.
+10. **Back restores the view:** filters, tab and sort in the address; Save and Cancel go through `returnTo`.
+When a page needs something this list does not cover, ask once and add it here before building.
+
 ## 1. Page skeleton (top to bottom)
 1. **Top row.** Back alone on the left, quiet. **Decided 2026-10-30.**
 2. **Title row.** Logo or avatar if the record has one, the title, the format/status badges inline, then the **Season pill beside the title** on the left (every season-scoped page, lists and detail pages alike). **Edit pages are the exception (Decided 2026-10-31): there the Season pill is right-aligned at the right end of the title row, where page actions sit** (`RecordFormScreen` `headerAction`); the league VIEW page keeps the pill beside the title. **The page-level actions sit on this same row, right-aligned: ONE filled "Manage <thing>" menu button (section 8; the old separate Actions menu is gone), or on list pages the filled Add X.** They wrap under the title on a narrow screen and take the full width on a phone. Nothing else is on the title row's right. **Decided 2026-10-30** (the list pages already work this way; the detail pages move over as they are reviewed). Contacts and links sit directly under the title as inline items (icon then text), never on a row of their own. **Decided.**
