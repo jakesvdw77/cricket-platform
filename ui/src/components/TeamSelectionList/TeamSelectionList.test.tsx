@@ -63,6 +63,18 @@ describe('TeamSelectionList', () => {
     expect(screen.getByText('No players selected yet.')).toBeInTheDocument()
   })
 
+  it('offers a "Select Players" link in the empty state when the page gives one (137)', async () => {
+    const onSelectPlayers = vi.fn()
+    setup({ players: [], onSelectPlayers })
+    await userEvent.click(screen.getByRole('button', { name: 'Select Players' }))
+    expect(onSelectPlayers).toHaveBeenCalledTimes(1)
+  })
+
+  it('has no such link without it', () => {
+    setup({ players: [] })
+    expect(screen.queryByRole('button', { name: 'Select Players' })).not.toBeInTheDocument()
+  })
+
   it('draws the holding area (with a count) only when someone has no position, after the numbered places', () => {
     setup({ players: [player('a', 'Ann Ash', 1), player('w', 'Wes Willow', null)] })
     const holding = screen.getByTestId('holding-area')

@@ -1,45 +1,45 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 import type { ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, Button as MuiButton, Stack, ToggleButton, Tooltip, Typography } from '@mui/material'
+import { Alert, Box, Chip, Menu, MenuItem, Stack, Link as MuiLink, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import IosShareOutlinedIcon from '@mui/icons-material/IosShareOutlined'
-import PanToolOutlinedIcon from '@mui/icons-material/PanToolOutlined'
-import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
-import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
-import { Button, compactButtonSx } from '../../../components/Button'
 import { CompactToggleGroup } from '../../../components/CompactToggleGroup'
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
+import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { EmptyState } from '../../../components/EmptyState'
-import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
+import { CardForecastStrip } from '../../../components/CardForecastStrip'
 import { KeyFigureTile } from '../../../components/KeyFigureTile'
-import { PageHeaderBand } from '../../../components/PageHeaderBand'
+import { ManageMenu } from '../../../components/ManageMenu'
+import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { badgeSx } from '../../../components/RecordCard'
 import { TeamSelectionList } from '../../../components/TeamSelectionList'
 import { getMatch } from '../../../api/matchApi'
 import type { Match } from '../../../api/matchApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
-import { listSeasons } from '../../../api/seasonApi'
 import { listLeagues } from '../../../api/leagueApi'
 import { listMatchSides } from '../../../api/matchSideApi'
 import type { MatchSide } from '../../../api/matchSideApi'
 import { listPolls } from '../../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../../api/matchSquadApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
+import { useMatchLocationItems } from '../../../hooks/useMatchLocationItems'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { matchPollsFrom, pollDestination } from '../matches/matchCardHelpers'
 import type { MatchSquadCoverage, PollDestination } from '../matches/matchCardHelpers'
 import { TeamLogo } from '../matches/TeamLogo'
 import { logoFor } from '../matches/teamLogoHelpers'
 import { useAvailabilityNavigation } from '../matches/useAvailabilityNavigation'
+import { AvailablePlayersSection } from './AvailablePlayersSection'
 import { RolePickerTile } from './RolePickerTile'
 import { SelectTeamDialogs } from './SelectTeamDialogs'
 import { sideDisplayName, sideStatus } from './matchSideHelpers'
-import { STATUS_LABELS } from './selectionStatus'
+import { STATUS_LABELS, STATUS_TONES } from './selectionStatus'
+import { sideMenuItems } from './sideMenuItems'
 import { selectTeamPath } from './selectionLinks'
 import { useMatchSidePanel } from './useMatchSidePanel'
 import { useShareAnnouncedSide } from './useShareAnnouncedSide'
@@ -108,11 +108,6 @@ export default function SelectTeamPage() {
     queryFn: () => listLeagues(clubId as string),
     enabled: Boolean(clubId),
   })
-  const seasonsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'seasons'],
-    queryFn: () => listSeasons(clubId as string),
-    enabled: Boolean(clubId),
-  })
   const sidesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'],
     queryFn: () => listMatchSides(clubId as string, matchId as string),
@@ -148,7 +143,6 @@ export default function SelectTeamPage() {
   const teamId = (wantAway ? (match.awayTeamId ?? match.homeTeamId) : (match.homeTeamId ?? match.awayTeamId)) as string
   const sideLabel: SideLabel = teamId === match.awayTeamId && (wantAway || !match.homeTeamId) ? 'Away' : 'Home'
   const leagueName = match.leagueId ? ((leaguesQuery.data ?? []).find((league) => league.id === match.leagueId)?.name ?? null) : null
-  const season = (seasonsQuery.data ?? []).find((candidate) => candidate.id === match.seasonId)
 
   return (
     <SelectTeamContent
@@ -160,7 +154,7 @@ export default function SelectTeamPage() {
       sides={sides}
       teamsById={teamsById}
       leagueName={leagueName}
-      seasonName={season?.label ?? null}
+      leagueFormat={match.leagueId ? ((leaguesQuery.data ?? []).find((league) => league.id === match.leagueId)?.format ?? null) : null}
     />
   )
 }
@@ -173,11 +167,12 @@ interface ContentProps {
   sides: MatchSide[]
   teamsById: Map<string, Team>
   leagueName: string | null
-  seasonName: string | null
+  leagueFormat: string | null
 }
 
-function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById, leagueName, seasonName }: ContentProps) {
+function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById, leagueName, leagueFormat }: ContentProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const homeName = sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayName = sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)
   const teamName = sideLabel === 'Home' ? homeName : awayName
@@ -226,140 +221,73 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
   const rolePlayers = (side?.players ?? [])
     .filter((player) => player.playerProfileId !== side?.twelfthManPlayerId)
     .map((player) => ({ playerId: player.playerProfileId, name: panel.nameOf(player.playerProfileId) }))
-  const blockedReasonId = side ? `announce-blocked-${side.id}` : undefined
-  const subtitle = [formatMatchDateTime(match.matchDate), leagueName].filter(Boolean).join(' · ')
+
+  const manageAnchor = useRef<HTMLDivElement>(null)
+  const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
+  const location_ = useMatchLocationItems(clubId, match, { title, leagueFormat })
+  // docs/specs/137: ONE Manage Team menu, built by the same function as the Matches row kebab so they cannot drift.
+  const manageItems = sideMenuItems({
+    // The page decides readiness itself (panel.blockedReason), as it always did; the list views use the overview's status.
+    side: { status: side && !panel.blockedReason ? 'READY_TO_ANNOUNCE' : status, announced: Boolean(side?.announced), sideId: side?.id ?? null },
+    selectTo: undefined,
+    onSelectPlayers: panel.dialog.openDialog,
+    selectDisabled: !side,
+    // The availability menu (when several polls cover the match) opens under the Manage Team button.
+    onAvailability: () => openAvailability({ currentTarget: manageAnchor.current } as unknown as MouseEvent<HTMLElement>),
+    availabilityDisabled: !pollsReady,
+    onAnnounce: () => panel.setConfirmAnnounce(true),
+    announcing: panel.announcing,
+    announceBlockedReason: panel.blockedReason ?? undefined,
+    onUnannounce: panel.unannounce,
+    onShare: () => shareSide.share(match.id, sideLabel === 'Home'),
+    sharing: shareSide.loadingMatchId === match.id,
+    locationItems: location_.items,
+  })
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
-      <PageHeaderBand>
-        <Stack spacing={2}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
-            <MuiButton
-              component={RouterLink}
-              to={HUB_PATH}
-              variant="text"
-              color="inherit"
-              size="small"
-              startIcon={<ArrowBackIcon fontSize="small" />}
-              sx={{ ...compactButtonSx, ml: -1, color: 'text.secondary' }}
-            >
-              Back to Team selection
-            </MuiButton>
-            {/* The season of the match (the page is about one match, so it is shown, not changed). */}
-            {seasonName && (
-              <HeaderSeasonSelect
-                seasons={[{ id: match.seasonId, name: seasonName }]}
-                value={match.seasonId}
-                onChange={() => undefined}
-                showAll={false}
-              />
-            )}
-          </Box>
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 }, flex: '1 1 320px', minWidth: 0 }}>
-              {(logos[0].src || logos[1].src) && (
-                <Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
-                  {logos[0].src && <TeamLogo logo={logos[0]} testId="select-logo-home" />}
-                  {logos[1].src && <TeamLogo logo={logos[1]} testId="select-logo-away" />}
-                </Box>
-              )}
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  variant="h5"
-                  component="h1"
-                  fontWeight={700}
-                  sx={{ lineHeight: 1.2, overflowWrap: 'anywhere' }}
-                >
-                  {title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" data-testid="select-subtitle">
-                  {subtitle}
-                </Typography>
+      <ManageScreenHeader
+        title={title}
+        backTo={HUB_PATH}
+        backLabel="Back to Team Selection"
+        // docs/specs/137: the logos and the Announced badge sit beside the title; the page is about one match, so there is no Season pill.
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {(logos[0].src || logos[1].src) && (
+              <Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
+                {logos[0].src && <TeamLogo logo={logos[0]} testId="select-logo-home" />}
+                {logos[1].src && <TeamLogo logo={logos[1]} testId="select-logo-away" />}
               </Box>
-            </Box>
-
-            {/* The one action group: Availability, Announce team and Share team (outlined), Select players (filled). */}
-            <Box
-              data-testid="select-actions"
-              sx={{
-                display: 'grid',
-                gap: 1,
-                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, auto)' },
-                width: { xs: '100%', md: 'auto' },
-                justifyContent: { md: 'end' },
-              }}
-            >
-              <MuiButton
-                variant="outlined"
-                disabled={!pollsReady}
-                onClick={openAvailability}
-                startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-                sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0 }}
-              >
-                Availability
-              </MuiButton>
-              {side?.announced ? (
-                <MuiButton
-                  variant="outlined"
-                  onClick={panel.unannounce}
-                  disabled={panel.announcing}
-                  sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0 }}
-                >
-                  {panel.unannouncePending ? 'Un-announcing…' : 'Un-announce'}
-                </MuiButton>
-              ) : (
-                <Tooltip
-                  title={panel.blockedReason ?? ''}
-                  disableHoverListener={!panel.blockedReason}
-                  disableFocusListener={!panel.blockedReason}
-                >
-                  <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
-                    <MuiButton
-                      variant="outlined"
-                      onClick={() => panel.setConfirmAnnounce(true)}
-                      disabled={!side || Boolean(panel.blockedReason) || panel.announcing}
-                      aria-describedby={panel.blockedReason ? blockedReasonId : undefined}
-                      sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0, flex: 1 }}
-                    >
-                      {panel.announcePending ? 'Announcing…' : 'Announce team'}
-                    </MuiButton>
-                  </Box>
-                </Tooltip>
-              )}
-              <Tooltip title={side?.announced ? '' : 'Announce the team to share it'}>
-                <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
-                  <MuiButton
-                    variant="outlined"
-                    onClick={() => shareSide.share(match.id, sideLabel === 'Home')}
-                    disabled={!side?.announced || shareSide.loadingMatchId === match.id}
-                    startIcon={<IosShareOutlinedIcon fontSize="small" />}
-                    sx={{ ...compactButtonSx, justifyContent: 'center', minWidth: 0, flex: 1 }}
-                  >
-                    Share team
-                  </MuiButton>
-                </Box>
-              </Tooltip>
-              <Button
-                size="compact"
-                startIcon={<GroupsOutlinedIcon fontSize="small" />}
-                onClick={panel.dialog.openDialog}
-                disabled={!side}
-                sx={{ justifyContent: 'center' }}
-              >
-                Select players
-              </Button>
-            </Box>
+            )}
+            <Chip size="small" label={side?.announced ? STATUS_LABELS.ANNOUNCED : 'Not Announced'} variant="filled" sx={badgeSx(side?.announced ? STATUS_TONES.ANNOUNCED : 'neutral')} />
           </Box>
-          {availabilityMenu}
-          {panel.blockedReason && !side?.announced && (
-            <Typography id={blockedReasonId} variant="caption" color="text.secondary" sx={{ textAlign: { md: 'right' } }}>
-              {panel.blockedReason}
+        }
+        subtitle={
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600} color="text.primary" component="span" data-testid="select-subtitle">
+              {formatMatchDateTime(match.matchDate)}
+              {leagueName && match.leagueId ? (
+                <>
+                  {' · '}
+                  <MuiLink component={RouterLink} to={withReturnTo(`/manage/fixtures/leagues/${match.leagueId}`, currentOrigin(location), 'Team Selection')} color="inherit" underline="hover">
+                    {leagueName}
+                  </MuiLink>
+                </>
+              ) : null}
+              {/* docs/specs/137 (owner, 2026-11-05): the venue is simply part of the one sub-header line, no directions button here. */}
+              {(match.playingAreaName ?? match.venue) ? ` · ${match.playingAreaName ?? match.venue}` : null}
             </Typography>
-          )}
-          {panel.announceError && <Alert severity="error">{panel.announceError}</Alert>}
-        </Stack>
-      </PageHeaderBand>
+          </Box>
+        }
+        action={
+          <Box ref={manageAnchor}>
+            <ManageMenu label="Manage Team" fixedWidth testId="manage-team" groups={[{ id: 'team', heading: 'Team', items: manageItems }]} />
+          </Box>
+        }
+      />
+      {availabilityMenu}
+      {location_.dialogs}
+      {panel.announceError && <Alert severity="error">{panel.announceError}</Alert>}
 
       {hasBothSides && (
         <CompactToggleGroup<SideLabel>
@@ -379,17 +307,17 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
 
       <Box
         data-testid="select-strip"
-        sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
+        sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
       >
         <KeyFigureTile
           testId="select-selected"
-          icon={<GroupsOutlinedIcon fontSize="small" />}
+          counter
           value={limits ? `${panel.selectedCount} of ${limits.maxSelected}` : '–'}
           label="Selected"
         />
         <RolePickerTile
           testId="select-captain"
-          icon={<StarBorderOutlinedIcon fontSize="small" />}
+          counter
           label="Captain"
           currentId={side?.captainPlayerId ?? null}
           currentName={nameOfCaptain}
@@ -399,7 +327,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
         />
         <RolePickerTile
           testId="select-keeper"
-          icon={<PanToolOutlinedIcon fontSize="small" />}
+          counter
           label="Wicketkeeper"
           currentId={side?.wicketKeeperPlayerId ?? null}
           currentName={nameOfKeeper}
@@ -407,14 +335,50 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
           disabled={!side || panel.writing}
           onChange={panel.onSetWicketKeeper}
         />
+        {/* docs/specs/137 (owner, 2026-11-05): the Status figure is a picker like Captain and Wicketkeeper: a click offers Announce Team, or
+            Un-announce Team once announced, with the reason when it cannot be announced yet. */}
         <KeyFigureTile
           testId="select-status"
-          icon={<TaskAltOutlinedIcon fontSize="small" />}
+          counter
           value={STATUS_LABELS[status]}
           label="Status"
           tone={status === 'NOT_STARTED' ? 'warning' : 'neutral'}
           textValue
+          onClick={(event) => setStatusAnchor(event.currentTarget)}
+          ariaLabel={`Status: ${STATUS_LABELS[status]}, change`}
+          expanded={Boolean(statusAnchor)}
+          disabled={!side}
         />
+        <Menu anchorEl={statusAnchor} open={Boolean(statusAnchor)} onClose={() => setStatusAnchor(null)} MenuListProps={{ 'aria-label': 'Status' }}>
+          {manageItems
+            .filter((item) => item.id === 'announce' || item.id === 'unannounce')
+            .map((item) => (
+              <MenuItem
+                key={item.id}
+                disabled={item.disabled}
+                onClick={() => {
+                  setStatusAnchor(null)
+                  item.onClick?.()
+                }}
+                sx={{ minHeight: 44, display: 'block' }}
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  {item.title}
+                </Typography>
+                {item.disabled && item.reason && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'normal', maxWidth: 280 }}>
+                    {item.reason}
+                  </Typography>
+                )}
+              </MenuItem>
+            ))}
+        </Menu>
+      </Box>
+
+      {/* docs/specs/137: the forecast (within the forecast window) and the Team Manager (a placeholder until a team can have one) as strip cards. */}
+      <Box sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+        <CardForecastStrip testId="select-weather" weather={location_.weather} matchDate={match.matchDate} />
+        <CardTimeStrip testId="select-manager" icon={<PersonOutlineOutlinedIcon fontSize="small" />} label="Team Manager" value={<Box component="span" sx={{ color: 'text.secondary' }}>–</Box>} />
       </Box>
 
       {panel.settingUp || !side || !limits ? (
@@ -463,9 +427,6 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" color="text.secondary">
-                Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
-              </Typography>
               <TeamSelectionList
                 players={panel.listPlayers}
                 captainPlayerId={side.captainPlayerId}
@@ -479,7 +440,24 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                 onMakeTwelfthMan={panel.onMakeTwelfthMan}
                 onChangeRole={panel.onChangeRole}
                 onRemove={panel.onRemove}
+                onSelectPlayers={panel.dialog.openDialog}
               />
+              {/* The hint sits under the list (owner, 2026-11-05). */}
+              <Typography variant="body2" color="text.secondary">
+                Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
+              </Typography>
+              {panel.pool && (
+                <AvailablePlayersSection
+                  entries={panel.pool.entries}
+                  selectedCount={panel.selectedCount}
+                  maxSelected={limits.maxSelected}
+                  onSelectOtherPlayer={panel.dialog.openDialogOnWholeSection}
+                  onCreatePlayer={panel.addPlayer.openDialog}
+                  onAddPlayer={panel.addAvailablePlayer}
+                  addingId={panel.addingId}
+                  addError={panel.addError}
+                />
+              )}
             </>
           )}
         </Stack>

@@ -23,6 +23,7 @@ import { dateHeading, groupGames, kickoffText, nextGameDayMarker, orderedGames, 
 import { CellMark } from '../playerAvailability/CellMark'
 import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from '../playerAvailability/slotNavigation'
 import type { SlotAttrs } from '../playerAvailability/slotNavigation'
+import { PlayerNameLink } from '../playerAvailability/PlayerNameLink'
 import { reasonText } from './pickReasons'
 import { selectTeamPath } from './selectionLinks'
 import type { PickTarget } from './usePlayerPick'
@@ -276,9 +277,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now, onScrollBox
               }}
             >
               <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 }}>
-                <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
-                  {playerName(player)}
-                </Typography>
+                <PlayerNameLink playerId={player.playerId} name={playerName(player)} originLabel="Team Selection" />
               </TableCell>
               {columns.map((match) => (
                 <TableCell key={match.matchId} align="center" sx={{ px: 0.5, py: 0.25 }}>

@@ -26,7 +26,7 @@ vi.mock('../../../api/matchSideApi', () => ({
   removeMatchSidePlayer: (...args: unknown[]) => removeMatchSidePlayer(...args),
 }))
 
-const lastParams = () => get.mock.lastCall?.[1].params
+const lastParams = () => get.mock.calls.filter((call) => String(call[0]).endsWith('/team-selection')).at(-1)?.[1].params
 
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -174,7 +174,7 @@ describe('PlayersView', () => {
     renderView()
     await screen.findByTestId('cell-ann-m-1-team-1')
     expect(lastParams()).toEqual({ seasonId: 's-now' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /view entire season/i }))
+    await userEvent.click(screen.getByRole('button', { name: /view entire season/i }))
     await waitFor(() => expect(lastParams()).toEqual({ seasonId: 's-now', includePast: true }))
     await userEvent.type(screen.getByPlaceholderText('Search players'), 'bak')
     expect(screen.queryByTestId('cell-ann-m-1-team-1')).not.toBeInTheDocument()

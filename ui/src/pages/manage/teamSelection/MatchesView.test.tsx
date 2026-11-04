@@ -22,7 +22,8 @@ const getTeamSelection = {
   mockResolvedValue: (value: unknown) => get.mockResolvedValue({ data: value }),
   mockRejectedValue: (error: unknown) => get.mockRejectedValue(error),
 }
-const lastParams = () => get.mock.lastCall?.[1].params
+// The overview request only: a card also reads its match for directions and the forecast (docs/specs/137).
+const lastParams = () => get.mock.calls.filter((call) => String(call[0]).endsWith('/team-selection')).at(-1)?.[1].params
 vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await import('./teamSelectionShareMock')).useFakeTeamSheetShare }))
 const announceMatchSide = vi.fn()
 const updateMatchSide = vi.fn()
@@ -51,6 +52,7 @@ function renderView() {
 const rows = () => screen.queryAllByTestId('selection-row')
 
 beforeEach(() => {
+  localStorage.removeItem('teamSelection:matchesView')
   localStorage.clear()
   getTeamSelection.mockReset()
   getTeamSelection.mockResolvedValue(makeOverview(sampleMatches()))
@@ -66,8 +68,8 @@ describe('MatchesView', () => {
     )
     renderView()
     await screen.findAllByTestId('selection-row')
-    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1)
-    await userEvent.click(screen.getByRole('button', { name: 'Share' }))
+    await userEvent.click(within(rows()[3]).getByRole('button', { name: /^Actions for/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /^Share Team/ }))
     const dialog = await screen.findByTestId('share-dialog')
     expect(dialog).toHaveAttribute('data-match-id', overview.matches[3].matchId)
     expect(dialog).toHaveAttribute('data-scope', 'home')
@@ -76,7 +78,7 @@ describe('MatchesView', () => {
   it('shows the counters with the figures of the overview', async () => {
     renderView()
     await screen.findAllByTestId('selection-row')
-    for (const [name, value] of [['Upcoming matches', '4'], ['Not started', '1'], ['In progress', '1'], ['Ready to announce', '1'], ['Announced', '1']]) {
+    for (const [name, value] of [['Upcoming Matches', '4'], ['Not Started', '1'], ['In Progress', '1'], ['Ready To Announce', '1'], ['Announced', '1']]) {
       expect(screen.getByRole('button', { name: new RegExp(name) })).toHaveTextContent(value)
     }
   })
@@ -84,7 +86,7 @@ describe('MatchesView', () => {
   it('filters the table to a counter and each counter equals its filter', async () => {
     renderView()
     await screen.findAllByTestId('selection-row')
-    for (const [name, label] of [['Not started', 'Not started'], ['In progress', 'In progress'], ['Ready to announce', 'Ready to announce'], ['Announced', 'Announced']]) {
+    for (const [name, label] of [['Not Started', 'Not Started'], ['In Progress', 'In Progress'], ['Ready To Announce', 'Ready To Announce'], ['Announced', 'Announced']]) {
       const counter = screen.getByRole('button', { name: new RegExp(name) })
       const figure = Number(within(counter).getByText(/^\d+$/).textContent)
       await userEvent.click(counter)
@@ -97,13 +99,13 @@ describe('MatchesView', () => {
   it('turns the filter off when the active counter is chosen again, and the first counter clears it', async () => {
     renderView()
     await screen.findAllByTestId('selection-row')
-    const notStarted = screen.getByRole('button', { name: /Not started/ })
+    const notStarted = screen.getByRole('button', { name: /Not Started/ })
     await userEvent.click(notStarted)
     expect(rows()).toHaveLength(1)
     await userEvent.click(notStarted)
     expect(rows()).toHaveLength(4)
     await userEvent.click(notStarted)
-    await userEvent.click(screen.getByRole('button', { name: /Upcoming matches/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Upcoming Matches/ }))
     expect(rows()).toHaveLength(4)
   })
 
@@ -112,10 +114,10 @@ describe('MatchesView', () => {
     await screen.findAllByTestId('selection-row')
     expect(lastParams()).toEqual(expect.not.objectContaining({ includePast: true }))
     getTeamSelection.mockResolvedValue(makeOverview([...sampleMatches(), makeMatch({ matchId: 'old', upcoming: false, matchDate: '2026-09-01T10:00:00' }, 'ANNOUNCED')]))
-    await userEvent.click(screen.getAllByRole('checkbox', { name: 'View entire season' })[0])
+    await userEvent.click(screen.getAllByRole('button', { name: 'View Entire Season' })[0])
     await waitFor(() => expect(lastParams()).toEqual(expect.objectContaining({ includePast: true })))
     await waitFor(() => expect(rows()).toHaveLength(5))
-    expect(screen.getByRole('button', { name: /Matches shown/ })).toHaveTextContent('5')
+    expect(screen.getByRole('button', { name: /Matches Shown/ })).toHaveTextContent('5')
   })
 
   it('shows an empty state when there are no matches', async () => {
@@ -124,11 +126,41 @@ describe('MatchesView', () => {
     expect(await screen.findByText('No upcoming matches')).toBeInTheDocument()
   })
 
+  it('offers "Create New Match" in the empty state when nothing exists, (137)', async () => {
+    getTeamSelection.mockResolvedValue(makeOverview([]))
+    renderView()
+    expect(await screen.findByRole('button', { name: 'Create New Match' })).toBeInTheDocument()
+  })
+
+  it('switches to Cards: one flat card per side with its own kebab, a quick Announce Team on the ready side, no table (137)', async () => {
+    renderView()
+    await screen.findAllByTestId('selection-row')
+    await userEvent.click(screen.getByRole('button', { name: 'Cards' }))
+    const cards = await screen.findAllByTestId(/^selection-card-m-/)
+    expect(cards).toHaveLength(4)
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    for (const card of cards) {
+      expect(within(card).getAllByRole('button', { name: /^Actions for/ })).toHaveLength(1)
+    }
+    expect(screen.getAllByRole('button', { name: 'Announce Team' })).toHaveLength(1)
+    // The view is remembered for next time.
+    expect(localStorage.getItem('teamSelection:matchesView')).toBe('cards')
+    await userEvent.click(screen.getByRole('button', { name: 'List' }))
+    expect(await screen.findAllByTestId('selection-row')).toHaveLength(4)
+  })
+
+  it('keeps View Entire Season in the address, so a tab link carries it', async () => {
+    renderView()
+    await screen.findAllByTestId('selection-row')
+    await userEvent.click(screen.getAllByRole('button', { name: 'View Entire Season' })[0])
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Players' }).getAttribute('href')).toContain('past=1'))
+  })
+
   it('announces a ready side after confirming', async () => {
     announceMatchSide.mockResolvedValue({})
     renderView()
     await screen.findAllByTestId('selection-row')
-    await userEvent.click(screen.getByRole('button', { name: 'Announce' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Announce Team' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('No captain selected.')).toBeInTheDocument()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Announce anyway' }))
@@ -149,7 +181,7 @@ describe('MatchesView', () => {
     announceMatchSide.mockResolvedValue({})
     renderView()
     await screen.findAllByTestId('selection-row')
-    await userEvent.click(screen.getByRole('button', { name: 'Announce' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Announce Team' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
     await userEvent.click(within(dialog).getByRole('combobox', { name: 'Captain' }))

@@ -26,10 +26,12 @@ export const pollCardGridSx = {
   gridTemplateColumns: POLL_CARD_GRID_TEMPLATE_COLUMNS,
 } as const
 
-// docs/standards/page-anatomy.md section 6: an opt-in grid that fills the row. auto-fit with a 340px floor stretches the tracks (and so the
+// docs/standards/page-anatomy.md section 6: the grid of every Cards view. auto-fit with a 340px floor stretches the tracks (and so the
 // cards) to share the width with no empty slot at the right; each card is capped at 560px (left aligned) so one or two cards never become
-// giant bars; the min() keeps a phone to one column. Used by the Leagues list first.
-export const DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS = 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))'
+// giant bars; the min() keeps a phone to one column. The three-card rule (owner, 2026-11-05, as spec 082 had for polls): never more than
+// THREE columns however wide the screen, because the column minimum is also one third of the row after the two 16px gaps, so a fourth
+// column can never fit. The dashed Add card counts as a card.
+export const DYNAMIC_CARD_GRID_TEMPLATE_COLUMNS = 'repeat(auto-fit, minmax(max(min(340px, 100%), calc((100% - 32px) / 3)), 1fr))'
 export const DYNAMIC_CARD_MAX_WIDTH = 560
 
 export const dynamicCardGridSx = {

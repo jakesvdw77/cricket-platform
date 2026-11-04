@@ -14,6 +14,7 @@ export interface RolePlayer {
 export function RolePickerTile({
   testId,
   icon,
+  counter = false,
   label,
   currentId,
   currentName,
@@ -22,7 +23,9 @@ export function RolePickerTile({
   onChange,
 }: {
   testId: string
-  icon: ReactNode
+  icon?: ReactNode
+  // The compact counter look (no icon), docs/specs/137.
+  counter?: boolean
   label: string
   currentId: string | null
   currentName: string | null
@@ -56,6 +59,7 @@ export function RolePickerTile({
       <KeyFigureTile
         testId={testId}
         icon={icon}
+        counter={counter}
         value={currentName ?? '–'}
         label={label}
         textValue

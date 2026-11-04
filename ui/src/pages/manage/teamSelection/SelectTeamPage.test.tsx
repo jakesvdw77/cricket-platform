@@ -242,6 +242,24 @@ beforeEach(() => {
   getSelectionPool.mockResolvedValue(makePool([]))
 })
 
+// docs/specs/137: Select Players, Availability, Announce Team, Un-announce Team and Share Team live in the one Manage Team menu.
+async function chooseManage(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: 'Manage Team' }))
+  await user.click(await screen.findByRole('menuitem', { name: new RegExp(`^${name}`) }))
+}
+async function manageItem(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: 'Manage Team' }))
+  return screen.findByRole('menuitem', { name: new RegExp(`^${name}`) })
+}
+
+// Opens Manage Team and waits for the item to become enabled (the polls load after the page), then chooses it.
+async function chooseManageWhenEnabled(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: 'Manage Team' }))
+  const item = await screen.findByRole('menuitem', { name: new RegExp(`^${name}`) })
+  await waitFor(() => expect(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })).not.toHaveAttribute('aria-disabled', 'true'))
+  await user.click(item)
+}
+
 function LocationProbe() {
   const location = useLocation()
   return <div>At: {location.pathname + location.search}</div>
@@ -275,7 +293,7 @@ describe('SelectTeamPage', () => {
 
       renderPage(HOME)
 
-      expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
       expect(createMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1')
     })
 
@@ -286,7 +304,7 @@ describe('SelectTeamPage', () => {
 
       renderPage('/manage/team-selection/matches/match-1/sides/away')
 
-      expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
       expect(createMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-2')
     })
 
@@ -296,7 +314,7 @@ describe('SelectTeamPage', () => {
 
       renderPage('/manage/team-selection/matches/match-1/sides/side-2')
 
-      expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Away XI' })).toHaveAttribute('aria-pressed', 'true')
       expect(createMatchSide).not.toHaveBeenCalled()
     })
@@ -307,7 +325,7 @@ describe('SelectTeamPage', () => {
 
       renderPage('/manage/team-selection/matches/match-1/sides/away')
 
-      expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Home XI' })).not.toBeInTheDocument()
       expect(createMatchSide).not.toHaveBeenCalled()
     })
@@ -329,13 +347,14 @@ describe('SelectTeamPage', () => {
 
       expect(await screen.findByRole('button', { name: 'Home XI' })).toHaveAttribute('aria-pressed', 'true')
       await user.click(screen.getByRole('button', { name: 'Away XI' }))
-      expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Away XI' })).toHaveAttribute('aria-pressed', 'true')
     })
   })
 
   describe('the header (docs/specs/093)', () => {
-    it('shows Back, the Season pill, the title, the date and the league, and one action group in order', async () => {
+    it('shows Back alone, the title, the date and the league as a link, an Announced badge and ONE Manage Team menu, with no Season pill (137)', async () => {
+      const user = userEvent.setup()
       getMatch.mockResolvedValue(makeMatch({ leagueId: 'league-1' }))
       listLeagues.mockResolvedValue([{ id: 'league-1', name: 'Premier League' }])
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
@@ -343,16 +362,30 @@ describe('SelectTeamPage', () => {
       renderPage(HOME)
 
       expect(await screen.findByRole('heading', { name: '1st XI v 2nd XI' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Back to Team selection' })).toHaveAttribute('href', '/manage/team-selection/matches')
-      expect(await screen.findByRole('button', { name: 'Season' })).toHaveTextContent('2026')
+      expect(screen.getByRole('link', { name: 'Back to Team Selection' })).toHaveAttribute('href', '/manage/team-selection/matches')
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
       await waitFor(() => expect(screen.getByTestId('select-subtitle')).toHaveTextContent('Premier League'))
-      const actions = screen.getByTestId('select-actions')
-      expect(within(actions).getAllByRole('button').map((button) => button.textContent)).toEqual([
-        'Availability',
-        'Announce team',
-        'Share team',
-        'Select players',
-      ])
+      expect(screen.getByRole('link', { name: 'Premier League' })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/leagues/league-1'))
+      expect(screen.getByText('Not Announced')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Manage Team' }))
+      const titles = (await screen.findAllByRole('menuitem')).map((item) => item.textContent ?? '')
+      expect(titles).toHaveLength(4)
+      expect(titles[3]).toMatch(/^Share Team/)
+    })
+
+    it('shows the venue as part of the one sub-header line, with no directions button, and a Team Manager placeholder card and a Forecast card that says when it is not available (137)', async () => {
+      getMatch.mockResolvedValue(makeMatch({ venue: 'Laudium Oval' }))
+      listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
+
+      renderPage(HOME)
+
+      await waitFor(() => expect(screen.getByTestId('select-subtitle')).toHaveTextContent('Laudium Oval'))
+      expect(screen.queryByRole('button', { name: /Get Directions/ })).not.toBeInTheDocument()
+      expect(screen.getByTestId('select-manager')).toHaveTextContent('Team Manager')
+      expect(screen.getByTestId('select-manager')).toHaveTextContent('–')
+      // No forecast is not an empty space: the card says it is not available, and why.
+      expect(screen.getByTestId('select-weather')).toHaveTextContent('Not available')
     })
 
     it('the key-figure strip shows Selected, Captain, Wicketkeeper and Status', async () => {
@@ -380,14 +413,14 @@ describe('SelectTeamPage', () => {
       expect(await screen.findByTestId('select-selected-value')).toHaveTextContent('2 of 12')
       await waitFor(() => expect(screen.getByTestId('select-captain-value')).toHaveTextContent('Jane Smith'))
       expect(screen.getByTestId('select-keeper-value')).toHaveTextContent('Bob Jones')
-      expect(screen.getByTestId('select-status-value')).toHaveTextContent('In progress')
+      expect(screen.getByTestId('select-status-value')).toHaveTextContent('In Progress')
     })
 
-    it('shows Not started for an empty side and Announced for an announced one', async () => {
+    it('shows Not Started for an empty side and Announced for an announced one', async () => {
       getMatch.mockResolvedValue(makeMatch())
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
       const { unmount } = renderPage(HOME)
-      await waitFor(() => expect(screen.getByTestId('select-status-value')).toHaveTextContent('Not started'))
+      await waitFor(() => expect(screen.getByTestId('select-status-value')).toHaveTextContent('Not Started'))
       unmount()
 
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', announced: true })])
@@ -399,7 +432,7 @@ describe('SelectTeamPage', () => {
       getMatch.mockResolvedValue(makeMatch())
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
       renderPage(HOME)
-      await screen.findByRole('button', { name: 'Select players' })
+      await screen.findByRole('button', { name: 'Manage Team' })
       expect(screen.queryByRole('button', { name: /Deactivate|Reactivate/ })).not.toBeInTheDocument()
     })
   })
@@ -421,7 +454,7 @@ describe('SelectTeamPage', () => {
       const { queryClient } = renderPage(HOME)
       const spy = vi.spyOn(queryClient, 'invalidateQueries')
 
-      await user.click(await screen.findByRole('button', { name: 'Announce team' }))
+      await chooseManage(user, 'Announce Team')
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce anyway' }))
 
       await waitFor(() => expect(announceMatchSide).toHaveBeenCalled())
@@ -505,9 +538,9 @@ describe('SelectTeamPage', () => {
     renderPage(HOME)
 
     await screen.findByRole('heading', { name: '1st XI v 2nd XI' })
-    await user.click(await screen.findByRole('button', { name: 'Select players' }))
+    await chooseManage(user, 'Select Players')
 
-    await user.click(await screen.findByRole('button', { name: 'Add new player' }))
+    await user.click(await screen.findByRole('button', { name: 'Create New Player' }))
     await user.type(await screen.findByLabelText('First name'), 'New')
     await user.type(screen.getByLabelText('Last name'), 'Player')
     await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
@@ -542,7 +575,7 @@ describe('SelectTeamPage', () => {
       renderPage(HOME)
 
       await screen.findByRole('heading', { name: '1st XI v 2nd XI' })
-      await screen.findByRole('button', { name: 'Select players' })
+      await screen.findByRole('button', { name: 'Manage Team' })
       expect(screen.queryByRole('button', { name: 'Re-select from previous match' })).not.toBeInTheDocument()
     })
 
@@ -572,17 +605,19 @@ describe('SelectTeamPage', () => {
       renderPage(HOME)
 
       await screen.findByRole('heading', { name: '1st XI v 2nd XI' })
-      await user.click(await screen.findByRole('button', { name: 'Select players' }))
+      await chooseManage(user, 'Select Players')
       await user.click(await screen.findByRole('button', { name: 'From previous match' }))
 
       expect(await screen.findByText('Choose a match to show the players who played in it.')).toBeInTheDocument()
       await user.click(screen.getByRole('combobox', { name: 'Previous match' }))
       await user.click(await screen.findByRole('option', { name: /vs 2nd XI/ }))
 
-      await waitFor(() => expect(screen.getByText('Bob Jones')).toBeInTheDocument())
+      // The Available Players section on the page repeats names, so look inside the dialog only.
+      const dialog = await screen.findByRole('dialog')
+      await waitFor(() => expect(within(dialog).getByText('Bob Jones')).toBeInTheDocument())
       expect(getSelectionPool).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', { wholeSection: true, q: '' })
-      expect(screen.queryByText('Amy Lee')).not.toBeInTheDocument()
-      const names = screen.getAllByText(/^(Bob Jones|Jane Smith)$/).map((node) => node.textContent)
+      expect(within(dialog).queryByText('Amy Lee')).not.toBeInTheDocument()
+      const names = within(dialog).getAllByText(/^(Bob Jones|Jane Smith)$/).map((node) => node.textContent)
       expect(names).toEqual(['Bob Jones', 'Jane Smith'])
     })
   })
@@ -616,10 +651,7 @@ describe('SelectTeamPage', () => {
 
       renderPage(HOME)
 
-      const button = await screen.findByRole('button', { name: 'Availability' })
-      await waitFor(() => expect(button).toBeEnabled())
-      expect(screen.getByTestId('select-actions')).toContainElement(button)
-      await user.click(button)
+      await chooseManageWhenEnabled(user, 'Availability')
 
       expect(
         await screen.findByText('At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1'),
@@ -633,9 +665,7 @@ describe('SelectTeamPage', () => {
 
       renderPage(HOME)
 
-      const button = await screen.findByRole('button', { name: 'Availability' })
-      await waitFor(() => expect(button).toBeEnabled())
-      await user.click(button)
+      await chooseManageWhenEnabled(user, 'Availability')
 
       expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
     })
@@ -647,9 +677,7 @@ describe('SelectTeamPage', () => {
 
       renderPage(HOME)
 
-      const button = await screen.findByRole('button', { name: 'Availability' })
-      await waitFor(() => expect(button).toBeEnabled())
-      await user.click(button)
+      await chooseManageWhenEnabled(user, 'Availability')
 
       expect(await screen.findByText('At: /manage/availability/group/round-1')).toBeInTheDocument()
     })
@@ -661,9 +689,7 @@ describe('SelectTeamPage', () => {
 
       renderPage(HOME)
 
-      const button = await screen.findByRole('button', { name: 'Availability' })
-      await waitFor(() => expect(button).toBeEnabled())
-      await user.click(button)
+      await chooseManageWhenEnabled(user, 'Availability')
 
       const menu = await screen.findByRole('menu', { name: 'Availability polls' })
       expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
@@ -683,7 +709,8 @@ describe('SelectTeamPage', () => {
 
       await screen.findByRole('heading', { name: '1st XI v 2nd XI' })
       await waitFor(() => expect(listPolls).toHaveBeenCalled())
-      expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
+      await userEvent.click(await screen.findByRole('button', { name: 'Manage Team' }))
+      expect(await screen.findByRole('menuitem', { name: /^Availability/ })).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -765,21 +792,30 @@ describe('SelectTeamPage', () => {
       getSelectionPool.mockResolvedValue(pool)
       renderPage(HOME)
       await screen.findByRole('heading', { name: '1st XI v 2nd XI' })
-      await screen.findByRole('button', { name: 'Select players' })
+      await screen.findByRole('button', { name: 'Manage Team' })
       return user
     }
 
+    it('"Select Other Player" in the Available Players section opens the Select Players dialog on its Whole section option (137)', async () => {
+      const pool = makePool([makeEntry('player-9', 'Hannes', 'Kruger', { availability: 'AVAILABLE', selectable: true })])
+      const user = await openHomeXi({}, pool)
+      await user.click(await screen.findByRole('button', { name: 'Select Other Player' }))
+      await waitFor(() => expect(getSelectionPool).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', expect.objectContaining({ wholeSection: true })))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+
     const rowOrder = () => screen.getAllByTestId(/^selection-row-/).map((row) => row.getAttribute('data-testid'))
 
-    it('shows the selected count in the strip and Select players and Announce team in the action group', async () => {
-      await openHomeXi()
+    it('shows the selected count in the strip and the Manage Team menu in order: Select Players, Availability, Announce Team, Share Team last', async () => {
+      const user = await openHomeXi()
       expect(screen.getByTestId('select-selected-value')).toHaveTextContent('2 of 12')
-      expect(within(screen.getByTestId('select-actions')).getAllByRole('button').map((button) => button.textContent)).toEqual([
-        'Availability',
-        'Announce team',
-        'Share team',
-        'Select players',
-      ])
+      await user.click(screen.getByRole('button', { name: 'Manage Team' }))
+      const titles = (await screen.findAllByRole('menuitem')).map((item) => item.textContent ?? '')
+      expect(titles).toHaveLength(4)
+      expect(titles[0]).toMatch(/^Select Players/)
+      expect(titles[1]).toMatch(/^Availability/)
+      expect(titles[2]).toMatch(/^Announce Team/)
+      expect(titles[3]).toMatch(/^Share Team/)
     })
 
     describe('Captain and Wicketkeeper pickers', () => {
@@ -849,17 +885,14 @@ describe('SelectTeamPage', () => {
     describe('Share team', () => {
       it('is disabled, with a tooltip, until the side is announced', async () => {
         const user = await openHomeXi()
-        const share = screen.getByRole('button', { name: 'Share team' })
-        expect(share).toBeDisabled()
-        await user.hover(share.parentElement as HTMLElement)
-        expect(await screen.findByRole('tooltip')).toHaveTextContent('Announce the team to share it')
+        const share = await manageItem(user, 'Share Team')
+        expect(share).toHaveAttribute('aria-disabled', 'true')
+        expect(share).toHaveTextContent('Announce the team to share it')
       })
 
       it('opens the team sheet dialog for this match, scoped to the side being viewed', async () => {
         const user = await openHomeXi({ announced: true })
-        const share = screen.getByRole('button', { name: 'Share team' })
-        expect(share).toBeEnabled()
-        await user.click(share)
+        await chooseManage(user, 'Share Team')
         const dialog = await screen.findByTestId('share-dialog')
         expect(dialog).toHaveAttribute('data-match-id', 'match-1')
         expect(dialog).toHaveAttribute('data-scope', 'home')
@@ -867,38 +900,67 @@ describe('SelectTeamPage', () => {
     })
 
     it('shows Un-announce instead of Announce for an announced side', async () => {
-      await openHomeXi({ announced: true })
-      expect(screen.getByRole('button', { name: 'Un-announce' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Announce team' })).not.toBeInTheDocument()
+      const user = await openHomeXi({ announced: true })
+      await manageItem(user, 'Un-announce Team')
+      expect(screen.queryByRole('menuitem', { name: /^Announce Team/ })).not.toBeInTheDocument()
+    })
+
+    describe('the Status figure (137)', () => {
+      it('is a menu: a ready team can be announced from it, with the confirmation', async () => {
+        const user = await openHomeXi()
+        announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
+        await user.click(screen.getByRole('button', { name: /^Status: .*, change$/ }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Announce Team' }))
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByText('Announce this team?')).toBeInTheDocument()
+      })
+
+      it('shows the reason and cannot announce when the team is not ready', async () => {
+        const user = await openHomeXi({ players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }, { playerProfileId: 'player-2', battingOrder: null, role: 'BOWLER' }] })
+        await user.click(screen.getByRole('button', { name: /^Status: .*, change$/ }))
+        const item = await screen.findByRole('menuitem', { name: /Announce Team/ })
+        expect(item).toHaveAttribute('aria-disabled', 'true')
+        expect(item).toHaveTextContent('Cannot announce')
+      })
+
+      it('offers Un-announce Team once the team is announced', async () => {
+        const user = await openHomeXi({ announced: true })
+        unannounceMatchSide.mockResolvedValue(makeSide({ announced: false }))
+        await user.click(screen.getByRole('button', { name: /^Status: .*, change$/ }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Un-announce Team' }))
+        await waitFor(() => expect(unannounceMatchSide).toHaveBeenCalled())
+      })
     })
 
     describe('Announce', () => {
       it('is disabled with the exact missing-items text when a player has no batting position', async () => {
-        await openHomeXi({
+        const user = await openHomeXi({
           players: [
             { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
             { playerProfileId: 'player-2', battingOrder: null, role: 'BOWLER' },
           ],
         })
-        const button = screen.getByRole('button', { name: 'Announce team' })
-        expect(button).toBeDisabled()
-        expect(screen.getByText('Cannot announce 1st XI: 1 player has no batting position (Bob Jones).')).toBeInTheDocument()
+        const item = await manageItem(user, 'Announce Team')
+        expect(item).toHaveAttribute('aria-disabled', 'true')
+        // The reason shows on the disabled menu item, not as a caption under the title (137).
+        expect(item).toHaveTextContent('Cannot announce 1st XI: 1 player has no batting position (Bob Jones).')
         expect(screen.getByText('1 player is not in the batting order yet.')).toBeInTheDocument()
       })
 
       it('is disabled when more players are selected than the maximum', async () => {
-        await openHomeXi({ limits: { battingPlaces: 1, twelfthManAllowed: false, maxSelected: 1 } })
-        expect(screen.getByRole('button', { name: 'Announce team' })).toBeDisabled()
-        expect(screen.getByText('Cannot announce 1st XI: 2 players are selected; the most allowed is 1.')).toBeInTheDocument()
+        const user = await openHomeXi({ limits: { battingPlaces: 1, twelfthManAllowed: false, maxSelected: 1 } })
+        const item = await manageItem(user, 'Announce Team')
+        expect(item).toHaveAttribute('aria-disabled', 'true')
+        expect(item).toHaveTextContent('Cannot announce 1st XI: 2 players are selected; the most allowed is 1.')
       })
 
       it('is enabled when complete; the button opens a confirmation, and only the confirmation announces', async () => {
         const user = await openHomeXi()
         announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
-        const button = screen.getByRole('button', { name: 'Announce team' })
-        expect(button).toBeEnabled()
+        const item = await manageItem(user, 'Announce Team')
+        expect(item).not.toHaveAttribute('aria-disabled', 'true')
 
-        await user.click(button)
+        await user.click(item)
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).getByText('Announce this team?')).toBeInTheDocument()
         expect(within(dialog).getByText(/Nobody is notified automatically/)).toBeInTheDocument()
@@ -913,7 +975,7 @@ describe('SelectTeamPage', () => {
       it('shows no warnings and reads Announce team when both roles are set', async () => {
         const user = await openHomeXi({ captainPlayerId: 'player-1', wicketKeeperPlayerId: 'player-2' })
         announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
-        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        await chooseManage(user, 'Announce Team')
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).queryByText('No captain selected.')).not.toBeInTheDocument()
         expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
@@ -932,7 +994,7 @@ describe('SelectTeamPage', () => {
           makeEntry('player-3', 'Tom', 'Twelfth', { selected: true }),
         ], 'SQUAD'))
         announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
-        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        await chooseManage(user, 'Announce Team')
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).getByText('No captain selected.')).toBeInTheDocument()
         expect(within(dialog).getByText('No wicketkeeper selected.')).toBeInTheDocument()
@@ -956,7 +1018,7 @@ describe('SelectTeamPage', () => {
           order.push('announce')
           return makeSide({ announced: true })
         })
-        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        await chooseManage(user, 'Announce Team')
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
         await user.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
@@ -974,7 +1036,7 @@ describe('SelectTeamPage', () => {
       it('does not announce, and shows the error, when saving the chosen role fails', async () => {
         const user = await openHomeXi({ wicketKeeperPlayerId: 'player-2' })
         updateMatchSide.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { detail: 'Role save refused' } } })
-        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        await chooseManage(user, 'Announce Team')
         const dialog = await screen.findByRole('dialog')
         await user.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
         await user.click(await screen.findByRole('option', { name: 'Jane Smith' }))
@@ -987,7 +1049,7 @@ describe('SelectTeamPage', () => {
 
       it('Cancel on the confirmation announces nothing', async () => {
         const user = await openHomeXi()
-        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        await chooseManage(user, 'Announce Team')
         const dialog = await screen.findByRole('dialog')
         await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -997,7 +1059,7 @@ describe('SelectTeamPage', () => {
       it('Un-announce calls the endpoint straight away', async () => {
         const user = await openHomeXi({ announced: true })
         unannounceMatchSide.mockResolvedValue(makeSide())
-        await user.click(screen.getByRole('button', { name: 'Un-announce' }))
+        await chooseManage(user, 'Un-announce Team')
         await waitFor(() => expect(unannounceMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1'))
       })
     })
@@ -1135,7 +1197,7 @@ describe('SelectTeamPage', () => {
         )
         applySelection.mockResolvedValue(makeSide())
 
-        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await chooseManage(user, 'Select Players')
         await user.click(await screen.findByRole('checkbox', { name: 'Amy Lee' }))
         await user.click(screen.getByRole('checkbox', { name: 'Cal Cox' }))
         await user.click(screen.getByRole('button', { name: 'Done' }))
@@ -1167,7 +1229,7 @@ describe('SelectTeamPage', () => {
         })
         applySelection.mockRejectedValue(error)
 
-        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await chooseManage(user, 'Select Players')
         await user.click(await screen.findByRole('checkbox', { name: 'Amy Lee' }))
         await user.click(screen.getByRole('button', { name: 'Done' }))
 
@@ -1182,7 +1244,7 @@ describe('SelectTeamPage', () => {
         )
         setPlayerStatus.mockResolvedValue(undefined)
 
-        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await chooseManage(user, 'Select Players')
         await user.click(await screen.findByRole('button', { name: 'Set answer for Amy Lee' }))
         await user.click(await screen.findByRole('menuitem', { name: 'Available' }))
 
@@ -1203,7 +1265,7 @@ describe('SelectTeamPage', () => {
         )
         setRoundPlayerStatus.mockResolvedValue(undefined)
 
-        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await chooseManage(user, 'Select Players')
         await user.click(await screen.findByRole('button', { name: 'Set answer for Amy Lee' }))
         await user.click(await screen.findByRole('menuitem', { name: 'Unsure' }))
 

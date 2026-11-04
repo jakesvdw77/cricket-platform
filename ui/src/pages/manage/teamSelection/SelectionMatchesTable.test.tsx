@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -8,9 +9,11 @@ import type { TeamSelectionMatch } from '../../../api/teamSelectionApi'
 
 function renderTable(matches: TeamSelectionMatch[], props: Partial<React.ComponentProps<typeof SelectionMatchesTable>> = {}) {
   return render(
-    <MemoryRouter>
-      <SelectionMatchesTable matches={matches} {...props} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <SelectionMatchesTable matches={matches} {...props} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -48,8 +51,8 @@ describe('SelectionMatchesTable', () => {
     renderTable(sampleMatches())
     const rows = screen.getAllByTestId('selection-row')
     expect(within(rows[1]).getByTestId('selection-m-2-team-2-label')).toHaveTextContent('7 of 12')
-    expect(within(rows[1]).getByText('In progress')).toBeInTheDocument()
-    expect(within(rows[2]).getByText('Ready to announce')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('In Progress')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('Ready To Announce')).toBeInTheDocument()
     expect(screen.getAllByText('Over 40 League').length).toBeGreaterThan(0)
   })
 
@@ -61,41 +64,78 @@ describe('SelectionMatchesTable', () => {
     expect(within(row).getByText('0/12')).toBeInTheDocument()
   })
 
-  it('links the whole row and Select players to the select page helper', () => {
+  it('links the whole row and the kebab\'s Select Players to the select page helper', async () => {
+    const user = userEvent.setup()
     renderTable(sampleMatches().slice(0, 1))
     const expected = '/manage/team-selection/matches/m-1/sides/side-1'
     expect(screen.getByRole('link', { name: 'Riverside Vets A v Oakfield CC' })).toHaveAttribute('href', expected)
-    expect(screen.getByRole('link', { name: 'Select players' })).toHaveAttribute('href', expected)
+    await user.click(screen.getByRole('button', { name: /^Actions for/ }))
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', expected)
   })
 
-  it('offers Announce on a side that is ready, and Select players on the others', async () => {
+  it('has ONE kebab per row and no chevron column', () => {
+    renderTable(sampleMatches())
+    const rows = screen.getAllByTestId('selection-row')
+    for (const row of rows) {
+      expect(within(row).getAllByRole('button', { name: /^Actions for/ })).toHaveLength(1)
+    }
+    expect(screen.queryByRole('columnheader', { name: 'Open' })).not.toBeInTheDocument()
+  })
+
+  it('offers a quick Announce Team button on a side that is ready only, and lists Announce Team in every kebab', async () => {
+    const user = userEvent.setup()
     const onAnnounce = vi.fn()
     const matches = sampleMatches()
     renderTable(matches, { onAnnounce })
     const rows = screen.getAllByTestId('selection-row')
-    expect(within(rows[0]).queryByRole('button', { name: 'Announce' })).not.toBeInTheDocument()
-    await userEvent.click(within(rows[2]).getByRole('button', { name: 'Announce' }))
+    expect(within(rows[0]).queryByRole('button', { name: 'Announce Team' })).not.toBeInTheDocument()
+    await user.click(within(rows[2]).getByRole('button', { name: 'Announce Team' }))
     expect(onAnnounce).toHaveBeenCalledWith(matches[2], matches[2].sides[0])
-    expect(within(rows[3]).getByRole('link', { name: 'Select players' })).toBeInTheDocument()
+
+    await user.click(within(rows[0]).getByRole('button', { name: /^Actions for/ }))
+    const item = await screen.findByRole('menuitem', { name: /^Announce Team/ })
+    expect(item).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('offers Share beside Select players for an announced side only, and never for the others', async () => {
+  it('lists Share Team last in the kebab, enabled for an announced side only', async () => {
+    const user = userEvent.setup()
     const onShare = vi.fn()
     const matches = sampleMatches()
     renderTable(matches, { onAnnounce: vi.fn(), onShare })
     const rows = screen.getAllByTestId('selection-row')
-    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1)
-    expect(within(rows[3]).getByRole('link', { name: 'Select players' })).toBeInTheDocument()
-    expect(within(rows[0]).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
-    expect(within(rows[2]).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
-    expect(within(rows[2]).getByRole('button', { name: 'Announce' })).toBeInTheDocument()
-    await userEvent.click(within(rows[3]).getByRole('button', { name: 'Share' }))
+
+    await user.click(within(rows[0]).getByRole('button', { name: /^Actions for/ }))
+    const first = await screen.findAllByRole('menuitem')
+    expect(first[first.length - 1]).toHaveTextContent(/^Share Team/)
+    expect(first[first.length - 1]).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Escape}')
+
+    await user.click(within(rows[3]).getByRole('button', { name: /^Actions for/ }))
+    await user.click(await screen.findByRole('menuitem', { name: /^Share Team/ }))
     expect(onShare).toHaveBeenCalledWith(matches[3], matches[3].sides[0])
   })
 
-  it('does not let the action buttons wrap', () => {
-    renderTable(sampleMatches().slice(0, 1))
-    expect(screen.getByRole('link', { name: 'Select players' })).toHaveStyle({ whiteSpace: 'nowrap' })
+  it('renders one flat card with the toolbar fused above the header when a toolbar is given, and the empty message in its place with no rows', () => {
+    const client = new QueryClient()
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <SelectionMatchesTable matches={sampleMatches()} toolbar={<div>Bar</div>} empty={<div>Nothing here</div>} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(screen.getByTestId('selection-fused-card')).toContainElement(screen.getByText('Bar'))
+    expect(screen.queryByText('Nothing here')).not.toBeInTheDocument()
+    rerender(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <SelectionMatchesTable matches={[]} toolbar={<div>Bar</div>} empty={<div>Nothing here</div>} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(screen.getByText('Bar')).toBeInTheDocument()
+    expect(screen.getByText('Nothing here')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
   it('disables the Announce button of the side being announced', () => {

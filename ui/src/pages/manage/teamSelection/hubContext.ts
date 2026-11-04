@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useUrlFlag } from '../../../hooks/useUrlFlag'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
@@ -13,6 +14,7 @@ import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
 import { useTeamSelection } from '../../../api/teamSelectionApi'
 import type { TeamSelectionOverview } from '../../../api/teamSelectionApi'
+import type { MatchSort } from './sortMatches'
 import { pickDefaultSeasonId } from '../../../utils/defaultSeason'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 
@@ -45,6 +47,9 @@ export interface TeamSelectionHubContext {
   validTeamId: string | null
   showPast: boolean
   setShowPast: (value: boolean) => void
+  // The date sort of the Matches and Time Slots tabs, kept in the address (`?sort=desc`) so Back restores it.
+  sort: MatchSort
+  setSort: (value: MatchSort) => void
   // Per visit, never saved.
   search: string
   setSearch: (value: string) => void
@@ -55,8 +60,21 @@ export interface TeamSelectionHubContext {
 // Owned by the hub layout; also used by test stand-ins for it.
 export function useTeamSelectionHubState(clubId: string | undefined): TeamSelectionHubContext {
   const [saved, setSaved] = usePersistedListFilters<TeamSelectionFilters>(teamSelectionFiltersKey(clubId), FILTER_DEFAULTS)
-  const [showPast, setShowPast] = useState(false)
+  // In the address (docs/specs/137), so Back from a record restores it.
+  const [showPast, setShowPast] = useUrlFlag('past')
   const [search, setSearch] = useState('')
+  const [params, setParams] = useSearchParams()
+  const sort: MatchSort = params.get('sort') === 'desc' ? 'desc' : 'asc'
+  const setSort = (value: MatchSort) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value === 'desc') next.set('sort', 'desc')
+        else next.delete('sort')
+        return next
+      },
+      { replace: true },
+    )
 
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
@@ -114,6 +132,8 @@ export function useTeamSelectionHubState(clubId: string | undefined): TeamSelect
     validTeamId,
     showPast,
     setShowPast,
+    sort,
+    setSort,
     search,
     setSearch,
     overview,
