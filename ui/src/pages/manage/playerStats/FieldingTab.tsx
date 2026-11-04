@@ -22,7 +22,7 @@ export function FieldingTab({ stats }: { stats: PlayerStats }) {
       </StatTileStrip>
 
       <CardGrid>
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Fielding"
           icon={<BarChartOutlinedIcon />}
           fields={[

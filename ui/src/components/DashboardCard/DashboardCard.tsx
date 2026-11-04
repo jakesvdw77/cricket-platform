@@ -223,7 +223,7 @@ export function DashboardCard({
             data-testid={`${testId}-view-table`}
             sx={{ ...compactButtonSx, flex: 'none' }}
           >
-            View as table
+            View As Table
           </MuiButton>
         )}
       </Box>

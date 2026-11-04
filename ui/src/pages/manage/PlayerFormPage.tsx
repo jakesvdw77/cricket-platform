@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Tab, Tabs, Typography } from '@mui/material'
-import { useOutletContext, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import type { PlayerFormValues } from '../../components/PlayerForm'
-import { useAfterSave } from '../../hooks/useReturnTo'
+import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
+import { VIEW_TABS_PROPS, viewTabsSx, viewTabSx } from '../../utils/viewTabs'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
@@ -44,6 +45,8 @@ export default function PlayerFormPage() {
   const isEdit = Boolean(playerId)
   // docs/specs/141: Save returns to where the user came from (the Players list with its filters, or the Player page).
   const afterSave = useAfterSave('/manage/players')
+  const navigate = useNavigate()
+  const cancelLink = useBackLink('/manage/players', 'Cancel')
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0)
@@ -159,11 +162,12 @@ export default function PlayerFormPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <RecordFormScreen
-        title={isEdit ? 'Edit Player' : 'Add Player'}
+        title={isEdit ? 'Edit Player' : 'Add New Player'}
+        compact
         backTo="/manage/players"
         backLabel="Back to Players"
         actions={
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             {activeTab !== 3 && (
               <>
                 {saveMutation.isError && (
@@ -172,8 +176,12 @@ export default function PlayerFormPage() {
                   </Typography>
                 )}
 
+                {/* page-anatomy section 6b: Cancel (white), Save Changes (filled), then Deactivate or Reactivate. */}
+                <Button size="compact" variant="secondary" onClick={() => navigate(cancelLink.to ?? '/manage/players')}>
+                  Cancel
+                </Button>
                 <Button size="compact" type="submit" form={PLAYER_FORM_ID} disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create player'}
+                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Player'}
                 </Button>
               </>
             )}
@@ -188,15 +196,14 @@ export default function PlayerFormPage() {
           <Tabs
             value={activeTab}
             onChange={(_event, next: number) => setActiveTab(next as 0 | 1 | 2 | 3)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+            aria-label="Player sections"
+            {...VIEW_TABS_PROPS}
+            sx={{ ...viewTabsSx, mb: 2 }}
           >
-            <Tab label="Basic Info" />
-            <Tab label="Contact Info" />
-            <Tab label="Cricket Info" />
-            {isEdit && <Tab label="Sections" />}
+            <Tab label="Basic Info" sx={viewTabSx} />
+            <Tab label="Contact Info" sx={viewTabSx} />
+            <Tab label="Cricket Info" sx={viewTabSx} />
+            {isEdit && <Tab label="Sections" sx={viewTabSx} />}
           </Tabs>
         </Box>
 
@@ -233,7 +240,7 @@ export default function PlayerFormPage() {
         {isEdit && activeTab === 3 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
-              Tagged sections
+              Tagged Sections
             </Typography>
 
             {(playerSectionsQuery.data ?? []).length === 0 && (
@@ -255,7 +262,7 @@ export default function PlayerFormPage() {
             )}
 
             <Button size="compact" variant="secondary" onClick={() => setSectionLinkOpen(true)}>
-              Link existing
+              Link Existing Section
             </Button>
           </Box>
         )}

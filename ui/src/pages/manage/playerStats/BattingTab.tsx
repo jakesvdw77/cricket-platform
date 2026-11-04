@@ -50,7 +50,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
       </StatTileStrip>
 
       <CardGrid>
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Scoring"
           icon={<BarChartOutlinedIcon />}
           fields={[
@@ -71,7 +71,7 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
         {/* Right column: Milestones at its natural height, Recent form grows to fill, so together they match Scoring's height. */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
           <Box sx={{ flex: hasForm ? 'none' : 1, display: 'flex', flexDirection: 'column' }}>
-            <InfoCard fieldSize="large"
+            <InfoCard flat fieldSize="large"
               title="Milestones"
               icon={<FlagOutlinedIcon />}
               fields={[
@@ -86,16 +86,16 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
           </Box>
           {hasForm && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
+              <InfoCard flat fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
                 <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
               </InfoCard>
             </Box>
           )}
         </Box>
-        <InfoCard fieldSize="large" title="How dismissed" icon={<ExitToAppOutlinedIcon />}>
+        <InfoCard flat fieldSize="large" title="How dismissed" icon={<ExitToAppOutlinedIcon />}>
           <CountRows rows={dismissalList} empty="No innings yet." />
         </InfoCard>
-        <InfoCard fieldSize="large" title="Innings by batting position" icon={<FormatListNumberedOutlinedIcon />}>
+        <InfoCard flat fieldSize="large" title="Innings by batting position" icon={<FormatListNumberedOutlinedIcon />}>
           <CountRows
             rows={batting.positions.map((row) => ({
               key: String(row.position),

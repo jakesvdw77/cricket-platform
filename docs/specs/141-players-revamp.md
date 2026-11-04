@@ -1,6 +1,6 @@
-# 141: Players revamp (list, cards, table, Player page)
+# 141: Players revamp (list, cards, table, Player page, Player form, Player stats)
 
-**Status:** approved 2026-11-04: the owner took every default except question 1, where the label is "Add New Player" (not "Add New Player"); built the same day. The owner asked for Players next after Leaderboards (`140`). Written from `docs/standards/page-anatomy.md` (binding, including every decision taken while building `136` to `140`) with `130` (Matches) and `138` (Results) as worked examples, then checked against the current code: `pages/manage/PlayerList.tsx`, `PlayerDetailPage.tsx`, `playerDetail/*`, `components/PlayerCard`, `PlayerTable`, `PlayerStatusMenu`.
+**Status:** approved 2026-11-04: the owner took every default except question 1, where the label is "Add New Player" (not "Add New Player"); built the same day. Extended the same day at the owner's request ("Yes to both, build them now") to the Player form and the Player stats page, so all four Players pages are done in this PR; see Later changes. The owner asked for Players next after Leaderboards (`140`). Written from `docs/standards/page-anatomy.md` (binding, including every decision taken while building `136` to `140`) with `130` (Matches) and `138` (Results) as worked examples, then checked against the current code: `pages/manage/PlayerList.tsx`, `PlayerDetailPage.tsx`, `playerDetail/*`, `components/PlayerCard`, `PlayerTable`, `PlayerStatusMenu`.
 **Depends on:** `028` (players), `060` (player detail), `088` (players and polls alignment, status actions), `103` (player stats), `119` (link requests card), `127` (`returnTo`), `136` to `140` (pattern and shared pieces).
 
 ## Problem & Goals
@@ -101,6 +101,12 @@ Reuse `ManageScreenHeader`, `HeaderActions`, `ManageMenu`, `ToolbarCard`, `Toolb
 6. **Player page:** avatar kept (56 px) beside the name in the shared header, figures as four compact counters? Default: **yes**.
 7. **Player stats page and Player form:** separate follow-up specs (stats next, the form after)? Default: **yes, separate**.
 8. **Dashed Add New Player card** in Cards view (counts toward the three)? Default: **yes**.
+
+## Later changes (owner, 2026-11-04, while reviewing in the browser)
+- **Compact buttons:** Call, Email and Change Status are the shared compact `Button`; the Average | Runs switch is no longer full width. The rule is now written in `page-anatomy.md` section 5, `design-system.md` and `CLAUDE.md`.
+- **Player page:** View Stats is its own outlined button beside Manage Player (as Share is on a result; the menu keeps its item); three columns from `lg` (Basic Info over Account, Contact Info, Cricket); sections are the plain sub-header line, not pills; Cricket chips read Batting, Bowling, Wicketkeeper.
+- **Player form (in scope now):** the shared edit-page skeleton: compact card, the shared tab row, footer Cancel, Save Changes (Add Player on a new one), then Deactivate or Reactivate; the page is titled Add New Player; Save and Cancel return through `returnTo`.
+- **Player stats page (in scope now):** the shared header (name and the status badge beside it, Back honouring `returnTo`), the shared tab row (`ViewTabsRow replace`, Overview, Batting, Bowling, Fielding, Awards & record, Matches), ONE flat `ToolbarCard` with the filters, compact counters in place of the icon tiles (`StatTile` now draws the compact counter), flat info cards and matches table, Title Case buttons (View As Table, Hide Batting, Show More, Try Again, Clear Filters as an empty-state link, Open Results).
 
 ## Rollout Notes
 Frontend only; no migration. Update `page-anatomy.md`, `frontend.md` and `roadmap.md` in the same PR.

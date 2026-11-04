@@ -24,7 +24,7 @@ export function AwardsTab({ stats }: { stats: PlayerStats }) {
       </StatTileStrip>
 
       <CardGrid>
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Awards"
           icon={<EmojiEventsOutlinedIcon />}
           fields={[
@@ -32,7 +32,7 @@ export function AwardsTab({ stats }: { stats: PlayerStats }) {
             { label: 'Team player of the match', value: String(awards.teamPlayerOfTheMatch) },
           ]}
         />
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Record while playing"
           icon={<HistoryOutlinedIcon />}
           fields={[

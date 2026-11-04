@@ -61,7 +61,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
       </StatTileStrip>
 
       <CardGrid>
-        <InfoCard fieldSize="large"
+        <InfoCard flat fieldSize="large"
           title="Bowling"
           icon={<BarChartOutlinedIcon />}
           fields={[
@@ -86,7 +86,7 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
           ]}
         />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <InfoCard fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
+          <InfoCard flat fieldSize="large" title="Wicket hauls" icon={<WhatshotOutlinedIcon />}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
               <HaulCounter testId="haul-3" count={bowling.threeWicketHauls} label="3 wickets" />
               <HaulCounter testId="haul-4" count={bowling.fourWicketHauls} label="4 wickets" />
@@ -96,14 +96,14 @@ export function BowlingTab({ stats }: { stats: PlayerStats }) {
               Three separate bands, so they add up: exactly 3, exactly 4, 5 or more.
             </Typography>
           </InfoCard>
-          <InfoCard fieldSize="large" title="Wickets by type" icon={<ExitToAppOutlinedIcon />}>
+          <InfoCard flat fieldSize="large" title="Wickets by type" icon={<ExitToAppOutlinedIcon />}>
             <CountRows rows={wicketRows} empty="No wickets yet." />
           </InfoCard>
         </Box>
       </CardGrid>
 
       {stats.form.bowling.length > 0 && (
-        <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 spells, newest first">
+        <InfoCard flat fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 spells, newest first">
           <FormStrip title="Bowling, last 5 spells" items={bowlingFormItems(stats.form.bowling)} hideTitle />
         </InfoCard>
       )}

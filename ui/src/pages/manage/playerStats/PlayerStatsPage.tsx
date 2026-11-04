@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useBackLink } from '../../../hooks/useReturnTo'
-import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { PageHeaderBand } from '../../../components/PageHeaderBand'
+import { Box, Chip, Skeleton, Stack, Typography } from '@mui/material'
+import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import { badgeSx } from '../../../components/RecordCard'
-import { EmptyState } from '../../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
 import { usePlayerStats, usePlayerStatsFilterOptions } from '../../../api/playerStatsApi'
 import type { MatchDirection, PlayerStats, StatsCompetition } from '../../../api/playerStatsApi'
@@ -29,7 +29,7 @@ import { PlayerDashboardTab } from './dashboard/PlayerDashboardTab'
 import { loadPlayerDashboardCharts } from './dashboard/playerDashboardChunk'
 import { resultsPhrase } from './statsFormat'
 import { parseCompetition } from '../../../utils/statsCompetition'
-import { compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 
 const COMPETITION_OPTIONS = [
   { value: 'LEAGUE', label: 'League' },
@@ -52,6 +52,7 @@ export default function PlayerStatsPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { playerId } = useParams<{ playerId?: string }>()
   // docs/specs/141: Back returns to where the user came from (the Players list with its filters) when a returnTo is present.
+  const navigate = useNavigate()
   const statsBack = useBackLink(`/manage/players/${playerId}`, 'Back to player')
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = resolvePlayerStatsTab(searchParams.get('tab'))
@@ -163,11 +164,7 @@ export default function PlayerStatsPage() {
       <EmptyState
         title="Couldn't load the statistics"
         description="Something went wrong loading this player's statistics."
-        action={
-          <MuiButton variant="outlined" onClick={() => statsQuery.refetch()} size="small" sx={compactButtonSx}>
-            Try again
-          </MuiButton>
-        }
+        action={<Button size="compact" variant="secondary" onClick={() => statsQuery.refetch()}>Try Again</Button>}
       />
     )
   } else if (!stats) {
@@ -182,21 +179,13 @@ export default function PlayerStatsPage() {
       <EmptyState
         title="No published results match these filters"
         description="Try a different season or team."
-        action={
-          <MuiButton variant="outlined" onClick={clearFilters} size="small" sx={compactButtonSx}>
-            Clear filters
-          </MuiButton>
-        }
+        action={<EmptyStateLink onClick={clearFilters}>Clear Filters</EmptyStateLink>}
       />
     ) : (
       <EmptyState
         title="No published results yet"
         description="Statistics appear here once a published result has this player on its team list."
-        action={
-          <MuiButton component={RouterLink} to="/manage/results" variant="outlined" size="small" sx={compactButtonSx}>
-            Go to Results
-          </MuiButton>
-        }
+        action={<EmptyStateLink onClick={() => navigate('/manage/results')}>Open Results</EmptyStateLink>}
       />
     )
   } else {
@@ -218,31 +207,21 @@ export default function PlayerStatsPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to={statsBack.to ?? `/manage/players/${playerId}`}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, minHeight: 44, color: 'text.secondary' }}
-        >
-          {statsBack.label}
-        </MuiButton>
-        <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-            {player ? fullName(player) : 'Statistics'}
-          </Typography>
-          {badge && <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />}
-        </Stack>
-      </PageHeaderBand>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader
+        title={player ? fullName(player) : 'Statistics'}
+        backTo={statsBack.to ?? `/manage/players/${playerId}`}
+        backLabel={statsBack.label}
+        titleAdornment={badge ? <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" /> : undefined}
+      />
 
       <PlayerStatsTabs />
 
       {!neverPlayed && (
+        <ToolbarCard>
         <FilterBar
+          bare
+          inCard
           density="compact"
           seasons={seasonOptions.length > 0 ? seasonOptions : undefined}
           leagues={leagueOptions.length > 0 ? leagueOptions : undefined}
@@ -268,7 +247,7 @@ export default function PlayerStatsPage() {
                   {
                     key: 'competition',
                     label: 'Competition',
-                    allLabel: 'All competitions',
+                    allLabel: 'All Competitions',
                     options: competitionOptions,
                     value: competition ?? '',
                     onChange: (value) => setCompetition((value || null) as StatsCompetition | null),
@@ -278,6 +257,7 @@ export default function PlayerStatsPage() {
           }
           onClearAll={clearFilters}
         />
+        </ToolbarCard>
       )}
 
       {body}
