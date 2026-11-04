@@ -1,16 +1,16 @@
 import { Fragment, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Chip, Link as MuiLink, Typography } from '@mui/material'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { IntegerField } from '../../../components/IntegerField'
 import { PlayerName } from '../../../components/PlayerName'
 import { badgeSx } from '../../../components/RecordCard'
 import { useLeaderboardTable } from '../../../api/leaderboardApi'
 import type { LeaderboardColumn, LeaderboardFilters, LeaderboardTableRow, SortDirection, StandingsGroup } from '../../../api/leaderboardApi'
-import { LeagueEditPanel } from '../leagueEdit/LeagueEditPanel'
+import { EmptyStateLink } from '../../../components/EmptyState'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { cellText, minimumLabel, rankText, statsLink, unrankedReason } from './leaderboardFormat'
-import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, TableFooter, UnrankedDivider } from './standingsLayout'
+import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, StandingsCard, TableFooter, UnrankedDivider } from './standingsLayout'
 import { playerCellWidth } from './standingsGrid'
 import { compactButtonSx } from '../../../components/Button'
 
@@ -35,12 +35,16 @@ export interface StandingsTableProps {
   // The minimum that is sent to the server (debounced)
   appliedMinimum: number | null
   enabled: boolean
+  // docs/specs/140: the page's toolbar (filters, Sort, name toggle), fused into the top of this card.
+  toolbar?: ReactNode
 }
 
 function StandingsRow({ group, row, columns, sortCode, view, filters }: { group: string; row: LeaderboardTableRow; columns: LeaderboardColumn[]; sortCode: string; view: { firstName: string; lastName: string; id: string }[]; filters: LeaderboardFilters }) {
   const unranked = row.rank === null || row.rank === undefined
   const person = { firstName: row.firstName, lastName: row.lastName, id: row.playerId }
-  const to = statsLink(row.playerId, filters)
+  // docs/specs/140: the player's page returns here (same tab, sort and filters) with the label "Leaderboards".
+  const location = useLocation()
+  const to = withReturnTo(statsLink(row.playerId, filters), currentOrigin(location), 'Leaderboards')
   return (
     <RowShell columns={columns} widthOf={playerCellWidth} to={to} rank={row.rank}>
       <RankCell text={rankText(row.rank)} unranked={unranked} />
@@ -95,6 +99,7 @@ export function StandingsTable({
   onMinimumChange,
   appliedMinimum,
   enabled,
+  toolbar,
 }: StandingsTableProps) {
   const sortColumn = columns.find((column) => column.code === sortCode)
   const hasMinimum = Boolean(sortColumn && sortColumn.minimumKind !== 'NONE')
@@ -150,11 +155,7 @@ export function StandingsTable({
           title="No published results match these filters"
           description="Publish a result, or widen the filters."
           action={
-            hasFilters ? (
-              <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
-                Clear filters
-              </MuiButton>
-            ) : undefined
+            hasFilters ? <EmptyStateLink onClick={onClearFilters}>Clear Filters</EmptyStateLink> : undefined
           }
         />
       )
@@ -195,9 +196,9 @@ export function StandingsTable({
   }
 
   return (
-    <LeagueEditPanel icon={<EmojiEventsOutlinedIcon />} title={title} testId="board-panel" ariaLabel={title}>
+    <StandingsCard ariaLabel={title} testId="board-panel" toolbar={toolbar}>
       {showMinimum && (
-        <Box sx={{ px: { xs: 1.5, md: 2 }, pb: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ px: { xs: 1.5, md: 2 }, py: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
           <Box sx={{ width: { xs: '100%', sm: 280 } }}>
             <IntegerField
               label={`${minimumLabel(kind)} (optional)`}
@@ -221,6 +222,6 @@ export function StandingsTable({
       {body}
 
       <TableFooter lines={footerLines} hasNextPage={Boolean(query.hasNextPage)} fetchingNext={query.isFetchingNextPage} onShowMore={() => query.fetchNextPage()} />
-    </LeagueEditPanel>
+    </StandingsCard>
   )
 }

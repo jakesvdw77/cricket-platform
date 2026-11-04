@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Box, IconButton, MenuItem } from '@mui/material'
-import SwapVertIcon from '@mui/icons-material/SwapVert'
+import type { ReactNode } from 'react'
 import { isAxiosError } from 'axios'
-import { Input } from '../../../components/Input'
 import type { LeaderboardFilters, SortDirection } from '../../../api/leaderboardApi'
 import { useTeamStatsTable } from '../../../api/teamStatsApi'
 import type { TeamStatsColumn, TeamStatsCompetition } from '../../../api/teamStatsApi'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
+import { LeaderboardSortButton } from './LeaderboardSortButton'
 import { TeamStandingsTable } from './TeamStandingsTable'
 
 export const DEFAULT_TEAM_SORT = 'won'
@@ -23,12 +22,14 @@ export interface TeamsTabProps {
   hasFilters: boolean
   onClearFilters: () => void
   enabled: boolean
+  // docs/specs/140: builds the page's toolbar around this tab's own Sort button (the columns and the sort state live here).
+  renderToolbar: (sort: ReactNode) => ReactNode
 }
 
-// docs/specs/116-team-stats.md (The Teams tab): the Sort by select, the reverse button and the Teams table. The columns come from
+// docs/specs/116-team-stats.md (The Teams tab): the Teams table; docs/specs/140: its Sort button sits in the page's toolbar. The columns come from
 // the response; ?sort= is checked against the team column codes before the first request, so a sort that is not a team column (a
 // carried player sort) is dropped from the address and the default Wins is asked for. ?dir= is sent only together with a ?sort=.
-export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilters, enabled }: TeamsTabProps) {
+export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilters, enabled, renderToolbar }: TeamsTabProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawSort = searchParams.get('sort')
   const unknownSort = Boolean(rawSort) && !TEAM_SORT_CODES.includes(rawSort as string)
@@ -86,31 +87,13 @@ export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilt
   }
   const headingSort = (code: string) => (code === sortCode ? reverseSort() : selectSort(code))
 
+  const sortButton =
+    columns.length > 0 ? (
+      <LeaderboardSortButton columns={columns} sortCode={sortCode} effectiveDirection={effectiveDirection} onSelect={selectSort} onReverse={reverseSort} />
+    ) : null
+
   return (
     <>
-      {columns.length > 0 && (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-          <Box sx={{ flex: { xs: 1, sm: '0 0 220px' }, minWidth: 0 }}>
-            <Input select size="small" label="Sort by" value={sortCode} onChange={(event) => selectSort(event.target.value)}>
-              {columns
-                .filter((column) => column.sortable)
-                .map((column) => (
-                  <MenuItem key={column.code} value={column.code}>
-                    {column.longLabel ?? column.label}
-                  </MenuItem>
-                ))}
-            </Input>
-          </Box>
-          <IconButton
-            aria-label="Reverse order"
-            title="Reverse order"
-            onClick={reverseSort}
-            sx={{ flexShrink: 0, width: { xs: 44, sm: 40 }, height: { xs: 44, sm: 40 }, p: 0, border: 1, borderColor: 'divider', borderRadius: 1, color: effectiveDirection !== naturalDirection ? 'primary.dark' : 'text.secondary' }}
-          >
-            <SwapVertIcon />
-          </IconButton>
-        </Box>
-      )}
       <TeamStandingsTable
         query={query}
         sortCode={sortCode}
@@ -122,6 +105,7 @@ export function TeamsTab({ clubId, filters, competition, hasFilters, onClearFilt
         minimum={minimum}
         onMinimumChange={(value) => setMinimumState({ scope, value })}
         appliedMinimum={appliedMinimum}
+        toolbar={renderToolbar(sortButton)}
       />
     </>
   )

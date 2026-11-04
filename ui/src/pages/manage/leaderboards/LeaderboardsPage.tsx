@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
-import { Box, Button as MuiButton, IconButton, MenuItem, Skeleton } from '@mui/material'
-import SwapVertIcon from '@mui/icons-material/SwapVert'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { Box, Button as MuiButton, Skeleton } from '@mui/material'
 import { EmptyState } from '../../../components/EmptyState'
 import { FilterBar } from '../../../components/FilterBar'
-import { Input } from '../../../components/Input'
+import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
+import { ToolbarCard } from '../../../components/ToolbarCard'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { NameModeToggle } from '../../../components/NameModeToggle'
 import { DEFAULT_SORT, STANDINGS_GROUPS, catalogueBoards, useLeaderboardCatalogue } from '../../../api/leaderboardApi'
@@ -17,6 +16,7 @@ import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { AwardsView } from './AwardsView'
+import { LeaderboardSortButton } from './LeaderboardSortButton'
 import { LeaderboardTabs } from './LeaderboardTabs'
 import { resolveLeaderboardTab } from './leaderboardTabConfig'
 import { StandingsTable } from './StandingsTable'
@@ -108,14 +108,6 @@ export default function LeaderboardsPage() {
     filterState.clearAll()
     setCompetitionChoice(null)
   }
-  const showAwards = () => {
-    const next = new URLSearchParams(searchParams)
-    next.set('tab', 'awards')
-    next.delete('sort')
-    next.delete('dir')
-    setSearchParams(next, { replace: true })
-  }
-
   const seasonName = filterState.seasons.find((season) => season.id === filters.seasonId)?.name
   const titleText = [profileQuery.data?.name, seasonName ? `${seasonName} season` : 'All seasons'].filter(Boolean).join(', ')
   const scopeText = scopeFilterText({
@@ -127,7 +119,53 @@ export default function LeaderboardsPage() {
     teamId: filters.teamId,
   })
 
+  // docs/specs/140 and page-anatomy section 3: ONE flat toolbar: League, Section, Team (Competition on Teams), then the page's Sort button and, last,
+  // the Full name | Initials toggle (no person is named on the Teams tab). Fused into the standings card; standalone above everything else.
+  const renderBar = (sort: ReactNode, showNames: boolean) => (
+    <FilterBar
+      bare
+      inCard
+      viewControlsInline
+      density="compact"
+      leagues={filterState.leagues.length > 0 ? filterState.leagues : undefined}
+      sections={filterState.sections.length > 0 ? filterState.sections : undefined}
+      teams={filterState.teams.length > 0 ? filterState.teams : undefined}
+      leagueId={filters.leagueId}
+      sectionId={filters.sectionId}
+      teamId={filters.teamId}
+      onLeagueChange={filterState.setLeague}
+      onSectionChange={filterState.setSection}
+      onTeamChange={filterState.setTeam}
+      extraSelects={
+        isTeamsTab && competitionOptions.length > 0
+          ? [
+              {
+                key: 'competition',
+                label: 'Competition',
+                allLabel: 'All Competitions',
+                options: competitionOptions.map((value) => ({ value, label: value === 'LEAGUE' ? 'League' : 'Friendlies' })),
+                value: competition ?? '',
+                onChange: (value) => setCompetitionChoice((value || null) as TeamStatsCompetition | null),
+              },
+            ]
+          : []
+      }
+      viewControls={
+        sort || showNames ? (
+          <>
+            {sort}
+            {showNames && <NameModeToggle inline toolbar />}
+          </>
+        ) : undefined
+      }
+      onClearAll={clearFilters}
+    />
+  )
+  const standaloneBar = <ToolbarCard>{renderBar(null, !isTeamsTab)}</ToolbarCard>
+
   let content: ReactNode
+  // Awards, the loading and the error states have no standings card to fuse the toolbar into, so it stands alone above them.
+  let standalone = false
   if (!ready || (!isTeamsTab && catalogueQuery.isLoading)) {
     content = (
       <Box aria-busy="true" aria-label="Loading leaderboards" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -135,8 +173,9 @@ export default function LeaderboardsPage() {
         <Skeleton variant="rounded" height={220} />
       </Box>
     )
+    standalone = true
   } else if (isTeamsTab) {
-    content = <TeamsTab clubId={clubId} filters={filters} competition={competition} hasFilters={hasFilters} onClearFilters={clearFilters} enabled={ready} />
+    content = <TeamsTab clubId={clubId} filters={filters} competition={competition} hasFilters={hasFilters} onClearFilters={clearFilters} enabled={ready} renderToolbar={(sort) => renderBar(sort, false)} />
   } else if (catalogueQuery.isError || (!isAwardsTab && !catalogueGroup)) {
     content = (
       <EmptyState
@@ -149,7 +188,9 @@ export default function LeaderboardsPage() {
         }
       />
     )
+    standalone = true
   } else if (isAwardsTab) {
+    standalone = true
     content = (
       <AwardsView
         key={filterKey}
@@ -165,103 +206,43 @@ export default function LeaderboardsPage() {
     )
   } else if (group && catalogueGroup) {
     content = (
-      <>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-          <Box sx={{ flex: { xs: 1, sm: '0 0 220px' }, minWidth: 0 }}>
-          <Input select size="small" label="Sort by" value={sortCode} onChange={(event) => selectSort(event.target.value)}>
-            {columns
-              .filter((column) => column.sortable)
-              .map((column) => (
-                <MenuItem key={column.code} value={column.code}>
-                  {column.longLabel ?? column.label}
-                </MenuItem>
-              ))}
-          </Input>
-          </Box>
-          <IconButton
-            aria-label="Reverse order"
-            title="Reverse order"
-            onClick={reverseSort}
-            sx={{ flexShrink: 0, width: { xs: 44, sm: 40 }, height: { xs: 44, sm: 40 }, p: 0, border: 1, borderColor: 'divider', borderRadius: 1, color: sortDirection ? 'primary.dark' : 'text.secondary' }}
-          >
-            <SwapVertIcon />
-          </IconButton>
-        </Box>
-        <StandingsTable
-          key={group}
-          clubId={clubId}
-          group={group}
-          title={catalogueGroup.label}
-          columns={columns}
-          sortCode={sortCode}
-          sortDirection={sortDirection}
-          onSortChange={headingSort}
-          filters={filters}
-          hasFilters={hasFilters}
-          onClearFilters={clearFilters}
-          minimum={minimum}
-          onMinimumChange={setMinimum}
-          appliedMinimum={appliedMinimum}
-          enabled={ready}
-        />
-      </>
+      <StandingsTable
+        key={group}
+        clubId={clubId}
+        group={group}
+        title={catalogueGroup.label}
+        columns={columns}
+        sortCode={sortCode}
+        sortDirection={sortDirection}
+        onSortChange={headingSort}
+        filters={filters}
+        hasFilters={hasFilters}
+        onClearFilters={clearFilters}
+        minimum={minimum}
+        onMinimumChange={setMinimum}
+        appliedMinimum={appliedMinimum}
+        enabled={ready}
+        toolbar={renderBar(
+          <LeaderboardSortButton columns={columns} sortCode={sortCode} effectiveDirection={effectiveDirection} onSelect={selectSort} onReverse={reverseSort} />,
+          true,
+        )}
+      />
     )
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <ManageScreenHeader
         title="Leaderboards"
-        action={
-          !isAwardsTab && !isTeamsTab ? (
-            <MuiButton variant="contained" startIcon={<EmojiEventsOutlinedIcon />} onClick={showAwards} sx={{ minHeight: 44 }}>
-              Awards
-            </MuiButton>
-          ) : undefined
+        // docs/specs/140: the season is the title-row pill (as on the other lists); no button here, Awards is a tab.
+        titleAdornment={
+          <HeaderSeasonSelect seasons={filterState.seasons} value={filters.seasonId} onChange={filterState.setSeason} allLabel="All Seasons" />
         }
       />
 
       <LeaderboardTabs />
 
-      {/* No person is named on the Teams tab, so the name toggle is not offered there. */}
-      {!isTeamsTab && (
-        <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
-          <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <NameModeToggle />
-          </Box>
-        </Box>
-      )}
-
-      <FilterBar
-        density="compact"
-        seasons={filterState.seasons.length > 0 ? filterState.seasons : undefined}
-        leagues={filterState.leagues.length > 0 ? filterState.leagues : undefined}
-        sections={filterState.sections.length > 0 ? filterState.sections : undefined}
-        teams={filterState.teams.length > 0 ? filterState.teams : undefined}
-        seasonId={filters.seasonId}
-        leagueId={filters.leagueId}
-        sectionId={filters.sectionId}
-        teamId={filters.teamId}
-        onSeasonChange={filterState.setSeason}
-        onLeagueChange={filterState.setLeague}
-        onSectionChange={filterState.setSection}
-        onTeamChange={filterState.setTeam}
-        extraSelects={
-          isTeamsTab && competitionOptions.length > 0
-            ? [
-                {
-                  key: 'competition',
-                  label: 'Competition',
-                  allLabel: 'All competitions',
-                  options: competitionOptions.map((value) => ({ value, label: value === 'LEAGUE' ? 'League' : 'Friendlies' })),
-                  value: competition ?? '',
-                  onChange: (value) => setCompetitionChoice((value || null) as TeamStatsCompetition | null),
-                },
-              ]
-            : []
-        }
-        onClearAll={clearFilters}
-      />
+      {standalone && standaloneBar}
 
       {content}
     </Box>

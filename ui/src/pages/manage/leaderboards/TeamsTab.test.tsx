@@ -93,7 +93,9 @@ const table = (over: Parameters<typeof makeTeamTable>[0] = {}) => (params: Recor
   return base instanceof Error ? base : { ...base, ...over }
 }
 async function chooseOption(label: string, option: string) {
-  await userEvent.click(screen.getByRole('combobox', { name: label }))
+  // docs/specs/140: Season is the title-row pill (a button), the other filters are toolbar selects
+  const trigger = label === 'Season' ? screen.getByRole('button', { name: 'Season' }) : screen.getByRole('combobox', { name: label })
+  await userEvent.click(trigger)
   await userEvent.click(await screen.findByRole('option', { name: option }))
 }
 
@@ -152,7 +154,15 @@ describe('Teams tab', () => {
       await screen.findAllByTestId('standings-row', {}, wait)
       expect(screen.queryByRole('combobox', { name: 'Team' })).not.toBeInTheDocument()
       await userEvent.click(screen.getByRole('combobox', { name: 'Competition' }))
-      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All competitions', 'League'])
+      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All Competitions', 'League'])
+    })
+
+    it('has no Player names toggle in the toolbar (no person is named on the Teams tab), and Sort sits in the fused toolbar (140)', async () => {
+      renderPage()
+      await screen.findAllByTestId('standings-row', {}, wait)
+      const toolbar = screen.getByTestId('toolbar-card-fused')
+      expect(within(toolbar).queryByRole('group', { name: 'Player names' })).not.toBeInTheDocument()
+      expect(within(toolbar).getByRole('button', { name: /^Sort: / })).toBeInTheDocument()
     })
 
     it('has no Competition select when no competition has counted results, and Batting still has the Team select', async () => {
@@ -183,7 +193,7 @@ describe('Teams tab', () => {
 
       await chooseOption('Competition', 'League')
       await waitFor(() => expect(lastTable().competition).toBe('LEAGUE'), wait)
-      await chooseOption('Season', 'All seasons')
+      await chooseOption('Season', 'All Seasons')
       await waitFor(() => expect(lastTable()).not.toHaveProperty('seasonId'), wait)
       expect(lastTable().competition).toBe('LEAGUE')
     })
@@ -192,8 +202,8 @@ describe('Teams tab', () => {
       server.options = { seasonIds: ['season-2'], leagueIds: ['league-2'], sectionIds: [], competitions: ['FRIENDLY'] }
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
-      await userEvent.click(screen.getByRole('combobox', { name: 'Season' }))
-      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All seasons', '2025/26'])
+      await userEvent.click(screen.getByRole('button', { name: 'Season' }))
+      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All Seasons', '2025/26'])
     })
   })
 
@@ -274,11 +284,14 @@ describe('Teams tab', () => {
     it('Sort by lists the long labels of the sortable columns and sorts by the choice', async () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
-      const select = screen.getByRole('combobox', { name: 'Sort by' })
-      expect(select).toHaveTextContent('Wins')
-      await userEvent.click(select)
-      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(TEAM_COLUMNS.map((c) => c.longLabel))
-      await userEvent.click(screen.getByRole('option', { name: 'Team economy rate' }))
+      // docs/specs/140: one Sort button in the toolbar; its menu lists "<Column>, <Direction>" and the current column's other direction too
+      const button = screen.getByRole('button', { name: /^Sort: / })
+      expect(button).toHaveTextContent('Sort: Wins, Highest First')
+      await userEvent.click(button)
+      const items = await screen.findAllByRole('menuitem')
+      expect(items).toHaveLength(TEAM_COLUMNS.length + 1)
+      for (const column of TEAM_COLUMNS) expect(items.some((item) => item.textContent?.startsWith(`${column.longLabel},`))).toBe(true)
+      await userEvent.click(screen.getByRole('menuitem', { name: /^Team economy rate,/ }))
       expect(search().get('sort')).toBe('economy')
       await waitFor(() => expect(lastTable().sort).toBe('economy'))
     })
@@ -297,11 +310,13 @@ describe('Teams tab', () => {
       await waitFor(() => expect(lastTable()).not.toHaveProperty('direction'))
     })
 
-    it('a column whose natural order is lowest-first reverses to desc, and Reverse order does the same as the heading', async () => {
+    it('a column whose natural order is lowest-first reverses to desc, from the Sort menu as from the heading', async () => {
       renderPage('/manage/leaderboards?tab=teams&sort=lost')
       await screen.findAllByTestId('standings-row', {}, wait)
       expect(lastTable()).not.toHaveProperty('direction')
-      await userEvent.click(screen.getByRole('button', { name: 'Reverse order' }))
+      await userEvent.click(screen.getByRole('button', { name: /^Sort: / }))
+      const lost = TEAM_COLUMNS.find((column) => column.code === 'lost')
+      await userEvent.click(await screen.findByRole('menuitem', { name: `${lost?.longLabel}, Highest First` }))
       expect(search().get('dir')).toBe('desc')
       await waitFor(() => expect(lastTable()).toMatchObject({ sort: 'lost', direction: 'desc' }), wait)
     })
@@ -322,7 +337,7 @@ describe('Teams tab', () => {
       expect(await screen.findAllByTestId('standings-row', {}, wait)).toHaveLength(2)
       expect(lastTable()).toMatchObject({ sort: 'won' })
       expect(lastTable()).not.toHaveProperty('direction')
-      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent('Wins')
+      expect(screen.getByRole('button', { name: /^Sort: / })).toHaveTextContent('Sort: Wins')
     })
 
     it('an unknown sort is dropped before any request: ?sort= and ?dir= are cleared and only the default is asked for', async () => {
@@ -528,13 +543,13 @@ describe('Teams tab', () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
       expect(footer()).toHaveTextContent('Showing 2 of 3 teams.')
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rows()).toHaveLength(3))
       expect(server.tableCalls.map((c) => c.page)).toEqual([0, 1])
       expect(server.tableCalls.every((c) => c.size === 25)).toBe(true)
       expect(rankCells()).toEqual(['1', '2', '3'])
       expect(footer()).toHaveTextContent('Showing 3 of 3 teams.')
-      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
 
     it('renders every row the server sent, even more than a page, and has no Show more when there is no more', async () => {
@@ -542,21 +557,23 @@ describe('Teams tab', () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
       expect(rows()).toHaveLength(30)
-      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
   })
 
   describe('a row', () => {
-    it('links to the team page carrying Season and League (empty = All), with the way back in router state', async () => {
+    it('links to the team page carrying Season and League (empty = All), with the way back as returnTo', async () => {
       renderPage('/manage/leaderboards?tab=teams&sort=runs&dir=asc')
       const link = await screen.findByRole('link', { name: 'Villagers t1' }, wait)
-      expect(link).toHaveAttribute('href', '/manage/teams/t1/stats?seasonId=season-1&leagueId=')
+      // docs/specs/140: the way back is returnTo (the tab, sort and direction in the address) and the label "Leaderboards"
+      const url = new URL(link.getAttribute('href') as string, 'http://x')
+      expect(url.pathname).toBe('/manage/teams/t1/stats')
+      expect(url.searchParams.get('seasonId')).toBe('season-1')
+      expect(url.searchParams.get('leagueId')).toBe('')
+      expect(url.searchParams.get('returnTo')).toBe('/manage/leaderboards?tab=teams&sort=runs&dir=asc')
+      expect(url.searchParams.get('returnLabel')).toBe('Leaderboards')
       await userEvent.click(link)
       expect(await screen.findByTestId('team-path')).toHaveTextContent('/manage/teams/t1/stats')
-      expect(JSON.parse(screen.getByTestId('team-state').textContent ?? '')).toEqual({
-        backTo: '/manage/leaderboards?tab=teams&sort=runs&dir=asc',
-        backLabel: 'Teams',
-      })
     })
 
     it('carries a chosen League and Competition, and not the Section', async () => {
@@ -566,14 +583,16 @@ describe('Teams tab', () => {
       await chooseOption('Competition', 'Friendlies')
       await waitFor(() => expect(lastTable().competition).toBe('FRIENDLY'), wait)
       const link = await screen.findByRole('link', { name: 'Villagers t2' })
-      expect(link).toHaveAttribute('href', '/manage/teams/t2/stats?seasonId=&leagueId=league-1&competition=FRIENDLY')
+      const url = new URL(link.getAttribute('href') as string, 'http://x')
+      expect(url.pathname).toBe('/manage/teams/t2/stats')
+      expect([url.searchParams.get('seasonId'), url.searchParams.get('leagueId'), url.searchParams.get('competition')]).toEqual(['', 'league-1', 'FRIENDLY'])
+      expect(url.searchParams.has('sectionId')).toBe(false)
     })
 
-    it('opens the team page when the row (not just the name) is clicked, with the same state', async () => {
+    it('opens the team page when the row (not just the name) is clicked', async () => {
       renderPage()
       await userEvent.click((await screen.findAllByTestId('cell-runs', {}, wait))[0])
       expect(await screen.findByTestId('team-path')).toHaveTextContent('/manage/teams/t1/stats')
-      expect(JSON.parse(screen.getByTestId('team-state').textContent ?? '')).toMatchObject({ backLabel: 'Teams' })
     })
   })
 
@@ -586,7 +605,7 @@ describe('Teams tab', () => {
       renderPage()
       expect(await screen.findByText('No published results yet', {}, wait)).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Go to Results' })).toHaveAttribute('href', '/manage/results')
-      expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Clear Filters' })).not.toBeInTheDocument()
       expect(screen.queryByRole('table')).not.toBeInTheDocument()
     })
 
@@ -595,7 +614,7 @@ describe('Teams tab', () => {
       renderPage()
       expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
       expect(lastTable().seasonId).toBe('season-1')
-      await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
       await waitFor(() => expect(lastTable()).not.toHaveProperty('seasonId'), wait)
       expect(JSON.parse(localStorage.getItem('leaderboards:filters:club-1') as string)).toMatchObject({ seasonId: 'all', leagueId: null, sectionId: null })
     })
@@ -606,7 +625,7 @@ describe('Teams tab', () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
       await chooseOption('Competition', 'Friendlies')
-      await userEvent.click(await screen.findByRole('button', { name: 'Clear filters' }, wait))
+      await userEvent.click(await screen.findByRole('button', { name: 'Clear Filters' }, wait))
       await waitFor(() => expect(lastTable()).not.toHaveProperty('competition'), wait)
       expect(await screen.findAllByTestId('standings-row', {}, wait)).toHaveLength(2)
     })

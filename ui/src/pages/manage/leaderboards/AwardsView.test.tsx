@@ -8,7 +8,7 @@ import { AWARD_BOARDS, defaultServer, leaderboardApi, makeAwards } from '../../.
 import type { LeaderboardServer } from '../../../test/leaderboardFixtures'
 
 // docs/specs/103-player-stats.md (Awards view, decisions 10, 11, 18): leaders and joint winners, the two minimums pre-filled with the
-// server defaults and Reset to default, the omitted-category note, Choose categories. On screen only.
+// server defaults and Reset to default, the omitted-category note, Choose Categories. On screen only.
 let server: LeaderboardServer
 const apiGet = vi.fn()
 vi.mock('../../../api/axiosConfig', () => ({
@@ -143,15 +143,15 @@ describe('AwardsView', () => {
     const onClearFilters = vi.fn()
     const { unmount } = renderView({ onClearFilters })
     expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
     expect(onClearFilters).toHaveBeenCalled()
     unmount()
     renderView({ hasFilters: false })
     expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear Filters' })).not.toBeInTheDocument()
   })
 
-  it('no categories chosen: points at Choose categories', async () => {
+  it('no categories chosen: points at Choose Categories', async () => {
     server.awards = () => makeAwards({ categories: [], omitted: [] })
     renderView()
     expect(await screen.findByText('No categories to show', {}, wait)).toBeInTheDocument()
@@ -172,8 +172,8 @@ describe('AwardsView', () => {
     expect(awardCalls()).toHaveLength(0)
   })
 
-  it('offers Choose categories', async () => {
+  it('offers Choose Categories', async () => {
     renderView()
-    expect(await screen.findByRole('button', { name: 'Choose categories' }, wait)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Choose Categories' }, wait)).toBeInTheDocument()
   })
 })

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Box, Button as MuiButton, Typography } from '@mui/material'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import { EmptyState } from '../../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
 import { InfoCard } from '../../../components/InfoCard'
 import { IntegerField } from '../../../components/IntegerField'
 import { PlayerName } from '../../../components/PlayerName'
@@ -80,19 +80,15 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
         title="No published results match these filters"
         description="Publish a result, or widen the filters."
         action={
-          hasFilters ? (
-            <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
-              Clear filters
-            </MuiButton>
-          ) : undefined
+          hasFilters ? <EmptyStateLink onClick={onClearFilters}>Clear Filters</EmptyStateLink> : undefined
         }
       />
     )
   } else if (withWinners.length === 0 && omitted.length === 0) {
-    body = <EmptyState title="No categories to show" description="Use Choose categories to pick what the awards sheet shows." />
+    body = <EmptyState title="No categories to show" description="Use Choose Categories to pick what the awards sheet shows." />
   } else {
     body = (
-      <Box data-testid="award-categories" sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+      <Box data-testid="award-categories" sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
         {withWinners.map((category: AwardsCategory) => {
           const joint = category.leaders.length > 1
           const first = category.leaders[0]

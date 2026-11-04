@@ -1,14 +1,14 @@
 import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Chip, Link as MuiLink, Typography } from '@mui/material'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { IntegerField } from '../../../components/IntegerField'
 import { badgeSx } from '../../../components/RecordCard'
 import type { TeamStatsCell, TeamStatsColumn, TeamStatsTableRow, useTeamStatsTable } from '../../../api/teamStatsApi'
 import type { LeaderboardFilters } from '../../../api/leaderboardApi'
-import { LeagueEditPanel } from '../leagueEdit/LeagueEditPanel'
-import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, TableFooter, UnrankedDivider } from './standingsLayout'
+import { EmptyStateLink } from '../../../components/EmptyState'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
+import { FigureCell, FirstCell, HeaderRow, LoadingRows, Notice, RankCell, RowShell, ScrollableTable, StandingsCard, TableFooter, UnrankedDivider } from './standingsLayout'
 import type { WidthOf } from './standingsGrid'
 import { rankText } from './leaderboardFormat'
 import { netRunRateReason, teamBasisLines, teamCellText, teamStatsLink, teamUnrankedReason } from './teamStatsFormat'
@@ -39,19 +39,21 @@ export interface TeamStandingsTableProps {
   onMinimumChange: (value: number | null) => void
   // The minimum that is sent to the server (debounced)
   appliedMinimum: number | null
+  // docs/specs/140: the page's toolbar, fused into the top of this card.
+  toolbar?: ReactNode
 }
 
 function TeamRow({ row, columns, sortCode, to }: { row: TeamStatsTableRow; columns: TeamStatsColumn[]; sortCode: string; to: string }) {
   const unranked = row.rank === null || row.rank === undefined
-  // docs/specs/116: the team page's Back returns to this table with its filters, sort and tab
+  // docs/specs/116 and 140: the team page's Back returns to this table (tab, sort and filters in the address), labelled "Leaderboards"
   const location = useLocation()
-  const state = { backTo: `${location.pathname}${location.search}`, backLabel: 'Teams' }
+  const linkTo = withReturnTo(to, currentOrigin(location), 'Leaderboards')
   return (
-    <RowShell columns={columns} widthOf={teamCellWidth} to={to} state={state} rank={row.rank}>
+    <RowShell columns={columns} widthOf={teamCellWidth} to={linkTo} rank={row.rank}>
       <RankCell text={rankText(row.rank)} unranked={unranked} />
       <FirstCell>
         <Typography component="div" sx={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
-          <MuiLink component={RouterLink} to={to} state={state} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+          <MuiLink component={RouterLink} to={linkTo} color="inherit" underline="none" sx={{ '&:hover': { textDecoration: 'underline' } }}>
             {row.teamName}
           </MuiLink>
         </Typography>
@@ -84,7 +86,7 @@ function TeamRow({ row, columns, sortCode, to }: { row: TeamStatsTableRow; colum
 // player standings. Team (name, section sub-line, Inactive chip) pinned with the rank, the columns exactly as the server sends them,
 // the unranked group after a divider, Show more asks the server for the next page (nothing is sliced here), and a row opens the
 // team's statistics page with Season, League and Competition. Every figure and rank comes from the server.
-export function TeamStandingsTable({ query, sortCode, onSortChange, filters, competition, hasFilters, onClearFilters, minimum, onMinimumChange, appliedMinimum }: TeamStandingsTableProps) {
+export function TeamStandingsTable({ query, sortCode, onSortChange, filters, competition, hasFilters, onClearFilters, minimum, onMinimumChange, appliedMinimum, toolbar }: TeamStandingsTableProps) {
   const first = query.firstPage
   const last = query.lastPage
   const rows = query.rows
@@ -140,11 +142,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
         <Notice
           title="No published results match these filters"
           description="Try a different season or competition."
-          action={
-            <MuiButton variant="outlined" onClick={onClearFilters} size="small" sx={compactButtonSx}>
-              Clear filters
-            </MuiButton>
-          }
+          action={<EmptyStateLink onClick={onClearFilters}>Clear Filters</EmptyStateLink>}
         />
       )
     } else {
@@ -177,9 +175,9 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
 
   return (
     <>
-      <LeagueEditPanel icon={<GroupsOutlinedIcon />} title="Teams" testId="board-panel" ariaLabel="Teams">
+      <StandingsCard ariaLabel="Teams" testId="board-panel" toolbar={toolbar}>
         {showMinimum && (
-          <Box sx={{ px: { xs: 1.5, md: 2 }, pb: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ px: { xs: 1.5, md: 2 }, py: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
             <Box sx={{ width: { xs: '100%', sm: 280 } }}>
               <IntegerField
                 label="Minimum matches (optional)"
@@ -203,7 +201,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
         {body}
 
         <TableFooter lines={footerLines} hasNextPage={Boolean(query.hasNextPage)} fetchingNext={query.isFetchingNextPage} onShowMore={() => query.fetchNextPage()} />
-      </LeagueEditPanel>
+      </StandingsCard>
       <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>Partnerships (runs by wicket) are not captured yet.</Typography>
     </>
   )
