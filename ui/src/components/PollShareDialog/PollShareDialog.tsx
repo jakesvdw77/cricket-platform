@@ -1,11 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material'
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
-import { Button } from '../Button'
-import { Input } from '../Input'
-import { WhatsAppSendActions } from '../WhatsAppSendActions'
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
+import { InviteShareDialog } from '../InviteShareDialog'
 import type { Match } from '../../api/matchApi'
 import { closeTimeLine } from '../../utils/pollShareText'
 
@@ -48,6 +41,7 @@ function buildInviteText(
   pollId: string,
   autoClose?: boolean,
   scheduledCloseAt?: string | null,
+  emoji = true,
 ): string {
   const link = `${window.location.origin}/poll/${pollId}`
   const matchDate = new Date(match.matchDate).toLocaleString(undefined, {
@@ -58,72 +52,27 @@ function buildInviteText(
     minute: '2-digit',
   })
   const lines = [
-    `🏏 *Availability: ${teamName} vs ${opponentLabel(match, teamName)}*`,
-    `📅 ${matchDate}${match.venue ? ` · ${match.venue}` : ''}`,
+    `${emoji ? '🏏 ' : ''}*Availability: ${teamName} vs ${opponentLabel(match, teamName)}*`,
+    `${emoji ? '📅 ' : ''}${matchDate}${match.venue ? ` · ${match.venue}` : ''}`,
   ]
-  const closeLine = closeTimeLine(autoClose, scheduledCloseAt)
+  const closeLine = closeTimeLine(autoClose, scheduledCloseAt, emoji)
   if (closeLine) {
     lines.push(closeLine)
   }
-  lines.push('', '👇 Tap your name and set your status:', link, '', 'Thanks! 🙌')
+  lines.push('', `${emoji ? '👇 ' : ''}Tap your name and set your status:`, link, '', `Thanks!${emoji ? ' 🙌' : ''}`)
   return lines.join('\n')
 }
 
-// docs/specs/032-match-availability-polls.md — mirrors the legacy Cricket Legend app's
-// PollWhatsAppDialog.tsx shape (an editable, regenerable plain-text area embedding the poll's
-// public link) for the *pattern* only, not its literal copy/branding (030's own precedent).
-// Channel-agnostic: plain, copy-paste-into-any-chat text, not a real WhatsApp integration. The
-// admin does the actual sharing themselves — no send/copy automation beyond a selectable/editable
-// text field.
+// docs/specs/032-match-availability-polls.md; since docs/specs/136 the dialog is the shared InviteShareDialog (the Message templates look:
+// a WhatsApp phone preview with an editable message, an Emoji switch, Send in WhatsApp, Copy Text and Copy Link). Channel-agnostic text:
+// the admin does the actual sharing themselves.
 export function PollShareDialog({ open, onClose, match, teamName, pollId, autoClose, scheduledCloseAt }: PollShareDialogProps) {
-  const [text, setText] = useState('')
-  const clipboard = useCopyToClipboard()
-  const { copy, copiedKey } = clipboard
-  const link = `${window.location.origin}/poll/${pollId}`
-
-  // Regenerates fresh invite text every time the dialog opens, so a previous edit never leaks
-  // into a later open — same reset-on-open pattern TeamSheetCommunicationDialog already uses.
-  useEffect(() => {
-    if (open) {
-      setText(buildInviteText(match, teamName, pollId, autoClose, scheduledCloseAt))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pollId, autoClose, scheduledCloseAt])
-
-  const handleRegenerate = () => {
-    setText(buildInviteText(match, teamName, pollId, autoClose, scheduledCloseAt))
-  }
-
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Share invite</DialogTitle>
-      <DialogContent>
-        <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
-            Send it in WhatsApp, or copy it into SMS, email or a team group chat. You choose who
-            receives it and press send yourself.
-          </Typography>
-          <Input
-            label="Invite text"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            multiline
-            minRows={8}
-          />
-          <WhatsAppSendActions text={text} shareTitle="Availability" clipboard={clipboard} />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2, '& > :not(:first-of-type)': { ml: 0 } }}>
-        <Button size="compact" variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
-          {copiedKey === 'link' ? 'Copied' : 'Copy link'}
-        </Button>
-        <Button size="compact" variant="ghost" startIcon={<RefreshOutlinedIcon />} onClick={handleRegenerate}>
-          Regenerate
-        </Button>
-        <Button size="compact" variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <InviteShareDialog
+      open={open}
+      onClose={onClose}
+      buildText={(emoji) => buildInviteText(match, teamName, pollId, autoClose, scheduledCloseAt, emoji)}
+      link={`${window.location.origin}/poll/${pollId}`}
+    />
   )
 }

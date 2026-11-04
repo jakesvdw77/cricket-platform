@@ -20,7 +20,7 @@ export interface ViewTabsRowProps {
   children?: ReactNode
 }
 
-// page-anatomy section 4: a real tab row of link navigation (a nav landmark, aria-current on the active tab) with the divider on the row,
+// docs/specs/136 (page-anatomy section 4): a real tab row of link navigation (a nav landmark, aria-current on the active tab) with the divider on the row,
 // so it runs under the actions too. Used by the League view switcher and the Availability hub.
 export function ViewTabsRow({ 'aria-label': ariaLabel, value, tabs, children }: ViewTabsRowProps) {
   return (

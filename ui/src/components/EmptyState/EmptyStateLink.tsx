@@ -6,7 +6,7 @@ export interface EmptyStateLinkProps {
   onClick: () => void
 }
 
-// page-anatomy section 5 (2026-11-04, owner): the one action of an empty state ("Create New Season", "Create New Poll") is an underlined text link, not a
+// docs/specs/136 (page-anatomy section 5, 2026-11-04, owner): the one action of an empty state ("Create New Season", "Create New Poll") is an underlined text link, not a
 // button. It is a native button element (Tab, Enter and Space work) drawn as a link. Pass it as EmptyState's `action`.
 export function EmptyStateLink({ children, onClick }: EmptyStateLinkProps) {
   return (

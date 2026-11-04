@@ -9,7 +9,7 @@ export interface ChoiceTileProps {
   disabled?: boolean
 }
 
-// A large tile button for "choose one of these" dialogs (Add Team, Add Poll): at least 44 px high, a native button so Tab, Enter and Space work.
+// docs/specs/136: shared by the Add Team and Create New Poll choosers. A large tile button for "choose one of these" dialogs (Add Team, Add Poll): at least 44 px high, a native button so Tab, Enter and Space work.
 export function ChoiceTile({ icon, label, description, onClick, disabled }: ChoiceTileProps) {
   return (
     <ButtonBase

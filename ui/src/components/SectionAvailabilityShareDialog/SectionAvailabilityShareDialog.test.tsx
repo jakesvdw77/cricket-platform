@@ -47,7 +47,7 @@ describe('SectionAvailabilityShareDialog', () => {
   it('generates invite text embedding the round link when opened', () => {
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     expect(textarea.value).toContain(`${window.location.origin}/section-availability/round-1`)
     expect(textarea.value).toContain('U13 Boys')
     expect(textarea.value).toContain('Sat 3 - Sun 4 Oct - U13 Boys fixtures')
@@ -57,7 +57,7 @@ describe('SectionAvailabilityShareDialog', () => {
     const closeAt = new Date(2026, 9, 2, 20, 0).toISOString()
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound({ scheduledCloseAt: closeAt })} />)
 
-    const text = (screen.getByLabelText('Invite text') as HTMLTextAreaElement).value
+    const text = (screen.getByLabelText('Message text') as HTMLTextAreaElement).value
     expect(text).toContain('⏰ *Please reply by Fri 2 Oct, 20:00*')
     expect(text).toContain('🏏 *Sat 3 - Sun 4 Oct - U13 Boys fixtures*')
     expect(text).toContain('📍 U13 Boys')
@@ -67,19 +67,19 @@ describe('SectionAvailabilityShareDialog', () => {
   it('omits the close line when the round has no automatic close', () => {
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound({ autoClose: false, scheduledCloseAt: null })} />)
 
-    expect((screen.getByLabelText('Invite text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
+    expect((screen.getByLabelText('Message text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
   })
 
-  it('lets the admin edit the text, then "Regenerate" rebuilds it back to the fresh version', async () => {
+  it('lets the admin edit the text, then "Restore Original Text" brings the fresh version back', async () => {
     const user = userEvent.setup()
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     const original = textarea.value
     await user.type(textarea, ' EDITED')
     expect(textarea.value).toContain('EDITED')
 
-    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+    await user.click(screen.getByRole('button', { name: 'Restore Original Text' }))
     expect(textarea.value).toBe(original)
   })
 
@@ -88,13 +88,13 @@ describe('SectionAvailabilityShareDialog', () => {
     const onClose = vi.fn()
     render(<SectionAvailabilityShareDialog open onClose={onClose} round={makeRound()} />)
 
-    await user.click(screen.getByRole('button', { name: /^close$/i }))
+    await user.click(screen.getAllByRole('button', { name: 'Close' })[1])
     expect(onClose).toHaveBeenCalled()
   })
 
   it('renders nothing visible when closed', () => {
     render(<SectionAvailabilityShareDialog open={false} onClose={vi.fn()} round={makeRound()} />)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Message text')).not.toBeInTheDocument()
   })
 
   describe('copy to clipboard', () => {
@@ -112,8 +112,8 @@ describe('SectionAvailabilityShareDialog', () => {
       mockClipboard(writeText)
       render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-      const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
-      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+      const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
+      await user.click(screen.getByRole('button', { name: 'Copy Text' }))
 
       expect(writeText).toHaveBeenCalledWith(textarea.value)
       expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
@@ -126,7 +126,7 @@ describe('SectionAvailabilityShareDialog', () => {
       mockClipboard(writeText)
       render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Link' }))
 
       expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/section-availability/round-1`)
       expect(await screen.findByRole('status')).toHaveTextContent('Link copied.')
@@ -139,7 +139,7 @@ describe('SectionAvailabilityShareDialog', () => {
       document.execCommand = execCommand
       render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Text' }))
 
       await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'))
       expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
@@ -151,10 +151,10 @@ describe('SectionAvailabilityShareDialog', () => {
       document.execCommand = vi.fn().mockReturnValue(false)
       render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Link' }))
 
       expect(await screen.findByRole('status')).toHaveTextContent(/copy it manually/i)
-      expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Copy Link' })).toBeInTheDocument()
     })
   })
 })
@@ -168,7 +168,7 @@ describe('SectionAvailabilityShareDialog Send in WhatsApp', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
 
     expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(textarea.value)}`, '_blank', 'noopener')
@@ -180,7 +180,7 @@ describe('SectionAvailabilityShareDialog Send in WhatsApp', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-    await user.type(screen.getByLabelText('Invite text'), ' EDITED NOTE')
+    await user.type(screen.getByLabelText('Message text'), ' EDITED NOTE')
     await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
 
     expect(decodeURIComponent((open.mock.calls[0][0] as string).split('text=')[1])).toContain('EDITED NOTE')
@@ -189,7 +189,7 @@ describe('SectionAvailabilityShareDialog Send in WhatsApp', () => {
   it('keeps Copy message and Copy link beside it', () => {
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
 
-    expect(screen.getByRole('button', { name: 'Copy message' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy Text' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy Link' })).toBeInTheDocument()
   })
 })

@@ -792,7 +792,7 @@ describe('GroupPollResponsesPage', () => {
 
     await manage(user, 'Share Invite')
 
-    const textarea = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
+    const textarea = (await screen.findByLabelText('Message text')) as HTMLTextAreaElement
     expect(textarea.value).toContain('/section-availability/round-1')
   })
 

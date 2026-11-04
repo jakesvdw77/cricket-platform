@@ -16,7 +16,7 @@ export interface ToolbarMultiToggleProps {
   onChange: (selected: string[]) => void
 }
 
-// page-anatomy section 3: the same segmented look as the Cards | List toggle (small icon plus label), but each part is its own on/off
+// docs/specs/136 (page-anatomy section 3): the same segmented look as the Cards | List toggle (small icon plus label), but each part is its own on/off
 // choice (Group Polls and Squad Polls can both be on). Used where the old toggle chips stood for a set of kinds.
 export function ToolbarMultiToggle({ ariaLabel, options, selected, onChange }: ToolbarMultiToggleProps) {
   return (

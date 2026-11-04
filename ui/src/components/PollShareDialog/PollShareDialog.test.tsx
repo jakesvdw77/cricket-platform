@@ -38,7 +38,7 @@ describe('PollShareDialog', () => {
       <PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />,
     )
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     expect(textarea.value).toContain(`${window.location.origin}/poll/poll-123`)
     expect(textarea.value).toContain('Riverside CC')
     expect(textarea.value).toContain('Central Oval')
@@ -58,7 +58,7 @@ describe('PollShareDialog', () => {
       />,
     )
 
-    const text = (screen.getByLabelText('Invite text') as HTMLTextAreaElement).value
+    const text = (screen.getByLabelText('Message text') as HTMLTextAreaElement).value
     expect(text).toContain('⏰ *Please reply by Fri 2 Oct, 20:00*')
     expect(text).toContain('🏏 *Availability: Home Firsts vs Riverside CC*')
     expect(text).toContain('Central Oval')
@@ -69,21 +69,21 @@ describe('PollShareDialog', () => {
       <PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" autoClose={false} scheduledCloseAt={null} />,
     )
 
-    expect((screen.getByLabelText('Invite text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
+    expect((screen.getByLabelText('Message text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
   })
 
-  it('lets the admin edit the text, then "Regenerate" rebuilds it back to the fresh version', async () => {
+  it('lets the admin edit the text, then "Restore Original Text" brings the fresh version back', async () => {
     const user = userEvent.setup()
     render(
       <PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />,
     )
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     const original = textarea.value
     await user.type(textarea, ' EDITED')
     expect(textarea.value).toContain('EDITED')
 
-    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+    await user.click(screen.getByRole('button', { name: 'Restore Original Text' }))
     expect(textarea.value).toBe(original)
   })
 
@@ -92,13 +92,13 @@ describe('PollShareDialog', () => {
     const onClose = vi.fn()
     render(<PollShareDialog open onClose={onClose} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-    await user.click(screen.getByRole('button', { name: /^close$/i }))
+    await user.click(screen.getAllByRole('button', { name: 'Close' })[1])
     expect(onClose).toHaveBeenCalled()
   })
 
   it('renders nothing visible when closed', () => {
     render(<PollShareDialog open={false} onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Message text')).not.toBeInTheDocument()
   })
 
   describe('copy to clipboard', () => {
@@ -116,8 +116,8 @@ describe('PollShareDialog', () => {
       mockClipboard(writeText)
       render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-      const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
-      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+      const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
+      await user.click(screen.getByRole('button', { name: 'Copy Text' }))
 
       expect(writeText).toHaveBeenCalledWith(textarea.value)
       expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
@@ -130,7 +130,7 @@ describe('PollShareDialog', () => {
       mockClipboard(writeText)
       render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Link' }))
 
       expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/poll/poll-123`)
       expect(await screen.findByRole('status')).toHaveTextContent('Link copied.')
@@ -143,7 +143,7 @@ describe('PollShareDialog', () => {
       document.execCommand = execCommand
       render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Text' }))
 
       await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'))
       expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
@@ -155,10 +155,10 @@ describe('PollShareDialog', () => {
       document.execCommand = vi.fn().mockReturnValue(false)
       render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      await user.click(screen.getByRole('button', { name: 'Copy Link' }))
 
       expect(await screen.findByRole('status')).toHaveTextContent(/copy it manually/i)
-      expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Copy Link' })).toBeInTheDocument()
     })
   })
 })
@@ -172,7 +172,7 @@ describe('PollShareDialog Send in WhatsApp', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    const textarea = screen.getByLabelText('Message text') as HTMLTextAreaElement
     await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
 
     expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(textarea.value)}`, '_blank', 'noopener')
@@ -184,7 +184,7 @@ describe('PollShareDialog Send in WhatsApp', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-    await user.type(screen.getByLabelText('Invite text'), ' EDITED NOTE')
+    await user.type(screen.getByLabelText('Message text'), ' EDITED NOTE')
     await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
 
     expect(decodeURIComponent((open.mock.calls[0][0] as string).split('text=')[1])).toContain('EDITED NOTE')
@@ -193,7 +193,7 @@ describe('PollShareDialog Send in WhatsApp', () => {
   it('keeps Copy message and Copy link beside it', () => {
     render(<PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" />)
 
-    expect(screen.getByRole('button', { name: 'Copy message' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy Text' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy Link' })).toBeInTheDocument()
   })
 })

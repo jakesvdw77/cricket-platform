@@ -173,7 +173,7 @@ describe('PollCard - squad poll', () => {
     const user = userEvent.setup()
     renderCard({ kind: 'SQUAD', poll })
     await choose(user, SQUAD_TITLE, 'Share Invite')
-    const text = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
+    const text = (await screen.findByLabelText('Message text')) as HTMLTextAreaElement
     expect(text.value).toContain('Availability: Home Team vs')
     expect(text.value).toContain('/poll/poll-1')
   })

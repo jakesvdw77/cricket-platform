@@ -12,7 +12,7 @@ export function formatShareCloseTime(date: Date): string {
 
 // The highlighted deadline line, or null when the poll has no automatic close time (so the caller
 // omits it rather than promising a deadline that does not exist).
-export function closeTimeLine(autoClose?: boolean, scheduledCloseAt?: string | null): string | null {
+export function closeTimeLine(autoClose?: boolean, scheduledCloseAt?: string | null, emoji = true): string | null {
   if (!autoClose || !scheduledCloseAt) {
     return null
   }
@@ -20,5 +20,5 @@ export function closeTimeLine(autoClose?: boolean, scheduledCloseAt?: string | n
   if (Number.isNaN(date.getTime())) {
     return null
   }
-  return `⏰ *Please reply by ${formatShareCloseTime(date)}*`
+  return `${emoji ? '⏰ ' : ''}*Please reply by ${formatShareCloseTime(date)}*`
 }
