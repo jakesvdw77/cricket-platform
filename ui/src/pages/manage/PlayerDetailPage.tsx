@@ -3,13 +3,14 @@ import { LogoAvatar } from '../../components/LogoAvatar'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
+import { Box, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
+import { Button } from '../../components/Button'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PlayerActionsMenu } from '../../components/PlayerActionsMenu'
 import { badgeSx } from '../../components/RecordCard'
@@ -181,9 +182,9 @@ export default function PlayerDetailPage() {
               ? 'This player request is waiting for you. Change the status to verify or reject it.'
               : 'This player request was rejected, so they are hidden from the player list. You can verify them again.'}
           </Typography>
-          <MuiButton variant="contained" onClick={(event) => setStatusAnchor(event.currentTarget)}>
+          <Button size="compact" onClick={(event) => setStatusAnchor(event.currentTarget)}>
             Change Status
-          </MuiButton>
+          </Button>
         </Box>
       )}
 
@@ -218,14 +219,14 @@ export default function PlayerDetailPage() {
             (player.phone || player.email) && (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: player.phone && player.email ? '1fr 1fr' : '1fr', md: 'none' }, gridAutoFlow: { md: 'column' }, justifyContent: { md: 'start' }, gap: 1 }}>
                 {player.phone && (
-                  <MuiButton component="a" href={`tel:${player.phone}`} variant="outlined" startIcon={<PhoneOutlinedIcon fontSize="small" />} sx={{ minHeight: { xs: 44, md: 34 } }}>
+                  <Button component="a" href={`tel:${player.phone}`} size="compact" variant="secondary" startIcon={<PhoneOutlinedIcon fontSize="small" />}>
                     Call
-                  </MuiButton>
+                  </Button>
                 )}
                 {player.email && (
-                  <MuiButton component="a" href={`mailto:${player.email}`} variant="outlined" startIcon={<EmailOutlinedIcon fontSize="small" />} sx={{ minHeight: { xs: 44, md: 34 } }}>
+                  <Button component="a" href={`mailto:${player.email}`} size="compact" variant="secondary" startIcon={<EmailOutlinedIcon fontSize="small" />}>
                     Email
-                  </MuiButton>
+                  </Button>
                 )}
               </Box>
             )
