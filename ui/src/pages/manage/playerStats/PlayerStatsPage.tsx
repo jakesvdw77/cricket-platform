@@ -207,7 +207,7 @@ export default function PlayerStatsPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
       <ManageScreenHeader
         title={player ? fullName(player) : 'Statistics'}
         backTo={statsBack.to ?? `/manage/players/${playerId}`}
