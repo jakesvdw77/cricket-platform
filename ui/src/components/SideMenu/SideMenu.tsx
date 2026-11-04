@@ -110,7 +110,11 @@ function SideMenuRow({ item, active, collapsed, badge, look, ghost }: { item: Na
         fontSize: quiet ? 14 : 17,
         textDecoration: 'none',
         bgcolor: active ? (quiet ? 'chrome.activeRow' : 'chrome.selectedBg') : 'transparent',
-        '&:hover': { bgcolor: active ? (quiet ? 'chrome.activeRow' : 'chrome.selectedBg') : 'chrome.hover' },
+        '&:hover': {
+          bgcolor: active ? (quiet ? 'chrome.activeRow' : 'chrome.selectedBg') : 'chrome.hover',
+          // docs/specs/139 (owner): hover lifts the label to full cream and brightens the icon's tile, not only the row.
+          ...(quiet && !active ? { color: 'chrome.text', '& .side-menu-icon-tile': { bgcolor: 'chrome.menuLine' } } : {}),
+        },
         '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text', outlineOffset: 2 },
         '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color 120ms ease' },
         // The gold bar of the active row (quiet look): 3 px, on the row's left edge.
@@ -119,6 +123,7 @@ function SideMenuRow({ item, active, collapsed, badge, look, ghost }: { item: Na
     >
       {quiet ? (
         <Box
+          className="side-menu-icon-tile"
           sx={{
             width: 36,
             height: 36,
@@ -127,6 +132,7 @@ function SideMenuRow({ item, active, collapsed, badge, look, ghost }: { item: Na
             placeItems: 'center',
             borderRadius: 1,
             bgcolor: ghost ? 'chrome.ghostTile' : 'transparent',
+            '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color 120ms ease' },
           }}
         >
           <NavItemIcon name={item.icon} size={28} surface="none" onDark />
