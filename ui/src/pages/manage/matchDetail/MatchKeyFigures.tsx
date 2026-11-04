@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
@@ -32,7 +31,6 @@ export interface MatchKeyFiguresProps {
   // docs/specs/131: the forecast for the match day (within 7 days, a field with a usable place). Omitted or null shows nothing.
   weather?: WeatherSummary | null
   // docs/specs/133: the inline Get Directions link under the Venue figure (a `GetDirectionsButton variant="link"`); omitted shows nothing.
-  directions?: ReactNode
 }
 
 const NOT_KNOWN = '–'
@@ -58,7 +56,7 @@ function pollCaption(polls: MatchPoll[], closesAt: string | null): string {
 // live countdown, amber within 24 hours, "Played" once it has a published result), where, in which league and season, and the poll -
 // as four static compact PageCounters cards (no icons, no lone button; Open Availability is in Manage Match). The Venue card is a
 // link to the field's page when the match has a field.
-export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus, fieldTo, weather, directions }: MatchKeyFiguresProps) {
+export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus, fieldTo, weather }: MatchKeyFiguresProps) {
   const kickoff = useCountdown(matchDate)
   const started = kickoff.stage === 'expired'
   const played = resultStatus === 'PUBLISHED'
@@ -100,10 +98,9 @@ export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVe
   return (
     <Box data-testid="match-key-figures">
       <PageCounters items={counters} density="compact" />
-      {((weather && !played) || directions) && (
+      {weather && !played && (
         <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 0.5 }}>
           {weather && !played && <WeatherBadge summary={weather} testId="match-figure-weather" />}
-          {directions}
         </Box>
       )}
     </Box>
