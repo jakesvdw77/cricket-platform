@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Tab, Tabs, Typography } from '@mui/material'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import type { PlayerFormValues } from '../../components/PlayerForm'
+import { useAfterSave } from '../../hooks/useReturnTo'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
@@ -41,7 +42,8 @@ export default function PlayerFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { playerId } = useParams<{ playerId?: string }>()
   const isEdit = Boolean(playerId)
-  const navigate = useNavigate()
+  // docs/specs/141: Save returns to where the user came from (the Players list with its filters, or the Player page).
+  const afterSave = useAfterSave('/manage/players')
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0)
@@ -67,7 +69,7 @@ export default function PlayerFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players'] })
-      navigate('/manage/players')
+      afterSave()
     },
   })
 

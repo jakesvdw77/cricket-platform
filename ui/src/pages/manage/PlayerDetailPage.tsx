@@ -1,19 +1,17 @@
 import { useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
 import { useBackLink } from '../../hooks/useReturnTo'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import { PageHeaderBand } from '../../components/PageHeaderBand'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { PlayerActionsMenu } from '../../components/PlayerActionsMenu'
 import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
 import { PlayerStatusMenu } from '../../components/PlayerStatusMenu'
@@ -124,83 +122,38 @@ export default function PlayerDetailPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to={backLink.to ?? '/manage/players'}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
-        >
-          {backLink.label}
-        </MuiButton>
-
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={{ xs: 1.75, md: 2 }} sx={{ minWidth: 0 }}>
+      <ManageScreenHeader
+        title={fullName(player)}
+        backTo={backLink.to ?? '/manage/players'}
+        backLabel={backLink.label}
+        // docs/specs/141: the avatar and the ONE status badge sit beside the name, as a result's logos and badge do.
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <LogoAvatar
               src={playerAvatarSrc(player.photoUrl, player.gender)}
               variant="circular"
-              size={80}
+              size={40}
               kind="person"
               keepTile={!player.photoUrl}
-              fontSize="1.6rem"
-              sx={(theme) => ({
-                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.18)}`,
-                [theme.breakpoints.down('md')]: { width: 72, height: 72, fontSize: '1.4rem' },
-              })}
+              fontSize="0.9rem"
             >
               {initialsFromName(fullName(player))}
             </LogoAvatar>
-            <Stack spacing={1} sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-              >
-                {fullName(player)}
-              </Typography>
-              {/* The status badge first, then the player's tagged sections (docs/specs/060, 088). */}
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
-                {taggedSections.map((section) => (
-                  <Chip key={section.id} size="small" variant="outlined" label={sectionPath(section)} />
-                ))}
-              </Stack>
-            </Stack>
-          </Stack>
-
-          {/* Side by side on the right on a desktop; two full-width halves under the header on a phone. */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', md: 'auto auto' },
-              gap: 1,
-              width: { xs: '100%', md: 'auto' },
-              '& .MuiButton-root': { minHeight: { xs: 44, md: 40 } },
-            }}
-          >
-            <MuiButton
-              variant="outlined"
-              aria-haspopup="menu"
-              startIcon={<ManageAccountsOutlinedIcon fontSize="small" />}
-              onClick={(event) => setStatusAnchor(event.currentTarget)}
-            >
-              Status
-            </MuiButton>
-            {/* The primary page action: the same filled dark green as Add Player (the shared primary button) */}
-            <MuiButton
-              component={RouterLink}
-              to={`/manage/players/${player.id}/edit`}
-              variant="contained"
-              startIcon={<EditOutlinedIcon fontSize="small" />}
-            >
-              Edit
-            </MuiButton>
+            <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
           </Box>
-        </Box>
-      </PageHeaderBand>
+        }
+        // The player's tagged sections under the title (docs/specs/060).
+        subtitle={
+          taggedSections.length > 0 ? (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.5 }}>
+              {taggedSections.map((section) => (
+                <Chip key={section.id} size="small" variant="outlined" label={sectionPath(section)} />
+              ))}
+            </Stack>
+          ) : undefined
+        }
+        action={<PlayerActionsMenu player={player} trigger="button" onStatusAction={(action) => statusActions.requestAction(player, action)} />}
+      />
 
       {/* docs/specs/088: an unverified or rejected player shows a banner above the cards, with the same Status menu. */}
       {(status === 'unverified' || status === 'rejected') && (
@@ -229,7 +182,7 @@ export default function PlayerDetailPage() {
               : 'This player request was rejected, so they are hidden from the player list. You can verify them again.'}
           </Typography>
           <MuiButton variant="contained" onClick={(event) => setStatusAnchor(event.currentTarget)}>
-            Change status
+            Change Status
           </MuiButton>
         </Box>
       )}
@@ -238,7 +191,8 @@ export default function PlayerDetailPage() {
 
       <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
         <InfoCard
-          title="Basic info"
+          flat
+          title="Basic Info"
           icon={<InfoOutlinedIcon />}
           fields={[
             { label: 'Date of birth', value: dateOfBirthText },
@@ -249,7 +203,8 @@ export default function PlayerDetailPage() {
         />
 
         <InfoCard
-          title="Contact info"
+          flat
+          title="Contact Info"
           icon={<AlternateEmailIcon />}
           fields={[
             { label: 'Phone', value: player.phone },

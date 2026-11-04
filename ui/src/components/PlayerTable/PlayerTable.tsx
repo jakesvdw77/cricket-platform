@@ -1,19 +1,15 @@
-import { useState } from 'react'
 import { LogoAvatar } from '../LogoAvatar'
 import type { ReactNode } from 'react'
-import { Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
-import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import { badgeSx } from '../RecordCard'
-import { PlayerStatusMenu } from '../PlayerStatusMenu'
+import { ToolbarCard } from '../ToolbarCard'
 import { playerAvatarSrc } from '../BrandIcon'
 import { initialsFromName } from '../../utils/initials'
 import { BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
 import { playerStatusBadge, playerStatusOf } from '../../utils/playerStatus'
-import type { PlayerStatusAction } from '../../utils/playerStatus'
 import { zebraTint } from '../../utils/zebraTint'
 import type { Player } from '../../api/playerApi'
 
@@ -22,19 +18,23 @@ export interface PlayerTableProps {
   // Already resolved client-side by the caller (PlayerList's own join) - this component only shows the first name and a +N.
   sectionNamesFor: (player: Player) => string[]
   viewTo: (player: Player) => string
-  // docs/specs/103 (decision 20): the Stats icon button beside Change status.
-  statsTo: (player: Player) => string
-  // The Status button's menu: the caller does the work and the confirmations (usePlayerStatusActions).
-  onStatusAction: (player: Player, action: PlayerStatusAction) => void
+  // docs/specs/141: the row's ONE kebab (the caller builds it, see PlayerActionsMenu).
+  renderActions?: (player: Player) => ReactNode
+  // Given a toolbar the table is ONE card: the toolbar, a hairline, then the header and rows (or `empty`).
+  toolbar?: ReactNode
+  empty?: ReactNode
 }
 
 const NOT_ON_FILE = '–'
 
-// Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, Status button. A phone keeps Player (the
+// One flat card (hairline, no shadow), as the Results and Matches tables.
+const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
+
+// Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, kebab. A phone keeps Player (the
 // status badge moves under the name), Season, Phone and the button, in that order (see `phoneOrder`).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 104px 44px 44px',
-  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px 44px',
+  xs: 'minmax(0, 1fr) 54px 104px 44px',
+  sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px',
 }
 
 const gridSx = {
@@ -83,16 +83,13 @@ function PlayerRow({
   player,
   sections,
   viewTo,
-  statsTo,
-  onStatusAction,
+  actions,
 }: {
   player: Player
   sections: string[]
   viewTo: string
-  statsTo: string
-  onStatusAction: (action: PlayerStatusAction) => void
+  actions?: ReactNode
 }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const name = `${player.firstName} ${player.lastName}`
   const status = playerStatusOf(player)
   const badge = playerStatusBadge(status)
@@ -160,32 +157,9 @@ function PlayerRow({
       <Cell sx={{ ...phoneOrder(1), textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesThisSeason}</Cell>
       {/* Overall is a desktop column; a phone shows the phone number instead */}
       <Cell hiddenOnPhone sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesOverall}</Cell>
-      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center', ...phoneOrder(3) }}>
-        <IconButton
-          aria-label="Change status"
-          aria-haspopup="menu"
-          title="Change status"
-          size="small"
-          onClick={(event) => setAnchor(event.currentTarget)}
-          // position: relative lifts it above the row's stretched link, so using the menu never navigates
-          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
-        >
-          <ManageAccountsOutlinedIcon fontSize="small" />
-        </IconButton>
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(3) }}>
+        {actions}
       </Box>
-      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center', ...phoneOrder(4) }}>
-        <IconButton
-          component={RouterLink}
-          to={statsTo}
-          aria-label="Stats"
-          title="Stats"
-          size="small"
-          sx={{ position: 'relative', color: 'primary.dark', width: { xs: 44, sm: 36 }, height: { xs: 44, sm: 36 } }}
-        >
-          <EqualizerOutlinedIcon fontSize="small" />
-        </IconButton>
-      </Box>
-      <PlayerStatusMenu status={status} anchorEl={anchor} onClose={() => setAnchor(null)} onAction={onStatusAction} />
     </Box>
   )
 }
@@ -194,21 +168,9 @@ function PlayerRow({
 // bordered panel with a header row that sticks to the top of the scrolling page and zebra rows of equal height; the whole
 // row opens the player, and each row has the same Status button and menu as the card. A value that is not on file
 // shows "-"; a phone keeps only Player, Season, Phone and the Status button.
-export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, onStatusAction }: PlayerTableProps) {
-  return (
-    <Box
-      role="table"
-      aria-label="Players"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        boxShadow: 2,
-        // clip, not hidden: it rounds the corners without becoming a scroll container, so the sticky header still sticks
-        overflow: 'clip',
-      }}
-    >
+export function PlayerTable({ players, sectionNamesFor, viewTo, renderActions, toolbar, empty }: PlayerTableProps) {
+  const table = (
+    <Box role="table" aria-label="Players" sx={toolbar ? undefined : cardSx}>
       <Box
         role="row"
         sx={{
@@ -217,10 +179,10 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, onStatu
           top: 0,
           zIndex: 1,
           height: { xs: 36, sm: 40 },
-          bgcolor: 'background.paper',
+          bgcolor: zebraTint,
           borderBottom: 1,
           borderColor: 'divider',
-          fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+          fontSize: '0.75rem',
           fontWeight: 700,
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
@@ -236,21 +198,22 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, onStatu
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bowl</Box>
         <Box role="columnheader" sx={{ ...phoneOrder(1), textAlign: 'right' }}>Season</Box>
         <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Overall</Box>
-        <Box role="columnheader" aria-label="Status actions" sx={phoneOrder(3)} />
-        <Box role="columnheader" aria-label="Stats" sx={phoneOrder(4)} />
+        <Box role="columnheader" aria-label="Actions" sx={phoneOrder(3)} />
       </Box>
       <Box role="rowgroup">
         {players.map((player) => (
-          <PlayerRow
-            key={player.id}
-            player={player}
-            sections={sectionNamesFor(player)}
-            viewTo={viewTo(player)}
-            statsTo={statsTo(player)}
-            onStatusAction={(action) => onStatusAction(player, action)}
-          />
+          <PlayerRow key={player.id} player={player} sections={sectionNamesFor(player)} viewTo={viewTo(player)} actions={renderActions?.(player)} />
         ))}
       </Box>
     </Box>
   )
+  if (toolbar) {
+    return (
+      <Box data-testid="players-fused-card" sx={cardSx}>
+        <ToolbarCard fused>{toolbar}</ToolbarCard>
+        {players.length === 0 && empty ? empty : table}
+      </Box>
+    )
+  }
+  return table
 }

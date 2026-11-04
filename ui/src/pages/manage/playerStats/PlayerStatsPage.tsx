@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBackLink } from '../../../hooks/useReturnTo'
 import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Skeleton, Stack, Typography } from '@mui/material'
@@ -50,6 +51,8 @@ function basisLine(stats: PlayerStats, tab: ReturnType<typeof resolvePlayerStats
 export default function PlayerStatsPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { playerId } = useParams<{ playerId?: string }>()
+  // docs/specs/141: Back returns to where the user came from (the Players list with its filters) when a returnTo is present.
+  const statsBack = useBackLink(`/manage/players/${playerId}`, 'Back to player')
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = resolvePlayerStatsTab(searchParams.get('tab'))
 
@@ -219,14 +222,14 @@ export default function PlayerStatsPage() {
       <PageHeaderBand>
         <MuiButton
           component={RouterLink}
-          to={`/manage/players/${playerId}`}
+          to={statsBack.to ?? `/manage/players/${playerId}`}
           variant="text"
           color="inherit"
           size="small"
           startIcon={<ArrowBackIcon fontSize="small" />}
           sx={{ mb: 1, ml: -1, minHeight: 44, color: 'text.secondary' }}
         >
-          Back to player
+          {statsBack.label}
         </MuiButton>
         <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>

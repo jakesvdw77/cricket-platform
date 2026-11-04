@@ -1,31 +1,11 @@
-import { useState } from 'react'
 import { LogoAvatar } from '../LogoAvatar'
-import type { MouseEvent, ReactNode } from 'react'
-import {
-  Box,
-  ButtonBase,
-  Card as MuiCard,
-  CardActions,
-  CardContent,
-  Chip,
-  Link as MuiLink,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Box, Card as MuiCard, CardContent, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
-import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import TagOutlinedIcon from '@mui/icons-material/TagOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { badgeSx } from '../RecordCard'
 import { cardTitleSx } from '../../theme'
 import { DetailLine } from '../DetailLine'
-import { PlayerStatusMenu } from '../PlayerStatusMenu'
+import { PlayerActionsMenu } from '../PlayerActionsMenu'
+import { Button } from '../Button'
 import { playerAvatarSrc } from '../BrandIcon'
 import { initialsFromName } from '../../utils/initials'
 import { BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
@@ -40,10 +20,8 @@ export interface PlayerCardProps {
   // Already resolved client-side by the caller (PlayerList's own sectionNamesFor join) - this component only renders the
   // first name plus a `+N` overflow chip, it never resolves ids itself.
   sectionNames: string[]
+  // Already carries returnTo (the list adds it).
   viewTo: string
-  editTo: string
-  // docs/specs/103 (decision 20): the fourth footer button, straight to the player's statistics page.
-  statsTo: string
   // docs/specs/088: called when the manager picks a change in the Status menu; the caller does the work and the
   // confirmations (usePlayerStatusActions).
   onStatusAction: (action: PlayerStatusAction) => void
@@ -57,33 +35,16 @@ function bowlingText(player: Player): string {
   return parts.length > 0 ? parts.join(', ') : NOT_ON_FILE
 }
 
-function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <Box
       data-testid="player-detail-row"
       sx={{ p: 1, borderRadius: 0.75, '&:nth-of-type(odd)': { bgcolor: zebraTint } }}
     >
-      <DetailLine icon={icon} label={label} value={value} muted={value === NOT_ON_FILE} />
+      <DetailLine label={label} value={value} muted={value === NOT_ON_FILE} />
     </Box>
   )
 }
-
-const footerButtonSx = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 0.25,
-  minWidth: 0,
-  width: '100%',
-  py: 1,
-  px: 0.25,
-  borderRadius: 1,
-  color: 'primary.dark',
-  '&:hover': { bgcolor: 'action.hover' },
-  '&.Mui-focusVisible': { bgcolor: 'action.focus' },
-} as const
-
-const footerCaptionSx = { fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' } as const
 
 // docs/specs/088-players-polls-alignment.md: the Player card on the poll card's layout, with one rule on top - every card
 // has the same parts and the same height whatever is on file or what the player's status is: the avatar and a title
@@ -91,8 +52,7 @@ const footerCaptionSx = { fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.
 // two games-played chips in the header's corner; five zebra rows (Number, Born, Phone, Bat, Bowl) that show "–" when
 // empty; and the same four footer columns, Status,
 // Edit, View and Stats (docs/specs/103). Nothing appears or disappears with the status; the Status button's menu offers only the valid changes.
-export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onStatusAction }: PlayerCardProps) {
-  const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
+export function PlayerCard({ player, sectionNames, viewTo, onStatusAction }: PlayerCardProps) {
   const name = `${player.firstName} ${player.lastName}`
   const status = playerStatusOf(player)
   const badge = playerStatusBadge(status)
@@ -103,14 +63,17 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
     <MuiCard
       sx={{
         bgcolor: 'background.paper',
-        boxShadow: 2,
+        // flat with a hairline (page-anatomy section 6); the hover lift is its click cue
+        boxShadow: 0,
+        border: 1,
+        borderColor: 'divider',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
         outline: '1px solid transparent',
-        '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
+        '&:hover': { outlineColor: 'primary.main' },
       }}
     >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, flex: '1 1 auto' }}>
@@ -175,6 +138,10 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
               sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 1 } }}
             />
           </Stack>
+          {/* ONE kebab (page-anatomy section 6), lifted above the title's stretched link. */}
+          <Box sx={{ position: 'relative', flex: 'none' }}>
+            <PlayerActionsMenu player={player} onStatusAction={onStatusAction} />
+          </Box>
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ minHeight: 24 }}>
@@ -195,78 +162,37 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onSt
         {/* The same five rows on every card; the margin lets the zebra tint bleed to the card padding's edge. */}
         <Stack sx={{ mx: -1 }}>
           <DetailRow
-            icon={<TagOutlinedIcon fontSize="small" />}
             label="Number"
             value={player.jerseyNumber != null ? `#${player.jerseyNumber}` : NOT_ON_FILE}
           />
           <DetailRow
-            icon={<CalendarTodayOutlinedIcon fontSize="small" />}
             label="Born"
             value={formatDateOfBirth(player.dateOfBirth)}
           />
-          <DetailRow icon={<PhoneOutlinedIcon fontSize="small" />} label="Phone" value={player.phone || NOT_ON_FILE} />
+          <DetailRow label="Phone" value={player.phone || NOT_ON_FILE} />
           <DetailRow
-            icon={<SportsCricketOutlinedIcon fontSize="small" />}
             label="Bat"
             value={player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : NOT_ON_FILE}
           />
-          <DetailRow icon={<SportsBaseballOutlinedIcon fontSize="small" />} label="Bowl" value={bowlingText(player)} />
+          <DetailRow label="Bowl" value={bowlingText(player)} />
         </Stack>
       </CardContent>
 
-      {/* position: relative lifts the buttons above the title's stretched-link overlay (docs/specs/059). */}
-      <CardActions
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 0.5,
-          px: 1,
-          pb: 1,
-          pt: 0,
-          position: 'relative',
-          borderTop: 1,
-          borderColor: 'divider',
-          '& > :not(:first-of-type)': { ml: 0 },
-        }}
-      >
-        <ButtonBase
-          aria-haspopup="menu"
-          aria-label="Change status"
-          title="Change status"
-          onClick={(event: MouseEvent<HTMLElement>) => setStatusAnchor(event.currentTarget)}
-          sx={footerButtonSx}
-        >
-          <ManageAccountsOutlinedIcon fontSize="small" />
-          <Box component="span" sx={footerCaptionSx}>
-            Status
-          </Box>
-        </ButtonBase>
-        <ButtonBase component={RouterLink} to={editTo} aria-label="Edit" sx={footerButtonSx}>
-          <EditOutlinedIcon fontSize="small" />
-          <Box component="span" sx={footerCaptionSx}>
-            Edit
-          </Box>
-        </ButtonBase>
-        <ButtonBase component={RouterLink} to={viewTo} aria-label="View" sx={footerButtonSx}>
-          <VisibilityOutlinedIcon fontSize="small" />
-          <Box component="span" sx={footerCaptionSx}>
-            View
-          </Box>
-        </ButtonBase>
-        <ButtonBase component={RouterLink} to={statsTo} aria-label="Stats" sx={footerButtonSx}>
-          <EqualizerOutlinedIcon fontSize="small" />
-          <Box component="span" sx={footerCaptionSx}>
-            Stats
-          </Box>
-        </ButtonBase>
-      </CardActions>
-
-      <PlayerStatusMenu
-        status={status}
-        anchorEl={statusAnchor}
-        onClose={() => setStatusAnchor(null)}
-        onAction={onStatusAction}
-      />
+      <PlayerStatusQuickAction status={status} onVerify={() => onStatusAction('verify')} />
     </MuiCard>
+  )
+}
+
+// docs/specs/141: an unverified player's one frequent action stays one click away, as Announce Team does on a ready side. Every card keeps
+// the same height, so the other statuses reserve the row.
+function PlayerStatusQuickAction({ status, onVerify }: { status: string; onVerify: () => void }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', minHeight: 32, px: 2, pb: 1.5, position: 'relative' }}>
+      {status === 'unverified' && (
+        <Button size="compact" onClick={onVerify}>
+          Verify Player
+        </Button>
+      )}
+    </Box>
   )
 }

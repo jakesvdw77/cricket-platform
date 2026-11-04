@@ -1,15 +1,20 @@
 import { useMemo, useState } from 'react'
-import { Box, Link, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Box, Link, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { PlayerActionsMenu } from '../../components/PlayerActionsMenu'
 import { PlayerCard } from '../../components/PlayerCard'
 import { PlayerTable } from '../../components/PlayerTable'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine, SortMenu } from '../../components/ContentControlsLine'
+import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../components/ToolbarCard'
+import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
-import { EmptyState } from '../../components/EmptyState'
+import { AddCard } from '../../components/AddCard'
+import { BrandIcon } from '../../components/BrandIcon'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PageCounters } from '../../components/PageCounters'
@@ -24,8 +29,8 @@ import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { useAvailabilitySeason } from '../../hooks/useAvailabilitySeason'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePlayerStatusActions } from '../../hooks/usePlayerStatusActions'
-import { scopeFilterText } from '../../utils/availabilityScope'
-import { cardGridSx } from '../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 
 // Exported for PlayerDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's title matches this card's exactly, rather than a second copy.
@@ -36,9 +41,9 @@ export function fullName(player: Player): string {
 // docs/specs/088-players-polls-alignment.md: the quick filters behind the counters, named as the chip, the scope text and
 // the phone sheet's Quick filter row show them.
 const FOCUS_LABELS: Record<PlayerListFocus, string> = {
-  'in-squad': 'In a squad this season',
-  selected: 'Players selected this season',
-  unverified: 'Unverified players',
+  'in-squad': 'In A Squad This Season',
+  selected: 'Players Selected This Season',
+  unverified: 'Unverified Players',
 }
 
 // docs/specs/088: the orders the sort menu offers. Name is the default; "games this season" puts the busiest (or the
@@ -48,8 +53,8 @@ type PlayerSort = 'name-asc' | 'name-desc' | 'season-desc' | 'season-asc'
 const SORT_OPTIONS: (SortMenuOption & { value: PlayerSort })[] = [
   { value: 'name-asc', label: 'Name, A to Z', linkLabel: 'A to Z' },
   { value: 'name-desc', label: 'Name, Z to A', linkLabel: 'Z to A' },
-  { value: 'season-desc', label: 'Games this season, most first', linkLabel: 'most games' },
-  { value: 'season-asc', label: 'Games this season, fewest first', linkLabel: 'fewest games' },
+  { value: 'season-desc', label: 'Most Games This Season', linkLabel: 'Most Games This Season' },
+  { value: 'season-asc', label: 'Fewest Games This Season', linkLabel: 'Fewest Games This Season' },
 ]
 
 function comparePlayers(sort: PlayerSort): (a: Player, b: Player) => number {
@@ -74,8 +79,29 @@ function comparePlayers(sort: PlayerSort): (a: Player, b: Player) => number {
 export default function PlayerList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<PlayerSort>('name-asc')
+  // docs/specs/141: the sort, the quick filter and Show Inactive live in the address, so Back from a player restores them
+  // (Section and Missing Date Of Birth are saved per club below).
+  const [params, setParams] = useSearchParams()
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+  const sort = (SORT_OPTIONS.find((option) => option.value === params.get('sort'))?.value ?? 'name-asc') as PlayerSort
+  const setSort = (next: string) => setParam('sort', next === 'name-asc' ? null : next)
+  const focusParam = params.get('focus')
+  const focus = (Object.keys(FOCUS_LABELS) as PlayerListFocus[]).find((key) => key === focusParam) ?? null
+  const setFocus = (next: PlayerListFocus | null) => setParam('focus', next)
+  const showInactive = params.get('inactive') === '1'
+  const setShowInactive = (next: boolean) => setParam('inactive', next ? '1' : null)
+  const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of whatever the caller's own
   // access already resolves server-side. docs/specs/043: persisted across visits; Search stays a separate, non-persisted
   // useState above. docs/specs/077: show only the players still missing a date of birth, to fix them.
@@ -83,9 +109,6 @@ export default function PlayerList() {
     sectionId: null as string | null,
     missingDateOfBirth: false,
   })
-  // Per visit only: suspended and rejected players are hidden by default, and the counters' quick filter (at most one).
-  const [showInactive, setShowInactive] = useState(false)
-  const [focus, setFocus] = useState<PlayerListFocus | null>(null)
   // The two season counters look at the default season (the one containing today, else the latest); there is no control.
   const { seasonId, seasonsLoading } = useAvailabilitySeason(clubId)
   // docs/specs/088 (F): Cards or List, remembered per page in the browser (`playerList:view`, default Cards). It changes
@@ -176,29 +199,27 @@ export default function PlayerList() {
     )
   }
 
-  const hasPlayers = players.length > 0
   const isSearching = search.trim().length > 0
-  const scope = scopeFilterText({ sections: sections ?? [], sectionId })
   // Choosing the active counter again turns its filter off; choosing another replaces it.
-  const toggleFocus = (next: PlayerListFocus) => setFocus((current) => (current === next ? null : next))
+  const toggleFocus = (next: PlayerListFocus) => setFocus(focus === next ? null : next)
   const summary = summaryQuery.data
   const counters: PageCounterItem[] = summary
     ? [
         {
           id: 'shown',
           value: summary.playersShown,
-          label: showInactive ? 'Players shown' : 'Active players',
+          label: showInactive ? 'Players Shown' : 'Active Players',
           shortLabel: showInactive ? 'Shown' : 'Active',
           kind: 'filter',
           active: focus === null,
-          hint: 'Show all',
+          hint: 'Show All',
           onSelect: () => setFocus(null),
         },
         {
           id: 'in-squad',
           value: summary.inSquad,
           label: FOCUS_LABELS['in-squad'],
-          shortLabel: 'In a squad',
+          shortLabel: 'In A Squad',
           kind: 'filter',
           active: focus === 'in-squad',
           hint: 'Tap to filter',
@@ -229,46 +250,45 @@ export default function PlayerList() {
     : []
   const showCounters = !summaryQuery.isError && (summaryQuery.isPending || Boolean(summary))
 
-  const missingToggle = (
-    <CompactSwitch
-      checked={missingDateOfBirth}
-      onChange={(checked) => setFilters({ missingDateOfBirth: checked })}
-      label="Missing date of birth"
-    />
-  )
-  const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show inactive" />
-  const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={(value) => setSort(value as PlayerSort)} />
+  const openCreate = () => navigate('/manage/players/new')
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Players')
+  const sortOptions = SORT_OPTIONS.map(({ value, label }) => ({ value, label }))
+  const hasFilters = Boolean(sectionId || missingDateOfBirth || focus)
 
   const chips = [
     ...(focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []),
-    ...(missingDateOfBirth
-      ? [{ key: 'missing-dob', label: 'Missing date of birth', onRemove: () => setFilters({ missingDateOfBirth: false }) }]
-      : []),
   ]
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title="Players"
-        // docs/specs/088: the scope of the list under the title when a section is set, as on Matches and Availability.
-        subtitle={scope ? `Showing: ${scope}` : undefined}
-        action={<Button size="compact" onClick={() => navigate('/manage/players/new')}>Add Player</Button>}
-      />
-
-      <LinkRequestsWaitingCard waiting={linkRequestsWaiting} />
-
-      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
-
-      <FilterBar
-        density="compact"
-        sections={sections ?? []}
-        sectionId={sectionId}
-        onSectionChange={(value) => setFilters({ sectionId: value })}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by name"
-        extraChips={chips}
-        viewControls={
+  // docs/specs/141 and page-anatomy section 3: one flat toolbar, desktop order: Section, search, the two toggle chips, Sort, then Cards | List
+  // last. A phone: Filters and search on the row; the toggle, the quick filter, the switches and Sort in the sheet.
+  const bar = (
+    <FilterBar
+      bare
+      inCard
+      viewControlsInline
+      density="compact"
+      sections={sections ?? []}
+      sectionId={sectionId}
+      onSectionChange={(value) => setFilters({ sectionId: value })}
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by name"
+      extraChips={chips}
+      secondaryControls={(placement) =>
+        placement === 'row' ? (
+          <>
+            <ToolbarToggleChip pressed={missingDateOfBirth} onChange={(pressed) => setFilters({ missingDateOfBirth: pressed })} label="Missing Date Of Birth" />
+            <ToolbarToggleChip pressed={showInactive} onChange={setShowInactive} label="Show Inactive" />
+          </>
+        ) : (
+          <>
+            <CompactSwitch checked={missingDateOfBirth} onChange={(checked) => setFilters({ missingDateOfBirth: checked })} label="Missing Date Of Birth" />
+            <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show Inactive" />
+          </>
+        )
+      }
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
@@ -283,72 +303,84 @@ export default function PlayerList() {
                 </Link>
               </Box>
             )}
-            {missingToggle}
-            {inactiveToggle}
-            {sortLink}
+            <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />
           </>
-        }
-        onClearAll={() => {
-          setFilters({ sectionId: null, missingDateOfBirth: false })
-          setFocus(null)
-        }}
-      />
-
-      <ContentControlsLine
-        scope={`Showing ${players.length} ${players.length === 1 ? 'player' : 'players'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={
+        ) : (
           <>
-            <ListViewToggle value={view} onChange={setView} />
-            {missingToggle}
-            {inactiveToggle}
+            <ToolbarSortButton value={sort} onChange={setSort} options={sortOptions} />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
           </>
-        }
+        )
+      }
+      onClearAll={() => {
+        setFilters({ sectionId: null, missingDateOfBirth: false })
+        setFocus(null)
+      }}
+    />
+  )
+
+  // Empty states (page-anatomy section 5): the section's icon, and one text link to add a player only where nothing exists yet.
+  const icon = <BrandIcon name="nav/cricket-players" size={48} padding={4} />
+  const emptyState = visiblePlayers.length > 0 ? null : isSearching ? (
+    <EmptyState icon={icon} title="No matching players" description={`No players match "${search.trim()}". Try a different search.`} />
+  ) : focus ? (
+    <EmptyState icon={icon} title="Nobody here" description={`No players match "${FOCUS_LABELS[focus]}" with the current filters.`} />
+  ) : missingDateOfBirth ? (
+    <EmptyState icon={icon} title="Every player has a date of birth" description="There is nobody left to fix." />
+  ) : hasFilters ? (
+    <EmptyState icon={icon} title="No players match these filters" description="Try clearing a filter." />
+  ) : (
+    <EmptyState
+      icon={icon}
+      title="No players yet"
+      description="Add your club's first player to get started."
+      action={<EmptyStateLink onClick={openCreate}>Add New Player</EmptyStateLink>}
+    />
+  )
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader
+        title="Players"
+        // ONE filled button on the title row (page-anatomy section 1); the owner's wording is Add New Player (2026-11-04).
+        action={<Button size="compact" onClick={openCreate}>Add New Player</Button>}
       />
 
-      {visiblePlayers.length > 0 && view === 'list' && (
+      <LinkRequestsWaitingCard waiting={linkRequestsWaiting} />
+
+      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
+
+      {!fused && <ToolbarCard>{bar}</ToolbarCard>}
+
+      {fused && (
         <PlayerTable
           players={visiblePlayers}
           sectionNamesFor={sectionNamesFor}
-          viewTo={(player) => `/manage/players/${player.id}`}
-          statsTo={(player) => `/manage/players/${player.id}/stats`}
-          onStatusAction={(player, action) => statusActions.requestAction(player, action)}
+          viewTo={(player) => leaveTo(`/manage/players/${player.id}`)}
+          toolbar={bar}
+          empty={emptyState}
+          renderActions={(player) => <PlayerActionsMenu player={player} onStatusAction={(action) => statusActions.requestAction(player, action)} />}
         />
       )}
 
-      {visiblePlayers.length > 0 && view === 'cards' && (
-        <Box sx={cardGridSx}>
+      {!fused && emptyState}
+
+      {!fused && visiblePlayers.length > 0 && (
+        <Box sx={dynamicCardGridSx}>
           {visiblePlayers.map((player) => (
             <PlayerCard
               key={player.id}
               player={player}
               sectionNames={sectionNamesFor(player)}
-              viewTo={`/manage/players/${player.id}`}
-              editTo={`/manage/players/${player.id}/edit`}
-              statsTo={`/manage/players/${player.id}/stats`}
+              viewTo={leaveTo(`/manage/players/${player.id}`)}
               onStatusAction={(action) => statusActions.requestAction(player, action)}
             />
           ))}
+          {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
+          <AddCard label="Add New Player" onClick={openCreate} testId="add-player-card" />
         </Box>
-      )}
-
-      {visiblePlayers.length === 0 && isSearching && (
-        <EmptyState
-          title="No matching players"
-          description={`No players match "${search.trim()}". Try a different search.`}
-        />
-      )}
-
-      {!hasPlayers && !isSearching && focus && (
-        <EmptyState title="Nobody here" description={`No players match "${FOCUS_LABELS[focus]}" with the current filters.`} />
-      )}
-
-      {!hasPlayers && !isSearching && !focus && missingDateOfBirth && (
-        <EmptyState title="Every player has a date of birth" description="There is nobody left to fix." />
-      )}
-
-      {!hasPlayers && !isSearching && !focus && !missingDateOfBirth && (
-        <EmptyState title="No players yet" description="Add your club's first player to get started." />
       )}
 
       {statusActions.dialog}
