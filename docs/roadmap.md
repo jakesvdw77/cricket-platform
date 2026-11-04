@@ -562,4 +562,4 @@ Found by the standards and code review of the built feature; none blocks the mer
 - **One shared list-view preference?** Players, Matches and Polls each remember their own Cards | List choice (`playerList:view`, `matchList:view`, `pollList:view`). Open question: one shared preference for every list page instead (specs 088, 089 and 090 use one per page).
 
 ## Cleanup backlog: raw MUI buttons
-`ui/src/standards/pageAnatomyGuard.test.ts` lists 20 files that still use a raw MUI `Button` without the compact style (its BASELINE list). Fix each as its page is reviewed and delete it from the list; the list may never grow.
+`ui/src/standards/pageAnatomyGuard.test.ts` lists 19 files that still use a raw MUI `Button` without the compact style (its BASELINE list). Fix each as its page is reviewed and delete it from the list; the list may never grow.

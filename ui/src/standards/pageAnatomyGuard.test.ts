@@ -28,7 +28,6 @@ const fullWidthSwitch = /<CompactToggleGroup[^>]*\sfullWidth[\s>]/
 
 // Backlog to clean up one page at a time as each is reviewed (docs/roadmap.md); never add to it.
 const BASELINE_RAW_BUTTONS: string[] = [
-  "components/CollapsibleSection/CollapsibleSection.tsx",
   "components/FilterBar/FilterBar.tsx",
   "components/MatchForm/MatchSideFields.tsx",
   "components/PlayingConditionsSummary/PlayingConditionsSummary.tsx",
@@ -40,7 +39,6 @@ const BASELINE_RAW_BUTTONS: string[] = [
   "pages/manage/ClubOverviewPage.tsx",
   "pages/manage/MatchFormPage.tsx",
   "pages/manage/TeamDetailPage.tsx",
-  "pages/manage/leaderboards/CategoryChooser.tsx",
   "pages/manage/matchDetail/MatchTeamCard.tsx",
   "pages/manage/playerDetail/PlayerStatsCard.tsx",
   "pages/manage/results/ResultDetailPage.tsx",
@@ -58,6 +56,11 @@ describe('page anatomy guard: compact buttons', () => {
     const offenders = files.filter((file) => rawButtonTags(readFileSync(file, 'utf8')) > 0).map(rel).sort()
     const fresh = offenders.filter((file) => !BASELINE_RAW_BUTTONS.includes(file))
     expect(fresh, 'use components/Button (size="compact") instead of a raw MUI Button').toEqual([])
+  })
+
+  it('every baseline file still offends, so a fixed file leaves the list', () => {
+    const offenders = new Set(files.filter((file) => rawButtonTags(readFileSync(file, 'utf8')) > 0).map(rel))
+    expect(BASELINE_RAW_BUTTONS.filter((file) => !offenders.has(file))).toEqual([])
   })
 
   it('no segmented switch is fullWidth outside the phone sheet (use fullWidthOnPhone)', () => {

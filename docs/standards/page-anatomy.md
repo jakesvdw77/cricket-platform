@@ -10,7 +10,7 @@ Every point below was a correction the owner had to send by hand. If any answer 
 2. **Title row:** shared `ManageScreenHeader`; Back alone above it; ONE filled button (list: "Add New X" / "Create New X", detail: "Manage X"), plus at most one outlined button beside it (Share, View Stats). Status badge beside the name. Sub-header is plain text, never pills.
 3. **Figures:** static or filtering `PageCounters` (compact), no icon tiles, no count text anywhere ("Showing N").
 4. **Toolbar:** filters, search, toggle chips, Sort, then Cards | List last.
-5. **Records:** flat cards (no footer bar), ONE kebab per card and row, no chevron, a dashed Add card only when there is a card, at most three cards a row; names are links with `returnTo`.
+5. **Records:** flat cards (no footer bar; the one allowed exception is a single quick-action row at the foot of a card for the action used most, as Announce Team on a ready side and View Stats and Verify Player on a player card, owner 2026-11-04), ONE kebab per card and row, no chevron, a dashed Add card only when there is a card, at most three cards a row; names are links with `returnTo`.
 6. **Buttons and switches:** the shared compact `Button` (32 px, Title Case) and `CompactToggleGroup`; never a raw MUI `Button`, never `fullWidth` on a desktop. `src/standards/pageAnatomyGuard.test.ts` fails the build on a new offender.
 7. **Wording:** Title Case for labels, owner's wording for the record ("Add New Player", "Capture New Result"), no em dashes.
 8. **Wide screens:** content fills the width (three columns from `lg` on a detail page), nothing needs scrolling on a large display.

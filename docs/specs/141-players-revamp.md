@@ -108,5 +108,9 @@ Reuse `ManageScreenHeader`, `HeaderActions`, `ManageMenu`, `ToolbarCard`, `Toolb
 - **Player form (in scope now):** the shared edit-page skeleton: compact card, the shared tab row, footer Cancel, Save Changes (Add Player on a new one), then Deactivate or Reactivate; the page is titled Add New Player; Save and Cancel return through `returnTo`.
 - **Player stats page (in scope now):** the shared header (name and the status badge beside it, Back honouring `returnTo`), the shared tab row (`ViewTabsRow replace`, Overview, Batting, Bowling, Fielding, Awards & record, Matches), ONE flat `ToolbarCard` with the filters, compact counters in place of the icon tiles (`StatTile` now draws the compact counter), flat info cards and matches table, Title Case buttons (View As Table, Hide Batting, Show More, Try Again, Clear Filters as an empty-state link, Open Results).
 
+- **Quick actions on the card and row (owner, 2026-11-04):** View Stats is used often, so it stays a button on the card (foot row, outlined, with a filled Verify Player before it on an unverified player) and a quiet text button on the table row (an icon on a phone), as well as an item in the kebab. This is the one allowed footer-row exception in page-anatomy section 0 item 5.
+- **Match page (owner, 2026-11-04, outside the Players pages):** Get Directions is one of the header's inline links beside Scoring and Watch Live, not a row under the figures. The Result and Review cards are flat, not raised.
+- **Leaderboards Awards (owner, 2026-11-04):** brought to the one-toolbar layout of spec 140 (minimums, Reset To Default and Choose Categories in the toolbar, no heading or count text, compact buttons).
+
 ## Rollout Notes
 Frontend only; no migration. Update `page-anatomy.md`, `frontend.md` and `roadmap.md` in the same PR.
