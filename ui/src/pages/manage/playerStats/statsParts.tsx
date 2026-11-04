@@ -36,10 +36,10 @@ export function StatTile({ label, value, caption, testId, tone = 'primary' }: St
       testId={testId}
       value={value}
       label={
-        <Box component="span" sx={{ fontSize: '0.8125rem', lineHeight: 1.3 }}>
+        <Box component="span">
           {label}
           {caption && (
-            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', lineHeight: 1.3 }}>
+            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, letterSpacing: 0, textTransform: 'none', lineHeight: 1.3 }}>
               {caption}
             </Box>
           )}
