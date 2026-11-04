@@ -139,19 +139,58 @@ describe('SideMenu', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Players')
   })
 
-  it('draws each icon on a mid green tile with a cream ring (docs/specs/120, so cream artwork stays visible), the same 36 px footprint as before', () => {
-    renderMenu('/manage')
+  it('classic look: draws each icon on a mid green tile with a cream ring (docs/specs/120), the same 36 px footprint as before', () => {
+    renderMenu('/manage', { look: 'classic' })
 
     const nav = screen.getByRole('navigation', { name: 'Manager' })
     const tile = within(nav).getAllByTestId('brand-icon-tile')[0]
     expect(tile).toHaveStyle({ width: '36px', height: '36px', backgroundColor: 'rgb(20, 99, 63)' })
   })
 
-  it('is the dark menu ground, and the current row is gold on a gold tint', () => {
-    renderMenu('/manage/players')
+  it('classic look: is the dark menu ground, and the current row is gold on a gold tint', () => {
+    renderMenu('/manage/players', { look: 'classic' })
 
     const nav = screen.getByRole('navigation', { name: 'Manager' })
     expect(nav).toHaveStyle({ backgroundColor: 'rgb(10, 46, 29)' })
     expect(screen.getByRole('link', { name: 'Players' })).toHaveStyle({ color: 'rgb(232, 184, 61)', fontWeight: '700' })
+  })
+
+  describe('quiet look (docs/specs/139, the default)', () => {
+    it('puts the icons on a faint ghost tile, not the cream-ringed tile, and takes the tile away with ghost off', () => {
+      const { unmount } = renderMenu('/manage')
+      const nav = screen.getByRole('navigation', { name: 'Manager' })
+      expect(within(nav).queryByTestId('brand-icon-tile')).not.toBeInTheDocument()
+      expect(nav.querySelector('.side-menu-icon-tile')).toHaveStyle({ width: '36px', height: '36px' })
+      unmount()
+
+      renderMenu('/manage', { ghost: false })
+      expect(screen.getByRole('navigation', { name: 'Manager' }).querySelector('.side-menu-icon-tile')).toHaveStyle({ backgroundColor: 'rgba(0, 0, 0, 0)' })
+    })
+
+    it('marks the current row with gold text, a lighter green row and aria-current, and quiets the others', () => {
+      renderMenu('/manage/players')
+      const current = screen.getByRole('link', { name: 'Players' })
+      expect(current).toHaveAttribute('aria-current', 'page')
+      expect(current).toHaveStyle({ color: 'rgb(232, 184, 61)', fontWeight: '700', minHeight: '44px' })
+      expect(screen.getByRole('link', { name: 'Teams' })).not.toHaveAttribute('aria-current')
+    })
+
+    it('shows no collapse control unless the shell gives one, then toggles it and names the state', async () => {
+      const { unmount } = renderMenu('/manage')
+      expect(screen.queryByRole('button', { name: /menu$/i })).not.toBeInTheDocument()
+      unmount()
+
+      let calls = 0
+      renderMenu('/manage', { onToggleCollapsed: () => { calls += 1 } })
+      const button = screen.getByRole('button', { name: 'Collapse menu' })
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+      await userEvent.click(button)
+      expect(calls).toBe(1)
+    })
+
+    it('says Expand menu on the icon rail', () => {
+      renderMenu('/manage', { collapsed: true, onToggleCollapsed: () => undefined })
+      expect(screen.getByRole('button', { name: 'Expand menu' })).toHaveAttribute('aria-expanded', 'false')
+    })
   })
 })
