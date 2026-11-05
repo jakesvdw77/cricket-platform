@@ -240,14 +240,23 @@ beforeEach(() => {
   listMatches.mockResolvedValue(makeMatchesPage([]))
 })
 
+function counterValue(id: string) {
+  return within(screen.getByTestId(`team-figure-${id}`)).getByTestId('page-counter-value')
+}
+
 function StatsPageProbe() {
   const location = useLocation()
   return (
     <div>
       <div>Team Statistics Page</div>
-      <div data-testid="stats-state">{JSON.stringify(location.state)}</div>
+      <div data-testid="stats-search">{location.search}</div>
     </div>
   )
+}
+
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="probe-address">{location.pathname + location.search}</div>
 }
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -265,8 +274,8 @@ function renderPage(initialPath: string, clubId?: string) {
             <Route path="teams/:teamId/stats" element={<StatsPageProbe />} />
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
-            <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
-            <Route path="club-contacts/:id/edit" element={<div>Edit Contact Page</div>} />
+            <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page<LocationProbe /></div>} />
+            <Route path="club-contacts/:id/edit" element={<div>Edit Contact Page<LocationProbe /></div>} />
             <Route path="sponsors/:id/edit" element={<div>Edit Sponsor Page</div>} />
             <Route path="players/:playerId/edit" element={<div>Edit Player Page</div>} />
           </Route>
@@ -292,7 +301,7 @@ describe('TeamDetailPage', () => {
     expect(await screen.findByText("Couldn't load this team")).toBeInTheDocument()
   })
 
-  it('renders the header: section and Active chips, ground, no "Details" heading, and the key-figure strip for the default season', async () => {
+  it('renders the shared header: name, one status badge, section path as plain text, the Season pill and four counters', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', groundName: 'Irene Country Club' })])
     listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
@@ -307,14 +316,14 @@ describe('TeamDetailPage', () => {
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     expect(await screen.findByRole('heading', { name: '1st XI' })).toBeInTheDocument()
-    const badges = screen.getByLabelText('Team badges')
-    expect(within(badges).getByText('Men')).toBeInTheDocument()
-    expect(within(badges).getByText('Active')).toBeInTheDocument()
-    expect(within(screen.getByTestId('team-header-info-line')).getByText('Irene Country Club')).toBeInTheDocument()
-    expect(await screen.findByTestId('team-figure-players-value')).toHaveTextContent('2')
-    await waitFor(() => expect(screen.getByTestId('team-figure-matches-value')).toHaveTextContent('1'))
-    expect(screen.getByTestId('team-figure-captain-value')).toHaveTextContent('Jane Smith')
-    expect(screen.getByTestId('team-figure-ground-value')).toHaveTextContent('Irene Country Club')
+    expect(screen.getByTestId('team-status-badge')).toHaveTextContent('Active')
+    expect(screen.getAllByText('Men').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Season' })).toBeInTheDocument()
+    await screen.findByTestId('team-figure-players')
+    await waitFor(() => expect(counterValue('players')).toHaveTextContent('2'))
+    await waitFor(() => expect(counterValue('matches')).toHaveTextContent('1'))
+    expect(counterValue('captain')).toHaveTextContent('Jane Smith')
+    expect(counterValue('ground')).toHaveTextContent('Irene Country Club')
     expect(screen.queryByText('Details')).not.toBeInTheDocument()
     expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1')
   })
@@ -326,8 +335,8 @@ describe('TeamDetailPage', () => {
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: '1st XI' })
-    expect(screen.getByTestId('team-figure-captain-value')).toHaveTextContent('–')
-    expect(screen.getByTestId('team-figure-ground-value')).toHaveTextContent('–')
+    expect(counterValue('captain')).toHaveTextContent('–')
+    expect(counterValue('ground')).toHaveTextContent('–')
   })
 
   it('uses ?seasonId= for the squad request and changing the pill requests that season\'s squad', async () => {
@@ -363,36 +372,32 @@ describe('TeamDetailPage', () => {
     expect(screen.queryByRole('option', { name: /^All/ })).not.toBeInTheDocument()
   })
 
-  it('draws the Contacts and Sponsors cards as equal-height cells of one stretched row', async () => {
+  it('draws flat Contacts, Sponsors and Squad cards in one grid, with the Squad anchor id', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: '1st XI' })
-    const row = screen.getByTestId('team-contacts-sponsors-row')
-    expect(getComputedStyle(row).alignItems).toBe('stretch')
-    expect(row).toContainElement(screen.getByTestId('team-contacts-card'))
-    expect(row).toContainElement(screen.getByTestId('team-sponsors-card'))
-    // Each card fills its grid cell, so the shorter one is as tall as the taller.
-    expect(getComputedStyle(screen.getByTestId('team-contacts-card')).height).toBe('100%')
-    expect(getComputedStyle(screen.getByTestId('team-sponsors-card')).height).toBe('100%')
+    const grid = screen.getByTestId('team-cards-grid')
+    expect(getComputedStyle(grid).alignItems).toBe('stretch')
+    for (const id of ['team-contacts-card', 'team-sponsors-card', 'team-squad-card']) {
+      expect(grid).toContainElement(screen.getByTestId(id))
+    }
+    expect(grid.querySelector('#squad')).toContainElement(screen.getByTestId('team-squad-card'))
   })
 
-  it('draws a Statistics card with a real 44 px outlined link to the team statistics page', async () => {
+  it('has no Statistics card any more', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 
-    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
-    const card = await screen.findByTestId('team-statistics-card')
-    expect(within(card).getByRole('heading', { name: 'Statistics' })).toBeInTheDocument()
-    const link = within(card).getByRole('link', { name: 'View statistics' })
-    expect(link).toHaveAttribute('href', '/manage/teams/team-1/stats?seasonId=')
-    await userEvent.click(link)
-    expect(await screen.findByText('Team Statistics Page')).toBeInTheDocument()
+    await screen.findByRole('heading', { name: '1st XI' })
+    expect(screen.queryByTestId('team-statistics-card')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Statistics' })).not.toBeInTheDocument()
   })
 
-  it('the Statistics link carries the chosen season (empty when none)', async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+  it('View Stats is an outlined compact button beside Manage Team, and opens the stats page with the season and the way back', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
     listSeasons.mockResolvedValueOnce([
       makeSeason({ id: 'season-1', label: '2026' }),
       makeSeason({ id: 'season-2', label: '2025', startDate: '2025-01-01', endDate: '2025-12-31', active: false }),
@@ -400,24 +405,18 @@ describe('TeamDetailPage', () => {
 
     renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
 
-    const card = await screen.findByTestId('team-statistics-card')
-    await waitFor(() => expect(within(card).getByRole('link', { name: 'View statistics' })).toHaveAttribute('href', '/manage/teams/team-1/stats?seasonId=season-2'))
-  })
-
-  it('the Statistics link is an outlined button and carries the team detail URL (with its query) as the way back, named for the team', async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
-
-    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
-
-    const link = await within(await screen.findByTestId('team-statistics-card')).findByRole('link', { name: 'View statistics' })
-    expect(link.className).toMatch(/MuiButton-outlined/)
-    expect(getComputedStyle(link).minHeight).toBe('32px')
-    await userEvent.click(link)
+    const button = await screen.findByTestId('team-view-stats')
+    expect(button).toHaveTextContent('View Stats')
+    expect(button.className).toMatch(/MuiButton-outlined/)
+    expect(getComputedStyle(button).minHeight).toBe('32px')
+    expect(screen.getByRole('button', { name: 'Manage Team' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('team-view-stats')).toBeEnabled())
+    await userEvent.click(button)
     await screen.findByText('Team Statistics Page')
-    expect(JSON.parse(screen.getByTestId('stats-state').textContent ?? '')).toEqual({
-      backTo: '/manage/sections/section-1/teams/team-1?seasonId=season-2',
-      backLabel: '1st XI',
-    })
+    const params = new URLSearchParams(screen.getByTestId('stats-search').textContent ?? '')
+    expect(params.get('seasonId')).toBe('season-2')
+    expect(params.get('returnTo')).toBe('/manage/sections/section-1/teams/team-1?seasonId=season-2')
+    expect(params.get('returnLabel')).toBe('Team')
   })
 
   it('renders an Inactive badge chip for a deactivated team', async () => {
@@ -443,7 +442,9 @@ describe('TeamDetailPage', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
     expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/club-contacts/contact-1/edit')
+    const edit = screen.getByRole('link', { name: 'Edit' })
+    expect(edit.getAttribute('href')).toContain('/manage/club-contacts/contact-1/edit?returnTo=')
+    expect(edit.getAttribute('href')).toContain('returnLabel=Team')
   })
 
   it('opens the Sponsors quick-view dialog with Website/Email fields, edit route intact', async () => {
@@ -552,21 +553,68 @@ describe('TeamDetailPage', () => {
     expect(await screen.findByRole('link', { name: /Back to Teams/ })).toHaveAttribute('href', '/manage/teams')
   })
 
-  it('the header "Edit team" and Squad "Add player" actions both target the edit route', async () => {
+  it('has ONE Manage Team menu holding Edit Team and View Stats, each carrying returnTo', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
 
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: '1st XI' })
-    expect(screen.getByRole('link', { name: /Edit team/ })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1/edit',
-    )
-    expect(screen.getByRole('link', { name: 'Add player' })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1/edit',
-    )
-    // docs/specs/091 (E): Edit is always the filled primary button.
-    expect(screen.getByRole('link', { name: /Edit team/ }).className).toContain('MuiButton-contained')
+    expect(screen.queryByRole('link', { name: /Edit team/i })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Manage Team' }))
+    const edit = screen.getByRole('menuitem', { name: 'Edit Team' })
+    expect(edit).toHaveAttribute('href', expect.stringContaining('/manage/sections/section-1/teams/team-1/edit'))
+    expect(edit.getAttribute('href')).toContain('returnTo=')
+    const stats = screen.getByRole('menuitem', { name: 'View Stats' })
+    expect(stats).toHaveAttribute('href', expect.stringContaining('/manage/teams/team-1/stats'))
+    expect(stats.getAttribute('href')).toContain('returnTo=')
+    expect(screen.queryByRole('menuitem', { name: 'Open Team' })).not.toBeInTheDocument()
+  })
+
+  it('the Squad Add Player action opens the edit route on the Squad tab, carrying returnTo with the label Team', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(screen.getByRole('button', { name: 'Add Player' }))
+    expect(await screen.findByText('Edit Team Page')).toBeInTheDocument()
+    const address = screen.getByTestId('probe-address').textContent ?? ''
+    expect(address).toContain('/manage/sections/section-1/teams/team-1/edit')
+    expect(address).toContain('tab=squad')
+    expect(address).toContain('returnTo=')
+    expect(address).toContain('returnLabel=Team')
+  })
+
+  it('scrolls the squad card into view when the address ends in #squad', async () => {
+    const scrollIntoView = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollIntoView
+    try {
+      listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+      renderPage('/manage/sections/section-1/teams/team-1#squad', 'test-club-id')
+
+      await screen.findByRole('heading', { name: '1st XI' })
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
+  })
+
+  it('does not scroll to the squad card without #squad', async () => {
+    const scrollIntoView = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollIntoView
+    try {
+      listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+      renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: '1st XI' })
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
   })
 })

@@ -291,7 +291,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   )
 
   const addTo = sectionScopeId ? `/manage/sections/${sectionScopeId}/teams/new` : '/manage/teams/new'
-  const openCreate = () => navigate(addTo)
+  const openCreate = () => navigate(withReturnTo(addTo, origin, 'Teams'))
   const icon = <BrandIcon name="nav/teams" size={48} padding={4} />
   const emptyState =
     visibleTeams.length > 0 ? null : !hasTeams ? (

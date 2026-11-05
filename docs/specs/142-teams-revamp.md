@@ -80,5 +80,13 @@ Reuse `ManageScreenHeader`, `HeaderActions`, `ManageMenu`, `ToolbarCard`, `Toolb
 7. **Dashed Add New Team card** in Cards view (counts toward the three)? Default: **yes**.
 8. **One PR** for all four pages (as Players)? Default: **yes**.
 
+## Amendments from the owner's review (2026-11-05)
+- **Collapse controls are one style everywhere:** the quiet text button with an arrow ("Hide Overview", "Hide Batting", "Hide Innings"). `CollapsibleSection` has no outlined variant; the result page's innings cards use the same button.
+- **Contact and sponsor tiles show the full name** (the tile grows to 160 px, then wraps).
+- **Team form tabs:** flat cards in the shared three-per-row grid; the active tab is in the address (`?tab=`) and every Edit link carries `returnTo` so Back lands on the same tab; Contacts and Sponsors have a filled "Add New Contact" or "Add New Sponsor" and an outlined "Link Existing ..." at the top of the tab; Squad has Add Player beside the Season picker and a Cards | List switch (a fixed-column row per player).
+- **Ground** is the field picker (the team stores the field's name; a team to field link is a backend follow-up).
+- **Add Players To This Season's Squad** is a picker, not a one-name dropdown: search, a Section filter starting on the team's section (All Sections widens it; sections are the age groups), rows showing age, date of birth and sections (so same-name players differ), several players ticked and added at once. Age is a label, never a rule. Follow-ups: a "Show Players Already In Another Squad" toggle needs an endpoint for a player's squads; the same age and date of birth label should reach the other player pickers (match squads, poll responses, link to player).
+- **As built, differing from the first draft (for the owner to confirm):** the kebab has Open Team, Edit Team, View Stats and View Squad (View Squad scrolls to the squad card); View Matches is omitted because the matches list has no team address; Manage Team on the Team page has Edit Team and View Stats only (the squad is on the page); the four stats figures are built inline in `TeamStatsPage` (no separate figures file); Won and Lost keep no tone colour (the shared counter has none).
+
 ## Rollout Notes
 Frontend only; no migration. Update `page-anatomy.md`, `frontend.md` and `roadmap.md` in the same PR.

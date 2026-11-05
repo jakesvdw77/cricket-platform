@@ -23,8 +23,8 @@ export interface RecordIconButtonProps {
 // `name` renders as a caption under the avatar — real user feedback on the Team detail page's
 // Contacts/Sponsors grids: an unlabeled row of avatars gave no way to tell who's who without
 // opening each one's quick-view dialog. `label`/`aria-label` stay as the fuller "name — role"
-// accessible name (unchanged); `name` is deliberately just the bare name, kept short under the
-// fixed avatar width.
+// accessible name (unchanged); `name` is deliberately just the bare name, shown in full
+// (the tile grows to 160 px, then wraps) so a long name is never cut off.
 export function RecordIconButton({ imageUrl, shape, label, name, initials, onClick, compact }: RecordIconButtonProps) {
   if (compact) {
     return (
@@ -40,12 +40,12 @@ export function RecordIconButton({ imageUrl, shape, label, name, initials, onCli
       onClick={onClick}
       title={label}
       aria-label={label}
-      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: 1, width: 84 }}
+      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: 1, minWidth: 84, maxWidth: 160 }}
     >
       <LogoAvatar src={imageUrl} variant={shape} size={44} fontSize="0.8125rem" kind={shape === 'rounded' ? 'record' : 'person'}>
         {initials}
       </LogoAvatar>
-      <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%' }}>
+      <Typography variant="caption" color="text.secondary" sx={{ maxWidth: '100%', textAlign: 'center', lineHeight: 1.25 }}>
         {name}
       </Typography>
     </ButtonBase>

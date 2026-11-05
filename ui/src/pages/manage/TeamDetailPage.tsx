@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LogoAvatar } from '../../components/LogoAvatar'
 import { Link as RouterLink, useLocation, useOutletContext, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -135,6 +135,11 @@ export default function TeamDetailPage() {
     enabled: Boolean(clubId),
     select: (teams) => teams.find((candidate) => candidate.id === teamId),
   })
+
+  // The kebab's View Squad opens this page at #squad: scroll the squad card into view once the team has loaded.
+  useEffect(() => {
+    if (location.hash === '#squad' && team) document.getElementById('squad')?.scrollIntoView?.({ block: 'start' })
+  }, [location.hash, team])
 
   const sectionsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'sections'],
@@ -377,7 +382,7 @@ export default function TeamDetailPage() {
         title="Squad"
         icon={<GroupsOutlinedIcon />}
         actions={
-          <Button size="compact" variant="secondary" onClick={() => navigate(editTo)}>
+          <Button size="compact" variant="secondary" onClick={() => navigate(withReturnTo(`${editTo}?tab=squad`, currentOrigin(location), 'Team'))}>
             Add Player
           </Button>
         }
@@ -422,7 +427,7 @@ export default function TeamDetailPage() {
               ]
             : []
         }
-        editTo={selectedContact ? `/manage/club-contacts/${selectedContact.contact.id}/edit` : '/manage/club-contacts'}
+        editTo={selectedContact ? withReturnTo(`/manage/club-contacts/${selectedContact.contact.id}/edit`, currentOrigin(location), 'Team') : '/manage/club-contacts'}
       />
 
       <SponsorQuickViewDialog clubId={clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />

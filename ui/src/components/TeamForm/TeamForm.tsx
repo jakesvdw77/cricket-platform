@@ -4,6 +4,7 @@ import { Avatar, Box, Stack, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
+import { FieldPicker } from '../FieldPicker'
 import { Input } from '../Input'
 import { Button } from '../Button'
 import { MediaUpload } from '../MediaUpload'
@@ -47,6 +48,8 @@ export interface TeamFormProps {
   // "using your club's logo" fallback caption/preview shown whenever the team has no logo
   // override of its own (docs/specs/027-team-profile.md).
   clubLogoUrl?: string | null
+  // The club, for the Ground picker's field search; without it the Ground stays a plain text box.
+  clubId?: string
   // True while TeamFormPage is showing one of its OWN Contacts/Sponsors/Squad tabs — this form
   // stays mounted (state preserved) but visually hidden (`display: none`) rather than unmounted.
   hidden?: boolean
@@ -78,7 +81,7 @@ function blankToNull(value: string): string | null {
   return trimmed ? trimmed : null
 }
 
-export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, hidden, onInvalid }: TeamFormProps) {
+export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, clubId, hidden, onInvalid }: TeamFormProps) {
   const [name, setName] = useState(initialValues?.name ?? '')
   const [sectionId, setSectionId] = useState(initialValues?.sectionId ?? '')
   const [logoUrl, setLogoUrl] = useState<string | null>(initialValues?.logoUrl ?? null)
@@ -97,9 +100,6 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, hidde
     setAbbreviation(event.target.value)
   }
 
-  const handleGroundNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setGroundName(event.target.value)
-  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -152,7 +152,18 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, hidde
 
         <Input label="Abbreviation (optional)" value={abbreviation} onChange={handleAbbreviationChange} />
 
-        <Input label="Ground (optional)" value={groundName} onChange={handleGroundNameChange} />
+        {/* The ground is a pick from the club's field directory (docs/specs/099). A team stores the field's name; a ground typed in
+            before this existed shows as it was and is replaced by the first pick. */}
+        {clubId ? (
+          <FieldPicker
+            label="Ground (optional)"
+            clubId={clubId}
+            value={groundName ? { id: `ground:${groundName}`, name: groundName, verificationStatus: null } : null}
+            onChange={(field) => setGroundName(field?.name ?? '')}
+          />
+        ) : (
+          <Input label="Ground (optional)" value={groundName} onChange={(event) => setGroundName(event.target.value)} />
+        )}
       </Box>
 
       <FormSectionHeading icon={<PaletteOutlinedIcon />} title="Branding and social" />

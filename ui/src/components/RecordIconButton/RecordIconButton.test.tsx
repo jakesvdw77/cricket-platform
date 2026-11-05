@@ -57,4 +57,16 @@ describe('RecordIconButton', () => {
     expect(getComputedStyle(avatar).width).toBe('44px')
     expect(screen.getByText('Jane')).toBeInTheDocument()
   })
+
+  it('shows a long name in full, wrapping and centred, instead of cutting it off', () => {
+    const longName = 'Bartholomew Montgomery-Featherstonehaugh'
+    render(<RecordIconButton shape="circular" label={`${longName} — Manager`} name={longName} initials="BM" onClick={vi.fn()} />)
+
+    const caption = screen.getByText(longName)
+    const style = getComputedStyle(caption)
+    expect(style.whiteSpace).not.toBe('nowrap')
+    expect(style.textOverflow).not.toBe('ellipsis')
+    expect(style.textAlign).toBe('center')
+    expect(getComputedStyle(screen.getByRole('button')).maxWidth).toBe('160px')
+  })
 })

@@ -87,7 +87,7 @@ export function ManageScreenHeader({ title, backTo: defaultBackTo, backLabel: de
               <Typography
                 variant="caption"
                 color="text.secondary"
-                component="p"
+                component="div"
                 data-testid="header-subtitle"
                 sx={{ m: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: { xs: 'normal', sm: 'nowrap' } }}
               >

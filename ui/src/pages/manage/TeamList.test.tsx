@@ -157,7 +157,8 @@ describe('TeamList', () => {
 
     renderList('test-club-id')
 
-    expect(await screen.findByText('Teams — Men')).toBeInTheDocument()
+    expect(await screen.findByText('Men', { selector: '[data-testid="header-subtitle"]' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument()
   })
 
   it('renders the full section-ancestry breadcrumb in the page header, not just the immediate section name', async () => {
@@ -170,7 +171,8 @@ describe('TeamList', () => {
 
     renderList('test-club-id')
 
-    expect(await screen.findByText('Teams — Juniors › Boys › O/15')).toBeInTheDocument()
+    expect(await screen.findByText('Juniors › Boys › O/15', { selector: '[data-testid="header-subtitle"]' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument()
   })
 
   it('hides a deactivated team until Show inactive is on, then shows it with a grey Inactive chip', async () => {
@@ -185,7 +187,7 @@ describe('TeamList', () => {
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
     expect(screen.queryByText('2nd XI')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
 
     expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
@@ -205,14 +207,27 @@ describe('TeamList', () => {
     expect(screen.queryByText('2nd XI')).not.toBeInTheDocument()
   })
 
-  it('clicking Add Team navigates to the section-scoped create route', async () => {
+  it('clicking Add New Team navigates to the section-scoped create route', async () => {
     const user = userEvent.setup()
-    listTeamsForSection.mockResolvedValueOnce([])
+    listTeamsForSection.mockResolvedValueOnce([makeTeam()])
 
     renderList('test-club-id')
 
-    await screen.findByText('No teams yet')
-    await user.click(screen.getByRole('button', { name: 'Add Team' }))
+    await screen.findByText('1st XI')
+    const title = screen.getAllByRole('button', { name: 'Add New Team' }).find((button) => button.getAttribute('data-testid') !== 'add-team-card') as HTMLElement
+    await user.click(title)
+
+    expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
+  })
+
+  it('the dashed Add New Team card also opens the section-scoped create route', async () => {
+    const user = userEvent.setup()
+    listTeamsForSection.mockResolvedValueOnce([makeTeam()])
+
+    renderList('test-club-id')
+
+    await screen.findByText('1st XI')
+    await user.click(screen.getByTestId('add-team-card'))
 
     expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
   })
@@ -229,10 +244,12 @@ describe('TeamList', () => {
     renderList('test-club-id')
 
     await screen.findByText('1st XI')
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
     expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Actions for 2nd XI' }))
+    expect(screen.queryByRole('menuitem', { name: /deactivate|reactivate/i })).not.toBeInTheDocument()
   })
 
   // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
@@ -251,32 +268,31 @@ describe('TeamList', () => {
     await screen.findByText('Alpha XI')
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
 
-    await user.click(screen.getByRole('button', { name: /name, a to z/i }))
+    await user.click(screen.getByRole('button', { name: /sort: name, a to z/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
-    expect(screen.getByRole('button', { name: /name, z to a/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sort: name, z to a/i })).toBeInTheDocument()
   })
 
-  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
-  // precedent test for the View+Edit dual-render footer.
-  // docs/specs/057-team-extended-profile.md: both links now carry the `?from=section` marker so
-  // TeamDetailPage/TeamFormPage's own Back link routes here, not the club-wide directory.
-  // docs/specs/059-record-card-click-to-view.md: View is now the title link, not a footer button.
-  it('renders the title as a link to viewTo and Edit as a link to editTo, both with ?from=section, no separate View link', async () => {
+  // docs/specs/057: the section-scoped links keep the `?from=section` marker; docs/specs/142: they also carry returnTo, and
+  // Open Team, Edit Team and View Stats live in the kebab.
+  it('the title links to the team with ?from=section and returnTo, and the kebab Edit Team keeps ?from=section', async () => {
+    const user = userEvent.setup()
     listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 
     renderList('test-club-id', 'test-section-id')
 
     await screen.findByText('1st XI')
-    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute(
-      'href',
-      '/manage/sections/test-section-id/teams/team-1?from=section',
-    )
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/sections/test-section-id/teams/team-1/edit?from=section',
-    )
+    const href = screen.getByRole('link', { name: '1st XI' }).getAttribute('href') as string
+    expect(href).toContain('/manage/sections/test-section-id/teams/team-1?from=section')
+    expect(href).toContain('returnTo=')
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
+    const edit = screen.getByRole('menuitem', { name: 'Edit Team' }).getAttribute('href') as string
+    expect(edit).toContain('/manage/sections/test-section-id/teams/team-1/edit?from=section')
+    expect(edit).toContain('returnTo=')
   })
 
   it('the back link targets Club Structure', async () => {

@@ -3,14 +3,20 @@ import { Box, Breadcrumbs, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
-import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
 import type { TeamFormValues } from '../../components/TeamForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
+import { SquadPlayerPicker } from '../../components/SquadPlayerPicker'
+import { dynamicCardGridSx } from '../../utils/cardGrid'
 import { Button } from '../../components/Button'
+import { ListViewToggle } from '../../components/ListViewToggle'
+import { LogoAvatar } from '../../components/LogoAvatar'
+import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { useAfterSave, useBackLink } from '../../hooks/useReturnTo'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { VIEW_TABS_PROPS, viewTabsSx, viewTabSx } from '../../utils/viewTabs'
 import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
@@ -56,6 +62,12 @@ const CLUB_TEAMS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'team
 // editTo navigates to the real ClubContactFormPage edit route (021-club-contacts.md) — real user
 // feedback on the first version of this tab (a bare Avatar+name row) asked for exactly this: a way
 // to actually see a linked record's details or edit it, not just its name.
+// Where an Edit link comes back to: this page, on the same tab (the tab is in the address), labelled for the Back button.
+function useBackHere() {
+  const location = useLocation()
+  return (destination: string) => withReturnTo(destination, currentOrigin(location), 'Team')
+}
+
 function TeamContactCard({
   clubId,
   sectionId,
@@ -69,6 +81,7 @@ function TeamContactCard({
   teamContact: TeamContact
   onUnlinked: () => void
 }) {
+  const backHere = useBackHere()
   const unlink = useMutation({
     mutationFn: () => unlinkTeamContact(clubId, sectionId, teamId, teamContact.contact.id),
     onSuccess: onUnlinked,
@@ -78,6 +91,7 @@ function TeamContactCard({
 
   return (
     <RecordCard
+      flat
       title={contactName}
       avatar={{ imageUrl: contact.photoUrl, fallback: initialsFromName(contactName), shape: 'circular' }}
       fields={[
@@ -86,7 +100,7 @@ function TeamContactCard({
         { label: 'Phone', value: contact.contact.phone },
       ]}
       editLabel="Edit"
-      editTo={`/manage/club-contacts/${contact.id}/edit`}
+      editTo={backHere(`/manage/club-contacts/${contact.id}/edit`)}
       secondaryAction={{
         label: 'Unlink',
         pendingLabel: 'Unlinking…',
@@ -113,6 +127,7 @@ function TeamSponsorCard({
   sponsor: Sponsor
   onUnlinked: () => void
 }) {
+  const backHere = useBackHere()
   const unlink = useMutation({
     mutationFn: () => unlinkTeamSponsor(clubId, sectionId, teamId, sponsor.id),
     onSuccess: onUnlinked,
@@ -120,11 +135,12 @@ function TeamSponsorCard({
 
   return (
     <RecordCard
+      flat
       title={sponsor.name}
       avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
-      editTo={`/manage/sponsors/${sponsor.id}/edit`}
+      editTo={backHere(`/manage/sponsors/${sponsor.id}/edit`)}
       secondaryAction={{
         label: 'Unlink',
         pendingLabel: 'Unlinking…',
@@ -139,13 +155,15 @@ function TeamSponsorCard({
 // A club sponsor not (yet) linked to this team — view/edit only, no unlink action since there's
 // nothing to unlink.
 function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
+  const backHere = useBackHere()
   return (
     <RecordCard
+      flat
       title={sponsor.name}
       avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
-      editTo={`/manage/sponsors/${sponsor.id}/edit`}
+      editTo={backHere(`/manage/sponsors/${sponsor.id}/edit`)}
     />
   )
 }
@@ -176,7 +194,9 @@ function SquadPlayerCard({
   onRemoved,
   onJerseyNumberChanged,
   onCaptainToggled,
+  view = 'cards',
 }: {
+  view?: 'cards' | 'list'
   clubId: string
   teamId: string
   seasonId: string
@@ -185,6 +205,7 @@ function SquadPlayerCard({
   onJerseyNumberChanged: () => void
   onCaptainToggled: () => void
 }) {
+  const backHere = useBackHere()
   // The squad/remove/update endpoints are addressed by playerProfileId, not member.id (the
   // TeamSquadMember row's own id) — see teamSquadApi.ts's SquadMember doc comment.
   const remove = useMutation({
@@ -213,6 +234,7 @@ function SquadPlayerCard({
     onSuccess: onCaptainToggled,
   })
 
+  const navigate = useNavigate()
   const playerName = `${member.firstName} ${member.lastName}`
 
   const commitJerseyNumber = () => {
@@ -222,8 +244,68 @@ function SquadPlayerCard({
     }
   }
 
+  const jerseyInput = (
+    <Input
+      label=""
+      type="number"
+      size="small"
+      inputProps={{ 'aria-label': `${playerName} squad number` }}
+      value={jerseyNumberInput}
+      onChange={(event) => setJerseyNumberInput(event.target.value)}
+      onBlur={commitJerseyNumber}
+      disabled={updateJerseyNumber.isPending}
+      sx={{ width: 88 }}
+    />
+  )
+
+  if (view === 'list') {
+    const error = updateJerseyNumber.isError
+      ? errorDetail(updateJerseyNumber.error, "Couldn't update this squad number. Please try again.")
+      : toggleCaptain.isError
+        ? errorDetail(toggleCaptain.error, "Couldn't update this team's captain. Please try again.")
+        : null
+    return (
+      <Box
+        data-testid="squad-row"
+        sx={{
+          display: 'grid',
+          alignItems: 'center',
+          gap: 1.5,
+          gridTemplateColumns: { xs: 'auto 1fr', md: '32px minmax(0, 1fr) 100px 88px 130px 80px 64px' },
+          px: 1.5, py: 1, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}
+      >
+        <LogoAvatar src={member.photoUrl} variant="circular" size={32} fontSize="0.6875rem" kind="person">
+          {initialsFromName(playerName)}
+        </LogoAvatar>
+        <Typography fontWeight={600} sx={{ minWidth: 0 }}>
+          {playerName}
+          {member.isCaptain && <Chip size="small" color="primary" label="Captain" sx={{ ml: 1 }} />}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {member.dateOfBirth ?? ''}
+        </Typography>
+        {jerseyInput}
+        <Button variant="ghost" size="compact" onClick={() => toggleCaptain.mutate()} disabled={toggleCaptain.isPending}>
+          {member.isCaptain ? 'Remove Captain' : 'Make Captain'}
+        </Button>
+        <Button variant="ghost" size="compact" onClick={() => remove.mutate()} disabled={remove.isPending}>
+          {remove.isPending ? 'Removing…' : 'Remove'}
+        </Button>
+        <Button variant="secondary" size="compact" onClick={() => navigate(backHere(`/manage/players/${member.playerProfileId}/edit`))}>
+          Edit
+        </Button>
+        {error && (
+          <Typography role="alert" variant="caption" color="error" sx={{ gridColumn: '1 / -1' }}>
+            {error}
+          </Typography>
+        )}
+      </Box>
+    )
+  }
+
   return (
     <RecordCard
+      flat
       title={playerName}
       avatar={{ imageUrl: member.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
       badge={member.isCaptain ? { label: 'Captain', tone: 'positive' } : undefined}
@@ -235,23 +317,11 @@ function SquadPlayerCard({
           // this field's value (docs/specs/031-jersey-numbers.md's UI Requirements) — `label=""`
           // suppresses TextField's own InputLabel, and `inputProps.aria-label` (which lands on the
           // real <input>, unlike a bare `aria-label` prop on TextField itself) keeps it accessible.
-          value: (
-            <Input
-              label=""
-              type="number"
-              size="small"
-              inputProps={{ 'aria-label': `${playerName} squad number` }}
-              value={jerseyNumberInput}
-              onChange={(event) => setJerseyNumberInput(event.target.value)}
-              onBlur={commitJerseyNumber}
-              disabled={updateJerseyNumber.isPending}
-              sx={{ width: 88 }}
-            />
-          ),
+          value: jerseyInput,
         },
       ]}
       editLabel="Edit"
-      editTo={`/manage/players/${member.playerProfileId}/edit`}
+      editTo={backHere(`/manage/players/${member.playerProfileId}/edit`)}
       secondaryAction={{
         label: 'Remove',
         pendingLabel: 'Removing…',
@@ -261,7 +331,7 @@ function SquadPlayerCard({
       }}
       secondaryActions={[
         {
-          label: member.isCaptain ? 'Remove captain' : 'Make captain',
+          label: member.isCaptain ? 'Remove Captain' : 'Make Captain',
           pendingLabel: 'Updating…',
           pending: toggleCaptain.isPending,
           onClick: () => toggleCaptain.mutate(),
@@ -293,7 +363,7 @@ function SquadPlayerCard({
 export default function TeamFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { sectionId, teamId } = useParams<{ sectionId?: string; teamId?: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   // docs/specs/057-team-extended-profile.md's back-navigation fix: edit mode's route always
   // carries sectionId (teamId never appears without it), so sectionId's presence alone can't
   // disambiguate "reached via the section-scoped TeamList" from "reached via the club-wide
@@ -311,13 +381,25 @@ export default function TeamFormPage() {
   // Which tab is showing: 0 = Details (one always-mounted TeamForm, hidden rather than unmounted on the
   // other tabs so unsaved edits survive), 1 = Contacts, 2 = Sponsors, 3 = Squad. Contacts/Sponsors/Squad
   // only exist in edit mode (docs/specs/092), so create mode stays on 0 with no tab bar.
-  const [activeTab, setActiveTab] = useState(0)
+  const TAB_KEYS = ['details', 'contacts', 'sponsors', 'squad'] as const
+  // Create mode has no tab bar, so a stray ?tab= must not hide the form.
+  const [activeTab, setActiveTabState] = useState(() => (teamId ? Math.max(0, TAB_KEYS.indexOf((searchParams.get('tab') ?? 'details') as (typeof TAB_KEYS)[number])) : 0))
+  const setActiveTab = (next: number) => {
+    setActiveTabState(next)
+    setSearchParams((current) => {
+      const params = new URLSearchParams(current)
+      if (next === 0) params.delete('tab')
+      else params.set('tab', TAB_KEYS[next])
+      return params
+    }, { replace: true })
+  }
   const [contactLinkOpen, setContactLinkOpen] = useState(false)
   const [contactCreateOpen, setContactCreateOpen] = useState(false)
   const [sponsorLinkOpen, setSponsorLinkOpen] = useState(false)
   const [sponsorCreateOpen, setSponsorCreateOpen] = useState(false)
   const [squadLinkOpen, setSquadLinkOpen] = useState(false)
   const [selectedSquadSeasonId, setSelectedSquadSeasonId] = useState('')
+  const [squadView, setSquadView] = useListViewPreference('teamSquad:view')
 
   // There's no single-team GET endpoint (only list/create/update/deactivate/reactivate, per the
   // spec's API Contract) — edit mode fetches the full (small, unpaginated) section list and finds
@@ -555,15 +637,34 @@ export default function TeamFormPage() {
     enabled: Boolean(clubId) && squadLinkOpen,
   })
 
+  const clubSectionsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'sections'],
+    queryFn: () => listSections(clubId as string),
+    enabled: Boolean(clubId) && squadLinkOpen,
+  })
+
   const invalidateSquad = () =>
     queryClient.invalidateQueries({
       queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSquadSeasonId, 'squad'],
     })
 
   const addToSquadMutation = useMutation({
-    mutationFn: (playerId: string) => addToSquad(clubId as string, teamId as string, selectedSquadSeasonId, playerId),
-    onSuccess: () => {
+    // Every add is attempted; the squad is refreshed whatever happens so a partly done batch shows what was added, and the picker
+    // closes only when all succeeded (otherwise it stays open with the failure, and the added players are no longer candidates).
+    mutationFn: async (playerIds: string[]) => {
+      const results = await Promise.allSettled(
+        playerIds.map((playerId) => addToSquad(clubId as string, teamId as string, selectedSquadSeasonId, playerId)),
+      )
+      const failed = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      if (failed.length > 0) {
+        const added = results.length - failed.length
+        throw new Error(`${added} of ${results.length} added. ${errorDetail(failed[0].reason, "Couldn't add the rest. Please try again.")}`)
+      }
+    },
+    onSettled: () => {
       invalidateSquad()
+    },
+    onSuccess: () => {
       setSquadLinkOpen(false)
     },
   })
@@ -694,6 +795,7 @@ export default function TeamFormPage() {
         )}
 
         <TeamForm
+          clubId={clubId}
           initialValues={
             team
               ? {
@@ -714,6 +816,14 @@ export default function TeamFormPage() {
 
         {showContactsAndSponsors && activeTab === 1 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+              <Button size="compact" onClick={() => setContactCreateOpen(true)}>
+                Add New Contact
+              </Button>
+              <Button size="compact" variant="secondary" onClick={() => setContactLinkOpen(true)}>
+                Link Existing Contact
+              </Button>
+            </Stack>
             {(teamContactsQuery.data ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                 No contacts linked to this team yet.
@@ -722,12 +832,7 @@ export default function TeamFormPage() {
 
             {(teamContactsQuery.data ?? []).length > 0 && (
               <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  mb: 2,
-                }}
+                sx={{ ...dynamicCardGridSx, mb: 2 }}
               >
                 {(teamContactsQuery.data ?? []).map((teamContact) => (
                   <TeamContactCard
@@ -742,19 +847,19 @@ export default function TeamFormPage() {
               </Box>
             )}
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
-              <Button size="compact" variant="secondary" onClick={() => setContactLinkOpen(true)}>
-                Link existing
-              </Button>
-              <Button size="compact" variant="ghost" onClick={() => setContactCreateOpen(true)}>
-                + New contact
-              </Button>
-            </Stack>
           </Box>
         )}
 
         {showContactsAndSponsors && activeTab === 2 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+              <Button size="compact" onClick={() => setSponsorCreateOpen(true)}>
+                Add New Sponsor
+              </Button>
+              <Button size="compact" variant="secondary" onClick={() => setSponsorLinkOpen(true)}>
+                Link Existing Sponsor
+              </Button>
+            </Stack>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
               This team's sponsors
             </Typography>
@@ -767,12 +872,7 @@ export default function TeamFormPage() {
 
             {(teamSponsorsQuery.data ?? []).length > 0 && (
               <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  mb: 2,
-                }}
+                sx={{ ...dynamicCardGridSx, mb: 2 }}
               >
                 {(teamSponsorsQuery.data ?? []).map((sponsor) => (
                   <TeamSponsorCard
@@ -787,14 +887,6 @@ export default function TeamFormPage() {
               </Box>
             )}
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5, mb: 3 }}>
-              <Button size="compact" variant="secondary" onClick={() => setSponsorLinkOpen(true)}>
-                Link existing
-              </Button>
-              <Button size="compact" variant="ghost" onClick={() => setSponsorCreateOpen(true)}>
-                + New sponsor
-              </Button>
-            </Stack>
 
             <Divider sx={{ mb: 2 }} />
 
@@ -845,6 +937,10 @@ export default function TeamFormPage() {
                     ))}
                   </Input>
 
+                  <Button size="compact" onClick={() => setSquadLinkOpen(true)} disabled={!selectedSquadSeasonId}>
+                    Add Player
+                  </Button>
+
                   {/* Direct user feedback: the per-card Captain badge was too easy to miss buried
                       in the squad grid — this label next to the Season picker is the at-a-glance
                       answer to "who's captain this season" without scanning every card. */}
@@ -860,6 +956,9 @@ export default function TeamFormPage() {
                       <Chip size="small" variant="outlined" label="No captain set" />
                     )
                   )}
+                  <Box sx={{ ml: { sm: 'auto' } }}>
+                    <ListViewToggle value={squadView} onChange={setSquadView} />
+                  </Box>
                 </Stack>
 
                 {(squadQuery.data ?? []).length === 0 && (
@@ -870,12 +969,7 @@ export default function TeamFormPage() {
 
                 {(squadQuery.data ?? []).length > 0 && (
                   <Box
-                    sx={{
-                      display: 'grid',
-                      gap: 2,
-                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                      mb: 2,
-                    }}
+                    sx={squadView === 'list' ? { display: 'flex', flexDirection: 'column', gap: 1, mb: 2 } : { ...dynamicCardGridSx, mb: 2 }}
                   >
                     {/* Sorted by name — direct user feedback that the squad's own fetch order
                         visibly reshuffled after toggling a captain (an unordered backend query has
@@ -884,6 +978,7 @@ export default function TeamFormPage() {
                     {sortedSquad.map((member) => (
                       <SquadPlayerCard
                         key={member.id}
+                        view={squadView}
                         clubId={clubId as string}
                         teamId={teamId as string}
                         seasonId={selectedSquadSeasonId}
@@ -896,14 +991,6 @@ export default function TeamFormPage() {
                   </Box>
                 )}
 
-                <Button
-                  size="compact"
-                  variant="secondary"
-                  onClick={() => setSquadLinkOpen(true)}
-                  disabled={!selectedSquadSeasonId}
-                >
-                  Add player
-                </Button>
               </>
             )}
           </Box>
@@ -970,17 +1057,16 @@ export default function TeamFormPage() {
             )}
           />
 
-          <LinkExistingRecordDialog<Player>
+          <SquadPlayerPicker
             open={squadLinkOpen}
             onClose={() => setSquadLinkOpen(false)}
-            title="Add a player to this season's squad"
             candidates={linkablePlayers}
+            sections={clubSectionsQuery.data ?? []}
+            defaultSectionId={sectionId}
             loading={clubPlayersQuery.isFetching}
-            getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            searchLabel="Search players"
-            searchPlaceholder="Search by name"
-            onLink={(option) => addToSquadMutation.mutate(option.id)}
+            adding={addToSquadMutation.isPending}
+            error={addToSquadMutation.isError ? (addToSquadMutation.error instanceof Error && addToSquadMutation.error.message) || "Couldn't add these players. Please try again." : null}
+            onAdd={(ids) => addToSquadMutation.mutate(ids)}
           />
         </>
       )}

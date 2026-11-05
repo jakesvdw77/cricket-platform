@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, Collapse, IconButton, Typography } from '@mui/material'
+import { Box, Collapse, Typography } from '@mui/material'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { Button } from '../../../components/Button'
 
 // The bordered card every block of the result page sits in (docs/specs/100-match-results-core.md, Result page).
 // `action` sits at the right of the title line. `collapsible` (docs/specs/138, owner 2026-11-05: the two innings cards) adds a chevron on the
@@ -12,6 +14,7 @@ export function ResultSection({
   testId,
   action,
   collapsible = false,
+  toggleNoun = 'Section',
   defaultOpen = true,
 }: {
   title: string
@@ -19,6 +22,8 @@ export function ResultSection({
   testId?: string
   action?: ReactNode
   collapsible?: boolean
+  // the noun in the Hide / Show button, as on CollapsibleSection
+  toggleNoun?: string
   defaultOpen?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -36,16 +41,18 @@ export function ResultSection({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {action}
           {collapsible && (
-            <IconButton
-              size="small"
+            <Button
+              variant="ghost"
+              size="compact"
+              sx={{ color: 'primary.main', flex: 'none' }}
               onClick={() => setOpen((value) => !value)}
               aria-expanded={open}
+              aria-label={`${open ? 'Hide' : 'Show'} ${toggleNoun}: ${title}`}
               aria-controls={bodyId}
-              aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
-              sx={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms', minWidth: 44, minHeight: 44, my: -0.75 }}
+              startIcon={open ? <ExpandLessIcon aria-hidden /> : <ExpandMoreIcon aria-hidden />}
             >
-              <ExpandMoreIcon />
-            </IconButton>
+              {open ? `Hide ${toggleNoun}` : `Show ${toggleNoun}`}
+            </Button>
           )}
         </Box>
       </Box>

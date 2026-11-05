@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { TeamTable } from './TeamTable'
+import { TeamActionsMenu } from '../TeamActionsMenu'
 import type { TeamTableRow } from './TeamTable'
 import type { Team } from '../../api/teamApi'
 
@@ -27,7 +28,7 @@ function row(id: string, name: string, overrides: Partial<TeamTableRow> = {}, te
     loaded: true,
     to: `/manage/sections/section-1/teams/${id}`,
     statsTo: `/manage/teams/${id}/stats`,
-    statsState: { backTo: '/manage/teams', backLabel: 'Teams' },
+    actions: <TeamActionsMenu teamName={name} openTo={`/manage/sections/section-1/teams/${id}`} editTo={`/manage/sections/section-1/teams/${id}/edit`} statsTo={`/manage/teams/${id}/stats`} />,
     ...overrides,
   }
 }
@@ -56,4 +57,9 @@ export const Default: Story = {
 // While the squads and matches load, the figures show a dash instead of a wrong zero.
 export const Loading: Story = {
   args: { rows: [row('a', '1st XI', { loaded: false }), row('b', '2nd XI', { loaded: false })] },
+}
+
+// Given a toolbar and no rows, the card shows the empty content under the toolbar.
+export const FusedEmpty: Story = {
+  args: { rows: [], toolbar: <div style={{ padding: 12 }}>Toolbar</div>, empty: <div style={{ padding: 24 }}>No matching teams</div> },
 }
