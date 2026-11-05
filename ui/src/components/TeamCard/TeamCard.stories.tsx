@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TeamCard } from './TeamCard'
+import { TeamActionsMenu } from '../TeamActionsMenu'
 import type { Team } from '../../api/teamApi'
 import type { Sponsor } from '../../api/sponsorApi'
 
@@ -82,8 +83,8 @@ export const Full: Story = {
     matchCount: 8,
     sponsors: SPONSORS,
     viewTo: '/manage/sections/section-1/teams/team-1',
-    editTo: '/manage/sections/section-1/teams/team-1/edit',
     statsTo: '/manage/teams/team-1/stats',
+    menu: <TeamActionsMenu teamName="1st XI" openTo="/manage/sections/section-1/teams/team-1" editTo="/manage/sections/section-1/teams/team-1/edit" statsTo="/manage/teams/team-1/stats" />,
   },
 }
 
@@ -105,7 +106,6 @@ export const EmptySquad: Story = {
     playerCount: 0,
     matchCount: 0,
     viewTo: '/manage/sections/section-1/teams/team-1',
-    editTo: '/manage/sections/section-1/teams/team-1/edit',
     statsTo: '/manage/teams/team-1/stats',
   },
 }

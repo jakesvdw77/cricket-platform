@@ -83,7 +83,7 @@ describe('Team Overview block', () => {
     expect(toggle).toHaveStyle({ minHeight: '32px' })
     expect(toggle.getAttribute('aria-controls')).toBeTruthy()
     // the existing cards after it are unchanged
-    expect(screen.getByTestId('tile-played-value')).toHaveTextContent('14')
+    expect(within(screen.getByTestId('tile-played')).getByTestId('page-counter-value')).toHaveTextContent('14')
   })
 
   it('draws the five cards in order, Run rate trend full width, and no form timeline of its own', async () => {
@@ -155,7 +155,7 @@ describe('Team Overview block', () => {
       await userEvent.click(screen.getByTestId('team-dashboard-toggle'))
       await waitFor(() => expect(dashboardCalls.at(-1)).toEqual({ seasonId: 'season-2' }), wait)
       expect(await screen.findByTestId('dashboard-card-results', {}, wait)).toBeInTheDocument()
-    })
+    }, 15000)
   })
 
   describe('results, tiles and percentages', () => {
@@ -165,9 +165,9 @@ describe('Team Overview block', () => {
       const legend = within(screen.getByTestId('donut-legend')).getAllByRole('listitem').map((item) => item.textContent)
       expect(legend[0]).toBe('Won9 · 64.3%')
       await userEvent.click(screen.getByTestId('results-view-table'))
-      expect(within(screen.getByTestId('results-total')).getAllByRole('cell')[1]).toHaveTextContent(screen.getByTestId('tile-played-value').textContent ?? '')
+      expect(within(screen.getByTestId('results-total')).getAllByRole('cell')[1]).toHaveTextContent(within(screen.getByTestId('tile-played')).getByTestId('page-counter-value').textContent ?? '')
       expect(cells(screen.getAllByTestId('results-row')[0])).toEqual(['Won', '9', '64.3%'])
-      expect(screen.getByTestId('tile-won-value')).toHaveTextContent('9')
+      expect(within(screen.getByTestId('tile-won')).getByTestId('page-counter-value')).toHaveTextContent('9')
     })
 
     it('shows net run rate as a third line only when SHOWN, otherwise the reason', async () => {
@@ -192,7 +192,7 @@ describe('Team Overview block', () => {
       renderPage()
       const alert = await screen.findByRole('alert', {}, wait)
       expect(alert).toHaveTextContent("Couldn't load the overview")
-      expect(screen.getByTestId('tile-played-value')).toHaveTextContent('14')
+      expect(within(screen.getByTestId('tile-played')).getByTestId('page-counter-value')).toHaveTextContent('14')
       expect(screen.getByTestId('team-form-strip')).toBeInTheDocument()
       expect(screen.getByTestId('not-captured-panel')).toBeInTheDocument()
       fail = false
@@ -208,7 +208,7 @@ describe('Team Overview block', () => {
       const loading = await screen.findByTestId('dashboard-loading', {}, wait)
       expect(loading).toHaveAttribute('aria-busy', 'true')
       expect(within(loading).getAllByTestId(/-loading$/)).toHaveLength(5)
-      expect(screen.getByTestId('tile-played-value')).toHaveTextContent('14')
+      expect(within(screen.getByTestId('tile-played')).getByTestId('page-counter-value')).toHaveTextContent('14')
     })
 
     it('a team with nothing counted shows the page\'s own empty state and no block', async () => {

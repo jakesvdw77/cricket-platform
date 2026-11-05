@@ -46,7 +46,6 @@ export function TeamDashboardBlock({ shown, onToggle, dashboard, backTo }: TeamD
       title="Overview"
       description={shown ? 'Same filters as above · 5 charts' : 'Results, runs, run rate, extras and dot balls'}
       testId="team-dashboard"
-      buttonVariant="outlined"
       open={shown}
       onToggle={onToggle}
     >

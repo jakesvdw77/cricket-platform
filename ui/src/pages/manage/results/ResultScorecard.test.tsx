@@ -79,7 +79,7 @@ beforeEach(() => {
 
 // The team cards are closed by default (docs/specs/138): open one before reading its tables or pressing its buttons.
 const openSide = (user: ReturnType<typeof userEvent.setup>, side: 'home' | 'away') =>
-  user.click(within(screen.getByTestId(`scorecard-${side}`)).getByRole('button', { name: /^Expand/ }))
+  user.click(within(screen.getByTestId(`scorecard-${side}`)).getByRole('button', { name: /^Show Innings: / }))
 
 describe('ResultScorecard', () => {
   it('never shows a planned batting number under a name, even when it differs from where the player batted', async () => {
@@ -89,15 +89,15 @@ describe('ResultScorecard', () => {
     expect(screen.queryByText(/planned/i)).not.toBeInTheDocument()
   })
 
-  it('starts each team card closed, headed by its innings, and opens it from the chevron (138)', async () => {
+  it('starts each team card closed, headed by its innings, and opens it from the Show Innings button (138, 142)', async () => {
     const user = userEvent.setup()
     renderCard()
     const home = await screen.findByTestId('scorecard-home')
     expect(home).toHaveTextContent(/(First|Second) Innings - /)
-    const toggle = within(home).getByRole('button', { name: /^Expand/ })
+    const toggle = within(home).getByRole('button', { name: /^Show Innings: / })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await user.click(toggle)
-    expect(within(home).getByRole('button', { name: /^Collapse/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(within(home).getByRole('button', { name: /^Hide Innings: / })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('shows a section per side with its batting table, the dismissal text and the names of the other side', async () => {

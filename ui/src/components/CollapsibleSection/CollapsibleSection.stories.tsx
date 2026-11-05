@@ -28,4 +28,4 @@ export const Open: Story = {}
 
 export const Collapsed: Story = { args: { initiallyOpen: false } }
 
-export const WithDescription: Story = { args: { title: 'Overview', testId: 'overview', buttonVariant: 'outlined', description: 'Same filters as above · 5 charts' } }
+export const WithDescription: Story = { args: { title: 'Overview', testId: 'overview', description: 'Same filters as above · 5 charts' } }

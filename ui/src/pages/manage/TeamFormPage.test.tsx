@@ -294,7 +294,7 @@ describe('TeamFormPage', () => {
 
       renderPage('/manage/sections/test-section-id/teams/new', 'test-club-id')
 
-      expect(screen.getByText('Add Team')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Add New Team' })).toBeInTheDocument()
       expect(screen.queryByLabelText('Section')).not.toBeInTheDocument()
       expect(listTeamsForSection).not.toHaveBeenCalled()
       // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
@@ -303,7 +303,7 @@ describe('TeamFormPage', () => {
       expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
       await user.type(screen.getByLabelText('Name'), '1st XI')
-      await user.click(screen.getByRole('button', { name: 'Create team' }))
+      await user.click(screen.getByRole('button', { name: 'Add Team' }))
 
       expect(createTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', {
         name: '1st XI',
@@ -357,7 +357,7 @@ describe('TeamFormPage', () => {
       renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Team')
-      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
       expect(updateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1', {
         name: '1st XI',
@@ -366,7 +366,43 @@ describe('TeamFormPage', () => {
         groundName: null,
         socialLinks: [],
       })
+      // no ?from=section: Save returns to the club-wide directory (docs/specs/142)
+      expect(await screen.findByText('Team Directory Page')).toBeInTheDocument()
+    })
+
+    it('edit: Save returns to the origin named by returnTo', async () => {
+      const user = userEvent.setup()
+      listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+      updateTeam.mockResolvedValueOnce(makeTeam({ id: 'team-1' }))
+
+      renderPage(`/manage/sections/test-section-id/teams/team-1/edit?returnTo=${encodeURIComponent('/manage/sections/test-section-id/teams')}&returnLabel=Teams`, 'test-club-id')
+
+      await screen.findByText('Edit Team')
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }))
+
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
+    })
+
+    it('edit: Cancel returns to the origin named by returnTo without saving', async () => {
+      const user = userEvent.setup()
+      listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+
+      renderPage(`/manage/sections/test-section-id/teams/team-1/edit?returnTo=${encodeURIComponent('/manage/sections/test-section-id/teams')}&returnLabel=Teams`, 'test-club-id')
+
+      await screen.findByText('Edit Team')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      expect(await screen.findByText('Team List Page')).toBeInTheDocument()
+      expect(updateTeam).not.toHaveBeenCalled()
+    })
+
+    it('edit: the Ground is a field picker, showing the saved ground name', async () => {
+      listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', groundName: 'Irene Country Club' })])
+
+      renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Team')
+      expect(screen.getByRole('combobox', { name: 'Ground (optional)' })).toHaveValue('Irene Country Club')
     })
 
     it('edit: renders the full section-ancestry breadcrumb, not just the immediate section name', async () => {
@@ -395,7 +431,7 @@ describe('TeamFormPage', () => {
       // Details tab is active by default — the form and its Save button render, Contacts/Sponsors
       // panel content doesn't.
       expect(screen.getByLabelText('Name')).toBeVisible()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
       expect(screen.queryByText('No contacts linked to this team yet.')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Contacts' }))
@@ -403,16 +439,16 @@ describe('TeamFormPage', () => {
       // The Name field's own TeamForm stays mounted (not unmounted) so unsaved edits aren't lost
       // switching tabs — it's just visually hidden (display: none) rather than removed from the DOM.
       expect(screen.getByLabelText('Name')).not.toBeVisible()
-      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
       expect(await screen.findByText("This team's sponsors")).toBeInTheDocument()
       expect(screen.queryByText('No contacts linked to this team yet.')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Details' }))
       expect(await screen.findByLabelText('Name')).toBeVisible()
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
     })
 
     // docs/specs/092: Branding and Social Media are sections of the Details tab, not tabs of their own.
@@ -479,19 +515,19 @@ describe('TeamFormPage', () => {
         renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
 
         await screen.findByText('Edit Team')
-        expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
 
-        expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/teams')
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
 
         await user.click(screen.getByRole('tab', { name: 'Contacts' }))
-        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
-        expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
 
         await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
-        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
 
         await user.click(screen.getByRole('tab', { name: 'Squad' }))
-        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
       })
     })
 
@@ -517,7 +553,11 @@ describe('TeamFormPage', () => {
         // Real user feedback: the old bare Avatar+name row gave no way to see a linked record's
         // details or edit it — RecordCard's Edit link fixes that by navigating to the real
         // ClubContactFormPage edit route.
-        expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/club-contacts/contact-1/edit')
+        const editHref = screen.getByRole('link', { name: 'Edit' }).getAttribute('href') ?? ''
+        expect(editHref).toContain('/manage/club-contacts/contact-1/edit')
+        const editParams = new URL(editHref, 'http://x').searchParams
+        expect(editParams.get('returnTo')).toBe('/manage/sections/test-section-id/teams/team-1/edit?tab=contacts')
+        expect(editParams.get('returnLabel')).toBe('Team')
 
         // RecordCard's secondaryAction always reads "Unlink" (not "Unlink {name}") — only one
         // contact is linked in this test, so it's unambiguous.
@@ -533,9 +573,9 @@ describe('TeamFormPage', () => {
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Contacts' }))
-        // The Contacts tab panel is the only one rendered while active — its own "Link existing"
+        // The Contacts tab panel is the only one rendered while active — its own "Link Existing Contact"
         // button is unambiguous now that Sponsors' isn't mounted alongside it.
-        await user.click(await screen.findByRole('button', { name: 'Link existing' }))
+        await user.click(await screen.findByRole('button', { name: 'Link Existing Contact' }))
 
         const combobox = await screen.findByRole('combobox', { name: 'Search contacts' })
         await user.click(combobox)
@@ -556,7 +596,7 @@ describe('TeamFormPage', () => {
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Contacts' }))
-        await user.click(await screen.findByRole('button', { name: '+ New contact' }))
+        await user.click(await screen.findByRole('button', { name: 'Add New Contact' }))
 
         // Two distinctly-labeled role fields render simultaneously once the dialog opens — the
         // dialog's own extra "Team role" field (docs/specs/057) and ClubContactForm's own
@@ -600,7 +640,9 @@ describe('TeamFormPage', () => {
         // Real user feedback: the old bare Avatar+name row gave no way to see or edit a linked
         // sponsor — RecordCard's Edit link fixes that by navigating to the real SponsorFormPage
         // edit route.
-        expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1/edit')
+        const editHref = screen.getByRole('link', { name: 'Edit' }).getAttribute('href') ?? ''
+        expect(editHref).toContain('/manage/sponsors/sponsor-1/edit')
+        expect(new URL(editHref, 'http://x').searchParams.get('returnTo')).toBe('/manage/sections/test-section-id/teams/team-1/edit?tab=sponsors')
 
         await user.click(screen.getByRole('button', { name: 'Unlink' }))
 
@@ -633,7 +675,7 @@ describe('TeamFormPage', () => {
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
-        await user.click(await screen.findByRole('button', { name: 'Link existing' }))
+        await user.click(await screen.findByRole('button', { name: 'Link Existing Sponsor' }))
 
         const combobox = await screen.findByRole('combobox', { name: 'Search sponsors' })
         await user.click(combobox)
@@ -649,7 +691,7 @@ describe('TeamFormPage', () => {
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
-        await user.click(await screen.findByRole('button', { name: '+ New sponsor' }))
+        await user.click(await screen.findByRole('button', { name: 'Add New Sponsor' }))
 
         const dialog = await screen.findByRole('dialog')
         await user.type(within(dialog).getByLabelText('Name'), 'Brand New Sponsor')
@@ -787,7 +829,7 @@ describe('TeamFormPage', () => {
         await user.click(screen.getByRole('tab', { name: 'Squad' }))
         await screen.findByText('Jane Smith')
 
-        await user.click(screen.getByRole('button', { name: 'Make captain' }))
+        await user.click(screen.getByRole('button', { name: 'Make Captain' }))
 
         expect(updateSquadMember).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1', {
           jerseyNumber: 9,
@@ -795,7 +837,7 @@ describe('TeamFormPage', () => {
         })
       })
 
-      it('renders a "Captain" badge and the "Remove captain" toggle label for the current captain', async () => {
+      it('renders a "Captain" badge and the "Remove Captain" toggle label for the current captain', async () => {
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
         listSquad.mockResolvedValue([
           makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', isCaptain: true }),
@@ -808,7 +850,7 @@ describe('TeamFormPage', () => {
         await screen.findByText('Jane Smith')
 
         expect(screen.getByText('Captain')).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Remove captain' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove Captain' })).toBeInTheDocument()
       })
 
       it('adds a player from the club\'s active players (not already in the squad) via addToSquad', async () => {
@@ -816,24 +858,129 @@ describe('TeamFormPage', () => {
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
         listSquad.mockResolvedValue([])
         listPlayers.mockResolvedValue([
-          makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones', active: true }),
-          makePlayer({ id: 'player-3', firstName: 'Retired', lastName: 'Player', active: false }),
+          makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones', active: true, sectionIds: ['test-section-id'] }),
+          makePlayer({ id: 'player-3', firstName: 'Retired', lastName: 'Player', active: false, sectionIds: ['test-section-id'] }),
         ])
         renderEdit()
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Squad' }))
-        await user.click(await screen.findByRole('button', { name: 'Add player' }))
+        await user.click(await screen.findByRole('button', { name: 'Add Player' }))
 
-        const combobox = await screen.findByRole('combobox', { name: 'Search players' })
-        await user.click(combobox)
+        const dialog = await screen.findByRole('dialog')
+        expect(await within(dialog).findByText('Bob Jones')).toBeInTheDocument()
+        expect(within(dialog).queryByText('Retired Player')).not.toBeInTheDocument()
 
-        expect(await screen.findByRole('option', { name: 'Bob Jones' })).toBeInTheDocument()
-        expect(screen.queryByRole('option', { name: 'Retired Player' })).not.toBeInTheDocument()
+        await user.click(within(dialog).getByRole('checkbox', { name: /Bob Jones/ }))
+        await user.click(within(dialog).getByRole('button', { name: 'Add Player' }))
 
-        await user.click(screen.getByRole('option', { name: 'Bob Jones' }))
+        await waitFor(() => expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-2'))
+      })
+    })
 
+    describe('tabs in the address and the squad list view (docs/specs/142)', () => {
+      function renderEdit(search = '') {
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id' })])
+        return renderPage(`/manage/sections/test-section-id/teams/team-1/edit${search}`, 'test-club-id')
+      }
+
+      it.each([
+        ['contacts', 'Add New Contact'],
+        ['sponsors', 'Add New Sponsor'],
+      ])('opens on the %s tab from ?tab=%s, with the filled Add New and outlined Link Existing buttons', async (tab, addLabel) => {
+        renderEdit(`?tab=${tab}`)
+
+        const add = await screen.findByRole('button', { name: addLabel })
+        expect(add.className).toContain('MuiButton-contained')
+        const link = screen.getByRole('button', { name: addLabel.replace('Add New', 'Link Existing') })
+        expect(link.className).toContain('MuiButton-outlined')
+        expect(screen.getByRole('tab', { name: tab === 'contacts' ? 'Contacts' : 'Sponsors' })).toHaveAttribute('aria-selected', 'true')
+      })
+
+      it('opens on the Squad tab from ?tab=squad and switches the squad between Cards and List', async () => {
+        const user = userEvent.setup()
+        window.localStorage.removeItem('teamSquad:view')
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' })])
+        renderEdit('?tab=squad')
+
+        expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+        expect(screen.queryByTestId('squad-row')).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: /List/ }))
+        const row = await screen.findByTestId('squad-row')
+        expect(within(row).getByText('Jane Smith')).toBeInTheDocument()
+        window.localStorage.removeItem('teamSquad:view')
+      })
+
+      it('adds several players at once from the picker', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([])
+        addToSquad.mockResolvedValue(undefined)
+        listPlayers.mockResolvedValue([
+          makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones', sectionIds: ['test-section-id'] }),
+          makePlayer({ id: 'player-4', firstName: 'Amy', lastName: 'Adams', sectionIds: ['test-section-id'] }),
+        ])
+        renderEdit('?tab=squad')
+
+        await user.click(await screen.findByRole('button', { name: 'Add Player' }))
+        const dialog = await screen.findByRole('dialog')
+        await user.click(await within(dialog).findByRole('checkbox', { name: /Bob Jones/ }))
+        await user.click(within(dialog).getByRole('checkbox', { name: /Amy Adams/ }))
+        await user.click(within(dialog).getByRole('button', { name: 'Add 2 Players' }))
+
+        await waitFor(() => expect(addToSquad).toHaveBeenCalledTimes(2))
         expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-2')
+        expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-4')
+      })
+
+      it('a partly failed batch keeps the picker open, says how many were added and still refreshes the squad', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([])
+        addToSquad.mockImplementation((_club: string, _team: string, _season: string, playerId: string) =>
+          playerId === 'player-4'
+            ? Promise.reject({ isAxiosError: true, response: { status: 409, data: { detail: 'Amy Adams is already in this squad.' } } })
+            : Promise.resolve(undefined),
+        )
+        listPlayers.mockResolvedValue([
+          makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones', sectionIds: ['test-section-id'] }),
+          makePlayer({ id: 'player-4', firstName: 'Amy', lastName: 'Adams', sectionIds: ['test-section-id'] }),
+        ])
+        renderEdit('?tab=squad')
+
+        await user.click(await screen.findByRole('button', { name: 'Add Player' }))
+        const dialog = await screen.findByRole('dialog')
+        await user.click(await within(dialog).findByRole('checkbox', { name: /Bob Jones/ }))
+        await user.click(within(dialog).getByRole('checkbox', { name: /Amy Adams/ }))
+        const squadReadsBefore = listSquad.mock.calls.length
+        await user.click(within(dialog).getByRole('button', { name: 'Add 2 Players' }))
+
+        const alert = await within(dialog).findByRole('alert')
+        expect(alert.textContent).toMatch(/^1 of 2 added/)
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        await waitFor(() => expect(listSquad.mock.calls.length).toBeGreaterThan(squadReadsBefore))
+      })
+
+      it('create mode ignores ?tab=squad: the form shows with Save and Cancel and there is no tab bar', async () => {
+        renderPage('/manage/sections/test-section-id/teams/new?tab=squad', 'test-club-id')
+
+        expect(await screen.findByLabelText('Name')).toBeVisible()
+        expect(screen.getByRole('button', { name: 'Add Team' })).toBeVisible()
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+        expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+      })
+
+      it('changing tab writes it to the address (Details clears it)', async () => {
+        const user = userEvent.setup()
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
+        expect(screen.getByRole('tab', { name: 'Sponsors' })).toHaveAttribute('aria-selected', 'true')
+        await user.click(screen.getByRole('tab', { name: 'Details' }))
+        expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
       })
     })
 
@@ -891,7 +1038,7 @@ describe('TeamFormPage', () => {
         await user.click(screen.getByRole('tab', { name: 'Squad' }))
 
         expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
-        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument()
       })
     })
 
@@ -946,7 +1093,7 @@ describe('TeamFormPage', () => {
       await user.click(sectionPicker)
       await user.click(await screen.findByText('Women'))
       await user.type(screen.getByLabelText('Name'), '1st XI')
-      await user.click(screen.getByRole('button', { name: 'Create team' }))
+      await user.click(screen.getByRole('button', { name: 'Add Team' }))
 
       expect(createTeam).toHaveBeenCalledWith('test-club-id', 'section-2', {
         name: '1st XI',

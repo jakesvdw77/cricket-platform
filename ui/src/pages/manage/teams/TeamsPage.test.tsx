@@ -71,7 +71,7 @@ function renderPage(scope: TeamsScope = { kind: 'club' }, clubId: string | undef
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/manage/teams']}>
         <TeamsPage clubId={clubId} scope={scope} />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -127,7 +127,8 @@ describe('TeamsPage', () => {
 
       await user.click(screen.getByTestId('page-counter-no-captain'))
       expect(names()).toEqual(['2nd XI', 'Colts'])
-      expect(screen.getByText(/Showing 2 teams · No captain/)).toBeInTheDocument()
+      expect(screen.getByTestId('page-counter-no-captain')).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryByText(/Showing \d+/)).not.toBeInTheDocument()
 
       await user.click(screen.getByTestId('page-counter-empty'))
       expect(names()).toEqual(['Colts'])
@@ -142,7 +143,7 @@ describe('TeamsPage', () => {
 
       await screen.findByText('1st XI')
       await waitFor(() => expect(counterValue('players')).toHaveTextContent('3'))
-      await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+      await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
 
       expect(await screen.findByText('Veterans')).toBeInTheDocument()
       expect(counterValue('active')).toHaveTextContent('3')
@@ -184,7 +185,9 @@ describe('TeamsPage', () => {
     it('carries the chosen season to the team page links', async () => {
       renderPage()
 
-      expect(await screen.findByRole('link', { name: '1st XI' })).toHaveAttribute('href', '/manage/sections/section-1/teams/a?seasonId=season-2026')
+      const href = (await screen.findByRole('link', { name: '1st XI' })).getAttribute('href') as string
+      expect(href).toContain('/manage/sections/section-1/teams/a?seasonId=season-2026')
+      expect(href).toContain('returnTo=')
     })
   })
 
@@ -210,22 +213,157 @@ describe('TeamsPage', () => {
   describe('Stats shortcut', () => {
     it('opens the team statistics page directly, with this list (and its address) as the way back', async () => {
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      function StateProbe() {
-        return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+      function AddressProbe() {
+        const location = useLocation()
+        return <div data-testid="address">{location.pathname + location.search}</div>
       }
       render(
         <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/manage/teams?x=1']}>
+          <MemoryRouter initialEntries={['/manage/teams?sort=desc']}>
             <Routes>
               <Route path="/manage/teams" element={<TeamsPage clubId="club-1" scope={{ kind: 'club' }} />} />
-              <Route path="/manage/teams/:teamId/stats" element={<StateProbe />} />
+              <Route path="/manage/teams/:teamId/stats" element={<AddressProbe />} />
             </Routes>
           </MemoryRouter>
         </QueryClientProvider>,
       )
       await screen.findByText('1st XI')
-      await userEvent.click(screen.getAllByRole('link', { name: 'Stats' })[0])
-      expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams?x=1', backLabel: 'Teams' })
+      await userEvent.click(screen.getAllByTestId('team-card-stats')[0])
+      const address = (await screen.findByTestId('address')).textContent ?? ''
+      expect(address).toContain('/manage/teams/')
+      expect(address).toContain('seasonId=season-2026')
+      expect(address).toContain('returnLabel=Teams')
+      expect(decodeURIComponent(address)).toContain('returnTo=/manage/teams?sort=desc')
+    })
+
+    it('the list view row has the quiet View Stats button too', async () => {
+      localStorage.setItem('teamList:view', 'list')
+      renderPage()
+      await screen.findByRole('table', { name: 'Teams' })
+      expect(screen.getAllByTestId('team-row-stats')).toHaveLength(3)
+    })
+  })
+
+  describe('toolbar and address', () => {
+    it('Add New Team (title button and dashed card) carries returnTo, returnLabel=Teams and the current sort, focus and inactive query', async () => {
+      function AddressProbe() {
+        const location = useLocation()
+        return <div data-testid="address">{location.pathname + location.search}</div>
+      }
+      for (const via of ['title', 'card']) {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        const { unmount } = render(
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={['/manage/teams?sort=desc&focus=active&inactive=1']}>
+              <Routes>
+                <Route path="/manage/teams" element={<TeamsPage clubId="club-1" scope={{ kind: 'club' }} />} />
+                <Route path="/manage/teams/new" element={<AddressProbe />} />
+              </Routes>
+            </MemoryRouter>
+          </QueryClientProvider>,
+        )
+        await screen.findByText('1st XI')
+        if (via === 'title') {
+          await userEvent.click(screen.getAllByRole('button', { name: 'Add New Team' }).find((b) => b.getAttribute('data-testid') !== 'add-team-card') as HTMLElement)
+        } else {
+          await userEvent.click(screen.getByTestId('add-team-card'))
+        }
+        const address = (await screen.findByTestId('address')).textContent ?? ''
+        const decoded = decodeURIComponent(address)
+        expect(address).toContain('/manage/teams/new')
+        expect(address).toContain('returnLabel=Teams')
+        expect(decoded).toContain('returnTo=/manage/teams?')
+        expect(decoded).toContain('sort=desc')
+        expect(decoded).toContain('focus=active')
+        expect(decoded).toContain('inactive=1')
+        unmount()
+      }
+    })
+
+    it('has one filled Add New Team button, the title Teams and no count text', async () => {
+      renderPage()
+      await screen.findByText('1st XI')
+      expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Add New Team' }).filter((button) => button.getAttribute('data-testid') !== 'add-team-card')).toHaveLength(1)
+      expect(screen.queryByText(/Showing \d+/)).not.toBeInTheDocument()
+    })
+
+    it('uses Title Case counter labels', async () => {
+      renderPage()
+      await screen.findByText('1st XI')
+      expect(screen.getByTestId('page-counter-active')).toHaveTextContent('Active Teams')
+      expect(screen.getByTestId('page-counter-players')).toHaveTextContent('Players In Squads')
+      expect(screen.getByTestId('page-counter-this-week')).toHaveTextContent('Matches This Week')
+      expect(screen.getByTestId('page-counter-no-captain')).toHaveTextContent('No Captain')
+      expect(screen.getByTestId('page-counter-empty')).toHaveTextContent('Empty Squads')
+    })
+
+    it('puts the sort, quick filter and Show Inactive in the address, and clears them again', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      function AddressProbe() {
+        const location = useLocation()
+        return <div data-testid="address">{location.pathname + location.search}</div>
+      }
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/manage/teams']}>
+            <AddressProbe />
+            <TeamsPage clubId="club-1" scope={{ kind: 'club' }} />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+      await screen.findByText('1st XI')
+      await waitFor(() => expect(counterValue('no-captain')).toHaveTextContent('2'))
+
+      await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
+      await user.click(screen.getByTestId('page-counter-no-captain'))
+      await user.click(screen.getByRole('button', { name: /sort: name, a to z/i }))
+      await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
+      const address = screen.getByTestId('address').textContent ?? ''
+      expect(address).toContain('inactive=1')
+      expect(address).toContain('focus=no-captain')
+      expect(address).toContain('sort=desc')
+
+      await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
+      await user.click(screen.getByTestId('page-counter-no-captain'))
+      expect(screen.getByTestId('address')).toHaveTextContent('sort=desc')
+      expect(screen.getByTestId('address')).not.toHaveTextContent('inactive')
+      expect(screen.getByTestId('address')).not.toHaveTextContent('focus')
+    })
+
+    it('shows Show Inactive pressed, then Sort, then Cards | List last', async () => {
+      renderPage()
+      await screen.findByText('1st XI')
+      const toggle = screen.getByRole('button', { name: 'Show Inactive' })
+      const sort = screen.getByRole('button', { name: /sort: name, a to z/i })
+      const cards = screen.getAllByRole('button', { name: 'Cards' })[0]
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(toggle.compareDocumentPosition(sort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(sort.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('ends the cards with a dashed Add New Team card, and the list view fuses the toolbar into one card', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByText('1st XI')
+      expect(screen.getByTestId('add-team-card')).toHaveTextContent('Add New Team')
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      const fused = await screen.findByTestId('teams-fused-card')
+      expect(within(fused).getByLabelText('Search')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-team-card')).not.toBeInTheDocument()
+    })
+
+    it('every kebab link carries returnTo with the label Teams', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByText('1st XI')
+      await user.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
+      for (const item of screen.getAllByRole('menuitem')) {
+        expect(item.getAttribute('href')).toContain('returnTo=')
+        expect(item.getAttribute('href')).toContain('returnLabel=Teams')
+      }
     })
   })
 
@@ -243,15 +381,17 @@ describe('TeamsPage', () => {
       localStorage.setItem('teamList:filters:club-1', JSON.stringify({ sectionId: 'other', seasonId: '' }))
       renderPage({ kind: 'section', sectionId: 'section-1' })
 
-      expect(await screen.findByText('Teams — Men')).toBeInTheDocument()
+      expect(await screen.findByText('Men', { selector: '[data-testid="header-subtitle"]' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument()
       await screen.findByText('1st XI')
       expect(screen.queryByLabelText('Section')).not.toBeInTheDocument()
       expect(listTeamsForSection).toHaveBeenCalledWith('club-1', 'section-1')
       expect(listTeamsForClub).not.toHaveBeenCalled()
       expect(screen.getByRole('link', { name: /Back to Club Structure/ })).toHaveAttribute('href', '/manage/sections')
       expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', expect.stringContaining('?from=section'))
-      expect(screen.getAllByRole('link', { name: 'Edit' })[0]).toHaveAttribute('href', '/manage/sections/section-1/teams/a/edit?from=section')
-      expect(screen.getAllByRole('link', { name: 'Stats' })[0]).toHaveAttribute('href', '/manage/teams/a/stats?seasonId=season-2026')
+      await userEvent.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
+      expect(screen.getByRole('menuitem', { name: 'Edit Team' }).getAttribute('href')).toContain('/manage/sections/section-1/teams/a/edit?from=section')
+      expect(screen.getByRole('menuitem', { name: 'View Stats' }).getAttribute('href')).toContain('/manage/teams/a/stats?seasonId=season-2026')
     })
   })
 
@@ -261,7 +401,7 @@ describe('TeamsPage', () => {
       renderPage()
 
       expect(await screen.findByText('No matching teams')).toBeInTheDocument()
-      expect(screen.getByText(/Turn on Show inactive/)).toBeInTheDocument()
+      expect(screen.getByText(/Turn on Show Inactive/)).toBeInTheDocument()
     })
 
     it('shows the first-team empty state for a section with none', async () => {

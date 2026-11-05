@@ -47,28 +47,60 @@ function renderTable(rows: TeamTableRow[]) {
 }
 
 describe('TeamTable', () => {
-  it('gives each row a Stats link to the team statistics page', () => {
+  it('gives each row a quiet View Stats button and no chevron or Stats link', () => {
     renderTable([makeRow()])
 
-    expect(within(screen.getByTestId('team-row')).getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
+    const row = screen.getByTestId('team-row')
+    expect(within(row).getByTestId('team-row-stats')).toHaveTextContent('View Stats')
+    expect(within(row).queryByRole('link', { name: 'Stats' })).not.toBeInTheDocument()
+    expect(within(row).queryByTestId('ChevronRightIcon')).not.toBeInTheDocument()
   })
 
-  it('the Stats button opens the statistics page with the way back in router state, without opening the team', async () => {
-    function StateProbe() {
-      return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+  it('the View Stats button opens statsTo (which carries returnTo) without opening the team', async () => {
+    function LocationProbe() {
+      const location = useLocation()
+      return <div data-testid="at">{location.pathname + location.search}</div>
     }
     render(
       <MemoryRouter>
         <Routes>
-          <Route path="/" element={<TeamTable rows={[makeRow({ statsState: { backTo: '/manage/teams', backLabel: 'Teams' } })]} />} />
-          <Route path="/manage/teams/team-1/stats" element={<StateProbe />} />
+          <Route path="/" element={<TeamTable rows={[makeRow({ statsTo: '/manage/teams/team-1/stats?returnTo=%2Fmanage%2Fteams' })]} />} />
+          <Route path="/manage/teams/team-1/stats" element={<LocationProbe />} />
           <Route path="/manage/sections/section-1/teams/team-1" element={<div>Team detail</div>} />
         </Routes>
       </MemoryRouter>,
     )
-    await userEvent.click(screen.getByRole('link', { name: 'Stats' }))
-    expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams', backLabel: 'Teams' })
+    await userEvent.click(screen.getByTestId('team-row-stats'))
+    expect(await screen.findByTestId('at')).toHaveTextContent('/manage/teams/team-1/stats?returnTo=%2Fmanage%2Fteams')
     expect(screen.queryByText('Team detail')).not.toBeInTheDocument()
+  })
+
+  it('shows each row\'s actions kebab in its own cell', () => {
+    renderTable([makeRow({ actions: <button type="button">Actions for 1st XI</button> })])
+    expect(within(screen.getByTestId('team-row')).getByRole('button', { name: 'Actions for 1st XI' })).toBeInTheDocument()
+  })
+
+  it('with a toolbar it is one fused card holding the toolbar and the rows', () => {
+    render(
+      <MemoryRouter>
+        <TeamTable rows={[makeRow()]} toolbar={<div>Toolbar here</div>} />
+      </MemoryRouter>,
+    )
+    const card = screen.getByTestId('teams-fused-card')
+    expect(within(card).getByText('Toolbar here')).toBeInTheDocument()
+    expect(within(card).getByRole('table', { name: 'Teams' })).toBeInTheDocument()
+  })
+
+  it('with a toolbar and no rows it shows the empty content instead of the table', () => {
+    render(
+      <MemoryRouter>
+        <TeamTable rows={[]} toolbar={<div>Toolbar here</div>} empty={<div>Nothing here</div>} />
+      </MemoryRouter>,
+    )
+    const card = screen.getByTestId('teams-fused-card')
+    expect(within(card).getByText('Toolbar here')).toBeInTheDocument()
+    expect(within(card).getByText('Nothing here')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
   it('renders the header and a row per team with section, players, matches, captain and status', () => {

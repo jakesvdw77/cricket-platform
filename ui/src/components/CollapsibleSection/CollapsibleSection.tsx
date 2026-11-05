@@ -16,7 +16,6 @@ export interface CollapsibleSectionProps {
   label?: string
   // used in data-testid values: the section is `<testId>`, its button `<testId>-toggle`
   testId: string
-  buttonVariant?: 'text' | 'outlined'
   // rendered only while open, so a collapsed section costs nothing (no chart chunk, no request)
   children?: ReactNode
 }
@@ -24,7 +23,7 @@ export interface CollapsibleSectionProps {
 // A titled section with a Hide / Show control: a header row (the title as a heading, a 44 px button with aria-expanded and aria-controls
 // and an icon that follows the state), then the content, which is not rendered while collapsed. State is the caller's, so it can decide
 // what to fetch. Presentational; every string comes from the caller.
-export function CollapsibleSection({ title, description, open, onToggle, label, testId, buttonVariant = 'text', children }: CollapsibleSectionProps) {
+export function CollapsibleSection({ title, description, open, onToggle, label, testId, children }: CollapsibleSectionProps) {
   const id = useId()
   const titleId = `${id}-title`
   const descriptionId = `${id}-description`
@@ -50,7 +49,7 @@ export function CollapsibleSection({ title, description, open, onToggle, label, 
           )}
         </Box>
         <MuiButton
-          variant={buttonVariant}
+          variant="text"
           size="small"
           onClick={onToggle}
           aria-expanded={open}

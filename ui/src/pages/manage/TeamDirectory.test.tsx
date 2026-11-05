@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamDirectory from './TeamDirectory'
 import type { Team } from '../../api/teamApi'
@@ -101,11 +101,17 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
-function renderDirectory(clubId?: string) {
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="address">{location.pathname + location.search}</div>
+}
+
+function renderDirectory(clubId?: string, entry = '/manage/teams') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/teams']}>
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="teams" element={<TeamDirectory />} />
@@ -199,10 +205,11 @@ describe('TeamDirectory', () => {
     expect(await screen.findByText('No matching teams')).toBeInTheDocument()
     expect(screen.queryByText('1st XI')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
 
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getByTestId('address')).toHaveTextContent('inactive=1')
   })
 
   it('filters cards by the search term (matched against name)', async () => {
@@ -223,7 +230,47 @@ describe('TeamDirectory', () => {
     expect(screen.queryByText('2nd XI')).not.toBeInTheDocument()
   })
 
-  it('clicking Add Team navigates to the club-wide create route', async () => {
+  it('has one filled Add New Team button on the title row, and no count text', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam()])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add New Team' }).filter((button) => button.getAttribute('data-testid') !== 'add-team-card')).toHaveLength(1)
+    expect(screen.queryByText(/Showing \d+/)).not.toBeInTheDocument()
+  })
+
+  it('clicking Add New Team on the title row navigates to the club-wide create route', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam()])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    const title = screen.getAllByRole('button', { name: 'Add New Team' }).find((button) => button.getAttribute('data-testid') !== 'add-team-card') as HTMLElement
+    await user.click(title)
+
+    expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
+  })
+
+  it('ends the card grid with a dashed Add New Team card that opens the same create route', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam()])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    expect(within(screen.getByTestId('add-team-card')).getByText('Add New Team')).toBeInTheDocument()
+    await user.click(screen.getByTestId('add-team-card'))
+
+    expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
+  })
+
+  it('the first-team empty state offers Add New Team and no dashed card', async () => {
     const user = userEvent.setup()
     listTeamsForClub.mockResolvedValueOnce([])
     listSections.mockResolvedValueOnce([])
@@ -231,8 +278,10 @@ describe('TeamDirectory', () => {
     renderDirectory('test-club-id')
 
     await screen.findByText('No teams yet')
-    await user.click(screen.getByRole('button', { name: 'Add Team' }))
-
+    expect(screen.queryByTestId('add-team-card')).not.toBeInTheDocument()
+    const buttons = screen.getAllByRole('button', { name: 'Add New Team' })
+    expect(buttons).toHaveLength(2)
+    await user.click(buttons[1])
     expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
   })
 
@@ -249,10 +298,12 @@ describe('TeamDirectory', () => {
     renderDirectory('test-club-id')
 
     await screen.findByText('1st XI')
-    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    await user.click(screen.getByRole('button', { name: 'Show Inactive' }))
     expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Actions for 2nd XI' }))
+    expect(screen.queryByRole('menuitem', { name: /deactivate|reactivate/i })).not.toBeInTheDocument()
   })
 
   // docs/specs/036-view-first-record-detail-screens.md: the card's primary click target is
@@ -268,28 +319,33 @@ describe('TeamDirectory', () => {
     renderDirectory('test-club-id')
 
     const viewLink = await screen.findByRole('link', { name: '1st XI' })
-    expect(viewLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+    const href = viewLink.getAttribute('href') as string
+    expect(href.startsWith('/manage/sections/section-1/teams/team-1?')).toBe(true)
+    expect(href).not.toContain('from=')
+    expect(href).toContain('returnTo=')
+    expect(href).toContain('returnLabel=Teams')
   })
 
-  // docs/specs/049-record-list-edit-action-rollout.md (amendment, item 15): TeamDirectory's card
-  // now passes editTo alongside viewTo — mirrors MatchList.test.tsx's own View+Edit precedent.
-  // docs/specs/059-record-card-click-to-view.md: View is now the title link, not a footer button.
-  it('renders the title as a link to viewTo and Edit as a link to editTo, with no separate View link', async () => {
+  // docs/specs/142: the card has no footer bar; Open Team, Edit Team and View Stats live in the one kebab, each carrying returnTo.
+  it('the kebab (TeamActionsMenu) lists Open Team, Edit Team, View Stats and View Squad, each carrying returnTo', async () => {
+    const user = userEvent.setup()
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
     listSections.mockResolvedValueOnce([makeSection()])
 
-    renderDirectory('test-club-id')
+    renderDirectory('test-club-id', '/manage/teams?sort=desc')
 
     await screen.findByText('1st XI')
-    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1',
-    )
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1/edit',
-    )
-    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Open Team', 'Edit Team', 'View Stats', 'View Squad'])
+    for (const item of items) {
+      const href = item.getAttribute('href') as string
+      expect(href).toContain('returnTo=')
+      expect(decodeURIComponent(href)).toContain('sort=desc')
+      expect(href).toContain('returnLabel=Teams')
+    }
+    expect(screen.getByRole('menuitem', { name: 'Edit Team' }).getAttribute('href')).toContain('/manage/sections/section-1/teams/team-1/edit?returnTo=')
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
@@ -332,10 +388,44 @@ describe('TeamDirectory', () => {
     await screen.findByText('Alpha XI')
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
 
-    await user.click(screen.getByRole('button', { name: /name, a to z/i }))
+    await user.click(screen.getByRole('button', { name: /sort: name, a to z/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
-    expect(screen.getByRole('button', { name: /name, z to a/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sort: name, z to a/i })).toBeInTheDocument()
+    expect(screen.getByTestId('address')).toHaveTextContent('sort=desc')
+  })
+
+  it('reads the sort, quick filter and Show Inactive from the address, so Back restores them', async () => {
+    listTeamsForClub.mockResolvedValueOnce([
+      makeTeam({ id: 'team-1', name: 'Alpha XI' }),
+      makeTeam({ id: 'team-2', name: 'Zeta XI' }),
+      makeTeam({ id: 'team-3', name: 'Old XI', active: false }),
+    ])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id', '/manage/teams?sort=desc&inactive=1&focus=empty')
+
+    await screen.findByText('Zeta XI')
+    expect(screen.getByRole('button', { name: /sort: name, z to a/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show Inactive' })).toHaveAttribute('aria-pressed', 'true')
+    // All squads are empty, so the Empty Squads quick filter keeps the active teams (the inactive one is not an attention case), Z to A.
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
+    await waitFor(() => expect(screen.getByTestId('page-counter-empty')).toHaveAttribute('aria-pressed', 'true'))
+  })
+
+  it('orders the toolbar Show Inactive, Sort, then Cards | List last', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam()])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    const toggle = screen.getByRole('button', { name: 'Show Inactive' })
+    const sort = screen.getByRole('button', { name: /sort: name, a to z/i })
+    const cards = screen.getAllByRole('button', { name: 'Cards' })[0]
+    expect(toggle.compareDocumentPosition(sort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(sort.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
@@ -423,8 +513,6 @@ describe('TeamDirectory', () => {
 
     await screen.findByText('1st XI')
     const rows = () => screen.getAllByTestId('team-detail-row').map((row) => row.textContent)
-    await waitFor(() => expect(rows()).toEqual(['CaptainJane Smith', 'ManagerBob Jones', 'Coach–']))
-    expect(await screen.findByTestId('team-players-value')).toHaveTextContent('1')
-    expect(screen.getByTestId('team-matches-value')).toHaveTextContent('0')
+    await waitFor(() => expect(rows()).toEqual(['Players1', 'Matches0', 'CaptainJane Smith', 'ManagerBob Jones', 'Coach–']))
   })
 })

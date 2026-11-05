@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TeamCard } from './TeamCard'
@@ -50,18 +50,23 @@ function makeSponsor(overrides: Partial<Sponsor> = {}): Sponsor {
   }
 }
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname + location.search}</div>
+}
+
 function renderCard(props: Partial<Parameters<typeof TeamCard>[0]> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
+        <LocationProbe />
         <TeamCard
           team={makeTeam()}
           sectionName="Men"
           playerCount={0}
           matchCount={0}
           viewTo="/manage/sections/section-1/teams/team-1"
-          editTo="/manage/sections/section-1/teams/team-1/edit"
           statsTo="/manage/teams/team-1/stats"
           {...props}
         />
@@ -76,16 +81,18 @@ describe('TeamCard', () => {
     listSponsorContacts.mockResolvedValue([])
   })
 
-  it('renders the team name, the section and Active chips and the Players and Matches figure tiles', () => {
+  it('renders the team name, the section and Active chips and five icon-less rows in a fixed order', () => {
     renderCard({ playerCount: 5, matchCount: 3 })
 
     expect(screen.getByRole('heading', { name: '1st XI' })).toBeInTheDocument()
     expect(screen.getByText('Men')).toBeInTheDocument()
     expect(screen.getByText('Active')).toBeInTheDocument()
-    expect(screen.getByTestId('team-players-value')).toHaveTextContent('5')
-    expect(screen.getByText('Players')).toBeInTheDocument()
-    expect(screen.getByTestId('team-matches-value')).toHaveTextContent('3')
-    expect(within(screen.getByTestId('team-matches')).getByText('Matches')).toBeInTheDocument()
+    expect(screen.getAllByTestId('team-detail-row').map((row) => row.textContent)).toEqual(['Players5', 'Matches3', 'Captain–', 'Manager–', 'Coach–'])
+  })
+
+  it('shows a zero count as 0, not as the not-on-file dash', () => {
+    renderCard({ playerCount: 0, matchCount: 0 })
+    expect(screen.getAllByTestId('team-detail-row').slice(0, 2).map((row) => row.textContent)).toEqual(['Players0', 'Matches0'])
   })
 
   it('shows no abbreviation chip, whether or not the team has one', () => {
@@ -97,14 +104,14 @@ describe('TeamCard', () => {
     renderCard()
 
     const rows = screen.getAllByTestId('team-detail-row')
-    expect(rows.map((row) => row.textContent)).toEqual(['Captain–', 'Manager–', 'Coach–'])
+    expect(rows.slice(2).map((row) => row.textContent)).toEqual(['Captain–', 'Manager–', 'Coach–'])
   })
 
   it('renders the Captain, Manager and Coach names when present', () => {
     renderCard({ captainName: 'Jane Smith', managerName: 'Bob Jones', coachName: 'Alex Lee' })
 
     const rows = screen.getAllByTestId('team-detail-row')
-    expect(rows.map((row) => row.textContent)).toEqual(['CaptainJane Smith', 'ManagerBob Jones', 'CoachAlex Lee'])
+    expect(rows.slice(2).map((row) => row.textContent)).toEqual(['CaptainJane Smith', 'ManagerBob Jones', 'CoachAlex Lee'])
   })
 
   it('renders a grey Inactive chip instead of Active for a deactivated team', () => {
@@ -155,58 +162,25 @@ describe('TeamCard', () => {
     expect(screen.getByLabelText('Facebook')).toBeInTheDocument()
   })
 
-  it('renders the title as a link to viewTo and the footer Squad, Matches and Edit links, with no separate View link', () => {
-    renderCard({
-      viewTo: '/manage/sections/section-1/teams/team-1',
-      editTo: '/manage/sections/section-1/teams/team-1/edit',
-    })
-
-    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
-    expect(screen.getByRole('link', { name: 'Squad' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
-    expect(screen.getByRole('link', { name: 'Matches' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1/edit',
-    )
-    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
-  })
-
-  it('has a footer Stats link to the team statistics page', () => {
+  it('renders the title as a link to viewTo, with no footer bar of Squad, Matches, Edit or Stats links', () => {
     renderCard()
 
-    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/manage/teams/team-1/stats')
-  })
-
-  it('the Stats link carries the router state the statistics page uses for Back, and sits among the footer buttons', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    function StateProbe() {
-      return <div data-testid="state">{JSON.stringify(useLocation().state)}</div>
+    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+    for (const name of ['Squad', 'Matches', 'Edit', 'Stats', 'View']) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
     }
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <TeamCard team={makeTeam()} sectionName="Men" playerCount={0} matchCount={0} viewTo="/v" editTo="/e" statsTo="/stats" statsState={{ backTo: '/manage/teams?x=1', backLabel: 'Teams' }} />
-              }
-            />
-            <Route path="/stats" element={<StateProbe />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-    expect(['Squad', 'Matches', 'Edit', 'Stats'].map((name) => screen.getByRole('link', { name }).textContent)).toEqual(['Squad', 'Matches', 'Edit', 'Stats'])
-    await userEvent.click(screen.getByRole('link', { name: 'Stats' }))
-    expect(JSON.parse((await screen.findByTestId('state')).textContent ?? '')).toEqual({ backTo: '/manage/teams?x=1', backLabel: 'Teams' })
   })
 
-  it('points Squad and Matches at squadTo and matchesTo when given', () => {
-    renderCard({ squadTo: '/squad', matchesTo: '/matches' })
+  it('shows an outlined View Stats button that opens statsTo without opening the team', async () => {
+    renderCard({ statsTo: '/stats?returnTo=%2Fmanage%2Fteams' })
+    expect(screen.getByTestId('team-card-stats')).toHaveTextContent('View Stats')
+    await userEvent.click(screen.getByTestId('team-card-stats'))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/stats?returnTo=%2Fmanage%2Fteams'))
+  })
 
-    expect(screen.getByRole('link', { name: 'Squad' })).toHaveAttribute('href', '/squad')
-    expect(screen.getByRole('link', { name: 'Matches' })).toHaveAttribute('href', '/matches')
+  it('renders the supplied kebab menu in the header', () => {
+    renderCard({ menu: <button type="button">Actions for 1st XI</button> })
+    expect(screen.getByRole('button', { name: 'Actions for 1st XI' })).toBeInTheDocument()
   })
 
   // docs/specs/059-record-card-click-to-view.md: the stretched-link overlay sits above every
@@ -218,6 +192,6 @@ describe('TeamCard', () => {
 
     const facebookLink = screen.getByLabelText('Facebook')
     expect(facebookLink.closest('.MuiCard-root')).toHaveStyle({ position: 'relative' })
-    expect(screen.getByTestId('team-social-links')).toHaveStyle({ position: 'relative' })
+    expect(screen.getByTestId('team-social-links').parentElement).toHaveStyle({ position: 'relative' })
   })
 })

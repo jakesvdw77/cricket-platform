@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Box, Link, Typography } from '@mui/material'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Box, Link, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
-import { ContentControlsLine, SortLink } from '../../../components/ContentControlsLine'
-import { EmptyState } from '../../../components/EmptyState'
+import { SortMenu } from '../../../components/ContentControlsLine'
+import { AddCard } from '../../../components/AddCard'
+import { BrandIcon } from '../../../components/BrandIcon'
+import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
+import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../../components/ToolbarCard'
+import { TeamActionsMenu } from '../../../components/TeamActionsMenu'
 import { FilterBar } from '../../../components/FilterBar'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../../components/ListViewToggle'
@@ -16,13 +21,15 @@ import { TeamCard } from '../../../components/TeamCard'
 import { TeamTable } from '../../../components/TeamTable'
 import type { TeamTableRow } from '../../../components/TeamTable'
 import { listTeamsForClub, listTeamsForSection } from '../../../api/teamApi'
+import type { Team } from '../../../api/teamApi'
 import { listSections } from '../../../api/sectionApi'
 import type { Section } from '../../../api/sectionApi'
 import { listSeasons } from '../../../api/seasonApi'
 import { useListViewPreference } from '../../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { useTeamCardData } from '../../../hooks/useTeamCardData'
-import { cardGridSx } from '../../../utils/cardGrid'
+import { dynamicCardGridSx } from '../../../utils/cardGrid'
+import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { pickDefaultSeasonId } from '../../../utils/defaultSeason'
 import { breadcrumbFor } from '../../../utils/sectionBreadcrumb'
 import { matchesTeamFocus, teamCounters } from '../../../utils/teamCounters'
@@ -36,9 +43,9 @@ export interface TeamsPageProps {
 }
 
 const FOCUS_LABELS: Record<TeamFocus, string> = {
-  active: 'Active teams',
-  'no-captain': 'No captain',
-  empty: 'Empty squads',
+  active: 'Active Teams',
+  'no-captain': 'No Captain',
+  empty: 'Empty Squads',
 }
 
 const NOT_ON_FILE = '–'
@@ -55,9 +62,27 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   const location = useLocation()
   const sectionScopeId = scope.kind === 'section' ? scope.sectionId : undefined
   const [search, setSearch] = useState('')
-  const [sortAsc, setSortAsc] = useState(true)
-  const [focus, setFocus] = useState<TeamFocus | null>(null)
-  const [showInactive, setShowInactive] = useState(false)
+  // docs/specs/142: the sort, the quick filter and Show Inactive live in the address, so Back from a team restores them
+  // (the season and the club-wide Section are saved per club below).
+  const [params, setParams] = useSearchParams()
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+  const sortAsc = params.get('sort') !== 'desc'
+  const setSort = (next: string) => setParam('sort', next === 'desc' ? 'desc' : null)
+  const focusParam = params.get('focus')
+  const focus = (Object.keys(FOCUS_LABELS) as TeamFocus[]).find((key) => key === focusParam) ?? null
+  const setFocus = (next: TeamFocus | null) => setParam('focus', next)
+  const showInactive = params.get('inactive') === '1'
+  const setShowInactive = (next: boolean) => setParam('inactive', next ? '1' : null)
+  const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   const [view, setView] = useListViewPreference('teamList:view')
   // docs/specs/035: the club-wide Section filter is a backend parameter, saved per club (043); 092 saves the chosen
   // season with it. The section-scoped list is fixed to its section and ignores the saved Section.
@@ -143,25 +168,33 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
 
   const hasTeams = teams.length > 0
   const isSearching = search.trim().length > 0
-  const toggleFocus = (next: TeamFocus) => setFocus((current) => (current === next ? null : next))
+  const toggleFocus = (next: TeamFocus) => setFocus(focus === next ? null : next)
 
   // docs/specs/057: the ?from=section marker tells the team page / form to route Back to this section-scoped list rather
-  // than the club-wide directory (the default). 092: the chosen season travels to the team page.
-  const viewTo = (sectionId: string, teamId: string) => {
+  // than the club-wide directory (the default). 092: the chosen season travels to the team page. 142: every link out carries
+  // returnTo with the label "Teams", so Back restores this view (docs/specs/127).
+  const origin = currentOrigin(location)
+  const teamPath = (sectionId: string, teamId: string) => `/manage/sections/${sectionId}/teams/${teamId}`
+  const viewPath = (sectionId: string, teamId: string) => {
     const params = new URLSearchParams()
     if (scope.kind === 'section') params.set('from', 'section')
     if (seasonId) params.set('seasonId', seasonId)
     const query = params.toString()
-    return `/manage/sections/${sectionId}/teams/${teamId}${query ? `?${query}` : ''}`
+    return `${teamPath(sectionId, teamId)}${query ? `?${query}` : ''}`
   }
-  const editTo = (sectionId: string, teamId: string) =>
-    `/manage/sections/${sectionId}/teams/${teamId}/edit${scope.kind === 'section' ? '?from=section' : ''}`
-
-  // docs/specs/116 (decision 21): the Stats shortcut opens the team's statistics page, whose Back returns to this list
-  // (with its query string).
+  const viewTo = (sectionId: string, teamId: string) => withReturnTo(viewPath(sectionId, teamId), origin, 'Teams')
+  const editPath = (sectionId: string, teamId: string) => `${teamPath(sectionId, teamId)}/edit${scope.kind === 'section' ? '?from=section' : ''}`
   // docs/specs/116: the chosen season travels to the team statistics page (empty = All seasons).
-  const statsTo = (teamId: string) => `/manage/teams/${teamId}/stats?seasonId=${encodeURIComponent(seasonId)}`
-  const statsState = { backTo: `${location.pathname}${location.search}`, backLabel: 'Teams' }
+  const statsPath = (teamId: string) => `/manage/teams/${teamId}/stats?seasonId=${encodeURIComponent(seasonId)}`
+  const statsTo = (teamId: string) => withReturnTo(statsPath(teamId), origin, 'Teams')
+  const menuFor = (team: Team) => (
+    <TeamActionsMenu
+      teamName={team.name}
+      openTo={viewPath(team.sectionId, team.id)}
+      editTo={editPath(team.sectionId, team.id)}
+      statsTo={statsPath(team.id)}
+    />
+  )
 
   const figure = (value: number) => (counters.loaded ? value : NOT_ON_FILE)
   const attention = (id: TeamFocus, value: number): PageCounterItem => ({
@@ -186,61 +219,47 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
       hint: 'Tap to filter',
       onSelect: () => toggleFocus('active'),
     },
-    { id: 'players', value: figure(counters.players), label: 'Players in squads', shortLabel: 'Players' },
-    { id: 'this-week', value: figure(counters.matchesThisWeek), label: 'Matches this week', shortLabel: 'This week' },
+    { id: 'players', value: figure(counters.players), label: 'Players In Squads', shortLabel: 'Players' },
+    { id: 'this-week', value: figure(counters.matchesThisWeek), label: 'Matches This Week', shortLabel: 'This Week' },
     attention('no-captain', counters.noCaptain),
     attention('empty', counters.emptySquads),
   ]
 
-  const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show inactive" />
-  const sortLink = <SortLink label={sortAsc ? 'Name, A to Z' : 'Name, Z to A'} onToggle={() => setSortAsc((current) => !current)} />
-
-  const emptyTitle = focus || isSearching || hasTeams ? 'No matching teams' : 'No teams yet'
   const emptyDescription = (() => {
-    if (!hasTeams) {
-      return scope.kind === 'section' ? "Add this section's first team to get started." : "Add your club's first team to get started."
-    }
-    if (isSearching) {
-      return `No teams match "${search.trim()}". Try a different search.`
-    }
-    if (focus) {
-      return `No teams match ${FOCUS_LABELS[focus].toLowerCase()}.`
-    }
-    return 'Every team here is inactive. Turn on Show inactive to see them.'
+    if (isSearching) return `No teams match "${search.trim()}". Try a different search.`
+    if (focus) return `No teams match ${FOCUS_LABELS[focus].toLowerCase()}.`
+    return 'Every team here is inactive. Turn on Show Inactive to see them.'
   })()
+  const sortOptions = [
+    { value: 'asc', label: 'Name, A to Z' },
+    { value: 'desc', label: 'Name, Z to A' },
+  ]
+  const sortValue = sortAsc ? 'asc' : 'desc'
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title={scope.kind === 'section' ? (scopeSection ? `Teams — ${[...breadcrumb, scopeSection.name].join(' › ')}` : 'Teams') : 'Teams'}
-        backTo={scope.kind === 'section' ? '/manage/sections' : undefined}
-        backLabel={scope.kind === 'section' ? 'Back to Club Structure' : undefined}
-        // docs/specs/092: the season the squads, Players and Matches describe; there is no "All seasons" here.
-        titleAdornment={
-          seasons.length > 0 ? (
-            <HeaderSeasonSelect
-              seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
-              value={seasonId || null}
-              onChange={(next) => setFilters({ seasonId: next ?? '' })}
-              showAll={false}
-            />
-          ) : undefined
-        }
-        action={<Button size="compact" onClick={() => navigate(sectionScopeId ? `/manage/sections/${sectionScopeId}/teams/new` : '/manage/teams/new')}>Add Team</Button>}
-      />
-
-      <PageCounters density="compact" items={counterItems} />
-
-      <FilterBar
-        density="compact"
-        {...(scope.kind === 'club'
-          ? { sections: sections ?? [], sectionId: clubSectionId, onSectionChange: (next: string | null) => setFilters({ sectionId: next }) }
-          : {})}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by name"
-        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
-        viewControls={
+  // docs/specs/142 and page-anatomy section 3: one flat toolbar, desktop order: Section (club list), search, Show Inactive, Sort, then Cards | List
+  // last. A phone: Filters and search on the row; the toggle, the quick filter, the switch and Sort in the sheet.
+  const bar = (
+    <FilterBar
+      bare
+      inCard
+      viewControlsInline
+      density="compact"
+      {...(scope.kind === 'club'
+        ? { sections: sections ?? [], sectionId: clubSectionId, onSectionChange: (next: string | null) => setFilters({ sectionId: next }) }
+        : {})}
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by name"
+      extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
+      secondaryControls={(placement) =>
+        placement === 'row' ? (
+          <ToolbarToggleChip pressed={showInactive} onChange={setShowInactive} label="Show Inactive" />
+        ) : (
+          <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show Inactive" />
+        )
+      }
+      viewControls={
+        phone ? (
           <>
             <Box sx={{ width: '100%' }}>
               <ListViewToggle value={view} onChange={setView} fullWidth />
@@ -255,29 +274,70 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
                 </Link>
               </Box>
             )}
-            {inactiveToggle}
-            {sortLink}
+            <SortMenu value={sortValue} options={sortOptions.map((option) => ({ ...option, linkLabel: option.label }))} onChange={setSort} />
           </>
-        }
-        onClearAll={() => {
-          if (scope.kind === 'club') setFilters({ sectionId: null })
-          setFocus(null)
-        }}
-      />
-
-      <ContentControlsLine
-        scope={`Showing ${visibleTeams.length} ${visibleTeams.length === 1 ? 'team' : 'teams'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
-        sortAction={sortLink}
-        controls={
+        ) : (
           <>
-            <ListViewToggle value={view} onChange={setView} />
-            {inactiveToggle}
+            <ToolbarSortButton value={sortValue} onChange={setSort} options={sortOptions} />
+            <ListViewToggle value={view} onChange={setView} variant="toolbar" />
           </>
+        )
+      }
+      onClearAll={() => {
+        if (scope.kind === 'club') setFilters({ sectionId: null })
+        setFocus(null)
+      }}
+    />
+  )
+
+  const addTo = sectionScopeId ? `/manage/sections/${sectionScopeId}/teams/new` : '/manage/teams/new'
+  const openCreate = () => navigate(withReturnTo(addTo, origin, 'Teams'))
+  const icon = <BrandIcon name="nav/teams" size={48} padding={4} />
+  const emptyState =
+    visibleTeams.length > 0 ? null : !hasTeams ? (
+      <EmptyState
+        icon={icon}
+        title="No teams yet"
+        description={scope.kind === 'section' ? "Add this section's first team to get started." : "Add your club's first team to get started."}
+        action={<EmptyStateLink onClick={openCreate}>Add New Team</EmptyStateLink>}
+      />
+    ) : (
+      <EmptyState icon={icon} title="No matching teams" description={emptyDescription} />
+    )
+  // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
+  const fused = view === 'list'
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
+      <ManageScreenHeader
+        title="Teams"
+        backTo={scope.kind === 'section' ? '/manage/sections' : undefined}
+        backLabel={scope.kind === 'section' ? 'Back to Club Structure' : undefined}
+        // docs/specs/092: the season the squads, Players and Matches describe; there is no "All seasons" here.
+        titleAdornment={
+          seasons.length > 0 ? (
+            <HeaderSeasonSelect
+              seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
+              value={seasonId || null}
+              onChange={(next) => setFilters({ seasonId: next ?? '' })}
+              showAll={false}
+            />
+          ) : undefined
         }
+        // The section scope is a plain sub-header path, not part of the title (docs/specs/142).
+        subtitle={scopeSection ? [...breadcrumb, scopeSection.name].join(' › ') : undefined}
+        // ONE filled button on the title row (page-anatomy section 1); the owner's wording is Add New ... (2026-11-05).
+        action={<Button size="compact" onClick={openCreate}>Add New Team</Button>}
       />
 
-      {visibleTeams.length > 0 && view === 'list' && (
+      <PageCounters density="compact" items={counterItems} />
+
+      {!fused && <ToolbarCard>{bar}</ToolbarCard>}
+
+      {fused && (
         <TeamTable
+          toolbar={bar}
+          empty={emptyState}
           rows={visibleTeams.map(
             (team): TeamTableRow => ({
               team,
@@ -288,14 +348,16 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
               loaded: cardData[team.id]?.loaded ?? false,
               to: viewTo(team.sectionId, team.id),
               statsTo: statsTo(team.id),
-              statsState,
+              actions: menuFor(team),
             }),
           )}
         />
       )}
 
-      {visibleTeams.length > 0 && view === 'cards' && (
-        <Box sx={cardGridSx}>
+      {!fused && emptyState}
+
+      {!fused && visibleTeams.length > 0 && (
+        <Box sx={dynamicCardGridSx}>
           {visibleTeams.map((team) => {
             const data = cardData[team.id]
             return (
@@ -310,16 +372,15 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
                 matchCount={data?.matchCount ?? 0}
                 sponsors={data?.sponsors ?? []}
                 viewTo={viewTo(team.sectionId, team.id)}
-                editTo={editTo(team.sectionId, team.id)}
                 statsTo={statsTo(team.id)}
-                statsState={statsState}
+                menu={menuFor(team)}
               />
             )
           })}
+          {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
+          <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />
         </Box>
       )}
-
-      {visibleTeams.length === 0 && <EmptyState title={emptyTitle} description={emptyDescription} />}
     </Box>
   )
 }

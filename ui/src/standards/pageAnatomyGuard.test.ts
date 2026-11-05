@@ -28,7 +28,6 @@ const fullWidthSwitch = /<CompactToggleGroup[^>]*\sfullWidth[\s>]/
 
 // Backlog to clean up one page at a time as each is reviewed (docs/roadmap.md); never add to it.
 const BASELINE_RAW_BUTTONS: string[] = [
-  "components/CollapsibleSection/CollapsibleSection.tsx", // compact in fact; the tag regex stops at a JSX arrow inside it
   "components/FilterBar/FilterBar.tsx",
   "components/MatchForm/MatchSideFields.tsx",
   "components/PlayingConditionsSummary/PlayingConditionsSummary.tsx",
@@ -39,7 +38,6 @@ const BASELINE_RAW_BUTTONS: string[] = [
   "components/SelectPlayersDialog/SelectPlayersDialog.tsx",
   "pages/manage/ClubOverviewPage.tsx",
   "pages/manage/MatchFormPage.tsx",
-  "pages/manage/TeamDetailPage.tsx",
   "pages/manage/matchDetail/MatchTeamCard.tsx",
   "pages/manage/playerDetail/PlayerStatsCard.tsx",
   "pages/manage/results/ResultDetailPage.tsx",

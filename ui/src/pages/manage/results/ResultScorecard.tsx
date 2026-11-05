@@ -269,7 +269,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
 
     const inningsNumber = regular.findIndex((candidate) => candidate.battingSide === side) + 1
     return (
-      <ResultSection key={side} collapsible defaultOpen={false} title={sideTitle(inningsNumber, names[side === 'HOME' ? 'home' : 'away'])} testId={`scorecard-${side.toLowerCase()}`}>
+      <ResultSection key={side} collapsible toggleNoun="Innings" defaultOpen={false} title={sideTitle(inningsNumber, names[side === 'HOME' ? 'home' : 'away'])} testId={`scorecard-${side.toLowerCase()}`}>
         {target && (
           <Typography variant="body2" fontWeight={600} data-testid="scorecard-target" sx={{ mb: 1 }}>
             {target}

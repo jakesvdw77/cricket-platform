@@ -58,6 +58,7 @@ function renderPage(path = BASE, state?: unknown, clubId: string | null = 'club-
             <Route path="teams/:teamId/stats" element={<TeamStatsPage />} />
             <Route path="results/:matchId" element={<Probe name="result" />} />
             <Route path="leaderboards" element={<Probe name="leaderboards" />} />
+            <Route path="results" element={<Probe name="results" />} />
             <Route path="sections/:sectionId/teams/:teamId" element={<Probe name="team-detail" />} />
           </Route>
         </Routes>
@@ -216,7 +217,7 @@ describe('TeamStatsPage', () => {
       renderPage()
       await loaded()
       await userEvent.click(screen.getByRole('combobox', { name: 'Competition' }))
-      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All competitions', 'League'])
+      expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['All Competitions', 'League'])
     })
 
     it('changing Season refetches and saves it; Competition refetches but is not saved', async () => {
@@ -238,14 +239,14 @@ describe('TeamStatsPage', () => {
     it('states the basis, leaving out every part that is zero', async () => {
       renderPage()
       await loaded()
-      expect(screen.getByTestId('stats-basis')).toHaveTextContent(/^Based on 14 published results\.$/)
+      expect(screen.getByTestId('tile-played-info')).toHaveAttribute('aria-label', 'Based on 14 published results.')
     })
 
     it('states internal matches, results with no ball bowled and forfeits received and conceded', async () => {
       serve(makeTeamStats({ basis: { resultsCounted: 12, internalResults: 2, resultsNoBallBowled: 1, forfeits: { received: 1, conceded: 2 }, resultsWithBothInnings: 12 } }))
       renderPage()
       await loaded()
-      const text = screen.getByTestId('stats-basis').textContent ?? ''
+      const text = screen.getByTestId('tile-played-info').getAttribute('aria-label') ?? ''
       expect(text).toContain('Based on 12 published results.')
       expect(text).toContain('2 internal matches are counted once for this team.')
       expect(text).toContain('1 result with no ball bowled is not counted.')
@@ -256,39 +257,34 @@ describe('TeamStatsPage', () => {
       serve(makeTeamStats({ basis: { resultsCounted: 1, internalResults: 1, resultsNoBallBowled: 0, forfeits: { received: 1, conceded: 0 }, resultsWithBothInnings: 1 } }))
       renderPage()
       await loaded()
-      expect(screen.getByTestId('stats-basis').textContent).toContain('Based on 1 published result.')
-      expect(screen.getByTestId('stats-basis').textContent).toContain('1 internal match is counted once for this team.')
-      expect(screen.getByTestId('stats-basis').textContent).toContain('Forfeits received 1 is counted as a win.')
+      expect(screen.getByTestId('tile-played-info').getAttribute('aria-label')).toContain('Based on 1 published result.')
+      expect(screen.getByTestId('tile-played-info').getAttribute('aria-label')).toContain('1 internal match is counted once for this team.')
+      expect(screen.getByTestId('tile-played-info').getAttribute('aria-label')).toContain('Forfeits received 1 is counted as a win.')
     })
 
-    it('shows the four tiles with the server figures, in Won success and Lost error tones', async () => {
+    it('shows the four tiles with the server figures, in the shared counters', async () => {
       renderPage()
       await loaded()
-      const strip = screen.getByTestId('stat-tiles')
-      expect(within(strip).getAllByTestId(/^tile-(played|won|lost|win-percent)$/).map((tile) => tile.getAttribute('data-testid'))).toEqual(['tile-played', 'tile-won', 'tile-lost', 'tile-win-percent'])
-      expect(screen.getByTestId('tile-played-value')).toHaveTextContent('14')
-      expect(screen.getByTestId('tile-won-value')).toHaveTextContent('9')
-      expect(screen.getByTestId('tile-lost-value')).toHaveTextContent('4')
-      expect(screen.getByTestId('tile-win-percent-value')).toHaveTextContent('69.2')
-      const colour = (id: string) => getComputedStyle(screen.getByTestId(id)).color
-      expect(colour('tile-won-value')).not.toBe(colour('tile-played-value'))
-      expect(colour('tile-lost-value')).not.toBe(colour('tile-played-value'))
-      expect(colour('tile-lost-value')).not.toBe(colour('tile-won-value'))
+      const tiles = ['tile-played', 'tile-won', 'tile-lost', 'tile-win-percent']
+      expect(tiles.map((id) => within(screen.getByTestId(id)).getByTestId('page-counter-value').textContent)).toEqual(['14', '9', '4', '69.2'])
+      expect(tiles.map((id) => screen.getByTestId(id).textContent?.replace(/^[\d.–]+/, ''))).toEqual(['Played', 'Won', 'Lost', 'Win %'])
+      // only the first card carries the basis info icon; Won and Lost are not toned
+      expect(screen.getAllByTestId(/^tile-.*-info$/)).toHaveLength(1)
     })
 
     it('shows a dash for a Win % that is not defined, never 0', async () => {
       serve(makeTeamStats({ record: { played: 2, won: 0, lost: 0, tied: 2, drawn: 0, noResult: 0, decisive: 0, winPercent: null } }))
       renderPage()
       await loaded()
-      expect(screen.getByTestId('tile-win-percent-value')).toHaveTextContent('–')
+      expect(within(screen.getByTestId('tile-win-percent')).getByTestId('page-counter-value')).toHaveTextContent('–')
     })
 
     it('displays the figures exactly as sent and computes none (inconsistent input stays inconsistent)', async () => {
       serve(makeTeamStats({ record: { played: 99, won: 1, lost: 1, tied: 0, drawn: 0, noResult: 0, decisive: 2, winPercent: 12.34 } }))
       renderPage()
       await loaded()
-      expect(screen.getByTestId('tile-played-value')).toHaveTextContent('99')
-      expect(screen.getByTestId('tile-win-percent-value')).toHaveTextContent('12.3')
+      expect(within(screen.getByTestId('tile-played')).getByTestId('page-counter-value')).toHaveTextContent('99')
+      expect(within(screen.getByTestId('tile-win-percent')).getByTestId('page-counter-value')).toHaveTextContent('12.3')
       expect(field(screen.getByTestId('team-record-card'), 'Win %').value).toBe('12.3')
     })
 
@@ -627,25 +623,26 @@ describe('TeamStatsPage', () => {
     const none = (over: Partial<TeamStatsPageData> = {}) =>
       makeTeamStats({ basis: { resultsCounted: 0, internalResults: 0, resultsNoBallBowled: 0, forfeits: { received: 0, conceded: 0 }, resultsWithBothInnings: 0 }, form: [], ...over })
 
-    it('a team with no published results: says so, offers Go to Results and hides the filters, tiles and cards', async () => {
+    it('a team with no published results: says so, offers Open Results and hides the filters, tiles and cards', async () => {
       serve(none())
       server.options = { seasonIds: [], leagueIds: [], sectionIds: [], competitions: [] }
       renderPage()
       expect(await screen.findByText('No published results yet', {}, wait)).toBeInTheDocument()
       expect(screen.getByText('Team statistics appear here once a published result includes this team.')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Go to Results' })).toHaveAttribute('href', '/manage/results')
       expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
-      expect(screen.queryByTestId('stat-tiles')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tile-played')).not.toBeInTheDocument()
       expect(screen.queryByTestId('team-record-card')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Open Results' }))
+      expect(await screen.findByTestId('probe-path')).toHaveTextContent('/manage/results')
     })
 
-    it('filters that match nothing: says so and Clear filters resets Season, League and Competition (and the saved choice)', async () => {
+    it('filters that match nothing: says so and Clear Filters resets Season, League and Competition (and the saved choice)', async () => {
       server.page = (_id, params) => (Object.keys(params).length > 0 ? none() : makeTeamStats())
       localStorage.setItem('teamStats:filters:club-1', JSON.stringify({ seasonId: 'season-2', leagueId: 'league-1' }))
       renderPage(`${BASE}?competition=LEAGUE`)
       expect(await screen.findByText('No published results match these filters', {}, wait)).toBeInTheDocument()
       expect(screen.getByRole('combobox', { name: 'Season' })).toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
       await loaded()
       expect(lastPage().params).toEqual({})
       expect(JSON.parse(localStorage.getItem('teamStats:filters:club-1') as string)).toMatchObject({ seasonId: 'all', leagueId: null })
@@ -656,7 +653,7 @@ describe('TeamStatsPage', () => {
       renderPage()
       expect(await screen.findByText("Couldn't load the statistics", {}, wait)).toBeInTheDocument()
       server.page = (teamId) => makeTeamStats({ teamId })
-      await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
       await loaded()
       expect(screen.queryByText("Couldn't load the statistics")).not.toBeInTheDocument()
     })
