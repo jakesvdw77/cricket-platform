@@ -41,7 +41,7 @@
 </style></head>
 <body><div class="page">
 <h1>Player Hub results: round 5</h1>
-<p class="lead">Drawn again from the owner's notes. <b>The result leads</b> (the latest match as a banner), not the player's figures. <b>Teams and leagues played that season are filters</b> above it. The player's own contribution is a slim strip at the foot of every card. <b>Cards fill the width</b> in a responsive grid (one column on a phone, two or three on a laptop), with <b>no carousel, no arrows, no scrollbar</b>. On the desktop the <b>menu collapses to an icon rail after 10 seconds</b>, and the grid reflows to use the space.</p>
+<p class="lead">Drawn again from the owner's notes. <b>The result leads</b> (the latest match as a banner), not the player's figures. <b>The leagues played that season, and then the teams in the chosen league, are filters</b> above it. The player's own contribution is a slim strip at the foot of every card. <b>Cards fill the width</b> in a responsive grid (one column on a phone, two or three on a laptop), with <b>no carousel, no arrows, no scrollbar</b>. On the desktop the <b>menu collapses to an icon rail after 10 seconds</b>, and the grid reflows to use the space.</p>
 <h2>Desktop: wait 10 seconds</h2>
 <p class="lead">The menu collapses to the rail with a countdown line along its foot. Hover or click the rail or the round handle to bring it back; the timer starts again when the pointer leaves. Change the Season or the chips to see the grid and the filters respond.</p>
 <div class="row"><div class="desk" id="desk"></div></div>
@@ -61,8 +61,9 @@ const M=[
 ];
 const mk=()=>({season:'2026',team:'All',league:'All'});
 const pick=S=>M.filter(m=>m.s===S.season&&(S.team==='All'||m.tm===S.team)&&(S.league==='All'||m.lg===S.league));
-const uniq=(S,k)=>[...new Set(M.filter(m=>m.s===S.season).map(m=>m[k]))];
+const uniq=(S,k)=>[...new Set(M.filter(m=>m.s===S.season&&(k==='lg'||S.league==='All'||m.lg===S.league)).map(m=>m[k]))];
 const rec=(list)=>{const w=list.filter(m=>m.t==='win').length;return `${list.length} played · ${w} won`};
+const inLeague=(S,m)=>S.league==='All'||m.lg===S.league;
 const formHtml=list=>{const last=list.slice(0,5).reverse();const w=last.filter(m=>m.t==='win').length,l=last.filter(m=>m.t==='loss').length,t=last.length-w-l;
   const fig=m=>m.you.k==='dnb'?'DNB':m.you.fig;
   return `<section class="card" aria-label="Recent form"><div class="form"><div><div class="kick">Recent form</div><div class="sum" style="margin-top:6px"><b>${w} won</b>${l?`, ${l} lost`:''}${t?`, ${t} tied`:''} in the last ${last.length}</div></div>
@@ -75,15 +76,15 @@ function page(el,mode){
   const S=mk(), desk=mode==='desk'; let timer,collapsed=false,t0;
   const draw=()=>{
     const list=pick(S), teams=uniq(S,'tm'), leagues=uniq(S,'lg');
-    const chips=(label,arr,key,all)=>`<div class="chips"><span class="lab">${label}</span><div class="cw"><button class="chip ${S[key]==='All'?'on':''}" data-k="${key}" data-v="All">${all}</button>${arr.map(v=>`<button class="chip ${S[key]===v?'on':''}" data-k="${key}" data-v="${v}">${v}<small>${rec(M.filter(m=>m.s===S.season&&m[key==='team'?'tm':'lg']===v))}</small></button>`).join('')}</div></div>`;
+    const chips=(label,arr,key,all)=>`<div class="chips"><span class="lab">${label}</span><div class="cw"><button class="chip ${S[key]==='All'?'on':''}" data-k="${key}" data-v="All">${all}</button>${arr.map(v=>`<button class="chip ${S[key]===v?'on':''}" data-k="${key}" data-v="${v}">${v}<small>${rec(M.filter(m=>m.s===S.season&&m[key==='team'?'tm':'lg']===v&&(key==='lg'||inLeague(S,m))))}</small></button>`).join('')}</div></div>`;
     const main=list.length?`${formHtml(list)}<div class="latest">${cardHtml(list[0],true)}</div>${list.length>1?`<div class="grid">${list.slice(1).map(m=>cardHtml(m)).join('')}</div>`:''}`:
       `<div class="empty"><div class="res">No matches for this filter</div><p class="lg">${S.season} has no results shared with the Player Hub for this combination.</p><button class="linkb" data-clear>Clear Filters</button></div>`;
     const sel=`<select class="sel" aria-label="Season">${['2026','2025'].map(y=>`<option ${S.season===y?'selected':''}>${y}</option>`).join('')}</select>`;
-    const content=`<div class="content sc" style="flex:1;min-width:0">${chips('Teams',teams,'team','All teams')}${chips('Leagues',leagues,'league','All leagues')}${main}</div>`;
+    const content=`<div class="content sc" style="flex:1;min-width:0">${chips('Leagues',leagues,'league','All leagues')}${chips('Teams',teams,'team','All teams')}${main}</div>`;
     const menu=desk?`<nav class="menu ${collapsed?'collapsed':''}" aria-label="Player Hub"><div class="mi"><span class="ic">✓</span>Availability</div><div class="mi on"><span class="ic">★</span>Results</div><div class="mi"><span class="ic">▦</span>Schedule</div><div class="mi"><span class="ic">▤</span>Stats</div><div class="mi"><span class="ic">✉</span>Updates</div><div class="mi"><span class="ic">⌂</span>Club</div><div class="mi"><span class="ic">☺</span>Profile</div>${collapsed?'':'<div class="timer" id="tm"></div>'}<button class="handle" aria-label="${collapsed?'Expand menu':'Collapse menu'}">${collapsed?'»':'«'}</button></nav>`:'';
     el.innerHTML=`<div class="bar"><b>Results</b>${sel}</div><div class="body">${menu}${content}</div>`;
     el.querySelector('select').onchange=e=>{S.season=e.target.value;S.team='All';S.league='All';draw();};
-    el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{S[b.dataset.k]=b.dataset.v;draw();});
+    el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{S[b.dataset.k]=b.dataset.v;if(b.dataset.k==='league'&&S.team!=='All'&&!M.some(m=>m.s===S.season&&m.tm===S.team&&inLeague(S,m)))S.team='All';draw();});
     el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{S.team='All';S.league='All';draw();});
     if(desk){const mn=el.querySelector('.menu');
       mn.querySelector('.handle').onclick=()=>{collapsed=!collapsed;draw();arm();};
