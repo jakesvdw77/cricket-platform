@@ -3,9 +3,12 @@ import type { KeyboardEvent } from 'react'
 import { Box, ButtonBase } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import { BrandIcon } from '../../../components/BrandIcon'
+import type { BrandIconName } from '../../../components/BrandIcon'
 import { bubblePill, isParent } from './hubNav'
 import type { HubNavItem, HubPillCounts } from './hubNav'
 import { HUB } from './hubStyle'
+import { useHubMenuCollapsed } from './useHubMenuAutoCollapse'
 import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/121: one level of the Player Hub menu (the main list, or a parent's children, never both). A `nav` holding a
@@ -80,9 +83,31 @@ const barSx = {
   '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color .15s, color .15s' },
 } as const
 
+// docs/specs/145 decision 12: the icon of each main section in the collapsed 64 px rail. A sub menu's pages use their section's icon
+// (the title and the accessible name tell them apart).
+const RAIL_ICONS: Record<string, BrandIconName> = {
+  availability: 'nav/availability-polls',
+  results: 'nav/match-results',
+  schedule: 'nav/upcoming-matches',
+  stats: 'nav/leaderboard-cricket',
+  updates: 'nav/communication',
+  club: 'nav/club-profile',
+  profile: 'nav/cricket-players',
+}
+const railIcon = (id: string): BrandIconName => RAIL_ICONS[id.split('.')[0]] ?? 'nav/cricket-players'
+
+const railSx = {
+  justifyContent: 'center',
+  px: 0,
+  py: 1,
+  minHeight: 56,
+  '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 },
+} as const
+
 export function HubMenu({ items: allItems, selectedId, counts, onSelect, levelKey, focusId }: HubMenuProps) {
   // docs/specs/145: a route-only item (Account, which moved to the header avatar) is never a row.
   const items = allItems.filter((item) => item.inMenu !== false)
+  const rail = useHubMenuCollapsed()
   const listRef = useRef<HTMLUListElement>(null)
   const [active, setActive] = useState<string | undefined>()
   // Keyed by the level so a stale tab stop from the other list is ignored.
@@ -129,22 +154,33 @@ export function HubMenu({ items: allItems, selectedId, counts, onSelect, levelKe
                 onClick={() => onSelect(item)}
                 aria-current={selected ? 'page' : undefined}
                 aria-label={name}
+                title={rail ? item.label : undefined}
                 sx={{
                   ...barSx,
-                  ...(selected && { color: HUB.gold, bgcolor: alpha(HUB.gold, 0.16) }),
+                  ...(rail && railSx),
+                  ...(selected && { color: HUB.gold, bgcolor: alpha(HUB.gold, 0.16), ...(rail && { boxShadow: `inset 3px 0 0 ${HUB.gold}` }) }),
                   ...(item.soon && !selected && { opacity: 0.7 }),
                   ...(index === items.length - 1 && { borderBottom: `1px solid ${HUB.line}` }),
                 }}
               >
-                {/* The pill sits at the left edge so it never takes width from the label, which stays right aligned and on one
-                    line; the chevron slot is always reserved so every label ends on the same vertical line. */}
-                {pill ? <Pill>{pill}</Pill> : item.soon ? <Pill dashed>Soon</Pill> : null}
-                <Box component="span" sx={{ flex: 1, minWidth: 0, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.label}
-                </Box>
-                <Box component="span" aria-hidden sx={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                  {parent && <ChevronRightIcon sx={{ fontSize: 26, opacity: 0.8, mr: -0.5, flex: 'none' }} />}
-                </Box>
+                {rail ? (
+                  <Box component="span" sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <BrandIcon name={railIcon(item.id)} size={32} onDark active={selected} />
+                    {pill && <Box component="span" aria-hidden sx={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', bgcolor: HUB.gold, border: `2px solid ${HUB.ink}` }} />}
+                  </Box>
+                ) : (
+                  <>
+                    {/* The pill sits at the left edge so it never takes width from the label, which stays right aligned and on one
+                        line; the chevron slot is always reserved so every label ends on the same vertical line. */}
+                    {pill ? <Pill>{pill}</Pill> : item.soon ? <Pill dashed>Soon</Pill> : null}
+                    <Box component="span" sx={{ flex: 1, minWidth: 0, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.label}
+                    </Box>
+                    <Box component="span" aria-hidden sx={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                      {parent && <ChevronRightIcon sx={{ fontSize: 26, opacity: 0.8, mr: -0.5, flex: 'none' }} />}
+                    </Box>
+                  </>
+                )}
               </ButtonBase>
             </li>
           )

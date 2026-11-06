@@ -129,39 +129,28 @@ export function storyLine(row: MyResultRow): string {
   return catches > 0 ? `${plural(catches, 'catch', 'catches')} in the field.` : 'Part of the team that day.'
 }
 
-// ----- milestones ---------------------------------------------------------------------------------------------------------
+// ----- the player's strip -------------------------------------------------------------------------------------------------
 
-export type MilestoneKind = 'CENTURY' | 'FIFTY' | 'FIVE_WICKETS'
-export interface Milestone {
-  kind: MilestoneKind
-  row: MyResultRow
-}
-
-const MILESTONE_LABEL: Record<MilestoneKind, string> = { CENTURY: 'A Century', FIFTY: 'A Fifty', FIVE_WICKETS: 'Five Wickets' }
-export const milestoneLabel = (kind: MilestoneKind): string => MILESTONE_LABEL[kind]
-
-// The best milestone in the loaded rows (a century, else a fifty, else a five-wicket haul), once: the earliest match that has it.
-// Rows come newest first, so the search runs from the end.
-export function findMilestone(rows: MyResultRow[]): Milestone | null {
-  const oldestFirst = [...rows].reverse()
-  const best = (row: MyResultRow) => Math.max(0, ...(row.batting.innings ?? []).map((innings) => innings.runs))
-  const century = oldestFirst.find((row) => best(row) >= 100)
-  if (century) return { kind: 'CENTURY', row: century }
-  const fifty = oldestFirst.find((row) => best(row) >= 50)
-  if (fifty) return { kind: 'FIFTY', row: fifty }
-  const five = oldestFirst.find((row) => (row.bowling.spells ?? []).some((spell) => spell.wickets >= 5))
-  return five ? { kind: 'FIVE_WICKETS', row: five } : null
-}
-
-export function milestoneSentence(milestone: Milestone): string {
-  const { kind, row } = milestone
-  const against = row.opponentName ? ` against ${row.opponentName}` : ''
-  if (kind === 'FIVE_WICKETS') {
-    const spell = (row.bowling.spells ?? []).find((entry) => entry.wickets >= 5)
-    return `${spell?.wickets ?? row.bowling.wickets} for ${spell?.runs ?? row.bowling.runs}${against}.`
+// The slim line at the foot of a result card. The Hub is read by parents, agents and managers, so it always names the player.
+export function playerStripText(row: MyResultRow, name: string): string {
+  const kind = cardKind(row)
+  if (kind === 'batting') {
+    const boundaries = [row.batting.fours > 0 ? plural(row.batting.fours, 'four') : null, row.batting.sixes > 0 ? plural(row.batting.sixes, 'six', 'sixes') : null]
+    return [`${name} batted ${battingFigure(row)}`, row.batting.ballsFaced > 0 ? `off ${plural(row.batting.ballsFaced, 'ball')}` : null, ...boundaries].filter(Boolean).join(', ')
   }
-  const innings = (row.batting.innings ?? []).find((entry) => entry.runs >= (kind === 'CENTURY' ? 100 : 50))
-  return `${innings?.runs ?? row.batting.runs}${innings?.notOut ? ' not out' : ''}${against}, with ${plural(row.batting.fours, 'four')} and ${plural(row.batting.sixes, 'six', 'sixes')}.`
+  if (kind === 'bowling') return `${name} bowled ${bowlingFigure(row)}, ${oversText(row.bowling.balls, row.ballsPerOver)}`
+  if (row.batting.status === 'NO_CARD' && row.bowling.status === 'NO_CARD') return 'No scorecard captured'
+  const catches = row.fielding.catches
+  if (row.batting.status === 'DID_NOT_BAT') return `${name} did not bat${catches > 0 ? `, ${plural(catches, 'catch', 'catches')}` : ''}`
+  return catches > 0 ? `${name} took ${plural(catches, 'catch', 'catches')}` : `${name} played`
+}
+
+// "2 won, 3 lost in the last 5" (a zero lost or tied is left out).
+export function formSentence(rows: MyResultRow[]): string {
+  const count = (outcome: MyResultOutcome) => rows.filter((row) => row.result === outcome).length
+  const lost = count('LOST')
+  const tied = count('TIED')
+  return `${count('WON')} won${lost ? `, ${lost} lost` : ''}${tied ? `, ${tied} tied` : ''} in the last ${rows.length}`
 }
 
 // ----- scope --------------------------------------------------------------------------------------------------------------
@@ -177,10 +166,10 @@ export function scopeLabel(names: ScopeNames, showTeam: boolean): string {
   return [names.season || 'All Seasons', showTeam ? names.team || 'All Teams' : null, names.league || null].filter(Boolean).join(' · ')
 }
 
-// The Results scope as a query string without the "?" (season, team, league), carried by a result page so Back restores it.
+// The Results scope as a query string without the "?" (season, team, league, competition), carried by a result page so Back restores it.
 export function resultsQuery(search: URLSearchParams): string | undefined {
   const query = new URLSearchParams()
-  for (const name of ['season', 'team', 'league']) {
+  for (const name of ['season', 'team', 'league', 'competition']) {
     const value = search.get(name)
     if (value) query.set(name, value)
   }
@@ -193,6 +182,7 @@ export const scopeQuery = (scope: MyResultScope): string => {
   if (scope.seasonId) query.set('season', scope.seasonId)
   if (scope.teamId) query.set('team', scope.teamId)
   if (scope.leagueId) query.set('league', scope.leagueId)
+  if (scope.competition) query.set('competition', scope.competition)
   return query.toString()
 }
 

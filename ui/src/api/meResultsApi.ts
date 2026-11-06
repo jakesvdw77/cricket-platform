@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
 import { myPlayersKey } from './myPlayersApi'
 
@@ -27,6 +27,8 @@ export interface MyResultScope {
   seasonId?: string | null
   teamId?: string | null
   leagueId?: string | null
+  // A "Friendly" chip sends FRIENDLY and no leagueId.
+  competition?: MyResultCompetition | null
 }
 
 export interface MyResultOurTeam {
@@ -122,6 +124,9 @@ export interface MyResultFilters {
   seasons: { id: string; name: string }[]
   teams: { id: string; name: string }[]
   leagues: { id: string; name: string }[]
+  // The distinct season, league and team combinations of the shown results (leagueId null is a friendly), so the League then Team
+  // cascade needs no extra request.
+  combos: { seasonId: string; leagueId: string | null; teamId: string }[]
 }
 
 export interface MyResultBatter {
@@ -180,6 +185,7 @@ const params = (scope: MyResultScope) => ({
   ...(scope.seasonId ? { seasonId: scope.seasonId } : {}),
   ...(scope.teamId ? { teamId: scope.teamId } : {}),
   ...(scope.leagueId ? { leagueId: scope.leagueId } : {}),
+  ...(scope.competition ? { competition: scope.competition } : {}),
 })
 
 export const myResultsKey = (key: string | undefined) => [...myPlayersKey, key, 'results'] as const
@@ -224,6 +230,19 @@ export function useMyPlayerResultsSummary(key: string | undefined, scope: MyResu
     placeholderData: keepPreviousData,
     retry: false,
     enabled: Boolean(key) && enabled,
+  })
+}
+
+// One summary per scope (the record under each filter chip). The same keys as useMyPlayerResultsSummary, so a scope that is also the
+// page's own scope is fetched once.
+export function useMyPlayerResultsSummaries(key: string | undefined, scopes: MyResultScope[], enabled = true) {
+  return useQueries({
+    queries: scopes.map((scope) => ({
+      queryKey: [...myResultsKey(key), 'summary', params(scope)],
+      queryFn: () => getMyPlayerResultsSummary(key as string, scope),
+      retry: false,
+      enabled: Boolean(key) && enabled,
+    })),
   })
 }
 

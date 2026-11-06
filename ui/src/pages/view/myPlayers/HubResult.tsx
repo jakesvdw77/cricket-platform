@@ -2,15 +2,14 @@ import { isAxiosError } from 'axios'
 import { Alert, Box, Skeleton, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import StarIcon from '@mui/icons-material/Star'
-import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { useMyPlayer } from '../../../api/myPlayersApi'
 import { useMyPlayerResult } from '../../../api/meResultsApi'
 import type { MyResultDetail, MyResultInnings } from '../../../api/meResultsApi'
 import { blackAlpha, creamAlpha } from '../../../brandTokens'
 import { HUB, hubPageHeading } from './hubStyle'
-import { HubResultCard } from './HubResultCard'
-import { competitionText, economy, extrasLine, howOutWords, oversToBalls, resultBanner, resultDate, resultsQuery, scopeLabel } from './resultsFormat'
+import { HubGameCard } from './HubGameCard'
+import { competitionText, economy, extrasLine, howOutWords, oversToBalls, resultBanner, resultDate } from './resultsFormat'
 
 // docs/specs/145 (Hub Result page, results/:matchId): the header (both teams, date, league, venue, the result line and both scores as
 // static compact figures), the held player's own card first, then the full scorecard of each innings with names (the player's own
@@ -125,7 +124,6 @@ function Awards({ result }: { result: MyResultDetail }) {
 }
 
 export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: string }) {
-  const [search] = useSearchParams()
   const query = useMyPlayerResult(playerKey, matchId)
   const player = useMyPlayer(playerKey).data
   const result = query.data
@@ -157,14 +155,7 @@ export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: 
       </Box>
 
       <Typography component="h3" sx={sectionTitle}>{player?.firstName ? `${player.firstName}'s Game` : 'Their Game'}</Typography>
-      <HubResultCard
-        playerKey={playerKey}
-        playerName={player?.firstName ?? 'This Player'}
-        row={mine}
-        scope={scopeLabel({ season: null }, false)}
-        scopeQuery={resultsQuery(search)}
-        standalone
-      />
+      <HubGameCard playerName={player?.firstName ?? 'This Player'} row={mine} />
 
       {result.innings.map((innings) => <InningsCard key={innings.sequence} innings={innings} ballsPerOver={mine.ballsPerOver} />)}
       <Awards result={result} />
