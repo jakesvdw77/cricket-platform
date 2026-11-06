@@ -14,7 +14,6 @@ import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader
 import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const MENU_WIDTH = 300
-const HUB_GLASS = 0.4
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
@@ -36,16 +35,16 @@ export interface HubFrameProps {
   // menu column (260 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
   // HUB_GROUND, and the footer is pinned (56 px high, safe-area padding). With `fill` the caller decides what shows: `menu`
   // and `children` side by side, or `hideContent` to give the whole body to the menu (a phone's menu screens).
+  // Owner, 2026-11-06: 1 is the usual look, lower lets the page backdrop show through (the player picker uses 0.4).
+  glass?: number
   fill?: boolean
   hideContent?: boolean
   // A strip pinned to the top of the scrolling content (the phone's pill row), bleeding to the content edges.
   stickyTop?: ReactNode
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', glass = 1, fill = false, hideContent = false, stickyTop }: HubFrameProps) {
   const header = useHubHeaderState()
-  // Owner, 2026-11-06: the Player Hub console (fill) is high-transparency so the scene shows through; the other console screens keep their look.
-  const glass = fill ? HUB_GLASS : 1
   const a = (v: number) => (v * glass).toFixed(3)
   const twoColumns = Boolean(menu) && !hideContent
   // docs/specs/145 decision 12: from md up, on a content page (never the phone's main menu screen), the menu column collapses to an icon rail.
