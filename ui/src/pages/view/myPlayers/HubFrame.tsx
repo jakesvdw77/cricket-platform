@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Box, ButtonBase, Slider, Typography, useMediaQuery } from '@mui/material'
+import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -11,10 +11,10 @@ import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
-import { useHubGlass } from './useHubGlass'
 import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const MENU_WIDTH = 300
+const HUB_GLASS = 0.4
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
@@ -44,7 +44,8 @@ export interface HubFrameProps {
 
 export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
   const header = useHubHeaderState()
-  const { glass, setGlass } = useHubGlass()
+  // Owner, 2026-11-06: the Player Hub console (fill) is high-transparency so the scene shows through; the other console screens keep their look.
+  const glass = fill ? HUB_GLASS : 1
   const a = (v: number) => (v * glass).toFixed(3)
   const twoColumns = Boolean(menu) && !hideContent
   // docs/specs/145 decision 12: from md up, on a content page (never the phone's main menu screen), the menu column collapses to an icon rail.
@@ -133,23 +134,6 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
               </Typography>
             )}
           </Box>
-          {/* TEMPORARY: see-through control (owner, 2026-11-06); remove once a value is chosen. */}
-          {fill && (
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1.25, flex: 'none', ml: 2, width: 190, color: HUB.sand }}>
-              <Typography sx={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase' }}>Glass</Typography>
-              <Slider
-                size="small"
-                min={0}
-                max={1}
-                step={0.02}
-                value={glass}
-                onChange={(_, v) => setGlass(v as number)}
-                aria-label="Console transparency (temporary)"
-                data-testid="hub-glass-slider"
-                sx={{ color: HUB.gold }}
-              />
-            </Box>
-          )}
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
