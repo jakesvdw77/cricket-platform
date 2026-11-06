@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Skeleton, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Alert, Box, Skeleton, useMediaQuery, useTheme } from '@mui/material'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { MyLinkRequests } from './MyLinkRequests'
 import { InvitationsList } from './MyInvitationsPage'
@@ -27,7 +27,7 @@ import { HubResults } from './myPlayers/HubResults'
 import { resultsQuery } from './myPlayers/resultsFormat'
 import { HubWatchLive } from './myPlayers/HubWatchLive'
 import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
-import { HUB, hubPageHeading } from './myPlayers/hubStyle'
+import { HubPageHeader } from './myPlayers/HubPageHeader'
 import { HUB_NAV, LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
 import type { HubLayout, HubNavContext, HubNavItem, HubPillCounts } from './myPlayers/hubNav'
 import { forgetProfileChoices } from '../../utils/activeProfile'
@@ -159,18 +159,14 @@ export default function MyPlayerPage() {
     const cardEdit = leaf === 'edit-card'
     panel = player && (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          {cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`}
-        </Typography>
+        <HubPageHeader title={cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`} />
         <MyPlayerEditForm key={`${player.key}-${leaf}-${sub}`} player={player} dark section={cardEdit ? 'photo' : (sub as EditSection)} onDone={() => navigate(hubPath(key, 'profile', sub))} />
       </Box>
     )
   } else if (section.id === 'availability') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Availability
-        </Typography>
+        <HubPageHeader title="Availability" />
         {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
       </Box>
     )
@@ -211,18 +207,14 @@ export default function MyPlayerPage() {
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Invitations
-        </Typography>
+        <HubPageHeader title="Invitations" />
         <InvitationsList />
       </Box>
     )
   } else if (pageItem?.id === 'account.requests') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Link requests
-        </Typography>
+        <HubPageHeader title="Link requests" />
         <MyLinkRequests dark />
       </Box>
     )
@@ -242,28 +234,17 @@ export default function MyPlayerPage() {
     </>
   )
 
-  const title = subView && leaf ? (
-    PROFILE_SUBVIEWS[leaf]
-  ) : parentOpen ? (
-    <>
-      Player Hub /{' '}
-      <Box component="span" sx={{ color: HUB.gold }}>
-        {section.label}
-      </Box>
-    </>
-  ) : (
-    'Player Hub'
-  )
+  // docs/specs/145 decision 15: the band is the page's header. Pages draw it with HubPageHeader; this is the fallback for a page that
+  // does not (a league, a match, a result), and the phone's main menu screen, which shows the menu rather than a page.
+  const title = subView && leaf ? PROFILE_SUBVIEWS[leaf] : phoneMenuScreen ? 'Menu' : pageLabel
 
   const footer = back ? <HubFooterButton onClick={goBack}>{back.label}</HubFooterButton> : undefined
-  const phonePage = phone && !phoneMenuScreen
 
   return (
     <HubLeaveGuardProvider value={guard}>
     <HubFrame
       fill
       title={title}
-      phoneTitle={phoneMenuScreen || (parentOpen && !subView) ? 'slim' : 'hidden'}
       stickyTop={phone && parentOpen && !subView ? <HubPillStrip label={`${section.label} pages`} items={section.children ?? []} selectedId={pageItem?.id} onSelect={select} /> : undefined}
       menu={menu}
       hideContent={phoneMenuScreen}
@@ -272,14 +253,6 @@ export default function MyPlayerPage() {
     >
       {playerQuery.isError && <Alert severity="error">We could not load this player. Please try again.</Alert>}
       {!player && !playerQuery.isError && (needsPlayer || subView) && <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(0.12) }} />}
-      {phonePage && !subView && !parentOpen && section.id !== 'results' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44 }}>
-          <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
-            {pageLabel}
-          </Typography>
-          {player && <Typography sx={{ ml: 'auto', color: HUB.muted, fontSize: 14, textAlign: 'right' }}>{player.firstName}</Typography>}
-        </Box>
-      )}
       {panel}
     </HubFrame>
     </HubLeaveGuardProvider>

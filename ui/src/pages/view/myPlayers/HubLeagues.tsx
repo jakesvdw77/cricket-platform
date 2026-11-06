@@ -3,7 +3,8 @@ import { Button } from '../../../components/Button'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { useMyPlayerLeagues } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
-import { HUB, darkFieldSx, darkMenuProps, hubPageHeading } from './hubStyle'
+import { HubPageHeader } from './HubPageHeader'
+import { HUB, darkFieldSx, darkMenuProps } from './hubStyle'
 import { HubLeagueCard } from './HubLeagueCard'
 
 // docs/specs/123 (Leagues list): the leagues the selected player's teams play in, a season switcher (the current season by
@@ -52,29 +53,33 @@ export function HubLeagues({ playerKey, seasonId, onSeasonChange, onOpen }: HubL
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
-      <Typography component="h2" sx={hubPageHeading}>
-        Leagues
-      </Typography>
-      {data && data.seasons.length > 0 && (
-        <Box sx={{ ...darkFieldSx, maxWidth: { sm: 320 } }}>
-        <Select
-          size="small"
-          value={shownSeason}
-          onChange={(event) => onSeasonChange(event.target.value)}
-          inputProps={{ 'aria-label': 'Season' }}
-          MenuProps={darkMenuProps}
-          fullWidth
-          sx={{ minHeight: 44, '& .MuiSelect-select': { minHeight: 44, display: 'flex', alignItems: 'center', boxSizing: 'border-box' } }}
-        >
-          {data.seasons.map((season) => (
-            <MenuItem key={season.id} value={season.id} sx={{ minHeight: 44 }}>
-              {season.name}
-              {season.current ? ' (current)' : ''}
-            </MenuItem>
-          ))}
-        </Select>
-        </Box>
-      )}
+      <HubPageHeader
+        title="Leagues"
+        actions={
+          <>
+          {data && data.seasons.length > 0 && (
+            <Box sx={{ ...darkFieldSx, minWidth: { xs: 124, sm: 160 } }}>
+            <Select
+              size="small"
+              value={shownSeason}
+              onChange={(event) => onSeasonChange(event.target.value)}
+              inputProps={{ 'aria-label': 'Season' }}
+              MenuProps={darkMenuProps}
+              fullWidth
+              sx={{ minHeight: 44, '& .MuiSelect-select': { minHeight: 44, display: 'flex', alignItems: 'center', boxSizing: 'border-box' } }}
+            >
+              {data.seasons.map((season) => (
+                <MenuItem key={season.id} value={season.id} sx={{ minHeight: 44 }}>
+                  {season.name}
+                  {season.current ? ' (current)' : ''}
+                </MenuItem>
+              ))}
+            </Select>
+            </Box>
+          )}
+          </>
+        }
+      />
       {body}
     </Box>
   )

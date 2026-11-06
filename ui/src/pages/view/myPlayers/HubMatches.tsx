@@ -7,7 +7,8 @@ import { BrandIcon } from '../../../components/BrandIcon'
 import { PulseDot } from '../../../components/RecordCard/RecordCard'
 import { useMyPlayerMatches } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
-import { HUB, hubHeading, hubPageHeading } from './hubStyle'
+import { HubPageHeader } from './HubPageHeader'
+import { HUB, hubHeading } from './hubStyle'
 import { HubMatchRow } from './HubMatchRow'
 import { groupByDate, longDate } from './leagueFormat'
 import { useNow } from './useNow'
@@ -88,9 +89,7 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
-      <Typography component="h2" sx={hubPageHeading}>
-        Matches
-      </Typography>
+      <HubPageHeader title="Matches" />
       {body}
     </Box>
   )

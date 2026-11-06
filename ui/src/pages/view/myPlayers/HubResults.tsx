@@ -11,7 +11,8 @@ import { useMyPlayerResults, useMyPlayerResultsFilters, useMyPlayerResultsSummar
 import type { MyResultCompetition, MyResultScope, MyResultSummary } from '../../../api/meResultsApi'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { BRAND, blackAlpha, creamAlpha } from '../../../brandTokens'
-import { HUB, darkFieldSx, darkMenuProps, hubHeading, hubOutlineButton, hubPageHeading } from './hubStyle'
+import { HubPageHeader } from './HubPageHeader'
+import { HUB, darkFieldSx, darkMenuProps, hubHeading, hubOutlineButton } from './hubStyle'
 import { HubResultCard } from './HubResultCard'
 import { bigSx, cardSx, kickerSx } from './resultCardStyle'
 import { chipFigure, formSentence, opponentCode, resultTone, scopeLabel, scopeQuery, streakLetter, versusText } from './resultsFormat'
@@ -93,7 +94,7 @@ function FilterTag({ name, onRemove }: { name: string; onRemove: () => void }) {
   return (
     <Box
       data-testid="hub-results-tag"
-      sx={{ minHeight: 36, pl: 1.75, pr: 0.5, borderRadius: '18px', border: `1px solid ${HUB.gold}`, bgcolor: alpha(HUB.gold, 0.16), color: BRAND.goldLight, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}
+      sx={{ flexShrink: 0, minHeight: 36, pl: 1.75, pr: 0.5, borderRadius: '18px', border: `1px solid ${HUB.gold}`, bgcolor: alpha(HUB.gold, 0.16), color: BRAND.goldLight, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}
     >
       <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</Box>
       <IconButton
@@ -236,12 +237,28 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     if (open && wide) panelHeading.current?.focus()
   }, [open, wide])
 
+  const activeTags = (leagueId || friendly || teamId) && (
+    <Box data-testid="hub-results-tags" sx={{ display: 'flex', flexWrap: 'nowrap', gap: 1, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+      {(leagueId || friendly) && <FilterTag name={leagueName ?? 'League'} onRemove={() => change({ league: '', competition: '' })} />}
+      {teamId && <FilterTag name={teamName ?? 'Team'} onRemove={() => change({ team: '' })} />}
+    </Box>
+  )
+
+  const quietLine = filters && !hasChoice && leagueCount === 1 && (
+    <Typography noWrap data-testid="hub-results-context" sx={{ fontFamily: HUB.display, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 14, color: HUB.sand }}>
+      {[leagueOptions[0]?.name ?? 'Friendly', teamOptions[0]?.name].filter(Boolean).join(' · ')}
+    </Typography>
+  )
+
+  const failed = filtersQuery.isError || list.isError || summaryQuery.isError
   const header = (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, minHeight: 44 }}>
-      <Typography component="h2" sx={hubPageHeading}>Results</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <HubPageHeader
+      title="Results"
+      context={failed ? undefined : (activeTags || quietLine || undefined)}
+      actions={
+        <>
         {filters && filters.seasons.length > 0 && (
-          <Box sx={{ ...darkFieldSx, minWidth: 140 }}>
+          <Box sx={{ ...darkFieldSx, minWidth: { xs: 112, sm: 140 } }}>
             <Select
               size="small"
               value={seasonValue}
@@ -274,21 +291,9 @@ export function HubResults({ playerKey }: { playerKey: string }) {
             Filters
           </Button>
         )}
-      </Box>
-    </Box>
-  )
-
-  const activeTags = (leagueId || friendly || teamId) && (
-    <Box data-testid="hub-results-tags" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-      {(leagueId || friendly) && <FilterTag name={leagueName ?? 'League'} onRemove={() => change({ league: '', competition: '' })} />}
-      {teamId && <FilterTag name={teamName ?? 'Team'} onRemove={() => change({ team: '' })} />}
-    </Box>
-  )
-
-  const quietLine = filters && !hasChoice && leagueCount === 1 && (
-    <Typography data-testid="hub-results-context" sx={{ fontFamily: HUB.display, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 14, color: HUB.sand }}>
-      {[leagueOptions[0]?.name ?? 'Friendly', teamOptions[0]?.name].filter(Boolean).join(' · ')}
-    </Typography>
+        </>
+      }
+    />
   )
 
   const chipGroups = (columns: 1 | 2) => (
@@ -306,7 +311,6 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   const showLabel = matchCount === undefined ? 'Show Results' : `Show ${matchCount} ${matchCount === 1 ? 'match' : 'matches'}`
   const panelOpen = open && wide && hasChoice
 
-  const failed = filtersQuery.isError || list.isError || summaryQuery.isError
   let body
   if (failed) {
     body = (
@@ -377,8 +381,6 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     <Box data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: panelOpen ? 2.5 : 0, alignItems: 'start' }}>
       <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
         {header}
-        {!failed && quietLine}
-        {!failed && activeTags}
         {body}
       </Box>
       {panelOpen && (

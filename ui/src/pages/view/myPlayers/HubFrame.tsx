@@ -9,6 +9,7 @@ import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
+import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
 import { HubMenuCollapsedProvider, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const RAIL_WIDTH = 64
@@ -23,7 +24,7 @@ export interface HubFrameProps {
   children?: ReactNode
   maxWidth?: number
   testId?: string
-  // Below sm the title bar is slim by default; 'hidden' removes it (the hub shows its own headers there).
+  // Kept for a screen that wants no band on a phone; the Player Hub pages no longer use it (the band is the phone header too).
   phoneTitle?: 'slim' | 'hidden'
   // 'solid' (default) puts a mostly opaque dark ground behind the content so text is not fought by the page backdrop;
   // 'clear' lets the backdrop show through (sparse screens such as the player picker).
@@ -40,6 +41,7 @@ export interface HubFrameProps {
 }
 
 export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
+  const header = useHubHeaderState()
   const twoColumns = Boolean(menu) && !hideContent
   // docs/specs/145 decision 12: from md up, on a content page (never the phone's main menu screen), the menu column collapses to an icon rail.
   const wide = useMediaQuery(useTheme().breakpoints.up('md'))
@@ -73,6 +75,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
   )
 
   return (
+    <HubHeaderProvider value={header.value}>
     <AccountShell
       bare
       fill={fill}
@@ -99,10 +102,15 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           }),
         }}
       >
-        <Box sx={{ gridRow: 1, px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, justifyContent: 'flex-end' }}>
-          <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 22, md: 'clamp(24px, 3vw, 32px)' }, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, textAlign: 'right' }}>
-            {title}
-          </Typography>
+        {/* docs/specs/145 decision 15: the fixed page header. A HubPageHeader draws into the slot; `title` is the fallback text. */}
+        <Box sx={{ gridRow: 1, minHeight: { xs: 56, md: 64 }, boxSizing: 'border-box', px: { xs: 2, md: 2.5 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, alignItems: 'center', minWidth: 0 }}>
+          <Box ref={header.setSlot} sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            {!header.claimed && (
+              <Typography component="h1" noWrap sx={bandTitle}>
+                {title}
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
@@ -184,6 +192,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         )}
       </Box>
     </AccountShell>
+    </HubHeaderProvider>
   )
 }
 

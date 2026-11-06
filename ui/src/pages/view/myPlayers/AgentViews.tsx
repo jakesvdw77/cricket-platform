@@ -9,6 +9,7 @@ import { useInviteAgent } from '../../../api/myPlayersApi'
 import type { MyPlayer, MyPlayerAgent } from '../../../api/myPlayersApi'
 import { useRemoveMyLink } from '../../../api/meApi'
 import { HubLeaveConfirm, useHubLeaveGuard } from './hubLeaveGuard'
+import { HubPageHeader } from './HubPageHeader'
 import { HUB, darkFieldSx, hubGoldButton, hubOutlineButton, hubPageHeading } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 
@@ -113,9 +114,7 @@ export function EditAgentsView({ player, mode, onModeChange }: { player: MyPlaye
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="agent-change-view">
       <HubLeaveConfirm />
-      <Typography component="h2" sx={hubPageHeading}>
-        Edit agents
-      </Typography>
+      <HubPageHeader title="Edit agents" />
       <ToggleButtonGroup exclusive size="small" aria-label="What to do" value={mode} onChange={(_event, value: AgentMode | null) => value && changeMode(value)} sx={toggleSx}>
         <ToggleButton value="ADD">Add another agent</ToggleButton>
         <ToggleButton value="HANDOVER">Hand over (change primary agent)</ToggleButton>
@@ -185,9 +184,7 @@ export function RemoveLinkView({ player, linkId, kind, onDone }: { player: MyPla
   const handOverFirst = isAxiosError(remove.error) && remove.error.response?.status === 409
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="remove-link-view">
-      <Typography component="h2" sx={hubPageHeading}>
-        {leaving ? `Leave ${player.firstName}` : 'Cancel invitation'}
-      </Typography>
+      <HubPageHeader title={leaving ? `Leave ${player.firstName}` : 'Cancel invitation'} />
       <Confirm>
         {leaving
           ? `Stop managing ${player.firstName}? You will no longer see or answer for them, and cannot undo this yourself.`
