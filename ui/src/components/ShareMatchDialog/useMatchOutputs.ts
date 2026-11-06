@@ -93,17 +93,17 @@ export function useMatchPdfOptions(source: Source): MatchPdfOptions {
   const sponsorKey = JSON.stringify(sponsorUrlsOf(source))
   const sponsorUrls = useMemo(() => JSON.parse(sponsorKey) as string[], [sponsorKey])
   const { club, league, team } = choices.logos
-  const { marks, venueAndDate, weather, directions } = choices.match.include
+  const { marks, venueAndDate, weather, directions, blankLines } = choices.match.include
   return useMemo(
     () => ({
       template: choices.match.templates.pdf,
       colour: { main, dark, contrastText },
-      include: { marks, venueAndDate, weather, directions },
+      include: { marks, venueAndDate, weather, directions, blankLines },
       logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teams: team, sponsorUrls },
       clubWebsite,
       footerLine: choices.footerLine,
     }),
-    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, clubWebsite, choices.footerLine],
+    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, blankLines, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, clubWebsite, choices.footerLine],
   )
 }
 

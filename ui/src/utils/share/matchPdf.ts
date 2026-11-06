@@ -35,7 +35,7 @@ const SCALE: Record<PdfTemplate, { title: number; body: number; small: number; r
 export interface MatchPdfOptions {
   template: PdfTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean; blankLines?: boolean }
   logos: ResultPdfLogos
   clubWebsite: string | null
   footerLine: boolean
@@ -214,13 +214,13 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
       const half = (contentW - gap) / 2
       const ends = sheet.map((lineup, index) => table(lineup, left + index * (half + gap), half))
       y = Math.max(...ends) + 4
-      if (model.content === 'TEAM_SHEET') blankLines()
+      if (model.content === 'TEAM_SHEET' && options.include.blankLines) blankLines()
     } else {
       sheet.forEach((lineup) => {
         header()
         detailLines()
         y = table(lineup, left, contentW) + 4
-        if (model.content === 'TEAM_SHEET') blankLines()
+        if (model.content === 'TEAM_SHEET' && options.include.blankLines) blankLines()
       })
     }
   } else {
