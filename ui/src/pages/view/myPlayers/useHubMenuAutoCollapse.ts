@@ -12,7 +12,8 @@ export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 // and it fades back in slowly (VEIL_OUT_MS). Animating the column width re-laid out the whole content grid on every frame and flickered.
 export const VEIL_IN_MS = 240
 export const VEIL_OUT_MS = 760
-export const PEEK_CLOSE_DELAY_MS = 350
+// Owner, 2026-11-06: after the pointer leaves the unpinned panel it stays open this long, enough time to reach a sub-menu entry.
+export const PEEK_CLOSE_DELAY_MS = 1500
 // Hover intent (owner, 2026-11-06): the panel opens only when the pointer rests on the menu button this long, not when it brushes past.
 export const PEEK_OPEN_DELAY_MS = 500
 // The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first

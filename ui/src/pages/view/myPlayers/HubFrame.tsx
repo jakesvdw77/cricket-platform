@@ -31,7 +31,7 @@ export interface HubFrameProps {
   // 'clear' lets the backdrop show through (sparse screens such as the player picker).
   panel?: 'solid' | 'clear'
   // docs/specs/121, opt-in (the Player Hub only; the picker and Find players keep their own height): the console fills the
-  // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1760px, 96vw) wide, the
+  // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1560px, 92vw) wide, the
   // menu column (260 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
   // HUB_GROUND, and the footer is pinned (56 px high, safe-area padding). With `fill` the caller decides what shows: `menu`
   // and `children` side by side, or `hideContent` to give the whole body to the menu (a phone's menu screens).
@@ -83,7 +83,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
     <AccountShell
       bare
       fill={fill}
-      maxWidth={fill ? { xs: '100%', sm: 'min(1760px, 96vw)' } : maxWidth}
+      maxWidth={fill ? { xs: '100%', sm: 'min(1560px, 92vw)' } : maxWidth}
       testId={testId}
     >
       <Box
