@@ -153,7 +153,7 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
         ))}
       </Box>
 
-      <Typography component="h3" sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand, mt: 1.5 }}>
+      <Typography component="h3" data-hub-section="all" data-hub-label="All Cards" sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand, mt: 1.5, scrollMarginTop: 8 }}>
         All Cards
       </Typography>
       <Box component="ul" data-testid="all-cards" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>

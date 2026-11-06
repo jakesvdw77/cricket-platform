@@ -14,6 +14,7 @@ import { HUB, darkFieldSx, darkMenuProps, hubGoldButton, hubPageHeading } from '
 import { CardFoot, HubMilestoneCard, HubResultCard } from './HubResultCard'
 import { bigSx, cardSx, kickerSx } from './resultCardStyle'
 import { HubResultCarousel } from './HubResultCarousel'
+import { HubSectionNav } from './HubSectionNav'
 import type { CarouselItem } from './HubResultCarousel'
 import { chipFigure, findMilestone, opponentCode, resultDate, resultTone, scopeLabel, scopeQuery, streakLetter, versusText } from './resultsFormat'
 
@@ -46,7 +47,7 @@ function Hero({ summary, playerName, seasonName, scope, onSeeMatches }: { summar
     [summary.catches, 'Catches'],
   ]
   return (
-    <Box component="section" aria-label="Season At A Glance" data-testid="hub-results-hero" sx={{ ...cardSx('neutral'), gap: 0 }}>
+    <Box component="section" aria-label="Season At A Glance" data-testid="hub-results-hero" data-hub-section="hero" data-hub-label="Season" sx={{ ...cardSx('neutral'), gap: 0, scrollMarginTop: 8 }}>
       <Typography sx={kickerSx}>{playerName} · {seasonName}</Typography>
       <Typography data-testid="hero-runs" sx={{ ...bigSx, fontSize: 118, mt: 1.5, background: `linear-gradient(180deg, ${BRAND.goldLight}, ${BRAND.gold})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', width: 'fit-content' }}>
         {summary.runs}
@@ -94,6 +95,7 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [draftLeague, setDraftLeague] = useState('')
   const carouselAnchor = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const showTabs = (filters?.teams.length ?? 0) > 1
   const showFilter = showTabs || (filters?.leagues.length ?? 0) > 1
@@ -302,19 +304,24 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     body = (
       <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2, maxWidth: { md: 640 }, width: '100%', minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
         <Hero summary={summary} playerName={playerName} seasonName={seasonName ?? 'All Seasons'} scope={scopeText} onSeeMatches={() => carouselAnchor.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })} />
-        <Box ref={carouselAnchor} sx={{ minWidth: 0 }}>
+        <Box ref={carouselAnchor} data-hub-section="cards" data-hub-label="Cards" sx={{ minWidth: 0, scrollMarginTop: 8 }}>
           <HubResultCarousel key={`${seasonValue}|${teamId}|${leagueId}`} items={items} hasMore={Boolean(list.hasNextPage)} loadingMore={list.isFetchingNextPage} onLoadMore={() => void list.fetchNextPage()} />
         </Box>
       </Box>
     )
   }
 
+  // The floating section arrows are the last child of a plain block wrapper that also holds the content (a sticky element is confined to its
+  // containing block, so it cannot live inside the grid).
   return (
-    <Box data-testid="hub-results" sx={{ display: 'grid', gap: 1.5 }}>
-      {header}
-      {tabs}
-      {body}
-      {sheet}
+    <Box sx={{ position: 'relative' }}>
+      <Box ref={pageRef} data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
+        {header}
+        {tabs}
+        {body}
+        {sheet}
+      </Box>
+      <HubSectionNav container={pageRef} />
     </Box>
   )
 }
