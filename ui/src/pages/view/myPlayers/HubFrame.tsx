@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
-import { keyframes, useTheme } from '@mui/material/styles'
+import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -9,13 +9,8 @@ import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
-import { HubMenuCollapsedProvider, MENU_COLLAPSE_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
+import { HubMenuCollapsedProvider, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
-// The countdown line along the foot of the menu column while the collapse timer runs.
-const countdown = keyframes`
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-`
 const RAIL_WIDTH = 64
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
@@ -111,7 +106,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
-        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, '@media (prefers-reduced-motion: no-preference)': { transition: 'grid-template-columns 250ms ease' }, ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
+        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, '@media (prefers-reduced-motion: no-preference)': { transition: 'grid-template-columns 380ms cubic-bezier(0.4, 0, 0.2, 1)' }, ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
           {fill && menu ? (
             <HubMenuCollapsedProvider value={railed}>
               <Box
@@ -131,8 +126,15 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                     display: 'flex',
                     flexDirection: 'column',
                     background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
-                    // The rail holds only the icon buttons: the player card (or its skeleton) and the spacer go.
-                    ...(railed && { '& > :not(nav)': { display: 'none' } }),
+                    // The rail holds only the icon buttons: the player card (or its skeleton) and the spacer fold away (a short fade and a height
+                    // transition, not one frame) so the rows below do not jump.
+                    '& > :not(nav)': {
+                      overflow: 'hidden',
+                      maxHeight: railed ? 0 : 600,
+                      opacity: railed ? 0 : 1,
+                      pointerEvents: railed ? 'none' : 'auto',
+                      '@media (prefers-reduced-motion: no-preference)': { transition: 'max-height 380ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease' },
+                    },
                     ...(autoCollapse.active && { pb: { md: 6 } }),
                   }}
                 >
@@ -148,18 +150,10 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                         event.stopPropagation()
                         autoCollapse.toggle()
                       }}
-                      sx={{ position: 'absolute', bottom: 10, right: railed ? (RAIL_WIDTH - 36) / 2 : 10, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+                      sx={{ position: 'absolute', bottom: 10, right: railed ? (RAIL_WIDTH - 36) / 2 : 10, '@media (prefers-reduced-motion: no-preference)': { transition: 'right 380ms cubic-bezier(0.4, 0, 0.2, 1)' }, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
                     >
                       {railed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
                     </ButtonBase>
-                    {autoCollapse.armed && (
-                      <Box
-                        key={pathname}
-                        aria-hidden
-                        data-testid="hub-menu-timer"
-                        sx={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: '100%', bgcolor: HUB.gold, transformOrigin: 'left', animation: `${countdown} ${MENU_COLLAPSE_MS}ms linear forwards`, '@media (prefers-reduced-motion: reduce)': { display: 'none' } }}
-                      />
-                    )}
                   </>
                 )}
               </Box>
