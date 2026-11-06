@@ -74,7 +74,7 @@ export interface HubResultCardProps {
   // The query string (season, team, league) the result page carries so Back restores the list.
   scopeQuery?: string
   next?: { label: string; onClick: () => void }
-  // The result page's own "Your game" card: no banner, no link, no Next.
+  // The result page's own "<First name>'s Game" card: no banner, no link, no Next.
   standalone?: boolean
 }
 

@@ -156,10 +156,10 @@ export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: 
         <Figure name={mine.awayName} score={mine.awayScore} />
       </Box>
 
-      <Typography component="h3" sx={sectionTitle}>Your Game</Typography>
+      <Typography component="h3" sx={sectionTitle}>{player?.firstName ? `${player.firstName}'s Game` : 'Their Game'}</Typography>
       <HubResultCard
         playerKey={playerKey}
-        playerName={player?.firstName ?? 'You'}
+        playerName={player?.firstName ?? 'This Player'}
         row={mine}
         scope={scopeLabel({ season: null }, false)}
         scopeQuery={resultsQuery(search)}

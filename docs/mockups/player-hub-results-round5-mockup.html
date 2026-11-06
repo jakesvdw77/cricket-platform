@@ -41,7 +41,7 @@
 </style></head>
 <body><div class="page">
 <h1>Player Hub results: round 5</h1>
-<p class="lead">Drawn again from your notes. <b>The result leads</b> (the latest match as a banner), not the player's figures. <b>Teams and leagues played that season are filters</b> above it. The player's own contribution is a slim strip at the foot of every card. <b>Cards fill the width</b> in a responsive grid (one column on a phone, two or three on a laptop), with <b>no carousel, no arrows, no scrollbar</b>. On the desktop the <b>menu collapses to an icon rail after 10 seconds</b>, and the grid reflows to use the space.</p>
+<p class="lead">Drawn again from the owner's notes. <b>The result leads</b> (the latest match as a banner), not the player's figures. <b>Teams and leagues played that season are filters</b> above it. The player's own contribution is a slim strip at the foot of every card. <b>Cards fill the width</b> in a responsive grid (one column on a phone, two or three on a laptop), with <b>no carousel, no arrows, no scrollbar</b>. On the desktop the <b>menu collapses to an icon rail after 10 seconds</b>, and the grid reflows to use the space.</p>
 <h2>Desktop: wait 10 seconds</h2>
 <p class="lead">The menu collapses to the rail with a countdown line along its foot. Hover or click the rail or the round handle to bring it back; the timer starts again when the pointer leaves. Change the Season or the chips to see the grid and the filters respond.</p>
 <div class="row"><div class="desk" id="desk"></div></div>
@@ -67,7 +67,8 @@ const formHtml=list=>{const last=list.slice(0,5).reverse();const w=last.filter(m
   const fig=m=>m.you.k==='dnb'?'DNB':m.you.fig;
   return `<section class="card" aria-label="Recent form"><div class="form"><div><div class="kick">Recent form</div><div class="sum" style="margin-top:6px"><b>${w} won</b>${l?`, ${l} lost`:''}${t?`, ${t} tied`:''} in the last ${last.length}</div></div>
    <div style="display:flex;gap:8px;margin-left:auto">${last.map(m=>`<div class="chipw"><div class="fc ${m.t}" role="img" aria-label="${m.t} v ${m.opp}">${m.t==='win'?'W':m.t==='loss'?'L':'T'}</div><div class="cap">${fig(m)}</div><div class="opp">${m.opp.slice(0,3).toUpperCase()}</div></div>`).join('')}</div></div></section>`;};
-const youHtml=y=>`<div class="you"><span class="k">${y.k==='bowl'?'You bowled':y.k==='dnb'?'You':'You batted'}</span><span class="fig">${y.fig}${y.sub?`<small>${y.sub}</small>`:''}</span>${y.pom?'<span class="star">★ Player of the match</span>':''}</div>`;
+const NAME='Sam'; // the player's first name: the Hub is read by parents, agents and managers, never only by the player, so no 'you'
+const youHtml=y=>`<div class="you"><span class="k">${y.k==='bowl'?NAME+' bowled':y.k==='dnb'?NAME:NAME+' batted'}</span><span class="fig">${y.fig}${y.sub?`<small>${y.sub}</small>`:''}</span>${y.pom?'<span class="star">★ Player of the match</span>':''}</div>`;
 const cardHtml=(m,latest)=>`<article class="card ${m.t} ${latest?'latest':''}"><div class="kick">${latest?'Latest result · ':''}${m.d} · v ${m.opp}</div>
   <div class="${latest?'body2':''}"><div><div class="res">${m.res}</div><div class="sc2"><span>${m.tm}</span><b>${m.us}</b></div><div class="sc2"><span>${m.opp}</span><b>${m.them}</b></div><div class="lg">${m.lg} · ${m.tm}</div></div>${latest?`<div>${youHtml(m.you)}</div>`:''}</div>${latest?'':youHtml(m.you)}</article>`;
 function page(el,mode){
