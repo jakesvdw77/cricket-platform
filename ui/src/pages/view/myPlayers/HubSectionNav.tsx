@@ -92,7 +92,8 @@ export function HubSectionNav({ container }: { container: RefObject<HTMLElement 
   const showDown = state.active < state.count - 1
 
   return (
-    <Box data-testid="hub-section-nav" sx={{ position: 'sticky', bottom: 16, height: 0, zIndex: 5, pointerEvents: 'none' }}>
+    // Hidden on touch screens (owner, 2026-11-06): on a phone the arrows crowd the cards and swiping and scrolling are natural; they are for a mouse.
+    <Box data-testid="hub-section-nav" sx={{ position: 'sticky', bottom: 16, height: 0, zIndex: 5, pointerEvents: 'none', '@media (hover: none) and (pointer: coarse)': { display: 'none' } }}>
       <Box sx={{ position: 'absolute', right: 0, bottom: 0, display: 'grid', gap: 1, pointerEvents: 'auto' }}>
         {showUp && (
           <IconButton aria-label={`Jump To ${upLabel || 'Previous Section'}`} onClick={() => jump(-1)} sx={buttonSx}>
