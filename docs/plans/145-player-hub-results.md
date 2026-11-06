@@ -78,3 +78,22 @@ A (backend flag) then B (backend reads, `openapi.yaml`) then C (manager controls
 - Changing `APPEARANCES` touches every manager stats query; mitigated by default-off parameters and the existing parity and query-count tests.
 - The avatar move changes several Hub tests and the Account page routing; it is isolated to `hubNav.ts`, `AccountShell`, `MyPlayerPage` and their tests.
 - `PlayerStatsFactsRepository` binds many named parameters; a missed bind fails at runtime, so every call site must be updated together (the integration tests cover it).
+
+---
+
+# Amendment 2026-11-06: rebuild the Hub Results page to round 5 (spec decisions 11 and 12)
+
+Slices A to C (backend flag and reads, manager controls) and the Hub nav and avatar changes of slice D stand. The carousel, hero, All Cards list, floating section arrows and two-column layout built in slice D are replaced.
+
+**Backend (backend-builder), small:**
+1. `MyResultFiltersDto` gains `combos: [{ seasonId, leagueId (null = a friendly), teamId }]` (distinct, from the player's flagged counted results) so the League then Team cascade needs no extra request; the existing `seasons`, `teams`, `leagues` stay.
+2. `GET .../results` and `.../results/summary` accept `competition` (`LEAGUE` | `FRIENDLY`) beside `seasonId`, `leagueId`, `teamId`, passed to the existing stats scope (the underlying services already take `competition`).
+3. `openapi.yaml` by hand. Same rules as before: offline scratch compile only, no tests written, no commit.
+
+**Frontend (frontend-builder):**
+4. Remove `HubResultCarousel.tsx` and `HubSectionNav.tsx` and their uses. Rebuild `HubResults.tsx` per decision 11 (header Season dropdown, two equal-size chip rows League then Team, Recent Form card, latest result banner, grid of wide cards, Show More paging, states, URL filters plus saved fallback). Rewrite `HubResultCard.tsx` to the result-first card (headline = result line, scores, league and team; the player strip at the foot with the first name; the whole card one stretched link to the result page). Keep `resultsFormat.ts`, `meResultsApi.ts` (add `competition` and `combos`), the Hub Result page and `ResultDrawings` (unused on the page now, kept for the Stats cards and the Result page). Copy never says you or your.
+5. Menu timer (decision 12): a `useHubMenuAutoCollapse` hook and a small context in `HubFrame.tsx`; `HubMenu.tsx` renders the 64 px icon rail (BrandIcon per item with `title` and `aria-label`) when collapsed; transition 250 ms, none under reduced motion; handle button; paused while hovered or focused; `MENU_COLLAPSE_MS = 10000`; preference read from `localStorage('hub:menuAutoCollapse')`, default on, no UI.
+6. Docs: rewrite the "Player Hub results" section of `docs/standards/design-system.md` for round 5 and the menu timer. Existing tests that assert the old structure are updated minimally; no new tests (the rule stands); only changed or affected test files are run.
+
+**Order:** backend 1 to 3 in parallel with frontend 4 to 6 (the frontend codes against the contract above), then the owner's hand-check, then the new tests, the end-of-work full suite and the PR.
+
