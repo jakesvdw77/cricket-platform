@@ -35,7 +35,7 @@ Results and the Player and Team stats are what **sells the application to parent
 2. **A way to flip.** The content is a **carousel of cards the user flips through** (swipe on a phone, arrows and the keyboard on a desktop) under a hero, with a position counter and dots (Decision 3). Each card is one result, one chart or one milestone. The same carousel is the model for Results now and for Player and Team stats later.
 3. **Mobile first.** Designed at 375 px first, thumb reach, 44 px targets, swipe with a visible fallback (buttons), no horizontal page scroll; the desktop is the same deck at a larger size (two panes where it helps), not a different design.
 4. **Mockups first, several rounds.** The owner is happy to iterate. No build starts until a mockup direction is approved; every round is an HTML mockup in `docs/mockups/` (and an artifact for review on a phone). See "Mockup rounds".
-5. **The chart technology is open** (see "Charts"): `@mui/x-charts` is approved for the manager Dashboard but may not be the right fit for a striking, animated, mobile card; alternatives are weighed before anything is added. Any new dependency needs the owner's approval first (`CLAUDE.md`).
+5. **The chart technology is settled** (see "Charts"): `@mui/x-charts` for standard charts, our own small SVG for the bespoke Results drawings, Nivo eliminated, no third library without the owner's approval.
 6. **Shareable later (idea, not built here):** each card is designed so it can become a share image (the `114` pipeline), because a proud parent sharing a card is the best advertisement.
 
 ### The cards (suggested; the mockup rounds test them)
@@ -67,15 +67,12 @@ A player's **Story** is a hero and a carousel of cards, newest first, each card 
 - **Rule:** a result is visible to players only when it is published (`published_at` set) **and** the flag is on; unpublishing a result also turns the flag off. Importing a result (`104`) sets nothing: it stays off until a manager switches it on.
 - **API:** `POST` and `DELETE` `/api/v1/manage/clubs/{clubId}/results/{resultId}/player-visibility` (club admin or the result's section manager, as publish), audited like publish; the result DTO gains `visibleToPlayers`.
 
-## Charts (open; decide in the mockup rounds, before any dependency is added)
-The hero visuals are few and bold: a results ring, a streak, a season line or area, a bar race of innings, a ball or wagon style graphic. Options, with a recommendation:
-| Option | For | Against |
-|---|---|---|
-| **`@mui/x-charts`** (approved, `components/charts/**`) | Already in the repo, themed, accessible, tested wrappers (`DonutChart`, `LineSeriesChart`, `BarSeriesChart`) | A generic, dense look; hard to make "striking" on a 375 px card without heavy overrides; weighs on the Hub bundle |
-| **Hand-built SVG components** (no dependency) | Full control of look, animation and a share image; tiny; one component per card type; works in the dark console | We own the maths (scales, axes), accessibility and tests |
-| **`d3-scale` and `d3-shape` with our own SVG** (small, approval needed) | Proven maths with our own rendering; light | A new dependency (CLAUDE.md approval) |
-| **Recharts, Victory, ECharts, Chart.js** (approval needed) | Rich out of the box | Heavy, a second styling system next to MUI, hard to theme to the Hub |
-**Recommendation:** hand-built SVG for the hero cards (a handful of chart types, animated, share-ready), `@mui/x-charts` kept for the manager Dashboard; decide with the first mockup, and ask before adding any package.
+## Charts (decided 2026-11-06)
+**Decision (owner):** **Nivo is eliminated.** The chart rules for the Player Hub, kept deliberately small so the project does not accumulate libraries:
+1. **Charts with axes, several series, hover or a legend** (the Stats section's typical charts) use **`@mui/x-charts`** (v7, already approved and tested for the manager Dashboard), composed from its parts and styled to the Hub look, not the one-line default (a gradient area, a thick line, rounded and padded arcs, large bar radii, a centre label, a themed tooltip). The spike (`scratchpad` only, nothing added to the repo) showed the styled version is close to the hand-built look for about 25 to 35 lines per chart and almost no extra weight beyond the MUI X chunk the app already ships.
+2. **Brand drawings and cricket-specific visuals** (the Results cards' how-the-runs-were-made bar, the over blocks, the streak chips, the results ring, and later a wagon wheel, worm or partnership chart) are **our own small SVG components** in one shared folder (pure scale and path helpers, a reduced-motion rule, an accessible text alternative). The Results slice needs **no chart library at all**.
+3. **No third chart library** (Nivo, ECharts, Recharts, Victory, Chart.js, visx) without the owner's approval first; `d3-scale` and `d3-shape` are the first thing to add if our own drawings need more maths, since both MUI X and any alternative already bundle them.
+4. Measured gzipped weight in the spike (a scratch app, public registry): our own three charts 1.4 kB; `@mui/x-charts` about 86 kB plus a 24 kB `d3-scale` chunk shared with it; Nivo about 98 kB plus the same `d3-scale` chunk (the reason it was not chosen, along with a second styling and accessibility system).
 
 ## Mockup rounds (the process)
 1. **Round 1, direction (done, A chosen, see Decision 3):** three treatments of the same player and result on a 375 px phone (A: swipe deck of full-screen cards; B: a vertical snap scroll; C: a hero plus a carousel), dark console, real data from the dev club, with the flip affordance and the index. The owner picks one or mixes.
