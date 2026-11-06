@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
-import { Box, ButtonBase, IconButton, Typography } from '@mui/material'
+import { Box, ButtonBase, IconButton, Typography, useMediaQuery } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { blackAlpha } from '../../../brandTokens'
@@ -26,6 +26,8 @@ export interface HubResultCarouselProps {
   loadingMore: boolean
   onLoadMore: () => void
   ariaLabel?: string
+  // The hero card, drawn above the strip in the same column (the page puts it here so the wide layout can sit the All Cards list beside both).
+  hero?: ReactNode
 }
 
 const GAP = 24
@@ -43,7 +45,9 @@ const arrowSx = {
 
 const reducedMotion = (): boolean => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 
-export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ariaLabel = 'Result Cards' }: HubResultCarouselProps) {
+export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ariaLabel = 'Result Cards', hero }: HubResultCarouselProps) {
+  // From lg (a wide screen) All Cards is a sticky list beside the cards, not a section under them, so it is not a section for the floating arrows.
+  const wide = useMediaQuery('(min-width:1200px)', { noSsr: true })
   const track = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const count = items.length
@@ -95,11 +99,15 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
     return hasMore ? { label: 'Load Earlier Results ›', onClick: onLoadMore } : undefined
   }
 
+  // gridTemplateColumns minmax(0, 1fr): a grid column sizes to its contents by default, which stretched it to hold every card side by side and left the
+  // strip nothing to scroll; with minmax(0, 1fr) the column is exactly the page width and the strip scrolls inside it.
+  const column = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' } as const
   return (
-    // gridTemplateColumns minmax(0, 1fr): a grid column sizes to its contents by default, which stretched it to hold every card side by side and left the
-    // strip nothing to scroll; with minmax(0, 1fr) the column is exactly the page width and the strip scrolls inside it.
-    <Box data-testid="hub-result-carousel" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Box data-testid="hub-result-carousel" sx={{ ...column, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 720px) minmax(260px, 320px)' }, columnGap: 4, alignItems: 'start' }}>
+     <Box sx={{ ...column, gap: 2 }}>
+      {hero}
+      <Box sx={{ ...column, gap: 1 }}>
+      <Box data-hub-section="cards" data-hub-label="Cards" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', scrollMarginTop: 8 }}>
         <Typography component="h3" sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand }}>
           Flip Through
         </Typography>
@@ -152,8 +160,11 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
           <Box key={item.key} component="i" data-testid="carousel-dot" data-on={position === index} sx={{ width: position === index ? 20 : 7, height: 7, borderRadius: position === index ? '6px' : '50%', bgcolor: position === index ? HUB.gold : HUB.lineSoft, display: 'block' }} />
         ))}
       </Box>
+      </Box>
+     </Box>
 
-      <Typography component="h3" data-hub-section="all" data-hub-label="All Cards" sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand, mt: 1.5, scrollMarginTop: 8 }}>
+     <Box sx={{ ...column, gap: 1, mt: { xs: 1.5, lg: 0 }, position: { lg: 'sticky' }, top: { lg: 8 }, alignSelf: 'start' }}>
+      <Typography component="h3" data-hub-section={wide ? undefined : 'all'} data-hub-label={wide ? undefined : 'All Cards'} sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand, scrollMarginTop: 8 }}>
         All Cards
       </Typography>
       <Box component="ul" data-testid="all-cards" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
@@ -194,6 +205,7 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
           {loadingMore ? 'Loading...' : 'Show More'}
         </ButtonBase>
       )}
+     </Box>
     </Box>
   )
 }

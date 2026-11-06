@@ -94,7 +94,6 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   const filters = filtersQuery.data
   const [sheetOpen, setSheetOpen] = useState(false)
   const [draftLeague, setDraftLeague] = useState('')
-  const carouselAnchor = useRef<HTMLDivElement>(null)
   const pageRef = useRef<HTMLDivElement>(null)
 
   const showTabs = (filters?.teams.length ?? 0) > 1
@@ -302,11 +301,15 @@ export function HubResults({ playerKey }: { playerKey: string }) {
       return [main]
     })
     body = (
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2, maxWidth: { md: 640 }, width: '100%', minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
-        <Hero summary={summary} playerName={playerName} seasonName={seasonName ?? 'All Seasons'} scope={scopeText} onSeeMatches={() => carouselAnchor.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })} />
-        <Box ref={carouselAnchor} data-hub-section="cards" data-hub-label="Cards" sx={{ minWidth: 0, scrollMarginTop: 8 }}>
-          <HubResultCarousel key={`${seasonValue}|${teamId}|${leagueId}`} items={items} hasMore={Boolean(list.hasNextPage)} loadingMore={list.isFetchingNextPage} onLoadMore={() => void list.fetchNextPage()} />
-        </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2, maxWidth: { md: 640, lg: 1100 }, width: '100%', minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
+        <HubResultCarousel
+          key={`${seasonValue}|${teamId}|${leagueId}`}
+          hero={<Hero summary={summary} playerName={playerName} seasonName={seasonName ?? 'All Seasons'} scope={scopeText} onSeeMatches={() => pageRef.current?.querySelector<HTMLElement>('[data-hub-section="cards"]')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })} />}
+          items={items}
+          hasMore={Boolean(list.hasNextPage)}
+          loadingMore={list.isFetchingNextPage}
+          onLoadMore={() => void list.fetchNextPage()}
+        />
       </Box>
     )
   }
