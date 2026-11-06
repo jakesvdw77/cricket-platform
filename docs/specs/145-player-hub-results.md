@@ -19,20 +19,21 @@ A parent or player in the Player Hub can see what is coming (Schedule > Matches,
 ## Decisions (owner, 2026-11-06)
 1. **Names are shown.** The Player Hub is for authenticated users, so the Hub Result page shows the full scorecard with names; the earlier "no other person's name" rule of this draft is dropped (it was this draft's choice, not an owner rule).
 2. **A flag publishes a result to the player view.** A result reaches the Player Hub only when a manager has switched it on (**Show In Player Hub**). Publishing the result to the club (`published_at`) and showing it to players are two separate steps, so a manager can capture and publish a result for the club's own pages and check it before parents see it.
-3. **The flip pattern is A, the swipe deck (owner, 2026-11-06, after mockup round 1b, `docs/mockups/player-hub-results-round1-mockup.html`).** One idea per card, swiped sideways, with three cues so it is obvious there is more: **the next card peeks** at the edge (cards about 88 percent wide), **a one-time nudge** on first open (the deck slides a little and settles, never again on that device, skipped for reduced motion, cancelled by any touch or key), and **a position counter** ("1 / 8") with the dots and a **Jump To** list as the fallback. Left and right arrow keys flip it on a keyboard. Patterns B (vertical snap) and C (hero plus carousel) are dropped. The hero leads with the player (owner, 2026-11-06). Build in slices: the Results deck first, then the Player and Team stats cards on the same deck.
-4. The other open questions (2 and 4 to 9 below) are answered separately.
+3. **The flow is hero plus carousel (pattern C; owner, 2026-11-06, after mockup rounds 1b and 3).** The owner first chose the full-screen swipe deck (A), then found the half-drawn next card at its edge distracting, and chose the carousel. The page is: a **hero** (the player's season at a glance, the last-five streak), then a **carousel strip** of cards inside a normal scrolling page (one idea per card: the latest result, each earlier match, a milestone, and later the stats cards), with a position counter ("1 / 6") and dots, then **All Cards**, a list that jumps to a card. The player leads. On a desktop the hero and the list sit on the left and the selected card is large on the right with arrows, the counter and Left and Right keys. Patterns A and B are dropped. Build in slices: the Results page first, then the Player and Team stats cards on the same carousel.
+4. **Scope (owner, 2026-11-06):** the page can be filtered by **Season, Team and League**. A **scope chip** (for example `2026 · All teams ›`) at the top of the page opens a bottom sheet (a row of selects on a desktop). The hero, the cards and the list follow it; every card carries a small scope label so a screenshot is never misleading; a filter offers only values the player has data for (a one-team player sees no Team filter); defaults are the current season, all teams, all leagues, remembered per player on the device; a combination with no matches shows "No matches for this filter" with a Clear Filters link. The Stats section will reuse the same scope. Supersedes the "Season control" suggestion below and open question 5. The backend already supports it (`seasonId`, `leagueId`, `teamId` on the `115` list).
+5. The other open questions (2 and 4 to 9 below; 5 is answered by Decision 4) are answered separately.
 
 ## Design direction (owner, 2026-11-06): striking, mobile first, one idea per screen
 Results and the Player and Team stats are what **sells the application to parents** (Availability stays the most important function and is already covered). So these pages are **not** the manager console in a dark skin:
 1. **Striking, not dense.** Bigger charts, far fewer per page: **one idea per screen** (a hero number or chart, one line of words, nothing else competing). No tables of figures as the first thing a parent sees.
-2. **A way to flip.** The content is a **deck of cards the user flips through** (swipe on a phone, arrows and the keyboard on a desktop), with a progress indicator, instead of one long scrolling page. Each card is one result, one chart or one milestone. The deck is the same model for Results now and for Player and Team stats later.
+2. **A way to flip.** The content is a **carousel of cards the user flips through** (swipe on a phone, arrows and the keyboard on a desktop) under a hero, with a position counter and dots (Decision 3). Each card is one result, one chart or one milestone. The same carousel is the model for Results now and for Player and Team stats later.
 3. **Mobile first.** Designed at 375 px first, thumb reach, 44 px targets, swipe with a visible fallback (buttons), no horizontal page scroll; the desktop is the same deck at a larger size (two panes where it helps), not a different design.
 4. **Mockups first, several rounds.** The owner is happy to iterate. No build starts until a mockup direction is approved; every round is an HTML mockup in `docs/mockups/` (and an artifact for review on a phone). See "Mockup rounds".
 5. **The chart technology is open** (see "Charts"): `@mui/x-charts` is approved for the manager Dashboard but may not be the right fit for a striking, animated, mobile card; alternatives are weighed before anything is added. Any new dependency needs the owner's approval first (`CLAUDE.md`).
 6. **Shareable later (idea, not built here):** each card is designed so it can become a share image (the `114` pipeline), because a proud parent sharing a card is the best advertisement.
 
-### The deck (suggested; the first mockup round tests it)
-A player's **Story** is a deck, newest first, each card one screen:
+### The cards (suggested; the mockup rounds test them)
+A player's **Story** is a hero and a carousel of cards, newest first, each card one idea:
 - **Hero card:** the season in one glance for this player (big number and one sentence: "7 matches, 212 runs, 9 wickets"), the team's season as a ring (Played, Won, Lost), the last five results as a streak.
 - **Latest result card:** the last match, the score as a bold result banner, the player's own performance as one big figure ("46* off 68") with a one-line story ("top scorer in the win"), the award star if any.
 - **One card per recent result:** the same shape, swipe back in time.
@@ -49,7 +50,7 @@ A player's **Story** is a deck, newest first, each card one screen:
    - the result in words from the player's side ("Won by 8 wickets"), with a Won, Lost, Tied, No Result chip;
    - the player's own line ("46* off 68 · 1 for 24 · 1 catch"; "Did not bat" or "No scorecard captured" in muted words, never zeros) and a player-of-the-match star;
    - the row opens the Hub **Result page** (below).
-4. **Season control:** one Season picker (default the current season, All Seasons offered). No other filters in v1 (a player has few matches; team is a chip on the row).
+4. **Scope control:** superseded by Decision 4 (the scope chip: Season, Team and League).
 5. **Empty and error states:** "No results yet. Finished matches will appear here." and the standard Try Again.
 
 **Hub Result page** (`/account/players/:key/results/:matchId`): the result line and both scores, date, league and venue (the `135` match header and figures, static compact), the held player's own card highlighted first, then the **full scorecard** of both innings with names (Decision 1: batting with how out, bowling, extras, fall of wickets only if the manager's result page shows it, the awards), and a footer Back to Results. Only results with **Show In Player Hub** on are reachable and listed (Decision 2); any other result is a 404.
@@ -113,7 +114,7 @@ The Hub keeps its own console look (dark, `HUB` tokens, footer Back); the page a
 3. **Resolved (Decision 1):** the full scorecard with names. **Still open:** juniors as initials (see Privacy).
 3b. **Flag default and backfill:** off for every existing and new result until a manager switches it on, no backfill? Default: **yes**. Alternative: a club setting "Show new results in the Player Hub by default", and a one-off "Show all published results" action.
 4. **A player in two teams:** one list with a team chip on each row? Default: **yes** (not a team filter).
-5. **Season control:** current season default, All Seasons offered, no other filters? Default: **yes**.
+5. **Resolved (Decision 4):** the scope chip with Season, Team and League.
 6. **Form strip length:** last 5? Default: **5**.
 7. **Team results for matches the player did not play** (selected but no card, or unselected)? Default: **not listed**: Results is "matches played" (the counted appearances of `115`); the team's other results stay on Matches or the league page.
 8. **Stats entry points:** the four tiles link nowhere until the Stats section exists (plain static cards now)? Default: **yes**, plain cards; the drill link is added with the Stats spec.
