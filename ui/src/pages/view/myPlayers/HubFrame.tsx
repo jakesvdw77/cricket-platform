@@ -10,7 +10,7 @@ import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
-import { HubMenuCollapsedProvider, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
+import { HubMenuCollapsedProvider, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const RAIL_WIDTH = 64
 
@@ -114,7 +114,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
-        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, '@media (prefers-reduced-motion: no-preference)': { transition: 'grid-template-columns 380ms cubic-bezier(0.4, 0, 0.2, 1)' }, ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
+        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, position: 'relative', ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
           {fill && menu ? (
             <HubMenuCollapsedProvider value={railed}>
               <Box
@@ -141,7 +141,6 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                       maxHeight: railed ? 0 : 600,
                       opacity: railed ? 0 : 1,
                       pointerEvents: railed ? 'none' : 'auto',
-                      '@media (prefers-reduced-motion: no-preference)': { transition: 'max-height 380ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease' },
                     },
                     ...(autoCollapse.active && { pb: { md: 6 } }),
                   }}
@@ -158,7 +157,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                         event.stopPropagation()
                         autoCollapse.toggle()
                       }}
-                      sx={{ position: 'absolute', bottom: 10, right: railed ? (RAIL_WIDTH - 36) / 2 : 10, '@media (prefers-reduced-motion: no-preference)': { transition: 'right 380ms cubic-bezier(0.4, 0, 0.2, 1)' }, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+                      sx={{ position: 'absolute', bottom: 10, right: railed ? (RAIL_WIDTH - 36) / 2 : 10, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
                     >
                       {railed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
                     </ButtonBase>
@@ -170,6 +169,22 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
             menu
           )}
           {!hideContent && content}
+          {/* docs/specs/145 decision 12: the dissolve that hides the layout swap when the menu opens or closes (see useHubMenuAutoCollapse). */}
+          {autoCollapse.active && (
+            <Box
+              aria-hidden
+              data-testid="hub-menu-veil"
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 6,
+                pointerEvents: autoCollapse.veil === 'idle' ? 'none' : 'auto',
+                bgcolor: HUB_GROUND,
+                opacity: autoCollapse.veil === 'in' ? 1 : 0,
+                transition: autoCollapse.veil === 'in' ? `opacity ${VEIL_IN_MS}ms ease-in` : autoCollapse.veil === 'out' ? `opacity ${VEIL_OUT_MS}ms ease-out` : 'none',
+              }}
+            />
+          )}
         </Box>
 
         {footer && (
