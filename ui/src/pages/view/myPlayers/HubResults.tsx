@@ -1,21 +1,24 @@
-import { useMemo } from 'react'
-import { Alert, Box, ButtonBase, Link, MenuItem, Select, Skeleton, Typography } from '@mui/material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Box, ButtonBase, IconButton, Link, MenuItem, Select, Skeleton, Typography, useMediaQuery, useTheme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import CloseIcon from '@mui/icons-material/Close'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/Button'
+import { BottomSheet } from '../../../components/BottomSheet'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { useMyPlayer } from '../../../api/myPlayersApi'
 import { useMyPlayerResults, useMyPlayerResultsFilters, useMyPlayerResultsSummaries, useMyPlayerResultsSummary } from '../../../api/meResultsApi'
 import type { MyResultCompetition, MyResultScope, MyResultSummary } from '../../../api/meResultsApi'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { BRAND, blackAlpha, creamAlpha } from '../../../brandTokens'
-import { HUB, darkFieldSx, darkMenuProps, hubOutlineButton, hubPageHeading } from './hubStyle'
+import { HUB, darkFieldSx, darkMenuProps, hubHeading, hubOutlineButton, hubPageHeading } from './hubStyle'
 import { HubResultCard } from './HubResultCard'
 import { bigSx, cardSx, kickerSx } from './resultCardStyle'
 import { chipFigure, formSentence, opponentCode, resultTone, scopeLabel, scopeQuery, streakLetter, versusText } from './resultsFormat'
 
-// docs/specs/145 decision 11 (round 5 of the mockups): the Season dropdown in the header, two rows of equal-size filter chips (Leagues,
-// then the Teams that played in the chosen league), a Recent Form card, the latest result as a banner and a responsive grid of wide
+// docs/specs/145 decisions 11 and 14 (rounds 5 and 6 of the mockups): the Season dropdown and a Filters button in the header (the
+// equal-size Leagues and Teams chips live in a docked side panel from lg and a dark bottom sheet below it, choices apply as you tap;
+// chosen filters show as removable tags; a player with nothing to choose gets a quiet line instead), a Recent Form card, the latest result as a banner and a responsive grid of wide
 // result cards. No carousel. Read only; the footer owns Back. The scope lives in the URL (season, league, team, competition), saved
 // per player on this device as the fallback; the server pages the rows (Show More), the browser never slices them.
 const ALL = 'all'
@@ -45,13 +48,12 @@ interface ChipSpec {
   onPick: () => void
 }
 
-// One row of equal-size chips behind a label column (the label sits above the chips on a phone). Both rows share the column width, so
-// they start at the same left edge.
-function ChipRow({ label, chips }: { label: string; chips: ChipSpec[] }) {
+// One group of equal-size chips behind a heading. The panel shows one column, the phone sheet two.
+function ChipGroup({ label, chips, columns }: { label: string; chips: ChipSpec[]; columns: 1 | 2 }) {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: '92px minmax(0, 1fr)' }, gap: { xs: 0.75, sm: '8px 10px' }, alignItems: 'center' }}>
-      <Typography component="span" sx={{ fontFamily: HUB.display, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 13, color: HUB.sand }}>{label}</Typography>
-      <Box role="group" aria-label={label} sx={{ display: 'grid', gap: 1, minWidth: 0, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(auto-fill, minmax(176px, 1fr))' } }}>
+    <Box component="section" aria-label={label} sx={{ display: 'grid', gap: 1 }}>
+      <Typography component="h3" sx={{ fontFamily: HUB.display, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 13, color: HUB.sand, m: 0 }}>{label}</Typography>
+      <Box role="group" aria-label={label} sx={{ display: 'grid', gap: 1, minWidth: 0, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
         {chips.map((chip) => (
           <ButtonBase
             key={chip.id}
@@ -82,6 +84,25 @@ function ChipRow({ label, chips }: { label: string; chips: ChipSpec[] }) {
           </ButtonBase>
         ))}
       </Box>
+    </Box>
+  )
+}
+
+// A chosen filter as a removable tag (the round button is 28 px; the tag row is 36 px high).
+function FilterTag({ name, onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Box
+      data-testid="hub-results-tag"
+      sx={{ minHeight: 36, pl: 1.75, pr: 0.5, borderRadius: '18px', border: `1px solid ${HUB.gold}`, bgcolor: alpha(HUB.gold, 0.16), color: BRAND.goldLight, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}
+    >
+      <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</Box>
+      <IconButton
+        aria-label={`Remove ${name}`}
+        onClick={onRemove}
+        sx={{ width: 28, height: 28, p: 0, bgcolor: blackAlpha(0.3), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.45) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 }, '&::after': { content: '""', position: 'absolute', inset: -8 } }}
+      >
+        <CloseIcon sx={{ fontSize: 16 }} />
+      </IconButton>
     </Box>
   )
 }
@@ -163,20 +184,25 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     change({ league, competition: comp, team: combos.some((combo) => combo.teamId === teamId) ? teamId : '' })
   }
 
+  const wide = useMediaQuery(useTheme().breakpoints.up('lg'))
+  const [open, setOpen] = useState(false)
+  const filtersButton = useRef<HTMLButtonElement>(null)
+  const panelHeading = useRef<HTMLHeadingElement>(null)
   const ready = Boolean(filters)
   const list = useMyPlayerResults(playerKey, scope, ready)
   const summaryQuery = useMyPlayerResultsSummary(playerKey, scope, ready)
   const rows = useMemo(() => list.data?.pages.flatMap((page) => page.rows) ?? [], [list.data])
   const summary = summaryQuery.data
 
-  // The record under each chip: one summary per chip (a handful at most); a chip shows its name alone until its record arrives.
+  // The record under each chip: one summary per chip (a handful at most), asked for only while the panel or sheet is open; a chip shows
+  // its name alone until its record arrives.
   const leagueChipScopes: MyResultScope[] = [
     { seasonId },
     ...leagueOptions.map((league) => ({ seasonId, leagueId: league.id })),
     ...(hasFriendly ? [{ seasonId, competition: FRIENDLY }] : []),
   ]
   const teamChipScopes: MyResultScope[] = [{ seasonId, leagueId: leagueId || null, competition }, ...teamOptions.map((team) => ({ seasonId, leagueId: leagueId || null, competition, teamId: team.id }))]
-  const chipSummaries = useMyPlayerResultsSummaries(playerKey, [...leagueChipScopes, ...teamChipScopes], ready)
+  const chipSummaries = useMyPlayerResultsSummaries(playerKey, [...leagueChipScopes, ...teamChipScopes], ready && open)
   const chipSummary = (index: number) => chipSummaries[index]?.data
 
   const leagueChips: ChipSpec[] = [
@@ -198,36 +224,87 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   const playerName = player?.firstName ?? 'This Player'
   const narrowed = Boolean(teamId || leagueId || friendly || (seasonId && seasonId !== filters?.currentSeasonId))
 
+  const leagueCount = leagueOptions.length + (hasFriendly ? 1 : 0)
+  const hasChoice = leagueCount > 1 || teamOptions.length > 1
+  const activeCount = (leagueId || friendly ? 1 : 0) + (teamId ? 1 : 0)
+  const closePanel = () => {
+    setOpen(false)
+    filtersButton.current?.focus()
+  }
+  // From lg the panel is not modal, so focus moves to its heading by hand.
+  useEffect(() => {
+    if (open && wide) panelHeading.current?.focus()
+  }, [open, wide])
+
   const header = (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, minHeight: 44 }}>
       <Typography component="h2" sx={hubPageHeading}>Results</Typography>
-      {filters && filters.seasons.length > 0 && (
-        <Box sx={{ ...darkFieldSx, minWidth: 140 }}>
-          <Select
-            size="small"
-            value={seasonValue}
-            onChange={(event) => change({ season: event.target.value, league: '', team: '', competition: '' })}
-            inputProps={{ 'aria-label': 'Season' }}
-            MenuProps={darkMenuProps}
-            fullWidth
-            sx={{ minHeight: 44, '& .MuiSelect-select': { minHeight: 44, display: 'flex', alignItems: 'center', boxSizing: 'border-box', fontFamily: HUB.display, fontSize: 18, letterSpacing: '0.06em' } }}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {filters && filters.seasons.length > 0 && (
+          <Box sx={{ ...darkFieldSx, minWidth: 140 }}>
+            <Select
+              size="small"
+              value={seasonValue}
+              onChange={(event) => change({ season: event.target.value, league: '', team: '', competition: '' })}
+              inputProps={{ 'aria-label': 'Season' }}
+              MenuProps={darkMenuProps}
+              fullWidth
+              sx={{ minHeight: 44, '& .MuiSelect-select': { minHeight: 44, display: 'flex', alignItems: 'center', boxSizing: 'border-box', fontFamily: HUB.display, fontSize: 18, letterSpacing: '0.06em' } }}
+            >
+              {filters.seasons.map((season) => (
+                <MenuItem key={season.id} value={season.id} sx={{ minHeight: 44 }}>{season.name}</MenuItem>
+              ))}
+              <MenuItem value={ALL} sx={{ minHeight: 44 }}>All Seasons</MenuItem>
+            </Select>
+          </Box>
+        )}
+        {filters && hasChoice && (
+          <Button
+            ref={filtersButton}
+            variant="secondary"
+            size="compact"
+            aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : 'Filters'}
+            aria-haspopup={wide ? undefined : 'dialog'}
+            aria-expanded={wide ? open : undefined}
+            aria-controls={wide ? 'hub-results-filters-panel' : undefined}
+            onClick={() => (open && wide ? closePanel() : setOpen(true))}
+            sx={{ ...hubOutlineButton, alignSelf: 'center', minHeight: { xs: 44, md: 32 }, gap: 1, '&::after': { display: 'none' } }}
           >
-            {filters.seasons.map((season) => (
-              <MenuItem key={season.id} value={season.id} sx={{ minHeight: 44 }}>{season.name}</MenuItem>
-            ))}
-            <MenuItem value={ALL} sx={{ minHeight: 44 }}>All Seasons</MenuItem>
-          </Select>
-        </Box>
-      )}
+            {activeCount > 0 && <Box aria-hidden component="span" data-testid="hub-results-filters-dot" sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: HUB.gold }} />}
+            Filters
+          </Button>
+        )}
+      </Box>
     </Box>
   )
 
-  const chipRows = filters && (leagueOptions.length > 0 || hasFriendly) && (
-    <Box sx={{ display: 'grid', gap: 1.25 }}>
-      <ChipRow label="Leagues" chips={leagueChips} />
-      {teamOptions.length > 0 && <ChipRow label="Teams" chips={teamChips} />}
+  const activeTags = (leagueId || friendly || teamId) && (
+    <Box data-testid="hub-results-tags" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+      {(leagueId || friendly) && <FilterTag name={leagueName ?? 'League'} onRemove={() => change({ league: '', competition: '' })} />}
+      {teamId && <FilterTag name={teamName ?? 'Team'} onRemove={() => change({ team: '' })} />}
     </Box>
   )
+
+  const quietLine = filters && !hasChoice && leagueCount === 1 && (
+    <Typography data-testid="hub-results-context" sx={{ fontFamily: HUB.display, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 14, color: HUB.sand }}>
+      {[leagueOptions[0]?.name ?? 'Friendly', teamOptions[0]?.name].filter(Boolean).join(' · ')}
+    </Typography>
+  )
+
+  const chipGroups = (columns: 1 | 2) => (
+    <Box sx={{ display: 'grid', gap: 2 }}>
+      <ChipGroup label="Leagues" chips={leagueChips} columns={columns} />
+      {teamOptions.length > 0 && <ChipGroup label="Teams" chips={teamChips} columns={columns} />}
+    </Box>
+  )
+  const resetLink = (
+    <Link component="button" type="button" underline="always" onClick={clearFilters} sx={{ color: HUB.gold, fontSize: 15, minHeight: 44 }}>
+      Reset
+    </Link>
+  )
+  const matchCount = summary?.matches
+  const showLabel = matchCount === undefined ? 'Show Results' : `Show ${matchCount} ${matchCount === 1 ? 'match' : 'matches'}`
+  const panelOpen = open && wide && hasChoice
 
   const failed = filtersQuery.isError || list.isError || summaryQuery.isError
   let body
@@ -297,10 +374,44 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   }
 
   return (
-    <Box data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75 }}>
-      {header}
-      {!failed && chipRows}
-      {body}
+    <Box data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: panelOpen ? 2.5 : 0, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
+        {header}
+        {!failed && quietLine}
+        {!failed && activeTags}
+        {body}
+      </Box>
+      {panelOpen && (
+        <Box
+          component="aside"
+          id="hub-results-filters-panel"
+          role="complementary"
+          aria-label="Filters"
+          data-testid="hub-results-panel"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') closePanel()
+          }}
+          sx={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 120px)', overflow: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' }, borderLeft: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.2), p: 2, display: 'grid', gap: 2 }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography ref={panelHeading} component="h2" tabIndex={-1} sx={{ ...hubHeading, outline: 'none' }}>Filters</Typography>
+            {resetLink}
+          </Box>
+          {chipGroups(1)}
+          <Button variant="secondary" size="compact" onClick={closePanel} sx={{ ...hubOutlineButton, alignSelf: 'stretch', minHeight: { xs: 44, md: 32 } }}>
+            Done
+          </Button>
+        </Box>
+      )}
+      <BottomSheet open={open && !wide && hasChoice} onOpen={() => setOpen(true)} onClose={() => setOpen(false)} ariaLabel="Filters" title="Filters" closeLabel="Close Filters" tone="dark">
+        <Box sx={{ display: 'grid', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>{resetLink}</Box>
+          {chipGroups(2)}
+          <Button variant="secondary" size="compact" onClick={() => setOpen(false)} sx={{ ...hubOutlineButton, alignSelf: 'stretch', minHeight: 44 }}>
+            {showLabel}
+          </Button>
+        </Box>
+      </BottomSheet>
     </Box>
   )
 }
