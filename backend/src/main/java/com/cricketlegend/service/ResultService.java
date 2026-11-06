@@ -90,6 +90,20 @@ public interface ResultService {
     /** Back to draft; everything derived follows. */
     MatchResultDto unpublish(Authentication authentication, UUID clubId, UUID matchId);
 
+    /**
+     * docs/specs/145: switches Show In Player Hub on or off for a PUBLISHED result (409 {@code
+     * InvalidStatusTransitionException} for a draft; 404 when there is no result), recording who and when. Same gate as
+     * {@link #publish}. {@link #unpublish} clears it.
+     */
+    MatchResultDto setPlayerVisibility(Authentication authentication, UUID clubId, UUID matchId, boolean visible);
+
+    /**
+     * docs/specs/145: the result of {@code matchId} for a Player Hub read: only when it is PUBLISHED and shown in the
+     * Player Hub, otherwise a {@code NotFoundException}. No access check: the caller has already proven the match
+     * through {@code MyPlayerAccess}. The result is of {@code clubId} or it is a 404.
+     */
+    MatchResultDto visibleResult(UUID clubId, UUID matchId);
+
     /** Deletes a draft; a published result must be unpublished first. */
     void deleteDraft(Authentication authentication, UUID clubId, UUID matchId);
 

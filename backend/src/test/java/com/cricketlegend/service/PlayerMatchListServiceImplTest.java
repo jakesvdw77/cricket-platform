@@ -81,7 +81,7 @@ class PlayerMatchListServiceImplTest {
     }
 
     private void total(long total) {
-        when(factsRepository.matchCount(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection()))
+        when(factsRepository.matchCount(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection(), anyBoolean(), any()))
                 .thenReturn(total);
     }
 
@@ -104,7 +104,7 @@ class PlayerMatchListServiceImplTest {
     private void pageReturns(int rows, boolean ascending, int size, long offset) {
         List<MatchHeaderView> page = headers(rows);
         when(factsRepository.matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection(),
-                        eq(ascending), eq(size), eq(offset)))
+                        eq(ascending), eq(size), eq(offset), anyBoolean(), any()))
                 .thenReturn(page);
     }
 
@@ -187,7 +187,7 @@ class PlayerMatchListServiceImplTest {
         total(0);
         var dto = list("LEAGUE", null, null, null);
         assertThat(dto.scope().competition()).isEqualTo("LEAGUE");
-        verify(factsRepository).matchCount(eq(clubId), eq(playerId), any(), any(), any(), eq("LEAGUE"), anyBoolean(), anyCollection());
+        verify(factsRepository).matchCount(eq(clubId), eq(playerId), any(), any(), any(), eq("LEAGUE"), anyBoolean(), anyCollection(), anyBoolean(), any());
     }
 
     @Test
@@ -240,7 +240,7 @@ class PlayerMatchListServiceImplTest {
         assertThat(dto.rows()).isEmpty();
         assertThat(dto.page().totalElements()).isZero();
         verify(factsRepository, never()).matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(),
-                anyCollection(), anyBoolean(), anyInt(), anyLong());
+                anyCollection(), anyBoolean(), anyInt(), anyLong(), anyBoolean(), any());
     }
 
     @Test
@@ -299,7 +299,7 @@ class PlayerMatchListServiceImplTest {
         assertThat(dto.page().hasMore()).isFalse();
         assertThat(dto.page().number()).isEqualTo(3);
         verify(factsRepository, never()).matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(),
-                anyCollection(), anyBoolean(), anyInt(), anyLong());
+                anyCollection(), anyBoolean(), anyInt(), anyLong(), anyBoolean(), any());
     }
 
     @Test
@@ -310,7 +310,7 @@ class PlayerMatchListServiceImplTest {
         pageReturns(3, true, 20, 0);
         assertThat(list(null, "ASC", 0, 20).rows()).hasSize(3);
         verify(factsRepository).matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection(),
-                eq(true), eq(20), eq(0L));
+                eq(true), eq(20), eq(0L), anyBoolean(), any());
     }
 
     @Test
@@ -321,7 +321,7 @@ class PlayerMatchListServiceImplTest {
         pageReturns(2, false, 20, 0);
         assertThat(list(null, null, null, null).rows()).hasSize(2);
         verify(factsRepository).matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection(),
-                eq(false), eq(20), eq(0L));
+                eq(false), eq(20), eq(0L), anyBoolean(), any());
     }
 
     @Test
@@ -330,12 +330,12 @@ class PlayerMatchListServiceImplTest {
         resolverReturns(null, false);
         total(5);
         when(factsRepository.matchPage(any(), any(), any(), any(), any(), any(), anyBoolean(), anyCollection(),
-                        anyBoolean(), anyInt(), anyLong()))
+                        anyBoolean(), anyInt(), anyLong(), anyBoolean(), any()))
                 .thenReturn(List.of());
         var dto = list(null, null, 0, 20);
         assertThat(dto.rows()).isEmpty();
         verify(factsRepository, never()).matchBatting(any(), any(), any(), any(), any(), any(), anyBoolean(),
-                anyCollection(), anyCollection());
+                anyCollection(), anyCollection(), anyBoolean(), any());
     }
 
     @Test

@@ -9,6 +9,10 @@ import com.cricketlegend.dto.MyMatchListDto;
 import com.cricketlegend.dto.MyPlayerDto;
 import com.cricketlegend.dto.MyPlayerSummaryDto;
 import com.cricketlegend.dto.MyPollDto;
+import com.cricketlegend.dto.MyResultDto;
+import com.cricketlegend.dto.MyResultFiltersDto;
+import com.cricketlegend.dto.MyResultListDto;
+import com.cricketlegend.dto.MyResultSummaryDto;
 import com.cricketlegend.dto.PublicAnswersDto;
 import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.UpdateMyPlayerRequest;
@@ -18,6 +22,7 @@ import com.cricketlegend.service.MyLeagueService;
 import com.cricketlegend.service.MyMatchService;
 import com.cricketlegend.service.MyPlayerPollService;
 import com.cricketlegend.service.MyPlayerService;
+import com.cricketlegend.service.MyResultService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +53,7 @@ class MePlayersController {
     private final MyFieldService myFieldService;
     private final MyLeagueService myLeagueService;
     private final MyMatchService myMatchService;
+    private final MyResultService myResultService;
 
     MePlayersController(
             MyPlayerService myPlayerService,
@@ -55,13 +61,15 @@ class MePlayersController {
             AgentInvitationService agentInvitationService,
             MyFieldService myFieldService,
             MyLeagueService myLeagueService,
-            MyMatchService myMatchService) {
+            MyMatchService myMatchService,
+            MyResultService myResultService) {
         this.myPlayerService = myPlayerService;
         this.myPlayerPollService = myPlayerPollService;
         this.agentInvitationService = agentInvitationService;
         this.myFieldService = myFieldService;
         this.myLeagueService = myLeagueService;
         this.myMatchService = myMatchService;
+        this.myResultService = myResultService;
     }
 
     // Write endpoints below: MyPlayerAccess (inside the services) is the only authorisation gate, from the caller's own rows.
@@ -131,6 +139,45 @@ class MePlayersController {
     @GetMapping("/{playerKey}/matches/{matchId}")
     MyMatchDto match(Authentication authentication, @PathVariable String playerKey, @PathVariable UUID matchId) {
         return myMatchService.get(authentication, playerKey, matchId);
+    }
+
+    /**
+     * docs/specs/145: the held player's counted results that a manager switched on for the Player Hub, newest first,
+     * authorised only through MyPlayerAccess. {@code page} defaults to 0 and {@code size} to 20 (1 to 100).
+     */
+    @GetMapping("/{playerKey}/results")
+    MyResultListDto results(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return myResultService.list(authentication, playerKey, seasonId, teamId, leagueId, page, size);
+    }
+
+    /** docs/specs/145: the Results hero figures and the newest five rows for the same scope. */
+    @GetMapping("/{playerKey}/results/summary")
+    MyResultSummaryDto resultsSummary(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID leagueId) {
+        return myResultService.summary(authentication, playerKey, seasonId, teamId, leagueId);
+    }
+
+    /** docs/specs/145: the Season, Team and League values the held player has shown results for. */
+    @GetMapping("/{playerKey}/results/filters")
+    MyResultFiltersDto resultsFilters(Authentication authentication, @PathVariable String playerKey) {
+        return myResultService.filters(authentication, playerKey);
+    }
+
+    /** docs/specs/145: one result with the full scorecard; a 404 when it is not one of the held player's shown results. */
+    @GetMapping("/{playerKey}/results/{matchId}")
+    MyResultDto result(Authentication authentication, @PathVariable String playerKey, @PathVariable UUID matchId) {
+        return myResultService.get(authentication, playerKey, matchId);
     }
 
     @PutMapping("/{playerKey}/polls/{pollId}/answers")

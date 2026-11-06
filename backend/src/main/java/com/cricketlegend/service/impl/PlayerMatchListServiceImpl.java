@@ -66,30 +66,68 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
         boolean ascending = parseAscending(direction);
         int page = pageNumber == null ? 0 : pageNumber;
         int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
+        validatePaging(page, size);
+        playerLookup.require(clubId, playerId);
+        StatsScopeResolver.Resolved resolved =
+                scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
+        PlayerStatsScope echoed = new PlayerStatsScope(
+                StatsScopeResolver.KIND_CLUB_VERIFIED,
+                seasonId,
+                leagueId,
+                teamId,
+                sectionId,
+                StatsScopeResolver.competitionName(resolved.scope()));
+        if (resolved.nothingInReach()) {
+            return empty(playerId, echoed, page, size);
+        }
+        return read(resolved.scope(), playerId, echoed, ascending, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlayerMatchListDto listForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            UUID matchId,
+            Integer pageNumber,
+            Integer pageSize) {
+        int page = pageNumber == null ? 0 : pageNumber;
+        int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
+        validatePaging(page, size);
+        playerLookup.require(clubId, playerId);
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, matchId);
+        PlayerStatsScope echoed = new PlayerStatsScope(
+                StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, null, null);
+        return read(scope, playerId, echoed, false, page, size);
+    }
+
+    private static void validatePaging(int page, int size) {
         if (page < 0) {
             throw new ValidationException("page must be zero or more.");
         }
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException("size must be from 1 to " + MAX_PAGE_SIZE + ".");
         }
-        playerLookup.require(clubId, playerId);
-        StatsScopeResolver.Resolved resolved =
-                scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
-        StatsScope scope = resolved.scope();
-        PlayerStatsScope echoed = new PlayerStatsScope(
-                StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope));
-        if (resolved.nothingInReach()) {
-            return empty(playerId, echoed, page, size);
-        }
+    }
 
+    /** The shared body: one page of the counted matches in a prepared scope (manager or Player Hub). */
+    private PlayerMatchListDto read(
+            StatsScope scope, UUID playerId, PlayerStatsScope echoed, boolean ascending, int page, int size) {
+        UUID clubId = scope.clubId();
         UUID season = scope.seasonId();
         UUID league = scope.leagueId();
         UUID team = scope.teamId();
         String comp = StatsScopeResolver.competitionName(scope);
         boolean restricted = scope.sectionRestricted();
         List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        boolean hubOnly = scope.playerVisibleOnly();
+        UUID matchId = scope.matchId();
 
-        long total = factsRepository.matchCount(clubId, playerId, season, league, team, comp, restricted, sectionTeams);
+        long total = factsRepository.matchCount(
+                clubId, playerId, season, league, team, comp, restricted, sectionTeams, hubOnly, matchId);
         long offset = (long) page * size;
         if (total == 0 || offset >= total) {
             return new PlayerMatchListDto(
@@ -97,7 +135,8 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
         }
         List<PlayerMatchRowBuilder.MatchHeader> headers = factsRepository
                 .matchPage(
-                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, ascending, size, offset)
+                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, ascending, size, offset,
+                        hubOnly, matchId)
                 .stream()
                 .map(PlayerMatchFactsReader::toHeader)
                 .toList();
@@ -108,25 +147,29 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
                         headers,
                         factsRepository
                                 .matchBatting(
-                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds)
+                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds,
+                                        hubOnly, matchId)
                                 .stream()
                                 .map(PlayerMatchFactsReader::toBatting)
                                 .toList(),
                         factsRepository
                                 .matchBowling(
-                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds)
+                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds,
+                                        hubOnly, matchId)
                                 .stream()
                                 .map(PlayerMatchFactsReader::toBowling)
                                 .toList(),
                         factsRepository
                                 .matchFielding(
-                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds)
+                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds,
+                                        hubOnly, matchId)
                                 .stream()
                                 .map(PlayerMatchFactsReader::toFielding)
                                 .toList(),
                         factsRepository
                                 .matchAwards(
-                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds)
+                                        clubId, playerId, season, league, team, comp, restricted, sectionTeams, resultIds,
+                                        hubOnly, matchId)
                                 .stream()
                                 .map(PlayerMatchFactsReader::toAward)
                                 .toList());

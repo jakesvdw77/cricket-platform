@@ -35,6 +35,13 @@ public interface ScorecardService {
     ScorecardDto read(Authentication authentication, UUID clubId, UUID matchId);
 
     /**
+     * docs/specs/145: the scorecard for a Player Hub read, only of a PUBLISHED result of {@code clubId} shown in the Player
+     * Hub; anything else (no result, a draft, the flag off, another club) is a {@code NotFoundException}. No access check:
+     * the caller has already proven the match through {@code MyPlayerAccess}. Featured flags are the frozen ones.
+     */
+    ScorecardDto readForPlayers(UUID clubId, UUID matchId);
+
+    /**
      * Links an unlinked scorecard player to a registered player of this club. Allowed on a draft or a published
      * result; records who linked and when. 409 when the profile is already on that side's list, 400 for another club's
      * profile, a player that is already linked, or (docs/specs/113) a player outside the side's team's section or the

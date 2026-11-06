@@ -34,7 +34,22 @@ public interface PlayerStatsAggregateRepository extends Repository<MatchResult, 
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<PlayerStatsAggregateView> aggregate(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return aggregate(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /** One player's counters; the getter names are the quoted column aliases of {@link PlayerStatsSql#AGGREGATE}. */
     interface PlayerStatsAggregateView {

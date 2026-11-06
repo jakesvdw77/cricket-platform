@@ -439,9 +439,39 @@ public class ResultServiceImpl implements ResultService {
         result.setStatus(ResultStatus.DRAFT);
         result.setPublishedAt(null);
         result.setPublishedBy(null);
+        result.setVisibleToPlayers(false);
+        result.setVisibleToPlayersAt(null);
+        result.setVisibleToPlayersBy(null);
         result.setUpdatedBy(accessService.resolveCurrentPersonId(authentication));
         scorecardService.clearFeatured(result.getId());
         return toDto(resultRepository.save(result));
+    }
+
+    @Override
+    @Transactional
+    public MatchResultDto setPlayerVisibility(Authentication authentication, UUID clubId, UUID matchId, boolean visible) {
+        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        MatchResult result = findResultOrThrow(matchId);
+        if (result.getStatus() != ResultStatus.PUBLISHED) {
+            throw new InvalidStatusTransitionException("Only a published result can be shown in the Player Hub: " + matchId);
+        }
+        UUID person = accessService.resolveCurrentPersonId(authentication);
+        result.setVisibleToPlayers(visible);
+        result.setVisibleToPlayersAt(visible ? ServerClock.now() : null);
+        result.setVisibleToPlayersBy(visible ? person : null);
+        result.setUpdatedBy(person);
+        return toDto(resultRepository.save(result));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MatchResultDto visibleResult(UUID clubId, UUID matchId) {
+        MatchResult result = resultRepository.findByMatchId(matchId)
+                .filter(r -> clubId.equals(r.getClubId())
+                        && r.getStatus() == ResultStatus.PUBLISHED
+                        && r.isVisibleToPlayers())
+                .orElseThrow(() -> new NotFoundException("Result not found for match: " + matchId));
+        return mapper.toDto(result, inningsRepository.findByMatchResultIdOrderBySequence(result.getId()));
     }
 
     @Override

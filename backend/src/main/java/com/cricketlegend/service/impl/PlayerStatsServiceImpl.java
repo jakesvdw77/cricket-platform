@@ -69,11 +69,23 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         playerLookup.require(clubId, playerId);
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, competitionFilter);
-        StatsScope scope = resolved.scope();
+        return read(resolved.scope(), resolved.nothingInReach(), playerId, sectionId);
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PlayerStatsDto getForHeldPlayer(UUID clubId, UUID playerId, UUID seasonId, UUID leagueId, UUID teamId) {
+        playerLookup.require(clubId, playerId);
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null);
+        return read(scope, false, playerId, null);
+    }
+
+    /** The shared body: the counters, facts and figures of one player in a prepared scope (manager or Player Hub). */
+    private PlayerStatsDto read(StatsScope scope, boolean nothingInReach, UUID playerId, UUID sectionId) {
+        UUID clubId = scope.clubId();
         PlayerStatsCounters counters = PlayerStatsCounters.EMPTY;
         PlayerStatsFacts facts = PlayerStatsFacts.EMPTY;
-        if (!resolved.nothingInReach()) {
+        if (!nothingInReach) {
             List<PlayerStatsAggregateView> rows = aggregateRepository.aggregate(
                     clubId,
                     playerId,
@@ -82,7 +94,9 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                     scope.teamId(),
                     StatsScopeResolver.competitionName(scope),
                     scope.sectionRestricted(),
-                    StatsScopeResolver.sectionTeamParameter(scope));
+                    StatsScopeResolver.sectionTeamParameter(scope),
+                    scope.playerVisibleOnly(),
+                    scope.matchId());
             if (!rows.isEmpty()) {
                 counters = PlayerStatsCountersReader.toCounters(rows.get(0));
                 facts = readFacts(scope, playerId);
@@ -94,7 +108,12 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         return new PlayerStatsDto(
                 playerId,
                 new PlayerStatsDto.PlayerStatsScope(
-                        StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, sectionId, StatsScopeResolver.competitionName(scope)),
+                        StatsScopeResolver.KIND_CLUB_VERIFIED,
+                        scope.seasonId(),
+                        scope.leagueId(),
+                        scope.teamId(),
+                        sectionId,
+                        StatsScopeResolver.competitionName(scope)),
                 figures.basis(),
                 figures.batting(),
                 figures.bowling(),
@@ -123,7 +142,29 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                 null,
                 null,
                 scope.sectionRestricted(),
-                StatsScopeResolver.sectionTeamParameter(scope)));
+                StatsScopeResolver.sectionTeamParameter(scope),
+                false,
+                null));
+        return new PlayerStatsFilterOptionsDto(
+                lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlayerStatsFilterOptionsDto filterOptionsForHeldPlayer(UUID clubId, UUID playerId) {
+        playerLookup.require(clubId, playerId);
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, null, null, null, null);
+        StatsFilterOptionLists lists = StatsFilterOptionLists.of(factsRepository.filterOptions(
+                clubId,
+                playerId,
+                null,
+                null,
+                null,
+                null,
+                scope.sectionRestricted(),
+                StatsScopeResolver.sectionTeamParameter(scope),
+                scope.playerVisibleOnly(),
+                scope.matchId()));
         return new PlayerStatsFilterOptionsDto(
                 lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
     }
@@ -136,10 +177,12 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         String competition = StatsScopeResolver.competitionName(scope);
         boolean restricted = scope.sectionRestricted();
         List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        boolean hubOnly = scope.playerVisibleOnly();
+        UUID matchId = scope.matchId();
 
         List<PlayerStatsFacts.InningsFact> innings = new ArrayList<>();
         factsRepository
-                .recentInnings(clubId, playerId, season, league, team, competition, restricted, sectionTeams)
+                .recentInnings(clubId, playerId, season, league, team, competition, restricted, sectionTeams, hubOnly, matchId)
                 .forEach(row -> innings.add(new PlayerStatsFacts.InningsFact(
                         row.getMatchId(),
                         Instant.ofEpochMilli(row.getMatchEpochMillis()),
@@ -148,7 +191,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                         row.getBalls())));
         List<PlayerStatsFacts.SpellFact> spells = new ArrayList<>();
         factsRepository
-                .recentSpells(clubId, playerId, season, league, team, competition, restricted, sectionTeams)
+                .recentSpells(clubId, playerId, season, league, team, competition, restricted, sectionTeams, hubOnly, matchId)
                 .forEach(row -> spells.add(new PlayerStatsFacts.SpellFact(
                         row.getMatchId(),
                         Instant.ofEpochMilli(row.getMatchEpochMillis()),
@@ -158,7 +201,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                         row.getBallsPerOver())));
         List<PlayerStatsFacts.PositionFact> positions = new ArrayList<>();
         factsRepository
-                .positions(clubId, playerId, season, league, team, competition, restricted, sectionTeams)
+                .positions(clubId, playerId, season, league, team, competition, restricted, sectionTeams, hubOnly, matchId)
                 .forEach(row -> positions.add(new PlayerStatsFacts.PositionFact(
                         row.getPosition(), n(row.getInnings()), n(row.getRuns()), n(row.getDismissals()))));
         return new PlayerStatsFacts(
@@ -166,9 +209,9 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                 spells,
                 positions,
                 dismissalCounts(factsRepository.batterDismissals(
-                        clubId, playerId, season, league, team, competition, restricted, sectionTeams)),
+                        clubId, playerId, season, league, team, competition, restricted, sectionTeams, hubOnly, matchId)),
                 dismissalCounts(factsRepository.bowlerDismissals(
-                        clubId, playerId, season, league, team, competition, restricted, sectionTeams)));
+                        clubId, playerId, season, league, team, competition, restricted, sectionTeams, hubOnly, matchId)));
     }
 
     private static Map<DismissalType, Long> dismissalCounts(List<DismissalCountView> rows) {

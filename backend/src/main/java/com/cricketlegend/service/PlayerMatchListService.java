@@ -29,4 +29,20 @@ public interface PlayerMatchListService {
             String direction,
             Integer page,
             Integer size);
+
+    /**
+     * Docs/specs/145, the Player Hub: the held player's counted matches in results a manager switched on for the Player
+     * Hub, newest first. The caller was authorised by {@code MyPlayerAccess}, so there is no section narrowing. A
+     * season, league or team of another club is a {@code NotFoundException}; {@code matchId} (nullable) narrows to one
+     * match; paging rules as {@link #list}.
+     */
+    PlayerMatchListDto listForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            UUID matchId,
+            Integer page,
+            Integer size);
 }

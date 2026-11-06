@@ -5,7 +5,9 @@ package com.cricketlegend.repository;
  * PlayerStatsFactsRepository}, so the "counted appearance" rules exist once. Every query that starts with
  * {@link #APPEARANCES} takes the same eight named parameters: {@code clubId}, {@code playerId}, {@code seasonId},
  * {@code leagueId}, {@code teamId}, {@code competition} (each optional, passed as null for "no filter"),
- * {@code sectionRestricted} and {@code sectionTeamIds} (a never-empty list: a sentinel when unrestricted).
+ * {@code sectionRestricted} and {@code sectionTeamIds} (a never-empty list: a sentinel when unrestricted), plus two
+ * Player Hub parameters (docs/specs/145): {@code playerVisibleOnly} (true keeps only results a manager has switched on
+ * for the Player Hub; false is every counted appearance, the manager default) and {@code matchId} (null for any match).
  *
  * <p>Only sums and counts of stored columns happen in SQL (plus the two encoded maxima); a figure is defined by
  * {@code PlayerStatsCalculator} alone.
@@ -51,6 +53,8 @@ final class PlayerStatsSql {
                 and (:sectionRestricted = false
                      or (rp.side = 'HOME' and m.home_team_id in (:sectionTeamIds))
                      or (rp.side = 'AWAY' and m.away_team_id in (:sectionTeamIds)))
+                and (:playerVisibleOnly = false or r.visible_to_players)
+                and (cast(:matchId as uuid) is null or r.match_id = cast(:matchId as uuid))
             )
             """;
 

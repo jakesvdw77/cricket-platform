@@ -36,4 +36,14 @@ public interface PlayerStatsService {
      * empty lists.
      */
     PlayerStatsFilterOptionsDto filterOptions(Authentication authentication, UUID clubId, UUID playerId);
+
+    /**
+     * Docs/specs/145, the Player Hub: the held player's figures over only the results a manager switched on for the
+     * Player Hub, so what a parent sees adds up. The caller was authorised by {@code MyPlayerAccess}; no section
+     * narrowing. A season, league or team of another club is a {@code NotFoundException}.
+     */
+    PlayerStatsDto getForHeldPlayer(UUID clubId, UUID playerId, UUID seasonId, UUID leagueId, UUID teamId);
+
+    /** As {@link #filterOptions}, over only the results shown in the Player Hub, for the held player. */
+    PlayerStatsFilterOptionsDto filterOptionsForHeldPlayer(UUID clubId, UUID playerId);
 }

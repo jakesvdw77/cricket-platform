@@ -250,6 +250,18 @@ public class ScorecardServiceImpl implements ScorecardService {
 
     @Override
     @Transactional(readOnly = true)
+    public ScorecardDto readForPlayers(UUID clubId, UUID matchId) {
+        MatchResult result = resultRepository
+                .findByMatchId(matchId)
+                .filter(r -> clubId.equals(r.getClubId())
+                        && r.getStatus() == ResultStatus.PUBLISHED
+                        && r.isVisibleToPlayers())
+                .orElseThrow(() -> new NotFoundException("No result for match: " + matchId));
+        return build(result, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ScorecardDto load(UUID matchResultId, Match match) {
         MatchResult result = resultRepository
                 .findById(matchResultId)

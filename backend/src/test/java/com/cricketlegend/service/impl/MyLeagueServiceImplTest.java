@@ -465,7 +465,7 @@ class MyLeagueServiceImplTest {
     private MatchResultDto result(Match m, ResultSide winner, int homeRuns, int homeWickets, int awayRuns, int awayWickets) {
         return new MatchResultDto(UUID.randomUUID(), clubId, m.getId(), com.cricketlegend.domain.ResultStatus.PUBLISHED,
                 null, ResultOutcomeType.WON, ResultDecidedBy.REGULAR, winner, ResultMarginType.RUNS, 10, null, null, null,
-                6, null, null, null, null, null, "MANUAL", null, Instant.now(), null, Instant.now(), Instant.now(), null,
+                6, null, null, null, null, null, "MANUAL", null, Instant.now(), null, false, Instant.now(), Instant.now(), null,
                 List.of(new com.cricketlegend.dto.InningsDto(1, com.cricketlegend.domain.InningsKind.REGULAR,
                                 ResultSide.HOME, homeRuns, homeWickets, null, null, null, null),
                         new com.cricketlegend.dto.InningsDto(2, com.cricketlegend.domain.InningsKind.REGULAR,
