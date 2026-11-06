@@ -29,6 +29,8 @@ import com.cricketlegend.service.support.LeagueResultText;
 import com.cricketlegend.service.support.MyPlayerAccess;
 import com.cricketlegend.service.support.MyResultScorecard;
 import com.cricketlegend.service.support.SeasonResolution;
+import com.cricketlegend.service.support.StatsScope;
+import com.cricketlegend.service.support.StatsScopeResolver;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -86,25 +88,33 @@ class MyResultServiceImpl implements MyResultService {
             UUID seasonId,
             UUID teamId,
             UUID leagueId,
+            String competition,
             Integer page,
             Integer size) {
         HeldPlayer held = access.resolve(authentication, playerKey);
         UUID clubId = held.profile().getClubId();
+        StatsScope.Competition comp = StatsScopeResolver.parseCompetition(competition);
         PlayerMatchListDto list = matchListService.listForHeldPlayer(
-                clubId, held.profile().getId(), seasonId, leagueId, teamId, null, page, size);
+                clubId, held.profile().getId(), seasonId, leagueId, teamId, null, comp, page, size);
         return new MyResultListDto(new MyResultScopeDto(seasonId, teamId, leagueId), list.page(), rows(clubId, list.rows()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public MyResultSummaryDto summary(
-            Authentication authentication, String playerKey, UUID seasonId, UUID teamId, UUID leagueId) {
+            Authentication authentication,
+            String playerKey,
+            UUID seasonId,
+            UUID teamId,
+            UUID leagueId,
+            String competition) {
         HeldPlayer held = access.resolve(authentication, playerKey);
         UUID clubId = held.profile().getClubId();
         UUID playerId = held.profile().getId();
-        PlayerStatsDto stats = statsService.getForHeldPlayer(clubId, playerId, seasonId, leagueId, teamId);
+        StatsScope.Competition comp = StatsScopeResolver.parseCompetition(competition);
+        PlayerStatsDto stats = statsService.getForHeldPlayer(clubId, playerId, seasonId, leagueId, teamId, comp);
         PlayerMatchListDto recent =
-                matchListService.listForHeldPlayer(clubId, playerId, seasonId, leagueId, teamId, null, 0, LAST_FIVE);
+                matchListService.listForHeldPlayer(clubId, playerId, seasonId, leagueId, teamId, null, comp, 0, LAST_FIVE);
         return new MyResultSummaryDto(
                 new MyResultScopeDto(seasonId, teamId, leagueId),
                 stats.basis().matchesCounted(),
@@ -156,7 +166,10 @@ class MyResultServiceImpl implements MyResultService {
                 current,
                 seasons.stream().map(s -> new MyResultFiltersDto.Option(s.getId(), s.getLabel())).toList(),
                 teams,
-                leagues);
+                leagues,
+                statsService.comboOptionsForHeldPlayer(clubId, held.profile().getId()).stream()
+                        .map(c -> new MyResultFiltersDto.Combo(c.seasonId(), c.leagueId(), c.teamId()))
+                        .toList());
     }
 
     @Override
@@ -168,7 +181,7 @@ class MyResultServiceImpl implements MyResultService {
         // The held player's own card is the same row the list returns for this match; none means 404 (not counted, not
         // shown in the Player Hub, or another club's match).
         List<PlayerMatchRowDto> own = matchListService
-                .listForHeldPlayer(clubId, playerId, null, null, null, matchId, 0, 1)
+                .listForHeldPlayer(clubId, playerId, null, null, null, matchId, null, 0, 1)
                 .rows();
         if (own.isEmpty()) {
             throw new NotFoundException("Result not found");

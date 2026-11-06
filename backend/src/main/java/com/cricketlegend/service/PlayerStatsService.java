@@ -2,6 +2,8 @@ package com.cricketlegend.service;
 
 import com.cricketlegend.dto.PlayerStatsDto;
 import com.cricketlegend.dto.PlayerStatsFilterOptionsDto;
+import com.cricketlegend.service.support.StatsScope;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -42,8 +44,23 @@ public interface PlayerStatsService {
      * Player Hub, so what a parent sees adds up. The caller was authorised by {@code MyPlayerAccess}; no section
      * narrowing. A season, league or team of another club is a {@code NotFoundException}.
      */
-    PlayerStatsDto getForHeldPlayer(UUID clubId, UUID playerId, UUID seasonId, UUID leagueId, UUID teamId);
+    PlayerStatsDto getForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition);
 
     /** As {@link #filterOptions}, over only the results shown in the Player Hub, for the held player. */
     PlayerStatsFilterOptionsDto filterOptionsForHeldPlayer(UUID clubId, UUID playerId);
+
+    /**
+     * The distinct (season, league, team) combinations of the held player's counted results shown in the Player Hub,
+     * from the same read as {@link #filterOptionsForHeldPlayer}; a null league is a friendly.
+     */
+    List<PlayerStatsCombo> comboOptionsForHeldPlayer(UUID clubId, UUID playerId);
+
+    /** One season, league (null for a friendly) and team combination. */
+    record PlayerStatsCombo(UUID seasonId, UUID leagueId, UUID teamId) {}
 }

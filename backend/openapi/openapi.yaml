@@ -2403,6 +2403,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
       - name: page
         in: query
         required: false
@@ -2458,6 +2464,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -16533,6 +16545,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MyResultFilterOption"
+        combos:
+          type: array
+          description: "The distinct season, league and team combinations of the shown results; leagueId is null for a friendly."
+          items:
+            $ref: "#/components/schemas/MyResultFilterCombo"
+    MyResultFilterCombo:
+      type: object
+      description: "One season, league (null for a friendly) and team that has shown results."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+          nullable: true
+        teamId:
+          type: string
+          format: uuid
     MyResultFilterOption:
       type: object
       description: "An id and display name."

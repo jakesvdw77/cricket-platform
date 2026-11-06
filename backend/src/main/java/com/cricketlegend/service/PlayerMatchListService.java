@@ -1,6 +1,7 @@
 package com.cricketlegend.service;
 
 import com.cricketlegend.dto.PlayerMatchListDto;
+import com.cricketlegend.service.support.StatsScope;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -43,6 +44,7 @@ public interface PlayerMatchListService {
             UUID leagueId,
             UUID teamId,
             UUID matchId,
+            StatsScope.Competition competition,
             Integer page,
             Integer size);
 }

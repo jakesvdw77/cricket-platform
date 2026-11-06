@@ -81,9 +81,15 @@ public class StatsScopeResolver {
      * Docs/specs/145: the scope of a held player on the Player Hub. The caller was authorised by {@code MyPlayerAccess},
      * so there is no section reach to narrow by ({@code sectionTeamIds} is null) and only results shown in the Player
      * Hub count. Season, league and team must still belong to the club (404 otherwise); {@code matchId} (nullable)
-     * narrows the read to one match.
+     * narrows the read to one match; {@code competition} (nullable) is LEAGUE or FRIENDLY.
      */
-    public StatsScope resolveForHeldPlayer(UUID clubId, UUID seasonId, UUID leagueId, UUID teamId, UUID matchId) {
+    public StatsScope resolveForHeldPlayer(
+            UUID clubId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            UUID matchId,
+            StatsScope.Competition competition) {
         if (seasonId != null) {
             seasonRepository
                     .findById(seasonId)
@@ -102,7 +108,7 @@ public class StatsScopeResolver {
                     .filter(team -> clubId.equals(team.getClubId()))
                     .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
         }
-        return new StatsScope(clubId, seasonId, leagueId, teamId, null, null, true, matchId);
+        return new StatsScope(clubId, seasonId, leagueId, teamId, null, competition, true, matchId);
     }
 
     /** The {@code sectionTeamIds} query parameter: never empty (a sentinel matching no team when unrestricted). */

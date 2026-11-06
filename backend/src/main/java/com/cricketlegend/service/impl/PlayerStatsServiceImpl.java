@@ -74,9 +74,15 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
 
     @Override
     @Transactional(readOnly = true)
-    public PlayerStatsDto getForHeldPlayer(UUID clubId, UUID playerId, UUID seasonId, UUID leagueId, UUID teamId) {
+    public PlayerStatsDto getForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition) {
         playerLookup.require(clubId, playerId);
-        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null);
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, competition);
         return read(scope, false, playerId, null);
     }
 
@@ -153,8 +159,25 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
     @Transactional(readOnly = true)
     public PlayerStatsFilterOptionsDto filterOptionsForHeldPlayer(UUID clubId, UUID playerId) {
         playerLookup.require(clubId, playerId);
-        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, null, null, null, null);
-        StatsFilterOptionLists lists = StatsFilterOptionLists.of(factsRepository.filterOptions(
+        StatsFilterOptionLists lists = StatsFilterOptionLists.of(heldFilterRows(clubId, playerId));
+        return new PlayerStatsFilterOptionsDto(
+                lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlayerStatsCombo> comboOptionsForHeldPlayer(UUID clubId, UUID playerId) {
+        playerLookup.require(clubId, playerId);
+        return heldFilterRows(clubId, playerId).stream()
+                .map(r -> new PlayerStatsCombo(r.getSeasonId(), r.getLeagueId(), r.getTeamId()))
+                .distinct()
+                .toList();
+    }
+
+    /** The filter-option rows of the held player over only the results shown in the Player Hub. */
+    private List<PlayerStatsFactsRepository.FilterOptionView> heldFilterRows(UUID clubId, UUID playerId) {
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, null, null, null, null, null);
+        return factsRepository.filterOptions(
                 clubId,
                 playerId,
                 null,
@@ -164,9 +187,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
                 scope.sectionRestricted(),
                 StatsScopeResolver.sectionTeamParameter(scope),
                 scope.playerVisibleOnly(),
-                scope.matchId()));
-        return new PlayerStatsFilterOptionsDto(
-                lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
+                scope.matchId());
     }
 
     private PlayerStatsFacts readFacts(StatsScope scope, UUID playerId) {

@@ -26,12 +26,13 @@ public interface MyResultService {
             UUID seasonId,
             UUID teamId,
             UUID leagueId,
+            String competition,
             Integer page,
             Integer size);
 
     /** The hero figures for the same scope: totals and the newest five rows. */
     MyResultSummaryDto summary(
-            Authentication authentication, String playerKey, UUID seasonId, UUID teamId, UUID leagueId);
+            Authentication authentication, String playerKey, UUID seasonId, UUID teamId, UUID leagueId, String competition);
 
     /** The seasons, teams and leagues the held player has shown results in. */
     MyResultFiltersDto filters(Authentication authentication, String playerKey);

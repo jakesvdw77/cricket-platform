@@ -92,13 +92,14 @@ public class PlayerMatchListServiceImpl implements PlayerMatchListService {
             UUID leagueId,
             UUID teamId,
             UUID matchId,
+            StatsScope.Competition competition,
             Integer pageNumber,
             Integer pageSize) {
         int page = pageNumber == null ? 0 : pageNumber;
         int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
         validatePaging(page, size);
         playerLookup.require(clubId, playerId);
-        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, matchId);
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, matchId, competition);
         PlayerStatsScope echoed = new PlayerStatsScope(
                 StatsScopeResolver.KIND_CLUB_VERIFIED, seasonId, leagueId, teamId, null, null);
         return read(scope, playerId, echoed, false, page, size);

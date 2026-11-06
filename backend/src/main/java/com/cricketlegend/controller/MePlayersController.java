@@ -152,9 +152,10 @@ class MePlayersController {
             @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) UUID teamId,
             @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) String competition,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        return myResultService.list(authentication, playerKey, seasonId, teamId, leagueId, page, size);
+        return myResultService.list(authentication, playerKey, seasonId, teamId, leagueId, competition, page, size);
     }
 
     /** docs/specs/145: the Results hero figures and the newest five rows for the same scope. */
@@ -164,8 +165,9 @@ class MePlayersController {
             @PathVariable String playerKey,
             @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) UUID teamId,
-            @RequestParam(required = false) UUID leagueId) {
-        return myResultService.summary(authentication, playerKey, seasonId, teamId, leagueId);
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) String competition) {
+        return myResultService.summary(authentication, playerKey, seasonId, teamId, leagueId, competition);
     }
 
     /** docs/specs/145: the Season, Team and League values the held player has shown results for. */
