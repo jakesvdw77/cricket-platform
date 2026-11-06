@@ -45,6 +45,7 @@ export function MatchPdfScreen(props: MatchScreenProps) {
           </ShareControlGroup>
           <MatchContentControls {...props} weatherOn={include.weather} onWeatherChange={(next) => setInclude({ weather: next })}>
             {usesLineup(model.content) && <CompactSwitch label="Captain And Keeper Marks" checked={include.marks} onChange={(next) => setInclude({ marks: next })} />}
+            {model.content === 'TEAM_SHEET' && <CompactSwitch label="Blank Lines For Officials" checked={include.blankLines} onChange={(next) => setInclude({ blankLines: next })} />}
             <CompactSwitch label="Venue And Date" checked={include.venueAndDate} onChange={(next) => setInclude({ venueAndDate: next })} />
           </MatchContentControls>
           <ShareLogoControls {...props} />

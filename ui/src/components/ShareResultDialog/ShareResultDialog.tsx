@@ -253,8 +253,16 @@ export function ShareResultDialog({
       onClose={onClose}
       fullScreen={phone}
       fullWidth
-      maxWidth="lg"
+      maxWidth={false}
       aria-labelledby="share-result-title"
+      // The same sizes as Share match and Share league: the format choice is a card capped at 720 px that sizes to its content (never above
+      // 90vh); a format's preview step is near full screen (96vw by 96vh), so the scorecard is shown large. Full screen on a phone.
+      PaperProps={{
+        sx:
+          screen !== null
+            ? { width: { sm: "96vw" }, maxWidth: { sm: "96vw" }, height: { sm: "96vh" }, maxHeight: { sm: "96vh" } }
+            : { width: { sm: "100%" }, maxWidth: { sm: 720 }, height: { sm: "auto" }, maxHeight: { sm: "90vh" } },
+      }}
     >
       <DialogTitle
         id="share-result-title"

@@ -7,6 +7,8 @@ import type { ShareFormat } from './shareChoices'
 export type MatchContent = 'TEAM_SELECTION' | 'COUNTDOWN' | 'FUN_FACTS' | 'FIXTURE' | 'TEAM_SHEET'
 export type MatchSideChoice = 'OURS' | 'OPPOSITION' | 'BOTH'
 export type MatchLayout = 'SIDE_BY_SIDE' | 'SEPARATE'
+// docs/specs/144: how a shared lineup is listed. Batting order is numbered; alphabetical is surname then first name, with no numbers.
+export type MatchLineupOrder = 'BATTING' | 'ALPHABETICAL'
 export type MatchWhatsAppTemplate = 'SHORT' | 'WITH_FACTS'
 export type MatchFacebookTemplate = 'ANNOUNCEMENT' | 'COUNTDOWN' | 'BRIEF'
 
@@ -14,6 +16,7 @@ export type MatchFacebookTemplate = 'ANNOUNCEMENT' | 'COUNTDOWN' | 'BRIEF'
 export const MATCH_CONTENTS: MatchContent[] = ['TEAM_SELECTION', 'COUNTDOWN', 'FUN_FACTS', 'FIXTURE', 'TEAM_SHEET']
 export const MATCH_SIDE_CHOICES: MatchSideChoice[] = ['OURS', 'OPPOSITION', 'BOTH']
 export const MATCH_LAYOUTS: MatchLayout[] = ['SIDE_BY_SIDE', 'SEPARATE']
+export const MATCH_LINEUP_ORDERS: MatchLineupOrder[] = ['BATTING', 'ALPHABETICAL']
 export const MATCH_WHATSAPP_TEMPLATES: MatchWhatsAppTemplate[] = ['SHORT', 'WITH_FACTS']
 export const MATCH_FACEBOOK_TEMPLATES: MatchFacebookTemplate[] = ['ANNOUNCEMENT', 'COUNTDOWN', 'BRIEF']
 
@@ -35,6 +38,7 @@ export const MATCH_CONTENT_DESCRIPTIONS: Record<MatchContent, string> = {
 
 export const MATCH_SIDE_LABELS: Record<MatchSideChoice, string> = { OURS: 'Our Side', OPPOSITION: 'Opposition', BOTH: 'Both' }
 export const MATCH_LAYOUT_LABELS: Record<MatchLayout, string> = { SIDE_BY_SIDE: 'Side By Side', SEPARATE: 'Separate' }
+export const MATCH_ORDER_LABELS: Record<MatchLineupOrder, string> = { BATTING: 'Batting Order', ALPHABETICAL: 'Alphabetical' }
 
 export const MATCH_FORMAT_LABELS: Record<ShareFormat, string> = {
   PDF: 'PDF',

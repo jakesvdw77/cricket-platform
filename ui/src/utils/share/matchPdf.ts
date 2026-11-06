@@ -35,7 +35,7 @@ const SCALE: Record<PdfTemplate, { title: number; body: number; small: number; r
 export interface MatchPdfOptions {
   template: PdfTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean; blankLines?: boolean }
   logos: ResultPdfLogos
   clubWebsite: string | null
   footerLine: boolean
@@ -168,8 +168,10 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
     let rowY = y + 3
     rule(x, rowY, x + width, INK, 0.3)
     rowY += type.row - 1
-    text('#', x, rowY, type.small + 1, MUTED, 'bold')
-    text('Player', x + 9, rowY, type.small + 1, MUTED, 'bold')
+    // docs/specs/144: an alphabetical list has no number column, so the names start at the edge.
+    const nameX = lineup.numbered ? x + 9 : x
+    if (lineup.numbered) text('#', x, rowY, type.small + 1, MUTED, 'bold')
+    text('Player', nameX, rowY, type.small + 1, MUTED, 'bold')
     text('Role', x + width, rowY, type.small + 1, MUTED, 'bold', 'right')
     rowY += 1.6
     rule(x, rowY, x + width, RULE)
@@ -177,8 +179,8 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
     lineup.players.forEach((player) => {
       rowY += type.row
       const roles = options.include.marks ? roleText(player.captain, player.keeper) : ''
-      text(player.order != null ? String((position += 1)) : '', x, rowY, type.body, MUTED)
-      text(fit(player.name, width - 9 - (roles ? 34 : 0), type.body), x + 9, rowY, type.body, INK)
+      if (lineup.numbered) text(player.order != null ? String((position += 1)) : '', x, rowY, type.body, MUTED)
+      text(fit(player.name, width - (nameX - x) - (roles ? 34 : 0), type.body), nameX, rowY, type.body, INK)
       text(roles, x + width, rowY, type.small + 1, MUTED, 'normal', 'right')
       rule(x, rowY + 1.6, x + width, RULE)
     })
@@ -212,13 +214,13 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
       const half = (contentW - gap) / 2
       const ends = sheet.map((lineup, index) => table(lineup, left + index * (half + gap), half))
       y = Math.max(...ends) + 4
-      if (model.content === 'TEAM_SHEET') blankLines()
+      if (model.content === 'TEAM_SHEET' && options.include.blankLines) blankLines()
     } else {
       sheet.forEach((lineup) => {
         header()
         detailLines()
         y = table(lineup, left, contentW) + 4
-        if (model.content === 'TEAM_SHEET') blankLines()
+        if (model.content === 'TEAM_SHEET' && options.include.blankLines) blankLines()
       })
     }
   } else {
