@@ -56,10 +56,10 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile']
+const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile', 'Account']
 
 describe('MyPlayerPage on a desktop', () => {
-  it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
+  it('opens on Availability with the eight-item menu, the player card and the open polls', async () => {
     setup('/account/players/k1', { polls: [poll('a'), poll('b')] })
 
     expect(await screen.findByText('Aman Naidoo', { selector: 'p' })).toBeInTheDocument()
@@ -266,7 +266,7 @@ describe('MyPlayerPage on a desktop', () => {
 describe('MyPlayerPage on a phone (menu first, then a page)', () => {
   beforeEach(() => setPhone(true))
 
-  it('the base URL is the menu screen: the player card and the seven bars, with no page', async () => {
+  it('the base URL is the menu screen: the player card and the eight bars, with no page', async () => {
     setup('/account/players/k1', { polls: [poll('a')] })
 
     await within(await findMenu()).findByRole('button', { name: /^Availability, 1 open/ })

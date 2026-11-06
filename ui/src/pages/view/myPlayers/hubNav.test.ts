@@ -9,11 +9,11 @@ const byId = (id: string) => HUB_NAV.find((item) => item.id === id) as HubNavIte
 const childLabels = (id: string) => byId(id).children?.map((child) => child.label)
 
 describe('HUB_NAV', () => {
-  it('has exactly the seven main items in order, never more than seven', () => {
+  it('has exactly the eight main items in order, Account last, never more than eight', () => {
     const menu = HUB_NAV.filter((item) => item.inMenu !== false)
-    expect(menu.map((item) => item.id)).toEqual(['availability', 'results', 'schedule', 'stats', 'updates', 'club', 'profile'])
-    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile'])
-    expect(menu.length).toBeLessThanOrEqual(7)
+    expect(menu.map((item) => item.id)).toEqual(['availability', 'results', 'schedule', 'stats', 'updates', 'club', 'profile', 'account'])
+    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile', 'Account'])
+    expect(menu.length).toBeLessThanOrEqual(8)
   })
 
   it('has only two levels: no child has children', () => {

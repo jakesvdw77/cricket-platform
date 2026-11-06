@@ -33,7 +33,7 @@ export interface HubNavItem {
   soonCopy?: string
   // Not a page (Decision 11): signOut signs out, findPlayers goes to /welcome.
   action?: 'signOut' | 'findPlayers'
-  // docs/specs/145: false keeps an item out of the menu while its pages still resolve (Account moved to the header avatar).
+  // docs/specs/145: false keeps an item out of the menu while its pages still resolve (unused now: Account is back in the menu as the last row, owner 2026-11-06).
   inMenu?: false
   // The only gate: no function means visible. Combines what linked accounts may see with a club switch.
   visibleWhen?: (ctx: HubNavContext) => boolean
@@ -99,7 +99,6 @@ export const HUB_NAV: HubNavItem[] = [
   {
     id: 'account',
     label: 'Account',
-    inMenu: false,
     children: [
       { id: 'account.invitations', label: 'Invitations', pill: 'invitations' },
       { id: 'account.requests', label: 'Link requests', pill: 'linkRequests' },

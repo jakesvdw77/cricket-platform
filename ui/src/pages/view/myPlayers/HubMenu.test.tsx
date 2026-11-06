@@ -19,9 +19,9 @@ function renderMenu(props: Partial<HubMenuProps> = {}) {
 const rows = () => within(screen.getByRole('navigation', { name: 'Player sections' })).getAllByRole('button')
 
 describe('HubMenu', () => {
-  it('renders exactly one level: the seven main rows, or a parent\'s children, never both', () => {
+  it('renders exactly one level: the eight main rows, or a parent\'s children, never both', () => {
     const first = render(<HubMenu items={HUB_NAV} counts={counts} onSelect={vi.fn()} levelKey="root" />)
-    expect(rows()).toHaveLength(7)
+    expect(rows()).toHaveLength(8)
     expect(screen.queryByRole('button', { name: /Field Directory/ })).not.toBeInTheDocument()
     first.unmount()
 
@@ -53,9 +53,9 @@ describe('HubMenu', () => {
     await user.keyboard('{ArrowDown}{ArrowUp}{ArrowUp}{ArrowUp}')
     expect(all[0]).toHaveFocus()
     await user.keyboard('{End}')
-    expect(all[6]).toHaveFocus()
+    expect(all[7]).toHaveFocus()
     await user.keyboard('{ArrowDown}')
-    expect(all[6]).toHaveFocus()
+    expect(all[7]).toHaveFocus()
     await user.keyboard('{Home}')
     expect(all[0]).toHaveFocus()
   })
