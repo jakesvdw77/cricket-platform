@@ -42,6 +42,12 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   const [peek, setPeek] = useState(false)
   const timers = useRef<number[]>([])
   const closeTimer = useRef<number | undefined>(undefined)
+  // Clicks are ignored while a transition runs (owner, 2026-11-06: a double click flipped the menu twice). Hover and the timer are not locked.
+  const lockedUntil = useRef(0)
+  const locked = () => Date.now() < lockedUntil.current
+  const lockFor = (ms: number) => {
+    lockedUntil.current = Date.now() + ms
+  }
   const collapsed = active && !open
   const armed = active && open && veil === 'idle' && !hover && !focusWithin
 
@@ -77,23 +83,44 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     return () => window.clearTimeout(id)
   }, [armed, routeKey, change])
 
-  const toggle = useCallback(() => change(!open), [change, open])
+  const toggle = useCallback(() => {
+    if (veil !== 'idle' || locked()) return
+    lockFor(VEIL_IN_MS + VEIL_OUT_MS)
+    change(!open)
+  }, [change, open, veil])
 
   // The peek (the panel over the content while collapsed). Opening is immediate (the fade is CSS); closing waits a moment so the pointer can
   // travel between the button and the panel. Choosing a page (a route change) closes it.
   const openPeek = useCallback(() => {
     window.clearTimeout(closeTimer.current)
+    if (!peek) lockFor(PEEK_IN_MS)
     setPeek(true)
-  }, [])
+  }, [peek])
   const closePeek = useCallback((delay = PEEK_CLOSE_DELAY_MS) => {
     window.clearTimeout(closeTimer.current)
     closeTimer.current = window.setTimeout(() => setPeek(false), delay)
   }, [])
   useEffect(() => setPeek(false), [routeKey])
   const pin = useCallback(() => {
+    if (veil !== 'idle' || locked()) return
+    lockFor(VEIL_IN_MS + VEIL_OUT_MS)
     setPeek(false)
     change(true)
-  }, [change])
+  }, [change, veil])
+  // The menu button's click: open when closed, close when open, but never while the panel is still sliding (so a click right after the hover
+  // opened it, or a double click, does nothing).
+  const togglePeek = useCallback(() => {
+    if (locked()) return
+    if (peek) {
+      lockFor(PEEK_OUT_MS)
+      window.clearTimeout(closeTimer.current)
+      setPeek(false)
+    } else {
+      lockFor(PEEK_IN_MS)
+      window.clearTimeout(closeTimer.current)
+      setPeek(true)
+    }
+  }, [peek])
 
   // While the menu is in the layout these only PAUSE the collapse timer. While collapsed they keep the peek panel open under the pointer or focus.
   const columnProps = {
@@ -120,5 +147,5 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     },
   }
 
-  return { active, collapsed, peek: collapsed && peek, openPeek, closePeek, pin, veil, armed, toggle, columnProps }
+  return { active, collapsed, peek: collapsed && peek, openPeek, closePeek, togglePeek, pin, veil, armed, toggle, columnProps }
 }
