@@ -168,8 +168,10 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
     let rowY = y + 3
     rule(x, rowY, x + width, INK, 0.3)
     rowY += type.row - 1
-    text('#', x, rowY, type.small + 1, MUTED, 'bold')
-    text('Player', x + 9, rowY, type.small + 1, MUTED, 'bold')
+    // docs/specs/144: an alphabetical list has no number column, so the names start at the edge.
+    const nameX = lineup.numbered ? x + 9 : x
+    if (lineup.numbered) text('#', x, rowY, type.small + 1, MUTED, 'bold')
+    text('Player', nameX, rowY, type.small + 1, MUTED, 'bold')
     text('Role', x + width, rowY, type.small + 1, MUTED, 'bold', 'right')
     rowY += 1.6
     rule(x, rowY, x + width, RULE)
@@ -177,8 +179,8 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
     lineup.players.forEach((player) => {
       rowY += type.row
       const roles = options.include.marks ? roleText(player.captain, player.keeper) : ''
-      text(player.order != null ? String((position += 1)) : '', x, rowY, type.body, MUTED)
-      text(fit(player.name, width - 9 - (roles ? 34 : 0), type.body), x + 9, rowY, type.body, INK)
+      if (lineup.numbered) text(player.order != null ? String((position += 1)) : '', x, rowY, type.body, MUTED)
+      text(fit(player.name, width - (nameX - x) - (roles ? 34 : 0), type.body), nameX, rowY, type.body, INK)
       text(roles, x + width, rowY, type.small + 1, MUTED, 'normal', 'right')
       rule(x, rowY + 1.6, x + width, RULE)
     })

@@ -7,8 +7,8 @@ import type {
 } from './leagueShareFormats'
 import { LEAGUE_CONTENTS, LEAGUE_FACEBOOK_TEMPLATES, LEAGUE_SHARE_FORMATS, LEAGUE_WHATSAPP_TEMPLATES } from './leagueShareFormats'
 import type { TeamsChoice } from './shareResultData'
-import type { MatchContent, MatchFacebookTemplate, MatchLayout, MatchSideChoice, MatchWhatsAppTemplate } from './matchShareFormats'
-import { MATCH_CONTENTS, MATCH_FACEBOOK_TEMPLATES, MATCH_LAYOUTS, MATCH_SIDE_CHOICES, MATCH_WHATSAPP_TEMPLATES } from './matchShareFormats'
+import type { MatchContent, MatchFacebookTemplate, MatchLayout, MatchLineupOrder, MatchSideChoice, MatchWhatsAppTemplate } from './matchShareFormats'
+import { MATCH_CONTENTS, MATCH_FACEBOOK_TEMPLATES, MATCH_LAYOUTS, MATCH_LINEUP_ORDERS, MATCH_SIDE_CHOICES, MATCH_WHATSAPP_TEMPLATES } from './matchShareFormats'
 
 // docs/specs/114-share-result.md (Browser storage): the manager's remembered choices, one object per club in
 // localStorage under shareChoicesKey. Only the type, the defaults and a pure sanitiser live here; reading and writing go
@@ -54,6 +54,8 @@ export type MatchShareChoices = {
   format: ShareFormat | null
   side: MatchSideChoice
   layout: MatchLayout
+  // docs/specs/144: the last lineup order used (Batting Order or Alphabetical).
+  lineupOrder: MatchLineupOrder
   imageSize: ImageSize
   templates: { pdf: PdfTemplate; image: ImageTemplate; tv: TvTemplate; whatsapp: MatchWhatsAppTemplate; facebook: MatchFacebookTemplate }
   include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; picture: boolean; emoji: boolean; hashtags: boolean }
@@ -119,6 +121,7 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     format: null,
     side: 'OURS',
     layout: 'SIDE_BY_SIDE',
+    lineupOrder: 'BATTING',
     imageSize: 'PORTRAIT',
     templates: { pdf: 'CLUB', image: 'CLUB_GREEN', tv: 'BROADCAST', whatsapp: 'SHORT', facebook: 'ANNOUNCEMENT' },
     include: { marks: true, venueAndDate: true, weather: true, directions: true, picture: true, emoji: true, hashtags: true },
@@ -216,6 +219,7 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
       format: typeof match.format === 'string' && (SHARE_FORMATS as string[]).includes(match.format) ? (match.format as ShareFormat) : null,
       side: pickEnum(match.side, MATCH_SIDE_CHOICES, d.match.side),
       layout: pickEnum(match.layout, MATCH_LAYOUTS, d.match.layout),
+      lineupOrder: pickEnum(match.lineupOrder, MATCH_LINEUP_ORDERS, d.match.lineupOrder),
       imageSize: pickEnum(match.imageSize, IMAGE_SIZES, d.match.imageSize),
       templates: {
         pdf: pickEnum(matchTemplates.pdf, PDF_TEMPLATES, d.match.templates.pdf),

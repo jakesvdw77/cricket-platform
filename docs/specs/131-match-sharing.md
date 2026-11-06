@@ -133,6 +133,8 @@ Forecast only, from the free Open-Meteo API, in the browser (no key), the legacy
 | WhatsApp | Short, With facts | Side | Emoji, Weather, Attach image where shareable |
 | Facebook | Announcement, Countdown, Brief | Side | Hashtags, Mention the sponsor, Weather, Attach image |
 
+**Order (docs/specs/144):** every strip for a lineup content (Team Selection poster and Team Sheet) also has an **Order** toggle, Batting Order or Alphabetical (surname then first name, no position numbers, the 12th man last), remembered in the match choices (`lineupOrder`).
+
 Privacy, junior lock (`isJuniorMatch`, covering the opposition's names), logos and footer line, delivery by capability, edit-text confirm, Send in WhatsApp and length guard follow `114` unchanged.
 
 ### Phone behaviour and accessibility
