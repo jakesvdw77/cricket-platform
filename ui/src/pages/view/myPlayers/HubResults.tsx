@@ -56,7 +56,7 @@ function Hero({ summary, playerName, seasonName, scope, onSeeMatches }: { summar
         <Box component="b" sx={{ color: HUB.gold, fontWeight: 600 }}>runs</Box> for {playerName}, and the team has won{' '}
         <Box component="b" sx={{ color: HUB.gold, fontWeight: 600 }}>{summary.won} of {summary.matches}</Box>.
       </Typography>
-      {summary.matches < 4 && <Typography sx={{ color: HUB.muted, fontSize: 14, mt: 0.75 }}>Your story is just starting. More cards appear after each match.</Typography>}
+      {summary.matches < 4 && <Typography sx={{ color: HUB.muted, fontSize: 14, mt: 0.75 }}>{playerName}&apos;s story is just starting. More cards appear after each match.</Typography>}
       <Box sx={{ display: 'flex', gap: 1.25, mt: 2 }}>
         {tiles.map(([value, label]) => (
           <Box key={label} data-testid={`hero-tile-${label.toLowerCase()}`} sx={{ flex: 1, border: `1px solid ${HUB.lineSoft}`, borderRadius: '14px', p: '10px 10px 8px', bgcolor: blackAlpha(0.18) }}>
