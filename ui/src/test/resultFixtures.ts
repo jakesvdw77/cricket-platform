@@ -71,6 +71,9 @@ export function makeResult(overrides: Partial<MatchResult> = {}): MatchResult {
     updatedBy: null,
     innings: [innings(1, 'HOME', 200), innings(2, 'AWAY', 176, 9)],
     hasScorecard: false,
+    visibleToPlayers: false,
+    visibleToPlayersAt: null,
+    visibleToPlayersBy: null,
     ...overrides,
   }
 }

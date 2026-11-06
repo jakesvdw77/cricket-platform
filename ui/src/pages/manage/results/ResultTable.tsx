@@ -135,12 +135,15 @@ function ResultRow({ item, teamsById, actions }: { item: ResultListItem; teamsBy
           {field ?? NOT_ON_FILE}
         </Typography>
       </Box>
-      <Box role="cell">
+      <Box role="cell" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.25 }}>
         <Chip
           size="small"
           label={draft ? 'Draft' : 'Published'}
           sx={{ ...badgeSx(draft ? 'warning' : 'active'), height: 22, fontSize: '0.75rem' }}
         />
+        {result.visibleToPlayers && (
+          <Chip size="small" label="In Player Hub" data-testid="result-hub-chip" sx={{ ...badgeSx('positive'), height: 22, fontSize: '0.75rem' }} />
+        )}
       </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
         {actions}

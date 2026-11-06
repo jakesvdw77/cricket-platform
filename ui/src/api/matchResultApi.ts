@@ -321,6 +321,10 @@ export interface MatchResult {
   hasScorecard: boolean
   // True when one of those players is the opposition's.
   hasOppositionScorecard?: boolean
+  // docs/specs/145: a published result is shown to parents and players in the Player Hub only when a manager has shown it.
+  visibleToPlayers: boolean
+  visibleToPlayersAt: string | null
+  visibleToPlayersBy: string | null
 }
 
 // One row of the Results list: the match as the Matches list shows it, with its result (draft or published).
@@ -499,6 +503,17 @@ export async function publishResult(
 
 export async function unpublishResult(clubId: string, matchId: string): Promise<MatchResult> {
   const { data } = await api.post<MatchResult>(`${matchResultPath(clubId, matchId)}/unpublish`)
+  return data
+}
+
+// docs/specs/145: show / hide a PUBLISHED result in the Player Hub (409 on a draft).
+export async function showResultToPlayers(clubId: string, matchId: string): Promise<MatchResult> {
+  const { data } = await api.post<MatchResult>(`${matchResultPath(clubId, matchId)}/player-visibility`)
+  return data
+}
+
+export async function hideResultFromPlayers(clubId: string, matchId: string): Promise<MatchResult> {
+  const { data } = await api.delete<MatchResult>(`${matchResultPath(clubId, matchId)}/player-visibility`)
   return data
 }
 
