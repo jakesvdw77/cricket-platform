@@ -114,12 +114,12 @@ The Hub keeps its own console look (dark, `HUB` tokens, footer Back); the page a
 6. Stats > My stats and Team stats remain Soon; nothing here blocks them.
 
 ## Open questions (default if unanswered)
-1. **Where it lives:** Schedule > Results only (the existing slot)? Default: **yes**; the same list's first rows also feed a "Recent" row on Matches later.
-2. **Tiles:** Played, Won, Runs, Wickets? Default: **yes** (Played and Won are the team, Runs and Wickets the player). Alternative: Played, Won, Lost, Win percentage for the team only, with the player's figures only in the rows.
-3. **Resolved (Decision 1):** the full scorecard with names. **Still open:** juniors as initials (see Privacy).
+1. **Resolved (Decision 5):** Results is a main Hub item, second after Availability; Schedule > Results is removed.
+2. **Tiles:** as drawn in the approved hero (matches, wickets, catches under the big runs figure, plus the last-five streak with the player's figures). Default: **as drawn**.
+3. **Resolved (Decisions 1 and 7):** the full scorecard with names, juniors in full.
 3b. **Resolved (Decision 8):** off for every result, no backfill, no club setting.
-4. **A player in two teams:** one list with a team chip on each row? Default: **yes** (not a team filter).
-5. **Resolved (Decision 4):** the scope chip with Season, Team and League.
+4. **Resolved (Decision 5):** Team tabs for a player with more than one team; each card carries the team in its kicker line.
+5. **Resolved (Decisions 4 and 5):** Season dropdown, Team tabs for multi-team players, League filter sheet.
 6. **Form strip length:** last 5? Default: **5**.
 7. **Team results for matches the player did not play** (selected but no card, or unselected)? Default: **not listed**: Results is "matches played" (the counted appearances of `115`); the team's other results stay on Matches or the league page.
 8. **Stats entry points:** the four tiles link nowhere until the Stats section exists (plain static cards now)? Default: **yes**, plain cards; the drill link is added with the Stats spec.
