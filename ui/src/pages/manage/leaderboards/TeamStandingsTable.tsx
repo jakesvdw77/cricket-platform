@@ -88,7 +88,6 @@ function TeamRow({ row, columns, sortCode, to }: { row: TeamStatsTableRow; colum
 // team's statistics page with Season, League and Competition. Every figure and rank comes from the server.
 export function TeamStandingsTable({ query, sortCode, onSortChange, filters, competition, hasFilters, onClearFilters, minimum, onMinimumChange, appliedMinimum, toolbar }: TeamStandingsTableProps) {
   const first = query.firstPage
-  const last = query.lastPage
   const rows = query.rows
   const columns = first?.columns ?? []
   const direction = first?.sort.direction ?? 'HIGHEST'
@@ -167,7 +166,7 @@ export function TeamStandingsTable({ query, sortCode, onSortChange, filters, com
   }
 
   const footerLines: string[] = []
-  if (first && rows.length > 0 && last) footerLines.push(`Showing ${rows.length} of ${last.page.totalElements} teams.`)
+  // No "Showing N of M" line (page-anatomy section 3: no count text; the figure cards carry totals).
   if (first && rows.length > 0) footerLines.push(...teamBasisLines(first.basis))
   if (appliedMinimum !== null && showMinimum && belowMinimum > 0 && rows.length > 0) {
     footerLines.push(`${belowMinimum} team${belowMinimum === 1 ? ' is' : 's are'} below the minimum of ${appliedMinimum} ${appliedMinimum === 1 ? 'match' : 'matches'}.`)

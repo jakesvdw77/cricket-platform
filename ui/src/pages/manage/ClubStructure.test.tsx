@@ -120,8 +120,7 @@ describe('ClubStructure', () => {
 
     renderPage('test-club-id', '/manage/sections?sectionId=u13')
 
-    expect(await screen.findByRole('button', { name: 'Collapse section details' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Expand section details' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Close section details' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rename U13' })).toBeInTheDocument()
   })
 
@@ -132,7 +131,7 @@ describe('ClubStructure', () => {
 
     expect(await screen.findByRole('button', { name: 'Juniors' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Rename / })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Collapse section details' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close section details' })).not.toBeInTheDocument()
   })
 
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {
@@ -253,7 +252,7 @@ describe('ClubStructure', () => {
     )
   })
 
-  it('the "Clear" action deselects the current section, and the panel auto-collapses since nothing is selected anymore', async () => {
+  it('closing the details deselects the section and removes the details column', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([makeSection({ id: 'juniors', name: 'Juniors' })])
     listSectionContacts.mockResolvedValueOnce([])
@@ -263,17 +262,13 @@ describe('ClubStructure', () => {
     await user.click(await screen.findByText('Juniors'))
     await screen.findByLabelText('Name')
 
-    await user.click(screen.getByRole('button', { name: 'Clear' }))
+    await user.click(screen.getByRole('button', { name: 'Close section details' }))
 
-    // The panel collapses automatically once nothing is selected (docs/specs/025-club-structure.md's
-    // Rollout Notes) — it does NOT sit open showing an empty "Select a section" placeholder.
-    expect(screen.queryByText('Select a section')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 
-  it('collapsing the detail panel hides its body but keeps the header, and selecting a node reopens it', async () => {
+  it('the tree opens full screen with zoom controls, and selecting another node swaps the details without a collapse step', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([
       makeSection({ id: 'juniors', name: 'Juniors' }),
@@ -283,25 +278,15 @@ describe('ClubStructure', () => {
 
     renderPage('test-club-id')
 
+    expect(await screen.findByRole('dialog', { name: 'Club Structure' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fit to screen' })).toBeInTheDocument()
+
     await user.click(await screen.findByText('Juniors'))
-    await screen.findByLabelText('Name')
-
-    await user.click(screen.getByRole('button', { name: 'Collapse section details' }))
-
-    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
-    expect(screen.getByText('Section details')).toBeInTheDocument()
-    // Two markups exist simultaneously — a mobile header toggle and a desktop-only collapsed
-    // rail — swapped via a responsive `display: { xs, md }` value, which compiles to a real CSS
-    // media query; JSDOM parses but doesn't evaluate those, so both are present in the test DOM
-    // at once even though a real browser only ever shows one. getAllByRole, not getByRole.
-    expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0)
-
-    // Selecting a different node — even while collapsed — reopens the panel automatically,
-    // rather than leaving the admin to notice and expand it manually.
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Juniors'))
+    // The tree stays usable next to the details (no modal drawer blocking it).
     await user.click(screen.getByText('Vets'))
-
     await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Vets'))
-    expect(screen.queryByRole('button', { name: 'Expand section details' })).not.toBeInTheDocument()
   })
 
   it('removing a leaf node calls deactivateSection with the right club and section id', async () => {
@@ -341,11 +326,8 @@ describe('ClubStructure', () => {
     await user.click(screen.getByRole('button', { name: 'Remove Juniors' }))
 
     await waitFor(() => expect(deactivateSection).toHaveBeenCalledWith('test-club-id', 'juniors'))
-    // The panel auto-collapses once the selection clears — it doesn't sit open on an empty
-    // "Select a section" placeholder pointing at a row that no longer exists.
-    await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0),
-    )
+    // The details column goes away once the selection clears, rather than pointing at a row that no longer exists.
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
     expect(screen.queryByText('Select a section')).not.toBeInTheDocument()
   })
 

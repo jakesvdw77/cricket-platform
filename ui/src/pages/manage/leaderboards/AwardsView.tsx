@@ -94,7 +94,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
           return (
             <InfoCard flat key={category.board.code} fieldSize="large" title={category.board.label} icon={<EmojiEventsOutlinedIcon />} testId={`award-${category.board.code}`}>
               <Box>
-                <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, overflowWrap: 'anywhere' }}>
+                <Typography sx={{ fontSize: '1.0625rem', fontWeight: 700, overflowWrap: 'anywhere' }}>
                   {category.leaders.map((leader, index) => (
                     <span key={leader.playerId}>
                       {index > 0 && ', '}
@@ -102,7 +102,7 @@ export function AwardsView({ clubId, filters, hasFilters, onClearFilters, catalo
                     </span>
                   ))}
                 </Typography>
-                <Typography sx={{ fontSize: '0.9375rem', color: 'text.secondary', mt: 0.25 }}>
+                <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary', mt: 0.25 }}>
                   {joint ? `Joint winners · ${figureText(category.board.code, first.figure)}` : awardLine(category.board, first)}
                 </Typography>
               </Box>

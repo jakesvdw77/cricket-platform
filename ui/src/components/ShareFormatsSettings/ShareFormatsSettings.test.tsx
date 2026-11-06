@@ -4,22 +4,24 @@ import { AxiosError } from 'axios'
 import { describe, expect, it, vi } from 'vitest'
 import { ShareFormatsSettings } from './ShareFormatsSettings'
 
-// docs/specs/122-league-sharing.md (Share formats): one switch per format and content type; the last format on cannot be
+// docs/specs/122-league-sharing.md (Share formats): one toggle chip per format and content type; the last format on cannot be
 // switched off; a server refusal is shown.
 const switchOf = (group: string, label: string) => {
   const fieldset = screen.getByRole('group', { name: group })
-  const input = Array.from(fieldset.querySelectorAll('input')).find((el) => el.closest('label')?.textContent === label || el.getAttribute('aria-label') === label)
-  if (!input) throw new Error(`no ${label} in ${group}`)
-  return input as HTMLInputElement
+  const chip = Array.from(fieldset.querySelectorAll('button')).find((el) => el.textContent === label)
+  if (!chip) throw new Error(`no ${label} in ${group}`)
+  return chip as HTMLButtonElement
 }
+// A format is a toggle chip: on means aria-pressed.
+const isOn = (chip: HTMLElement) => chip.getAttribute('aria-pressed') === 'true'
 
 describe('ShareFormatsSettings', () => {
   it('shows every format on when nothing is disabled, grouped by content type', () => {
     render(<ShareFormatsSettings disabledFormats={{}} onChange={vi.fn()} />)
 
-    expect(screen.getAllByRole('checkbox').length + screen.queryAllByRole('switch').length).toBe(10)
-    expect(switchOf('Leagues', 'Calendar').checked).toBe(true)
-    expect(switchOf('Results', 'TV summary').checked).toBe(true)
+    expect(screen.getAllByRole('button').length).toBe(10)
+    expect(isOn(switchOf('Leagues', 'Calendar'))).toBe(true)
+    expect(isOn(switchOf('Results', 'TV summary'))).toBe(true)
   })
 
   it('switching a format off passes the whole new map, keeping the other content type', async () => {
@@ -34,7 +36,7 @@ describe('ShareFormatsSettings', () => {
     const onChange = vi.fn()
     render(<ShareFormatsSettings disabledFormats={{ LEAGUE: ['POSTER', 'CALENDAR'] }} onChange={onChange} />)
 
-    expect(switchOf('Leagues', 'Poster').checked).toBe(false)
+    expect(isOn(switchOf('Leagues', 'Poster'))).toBe(false)
     await userEvent.click(switchOf('Leagues', 'Poster'))
     expect(onChange).toHaveBeenCalledWith({ LEAGUE: ['CALENDAR'] })
   })
@@ -42,7 +44,7 @@ describe('ShareFormatsSettings', () => {
   it('will not switch off the last format on for a content type, and says why', () => {
     render(<ShareFormatsSettings disabledFormats={{ LEAGUE: ['PDF', 'POSTER', 'CALENDAR', 'FACEBOOK'] }} onChange={vi.fn()} />)
 
-    expect(switchOf('Leagues', 'WhatsApp').checked).toBe(true)
+    expect(isOn(switchOf('Leagues', 'WhatsApp'))).toBe(true)
     expect(switchOf('Leagues', 'WhatsApp').disabled).toBe(true)
     expect(screen.getByText(/Leagues need at least one format/)).toBeInTheDocument()
     // The other content type is unaffected.

@@ -76,9 +76,9 @@ describe('ClubOverviewPage share formats card', () => {
     const card = await screen.findByTestId('share-formats-card')
     await waitFor(() => expect(getShareSettings).toHaveBeenCalledWith('c1'))
     const poster = await waitFor(() => {
-      const input = Array.from(card.querySelectorAll('input')).find((el) => el.closest('label')?.textContent === 'Poster')
+      const input = Array.from(card.querySelectorAll('button')).find((el) => el.textContent === 'Poster')
       expect(input).toBeDefined()
-      return input as HTMLInputElement
+      return input as HTMLButtonElement
     })
     await userEvent.click(poster)
 
@@ -92,9 +92,9 @@ describe('ClubOverviewPage share formats card', () => {
 
     const card = await screen.findByTestId('share-formats-card')
     const calendar = await waitFor(() => {
-      const input = Array.from(card.querySelectorAll('input')).find((el) => el.closest('label')?.textContent === 'Calendar')
+      const input = Array.from(card.querySelectorAll('button')).find((el) => el.textContent === 'Calendar')
       expect(input).toBeDefined()
-      return input as HTMLInputElement
+      return input as HTMLButtonElement
     })
     await userEvent.click(calendar)
 

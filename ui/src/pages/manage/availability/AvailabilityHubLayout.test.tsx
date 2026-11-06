@@ -314,7 +314,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     for (const label of ['Open Polls', 'Players Responded', 'Players Still To Answer', 'Close In 48 Hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
-    expect(screen.getByTestId('page-counter-open-polls-marker')).toHaveTextContent('›')
+    expect(screen.queryByTestId('page-counter-open-polls-marker')).not.toBeInTheDocument()
     expect(screen.getByTestId('page-counter-players-responded')).not.toHaveAttribute('data-active')
   })
 
@@ -487,15 +487,15 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
   describe('clickable counters (084)', () => {
     const withClosing = { ...summary, closingSoon: 2 }
 
-    it('both poll counters are drill-downs with a chevron and no filter tag or pressed state', async () => {
+    it('both poll counters are drill-downs with no chevron and no filter tag or pressed state', async () => {
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability')
       const open = await screen.findByRole('button', { name: /Open Polls/ })
       const closing = screen.getByRole('button', { name: /Close In 48 Hours/ })
 
       for (const button of [open, closing]) expect(button).not.toHaveAttribute('aria-pressed')
-      expect(screen.getByTestId('page-counter-open-polls-marker')).toHaveTextContent('›')
-      expect(screen.getByTestId('page-counter-closing-soon-marker')).toHaveTextContent('›')
+      expect(screen.queryByTestId('page-counter-open-polls-marker')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('page-counter-closing-soon-marker')).not.toBeInTheDocument()
       expect(screen.queryByText('Tap to filter')).not.toBeInTheDocument()
       expect(screen.queryByText('Show all')).not.toBeInTheDocument()
     })
@@ -605,7 +605,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       renderAt('/manage/availability')
       const responded = await screen.findByRole('button', { name: /Players Responded/ })
       expect(responded).not.toHaveAttribute('aria-pressed')
-      expect(screen.getByTestId('page-counter-players-responded-marker')).toHaveTextContent('›')
+      expect(screen.queryByTestId('page-counter-players-responded-marker')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: /Players Still To Answer/ }))
       expect(await screen.findByRole('tab', { name: /Still To Answer/ })).toHaveAttribute('aria-selected', 'true')

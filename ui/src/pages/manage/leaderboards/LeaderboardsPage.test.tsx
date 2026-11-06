@@ -304,7 +304,7 @@ describe('LeaderboardsPage', () => {
       renderPage()
       const rows = await screen.findAllByTestId('standings-row', {}, wait)
       expect(within(rows[0]).getByText('Small sample')).toBeInTheDocument()
-      expect(within(rows[0]).getByText('Villagers 1')).toBeInTheDocument()
+      expect(within(rows[0]).queryByText('Villagers 1')).not.toBeInTheDocument()
       expect(within(rows[0]).queryByText('Inactive')).not.toBeInTheDocument()
       expect(within(rows[1]).getByText('Inactive')).toBeInTheDocument()
       expect(within(rows[1]).queryByText('Small sample')).not.toBeInTheDocument()
@@ -355,7 +355,6 @@ describe('LeaderboardsPage', () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
       expect(screen.getByTestId('board-footer')).toHaveTextContent('Based on 12 published results. Recorded in 9 of 14 innings.')
-      expect(screen.getByTestId('board-footer')).toHaveTextContent('Showing 2 of 2.')
     })
 
     it('shows overs in cricket notation on the Bowling table', async () => {
@@ -384,13 +383,11 @@ describe('LeaderboardsPage', () => {
       }
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
-      expect(screen.getByTestId('board-footer')).toHaveTextContent('Showing 2 of 3.')
       await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(screen.getAllByTestId('standings-row')).toHaveLength(3))
       expect(tableCalls().map((c) => c.params.page)).toEqual([0, 1])
       expect(tableCalls().every((c) => c.params.size === 10)).toBe(true)
       expect(rankCells()).toEqual(['1', '2', '3'])
-      expect(screen.getByTestId('board-footer')).toHaveTextContent('Showing 3 of 3.')
       expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined'
 import { CardTimeStrip } from '../CardTimeStrip'
@@ -9,6 +10,8 @@ export interface CardForecastStripProps {
   weather: MatchWeather
   matchDate: string
   testId?: string
+  // The venue line (owner, 2026-11-06: the venue is part of the weather information on a match card), shown inside the strip.
+  venue?: ReactNode
 }
 
 // Why there is no forecast, in words (never an empty space): the match is past, too far ahead (the provider only forecasts today and the next
@@ -22,9 +25,9 @@ export function forecastUnavailableReason(matchDate: string, now: Date = new Dat
 
 // docs/specs/137 (owner, 2026-11-05): the forecast strip card of a match card or page. It always shows: the forecast when there is one, a
 // quiet "Loading" while it is fetched, and otherwise "Not available" with the reason, instead of leaving an empty space.
-export function CardForecastStrip({ weather, matchDate, testId = 'card-forecast' }: CardForecastStripProps) {
+export function CardForecastStrip({ weather, matchDate, testId = 'card-forecast', venue }: CardForecastStripProps) {
   if (weather.summary) {
-    return <CardTimeStrip testId={testId} icon={<WeatherIcon kind={weather.summary.icon} />} label="Forecast" value={weather.summary.text} />
+    return <CardTimeStrip testId={testId} icon={<WeatherIcon kind={weather.summary.icon} />} label="Forecast" value={weather.summary.text} below={venue} />
   }
   const note = weather.status === 'loading' ? 'Loading' : `Not available: ${forecastUnavailableReason(matchDate)}`
   return (
@@ -32,6 +35,7 @@ export function CardForecastStrip({ weather, matchDate, testId = 'card-forecast'
       testId={testId}
       icon={<CloudOffOutlinedIcon fontSize="small" />}
       label="Forecast"
+      below={venue}
       value={
         <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.875rem' }}>
           {note}

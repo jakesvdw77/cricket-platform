@@ -1,5 +1,5 @@
-import { Stack, Typography } from '@mui/material'
-import { CompactSwitch } from '../CompactSwitch'
+import { Box, Stack, Typography } from '@mui/material'
+import { ToolbarToggleChip } from '../ToolbarCard'
 import { FORMAT_CODES, offeredFormats } from '../../utils/share/enabledFormats'
 import type { ShareContentType } from '../../utils/share/enabledFormats'
 import { errorDetail } from '../../utils/errorDetail'
@@ -44,6 +44,7 @@ export function ShareFormatsSettings({ disabledFormats, onChange, disabled = fal
       <Typography variant="body2" color="text.secondary">
         Choose which formats managers can use when sharing. Administrators only.
       </Typography>
+      <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
       {GROUPS.map(({ type, title }) => {
         const on = offeredFormats(type, disabledFormats)
         return (
@@ -51,17 +52,17 @@ export function ShareFormatsSettings({ disabledFormats, onChange, disabled = fal
             <Typography component="legend" variant="subtitle2" sx={{ p: 0, mb: 0.5 }}>
               {title}
             </Typography>
-            <Stack direction="row" flexWrap="wrap" columnGap={2.5} useFlexGap>
+            <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
               {FORMAT_CODES[type].map((code) => {
                 const isOn = on.includes(code)
                 const last = isOn && on.length === 1
                 return (
-                  <CompactSwitch
+                  // docs/standards/page-anatomy.md: an on/off choice is a toggle chip, not a loose switch.
+                  <ToolbarToggleChip
                     key={code}
                     label={LABELS[code] ?? code}
-                    checked={isOn}
+                    pressed={isOn}
                     disabled={disabled || last}
-                    describedBy={last ? `share-formats-${type}-last` : undefined}
                     onChange={(next) => toggle(type, code, next)}
                   />
                 )
@@ -75,6 +76,7 @@ export function ShareFormatsSettings({ disabledFormats, onChange, disabled = fal
           </Stack>
         )
       })}
+      </Box>
       {error !== undefined && error !== null && (
         <Typography variant="caption" color="error" role="alert">
           {errorDetail(error, 'Could not save the share formats.')}

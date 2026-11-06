@@ -2,7 +2,7 @@ import { Box, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { useLocation } from 'react-router-dom'
-import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
+import { BrandIcon } from '../../../components/BrandIcon'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { CardProgressBar } from '../../../components/CardProgressBar'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
@@ -66,7 +66,7 @@ export function SeasonCard({ season, summary, today = localToday() }: SeasonCard
       title={season.label}
       titleWrap
       badgesBelow
-      avatar={{ fallback: <CalendarMonthOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+      avatar={{ element: <BrandIcon name="nav/season-cricket" size={48} padding={4} /> }}
       badges={[seasonBadge(season, today)]}
       headerActions={<SeasonRowMenu season={season} testId="season-card-actions" />}
       viewTo={withReturnTo(base, currentOrigin(location), 'Seasons')}

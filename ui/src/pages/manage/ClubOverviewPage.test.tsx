@@ -266,17 +266,25 @@ describe('ClubOverviewPage', () => {
   })
 
   describe('header', () => {
-    it('renders the club name, type chip, and an Edit profile link to club-profile/edit', async () => {
+    it('renders the club name, the type badge and ONE filled Manage Club menu whose first item edits the profile', async () => {
+      const user = userEvent.setup()
       getManagedClubProfile.mockResolvedValueOnce(makeProfile({ type: 'ACADEMY' }))
       mockAllLists()
 
       renderPage('test-club-id')
 
       expect(await screen.findByRole('heading', { name: 'Riverside Cricket Club' })).toBeInTheDocument()
-      expect(screen.getByText('Academy')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /edit profile/i })).toHaveAttribute('href', '/manage/club-profile/edit')
-      // docs/specs/091 (E): Edit is always the filled primary button.
-      expect(screen.getByRole('link', { name: /edit profile/i }).className).toContain('MuiButton-contained')
+      expect(screen.getByTestId('club-type-badge')).toHaveTextContent('Academy')
+      // docs/standards/page-anatomy.md: the old filled "Edit profile" button is gone; Manage Club is the one filled button.
+      expect(screen.queryByRole('link', { name: /edit profile/i })).not.toBeInTheDocument()
+      const manage = screen.getByRole('button', { name: /Manage Club/ })
+      expect(manage.className).toContain('MuiButton-contained')
+      await user.click(manage)
+      for (const item of ['Edit Club Profile', 'Manage Contacts', 'Manage Sponsors', 'Manage Structure']) {
+        expect((await screen.findAllByText(item)).length).toBeGreaterThan(0)
+      }
+      await user.click(screen.getByText('Edit Club Profile'))
+      expect(await screen.findByText('Edit Club Profile Page')).toBeInTheDocument()
     })
 
     it('falls back to initials in the avatar when logoUrl is unset', async () => {
@@ -372,7 +380,7 @@ describe('ClubOverviewPage', () => {
       expect(await screen.findByText('No contacts yet.')).toBeInTheDocument()
     })
 
-    it('renders one icon button per contact, and the Manage button targets /manage/club-contacts', async () => {
+    it('renders one icon button per contact, and Manage Contacts opens /manage/club-contacts', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ contacts: [makeContact()] })
 
@@ -381,8 +389,8 @@ describe('ClubOverviewPage', () => {
       await screen.findByRole('heading', { name: 'Riverside Cricket Club' })
       expect(screen.getByRole('button', { name: 'Jane Smith — Club Secretary' })).toBeInTheDocument()
 
-      const manageLinks = screen.getAllByRole('link', { name: 'Manage' })
-      expect(manageLinks.some((link) => link.getAttribute('href') === '/manage/club-contacts')).toBe(true)
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Contacts' }))
+      expect(await screen.findByText('Club Contacts Page')).toBeInTheDocument()
     })
 
     it('clicking a contact icon opens RecordQuickViewDialog with that contact\'s Email/Phone fields and its own edit link', async () => {
@@ -414,7 +422,7 @@ describe('ClubOverviewPage', () => {
       expect(await screen.findByText('No sponsors yet.')).toBeInTheDocument()
     })
 
-    it('renders one icon button per sponsor, and the Manage button targets /manage/sponsors', async () => {
+    it('renders one icon button per sponsor, and Manage Sponsors opens /manage/sponsors', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sponsors: [makeSponsor()] })
 
@@ -422,8 +430,8 @@ describe('ClubOverviewPage', () => {
 
       await screen.findByRole('button', { name: 'Acme Cricket Gear — Sponsor' })
 
-      const manageLinks = screen.getAllByRole('link', { name: 'Manage' })
-      expect(manageLinks.some((link) => link.getAttribute('href') === '/manage/sponsors')).toBe(true)
+      await userEvent.click(screen.getByRole('button', { name: 'Manage Sponsors' }))
+      expect(await screen.findByText('Sponsors Page')).toBeInTheDocument()
     })
 
     it('clicking a sponsor icon opens RecordQuickViewDialog with Website/Email fields and its own edit link', async () => {
@@ -467,12 +475,30 @@ describe('ClubOverviewPage', () => {
 
       renderPage('test-club-id')
 
-      await screen.findByTestId('club-figure-teams-value')
-      await waitFor(() => expect(screen.getByTestId('club-figure-teams-value')).toHaveTextContent('7'))
-      await waitFor(() => expect(screen.getByTestId('club-figure-players-value')).toHaveTextContent('42'))
-      expect(screen.getByTestId('club-figure-leagues-value')).toHaveTextContent('2')
+      await waitFor(() => expect(screen.getByTestId('club-figure-teams')).toHaveTextContent('7'))
+      await waitFor(() => expect(screen.getByTestId('club-figure-players')).toHaveTextContent('42'))
+      expect(screen.getByTestId('club-figure-leagues')).toHaveTextContent('2')
       expect(screen.getByTestId('club-figure-teams')).toHaveTextContent('Teams')
       expect(screen.getByTestId('club-figure-leagues')).toHaveTextContent('Leagues')
+    })
+
+    it('shows Divisions: the active lowest-level sections, those with no active section beneath them', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({
+        sections: [
+          makeSection({ id: 'open', name: 'Open Sides' }),
+          makeSection({ id: 'men', name: 'Men', parentSectionId: 'open' }),
+          makeSection({ id: 'women', name: 'Women', parentSectionId: 'open' }),
+          makeSection({ id: 'old', name: 'Old', parentSectionId: 'open', active: false }),
+          makeSection({ id: 'vets', name: 'Vets' }),
+        ],
+      })
+
+      renderPage('test-club-id')
+
+      // Men, Women and Vets are leaves; Open Sides is a parent; the inactive section is ignored.
+      await waitFor(() => expect(screen.getByTestId('club-figure-divisions')).toHaveTextContent('3'))
+      expect(screen.getByTestId('club-figure-divisions')).toHaveTextContent('Divisions')
     })
 
     it('shows muted dashes while the summary loads', async () => {
@@ -482,8 +508,8 @@ describe('ClubOverviewPage', () => {
 
       renderPage('test-club-id')
 
-      expect(await screen.findByTestId('club-figure-teams-value')).toHaveTextContent('\u2013')
-      expect(screen.getByTestId('club-figure-players-value')).toHaveTextContent('\u2013')
+      await waitFor(() => expect(screen.getByTestId('club-figure-teams')).toHaveTextContent('\u2013'))
+      expect(screen.getByTestId('club-figure-players')).toHaveTextContent('\u2013')
     })
 
     it('hides the strip, and still renders the page, when the summary fails', async () => {
@@ -494,20 +520,21 @@ describe('ClubOverviewPage', () => {
       renderPage('test-club-id')
 
       await screen.findByRole('button', { name: 'Open Sides' })
-      await waitFor(() => expect(screen.queryByTestId('club-key-figures')).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByTestId('club-figure-teams')).not.toBeInTheDocument())
       expect(screen.getByRole('heading', { name: 'Riverside Cricket Club' })).toBeInTheDocument()
     })
   })
 
   describe('Club structure card', () => {
-    it('shows the empty state with a "Set up your structure" link when the club has zero sections', async () => {
+    it('shows the empty state with a "Create New Section" link when the club has zero sections', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sections: [] })
 
       renderPage('test-club-id')
 
       expect(await screen.findByText('No sections yet')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Set up your structure' })).toHaveAttribute('href', '/manage/sections')
+      await userEvent.click(screen.getByText('Create New Section'))
+      expect(await screen.findByText('Club Structure Page')).toBeInTheDocument()
     })
 
     it('renders the org chart with every section as a node', async () => {
@@ -557,7 +584,7 @@ describe('ClubOverviewPage', () => {
       await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
     })
 
-    it('is read-only: no plus buttons and no Add top-level section, and Manage links to /manage/sections', async () => {
+    it('is read-only: no plus buttons and no Add top-level section, and Manage Structure opens /manage/sections', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sections: TWO_SECTIONS })
 
@@ -567,20 +594,20 @@ describe('ClubOverviewPage', () => {
       expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Add top-level section' })).not.toBeInTheDocument()
       const card = screen.getByTestId('club-structure-card')
-      expect(within(card).getByRole('link', { name: 'Manage' })).toHaveAttribute('href', '/manage/sections')
+      await userEvent.click(within(card).getByRole('button', { name: 'Manage Structure' }))
+      expect(await screen.findByText('Club Structure Page')).toBeInTheDocument()
     })
   })
 
   describe('Club Details card', () => {
-    it('has a Manage link to the edit form', async () => {
+    it('has an Edit Details button to the edit form', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists()
 
       renderPage('test-club-id')
 
-      const heading = await screen.findByText('Club Details')
-      const card = heading.closest('[class*="MuiCard-root"]') as HTMLElement
-      expect(within(card).getByRole('link', { name: 'Manage' })).toHaveAttribute('href', '/manage/club-profile/edit')
+      await userEvent.click(await screen.findByRole('button', { name: 'Edit Details' }))
+      expect(await screen.findByText('Edit Club Profile Page')).toBeInTheDocument()
     })
   })
 
@@ -589,7 +616,7 @@ describe('ClubOverviewPage', () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sections: TWO_SECTIONS })
       renderPage('test-club-id')
-      await user.click(await screen.findByRole('button', { name: 'Expand club structure' }))
+      await user.click(await screen.findByRole('button', { name: 'View Full Screen' }))
       return screen.findByRole('dialog', { name: 'Club structure' })
     }
 
@@ -604,7 +631,7 @@ describe('ClubOverviewPage', () => {
 
       await user.click(within(dialog).getByRole('button', { name: 'Close' }))
       await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Club structure' })).not.toBeInTheDocument())
-      expect(screen.getByRole('button', { name: 'Expand club structure' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'View Full Screen' })).toBeInTheDocument()
     })
 
     it('selecting a node opens the drawer over the overlay; closing the drawer keeps the overlay', async () => {
@@ -651,7 +678,7 @@ describe('ClubOverviewPage', () => {
         expect(screen.queryByRole('button', { name: 'Open Sides' })).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
         expect(screen.getByText('16\u201340')).toBeInTheDocument()
-        expect(screen.queryByRole('button', { name: 'Expand club structure' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'View Full Screen' })).not.toBeInTheDocument()
 
         await user.click(screen.getByText('1st XI'))
 

@@ -82,35 +82,12 @@ function isInteractive(item: PageCounterItem) {
   return !zero || Boolean(item.active)
 }
 
-// The marker of a drill-down counter: a chevron (decorative; the hint text, visually hidden, carries the meaning for assistive
-// technology). docs/standards/page-anatomy.md: a filter counter has no "FILTER" tag; its cue is the pointer, the hover lift and
-// the green ring when selected.
-const chevronSx = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  right: 10,
-  color: 'primary.main',
-  fontWeight: 700,
-  lineHeight: 1,
-  fontSize: '1.15rem',
-}
-
+// docs/standards/page-anatomy.md (owner, 2026-11-06): no chevron on any counter. A filter or drill counter's cue is the pointer, the
+// hover lift and, when selected, the green ring.
 function CounterBody({ item, interactive, compact, phone }: { item: PageCounterItem; interactive: boolean; compact: boolean; phone: boolean }) {
-  const kind = item.kind ?? 'filter'
   const label = phone && item.shortLabel ? item.shortLabel : item.label
   return (
     <>
-      {interactive && kind === 'drill' && (
-        <Box
-          component="span"
-          aria-hidden
-          data-testid={`page-counter-${item.id}-marker`}
-          sx={compact ? chevronSx : { ...chevronSx, top: 8, transform: 'none', fontSize: '1.2rem' }}
-        >
-          ›
-        </Box>
-      )}
       <Typography component="b" data-testid="page-counter-value" sx={compact ? compactValueSx(item.tone === 'warning') : keyFigureValueSx(item.tone === 'warning')}>
         {item.value}
       </Typography>
@@ -153,7 +130,6 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const cardSx = compact ? compactCardSx : keyFigureCardSx
   // Room for the chevron of a drill card on a compact card, so it never overlaps the text (a filter card has no marker).
-  const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) && item.kind === 'drill' ? { pr: 4 } : {})
   if (loading) {
     return (
       <Box sx={gridSxFor(SKELETON_COUNT, compact ? 0.75 : 1.5)} aria-busy="true" data-testid="page-counters-loading">
@@ -181,7 +157,6 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({
                 ...cardSx,
-                ...markerPr(item),
                 borderRadius: `${theme.shape.borderRadius}px`,
                 position: 'relative',
                 alignItems: compact ? 'baseline' : 'flex-start',

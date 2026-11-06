@@ -64,8 +64,8 @@ export function SelectionMatchCard({ clubId, leagueFormat = null, match, side, o
   })
   const badges: RecordCardBadge[] = [{ label: STATUS_LABELS[side.status], tone: STATUS_TONES[side.status] }]
   const picks = sortedPicks(side.picks)
-  // Time Slots: the list of picks can be folded so the card stays short (owner, 2026-11-05); shown until the manager hides it.
-  const [teamShown, setTeamShown] = useState(true)
+  // Time Slots: the list of picks can be folded so the card stays short (owner, 2026-11-05); hidden until the manager shows it (owner, 2026-11-06).
+  const [teamShown, setTeamShown] = useState(false)
 
   return (
     <Box data-testid={`${testId}-${match.matchId}-${side.teamId}`} sx={{ display: 'flex', '& > *': { flex: 1, minWidth: 0 } }}>
