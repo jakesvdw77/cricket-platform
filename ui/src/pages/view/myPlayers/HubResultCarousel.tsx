@@ -52,14 +52,16 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
     const first = track.current?.children[0] as HTMLElement | undefined
     return first ? first.offsetWidth + GAP : 0
   }
+  // `reveal` also brings the carousel into view first (the All Cards list sits below it). It is instant: a second smooth scroll started in the
+  // same call can cancel the horizontal one, so only one smooth scroll (the strip) is ever running.
   const go = useCallback(
-    (target: number) => {
+    (target: number, reveal = false) => {
       const el = track.current
       if (!el) return
       const next = Math.max(0, Math.min(count - 1, target))
       setIndex(next)
+      if (reveal) el.scrollIntoView?.({ block: 'nearest', behavior: 'auto' })
       el.scrollTo?.({ left: step() * next, behavior: reducedMotion() ? 'auto' : 'smooth' })
-      el.scrollIntoView?.({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' })
     },
     [count],
   )
@@ -94,7 +96,9 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
   }
 
   return (
-    <Box data-testid="hub-result-carousel" sx={{ display: 'grid', gap: 1 }}>
+    // gridTemplateColumns minmax(0, 1fr): a grid column sizes to its contents by default, which stretched it to hold every card side by side and left the
+    // strip nothing to scroll; with minmax(0, 1fr) the column is exactly the page width and the strip scrolls inside it.
+    <Box data-testid="hub-result-carousel" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography component="h3" sx={{ fontFamily: HUB.display, letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: 16, color: HUB.sand }}>
           Flip Through
@@ -123,6 +127,8 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
         onScroll={onScroll}
         sx={{
           display: 'flex',
+          minWidth: 0,
+          maxWidth: '100%',
           gap: `${GAP}px`,
           overflowX: 'auto',
           scrollSnapType: 'x mandatory',
@@ -154,7 +160,7 @@ export function HubResultCarousel({ items, hasMore, loadingMore, onLoadMore, ari
         {items.map((item, position) => (
           <li key={item.key}>
             <ButtonBase
-              onClick={() => go(position)}
+              onClick={() => go(position, true)}
               aria-current={position === index ? 'true' : undefined}
               sx={{
                 width: '100%',

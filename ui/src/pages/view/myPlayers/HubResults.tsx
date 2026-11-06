@@ -300,9 +300,9 @@ export function HubResults({ playerKey }: { playerKey: string }) {
       return [main]
     })
     body = (
-      <Box sx={{ display: 'grid', gap: 2, maxWidth: { md: 640 }, width: '100%', opacity: list.isPlaceholderData ? 0.55 : 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2, maxWidth: { md: 640 }, width: '100%', minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
         <Hero summary={summary} playerName={playerName} seasonName={seasonName ?? 'All Seasons'} scope={scopeText} onSeeMatches={() => carouselAnchor.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })} />
-        <Box ref={carouselAnchor}>
+        <Box ref={carouselAnchor} sx={{ minWidth: 0 }}>
           <HubResultCarousel key={`${seasonValue}|${teamId}|${leagueId}`} items={items} hasMore={Boolean(list.hasNextPage)} loadingMore={list.isFetchingNextPage} onLoadMore={() => void list.fetchNextPage()} />
         </Box>
       </Box>
