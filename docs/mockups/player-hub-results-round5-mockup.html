@@ -25,7 +25,7 @@
   .chip { height:54px; padding:0 14px; border-radius:16px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--cream); font:inherit; font-size:15px; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; text-align:left; min-width:0; }
   .chip > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .chip small { color:var(--muted); font-size:12px; white-space:nowrap; } .chip.on { border-color:var(--gold); background:rgba(224,180,79,.18); color:var(--gold2); }
-  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); margin-top:14px; } .phone .grid { grid-template-columns:1fr; }
+  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); margin-top:14px; } /* auto-fit, not auto-fill: empty columns collapse, so one card fills the whole row and two cards share it */ .phone .grid { grid-template-columns:1fr; }
   .card { border:1px solid var(--line); border-radius:20px; background:rgba(0,0,0,.22); padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
   .card.win { background:linear-gradient(160deg,rgba(224,180,79,.2),rgba(0,0,0,.22) 55%); } .card.loss { background:linear-gradient(160deg,rgba(157,74,74,.28),rgba(0,0,0,.22) 55%); } .card.tie { background:linear-gradient(160deg,rgba(224,213,180,.18),rgba(0,0,0,.22) 55%); }
   .kick { font-family:var(--disp); font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); } .res { font-family:var(--disp); font-size:26px; letter-spacing:.03em; text-transform:uppercase; line-height:1.05; }
