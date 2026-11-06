@@ -54,11 +54,7 @@ function StandingsRow({ group, row, columns, sortCode, view, filters }: { group:
             <PlayerName person={person} view={view} />
           </MuiLink>
         </Typography>
-        {row.teamName && (
-          <Typography component="div" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.25 }}>
-            {row.teamName}
-          </Typography>
-        )}
+        {/* No team line under the name (owner, 2026-11-06): a player can play for several teams, and a second line made every row taller. */}
         {(!row.active || row.smallSample) && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
             {!row.active && <Chip size="small" label="Inactive" sx={{ ...badgeSx('muted'), height: 20, fontSize: '0.6875rem' }} />}
@@ -105,7 +101,6 @@ export function StandingsTable({
   const hasMinimum = Boolean(sortColumn && sortColumn.minimumKind !== 'NONE')
   const query = useLeaderboardTable(clubId, group, sortCode, sortDirection, filters, hasMinimum ? appliedMinimum : null, enabled)
   const first = query.firstPage
-  const last = query.lastPage
   const rows = query.rows
   // the server's own column list wins once loaded; the catalogue's fills in until then
   const shownColumns = first?.columns?.length ? first.columns : columns
@@ -182,7 +177,7 @@ export function StandingsTable({
 
   const basis = first?.basis
   const footerLines: string[] = []
-  if (first && rows.length > 0 && last) footerLines.push(`Showing ${rows.length} of ${last.page.totalElements}.`)
+  // No "Showing N of M" line (page-anatomy section 3: no count text; the figure cards carry totals).
   if (basis && rows.length > 0) {
     const coverage = basis.coverage
     footerLines.push(

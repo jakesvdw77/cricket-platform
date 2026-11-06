@@ -1,35 +1,34 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useOutletContext } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, IconButton, Stack, Typography, useMediaQuery } from '@mui/material'
+import { Box, Chip, Stack, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import OpenInFullOutlinedIcon from '@mui/icons-material/OpenInFullOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
-import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
-import { EmptyState } from '../../components/EmptyState'
+import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { ShareFormatsSettings } from '../../components/ShareFormatsSettings'
 import { activateSession } from '../../api/meApi'
 import { useShareSettings } from '../../hooks/useShareSettings'
 import { InfoCard } from '../../components/InfoCard'
-import { KeyFigureTile } from '../../components/KeyFigureTile'
+import { Button } from '../../components/Button'
+import { LogoAvatar } from '../../components/LogoAvatar'
+import { ManageMenu } from '../../components/ManageMenu'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { PageCounters } from '../../components/PageCounters'
 import { OrgChartFullScreen } from '../../components/OrgChartFullScreen'
-import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
-import { avatarSx } from '../../components/RecordCard'
+import { badgeSx } from '../../components/RecordCard'
 import { SectionInfoPanel } from '../../components/SectionInfoPanel'
 import { SectionOrgChart } from '../../components/SectionOrgChart'
 import { SectionTree } from '../../components/SectionTree'
@@ -45,6 +44,7 @@ import type { Section } from '../../api/sectionApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForSection } from '../../api/teamApi'
 import { initialsFromName } from '../../utils/initials'
+import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { fullName as contactFullName } from './ClubContactList'
 
@@ -84,6 +84,8 @@ function formatAddress(address: Address): string {
 export default function ClubOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const theme = useTheme()
+  const navigate = useNavigate()
+  const location = useLocation()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
@@ -187,9 +189,20 @@ export default function ClubOverviewPage() {
   // The summary has no club-level leagues figure, so Leagues is the distinct league ids across every section's leagues.
   const summary = summaryQuery.data
   const leagueCount = summary ? new Set(summary.sections.flatMap((row) => row.leagues.map((league) => league.id))).size : 0
+  // Divisions are the lowest levels of the structure: active sections with no active section beneath them.
+  const activeSections = sectionList.filter((section) => section.active)
+  const parentIds = new Set(activeSections.map((section) => section.parentSectionId).filter(Boolean))
+  const divisionCount = activeSections.filter((section) => !parentIds.has(section.id)).length
   const figure = (value: number | undefined) => (value === undefined ? DASH : String(value))
 
   const clearSelection = () => setSelectedId(null)
+  // docs/specs/127: every link that leaves this page carries it as the origin, so Back returns here.
+  const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Club Profile')
+  const manageButton = (label: string, to: string) => (
+    <Button size="compact" variant="secondary" onClick={() => navigate(leaveTo(to))}>
+      {label}
+    </Button>
+  )
 
   const panelFor = (section: Section) => (
     <SectionInfoPanel
@@ -219,60 +232,49 @@ export default function ClubOverviewPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
-      <PageHeaderBand>
-        <Stack spacing={2}>
-          <Typography variant="h5" component="h1" fontWeight={700}>
-            Club profile
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-              <Avatar
-                src={profile.logoUrl ?? undefined}
-                variant="rounded"
-                sx={{ ...avatarSx(64), borderRadius: 1.5 }}
-              >
-                {initialsFromName(profile.name)}
-              </Avatar>
-              <Stack spacing={1} sx={{ minWidth: 0 }}>
-                <Typography
-                  variant="h6"
-                  component="h2"
-                  sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.25rem', md: '1.5rem' }, overflowWrap: 'anywhere' }}
-                >
-                  {profile.name}
-                </Typography>
-                {profile.type && (
-                  <Chip size="small" variant="outlined" label={CLUB_TYPE_LABELS[profile.type]} sx={{ alignSelf: 'flex-start' }} />
-                )}
-              </Stack>
-            </Box>
-            <MuiButton
-              component={RouterLink}
-              to="/manage/club-profile/edit"
-              variant="contained"
-              startIcon={<EditOutlinedIcon fontSize="small" />}
-              sx={{ flex: 'none' }}
-            >
-              Edit profile
-            </MuiButton>
+      {/* docs/standards/page-anatomy.md section 0: title row (logo, club name, ONE type badge, ONE filled Manage Club menu),
+          then the static compact figures, then flat cards. No Back (the side menu is the way here), no Season pill. */}
+      <ManageScreenHeader
+        title={profile.name}
+        titleAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <LogoAvatar src={profile.logoUrl} variant="rounded" size={40}>
+              {initialsFromName(profile.name)}
+            </LogoAvatar>
+            {profile.type && <Chip size="small" label={CLUB_TYPE_LABELS[profile.type]} sx={badgeSx('neutral')} data-testid="club-type-badge" />}
           </Box>
-        </Stack>
-      </PageHeaderBand>
+        }
+        action={
+          <ManageMenu
+            label="Manage Club"
+            fixedWidth
+            testId="manage-club"
+            groups={[
+              {
+                id: 'club',
+                heading: 'Club',
+                items: [
+                  { id: 'edit', title: 'Edit Club Profile', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-profile/edit') },
+                  { id: 'contacts', title: 'Manage Contacts', icon: <ContactsOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-contacts') },
+                  { id: 'sponsors', title: 'Manage Sponsors', icon: <HandshakeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sponsors') },
+                  { id: 'structure', title: 'Manage Structure', icon: <AccountTreeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sections') },
+                ],
+              },
+            ]}
+          />
+        }
+      />
 
       {!summaryQuery.isError && (
-        <Box
-          data-testid="club-key-figures"
-          sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' } }}
-        >
-          <KeyFigureTile testId="club-figure-teams" icon={<GroupsOutlinedIcon />} value={figure(summary?.totals.teams)} label="Teams" />
-          <KeyFigureTile
-            testId="club-figure-leagues"
-            icon={<EmojiEventsOutlinedIcon />}
-            value={figure(summary ? leagueCount : undefined)}
-            label="Leagues"
-          />
-          <KeyFigureTile testId="club-figure-players" icon={<PeopleOutlineIcon />} value={figure(summary?.totals.players)} label="Players" />
-        </Box>
+        <PageCounters
+          density="compact"
+          items={[
+            { id: 'divisions', testId: 'club-figure-divisions', value: sections ? String(divisionCount) : DASH, label: 'Divisions', info: 'The lowest levels of your club structure, the sections that have no sections beneath them.' },
+            { id: 'teams', testId: 'club-figure-teams', value: figure(summary?.totals.teams), label: 'Teams' },
+            { id: 'leagues', testId: 'club-figure-leagues', value: figure(summary ? leagueCount : undefined), label: 'Leagues' },
+            { id: 'players', testId: 'club-figure-players', value: figure(summary?.totals.players), label: 'Players' },
+          ]}
+        />
       )}
 
       <Box
@@ -285,17 +287,14 @@ export default function ClubOverviewPage() {
       >
         {/* Manage opens the same edit form as the header's "Edit profile". */}
         <InfoCard
+          flat
           title="Club Details"
           icon={<BusinessOutlinedIcon />}
-          headerAction={
-            <MuiButton component={RouterLink} to="/manage/club-profile/edit" variant="text" color="inherit" size="small">
-              Manage
-            </MuiButton>
-          }
+          headerAction={manageButton('Edit Details', '/manage/club-profile/edit')}
         >
           {!hasAnyProfileField ? (
             <Typography variant="body2" color="text.secondary">
-              No contact details yet. Add a phone, email, website, address, or social link from Edit profile.
+              No contact details yet. Add a phone, email, website, address, or social link from Edit Club Profile.
             </Typography>
           ) : (
             <>
@@ -313,13 +312,10 @@ export default function ClubOverviewPage() {
         </InfoCard>
 
         <InfoCard
+          flat
           title="Contacts"
           icon={<ContactsOutlinedIcon />}
-          headerAction={
-            <MuiButton component={RouterLink} to="/manage/club-contacts" variant="text" color="inherit" size="small">
-              Manage
-            </MuiButton>
-          }
+          headerAction={manageButton('Manage Contacts', '/manage/club-contacts')}
         >
           {contactList.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
@@ -346,13 +342,10 @@ export default function ClubOverviewPage() {
         </InfoCard>
 
         <InfoCard
+          flat
           title="Sponsors"
           icon={<HandshakeOutlinedIcon />}
-          headerAction={
-            <MuiButton component={RouterLink} to="/manage/sponsors" variant="text" color="inherit" size="small">
-              Manage
-            </MuiButton>
-          }
+          headerAction={manageButton('Manage Sponsors', '/manage/sponsors')}
         >
           {sponsorList.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
@@ -377,19 +370,18 @@ export default function ClubOverviewPage() {
       </Box>
 
       <InfoCard
+        flat
         title="Club structure"
         icon={<AccountTreeOutlinedIcon />}
         testId="club-structure-card"
         headerAction={
           <Stack direction="row" spacing={0.5} alignItems="center">
             {!isPhone && sectionList.length > 0 && (
-              <IconButton aria-label="Expand club structure" size="small" onClick={() => setExpanded(true)}>
-                <OpenInFullOutlinedIcon fontSize="small" />
-              </IconButton>
+              <Button size="compact" variant="secondary" onClick={() => setExpanded(true)}>
+                View Full Screen
+              </Button>
             )}
-            <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
-              Manage
-            </MuiButton>
+            {manageButton('Manage Structure', '/manage/sections')}
           </Stack>
         }
       >
@@ -397,11 +389,7 @@ export default function ClubOverviewPage() {
           <EmptyState
             title="No sections yet"
             description="Set up your club's structure, for example Seniors and Juniors, to organise teams and players."
-            action={
-              <MuiButton component={RouterLink} to="/manage/sections" variant="contained">
-                Set up your structure
-              </MuiButton>
-            }
+            action={<EmptyStateLink onClick={() => navigate(leaveTo('/manage/sections'))}>Create New Section</EmptyStateLink>}
           />
         ) : isPhone ? (
           <SectionTree
@@ -421,7 +409,7 @@ export default function ClubOverviewPage() {
       </InfoCard>
 
       {isClubAdmin && (
-        <InfoCard title="Share formats" icon={<ShareOutlinedIcon />} testId="share-formats-card">
+        <InfoCard flat title="Share formats" icon={<ShareOutlinedIcon />} testId="share-formats-card">
           <ShareFormatsSettings
             disabledFormats={shareSettings.disabledFormats}
             onChange={shareSettings.setDisabledFormats}

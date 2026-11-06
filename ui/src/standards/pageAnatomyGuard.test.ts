@@ -36,7 +36,6 @@ const BASELINE_RAW_BUTTONS: string[] = [
   "components/PublicAvailability/RememberedPlayers/RememberedPlayers.tsx",
   "components/RecordDetailScreen/RecordDetailScreen.tsx",
   "components/SelectPlayersDialog/SelectPlayersDialog.tsx",
-  "pages/manage/ClubOverviewPage.tsx",
   "pages/manage/MatchFormPage.tsx",
   "pages/manage/matchDetail/MatchTeamCard.tsx",
   "pages/manage/playerDetail/PlayerStatsCard.tsx",

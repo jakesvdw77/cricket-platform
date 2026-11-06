@@ -766,18 +766,21 @@ ul#kc-totp-supported-apps { margin: 8px 0; padding-left: 20px; }
   #kc-header-wrapper { font-size: 30px; }
   #kc-header-wrapper::before { width: 60px; height: 60px; }
 
-  /* Pitch strip, behind the card. */
-  .login-pf-page::before {
+  /* Pitch strip: it starts directly UNDER the brand and runs down behind the card, so the Cricket Legend mark and name sit above the
+     wicket and never over it (cream on sand was unreadable). Anchored to the header, not the viewport, because the page centres its
+     content and the brand moves with the window height. */
+  #kc-header { position: relative; }
+  #kc-header::after {
     content: "";
-    position: fixed;
+    position: absolute;
     z-index: -1;
     left: 50%;
-    top: max(105px, 15vh);
+    top: 100%;
     width: 66px;
-    height: min(490px, 70vh);
+    height: 80px; /* the 24px gap, then tucked behind the card */
     transform: translateX(-50%);
     background: var(--cl-sand);
-    border-radius: 6px;
+    border-radius: 0 0 6px 6px;
     pointer-events: none;
   }
   /* Four gold dots in the corners. */
@@ -809,6 +812,7 @@ ul#kc-totp-supported-apps { margin: 8px 0; padding-left: 20px; }
 @media (forced-colors: active) {
   html.login-pf, html.login-pf body { background: Canvas; }
   html.login-pf body::before,
+  #kc-header::after,
   .login-pf-page::before,
   .login-pf-page::after { display: none; }
   #kc-header-wrapper { color: CanvasText; }

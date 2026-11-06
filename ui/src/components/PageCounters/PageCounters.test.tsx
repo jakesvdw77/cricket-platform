@@ -120,7 +120,7 @@ describe('PageCounters', () => {
       expect(getComputedStyle(screen.getByText('Open polls')).textOverflow).toBe('ellipsis')
     })
 
-    it('keeps the chevron, aria-pressed, the zero rule and the hidden hint', () => {
+    it('keeps aria-pressed, the zero rule and the hidden hint, with no chevron', () => {
       renderCounters(
         [
           { ...items[0], kind: 'filter', onSelect: vi.fn(), hint: 'Tap to filter', active: true },
@@ -134,8 +134,8 @@ describe('PageCounters', () => {
       expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
       expect(screen.queryByText(/^filter$/i)).not.toBeInTheDocument()
-      expect(screen.getByTestId('page-counter-b-marker')).toHaveTextContent('›')
-      expect(getComputedStyle(screen.getByTestId('page-counter-b-marker')).top).toBe('50%')
+      // docs/standards/page-anatomy.md (owner, 2026-11-06): no chevron on any counter.
+      expect(screen.queryByTestId('page-counter-b-marker')).not.toBeInTheDocument()
       expect(screen.getByText('See who')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Zero/ })).not.toBeInTheDocument()
     })
@@ -159,13 +159,13 @@ describe('PageCounters', () => {
       expect(screen.getByRole('button')).toHaveStyle({ cursor: 'pointer' })
     })
 
-    it('a drill-down counter is a plain button with a chevron and no aria-pressed, even when active', async () => {
+    it('a drill-down counter is a plain button with no chevron and no aria-pressed, even when active', async () => {
       const onSelect = vi.fn()
       renderCounters([{ ...items[0], kind: 'drill', onSelect, hint: 'See who', active: true }])
 
       const button = screen.getByRole('button', { name: /Open polls/ })
       expect(button).not.toHaveAttribute('aria-pressed')
-      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('›')
+      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
       expect(screen.getByText('See who')).toBeInTheDocument()
       await userEvent.click(button)
       expect(onSelect).toHaveBeenCalledTimes(1)

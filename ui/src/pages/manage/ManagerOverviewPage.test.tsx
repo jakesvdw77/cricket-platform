@@ -79,25 +79,24 @@ describe('ManagerOverviewPage', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /, Riya$/ })).toBeInTheDocument()
     expect(getManagerOverview).toHaveBeenCalledWith('club-1')
-    expect(screen.getByText('match this week')).toBeInTheDocument()
-    expect(screen.getByText('team not announced')).toBeInTheDocument()
-    expect(screen.getByText('poll answers awaited')).toBeInTheDocument()
-    expect(screen.getByText('84')).toBeInTheDocument()
+    expect(screen.getByTestId('page-counter-matches-week')).toHaveTextContent('Match This Week')
+    expect(screen.getByTestId('page-counter-not-announced')).toHaveTextContent('Team Not Announced')
+    expect(screen.getByTestId('page-counter-poll-answers')).toHaveTextContent('Poll Answers Awaited')
+    expect(screen.getByTestId('page-counter-active-players')).toHaveTextContent('84')
   })
 
   it('uses the warning colour for "not announced" only when above zero', async () => {
+    const valueOf = (id: string) => within(screen.getByTestId(`page-counter-${id}`)).getByTestId('page-counter-value')
     getManagerOverview.mockResolvedValue(overview({ teamsNotAnnounced: 2 }))
     const { unmount } = renderPage()
-    const warn = (await screen.findByText('teams not announced')).previousElementSibling as HTMLElement
-    const calm = screen.getByText('matches this week').previousElementSibling as HTMLElement
-    expect(getComputedStyle(warn).color).not.toBe(getComputedStyle(calm).color)
+    await screen.findByTestId('page-counter-not-announced')
+    expect(getComputedStyle(valueOf('not-announced')).color).not.toBe(getComputedStyle(valueOf('matches-week')).color)
     unmount()
 
     getManagerOverview.mockResolvedValue(overview({ teamsNotAnnounced: 0 }))
     renderPage()
-    const zero = (await screen.findByText('teams not announced')).previousElementSibling as HTMLElement
-    const other = screen.getByText('matches this week').previousElementSibling as HTMLElement
-    expect(getComputedStyle(zero).color).toBe(getComputedStyle(other).color)
+    await screen.findByTestId('page-counter-not-announced')
+    expect(getComputedStyle(valueOf('not-announced')).color).toBe(getComputedStyle(valueOf('matches-week')).color)
   })
 
   it('lists upcoming matches with selection status and a link to the own side selection', async () => {
@@ -171,8 +170,9 @@ describe('ManagerOverviewPage', () => {
 
     expect(await screen.findByText('No matches coming up')).toBeInTheDocument()
     expect(screen.getByText('Nothing waiting on an answer')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Create match' })).toHaveLength(1)
-    expect(screen.getAllByRole('link', { name: 'Create availability poll' })).toHaveLength(1)
+    // One underlined link per empty card, worded like the title-row action (page-anatomy section 6b).
+    expect(screen.getAllByText('Create New Match')).toHaveLength(1)
+    expect(screen.getAllByText('Create New Poll')).toHaveLength(1)
   })
 
   it('renders each quick action in the Actions menu only when its flag is true', async () => {
@@ -181,9 +181,9 @@ describe('ManagerOverviewPage', () => {
     getManagerOverview.mockResolvedValue(overview({ upcomingMatches: [match()] }))
     const { unmount } = renderPage()
     await user.click(await screen.findByRole('button', { name: 'Actions' }))
-    expect(screen.getByRole('menuitem', { name: 'Create match' })).toHaveAttribute('href', '/manage/fixtures/matches/new')
-    expect(screen.getByRole('menuitem', { name: 'Create availability poll' })).toHaveAttribute('href', '/manage/availability/new')
-    expect(screen.getByRole('menuitem', { name: 'Add player' })).toHaveAttribute('href', '/manage/players/new')
+    expect(screen.getByRole('menuitem', { name: 'Create New Match' })).toHaveAttribute('href', '/manage/fixtures/matches/new')
+    expect(screen.getByRole('menuitem', { name: 'Create New Poll' })).toHaveAttribute('href', '/manage/availability/new')
+    expect(screen.getByRole('menuitem', { name: 'Add New Player' })).toHaveAttribute('href', '/manage/players/new')
     expect(screen.getByRole('menuitem', { name: 'Message the squad' })).toHaveAttribute('href', '/manage/communication')
     unmount()
 
@@ -193,7 +193,7 @@ describe('ManagerOverviewPage', () => {
     renderPage()
     await user.click(await screen.findByRole('button', { name: 'Actions' }))
     expect(screen.getAllByRole('menuitem')).toHaveLength(1)
-    expect(screen.getByRole('menuitem', { name: 'Add player' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Add New Player' })).toBeInTheDocument()
   })
 
   it('has no old action buttons and hides the control when no action is allowed', async () => {
@@ -205,7 +205,7 @@ describe('ManagerOverviewPage', () => {
     await screen.findByText('Villagers 1 v Northside CC')
     expect(screen.queryByRole('button', { name: 'Actions' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Quick actions' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Add player' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Add New Player' })).not.toBeInTheDocument()
   })
 
   it('on a phone shows the speed dial instead of the Actions button', async () => {

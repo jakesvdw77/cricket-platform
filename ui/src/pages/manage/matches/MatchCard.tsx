@@ -84,16 +84,8 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
     pollBadge,
   ]
 
-  return (
-    <RecordCard
-      flat
-      title={title}
-      titleWrap
-      titleLines={3}
-      badgesBelow
-      description={leagueValue || undefined}
-      descriptionExtra={
-        match.venue ? (
+  const venue = (
+    match.venue ? (
           <CardVenueLine trailing={<VenueDirectionsButton target={directions} venue={match.venue} />}>
             <>
                 {match.playingAreaId ? (
@@ -114,7 +106,16 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             </>
           </CardVenueLine>
         ) : undefined
-      }
+  )
+
+  return (
+    <RecordCard
+      flat
+      title={title}
+      titleWrap
+      titleLines={3}
+      badgesBelow
+      description={leagueValue || undefined}
       headerActions={<MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-card-actions" />}
       // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
       // each side is the 56px avatar box).
@@ -134,7 +135,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
         />
         {/* docs/specs/137: the forecast is its own strip card (like the Starts strip) and the Team Manager is a placeholder card until a team can
             have a manager (roadmap: full spec required). */}
-        <CardForecastStrip testId="match-card-weather" weather={weather} matchDate={match.matchDate} />
+        <CardForecastStrip testId="match-card-weather" weather={weather} matchDate={match.matchDate} venue={venue} />
         <CardTimeStrip testId="match-card-manager" icon={<PersonOutlineOutlinedIcon fontSize="small" />} label="Team Manager" value={<Box component="span" sx={{ color: 'text.secondary' }}>–</Box>} />
         <SelectionBlock rows={selectionRows(match, teamsById)} />
         {pollMenu}

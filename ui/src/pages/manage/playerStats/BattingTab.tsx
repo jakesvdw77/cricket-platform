@@ -54,9 +54,16 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Balls per boundary', value: decimals(batting.ballsPerBoundary, 1), caption: boundaryCaption },
           ]}
         />
-        {/* Right column: Milestones at its natural height, Recent form grows to fill, so together they match Scoring's height. */}
+        {/* Right column: Recent form at its natural height, Milestones grows to fill, so together they match Scoring's height. */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
-          <Box sx={{ flex: hasForm ? 'none' : 1, display: 'flex', flexDirection: 'column' }}>
+          {hasForm && (
+            <Box sx={{ flex: 'none', display: 'flex', flexDirection: 'column' }}>
+              <InfoCard flat fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
+                <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
+              </InfoCard>
+            </Box>
+          )}
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <InfoCard flat fieldSize="large"
               title="Milestones"
               icon={<FlagOutlinedIcon />}
@@ -70,13 +77,6 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
               ]}
             />
           </Box>
-          {hasForm && (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <InfoCard flat fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
-                <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
-              </InfoCard>
-            </Box>
-          )}
         </Box>
         <InfoCard flat fieldSize="large" title="How dismissed" icon={<ExitToAppOutlinedIcon />}>
           <CountRows rows={dismissalList} empty="No innings yet." />

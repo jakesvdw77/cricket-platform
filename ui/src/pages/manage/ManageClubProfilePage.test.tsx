@@ -114,7 +114,7 @@ describe('ManageClubProfilePage', () => {
     renderPage('test-club-id')
 
     await screen.findByText('Club Profile')
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(updateManagedClubProfile).toHaveBeenCalledTimes(1)
     const [id, payload] = updateManagedClubProfile.mock.calls[0]

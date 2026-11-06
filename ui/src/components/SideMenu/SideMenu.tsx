@@ -56,7 +56,7 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
             aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
             aria-expanded={!collapsed}
             size="small"
-            sx={{ alignSelf: collapsed ? 'center' : 'flex-end', color: 'chrome.inactiveText', minWidth: 44, minHeight: 44, '&:hover': { bgcolor: 'chrome.hover', color: 'chrome.text' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text' } }}
+            sx={{ alignSelf: collapsed ? 'center' : 'flex-end', color: 'chrome.inactiveText', minWidth: 32, minHeight: 28, p: 0.25, mb: -0.5, '&:hover': { bgcolor: 'chrome.hover', color: 'chrome.text' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'chrome.text' } }}
           >
             {collapsed ? <MenuOpenIcon sx={{ transform: 'scaleX(-1)' }} /> : <MenuOpenIcon />}
           </IconButton>

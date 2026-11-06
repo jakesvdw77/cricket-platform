@@ -77,21 +77,22 @@ describe('SlotsView', () => {
     expect(within(blocks[1]).getAllByTestId(/^slot-card-m-/)).toHaveLength(2)
   })
 
-  it('has a Hide Team / Show Team link that folds the picks so the card stays short (137)', async () => {
+  it('has a Show Team / Hide Team link, the team hidden by default so the card stays short (137, owner 2026-11-06)', async () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
     const inCard = within(card('m-1'))
-    expect(inCard.getAllByTestId('slot-pick').length).toBeGreaterThan(0)
-    await userEvent.click(inCard.getByRole('button', { name: 'Hide Team' }))
-    await waitFor(() => expect(inCard.queryAllByTestId('slot-pick')).toHaveLength(0))
+    expect(inCard.queryAllByTestId('slot-pick')).toHaveLength(0)
     await userEvent.click(inCard.getByRole('button', { name: 'Show Team' }))
     expect((await inCard.findAllByTestId('slot-pick')).length).toBeGreaterThan(0)
+    await userEvent.click(inCard.getByRole('button', { name: 'Hide Team' }))
+    await waitFor(() => expect(inCard.queryAllByTestId('slot-pick')).toHaveLength(0))
   })
 
   it('lists the picks in batting order with C and WK markers and the 12th man labelled', async () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
-    const items = within(card('m-1')).getAllByTestId('slot-pick')
+    await userEvent.click(within(card('m-1')).getByRole('button', { name: 'Show Team' }))
+    const items = await within(card('m-1')).findAllByTestId('slot-pick')
     expect(items.map((item) => item.textContent)).toEqual(['1Ann SmithC', '2Bob SmithWK', 'Cy Smith12th man', 'Dee Smith'])
   })
 
@@ -99,7 +100,8 @@ describe('SlotsView', () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
     expect(within(card('m-1')).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '4')
-    expect(within(card('m-2', 'team-2')).getByText('Nobody picked yet.')).toBeInTheDocument()
+    await userEvent.click(within(card('m-2', 'team-2')).getByRole('button', { name: 'Show Team' }))
+    expect(await within(card('m-2', 'team-2')).findByText('Nobody picked yet.')).toBeInTheDocument()
     await userEvent.click(within(card('m-1')).getByRole('button', { name: /^Actions for/ }))
     expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
     await userEvent.keyboard('{Escape}')

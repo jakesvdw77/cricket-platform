@@ -72,7 +72,16 @@ export function PageBackdrop({ children, imageUrl, theme = ACTIVE_BACKDROP_THEME
           <Box
             aria-hidden
             data-backdrop-art
-            sx={{ position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(11,61,38,0.85) 0%, rgba(11,61,38,0.35) 40%, rgba(11,61,38,0.1) 100%)' }}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: -1,
+              pointerEvents: 'none',
+              // A dark central column over the full height, on top of the vertical fade: the scene's light pitch and stumps sit in the middle of
+              // the page, right behind the brand mark, headline and message, and cream text on that sand was unreadable. The sides stay visible.
+              background:
+                'linear-gradient(90deg, rgba(11,61,38,0) 10%, rgba(11,61,38,0.86) 32%, rgba(11,61,38,0.86) 68%, rgba(11,61,38,0) 90%), linear-gradient(180deg, rgba(11,61,38,0.85) 0%, rgba(11,61,38,0.35) 40%, rgba(11,61,38,0.1) 100%)',
+            }}
           />
         </>
       )}

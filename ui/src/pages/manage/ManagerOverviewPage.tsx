@@ -1,26 +1,29 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
-import { compactButtonSx } from '../../components/Button'
+import { Button as CompactButton } from '../../components/Button'
+import { EmptyStateLink } from '../../components/EmptyState'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { PageCounters } from '../../components/PageCounters'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, Button, Card as MuiCard, Chip, Stack, Typography } from '@mui/material'
+import { Alert, Box, Card as MuiCard, Chip, Stack, Typography } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import { FullPageLoader } from '../../components/CricketBallLoader'
 import { BrandIcon } from '../../components/BrandIcon'
 import type { BrandIconName } from '../../components/BrandIcon'
 import { QuickActions } from '../../components/QuickActions'
 import type { QuickAction } from '../../components/QuickActions'
 import { CardProgressBar } from '../../components/CardProgressBar'
-import { keyFigureCardSx, keyFigureValueSx } from '../../components/PageCounters'
 import { badgeSx } from '../../components/RecordCard'
 import { keycloak } from '../../auth/keycloak'
 import { getManagerOverview } from '../../api/overviewApi'
 import type { OverviewMatch, OverviewPoll, OverviewResult } from '../../api/overviewApi'
 import { groupPollResponsesPath, squadPollResponsesPath } from '../../utils/pollRoutes'
-import { pageTitleSx } from '../../theme'
 
 // docs/specs/079-manager-shell-and-overview.md: the /manage index - what needs the manager's
 // attention now. The navigation the old tile grid carried lives in the shell's menus.
 
-const cardSx = keyFigureCardSx
+// docs/standards/page-anatomy.md section 4: a card that holds content is flat with a hairline (raised is for the figure cards only).
+const cardSx = { boxShadow: 'none', border: 1, borderColor: 'divider', p: 2, display: 'flex', flexDirection: 'column', gap: 1 } as const
 
 function firstName(): string | undefined {
   const parsed = keycloak.tokenParsed as { given_name?: string; name?: string } | undefined
@@ -86,16 +89,18 @@ function OverviewCard({
   linkLabel: string
   children: ReactNode
 }) {
+  const navigate = useNavigate()
   return (
     <MuiCard sx={cardSx}>
       <Stack direction="row" alignItems="center" spacing={1}>
         <BrandIcon name={icon} size={28} padding={4} />
-        <Typography variant="subtitle2" component="h2" fontWeight={700}>
+        {/* The title takes the free width so the card's button sits at the right edge (the shared Button does not pass an auto margin through). */}
+        <Typography variant="subtitle2" component="h2" fontWeight={700} sx={{ flex: 1, minWidth: 0 }}>
           {title}
         </Typography>
-        <Button component={RouterLink} to={linkTo} size="small" sx={{ ...compactButtonSx, ml: 'auto', fontWeight: 600 }}>
+        <CompactButton size="compact" variant="secondary" onClick={() => navigate(linkTo)} sx={{ flex: 'none' }}>
           {linkLabel}
-        </Button>
+        </CompactButton>
       </Stack>
       {children}
     </MuiCard>
@@ -113,23 +118,6 @@ function CardEmpty({ title, hint, action }: { title: string; hint: string; actio
       </Typography>
       {action}
     </Stack>
-  )
-}
-
-function KeyFigure({ value, label, warn = false }: { value: number; label: string; warn?: boolean }) {
-  return (
-    <MuiCard sx={cardSx}>
-      <Typography
-        component="b"
-        data-testid="key-figure-value"
-        sx={keyFigureValueSx(warn)}
-      >
-        {value}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-    </MuiCard>
   )
 }
 
@@ -237,6 +225,7 @@ function ResultRow({ result, first }: { result: OverviewResult; first: boolean }
 
 export default function ManagerOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string } | null>() ?? {}
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['managed-club', clubId, 'overview'],
     queryFn: () => getManagerOverview(clubId as string),
@@ -256,9 +245,9 @@ export default function ManagerOverviewPage() {
       <Alert
         severity="error"
         action={
-          <Button color="inherit" size="small" onClick={() => refetch()} sx={compactButtonSx}>
+          <CompactButton variant="ghost" size="compact" onClick={() => refetch()}>
             Try again
-          </Button>
+          </CompactButton>
         }
       >
         We couldn't load your overview. Please try again.
@@ -269,49 +258,46 @@ export default function ManagerOverviewPage() {
   const now = new Date()
   const { quickActions: qa } = data
   const actions = [
-    qa.createMatch && { id: 'create-match', label: 'Create match', to: '/manage/fixtures/matches/new', icon: 'nav/upcoming-matches' },
-    qa.createPoll && { id: 'create-poll', label: 'Create availability poll', to: '/manage/availability/new', icon: 'nav/availability-polls' },
-    qa.addPlayer && { id: 'add-player', label: 'Add player', to: '/manage/players/new', icon: 'nav/cricket-players' },
+    qa.createMatch && { id: 'create-match', label: 'Create New Match', to: '/manage/fixtures/matches/new', icon: 'nav/upcoming-matches' },
+    qa.createPoll && { id: 'create-poll', label: 'Create New Poll', to: '/manage/availability/new', icon: 'nav/availability-polls' },
+    qa.addPlayer && { id: 'add-player', label: 'Add New Player', to: '/manage/players/new', icon: 'nav/cricket-players' },
     qa.messageSquad && { id: 'message-squad', label: 'Message the squad', to: '/manage/communication', icon: 'nav/communication' },
   ].filter((action): action is QuickAction => Boolean(action))
 
-  const actionButton = (label: string) => {
+  // An empty card carries ONE underlined link worded like the title-row action (page-anatomy section 6b).
+  const actionLink = (label: string) => {
     const action = actions.find((a) => a.label === label)
-    return action ? (
-      <Button component={RouterLink} to={action.to} variant="outlined" size="small" sx={compactButtonSx}>
-        {action.label}
-      </Button>
-    ) : undefined
+    return action ? <EmptyStateLink onClick={() => navigate(action.to)}>{action.label}</EmptyStateLink> : undefined
   }
 
   return (
     // Bottom padding on a phone clears the speed dial and the tab bar so the last card is never covered.
     <Stack spacing={2} sx={{ pb: { xs: 12, md: 0 } }}>
-      <Stack direction="row" flexWrap="wrap" justifyContent="space-between" alignItems="center" columnGap={2} rowGap={0.5}>
-        <Typography variant="h5" component="h1" sx={pageTitleSx}>
-          {greeting(now)}
-        </Typography>
-        <Stack direction="row" alignItems="center" columnGap={2} rowGap={0.5} flexWrap="wrap">
-          <Typography variant="body2" color="text.secondary">
-            {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-          </Typography>
-          <QuickActions actions={actions} />
-        </Stack>
-      </Stack>
+      {/* The shared header: the greeting as the title, the date as the sub-header, the one Quick Actions menu on the right. */}
+      <ManageScreenHeader
+        title={greeting(now)}
+        subtitle={now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+        action={<QuickActions actions={actions} />}
+      />
 
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
-        <KeyFigure value={data.matchesThisWeek} label={plural(data.matchesThisWeek, 'match this week', 'matches this week')} />
-        <KeyFigure
-          value={data.teamsNotAnnounced}
-          warn={data.teamsNotAnnounced > 0}
-          label={plural(data.teamsNotAnnounced, 'team not announced', 'teams not announced')}
-        />
-        <KeyFigure
-          value={data.pollAnswersAwaited}
-          label={plural(data.pollAnswersAwaited, 'poll answer awaited', 'poll answers awaited')}
-        />
-        <KeyFigure value={data.activePlayers} label={plural(data.activePlayers, 'active player', 'active players')} />
-      </Box>
+      {/* Compact figure cards that open the page behind each number (page-anatomy section 2). */}
+      <PageCounters
+        density="compact"
+        items={[
+          { id: 'matches-week', value: data.matchesThisWeek, label: plural(data.matchesThisWeek, 'Match This Week', 'Matches This Week'), shortLabel: 'Matches', kind: 'drill', to: '/manage/fixtures/matches' },
+          {
+            id: 'not-announced',
+            value: data.teamsNotAnnounced,
+            tone: data.teamsNotAnnounced > 0 ? 'warning' : 'default',
+            label: plural(data.teamsNotAnnounced, 'Team Not Announced', 'Teams Not Announced'),
+            shortLabel: 'Unannounced',
+            kind: 'drill',
+            to: '/manage/team-selection',
+          },
+          { id: 'poll-answers', value: data.pollAnswersAwaited, label: plural(data.pollAnswersAwaited, 'Poll Answer Awaited', 'Poll Answers Awaited'), shortLabel: 'Answers', kind: 'drill', to: '/manage/availability' },
+          { id: 'active-players', value: data.activePlayers, label: plural(data.activePlayers, 'Active Player', 'Active Players'), shortLabel: 'Players', kind: 'drill', to: '/manage/players' },
+        ]}
+      />
 
       <Box
         sx={{
@@ -332,7 +318,7 @@ export default function ManagerOverviewPage() {
               <CardEmpty
                 title="No matches coming up"
                 hint="Create your first match to start picking teams and asking for availability."
-                action={actionButton('Create match')}
+                action={actionLink('Create New Match')}
               />
             ) : (
               <Box>
@@ -349,7 +335,7 @@ export default function ManagerOverviewPage() {
             <CardEmpty
               title="Nothing waiting on an answer"
               hint="Open an availability poll to find out who can play."
-              action={actionButton('Create availability poll')}
+              action={actionLink('Create New Poll')}
             />
           ) : (
             <Stack spacing={1}>

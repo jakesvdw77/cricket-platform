@@ -499,7 +499,6 @@ describe('Teams tab', () => {
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
       const text = footer().textContent ?? ''
-      expect(text).toContain('Showing 2 of 2 teams.')
       expect(text).toContain('Based on 31 published results.')
       expect(text).toContain('2 internal matches are counted once for each team.')
       expect(text).toContain('1 result with no ball bowled is not counted.')
@@ -542,13 +541,11 @@ describe('Teams tab', () => {
       }
       renderPage()
       await screen.findAllByTestId('standings-row', {}, wait)
-      expect(footer()).toHaveTextContent('Showing 2 of 3 teams.')
       await userEvent.click(screen.getByRole('button', { name: 'Show More' }))
       await waitFor(() => expect(rows()).toHaveLength(3))
       expect(server.tableCalls.map((c) => c.page)).toEqual([0, 1])
       expect(server.tableCalls.every((c) => c.size === 25)).toBe(true)
       expect(rankCells()).toEqual(['1', '2', '3'])
-      expect(footer()).toHaveTextContent('Showing 3 of 3 teams.')
       expect(screen.queryByRole('button', { name: 'Show More' })).not.toBeInTheDocument()
     })
 

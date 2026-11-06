@@ -90,7 +90,9 @@ function PositionItem({
             value={draft === '' ? null : Number(draft)}
             onChange={(value) => setDraft(value === null ? '' : String(value))}
             ariaLabel={`${label} for ${playerName}`}
-            label={label}
+            // The visible label is the text beside the field. An empty field label stops MUI drawing the name inside the narrow box ("Battin...")
+            // over the placeholder, which is the player's current place; the accessible name is the aria-label above.
+            label=""
             maxLength={3}
             placeholder={placeholder}
             disabled={disabled}

@@ -15,6 +15,11 @@ export interface OrgChartFullScreenProps {
   title: string
   // The chart. It is scaled as a whole; it keeps its own behaviour (selection and so on).
   children: ReactNode
+  // Optional message under the toolbar (an error from an action taken inside the overlay), outside the zoomed canvas.
+  notice?: ReactNode
+  // Optional details column beside the chart (the selected section's editor). It is part of the dialog, so it stays usable
+  // together with the chart, unlike a modal drawer that would block it. Shown only while given.
+  aside?: { title: string; closeLabel: string; onClose: () => void; content: ReactNode }
 }
 
 const PADDING = 16
@@ -29,7 +34,7 @@ const keep = (next: Size) => (previous: Size) =>
 // opens in Fit mode and re-fits as the window changes; a manual zoom leaves Fit mode. The chart is scaled with a CSS
 // transform inside a box sized to the scaled chart, so the overlay scrolls both ways correctly when it does not fit and
 // centres the chart when it does. Escape, the Close button and focus handling come with the MUI Dialog.
-export function OrgChartFullScreen({ open, onClose, title, children }: OrgChartFullScreenProps) {
+export function OrgChartFullScreen({ open, onClose, title, children, notice, aside }: OrgChartFullScreenProps) {
   const [viewport, setViewport] = useState<HTMLElement | null>(null)
   const [chart, setChart] = useState<HTMLElement | null>(null)
   const [available, setAvailable] = useState<Size>(UNMEASURED)
@@ -119,22 +124,56 @@ export function OrgChartFullScreen({ open, onClose, title, children }: OrgChartF
         </Button>
       </Box>
 
-      <Box ref={setViewport} sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: `${PADDING}px`, bgcolor: 'background.default' }}>
-        <Box
-          sx={{
-            mx: 'auto',
-            width: measured ? natural.width * scale : 'max-content',
-            height: measured ? natural.height * scale : 'auto',
-          }}
-        >
+      {notice && (
+        <Box role="alert" sx={{ px: 2, py: 1, flex: 'none' }}>
+          {notice}
+        </Box>
+      )}
+
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+        <Box ref={setViewport} sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: `${PADDING}px`, bgcolor: 'background.default' }}>
           <Box
-            ref={setChart}
-            data-testid="org-chart-full-screen-canvas"
-            sx={{ width: 'max-content', transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            sx={{
+              mx: 'auto',
+              width: measured ? natural.width * scale : 'max-content',
+              height: measured ? natural.height * scale : 'auto',
+            }}
           >
-            {children}
+            <Box
+              ref={setChart}
+              data-testid="org-chart-full-screen-canvas"
+              sx={{ width: 'max-content', transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            >
+              {children}
+            </Box>
           </Box>
         </Box>
+        {aside && (
+          <Box
+            component="aside"
+            aria-label={aside.title}
+            sx={{
+              flex: { xs: '0 0 50%', md: '0 0 400px' },
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              borderLeft: { md: '1px solid' },
+              borderTop: { xs: '1px solid', md: 0 },
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 2, py: 1, flex: 'none' }}>
+              <Typography variant="h6" component="h3" fontWeight={700} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                {aside.title}
+              </Typography>
+              <IconButton aria-label={aside.closeLabel} onClick={aside.onClose} size="small">
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', px: 2, pb: 2 }}>{aside.content}</Box>
+          </Box>
+        )}
       </Box>
     </Dialog>
   )

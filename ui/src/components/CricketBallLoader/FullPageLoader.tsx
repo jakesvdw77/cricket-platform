@@ -44,7 +44,7 @@ export function FullPageLoader({ message, label, variant = 'plain', size, overla
           </Typography>
         </Box>
       )}
-      <CricketBallLoader size={size ?? (backdrop ? 'lg' : 'md')} tone={backdrop ? 'light' : 'dark'} label={label ?? message ?? 'Loading'} />
+      <CricketBallLoader size={size ?? 'md'} tone={backdrop ? 'light' : 'dark'} label={label ?? message ?? 'Loading'} />
       {message && (
         <Typography aria-hidden sx={{ color: backdrop ? BACKDROP_COLOURS.cream : 'text.secondary', fontSize: backdrop ? 18 : 15, fontWeight: 500 }}>
           {message}

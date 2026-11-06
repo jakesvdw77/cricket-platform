@@ -49,8 +49,10 @@ export function SquadPlayerPicker({ open, onClose, candidates, sections, default
       <DialogTitle>Add Players To This Season&apos;s Squad</DialogTitle>
       <DialogContent>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 1, mb: 1.5 }}>
-          <Input label="Search Players" placeholder="Search by name" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ flex: 1 }} />
-          <Input select label="Section" value={sectionId} onChange={(event) => setSectionId(event.target.value)} sx={{ minWidth: 180 }}>
+          <Input label="Search Players" placeholder="Search by name" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ flex: 1, minWidth: 0 }} />
+          {/* Both inputs are full width by default, so the select took everything and squeezed Search to a sliver (a stray box left of the Section
+              field). The select has its own fixed width; Search takes the rest. */}
+          <Input select fullWidth={false} label="Section" value={sectionId} onChange={(event) => setSectionId(event.target.value)} sx={{ width: { xs: '100%', sm: 200 }, flex: 'none' }}>
             <MenuItem value="">All Sections</MenuItem>
             {sections.filter((section) => section.active).map((section) => (
               <MenuItem key={section.id} value={section.id}>

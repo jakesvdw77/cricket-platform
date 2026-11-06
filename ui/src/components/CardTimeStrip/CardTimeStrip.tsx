@@ -14,13 +14,15 @@ export interface CardTimeStripProps {
   action?: ReactNode
   // Right-aligned from sm up (a Countdown chip).
   trailing?: ReactNode
+  // A full-width line under the strip's own row (the match card's venue under its forecast).
+  below?: ReactNode
   testId?: string
 }
 
 // docs/specs/082 (poll card) and docs/specs/087 (match card): the tinted strip a card reads first - icon, a label
 // ("Poll closes", "Starts", "Played"), the date and time in bold, optional controls and a countdown - neutral, or
 // amber when the time is close. Extracted from PollCard so the two cards cannot drift.
-export function CardTimeStrip({ icon, label, value, tone = 'neutral', action, trailing, testId }: CardTimeStripProps) {
+export function CardTimeStrip({ icon, label, value, tone = 'neutral', action, trailing, below, testId }: CardTimeStripProps) {
   const warn = tone === 'warning'
   return (
     <Box
@@ -52,6 +54,7 @@ export function CardTimeStrip({ icon, label, value, tone = 'neutral', action, tr
       </Typography>
       {action}
       {trailing && <Box sx={{ ml: { sm: 'auto' } }}>{trailing}</Box>}
+      {below && <Box sx={{ flexBasis: '100%', minWidth: 0 }}>{below}</Box>}
     </Box>
   )
 }
