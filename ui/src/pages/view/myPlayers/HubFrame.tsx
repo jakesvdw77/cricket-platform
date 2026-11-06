@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
+import { Box, ButtonBase, Slider, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -11,6 +11,7 @@ import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
+import { useHubGlass } from './useHubGlass'
 import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const MENU_WIDTH = 300
@@ -43,6 +44,8 @@ export interface HubFrameProps {
 
 export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
   const header = useHubHeaderState()
+  const { glass, setGlass } = useHubGlass()
+  const a = (v: number) => (v * glass).toFixed(3)
   const twoColumns = Boolean(menu) && !hideContent
   // docs/specs/145 decision 12: from md up, on a content page (never the phone's main menu screen), the menu column collapses to an icon rail.
   const wide = useMediaQuery(useTheme().breakpoints.up('md'))
@@ -65,7 +68,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
         minHeight: 0,
-        bgcolor: panel === 'solid' ? (fill ? HUB_GROUND : 'rgba(5, 30, 22, 0.88)') : 'transparent',
+        bgcolor: panel === 'solid' ? `rgba(5, 30, 22, ${a(fill ? 0.92 : 0.88)})` : 'transparent',
         p: { xs: '16px 16px', md: '36px 40px' },
         minWidth: 0,
       }}
@@ -89,7 +92,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           borderRadius: '6px',
           overflow: 'hidden',
           // Translucent so the page's own cricket-scene backdrop shows through (no scene of its own).
-          background: 'linear-gradient(180deg, rgba(10,51,34,0.78) 0%, rgba(7,42,28,0.82) 55%, rgba(5,32,26,0.88) 100%)',
+          background: `linear-gradient(180deg, rgba(10,51,34,${a(0.78)}) 0%, rgba(7,42,28,${a(0.82)}) 55%, rgba(5,32,26,${a(0.88)}) 100%)`,
           backdropFilter: 'blur(1.5px)',
           display: 'grid',
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
@@ -130,6 +133,23 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
               </Typography>
             )}
           </Box>
+          {/* TEMPORARY: see-through control (owner, 2026-11-06); remove once a value is chosen. */}
+          {fill && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1.25, flex: 'none', ml: 2, width: 190, color: HUB.sand }}>
+              <Typography sx={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase' }}>Glass</Typography>
+              <Slider
+                size="small"
+                min={0}
+                max={1}
+                step={0.02}
+                value={glass}
+                onChange={(_, v) => setGlass(v as number)}
+                aria-label="Console transparency (temporary)"
+                data-testid="hub-glass-slider"
+                sx={{ color: HUB.gold }}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
