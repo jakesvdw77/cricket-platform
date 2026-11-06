@@ -187,7 +187,7 @@ const teamRing=(list,sc,next)=>{const w=list.filter(m=>m.res==='W').length,l=lis
   return `<div class="card" style="align-items:center;text-align:center"><span class="tag">Stats (later)</span><div class="kick">The team's results</div><div class="grow">${ring(w,l,t)}</div>
   <div class="legend"><span><i style="background:#e0b44f"></i>Won ${w}</span><span><i style="background:#9d4a4a"></i>Lost ${l}</span>${t?`<span><i style="background:#e0d5b4"></i>Tied ${t}</span>`:''}</div>${foot(next,sc)}</div>`;};
 const emptyCard=(sc)=>`<div class="card" style="flex:1;align-items:center;justify-content:center;text-align:center">
-  <svg width="110" height="110" viewBox="0 0 120 120" role="img" aria-label="A cricket ball"><circle cx="60" cy="60" r="44" fill="#c8363d"/><path d="M22 44 Q60 70 98 44 M22 76 Q60 50 98 76" fill="none" stroke="#f6f1e3" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round"/></svg>
+  <svg width="110" height="110" viewBox="0 0 120 120" role="img" aria-label="A cricket ball"><circle cx="60" cy="60" r="44" fill="#c8363d"/><line x1="60" y1="20" x2="60" y2="100" stroke="#8f2428" stroke-width="3" stroke-linecap="round"/><line x1="52" y1="22" x2="52" y2="98" stroke="#f6f1e3" stroke-width="2.5" stroke-dasharray="3 6" stroke-linecap="round"/><line x1="68" y1="22" x2="68" y2="98" stroke="#f6f1e3" stroke-width="2.5" stroke-dasharray="3 6" stroke-linecap="round"/></svg>
   <div class="big" style="font-size:40px;margin-top:14px">No matches for this filter</div><div class="sentence" style="max-width:250px">${sc} has no results shared with the Player Hub.</div>
   <button class="linkbtn" data-clear>Clear Filters</button></div>`;
 
