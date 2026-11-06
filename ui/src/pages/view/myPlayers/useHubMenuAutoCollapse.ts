@@ -19,7 +19,7 @@ export const PEEK_OPEN_DELAY_MS = 500
 // The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first
 // moments and reads as quick however long it is).
 export const PEEK_IN_MS = 900
-export const PEEK_OUT_MS = 750
+export const PEEK_OUT_MS = 1400
 export const PEEK_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 export function menuAutoCollapsePreference(): boolean {
