@@ -30,10 +30,10 @@
   <g>
     <circle cx="40" cy="390" r="110" fill="url(#glow)" opacity="0.6"/>
     <use href="#pylon" x="40" y="400"/>
-    <circle cx="1440" cy="360" r="110" fill="url(#glow)" opacity="0.6"/>
-    <use href="#pylon" x="1440" y="370"/>
-    <circle cx="1530" cy="400" r="90" fill="url(#glow)" opacity="0.5"/>
-    <use href="#pylon" x="1530" y="410"/>
+    <circle cx="1520" cy="360" r="110" fill="url(#glow)" opacity="0.6"/>
+    <use href="#pylon" x="1520" y="370"/>
+    <circle cx="1570" cy="400" r="90" fill="url(#glow)" opacity="0.5"/>
+    <use href="#pylon" x="1570" y="410"/>
   </g>
   <path d="M0 560 Q800 520 1600 555 V900 H0z" fill="#14633F"/>
   <path d="M0 640 Q800 590 1600 635 V900 H0z" fill="#0F5132" opacity="0.7"/>
@@ -109,9 +109,9 @@
       <path d="M40 384 Q560 560 1045 470" stroke="#C8102E" stroke-dasharray="1 33"/>
       <path d="M40 384 Q560 560 1045 470" stroke="#E8B83D" stroke-dasharray="1 33" stroke-dashoffset="-11"/>
       <path d="M40 384 Q560 560 1045 470" stroke="#3FBF7F" stroke-dasharray="1 33" stroke-dashoffset="-22"/>
-      <path d="M1265 470 Q1350 540 1440 372" stroke="#C8102E" stroke-dasharray="1 29"/>
-      <path d="M1265 470 Q1350 540 1440 372" stroke="#E8B83D" stroke-dasharray="1 29" stroke-dashoffset="-10"/>
-      <path d="M1265 470 Q1350 540 1440 372" stroke="#3FBF7F" stroke-dasharray="1 29" stroke-dashoffset="-20"/>
+      <path d="M1265 470 Q1390 540 1520 372" stroke="#C8102E" stroke-dasharray="1 29"/>
+      <path d="M1265 470 Q1390 540 1520 372" stroke="#E8B83D" stroke-dasharray="1 29" stroke-dashoffset="-10"/>
+      <path d="M1265 470 Q1390 540 1520 372" stroke="#3FBF7F" stroke-dasharray="1 29" stroke-dashoffset="-20"/>
       <path d="M1045 470 L1155 430 L1265 470" stroke="#E8B83D" stroke-dasharray="1 20"/>
       <path d="M1045 470 L1155 430 L1265 470" stroke="#C8102E" stroke-dasharray="1 20" stroke-dashoffset="-10"/>
     </g>
