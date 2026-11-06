@@ -14,7 +14,7 @@ export const VEIL_IN_MS = 240
 export const VEIL_OUT_MS = 760
 export const PEEK_CLOSE_DELAY_MS = 350
 // Hover intent (owner, 2026-11-06): the panel opens only when the pointer rests on the menu button this long, not when it brushes past.
-export const PEEK_OPEN_DELAY_MS = 300
+export const PEEK_OPEN_DELAY_MS = 500
 // The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first
 // moments and reads as quick however long it is).
 export const PEEK_IN_MS = 900
