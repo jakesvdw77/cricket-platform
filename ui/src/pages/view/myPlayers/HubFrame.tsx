@@ -111,8 +111,11 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
               aria-haspopup="true"
               aria-expanded={autoCollapse.peek}
               data-testid="hub-menu-button"
-              onMouseEnter={autoCollapse.openPeek}
-              onMouseLeave={() => autoCollapse.closePeek()}
+              onMouseEnter={autoCollapse.hoverOpenPeek}
+              onMouseLeave={() => {
+                autoCollapse.cancelHoverOpen()
+                autoCollapse.closePeek()
+              }}
               onFocus={autoCollapse.openPeek}
               onClick={autoCollapse.togglePeek}
               sx={{ flex: 'none', width: 44, height: 44, mr: 1.75, borderRadius: '4px', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.28), color: HUB.cream, '&:hover': { borderColor: HUB.sand, bgcolor: blackAlpha(0.4) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}

@@ -13,6 +13,8 @@ export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 export const VEIL_IN_MS = 240
 export const VEIL_OUT_MS = 760
 export const PEEK_CLOSE_DELAY_MS = 350
+// Hover intent (owner, 2026-11-06): the panel opens only when the pointer rests on the menu button this long, not when it brushes past.
+export const PEEK_OPEN_DELAY_MS = 300
 // The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first
 // moments and reads as quick however long it is).
 export const PEEK_IN_MS = 900
@@ -42,6 +44,7 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   const [peek, setPeek] = useState(false)
   const timers = useRef<number[]>([])
   const closeTimer = useRef<number | undefined>(undefined)
+  const openTimer = useRef<number | undefined>(undefined)
   // Clicks are ignored while a transition runs (owner, 2026-11-06: a double click flipped the menu twice). Hover and the timer are not locked.
   const lockedUntil = useRef(0)
   const locked = () => Date.now() < lockedUntil.current
@@ -55,6 +58,7 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     () => () => {
       timers.current.forEach((id) => window.clearTimeout(id))
       window.clearTimeout(closeTimer.current)
+      window.clearTimeout(openTimer.current)
     },
     [],
   )
@@ -96,7 +100,15 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     if (!peek) lockFor(PEEK_IN_MS)
     setPeek(true)
   }, [peek])
+  // The pointer arrived on the menu button: wait for it to rest there before opening. Leaving the button cancels the wait.
+  const hoverOpenPeek = useCallback(() => {
+    window.clearTimeout(closeTimer.current)
+    window.clearTimeout(openTimer.current)
+    openTimer.current = window.setTimeout(openPeek, PEEK_OPEN_DELAY_MS)
+  }, [openPeek])
+  const cancelHoverOpen = useCallback(() => window.clearTimeout(openTimer.current), [])
   const closePeek = useCallback((delay = PEEK_CLOSE_DELAY_MS) => {
+    window.clearTimeout(openTimer.current)
     window.clearTimeout(closeTimer.current)
     closeTimer.current = window.setTimeout(() => setPeek(false), delay)
   }, [])
@@ -147,5 +159,5 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     },
   }
 
-  return { active, collapsed, peek: collapsed && peek, openPeek, closePeek, togglePeek, pin, veil, armed, toggle, columnProps }
+  return { active, collapsed, peek: collapsed && peek, openPeek, closePeek, togglePeek, hoverOpenPeek, cancelHoverOpen, pin, veil, armed, toggle, columnProps }
 }
