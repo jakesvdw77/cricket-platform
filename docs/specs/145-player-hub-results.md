@@ -1,6 +1,6 @@
 # 145: Player Hub Results and Stats: the experience that sells the app to parents (Schedule > Results first, on a player-facing stats foundation)
 
-**Status:** draft 2026-11-06, amended the same day with the owner's answer on the scorecard and names (Decisions). The owner will answer the remaining open questions separately. Requested by the owner: add results to the Player view, showing the matches played and potentially the player's recent results; suggestions welcome; a drillable stats section for the player and the team will follow on the Player view, so fold the two into one spec where that avoids duplicated effort. **Recommendation: one spec** (this one): the effort is in the player-facing access and privacy rule over the stats reads, which Results and Stats both need; Results is the first and smallest screen on it. The Stats screens (`stats.mine`, `stats.teams`) stay "Soon" and get their own later spec that only adds UI.
+**Status:** approved 2026-11-06 (flow, structure, scope, charts, names, flag default decided in mockup rounds 1 to 4 and the owner's answers; the remaining open questions take their defaults: a five-result form strip, matches the player did not play are not listed, the hero's figures are plain cards until the Stats section exists, one PR for backend and frontend). Not built yet. Requested by the owner: add results to the Player view, showing the matches played and the player's recent results, in a striking, mobile-first experience that sells the app to parents; a drillable Player and Team stats section follows on the same foundation. **Recommendation followed: one spec**, because the effort is in the player-facing access and privacy rule over the stats reads, which Results and Stats both need; Results is the first and smallest screen on it. The Stats screens (`stats.mine`, `stats.teams`) stay "Soon" and get their own later spec that only adds UI.
 **Depends on:** `121` (Hub menu, `hubNav.ts`, `MyPlayerAccess`, phone rules), `135` (Schedule > Matches, the Hub match row, `MyMatchService`, the Hub privacy rule and the dark console tokens `HUB`), `115` (the player match list: `PlayerMatchListService`, `PlayerMatchRowDto`, its Privacy section and decision H, "the later player view is a new controller and access rule over the same service"), `103` and `117` (the counting rules, `PlayerStatsDto`, `PlayerDashboardDto`, `FormStrip`), `114` and `122` (`shareName` and the junior rule), `143` (page anatomy, where the Hub differs).
 
 ## Problem & Goals
@@ -113,7 +113,7 @@ The Hub keeps its own console look (dark, `HUB` tokens, footer Back); the page a
 5. The rows equal `basis.matchesCounted` and the tiles equal the `103` totals for the same Season.
 6. Stats > My stats and Team stats remain Soon; nothing here blocks them.
 
-## Open questions (default if unanswered)
+## Open questions (all resolved or on their defaults, 2026-11-06)
 1. **Resolved (Decision 5):** Results is a main Hub item, second after Availability; Schedule > Results is removed.
 2. **Tiles:** as drawn in the approved hero (matches, wickets, catches under the big runs figure, plus the last-five streak with the player's figures). Default: **as drawn**.
 3. **Resolved (Decisions 1 and 7):** the full scorecard with names, juniors in full.
