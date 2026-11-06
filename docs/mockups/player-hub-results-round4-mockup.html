@@ -93,9 +93,10 @@
   .page-scroll > .card.herocard { margin:10px 16px 0; }
   .sect2 { display:flex; align-items:center; justify-content:space-between; padding:18px 16px 8px; }
   .sect2 .t { font-family:var(--disp); letter-spacing:.12em; text-transform:uppercase; font-size:16px; color:var(--sand); }
-  .car { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 8% 12px; scroll-padding:0 8%; scrollbar-width:none; align-items:stretch; }
+  .car { display:flex; gap:24px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 16px 12px; scroll-padding:0 16px; scrollbar-width:none; align-items:stretch; }
   .car::-webkit-scrollbar { display:none; }
-  .car > .card { flex:0 0 84%; scroll-snap-align:center; min-height:500px; }
+  .car > .card { flex:0 0 100%; scroll-snap-align:start; min-height:500px; }
+  .arrowbtns { display:flex; gap:8px; align-items:center; } .arrowbtns button { width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:rgba(0,0,0,.3); color:var(--cream); font-size:20px; cursor:pointer; } .arrowbtns button:disabled { opacity:.3; cursor:default; }
   .cardots { display:flex; justify-content:center; gap:7px; padding:2px 0 6px; }
   .cardots i { width:7px; height:7px; border-radius:50%; background:var(--line); } .cardots i.on { background:var(--gold); width:20px; border-radius:6px; }
   .allres { padding:0 16px 28px; }
@@ -232,7 +233,7 @@ function resultsPage(el, st){            // st: {scope, tabs, hideTeam}
   if(empty){ body=`<div class="page-scroll" style="padding:10px 16px 16px;display:flex;flex-direction:column">${items[0].html}</div>`; }
   else { const car=items.slice(1), n=car.length;
     body=`<div class="page-scroll">${items[0].html.replace('<div class="card">','<div class="card herocard">')}
-     ${n?`<div class="sect2"><span class="t">Flip through</span><span class="count"><b>1</b> / ${n}</span></div><div class="car" tabindex="0" role="region" aria-label="Result cards">${car.map(i=>i.html).join('')}</div>
+     ${n?`<div class="sect2"><span class="t">Flip through</span><span class="arrowbtns"><button data-prev aria-label="Previous card">‹</button><span class="count" aria-live="polite"><b>1</b> / ${n}</span><button data-next aria-label="Next card">›</button></span></div><div class="car" tabindex="0" role="region" aria-label="Result cards">${car.map(i=>i.html).join('')}</div>
      <div class="cardots">${car.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div><div class="sect2"><span class="t">All cards</span></div><div class="allres"><div class="index">${car.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join('')}</div></div>`:''}</div>`; }
   el.innerHTML=hbar('Results',seasonBtn)+teamTabs+`<div class="stage">${body}</div>`;
   const redraw=()=>resultsPage(el,st);
@@ -246,9 +247,10 @@ function resultsPage(el, st){            // st: {scope, tabs, hideTeam}
     draw(); el.appendChild(sh); };
   el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{S.team=st.tabs?'All teams':S.team;S.league='All leagues';S.season='2026';redraw();});
   if(!empty){ const c=el.querySelector('.car'); if(c){ const n=c.children.length, dots=el.querySelectorAll('.cardots i'), count=el.querySelector('.count');
-    const step=()=>c.children[0].offsetWidth+12, cur=()=>Math.max(0,Math.min(n-1,Math.round(c.scrollLeft/step())));
+    const step=()=>c.children[0].offsetWidth+24, cur=()=>Math.max(0,Math.min(n-1,Math.round(c.scrollLeft/step())));
     const go=i=>{c.scrollTo({left:step()*Math.max(0,Math.min(n-1,i)),behavior:'smooth'});c.scrollIntoView({block:'nearest',behavior:'smooth'});};
-    c.addEventListener('scroll',()=>{const i=cur();dots.forEach((x,k)=>x.classList.toggle('on',k===i));count.innerHTML=`<b>${i+1}</b> / ${n}`;});
+    const prev=el.querySelector('[data-prev]'), nxt=el.querySelector('[data-next]'); const sync=()=>{const i=cur();dots.forEach((x,k)=>x.classList.toggle('on',k===i));count.innerHTML=`<b>${i+1}</b> / ${n}`;prev.disabled=i===0;nxt.disabled=i===n-1;};
+    c.addEventListener('scroll',sync); prev.onclick=()=>go(cur()-1); nxt.onclick=()=>go(cur()+1); sync();
     el.querySelectorAll('.car .next button').forEach((b,i)=>b.onclick=()=>go(i+1)); const hb=el.querySelector('.herocard .next button'); if(hb) hb.onclick=()=>go(0);
     el.querySelectorAll('.allres button').forEach(b=>b.onclick=()=>go(+b.dataset.i)); } }
 }
