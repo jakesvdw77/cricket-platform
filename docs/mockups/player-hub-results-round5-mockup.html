@@ -20,10 +20,11 @@
   .mi .ic { width:28px; height:28px; border-radius:8px; background:rgba(246,241,227,.1); display:grid; place-items:center; flex:none; } .mi.on { background:rgba(224,180,79,.14); box-shadow:inset 3px 0 0 var(--gold); color:var(--gold2); }
   .timer { position:absolute; left:0; bottom:0; height:3px; background:var(--gold); width:100%; transform-origin:left; } .handle { position:absolute; bottom:8px; right:8px; width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:rgba(0,0,0,.4); color:var(--cream); cursor:pointer; }
   .content { flex:1; min-width:0; padding:18px 22px 40px; } .phone .content { padding:14px 14px 40px; }
-  .chips { display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px 10px; align-items:center; margin:0 0 10px; } .phone .chips { grid-template-columns:minmax(0,1fr); gap:6px; } .cw { display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
+  .chips { display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px 10px; align-items:center; margin:0 0 10px; } .phone .chips { grid-template-columns:minmax(0,1fr); gap:6px; } .cw { display:grid; grid-template-columns:repeat(auto-fill,minmax(176px,1fr)); gap:8px; min-width:0; } .phone .cw { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .lab { font-family:var(--disp); letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--sand); }
-  .chip { min-height:40px; padding:0 14px; border-radius:20px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--cream); font:inherit; font-size:15px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
-  .chip small { color:var(--muted); font-size:12px; } .chip.on { border-color:var(--gold); background:rgba(224,180,79,.18); color:var(--gold2); }
+  .chip { height:54px; padding:0 14px; border-radius:16px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--cream); font:inherit; font-size:15px; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; text-align:left; min-width:0; }
+  .chip > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip small { color:var(--muted); font-size:12px; white-space:nowrap; } .chip.on { border-color:var(--gold); background:rgba(224,180,79,.18); color:var(--gold2); }
   .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); margin-top:14px; } .phone .grid { grid-template-columns:1fr; }
   .card { border:1px solid var(--line); border-radius:20px; background:rgba(0,0,0,.22); padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
   .card.win { background:linear-gradient(160deg,rgba(224,180,79,.2),rgba(0,0,0,.22) 55%); } .card.loss { background:linear-gradient(160deg,rgba(157,74,74,.28),rgba(0,0,0,.22) 55%); } .card.tie { background:linear-gradient(160deg,rgba(224,213,180,.18),rgba(0,0,0,.22) 55%); }
@@ -76,7 +77,7 @@ function page(el,mode){
   const S=mk(), desk=mode==='desk'; let timer,collapsed=false,t0;
   const draw=()=>{
     const list=pick(S), teams=uniq(S,'tm'), leagues=uniq(S,'lg');
-    const chips=(label,arr,key,all)=>`<div class="chips"><span class="lab">${label}</span><div class="cw"><button class="chip ${S[key]==='All'?'on':''}" data-k="${key}" data-v="All">${all}</button>${arr.map(v=>`<button class="chip ${S[key]===v?'on':''}" data-k="${key}" data-v="${v}">${v}<small>${rec(M.filter(m=>m.s===S.season&&m[key==='team'?'tm':'lg']===v&&(key==='lg'||inLeague(S,m))))}</small></button>`).join('')}</div></div>`;
+    const chips=(label,arr,key,all)=>`<div class="chips"><span class="lab">${label}</span><div class="cw"><button class="chip ${S[key]==='All'?'on':''}" data-k="${key}" data-v="All"><span>${all}</span><small>${rec(M.filter(m=>m.s===S.season&&(key==='league'||inLeague(S,m))))}</small></button>${arr.map(v=>`<button class="chip ${S[key]===v?'on':''}" data-k="${key}" data-v="${v}"><span>${v}</span><small>${rec(M.filter(m=>m.s===S.season&&m[key==='team'?'tm':'lg']===v&&(key==='league'||inLeague(S,m))))}</small></button>`).join('')}</div></div>`;
     const main=list.length?`${formHtml(list)}<div class="latest">${cardHtml(list[0],true)}</div>${list.length>1?`<div class="grid">${list.slice(1).map(m=>cardHtml(m)).join('')}</div>`:''}`:
       `<div class="empty"><div class="res">No matches for this filter</div><p class="lg">${S.season} has no results shared with the Player Hub for this combination.</p><button class="linkb" data-clear>Clear Filters</button></div>`;
     const sel=`<select class="sel" aria-label="Season">${['2026','2025'].map(y=>`<option ${S.season===y?'selected':''}>${y}</option>`).join('')}</select>`;
