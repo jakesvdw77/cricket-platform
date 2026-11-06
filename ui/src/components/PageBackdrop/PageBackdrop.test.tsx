@@ -26,14 +26,13 @@ describe('PageBackdrop themes', () => {
     return text.split('}').find((chunk) => chunk.includes(`.${cls}`)) ?? ''
   }
 
-  it('draws the default scene unless the theme says otherwise, the same as theme="default"', () => {
+  it('draws the active theme unless the theme says otherwise, the same as passing it explicitly', () => {
     const plain = render(<PageBackdrop>Hi</PageBackdrop>)
     const plainRule = rule(scene())
     expect(plainRule).toContain('background-image')
-    expect(plainRule).not.toContain('cricket-scene-christmas')
     plain.unmount()
 
-    render(<PageBackdrop theme="default">Hi</PageBackdrop>)
+    render(<PageBackdrop theme={ACTIVE_BACKDROP_THEME}>Hi</PageBackdrop>)
     expect(rule(scene())).toBe(plainRule)
   })
 
@@ -52,7 +51,7 @@ describe('PageBackdrop themes', () => {
     expect(rule(scene())).not.toContain('christmas')
   })
 
-  it('ships with the default theme active (Christmas is ready but switched off)', () => {
-    expect(ACTIVE_BACKDROP_THEME).toBe('default')
+  it('ships with the Christmas theme active (set back to default after the season)', () => {
+    expect(ACTIVE_BACKDROP_THEME).toBe('christmas')
   })
 })

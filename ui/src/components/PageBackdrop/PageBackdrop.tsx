@@ -25,7 +25,7 @@ const { green900 } = BACKDROP_COLOURS
 // Christmas scene for December, set ACTIVE_BACKDROP_THEME to 'christmas' (a date-range or a platform setting can replace this
 // constant later). Only the cricket scene changes; the console panels, text and colours are the same.
 export type BackdropTheme = 'default' | 'christmas'
-export const ACTIVE_BACKDROP_THEME: BackdropTheme = 'default'
+export const ACTIVE_BACKDROP_THEME: BackdropTheme = 'christmas'
 const SCENES: Record<BackdropTheme, string> = { default: defaultSceneUrl, christmas: christmasSceneUrl }
 
 export interface PageBackdropProps {
