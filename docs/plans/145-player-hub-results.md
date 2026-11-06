@@ -97,3 +97,8 @@ Slices A to C (backend flag and reads, manager controls) and the Hub nav and ava
 
 **Order:** backend 1 to 3 in parallel with frontend 4 to 6 (the frontend codes against the contract above), then the owner's hand-check, then the new tests, the end-of-work full suite and the PR.
 
+---
+
+# Amendment 2026-11-06 (2): tuck the filters into a Filters button (spec decision 14, round 6)
+Frontend only. In `HubResults.tsx` remove the always-visible League and Team chip rows; add the Filters button (header, only when a league or team choice exists in the chosen season, dot when a league or team is chosen), the removable active tags, the quiet league and team line for a one-league one-team player, a docked side panel from `lg` (apply as you tap, Reset, Done, Escape, focus to the panel on open and back to the button on close) and a dark `BottomSheet` below `lg` ("Show N matches"). Reuse the equal-size chip and the cascade logic already built. No backend change.
+
