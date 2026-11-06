@@ -165,7 +165,8 @@ public class MatchResultController {
             @PathVariable UUID matchId,
             @RequestBody(required = false) PublishResultRequest request) {
         boolean acknowledged = request != null && request.acknowledgedWarnings();
-        return ResponseEntity.ok(resultService.publish(authentication, clubId, matchId, acknowledged));
+        boolean showInPlayerHub = request == null || request.showInPlayerHubOrDefault();
+        return ResponseEntity.ok(resultService.publish(authentication, clubId, matchId, acknowledged, showInPlayerHub));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

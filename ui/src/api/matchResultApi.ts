@@ -491,13 +491,15 @@ export async function validateResult(clubId: string, matchId: string, draft?: Re
   return data
 }
 
-// acknowledgedWarnings must be true when validation produced warnings.
+// acknowledgedWarnings must be true when validation produced warnings. docs/specs/145: a published result shows in the Player Hub by
+// default; pass showInPlayerHub = false to publish without showing it.
 export async function publishResult(
   clubId: string,
   matchId: string,
   acknowledgedWarnings = false,
+  showInPlayerHub = true,
 ): Promise<MatchResult> {
-  const { data } = await api.post<MatchResult>(`${matchResultPath(clubId, matchId)}/publish`, { acknowledgedWarnings })
+  const { data } = await api.post<MatchResult>(`${matchResultPath(clubId, matchId)}/publish`, { acknowledgedWarnings, showInPlayerHub })
   return data
 }
 

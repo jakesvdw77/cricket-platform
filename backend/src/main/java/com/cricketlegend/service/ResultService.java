@@ -85,7 +85,12 @@ public interface ResultService {
      * Re-validates the stored draft: errors give a 400 {@code InvalidResultException}; warnings need {@code
      * acknowledgedWarnings}. Then marks it published.
      */
-    MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings);
+    default MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings) {
+        return publish(authentication, clubId, matchId, acknowledgedWarnings, true);
+    }
+
+    /** docs/specs/145: as above; {@code showInPlayerHub} also switches the Show In Player Hub flag on (the default) or leaves it off. */
+    MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings, boolean showInPlayerHub);
 
     /** Back to draft; everything derived follows. */
     MatchResultDto unpublish(Authentication authentication, UUID clubId, UUID matchId);

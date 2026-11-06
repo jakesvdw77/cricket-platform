@@ -17,7 +17,6 @@ import {
   getScorecard,
   getScorecardPrefill,
   publishResult,
-  showResultToPlayers,
   resultKeys,
   resultsKey,
   saveResultDraft,
@@ -225,8 +224,9 @@ function CaptureWizard({
 
   const saveMutation = useMutation({ mutationFn: (next: ResultDraft) => saveResultDraft(clubId, matchId, toPayload(next)) })
   const validateMutation = useMutation({ mutationFn: (next: ResultDraft) => validateResult(clubId, matchId, toPayload(next)) })
-  const [showInHub, setShowInHub] = useState(false)
-  const publishMutation = useMutation({ mutationFn: () => publishResult(clubId, matchId, acknowledged) })
+  // docs/specs/145: a published result shows in the Player Hub by default; the manager can untick it for this one.
+  const [showInHub, setShowInHub] = useState(true)
+  const publishMutation = useMutation({ mutationFn: () => publishResult(clubId, matchId, acknowledged, showInHub) })
 
   // Every edit also keeps the calculated margin of a regular win in step with the scores (unless the manager edited it).
   const update = (patch: Partial<ResultDraft>) => setDraft((current) => withCalculatedMargin({ ...current, ...patch }, names))
@@ -300,14 +300,6 @@ function CaptureWizard({
     if (!(await save(draft))) return
     try {
       await publishMutation.mutateAsync()
-      // docs/specs/145: the Player Hub is a separate, optional step; if it fails the result is still published.
-      if (showInHub) {
-        try {
-          await showResultToPlayers(clubId, matchId)
-        } catch {
-          // Nothing blocking: the manager can use Show In Player Hub on the result page.
-        }
-      }
       refresh()
       void queryClient.invalidateQueries({ queryKey: resultKeys.detail(clubId, matchId) })
       navigate(RESULTS_PATH)
@@ -499,13 +491,13 @@ function CaptureWizard({
         title="Publish this result?"
         description={
           <>
-            Publishing makes this result visible to the club&apos;s managers.
+            Publishing makes this result visible to the club.
             <Box sx={{ mt: 1.5 }}>
               <FormControlLabel
                 control={<Checkbox checked={showInHub} onChange={(event) => setShowInHub(event.target.checked)} />}
                 label="Show In Player Hub"
               />
-              <FormHelperText sx={{ mt: -0.5, ml: 4 }}>Parents and players can see this result in the Player Hub</FormHelperText>
+              <FormHelperText sx={{ mt: -0.5, ml: 4 }}>Parents and players can see this result in the Player Hub. Untick to publish without showing it; you can show it later.</FormHelperText>
             </Box>
           </>
         }

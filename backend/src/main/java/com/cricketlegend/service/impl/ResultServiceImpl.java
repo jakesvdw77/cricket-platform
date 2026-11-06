@@ -401,7 +401,7 @@ public class ResultServiceImpl implements ResultService {
 
     @Override
     @Transactional
-    public MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings) {
+    public MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings, boolean showInPlayerHub) {
         Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
         assertCapturable(match);
         MatchResult result = findResultOrThrow(matchId);
@@ -423,6 +423,10 @@ public class ResultServiceImpl implements ResultService {
         result.setStatus(ResultStatus.PUBLISHED);
         result.setPublishedAt(ServerClock.now());
         result.setPublishedBy(person);
+        // docs/specs/145: a published result shows in the Player Hub by default; the manager can opt out at publish time or hide it later.
+        result.setVisibleToPlayers(showInPlayerHub);
+        result.setVisibleToPlayersAt(showInPlayerHub ? ServerClock.now() : null);
+        result.setVisibleToPlayersBy(showInPlayerHub ? person : null);
         result.setUpdatedBy(person);
         scorecardService.freezeFeatured(result.getId(), match);
         return toDto(resultRepository.save(result));

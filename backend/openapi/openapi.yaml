@@ -14195,6 +14195,9 @@ components:
       properties:
         acknowledgedWarnings:
           type: boolean
+        showInPlayerHub:
+          type: boolean
+          description: "docs/specs/145: whether the published result also shows in the Player Hub. Omitted means true; send false to publish without showing it."
     ResultIssueDto:
       type: object
       description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed; docs/specs/113 adds the errors PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE, step TEAMS with the side, one per registered player of our side outside the team's section or outside the league's age rule), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
