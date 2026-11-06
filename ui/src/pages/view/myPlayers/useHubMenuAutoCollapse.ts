@@ -13,6 +13,11 @@ export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 export const VEIL_IN_MS = 240
 export const VEIL_OUT_MS = 760
 export const PEEK_CLOSE_DELAY_MS = 350
+// The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first
+// moments and reads as quick however long it is).
+export const PEEK_IN_MS = 900
+export const PEEK_OUT_MS = 750
+export const PEEK_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 export function menuAutoCollapsePreference(): boolean {
   try {

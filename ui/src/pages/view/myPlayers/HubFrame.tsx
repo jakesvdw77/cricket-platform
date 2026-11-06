@@ -11,7 +11,7 @@ import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
-import { VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
+import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
 const MENU_WIDTH = 300
 
@@ -154,14 +154,14 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                       zIndex: 7,
                       bgcolor: 'rgba(5, 30, 22, 0.98)',
                       boxShadow: '12px 0 32px rgba(0,0,0,0.45)',
-                      // A slide: the panel glides in from the left edge (about half a second, decelerating) and slides back out more slowly.
+                      // A slide: the panel glides in from the left edge over PEEK_IN_MS with an even ease and slides back out over PEEK_OUT_MS.
                       opacity: autoCollapse.peek ? 1 : 0,
                       transform: autoCollapse.peek ? 'translateX(0)' : 'translateX(-100%)',
                       visibility: autoCollapse.peek ? 'visible' : 'hidden',
                       '@media (prefers-reduced-motion: no-preference)': {
                         transition: autoCollapse.peek
-                          ? 'transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 360ms ease'
-                          : 'transform 460ms cubic-bezier(0.45, 0, 0.55, 1), opacity 460ms ease 60ms, visibility 0s linear 520ms',
+                          ? `transform ${PEEK_IN_MS}ms ${PEEK_EASE}, opacity ${PEEK_IN_MS * 0.7}ms ease`
+                          : `transform ${PEEK_OUT_MS}ms ${PEEK_EASE}, opacity ${PEEK_OUT_MS}ms ease 80ms, visibility 0s linear ${PEEK_OUT_MS + 80}ms`,
                       },
                     }
                   : { position: 'relative' }),
