@@ -45,6 +45,10 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         position: 'relative',
         overflowX: 'hidden',
         overflowY: fill ? 'auto' : 'hidden',
+        // No browser scrollbar on the dark console (owner, 2026-11-06): a bright default track beside dark panels looked wrong. Scrolling by
+        // wheel, trackpad, touch and keyboard is unchanged; the Results page has its own floating section arrows.
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
         minHeight: 0,
         bgcolor: panel === 'solid' ? (fill ? HUB_GROUND : 'rgba(5, 30, 22, 0.88)') : 'transparent',
         p: { xs: '16px 16px', md: '36px 40px' },
@@ -97,6 +101,8 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
               sx={{
                 minHeight: 0,
                 overflowY: 'auto',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
                 borderRight: { xs: 0, sm: `1px solid ${HUB.line}` },
                 display: 'flex',
                 flexDirection: 'column',
