@@ -1,4 +1,4 @@
-# 145: Player Hub Results (Schedule > Results) and the player-facing stats foundation
+# 145: Player Hub Results and Stats: the experience that sells the app to parents (Schedule > Results first, on a player-facing stats foundation)
 
 **Status:** draft 2026-11-06, amended the same day with the owner's answer on the scorecard and names (Decisions). The owner will answer the remaining open questions separately. Requested by the owner: add results to the Player view, showing the matches played and potentially the player's recent results; suggestions welcome; a drillable stats section for the player and the team will follow on the Player view, so fold the two into one spec where that avoids duplicated effort. **Recommendation: one spec** (this one): the effort is in the player-facing access and privacy rule over the stats reads, which Results and Stats both need; Results is the first and smallest screen on it. The Stats screens (`stats.mine`, `stats.teams`) stay "Soon" and get their own later spec that only adds UI.
 **Depends on:** `121` (Hub menu, `hubNav.ts`, `MyPlayerAccess`, phone rules), `135` (Schedule > Matches, the Hub match row, `MyMatchService`, the Hub privacy rule and the dark console tokens `HUB`), `115` (the player match list: `PlayerMatchListService`, `PlayerMatchRowDto`, its Privacy section and decision H, "the later player view is a new controller and access rule over the same service"), `103` and `117` (the counting rules, `PlayerStatsDto`, `PlayerDashboardDto`, `FormStrip`), `114` and `122` (`shareName` and the junior rule), `143` (page anatomy, where the Hub differs).
@@ -21,7 +21,24 @@ A parent or player in the Player Hub can see what is coming (Schedule > Matches,
 2. **A flag publishes a result to the player view.** A result reaches the Player Hub only when a manager has switched it on (**Show In Player Hub**). Publishing the result to the club (`published_at`) and showing it to players are two separate steps, so a manager can capture and publish a result for the club's own pages and check it before parents see it.
 3. The other open questions (2 and 4 to 9 below) are answered separately.
 
-## What the player sees (suggestions, for the owner to pick from)
+## Design direction (owner, 2026-11-06): striking, mobile first, one idea per screen
+Results and the Player and Team stats are what **sells the application to parents** (Availability stays the most important function and is already covered). So these pages are **not** the manager console in a dark skin:
+1. **Striking, not dense.** Bigger charts, far fewer per page: **one idea per screen** (a hero number or chart, one line of words, nothing else competing). No tables of figures as the first thing a parent sees.
+2. **A way to flip.** The content is a **deck of cards the user flips through** (swipe on a phone, arrows and the keyboard on a desktop), with a progress indicator, instead of one long scrolling page. Each card is one result, one chart or one milestone. The deck is the same model for Results now and for Player and Team stats later.
+3. **Mobile first.** Designed at 375 px first, thumb reach, 44 px targets, swipe with a visible fallback (buttons), no horizontal page scroll; the desktop is the same deck at a larger size (two panes where it helps), not a different design.
+4. **Mockups first, several rounds.** The owner is happy to iterate. No build starts until a mockup direction is approved; every round is an HTML mockup in `docs/mockups/` (and an artifact for review on a phone). See "Mockup rounds".
+5. **The chart technology is open** (see "Charts"): `@mui/x-charts` is approved for the manager Dashboard but may not be the right fit for a striking, animated, mobile card; alternatives are weighed before anything is added. Any new dependency needs the owner's approval first (`CLAUDE.md`).
+6. **Shareable later (idea, not built here):** each card is designed so it can become a share image (the `114` pipeline), because a proud parent sharing a card is the best advertisement.
+
+### The deck (suggested; the first mockup round tests it)
+A player's **Story** is a deck, newest first, each card one screen:
+- **Hero card:** the season in one glance for this player (big number and one sentence: "7 matches, 212 runs, 9 wickets"), the team's season as a ring (Played, Won, Lost), the last five results as a streak.
+- **Latest result card:** the last match, the score as a bold result banner, the player's own performance as one big figure ("46* off 68") with a one-line story ("top scorer in the win"), the award star if any.
+- **One card per recent result:** the same shape, swipe back in time.
+- **Stat cards (the later Stats section reuses the same deck):** Runs through the season (a bold line), Batting positions or scoring zones, Wickets and economy, Catches, Personal bests, Form vs the team average (never ranked against other players), Team season (results ring, run rate), Milestones ("first fifty").
+- **Index:** a compact grid or list of all cards to jump to one (the fallback to flipping).
+
+## What the player sees (suggestions, for the owner to pick from; the deck above is the presentation, this is the content)
 **Schedule > Results page** (dark console, `HUB` tokens, rows follow `135` section 0: one tap target, 44 px, no chevron, no kebab):
 
 1. **Season at a glance** (four compact static tiles, no ranking): **Played**, **Won**, **Runs** or **Wickets** for the player's role?, **Catches**. Suggested set: Played, Won, Runs, Wickets (a parent wants "how is the team doing" and "what has my child done"). Each tile later drills into `stats.mine` (a link target reserved in `hubNav.ts`, not shown now).
@@ -41,6 +58,22 @@ A parent or player in the Player Hub can see what is coming (Schedule > Matches,
 - **Manager UI:** on the result page, **Show In Player Hub** and **Hide From Player Hub** in the **Manage Result** menu (after the status transitions, `page-anatomy.md` section 6b), each with a one-line explanation; a published result shows a small badge ("In Player Hub") beside the Published badge when on. The Capture wizard's Review step offers the same switch beside Publish (off by default, "Parents and players can see this result"). A draft or unpublished result cannot be shown to players (the item is disabled with its reason).
 - **Rule:** a result is visible to players only when it is published (`published_at` set) **and** the flag is on; unpublishing a result also turns the flag off. Importing a result (`104`) sets nothing: it stays off until a manager switches it on.
 - **API:** `POST` and `DELETE` `/api/v1/manage/clubs/{clubId}/results/{resultId}/player-visibility` (club admin or the result's section manager, as publish), audited like publish; the result DTO gains `visibleToPlayers`.
+
+## Charts (open; decide in the mockup rounds, before any dependency is added)
+The hero visuals are few and bold: a results ring, a streak, a season line or area, a bar race of innings, a ball or wagon style graphic. Options, with a recommendation:
+| Option | For | Against |
+|---|---|---|
+| **`@mui/x-charts`** (approved, `components/charts/**`) | Already in the repo, themed, accessible, tested wrappers (`DonutChart`, `LineSeriesChart`, `BarSeriesChart`) | A generic, dense look; hard to make "striking" on a 375 px card without heavy overrides; weighs on the Hub bundle |
+| **Hand-built SVG components** (no dependency) | Full control of look, animation and a share image; tiny; one component per card type; works in the dark console | We own the maths (scales, axes), accessibility and tests |
+| **`d3-scale` and `d3-shape` with our own SVG** (small, approval needed) | Proven maths with our own rendering; light | A new dependency (CLAUDE.md approval) |
+| **Recharts, Victory, ECharts, Chart.js** (approval needed) | Rich out of the box | Heavy, a second styling system next to MUI, hard to theme to the Hub |
+**Recommendation:** hand-built SVG for the hero cards (a handful of chart types, animated, share-ready), `@mui/x-charts` kept for the manager Dashboard; decide with the first mockup, and ask before adding any package.
+
+## Mockup rounds (the process)
+1. **Round 1, direction:** three treatments of the same player and result on a 375 px phone (A: swipe deck of full-screen cards; B: a vertical snap scroll; C: a hero plus a carousel), dark console, real data from the dev club, with the flip affordance and the index. The owner picks one or mixes.
+2. **Round 2, the cards:** the chosen direction in detail: hero, result, a recent-form card, a season line, a team ring, and the desktop layout; chart technology compared on the same data.
+3. **Round 3, polish:** motion, empty and low-data states (a player with two matches), the share-card idea, accessibility (reduced motion, a table alternative for each chart, keyboard flip).
+4. Spec amended and approved, then `/plan-feature`. No build before that.
 
 ## Backend (new reads)
 | Endpoint | Wraps | Purpose |
