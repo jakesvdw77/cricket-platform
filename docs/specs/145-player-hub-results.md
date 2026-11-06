@@ -19,7 +19,8 @@ A parent or player in the Player Hub can see what is coming (Schedule > Matches,
 ## Decisions (owner, 2026-11-06)
 1. **Names are shown.** The Player Hub is for authenticated users, so the Hub Result page shows the full scorecard with names; the earlier "no other person's name" rule of this draft is dropped (it was this draft's choice, not an owner rule).
 2. **A flag publishes a result to the player view.** A result reaches the Player Hub only when a manager has switched it on (**Show In Player Hub**). Publishing the result to the club (`published_at`) and showing it to players are two separate steps, so a manager can capture and publish a result for the club's own pages and check it before parents see it.
-3. The other open questions (2 and 4 to 9 below) are answered separately.
+3. **The flip pattern is A, the swipe deck (owner, 2026-11-06, after mockup round 1b, `docs/mockups/player-hub-results-round1-mockup.html`).** One idea per card, swiped sideways, with three cues so it is obvious there is more: **the next card peeks** at the edge (cards about 88 percent wide), **a one-time nudge** on first open (the deck slides a little and settles, never again on that device, skipped for reduced motion, cancelled by any touch or key), and **a position counter** ("1 / 8") with the dots and a **Jump To** list as the fallback. Left and right arrow keys flip it on a keyboard. Patterns B (vertical snap) and C (hero plus carousel) are dropped. The hero leads with the player (owner, 2026-11-06). Build in slices: the Results deck first, then the Player and Team stats cards on the same deck.
+4. The other open questions (2 and 4 to 9 below) are answered separately.
 
 ## Design direction (owner, 2026-11-06): striking, mobile first, one idea per screen
 Results and the Player and Team stats are what **sells the application to parents** (Availability stays the most important function and is already covered). So these pages are **not** the manager console in a dark skin:
@@ -70,7 +71,7 @@ The hero visuals are few and bold: a results ring, a streak, a season line or ar
 **Recommendation:** hand-built SVG for the hero cards (a handful of chart types, animated, share-ready), `@mui/x-charts` kept for the manager Dashboard; decide with the first mockup, and ask before adding any package.
 
 ## Mockup rounds (the process)
-1. **Round 1, direction:** three treatments of the same player and result on a 375 px phone (A: swipe deck of full-screen cards; B: a vertical snap scroll; C: a hero plus a carousel), dark console, real data from the dev club, with the flip affordance and the index. The owner picks one or mixes.
+1. **Round 1, direction (done, A chosen, see Decision 3):** three treatments of the same player and result on a 375 px phone (A: swipe deck of full-screen cards; B: a vertical snap scroll; C: a hero plus a carousel), dark console, real data from the dev club, with the flip affordance and the index. The owner picks one or mixes.
 2. **Round 2, the cards:** the chosen direction in detail: hero, result, a recent-form card, a season line, a team ring, and the desktop layout; chart technology compared on the same data.
 3. **Round 3, polish:** motion, empty and low-data states (a player with two matches), the share-card idea, accessibility (reduced motion, a table alternative for each chart, keyboard flip).
 4. Spec amended and approved, then `/plan-feature`. No build before that.
