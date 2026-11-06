@@ -3,16 +3,17 @@ import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import MenuIcon from '@mui/icons-material/Menu'
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import { useLocation } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
-import { HubMenuCollapsedProvider, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
+import { VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
-const RAIL_WIDTH = 64
+const MENU_WIDTH = 300
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
@@ -49,7 +50,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
   const autoCollapse = useHubMenuAutoCollapse(fill && twoColumns && wide, pathname)
   const railed = autoCollapse.collapsed
   const columns = fill
-    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? `${railed ? RAIL_WIDTH : 300}px minmax(0, 1fr)` : '1fr' }
+    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? (railed ? '1fr' : `${MENU_WIDTH}px minmax(0, 1fr)`) : '1fr' }
     : { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }
   const content = (
     <Box
@@ -104,6 +105,21 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
       >
         {/* docs/specs/145 decision 15: the fixed page header. A HubPageHeader draws into the slot; `title` is the fallback text. */}
         <Box sx={{ gridRow: 1, minHeight: { xs: 56, md: 64 }, boxSizing: 'border-box', px: { xs: 2, md: 2.5 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, alignItems: 'center', minWidth: 0 }}>
+          {railed && (
+            <ButtonBase
+              aria-label="Open menu"
+              aria-haspopup="true"
+              aria-expanded={autoCollapse.peek}
+              data-testid="hub-menu-button"
+              onMouseEnter={autoCollapse.openPeek}
+              onMouseLeave={() => autoCollapse.closePeek()}
+              onFocus={autoCollapse.openPeek}
+              onClick={() => (autoCollapse.peek ? autoCollapse.closePeek(0) : autoCollapse.openPeek())}
+              sx={{ flex: 'none', width: 44, height: 44, mr: 1.75, borderRadius: '4px', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.28), color: HUB.cream, '&:hover': { borderColor: HUB.sand, bgcolor: blackAlpha(0.4) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+            >
+              <MenuIcon />
+            </ButtonBase>
+          )}
           <Box ref={header.setSlot} sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
             {!header.claimed && (
               <Typography component="h1" noWrap sx={bandTitle}>
@@ -116,55 +132,73 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
         <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, position: 'relative', ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
           {fill && menu ? (
-            <HubMenuCollapsedProvider value={railed}>
+            <Box
+              data-testid="hub-menu-column"
+              data-collapsed={railed}
+              {...(autoCollapse.active ? autoCollapse.columnProps : {})}
+              sx={{
+                minHeight: 0,
+                minWidth: 0,
+                overflow: 'hidden',
+                borderRight: { xs: 0, sm: `1px solid ${HUB.line}` },
+                display: 'flex',
+                flexDirection: 'column',
+                ...(railed
+                  ? {
+                      // Collapsed: the menu is a panel OVER the content (nothing reflows), faded in by the menu button's hover, click or focus.
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: MENU_WIDTH,
+                      zIndex: 7,
+                      bgcolor: 'rgba(5, 30, 22, 0.98)',
+                      boxShadow: '12px 0 32px rgba(0,0,0,0.45)',
+                      opacity: autoCollapse.peek ? 1 : 0,
+                      transform: autoCollapse.peek ? 'translateX(0)' : 'translateX(-12px)',
+                      visibility: autoCollapse.peek ? 'visible' : 'hidden',
+                      '@media (prefers-reduced-motion: no-preference)': {
+                        transition: autoCollapse.peek
+                          ? 'opacity 260ms ease, transform 260ms ease'
+                          : 'opacity 260ms ease, transform 260ms ease, visibility 0s linear 260ms',
+                      },
+                    }
+                  : { position: 'relative' }),
+              }}
+            >
               <Box
-                data-testid="hub-menu-column"
-                data-collapsed={railed}
-                {...(autoCollapse.active ? autoCollapse.columnProps : {})}
-                sx={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', borderRight: { xs: 0, sm: `1px solid ${HUB.line}` }, display: 'flex', flexDirection: 'column' }}
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
+                  ...(autoCollapse.active && { pb: { md: 6 } }),
+                }}
               >
-                <Box
-                  sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    scrollbarWidth: 'none',
-                    '&::-webkit-scrollbar': { display: 'none' },
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
-                    // The rail holds only the icon buttons: the player card (or its skeleton) and the spacer fold away (a short fade and a height
-                    // transition, not one frame) so the rows below do not jump.
-                    '& > :not(nav)': {
-                      overflow: 'hidden',
-                      maxHeight: railed ? 0 : 600,
-                      opacity: railed ? 0 : 1,
-                      pointerEvents: railed ? 'none' : 'auto',
-                    },
-                    ...(autoCollapse.active && { pb: { md: 6 } }),
-                  }}
-                >
-                  {menu}
-                  {/* Flexible space under the menu, as in the mockup. */}
-                  <Box aria-hidden sx={{ flex: 1, display: { xs: 'none', sm: 'block' }, borderTop: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.22) }} />
-                </Box>
-                {autoCollapse.active && (
-                  <>
-                    <ButtonBase
-                      aria-label={railed ? 'Expand menu' : 'Collapse menu'}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        autoCollapse.toggle()
-                      }}
-                      sx={{ position: 'absolute', bottom: 10, right: railed ? (RAIL_WIDTH - 36) / 2 : 10, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
-                    >
-                      {railed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                    </ButtonBase>
-                  </>
-                )}
+                {menu}
+                {/* Flexible space under the menu, as in the mockup. */}
+                <Box aria-hidden sx={{ flex: 1, display: { xs: 'none', sm: 'block' }, borderTop: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.22) }} />
               </Box>
-            </HubMenuCollapsedProvider>
+              {autoCollapse.active && (
+                <ButtonBase
+                  aria-label={railed ? 'Keep menu open' : 'Collapse menu'}
+                  title={railed ? 'Keep menu open' : 'Collapse menu'}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (railed) autoCollapse.pin()
+                    else autoCollapse.toggle()
+                  }}
+                  sx={{ position: 'absolute', bottom: 10, right: 10, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+                >
+                  {railed ? <PushPinOutlinedIcon fontSize="small" /> : <ChevronLeftIcon />}
+                </ButtonBase>
+              )}
+            </Box>
           ) : (
             menu
           )}

@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import type { FocusEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { FocusEvent, KeyboardEvent } from 'react'
 
-// docs/specs/145 decision 12: on a wide screen the Hub menu collapses to a 64 px icon rail MENU_COLLAPSE_MS after a page loads, unless the
-// pointer is over the menu or focus is inside it. Only the handle (or the keyboard on it) opens or closes the menu: hovering the rail does
-// NOT expand it (owner, 2026-11-06: the menu popping open under the pointer was jarring). A stored preference (localStorage
+// docs/specs/145 decision 12 (owner, 2026-11-06): on a wide screen the Hub menu collapses MENU_COLLAPSE_MS after a page loads, unless the pointer is
+// over the menu or focus is inside it. Collapsed, the menu is ONE menu button at the left of the header band and the content takes the whole
+// width; hovering (or clicking, or focusing) the button fades the menu in as a panel OVER the content (nothing reflows), and it fades out
+// when the pointer leaves. "Keep Menu Open" in the panel puts the menu back in the layout. A stored preference (localStorage
 // 'hub:menuAutoCollapse', 'off' disables, absent means on) is read now so a Settings switch can come later; no UI here.
 export const MENU_COLLAPSE_MS = 10000
 export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
@@ -11,6 +12,7 @@ export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 // and it fades back in slowly (VEIL_OUT_MS). Animating the column width re-laid out the whole content grid on every frame and flickered.
 export const VEIL_IN_MS = 160
 export const VEIL_OUT_MS = 520
+export const PEEK_CLOSE_DELAY_MS = 350
 
 export function menuAutoCollapsePreference(): boolean {
   try {
@@ -22,11 +24,6 @@ export function menuAutoCollapsePreference(): boolean {
 
 const reducedMotion = (): boolean => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 
-// HubFrame provides it, HubMenu (and the player card) read it.
-const HubMenuCollapsedContext = createContext(false)
-export const HubMenuCollapsedProvider = HubMenuCollapsedContext.Provider
-export const useHubMenuCollapsed = (): boolean => useContext(HubMenuCollapsedContext)
-
 export type MenuVeil = 'idle' | 'in' | 'out'
 
 // `enabled` is the layout's answer (md up, a content page); `routeKey` changes with the page and re-arms the timer.
@@ -37,11 +34,19 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   const [veil, setVeil] = useState<MenuVeil>('idle')
   const [hover, setHover] = useState(false)
   const [focusWithin, setFocusWithin] = useState(false)
+  const [peek, setPeek] = useState(false)
   const timers = useRef<number[]>([])
+  const closeTimer = useRef<number | undefined>(undefined)
   const collapsed = active && !open
   const armed = active && open && veil === 'idle' && !hover && !focusWithin
 
-  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), [])
+  useEffect(
+    () => () => {
+      timers.current.forEach((id) => window.clearTimeout(id))
+      window.clearTimeout(closeTimer.current)
+    },
+    [],
+  )
 
   // Swap the layout behind the veil: dim, change while covered, reveal.
   const change = useCallback((nextOpen: boolean) => {
@@ -69,15 +74,46 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
 
   const toggle = useCallback(() => change(!open), [change, open])
 
-  // Spread on the element that holds the whole menu column, handle included: they only PAUSE the timer, they never expand the menu.
+  // The peek (the panel over the content while collapsed). Opening is immediate (the fade is CSS); closing waits a moment so the pointer can
+  // travel between the button and the panel. Choosing a page (a route change) closes it.
+  const openPeek = useCallback(() => {
+    window.clearTimeout(closeTimer.current)
+    setPeek(true)
+  }, [])
+  const closePeek = useCallback((delay = PEEK_CLOSE_DELAY_MS) => {
+    window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(() => setPeek(false), delay)
+  }, [])
+  useEffect(() => setPeek(false), [routeKey])
+  const pin = useCallback(() => {
+    setPeek(false)
+    change(true)
+  }, [change])
+
+  // While the menu is in the layout these only PAUSE the collapse timer. While collapsed they keep the peek panel open under the pointer or focus.
   const columnProps = {
-    onMouseEnter: () => setHover(true),
-    onMouseLeave: () => setHover(false),
-    onFocus: () => setFocusWithin(true),
+    onMouseEnter: () => {
+      setHover(true)
+      if (collapsed) openPeek()
+    },
+    onMouseLeave: () => {
+      setHover(false)
+      if (collapsed) closePeek()
+    },
+    onFocus: () => {
+      setFocusWithin(true)
+      if (collapsed) openPeek()
+    },
     onBlur: (event: FocusEvent<HTMLElement>) => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false)
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setFocusWithin(false)
+        if (collapsed) closePeek(120)
+      }
+    },
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (collapsed && event.key === 'Escape') setPeek(false)
     },
   }
 
-  return { active, collapsed, veil, armed, toggle, columnProps }
+  return { active, collapsed, peek: collapsed && peek, openPeek, closePeek, pin, veil, armed, toggle, columnProps }
 }

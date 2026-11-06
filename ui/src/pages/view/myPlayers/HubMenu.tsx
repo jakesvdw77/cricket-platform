@@ -3,12 +3,9 @@ import type { KeyboardEvent } from 'react'
 import { Box, ButtonBase } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import { BrandIcon } from '../../../components/BrandIcon'
-import type { BrandIconName } from '../../../components/BrandIcon'
 import { bubblePill, isParent } from './hubNav'
 import type { HubNavItem, HubPillCounts } from './hubNav'
 import { HUB } from './hubStyle'
-import { useHubMenuCollapsed } from './useHubMenuAutoCollapse'
 import { blackAlpha } from '../../../brandTokens'
 
 // docs/specs/121: one level of the Player Hub menu (the main list, or a parent's children, never both). A `nav` holding a
@@ -83,29 +80,9 @@ const barSx = {
   '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color .15s, color .15s' },
 } as const
 
-// docs/specs/145 decision 12: the icon of each main section in the collapsed 64 px rail. A sub menu's pages use their section's icon
-// (the title and the accessible name tell them apart).
-const RAIL_ICONS: Record<string, BrandIconName> = {
-  availability: 'nav/availability-polls',
-  results: 'nav/match-results',
-  schedule: 'nav/upcoming-matches',
-  stats: 'nav/leaderboard-cricket',
-  updates: 'nav/communication',
-  club: 'nav/club-profile',
-  profile: 'nav/cricket-players',
-}
-const railIcon = (id: string): BrandIconName => RAIL_ICONS[id.split('.')[0]] ?? 'nav/cricket-players'
-
-const RAIL_WIDTH = 64
-// The row keeps its height in both states and holds BOTH layers (the label and the icon) so the change is a cross-fade while the column
-// narrows, not a swap: the label layer keeps the width of the open column (so the text never re-wraps) and is clipped by the shrinking row; the
-// icon layer sits in the rail's width at the left edge and never moves.
-const fade = { '@media (prefers-reduced-motion: no-preference)': { transition: 'opacity 200ms ease' } } as const
-
 export function HubMenu({ items: allItems, selectedId, counts, onSelect, levelKey, focusId }: HubMenuProps) {
   // docs/specs/145: a route-only item (Account, which moved to the header avatar) is never a row.
   const items = allItems.filter((item) => item.inMenu !== false)
-  const rail = useHubMenuCollapsed()
   const listRef = useRef<HTMLUListElement>(null)
   const [active, setActive] = useState<string | undefined>()
   // Keyed by the level so a stale tab stop from the other list is ignored.
@@ -152,47 +129,21 @@ export function HubMenu({ items: allItems, selectedId, counts, onSelect, levelKe
                 onClick={() => onSelect(item)}
                 aria-current={selected ? 'page' : undefined}
                 aria-label={name}
-                title={rail ? item.label : undefined}
                 sx={{
                   ...barSx,
-                  // Left anchored: the label layer keeps its place and is clipped from the right as the column narrows.
-                  justifyContent: 'flex-start',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 },
                   ...(selected && { color: HUB.gold, bgcolor: alpha(HUB.gold, 0.16) }),
-                  // The gold edge bar of the selected row fades in with the rail (it is transparent in the open menu).
-                  boxShadow: `inset 3px 0 0 ${selected && rail ? HUB.gold : 'transparent'}`,
-                  '@media (prefers-reduced-motion: no-preference)': { transition: 'box-shadow 200ms ease, background-color 200ms ease' },
                   ...(item.soon && !selected && { opacity: 0.7 }),
                   ...(index === items.length - 1 && { borderBottom: `1px solid ${HUB.line}` }),
                 }}
               >
-                {/* Label layer. The pill sits at the left edge so it never takes width from the label, which stays right aligned and on one
+                {/* The pill sits at the left edge so it never takes width from the label, which stays right aligned and on one
                     line; the chevron slot is always reserved so every label ends on the same vertical line. */}
-                <Box
-                  component="span"
-                  aria-hidden={rail || undefined}
-                  sx={{ ...fade, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1.25, flex: 'none', width: { xs: '100%', md: 300 }, opacity: rail ? 0 : 1 }}
-                >
-                  {pill ? <Pill>{pill}</Pill> : item.soon ? <Pill dashed>Soon</Pill> : null}
-                  <Box component="span" sx={{ flex: 1, minWidth: 0, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.label}
-                  </Box>
-                  <Box component="span" aria-hidden sx={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                    {parent && <ChevronRightIcon sx={{ fontSize: 26, opacity: 0.8, mr: -0.5, flex: 'none' }} />}
-                  </Box>
+                {pill ? <Pill>{pill}</Pill> : item.soon ? <Pill dashed>Soon</Pill> : null}
+                <Box component="span" sx={{ flex: 1, minWidth: 0, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.label}
                 </Box>
-                {/* Icon layer (md and up): the rail's icon, centred in the rail's width at the left edge. */}
-                <Box
-                  component="span"
-                  aria-hidden
-                  sx={{ ...fade, display: { xs: 'none', md: 'flex' }, position: 'absolute', left: 0, top: 0, bottom: 0, width: RAIL_WIDTH, alignItems: 'center', justifyContent: 'center', opacity: rail ? 1 : 0, pointerEvents: 'none' }}
-                >
-                  <Box component="span" sx={{ position: 'relative', display: 'inline-flex' }}>
-                    <BrandIcon name={railIcon(item.id)} size={32} onDark active={selected} />
-                    {pill && <Box component="span" aria-hidden sx={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', bgcolor: HUB.gold, border: `2px solid ${HUB.ink}` }} />}
-                  </Box>
+                <Box component="span" aria-hidden sx={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                  {parent && <ChevronRightIcon sx={{ fontSize: 26, opacity: 0.8, mr: -0.5, flex: 'none' }} />}
                 </Box>
               </ButtonBase>
             </li>
