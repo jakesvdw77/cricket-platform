@@ -177,7 +177,6 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                   display: 'flex',
                   flexDirection: 'column',
                   background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
-                  ...(autoCollapse.active && { pb: { md: 6 } }),
                 }}
               >
                 {menu}
@@ -193,7 +192,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                     if (railed) autoCollapse.pin()
                     else autoCollapse.toggle()
                   }}
-                  sx={{ position: 'absolute', bottom: 10, right: 10, width: 36, height: 36, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+                  sx={{ position: 'absolute', top: 10, left: 10, zIndex: 2, width: 32, height: 32, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
                 >
                   {railed ? <PushPinOutlinedIcon fontSize="small" /> : <ChevronLeftIcon />}
                 </ButtonBase>
