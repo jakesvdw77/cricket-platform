@@ -147,12 +147,12 @@ describe('MyPlayerPage on a desktop', () => {
     expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
   })
 
-  it('shows the Invitations count in the header Account menu, opening the invitations page in the hub', async () => {
+  it('shows the Invitations count under Account in the menu, opening the invitations page in the hub', async () => {
     const user = userEvent.setup()
     setup('/account/players/k1/availability', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
 
-    await user.click(await screen.findByRole('button', { name: 'Account' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Invitations (2)' }))
+    await user.click(await within(await findMenu()).findByRole('button', { name: /^Account/ }))
+    await user.click(await within(menu()).findByRole('button', { name: /^Invitations, 2/ }))
 
     expect(await screen.findByRole('heading', { name: 'Invitations' })).toBeInTheDocument()
     expect(within(menu()).getByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
@@ -191,8 +191,8 @@ describe('MyPlayerPage on a desktop', () => {
 
       await within(await findMenu()).findByRole('button', { name: /^Availability/ })
       expect(screen.queryByRole('button', { name: 'Back to players' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Account' }))
-      await user.click(await screen.findByRole('menuitem', { name: 'Link More Players' }))
+      await user.click(within(await findMenu()).getByRole('button', { name: /^Account/ }))
+      await user.click(await within(menu()).findByRole('button', { name: 'Link more players' }))
       expect(await screen.findByTestId('location')).toHaveTextContent('/welcome')
     })
   })

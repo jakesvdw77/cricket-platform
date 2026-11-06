@@ -27,7 +27,7 @@ describe('HUB_NAV', () => {
     expect(childLabels('stats')).toEqual(['My stats', 'Leaderboards', 'Team stats'])
     expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
-    expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Sign out'])
+    expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Switch profile', 'Back to club', 'Sign out'])
   })
 
   it('marks Field Directory as the only live Club item, and the other sections as Soon where they are not built', () => {
@@ -38,8 +38,10 @@ describe('HUB_NAV', () => {
   })
 
   it('gives the two Account actions an action and no page', () => {
-    const [, , find, signOut] = byId('account').children as HubNavItem[]
+    const [, , find, switchProfile, backToClub, signOut] = byId('account').children as HubNavItem[]
     expect(find.action).toBe('findPlayers')
+    expect(switchProfile.action).toBe('switchProfile')
+    expect(backToClub.action).toBe('backToClub')
     expect(signOut.action).toBe('signOut')
   })
 })

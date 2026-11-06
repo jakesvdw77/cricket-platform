@@ -30,6 +30,8 @@ import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
 import { HubPageHeader } from './myPlayers/HubPageHeader'
 import { HUB_NAV, LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
 import type { HubLayout, HubNavContext, HubNavItem, HubPillCounts } from './myPlayers/hubNav'
+import { useProfileSwitch } from '../../hooks/useProfileSwitch'
+import { useClubHome } from './myPlayers/useClubHome'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 import { signOut } from '../../auth/signOut'
 import { creamAlpha } from '../../brandTokens'
@@ -64,7 +66,12 @@ export default function MyPlayerPage() {
   const [focusId, setFocusId] = useState<string | undefined>()
   const { guard, attempt } = useHubLeaveGuardController()
 
-  const ctx = useMemo<HubNavContext>(() => ({ player: player ? { key: player.key, clubId: player.clubId } : null, person: null, clubSwitches: {} }), [player])
+  const clubHome = useClubHome()
+  const hasProfileSwitch = Boolean(useProfileSwitch())
+  const ctx = useMemo<HubNavContext>(
+    () => ({ player: player ? { key: player.key, clubId: player.clubId } : null, person: null, clubSwitches: {}, hasClubHome: Boolean(clubHome), hasProfileSwitch }),
+    [player, clubHome, hasProfileSwitch],
+  )
   const tree = useMemo(() => visibleItems(ctx), [ctx])
   // docs/specs/145: Account is not in the menu (it moved to the header avatar) but its pages still resolve.
   const routable = useMemo(() => [...tree, ...HUB_NAV.filter((entry) => entry.inMenu === false)], [tree])
@@ -131,6 +138,11 @@ export default function MyPlayerPage() {
       signOut()
     } else if (item.action === 'findPlayers') {
       navigate('/welcome')
+    } else if (item.action === 'backToClub') {
+      if (clubHome) navigate(clubHome)
+    } else if (item.action === 'switchProfile') {
+      // Switch profile is the player picker page (owner, 2026-11-06), not a pop-up.
+      navigate('/account')
     } else if (isParent(item)) {
       setFocusId(item.children?.[0]?.id)
       navigate(hubPath(key, segmentOf(item)))

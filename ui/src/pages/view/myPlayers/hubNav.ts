@@ -20,6 +20,9 @@ export interface HubNavContext {
   player: { key: string; clubId?: string } | null
   person: { name?: string } | null
   clubSwitches: Record<string, boolean>
+  // Account rows that only some people have: a manager's way back to the club, and a second profile to switch to.
+  hasClubHome?: boolean
+  hasProfileSwitch?: boolean
 }
 
 export interface HubNavItem {
@@ -32,7 +35,7 @@ export interface HubNavItem {
   soon?: boolean
   soonCopy?: string
   // Not a page (Decision 11): signOut signs out, findPlayers goes to /welcome.
-  action?: 'signOut' | 'findPlayers'
+  action?: 'signOut' | 'findPlayers' | 'switchProfile' | 'backToClub'
   // docs/specs/145: false keeps an item out of the menu while its pages still resolve (unused now: Account is back in the menu as the last row, owner 2026-11-06).
   inMenu?: false
   // The only gate: no function means visible. Combines what linked accounts may see with a club switch.
@@ -103,6 +106,8 @@ export const HUB_NAV: HubNavItem[] = [
       { id: 'account.invitations', label: 'Invitations', pill: 'invitations' },
       { id: 'account.requests', label: 'Link requests', pill: 'linkRequests' },
       { id: 'account.find', label: 'Link more players', action: 'findPlayers' },
+      { id: 'account.switch', label: 'Switch profile', action: 'switchProfile', visibleWhen: (ctx) => Boolean(ctx.hasProfileSwitch) },
+      { id: 'account.club', label: 'Back to club', action: 'backToClub', visibleWhen: (ctx) => Boolean(ctx.hasClubHome) },
       { id: 'account.signout', label: 'Sign out', action: 'signOut' },
     ],
   },

@@ -66,7 +66,8 @@ export function AccountShell({
   const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, bgcolor: 'transparent', '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12), backgroundImage: 'none' } }
   return (
     <PageBackdrop>
-      <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
+      {/* The Player Hub (fill) has no header row: Switch profile, Back to club and Sign out live under Account in its menu (owner, 2026-11-06). */}
+      {!fill && <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <BrandMark size={28} />
           <Typography fontWeight={700} fontSize={16}>
@@ -152,7 +153,7 @@ export function AccountShell({
         </Box>
         )}
         {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
-      </Box>
+      </Box>}
       <Box sx={{ width: '100%', maxWidth, mx: 'auto', boxSizing: 'border-box', ...(fill ? { px: { xs: 0, sm: 2 }, pt: { xs: 0, sm: 2 }, pb: { xs: 0, sm: 3 } } : { px: 2, py: { xs: 2, sm: 4 } }) }}>
         <Box
           data-testid={testId}

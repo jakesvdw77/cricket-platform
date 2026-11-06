@@ -98,9 +98,9 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
           ...(fill && {
             // 56 px header, 16 px above and 24 px below from sm; a phone's console is the whole screen under the header.
-            height: { xs: 'calc(100vh - 56px)', sm: 'max(560px, calc(100vh - 96px))' },
+            height: { xs: 'calc(100vh)', sm: 'max(560px, calc(100vh - 40px))' },
             minHeight: 560,
-            '@supports (height: 100dvh)': { height: { xs: 'calc(100dvh - 56px)', sm: 'max(560px, calc(100dvh - 96px))' } },
+            '@supports (height: 100dvh)': { height: { xs: 'calc(100dvh)', sm: 'max(560px, calc(100dvh - 40px))' } },
             borderRadius: { xs: 0, sm: '6px' },
             borderWidth: { xs: 0, sm: 1 },
           }),
