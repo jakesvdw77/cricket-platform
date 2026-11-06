@@ -104,16 +104,17 @@
   .cardots i { width:7px; height:7px; border-radius:50%; background:var(--line); } .cardots i.on { background:var(--gold); width:20px; border-radius:6px; }
   .allres { padding:0 16px 28px; }
   .allres .index button { display:block; width:100%; } .allres .index button span { color:var(--muted); font-size:13px; }
-  .topbar2 { flex:none; display:flex; justify-content:flex-end; padding:8px 16px 4px; }
+  .bar .scopechip { height:38px; margin-left:auto; max-width:235px; padding:0 12px; font-size:15px; }
+  .bar b.ttl { flex:none; }
 </style>
 </head>
 <body>
 <div class="page">
   <h1>Player Hub results: round 3</h1>
-  <p class="lead">Spec 145. <b>Direction change:</b> the owner found the half-drawn next card on the full-screen swipe deck distracting, so the flow is now <b>hero plus carousel</b> (pattern C): a hero on the page, then a strip of cards to flip through that sits inside a normal scrolling page, then the list of all results. <b>New in round 3: the scope.</b> The chip at the top right (<span class="scopechip" style="display:inline-block;height:30px;line-height:30px;padding:0 10px">2026 · All teams ›</span>) opens a bottom sheet with <b>Season</b>, <b>Team</b> and <b>League</b>; the hero, the cards and the list all follow it, and every card carries a small scope label. The invented player has two teams (U15 and U13) over two seasons, so you can try every combination, including one with no matches.</p>
+  <p class="lead">Spec 145. <b>Direction change:</b> the owner found the half-drawn next card on the full-screen swipe deck distracting, so the flow is now <b>hero plus carousel</b> (pattern C): a hero on the page, then a strip of cards to flip through that sits inside a normal scrolling page, then the list of all results. <b>New in round 3: the scope.</b> The scope now lives <b>in the header</b>, replacing the player name: the chip (<span class="scopechip" style="display:inline-block;height:30px;line-height:30px;padding:0 10px">2026 · All teams ▾</span>) opens a bottom sheet with <b>Season</b>, <b>Team</b> and <b>League</b>; the hero, the cards and the list all follow it, and every card carries a small scope label. The invented player has two teams (U15 and U13) over two seasons, so you can try every combination, including one with no matches.</p>
 
   <h2>1. Hero plus carousel, with a scope, on a phone</h2>
-  <div class="row"><figure><figcaption>Results</figcaption><p>Scroll down for the carousel and the list. Flip the carousel sideways. Open the scope chip and try 2025, U13, Friendly, and a combination with none.</p><div class="phone" id="phone"></div></figure></div>
+  <div class="row"><figure><figcaption>Results</figcaption><p>The card dots and each card's "Next:" label are the same cues you liked, now under the carousel (scroll down a little). Flip the carousel sideways. Open the scope chip and try 2025, U13, Friendly, and a combination with none.</p><div class="phone" id="phone"></div></figure></div>
 
   <h2>2. Desktop</h2>
   <p class="lead">The hero and the list of results on the left, the selected card large on the right with arrows, and the three filters as a row. The same content, not a different design.</p>
@@ -164,7 +165,7 @@ function hero(list, sc, next){
   const last=list.slice(0,5).reverse();
   const chips=last.map(m=>`<div class="chipwrap"><div class="chip ${m.res.toLowerCase()}">${m.res}</div><div class="chipcap">${m.kind==='dnb'?'DNB':(m.kind==='bowl'?m.fig:m.fig)}</div><div class="chipopp">${m.opp.slice(0,3).toUpperCase()}</div></div>`).join('');
   const lowNote = list.length<4 ? `<div class="muted" style="margin-top:6px;font-size:14px">Your story is just starting. More cards appear after each match.</div>` : '';
-  return `<div class="card"><div class="kick">${sc}</div><div class="big huge" style="margin-top:12px">${runs}</div>
+  return `<div class="card"><div class="kick">${P.name} · ${list[0].season===list[list.length-1].season?list[0].season:"All seasons"}</div><div class="big huge" style="margin-top:12px">${runs}</div>
     <div class="sentence"><b>runs</b> for ${P.name}, and the team has won <b>${w} of ${list.length}</b>.</div>${lowNote}
     <div class="mini"><div><b>${list.length}</b><small>matches</small></div><div><b>${wk}</b><small>wickets</small></div><div><b>${ct}</b><small>catches</small></div></div>
     <div class="kick" style="margin-top:18px">Last ${last.length} · the player's figures</div><div class="chips">${chips}</div>${foot(next,sc)}</div>`; }
@@ -218,18 +219,18 @@ function openSheet(host, onApply){
 }
 
 /* ---- phone: hero, then the carousel, then all results ---- */
-const bar=(t)=>`<div class="bar"><span class="back">‹</span><b>${t}</b><span>${P.name}</span></div>`;
-const heroNext='See each match ↓';
+const bar=(t,right)=>`<div class="bar"><span class="back">‹</span><b class="ttl">${t}</b>${right??`<span>${P.name}</span>`}</div>`;
+const chipHtml=()=>`<button class="scopechip" aria-haspopup="dialog" aria-label="Choose what to show: ${scopeText()}">${scopeText()} ▾</button>`;
 function mountPhone(){
   const el=document.getElementById('phone'); const {items,empty}=build();
   if(empty){
-    el.innerHTML=bar('Results')+`<div class="stage"><div class="topbar2"><button class="scopechip" aria-haspopup="dialog">${scopeText()} ›</button></div><div class="page-scroll" style="padding:10px 16px 16px;display:flex;flex-direction:column">${items[0].html}</div></div>`;
-    el.querySelector('.scopechip').onclick=()=>openSheet(el.querySelector('.stage'),mountPhone);
+    el.innerHTML=bar('Results',chipHtml())+`<div class="stage"><div class="page-scroll" style="padding:10px 16px 16px;display:flex;flex-direction:column">${items[0].html}</div></div>`;
+    el.querySelector('.scopechip').onclick=()=>openSheet(el,mountPhone);
     el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{scope={season:'2026',team:'All teams',league:'All leagues'};mountPhone();redrawDesk();});
     return;
   }
   const car=items.slice(1), n=car.length;
-  el.innerHTML=bar('Results')+`<div class="stage"><div class="topbar2"><button class="scopechip" aria-haspopup="dialog">${scopeText()} ›</button></div>
+  el.innerHTML=bar('Results',chipHtml())+`<div class="stage">
    <div class="page-scroll">
     ${items[0].html.replace('<div class="card">','<div class="card herocard">')}
     ${n?`<div class="sect2"><span class="t">Flip through</span><span class="count" aria-live="polite"><b>1</b> / ${n}</span></div>
@@ -237,7 +238,7 @@ function mountPhone(){
     <div class="cardots">${car.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div>
     <div class="sect2"><span class="t">All cards</span></div><div class="allres"><div class="index">${car.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join('')}</div></div>`:''}
    </div></div>`;
-  el.querySelector('.scopechip').onclick=()=>openSheet(el.querySelector('.stage'),mountPhone);
+  el.querySelector('.scopechip').onclick=()=>openSheet(el,mountPhone);
   if(!n) return;
   const c=el.querySelector('.car'),dots=el.querySelectorAll('.cardots i'),count=el.querySelector('.count');
   const step=()=>c.children[0].offsetWidth+12,cur=()=>Math.max(0,Math.min(n-1,Math.round(c.scrollLeft/step())));
@@ -254,8 +255,8 @@ mountPhone();
 (function(){const el=document.getElementById('desk'); let i=0;
   const draw=()=>{ const {items,empty}=build(); const car=empty?[]:items.slice(1); if(i>=car.length) i=0;
     const main=empty?items[0].html:(car.length?car[i].html:'');
-    el.innerHTML=bar('Results')+`<div class="dbody"><div class="rail" style="width:360px">
-       <div class="dscope" style="justify-content:flex-start">${['season','team','league'].map(k=>`<select data-k="${k}" aria-label="${k}">${OPT[k].map(o=>`<option ${scope[k]===o?'selected':''}>${o}</option>`).join('')}</select>`).join('')}</div>
+    const selects=`<span style="margin-left:auto;display:flex;gap:10px">${['season','team','league'].map(k=>`<select data-k="${k}" aria-label="${k}" style="background:rgba(0,0,0,.35);color:var(--cream);border:1px solid var(--gold);border-radius:12px;height:38px;padding:0 10px;font-family:var(--disp);font-size:16px">${OPT[k].map(o=>`<option ${scope[k]===o?'selected':''}>${o}</option>`).join('')}</select>`).join('')}</span>`;
+    el.innerHTML=bar('Results',selects)+`<div class="dbody"><div class="rail" style="width:360px">
        ${empty?'':items[0].html.replace('<div class="card">','<div class="card herocard">')}
        ${car.length?`<div class="kick" style="margin:16px 0 6px">All cards</div><div class="index">${car.map((c,k)=>`<button data-i="${k}" class="${k===i?'on':''}">${c.label}</button>`).join('')}</div>`:''}</div>
      <div class="dmain"><div class="dstage"><button class="arrow" id="prev" aria-label="Previous card" ${i===0?'disabled':''}>‹</button><div class="dcard">${main}</div><button class="arrow" id="nxt" aria-label="Next card" ${i>=car.length-1?'disabled':''}>›</button></div>
