@@ -233,17 +233,18 @@ function drawLineup(ctx: Ctx, lineup: MatchShareLineup, area: Rect, columns: 1 |
   const rowHeight = rowSize * 1.55
   const columnWidth = (area.width - (columns - 1) * rowSize) / columns
   let position = 0
-  const positions = players.map((player) => (player.order != null ? (position += 1) : null))
+  const positions = players.map((player) => (lineup.numbered && player.order != null ? (position += 1) : null))
   players.forEach((player, index) => {
     const column = Math.floor(index / perColumn)
     const row = index % perColumn
     const x = area.x + column * (columnWidth + rowSize)
     const cy = y + row * rowHeight + rowHeight / 2
     const number = positions[index]
-    drawText(ctx, number != null ? String(number) : '', x, cy, { size: rowSize, colour: palette.accent, weight: 700 })
-    const nameLeft = x + rowSize * 1.7
+    if (lineup.numbered) drawText(ctx, number != null ? String(number) : '', x, cy, { size: rowSize, colour: palette.accent, weight: 700 })
+    // An alphabetical list has no number column, so the names start at the edge.
+    const nameLeft = lineup.numbered ? x + rowSize * 1.7 : x
     const marks = options.include.marks ? `${player.captain ? ' (C)' : ''}${player.keeper ? ' (WK)' : ''}` : ''
-    drawText(ctx, `${player.name}${marks}`, nameLeft, cy, { size: rowSize, colour: palette.panelText, weight: 500, maxWidth: columnWidth - rowSize * 1.7 })
+    drawText(ctx, `${player.name}${marks}`, nameLeft, cy, { size: rowSize, colour: palette.panelText, weight: 500, maxWidth: columnWidth - (nameLeft - x) })
   })
   y += perColumn * rowHeight
   if (lineup.twelfthMan) {

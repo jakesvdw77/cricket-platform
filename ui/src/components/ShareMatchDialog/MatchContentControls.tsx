@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { ShareControlGroup, ShareInitialsControl } from '../ShareCore'
-import { MATCH_LAYOUTS, MATCH_LAYOUT_LABELS as LAYOUT_LABELS, MATCH_SIDE_CHOICES, MATCH_SIDE_LABELS as SIDE_LABELS, usesLineup } from '../../utils/share/matchShareFormats'
-import type { MatchLayout, MatchSideChoice } from '../../utils/share/matchShareFormats'
+import { MATCH_LAYOUTS, MATCH_LAYOUT_LABELS as LAYOUT_LABELS, MATCH_LINEUP_ORDERS, MATCH_ORDER_LABELS as ORDER_LABELS, MATCH_SIDE_CHOICES, MATCH_SIDE_LABELS as SIDE_LABELS, usesLineup } from '../../utils/share/matchShareFormats'
+import type { MatchLayout, MatchLineupOrder, MatchSideChoice } from '../../utils/share/matchShareFormats'
 import type { MatchScreenProps } from './matchScreenTypes'
 
 interface Props extends MatchScreenProps {
@@ -21,7 +21,7 @@ interface Props extends MatchScreenProps {
 // docs/specs/131 (Control strips): Side and Layout, the Include group (initials with the junior lock, weather with its reason,
 // the format's own switches) and the fun facts list. Shared by every match format screen.
 export function MatchContentControls(props: Props) {
-  const { model, side, sideGaps, layout, onSideChange, onLayoutChange, initials, weatherReason, directionsReason = null, choices, updateChoices, weatherOn, onWeatherChange, facts, tickedFactIds, onToggleFact, guard = (change) => change(), children, showFacts } = props
+  const { model, side, sideGaps, layout, onSideChange, onLayoutChange, lineupOrder, onLineupOrderChange, initials, weatherReason, directionsReason = null, choices, updateChoices, weatherOn, onWeatherChange, facts, tickedFactIds, onToggleFact, guard = (change) => change(), children, showFacts } = props
   const lineup = usesLineup(model.content)
   const both = side === 'BOTH' && lineup
   const gapText = MATCH_SIDE_CHOICES.map((item) => sideGaps[item]).find(Boolean) ?? null
@@ -55,6 +55,18 @@ export function MatchContentControls(props: Props) {
               </CompactToggleGroup>
             </>
           )}
+        </ShareControlGroup>
+      )}
+      {lineup && (
+        // docs/specs/144: how the lineup is listed, in every format that carries one (Team Sheet and Team Selection Poster).
+        <ShareControlGroup label="Order">
+          <CompactToggleGroup value={lineupOrder} ariaLabel="Order" fullWidthOnPhone onChange={(next: MatchLineupOrder) => guard(() => onLineupOrderChange(next))}>
+            {MATCH_LINEUP_ORDERS.map((item) => (
+              <ToggleButton key={item} value={item}>
+                {ORDER_LABELS[item]}
+              </ToggleButton>
+            ))}
+          </CompactToggleGroup>
         </ShareControlGroup>
       )}
       <ShareControlGroup label="Include">
