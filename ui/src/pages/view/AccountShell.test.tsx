@@ -90,6 +90,6 @@ describe('AccountShell on a phone', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
 
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Sign out'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invitations', 'Link Requests', 'Link More Players', 'Sign out'])
   })
 })

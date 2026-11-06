@@ -56,7 +56,7 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Updates', 'Schedule', 'Stats', 'Club', 'Profile', 'Account']
+const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile']
 
 describe('MyPlayerPage on a desktop', () => {
   it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
@@ -147,11 +147,12 @@ describe('MyPlayerPage on a desktop', () => {
     expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
   })
 
-  it('shows the Invitations count under Account, opening the invitations page in the hub', async () => {
+  it('shows the Invitations count in the header Account menu, opening the invitations page in the hub', async () => {
     const user = userEvent.setup()
     setup('/account/players/k1/availability', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
 
-    await user.click(await within(await findMenu()).findByRole('button', { name: /^Account, 2 new/ }))
+    await user.click(await screen.findByRole('button', { name: 'Account' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Invitations (2)' }))
 
     expect(await screen.findByRole('heading', { name: 'Invitations' })).toBeInTheDocument()
     expect(within(menu()).getByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
@@ -190,8 +191,8 @@ describe('MyPlayerPage on a desktop', () => {
 
       await within(await findMenu()).findByRole('button', { name: /^Availability/ })
       expect(screen.queryByRole('button', { name: 'Back to players' })).not.toBeInTheDocument()
-      await user.click(within(menu()).getByRole('button', { name: /^Account/ }))
-      await user.click(await within(menu()).findByRole('button', { name: 'Link more players' }))
+      await user.click(screen.getByRole('button', { name: 'Account' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Link More Players' }))
       expect(await screen.findByTestId('location')).toHaveTextContent('/welcome')
     })
   })

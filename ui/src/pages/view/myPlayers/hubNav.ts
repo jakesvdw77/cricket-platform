@@ -33,21 +33,16 @@ export interface HubNavItem {
   soonCopy?: string
   // Not a page (Decision 11): signOut signs out, findPlayers goes to /welcome.
   action?: 'signOut' | 'findPlayers'
+  // docs/specs/145: false keeps an item out of the menu while its pages still resolve (Account moved to the header avatar).
+  inMenu?: false
   // The only gate: no function means visible. Combines what linked accounts may see with a club switch.
   visibleWhen?: (ctx: HubNavContext) => boolean
 }
 
 export const HUB_NAV: HubNavItem[] = [
   { id: 'availability', label: 'Availability', pill: 'openPolls' },
-  {
-    id: 'updates',
-    label: 'Updates',
-    children: [
-      { id: 'updates.messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
-      { id: 'updates.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
-      { id: 'updates.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
-    ],
-  },
+  // docs/specs/145: Results is a leaf and the second main item.
+  { id: 'results', label: 'Results' },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -55,7 +50,6 @@ export const HUB_NAV: HubNavItem[] = [
       // docs/specs/135: live now (Live Now, Upcoming, Recent), no longer a Soon item.
       { id: 'schedule.matches', label: 'Matches' },
       { id: 'schedule.leagues', label: 'Leagues' },
-      { id: 'schedule.results', label: 'Results', soon: true, soonCopy: "Published results for this player's teams." },
       { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
     ],
   },
@@ -71,6 +65,15 @@ export const HUB_NAV: HubNavItem[] = [
       },
       { id: 'stats.boards', label: 'Leaderboards', soon: true, soonCopy: 'Club leaderboards, shown only where the club switches them on.' },
       { id: 'stats.teams', label: 'Team stats', soon: true, soonCopy: "How the player's teams are doing this season." },
+    ],
+  },
+  {
+    id: 'updates',
+    label: 'Updates',
+    children: [
+      { id: 'updates.messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
+      { id: 'updates.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
+      { id: 'updates.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
     ],
   },
   {
@@ -96,6 +99,7 @@ export const HUB_NAV: HubNavItem[] = [
   {
     id: 'account',
     label: 'Account',
+    inMenu: false,
     children: [
       { id: 'account.invitations', label: 'Invitations', pill: 'invitations' },
       { id: 'account.requests', label: 'Link requests', pill: 'linkRequests' },
@@ -145,6 +149,8 @@ export function legacyProfileTarget(view: string | undefined): string | undefine
 export const LEGACY_REDIRECTS: Record<string, string> = {
   requests: 'account/requests',
   matches: 'schedule/matches',
+  // docs/specs/145: Schedule > Results became the Results main item.
+  'schedule/results': 'results',
 }
 
 // The part of an id after the dot: the URL segment (`club.fields` is `club/fields`).
@@ -152,10 +158,11 @@ export const segmentOf = (item: HubNavItem): string => item.id.split('.').pop() 
 
 export const isParent = (item: HubNavItem): boolean => Boolean(item.children)
 
-// The visible tree: an item with a false `visibleWhen` is dropped, and so is a parent whose children are all dropped.
+// The visible tree (a route-only item, `inMenu: false`, is not in it): an item with a false `visibleWhen` is dropped, and so is a parent whose children are all dropped.
 export function visibleItems(ctx: HubNavContext, items: HubNavItem[] = HUB_NAV): HubNavItem[] {
   const result: HubNavItem[] = []
   for (const item of items) {
+    if (item.inMenu === false) continue
     if (item.visibleWhen && !item.visibleWhen(ctx)) continue
     if (item.children) {
       const children = visibleItems(ctx, item.children)
@@ -228,6 +235,8 @@ export interface HubBackState {
   extra?: string
   from?: string
   fromLabel?: string
+  // docs/specs/145: the Results scope (season, team, league) as a query string without the "?", carried by a result page so Back restores it.
+  scope?: string
 }
 
 export interface HubBackAction {
@@ -237,7 +246,7 @@ export interface HubBackAction {
 
 // The footer's one Back (Decision 15); Escape runs the same action. Null means no Back control at all.
 export function hubBack(state: HubBackState): HubBackAction | null {
-  const { playerKey, layout, many, section, item, view, season, extra, from, fromLabel } = state
+  const { playerKey, layout, many, section, item, view, season, extra, from, fromLabel, scope } = state
   const main = hubPath(playerKey)
   const route = resolveRoute(section, item)
   // docs/specs/135: the match page goes back to where it was opened from, the Watch Live page back to the match, on every layout.
@@ -249,6 +258,10 @@ export function hubBack(state: HubBackState): HubBackAction | null {
       return { label: `Back to ${fromLabel ?? 'League'} ${word}`, target: hubLeaguePath(playerKey, origin.leagueId, { tab: origin.tab }) }
     }
     return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
+  }
+  // docs/specs/145: a Hub result page (results/:matchId) goes back to the Results list with the same Season, Team and League.
+  if (route.section.id === 'results' && item) {
+    return { label: 'Back to Results', target: `${hubPath(playerKey, 'results')}${scope ? `?${scope}` : ''}` }
   }
   if (route.section.id === 'profile' && isProfileSubView(item, view)) {
     return { label: 'Back to Profile', target: hubPath(playerKey, 'profile', item) }

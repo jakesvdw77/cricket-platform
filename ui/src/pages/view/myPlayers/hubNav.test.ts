@@ -10,9 +10,10 @@ const childLabels = (id: string) => byId(id).children?.map((child) => child.labe
 
 describe('HUB_NAV', () => {
   it('has exactly the seven main items in order, never more than seven', () => {
-    expect(HUB_NAV.map((item) => item.id)).toEqual(['availability', 'updates', 'schedule', 'stats', 'club', 'profile', 'account'])
-    expect(HUB_NAV.map((item) => item.label)).toEqual(['Availability', 'Updates', 'Schedule', 'Stats', 'Club', 'Profile', 'Account'])
-    expect(HUB_NAV.length).toBeLessThanOrEqual(7)
+    const menu = HUB_NAV.filter((item) => item.inMenu !== false)
+    expect(menu.map((item) => item.id)).toEqual(['availability', 'results', 'schedule', 'stats', 'updates', 'club', 'profile'])
+    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile'])
+    expect(menu.length).toBeLessThanOrEqual(7)
   })
 
   it('has only two levels: no child has children', () => {
@@ -22,7 +23,7 @@ describe('HUB_NAV', () => {
   it('lists each parent\'s children in the agreed order', () => {
     expect(childLabels('availability')).toBeUndefined()
     expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
-    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Results', 'Team sheets'])
+    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Team sheets'])
     expect(childLabels('stats')).toEqual(['My stats', 'Leaderboards', 'Team stats'])
     expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
@@ -61,7 +62,7 @@ describe('defaultChild', () => {
 
 describe('LEGACY_REDIRECTS', () => {
   it('sends the old requests and matches URLs to their new homes, and nothing else', () => {
-    expect(LEGACY_REDIRECTS).toEqual({ requests: 'account/requests', matches: 'schedule/matches' })
+    expect(LEGACY_REDIRECTS).toEqual({ requests: 'account/requests', matches: 'schedule/matches', 'schedule/results': 'results' })
   })
 })
 
@@ -85,7 +86,7 @@ describe('bubblePill', () => {
 
 describe('visibleItems and resolveRoute', () => {
   it('shows everything when nothing has a gate', () => {
-    expect(visibleItems(ctx).map((item) => item.id)).toEqual(HUB_NAV.map((item) => item.id))
+    expect(visibleItems(ctx).map((item) => item.id)).toEqual(HUB_NAV.filter((item) => item.inMenu !== false).map((item) => item.id))
   })
 
   it('drops a gated item, and a parent whose children are all dropped', () => {
