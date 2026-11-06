@@ -154,13 +154,14 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
                       zIndex: 7,
                       bgcolor: 'rgba(5, 30, 22, 0.98)',
                       boxShadow: '12px 0 32px rgba(0,0,0,0.45)',
+                      // A slide: the panel glides in from the left edge (about half a second, decelerating) and slides back out more slowly.
                       opacity: autoCollapse.peek ? 1 : 0,
-                      transform: autoCollapse.peek ? 'translateX(0)' : 'translateX(-12px)',
+                      transform: autoCollapse.peek ? 'translateX(0)' : 'translateX(-100%)',
                       visibility: autoCollapse.peek ? 'visible' : 'hidden',
                       '@media (prefers-reduced-motion: no-preference)': {
                         transition: autoCollapse.peek
-                          ? 'opacity 260ms ease, transform 260ms ease'
-                          : 'opacity 260ms ease, transform 260ms ease, visibility 0s linear 260ms',
+                          ? 'transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 360ms ease'
+                          : 'transform 460ms cubic-bezier(0.45, 0, 0.55, 1), opacity 460ms ease 60ms, visibility 0s linear 520ms',
                       },
                     }
                   : { position: 'relative' }),

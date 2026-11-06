@@ -10,8 +10,8 @@ export const MENU_COLLAPSE_MS = 10000
 export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 // The change is a dissolve, never an animated resize: the page fades out to its background (VEIL_IN_MS), the layout swaps while it is covered,
 // and it fades back in slowly (VEIL_OUT_MS). Animating the column width re-laid out the whole content grid on every frame and flickered.
-export const VEIL_IN_MS = 160
-export const VEIL_OUT_MS = 520
+export const VEIL_IN_MS = 240
+export const VEIL_OUT_MS = 760
 export const PEEK_CLOSE_DELAY_MS = 350
 
 export function menuAutoCollapsePreference(): boolean {
