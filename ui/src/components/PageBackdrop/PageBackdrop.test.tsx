@@ -51,7 +51,7 @@ describe('PageBackdrop themes', () => {
     expect(rule(scene())).not.toContain('christmas')
   })
 
-  it('ships with the Christmas theme active (set back to default after the season)', () => {
-    expect(ACTIVE_BACKDROP_THEME).toBe('christmas')
+  it('ships with the default theme active (Christmas is ready but switched off)', () => {
+    expect(ACTIVE_BACKDROP_THEME).toBe('default')
   })
 })
