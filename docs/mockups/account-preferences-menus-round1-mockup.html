@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account and Preferences menus - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --cream:#F7F3E8; --gold:#E8B83D; --sand:#E2D5B0; --ink:#06241A;
+    --muted:rgba(247,243,232,.66); --line:rgba(247,243,232,.28); --soft:rgba(247,243,232,.14);
+    --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:28px 20px 90px}
+  h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+  h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:44px 0 4px}
+  h3{font:700 15px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+  .lead,.why{color:var(--muted);max-width:940px;line-height:1.5;margin:0 0 12px}
+  .row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:6px}
+  .cap{font:600 13px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+
+  /* shell: page header row + console */
+  .page{width:760px;border:1px solid var(--soft);border-radius:8px;background:linear-gradient(180deg,#134d33,#0b3322);overflow:hidden}
+  .page.phone{width:360px}
+  .top{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font:700 14px var(--body)}
+  .top .btns{display:flex;gap:6px}
+  .b{font:600 11px var(--disp);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--cream);border-radius:4px;padding:5px 8px;background:transparent;color:var(--cream)}
+  .b.on{background:rgba(247,243,232,.16)}
+  .b.gold{border-color:var(--gold);color:var(--gold)}
+  .console{margin:0 12px 12px;border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.8);overflow:hidden;display:flex;flex-direction:column;min-height:330px}
+  .page.phone .console{margin:0;border-radius:0;border-width:1px 0 0}
+  .band{height:50px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;font:700 22px var(--disp);letter-spacing:.06em;text-transform:uppercase}
+  .band .act{margin-left:auto}
+  .body{display:flex;flex:1;min-height:0}
+  .menu{width:210px;border-right:1px solid var(--line);background:rgba(0,0,0,.18);flex:none}
+  .page.phone .menu{width:100%;border-right:0}
+  .mi{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:600 16px var(--disp);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--soft)}
+  .mi.sel{color:var(--gold);background:rgba(232,184,61,.1);box-shadow:inset 3px 0 var(--gold)}
+  .mi .pill{font:700 12px var(--disp);letter-spacing:.08em;background:var(--gold);color:var(--ink);border-radius:9px;padding:1px 7px}
+  .mi .chev{color:var(--muted)}
+  .mi.danger{color:#f0a89c}
+  .mi.sec{height:28px;font:600 11px var(--disp);letter-spacing:.2em;color:var(--muted);border-bottom:0;margin-top:6px}
+  .content{flex:1;padding:16px 18px;display:grid;gap:12px;align-content:start}
+  .foot{height:44px;border-top:1px solid var(--line);background:rgba(0,0,0,.4);display:flex;align-items:center;padding:0 16px;font:600 14px var(--disp);letter-spacing:.14em;text-transform:uppercase;gap:8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+  .card{border:1px solid var(--soft);background:rgba(0,0,0,.35);border-radius:4px;padding:12px;text-align:center;font:700 14px var(--disp);letter-spacing:.06em;text-transform:uppercase}
+  .card i{display:block;width:44px;height:44px;border-radius:50%;margin:0 auto 6px;background:linear-gradient(180deg,#f4d676,#e8b83d);color:var(--ink);font:700 18px/44px var(--disp);font-style:normal}
+  .card.dash{border:1px dashed var(--gold);color:var(--gold)}
+  .pref{border:1px solid var(--soft);background:rgba(0,0,0,.3);border-radius:4px;padding:12px 14px;display:flex;gap:14px;align-items:center}
+  .pref .t{font:700 16px var(--disp);letter-spacing:.08em;text-transform:uppercase}
+  .pref .d{color:var(--muted);font-size:13.5px;margin-top:2px;line-height:1.4}
+  .pref .sw{margin-left:auto;flex:none;width:44px;height:24px;border-radius:12px;background:var(--gold);position:relative}
+  .pref .sw::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--ink)}
+  .pref .sw.off{background:rgba(247,243,232,.22)} .pref .sw.off::after{right:auto;left:3px;background:var(--cream)}
+  .sub{font:700 13px var(--disp);letter-spacing:.18em;text-transform:uppercase;color:var(--sand)}
+  .dropdown{position:absolute;top:40px;right:0;width:200px;border:1px solid var(--line);border-radius:4px;background:#0a2a1d;z-index:3;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .dropdown div{padding:9px 14px;font:500 14px var(--body);border-bottom:1px solid var(--soft)} .dropdown div:last-child{border:0}
+  .rel{position:relative}
+  .note{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:940px;line-height:1.55;font-size:14.5px}
+  .note b{color:var(--gold)}
+</style>
+</head>
+<body>
+<h1>Account and Preferences</h1>
+<p class="lead">Account and Preferences are about the <b>person</b>, not one player, so they live on the person screen (today's "Player Hub" chooser) and not inside a player's Hub. Below: the person screen in two shapes, the Preferences page, the Hub's single way back, and a phone. All text is made up. Nothing is built.</p>
+
+<h2>1 &middot; Person screen, option A: keep what you have, add Preferences</h2>
+<p class="why">Smallest change. The top row stays. Its <b>Account</b> button opens a menu with Invitations, Link requests, Link more players and Preferences. Each opens as a console page with Back.</p>
+<div class="row">
+ <div class="col"><span class="cap">Today's screen, Account menu open</span>
+  <div class="page"><div class="top"><b>Cricket Legend</b><div class="btns rel"><span class="b on">Account</span><span class="b">&larr; Back to club</span><span class="b">Switch profile</span><span class="b">Sign out</span>
+     <div class="dropdown" style="right:auto;left:0"><div>Invitations <span class="pill" style="background:var(--gold);color:var(--ink);border-radius:9px;padding:0 6px;font-size:11px">2</span></div><div>Link requests</div><div>Link more players</div><div><b style="color:var(--gold)">Preferences</b></div></div></div></div>
+   <div class="console"><div class="band">Player Hub</div><div class="content"><div class="cards"><div class="card"><i>JV</i>Jaco van der Westhuizen</div><div class="card"><i>JV</i>Jano van der Westhuizen</div><div class="card dash">Link more players</div></div></div><div class="foot">&larr; Back to club</div></div></div></div>
+ <div class="col"><span class="cap">Preferences page (from the menu)</span>
+  <div class="page"><div class="top"><b>Cricket Legend</b><div class="btns"><span class="b on">Account</span><span class="b">&larr; Back to club</span><span class="b">Switch profile</span><span class="b">Sign out</span></div></div>
+   <div class="console"><div class="band">Preferences</div><div class="content">
+     <div class="sub">Scoreboard</div>
+     <div class="pref"><div><div class="t">Scoreboard ticker</div><div class="d">The rolling news line along the bottom of the Player Hub.</div></div><span class="sw"></span></div>
+     <div class="pref"><div><div class="t">Collapse the menu when idle</div><div class="d">Tucks the Hub menu away after 10 seconds so the page gets the space.</div></div><span class="sw"></span></div>
+     <div class="note" style="font-size:13px;padding:8px 12px">These are kept on this device. Signing in on another device starts with the defaults.</div>
+   </div><div class="foot">&larr; Back to players</div></div></div></div>
+</div>
+
+<h2>2 &middot; Person screen, option B: the same console and menu as the Hub</h2>
+<p class="why">The person screen becomes a small console with a left menu, the same look and rules as the Hub (one level, quiet rows, gold bar). Players is the first page, so the page you land on is unchanged. The top row goes, as you asked for the Hub. Back to club and Sign out sit in the menu, under a divider.</p>
+<div class="row">
+ <div class="col"><span class="cap">Players (landing page)</span>
+  <div class="page"><div class="console" style="margin:12px"><div class="band">Players</div><div class="body">
+    <div class="menu"><div class="mi sel">Players</div><div class="mi">Invitations <span class="pill">2</span></div><div class="mi">Link requests</div><div class="mi">Link more players</div><div class="mi">Preferences</div><div class="mi sec">&nbsp;</div><div class="mi">&larr; Back to club</div><div class="mi danger">Sign out</div></div>
+    <div class="content"><div class="cards"><div class="card"><i>JV</i>Jaco van der Westhuizen</div><div class="card"><i>JV</i>Jano van der Westhuizen</div></div></div></div></div></div></div>
+ <div class="col"><span class="cap">Preferences</span>
+  <div class="page"><div class="console" style="margin:12px"><div class="band">Preferences</div><div class="body">
+    <div class="menu"><div class="mi">Players</div><div class="mi">Invitations <span class="pill">2</span></div><div class="mi">Link requests</div><div class="mi">Link more players</div><div class="mi sel">Preferences</div><div class="mi sec">&nbsp;</div><div class="mi">&larr; Back to club</div><div class="mi danger">Sign out</div></div>
+    <div class="content"><div class="sub">Scoreboard</div>
+     <div class="pref"><div><div class="t">Scoreboard ticker</div><div class="d">The rolling news line along the bottom of the Player Hub.</div></div><span class="sw"></span></div>
+     <div class="pref"><div><div class="t">Collapse the menu when idle</div><div class="d">After 10 seconds.</div></div><span class="sw off"></span></div></div></div></div></div></div>
+</div>
+
+<h2>3 &middot; The Player Hub's way back to the person screen</h2>
+<p class="why">With Account gone from the Hub, the Hub needs one clear door out. Two ways to show it; I recommend the first.</p>
+<div class="row">
+ <div class="col"><span class="cap">3a &middot; Last menu row "Account" (a plain link, no sub-items)</span>
+  <div class="page"><div class="console" style="margin:12px"><div class="band">Results</div><div class="body">
+    <div class="menu"><div class="mi">Availability</div><div class="mi sel">Results</div><div class="mi">Schedule <span class="chev">&rsaquo;</span></div><div class="mi">Stats <span class="chev">&rsaquo;</span></div><div class="mi">Updates <span class="chev">&rsaquo;</span></div><div class="mi">Club <span class="chev">&rsaquo;</span></div><div class="mi">Profile <span class="chev">&rsaquo;</span></div><div class="mi sec">Not Jaco</div><div class="mi">Account <span class="pill">2</span></div></div>
+    <div class="content"><div class="card" style="text-align:left">Results page</div></div></div></div></div></div>
+ <div class="col"><span class="cap">3b &middot; Footer entry instead, menu stays at seven</span>
+  <div class="page"><div class="console" style="margin:12px"><div class="band">Results</div><div class="body">
+    <div class="menu"><div class="mi">Availability</div><div class="mi sel">Results</div><div class="mi">Schedule <span class="chev">&rsaquo;</span></div><div class="mi">Stats <span class="chev">&rsaquo;</span></div><div class="mi">Updates <span class="chev">&rsaquo;</span></div><div class="mi">Club <span class="chev">&rsaquo;</span></div><div class="mi">Profile <span class="chev">&rsaquo;</span></div></div>
+    <div class="content"><div class="card" style="text-align:left">Results page</div></div></div>
+    <div class="foot">&larr; Back to players <span style="margin-left:auto;color:var(--muted)">Account &amp; preferences</span></div></div></div></div>
+</div>
+<p class="why" style="margin-top:10px">3a keeps the pending-count pill (invitations and link requests) visible while you are in a player's Hub, and it is where people look for "Account". 3b keeps the menu at the pinned seven but the footer is also where the scoreboard ticker will live, so it would compete with it.</p>
+
+<h2>4 &middot; On a phone</h2>
+<div class="row">
+ <div class="col"><span class="cap">Person screen (option B)</span>
+  <div class="page phone"><div class="console"><div class="band" style="height:56px">Account</div><div class="menu"><div class="mi">Players</div><div class="mi">Invitations <span class="pill">2</span></div><div class="mi">Link requests</div><div class="mi">Link more players</div><div class="mi">Preferences</div><div class="mi">&larr; Back to club</div><div class="mi danger">Sign out</div></div></div></div></div>
+ <div class="col"><span class="cap">Preferences (phone)</span>
+  <div class="page phone"><div class="console"><div class="band" style="height:56px">&larr; Preferences</div><div class="content"><div class="pref"><div><div class="t">Scoreboard ticker</div><div class="d">The rolling news line along the bottom of the Player Hub.</div></div><span class="sw"></span></div><div class="pref"><div><div class="t">Collapse the menu when idle</div><div class="d">Wide screens only.</div></div><span class="sw off"></span></div></div></div></div></div>
+ <div class="col"><span class="cap">Hub main menu (phone, 3a)</span>
+  <div class="page phone"><div class="console"><div class="band" style="height:56px">Jaco van der Westhuizen</div><div class="menu"><div class="mi">Availability <span class="pill">2</span></div><div class="mi">Results</div><div class="mi">Schedule <span class="chev">&rsaquo;</span></div><div class="mi">Stats <span class="chev">&rsaquo;</span></div><div class="mi">Updates <span class="chev">&rsaquo;</span></div><div class="mi">Club <span class="chev">&rsaquo;</span></div><div class="mi">Profile <span class="chev">&rsaquo;</span></div><div class="mi sec">Not Jaco</div><div class="mi">Account <span class="pill">2</span></div></div></div></div></div>
+</div>
+
+<h2>What would change, per screen</h2>
+<div class="note">
+<b>Person screen</b> (today's "Player Hub" chooser): gains Preferences; option B also swaps its top row for a menu.<br>
+<b>Player Hub</b>: the Account sub-menu (Invitations, Link requests, Link more players, Switch profile, Back to club, Sign out) goes. One link remains, to the person screen. Switch profile, Back to club and Sign out then live only there.<br>
+<b>Preferences</b> (new): per-device switches for now (ticker, menu collapse). Anything else personal can land here later: notification choices, default player, display options.<br>
+<b>Not changed</b>: the manager app, the Hub's seven main items, the Hub page header band.
+<br><br><b>Questions for you:</b> A or B for the person screen? 3a or 3b for the Hub door? Which preferences besides the two switches do you expect soon? And should "Preferences" be kept per device (simple) or per person (needs a small backend table, follows them across devices)?
+</div>
+</body>
+</html>
