@@ -104,3 +104,22 @@ export const TICKER_TONES = {
 } as const
 // The ticker's edge fade: the console ground under the footer band.
 export const TICKER_FADE = '#08271b'
+
+// docs/specs/147 (Player Hub stats, shared flip cards): the data-tag chip tones (HAVE, PARTLY, NOT CAPTURED) and the drawing tones of
+// components/StatsDrawings, named here so no stats file carries a hex literal. They reuse the ticker tones, which read at 4.5:1 or
+// better on the dark console ground; every use also carries a word or a pattern, colour is never the only cue.
+export const STATS_TONES = {
+  have: TICKER_TONES.win,
+  partly: BRAND.gold,
+  notCaptured: TICKER_TONES.live,
+  // Drawings: good, poor, the second series and the neutral grid.
+  win: TICKER_TONES.win,
+  loss: TICKER_TONES.live,
+  blue: TICKER_TONES.next,
+  gold: BRAND.gold,
+  violet: TICKER_TONES.message,
+  mint: TICKER_TONES.info,
+  sand: BRAND.sand,
+} as const
+// The order slices and series are coloured in (donut, stacked bars): distinct from one another on the dark ground.
+export const STATS_SERIES = [STATS_TONES.gold, STATS_TONES.blue, STATS_TONES.win, STATS_TONES.loss, STATS_TONES.violet, STATS_TONES.mint, STATS_TONES.sand] as const
