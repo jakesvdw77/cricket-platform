@@ -5,7 +5,7 @@ import { Button } from '../../components/Button'
 import { useInvitationAction, useMyInvitations } from '../../api/meApi'
 import type { MyInvitation } from '../../api/meApi'
 import { formatDateTime } from '../../utils/publicAvailabilityFormat'
-import { HubBackButton, HubFrame } from './myPlayers/HubFrame'
+import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubGoldButton, hubOutlineButton } from './myPlayers/hubStyle'
 import { creamAlpha, blackAlpha } from '../../brandTokens'
 
@@ -88,8 +88,7 @@ export function InvitationsList() {
 export default function MyInvitationsPage() {
   const navigate = useNavigate()
   return (
-    <HubFrame title="Invitations" maxWidth={720} testId="my-invitations-page">
-      <HubBackButton onClick={() => navigate('/account')}>Back to players</HubBackButton>
+    <HubFrame title="Invitations" maxWidth={720} testId="my-invitations-page" footer={<HubFooterButton onClick={() => navigate('/account/options')}>Back to account</HubFooterButton>}>
       <InvitationsList />
     </HubFrame>
   )
