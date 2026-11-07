@@ -20,11 +20,11 @@ public record MyLeaderboardStandingDto(
         List<MyStandingLine> lines) {
 
     /**
-     * One headline. {@code key} is runs, average, wickets, economy or catches; {@code group} is batting, bowling or
-     * fielding (the table the line comes from). {@code rank} (competition rank, ties share) is out of {@code
+     * One headline. {@code key} is runs, average, strikeRate, wickets, economy, catches or playerOfTheMatch; {@code group} is
+     * batting, bowling, fielding or awards (the table the line comes from). {@code rank} (competition rank, ties share) is out of {@code
      * playersRanked}; {@code playersListed} is everyone the table lists for the group. {@code value} is the player's
      * cell of the matching standings column (null parts when there is no figure). {@code minimum} is set for the rate lines
-     * only (average, economy): players below it are not ranked, and {@code belowMinimum} says the held player is one.
+     * only (average, strikeRate, economy): players below it are not ranked, and {@code belowMinimum} says the held player is one.
      */
     public record MyStandingLine(
             String key,

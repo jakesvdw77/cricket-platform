@@ -2,6 +2,7 @@ package com.cricketlegend.service.support;
 
 import com.cricketlegend.dto.AwardsViewDto;
 import com.cricketlegend.dto.LeaderboardTableDto;
+import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardCell;
 import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardTableRow;
 import com.cricketlegend.dto.MyLeaderboardAwardsDto;
 import com.cricketlegend.dto.MyLeaderboardStandingDto;
@@ -74,16 +75,29 @@ public final class MyLeaderboardBuilder {
     // ---- "Where Sam stands" ----
 
     private record LineDef(String key, String group, LeaderboardBoard board, LeaderboardColumn column) {
+
+        /** The player of the match line has no standings column; its label and value come from the awards figures. */
+        String label() {
+            return column == null ? "Player Of The Match" : column.getLongLabel();
+        }
+
+        LeaderboardCell value(Candidate c) {
+            return column == null
+                    ? new LeaderboardCell(BigDecimal.valueOf(c.figures().awards().playerOfTheMatch()), null, null, null, null, null)
+                    : column.cell(c);
+        }
     }
 
     private static final List<LineDef> LINES = List.of(
             new LineDef("runs", "batting", LeaderboardBoard.MOST_RUNS, LeaderboardColumn.BAT_RUNS),
             new LineDef("average", "batting", LeaderboardBoard.BATTING_AVERAGE, LeaderboardColumn.BAT_AVERAGE),
+            new LineDef("strikeRate", "batting", LeaderboardBoard.STRIKE_RATE, LeaderboardColumn.BAT_STRIKE_RATE),
             new LineDef("wickets", "bowling", LeaderboardBoard.MOST_WICKETS, LeaderboardColumn.BOWL_WICKETS),
             new LineDef("economy", "bowling", LeaderboardBoard.ECONOMY_RATE, LeaderboardColumn.BOWL_ECONOMY),
-            new LineDef("catches", "fielding", LeaderboardBoard.MOST_CATCHES, LeaderboardColumn.FIELD_CATCHES));
+            new LineDef("catches", "fielding", LeaderboardBoard.MOST_CATCHES, LeaderboardColumn.FIELD_CATCHES),
+            new LineDef("playerOfTheMatch", "awards", LeaderboardBoard.MOST_POTM, null));
 
-    /** The held player's place in the five headline figures among everyone loaded (the reach, in the Player Hub scope). */
+    /** The held player's place in the seven headline figures among everyone loaded (the reach, in the Player Hub scope). */
     public static MyLeaderboardStandingDto standing(
             LeaderboardPlayers loaded, UUID playerId, String playerFirstName, MyLeaderboardScope scope) {
         LeaderboardQualification.Defaults defaults =
@@ -107,11 +121,11 @@ public final class MyLeaderboardBuilder {
         return new MyStandingLine(
                 def.key(),
                 def.group(),
-                def.column().getLongLabel(),
+                def.label(),
                 rank,
                 ranking.listed(),
                 ranking.ranked(),
-                mine == null ? null : def.column().cell(mine),
+                mine == null ? null : def.value(mine),
                 mine == null ? null : sample(def, mine),
                 minimum == null ? null : new MyStandingMinimum(board.getMinimumKind().name(), minimum),
                 below);
