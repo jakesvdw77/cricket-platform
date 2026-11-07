@@ -46,6 +46,7 @@ public final class MyTeamStatsBuilder {
         TeamStatsCalculator.Figures figures = TeamStatsCalculator.calculate(history.counters());
         List<TeamStatsCalculator.ResultFact> results = history.resultsOldestFirst();
         TeamStatsCalculator.Extent extent = history.extent();
+        TeamStatsCalculator.HubFacts hub = history.hub();
 
         TeamStatsCalculator.BattingOrder order = TeamStatsCalculator.battingOrder(results);
         TeamStatsCalculator.Toss toss = TeamStatsCalculator.toss(results);
@@ -108,7 +109,14 @@ public final class MyTeamStatsBuilder {
                 new MyTeamCloseGames(
                         close.played(), close.won(), close.closeRuns(), close.closeWickets(), close.decided(), close.withMargin()),
                 extrasCard(TeamStatsCalculator.extrasCard(history.counters(), extent)),
-                stats.notCaptured());
+                stats.notCaptured(),
+                TeamStatsCalculator.dismissals(hub, results),
+                TeamStatsCalculator.battingPositionGroups(hub, results),
+                TeamStatsCalculator.boundaries(hub, results),
+                TeamStatsCalculator.venues(hub, results),
+                TeamStatsCalculator.wicketTypes(hub, results),
+                TeamStatsCalculator.fielding(hub, results),
+                TeamStatsCalculator.byInningsNumber(hub, results));
     }
 
     private static MyTeamShareBlock share(TeamStatsCalculator.ShareBlock b) {

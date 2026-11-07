@@ -51,7 +51,14 @@ public record MyTeamStatsDto(
         MyTeamSquad squad,
         MyTeamCloseGames closeGames,
         MyTeamExtrasCard extrasCard,
-        List<TeamStatsNotCaptured> notCaptured) {
+        List<TeamStatsNotCaptured> notCaptured,
+        MyTeamDismissals dismissals,
+        List<MyTeamPositionGroup> battingPositionGroups,
+        MyTeamBoundaries boundaries,
+        List<MyTeamVenue> venues,
+        MyTeamWicketTypes wicketTypes,
+        MyTeamFielding fielding,
+        MyTeamInningsSplit byInningsNumber) {
 
     /** The filters echoed; {@code competition} is LEAGUE, FRIENDLY or null. */
     public record MyTeamScope(UUID seasonId, UUID leagueId, UUID teamId, String competition) {
@@ -273,5 +280,113 @@ public record MyTeamStatsDto(
 
     /** {@code value} is null when no innings recorded it; {@code inningsRecorded} of {@code inningsCounted} innings did. */
     public record MyTeamExtrasComponent(Long value, long inningsRecorded, long inningsCounted) {
+    }
+
+    // ---- docs/specs/147 amendment 3: Team Stats on a par with Player Stats (all additive, history-capped like the series) ----
+
+    /** One dismissal or wicket type: {@code type} is the {@code DismissalType} name; {@code percent} is relative to the block's own total (see the block). */
+    public record MyTeamTypeCount(String type, String label, long count, BigDecimal percent) {
+    }
+
+    /**
+     * How the team's batters got out, over the team's counted usable innings (the capped history). {@code notOut} counts
+     * batters not out (not out and retired not out); {@code wickets} the dismissals (every other batted type, including
+     * run out and retired out); {@code types} the dismissal types with a count, in the type order, each {@code percent} the
+     * share of {@code notOut + wickets} (all batted innings of the team's batters, not-outs included, so the percents and
+     * the not-out share add to 100). {@code notRecorded}: batting rows with no how-out (not in any percent). Did not bat is
+     * never counted. {@code coverage}: innings with a recorded how-out of the usable innings.
+     */
+    public record MyTeamDismissals(
+            long notOut, long wickets, List<MyTeamTypeCount> types, long notRecorded, MyTeamCount coverage) {
+    }
+
+    /**
+     * Batting by position, positions 1 and 2 as one {@code OPENER} group, then {@code 3} to {@code 11}; positions with no
+     * innings are left out. {@code sharePercent}: the group's runs over the runs of all the groups (the runs attributed to a
+     * batting position), 1 decimal. {@code average}: runs per dismissal (null with none).
+     */
+    public record MyTeamPositionGroup(
+            String key,
+            String label,
+            long innings,
+            long runs,
+            BigDecimal sharePercent,
+            long notOuts,
+            long dismissals,
+            BigDecimal average) {
+    }
+
+    /**
+     * Fours and sixes from the innings whose every batting row recorded both ({@code inningsRecorded} of {@code
+     * inningsCounted} usable innings). {@code boundaryRuns} = 4 x fours + 6 x sixes; {@code boundaryPercent}: that over the
+     * team runs of those innings; {@code ballsPerBoundary}: valid balls faced over fours + sixes, for the recorded innings
+     * whose every row also had valid balls. Null when nothing is recorded (never 0).
+     */
+    public record MyTeamBoundaries(
+            Long fours,
+            Long sixes,
+            Long boundaryRuns,
+            BigDecimal boundaryPercent,
+            BigDecimal ballsPerBoundary,
+            long inningsRecorded,
+            long inningsCounted) {
+    }
+
+    /**
+     * The team at one playing area (the result's area, else the match's): {@code venueKey} is the area id, {@code unknown}
+     * (no area recorded) or {@code other} (the venues beyond the twelve busiest). {@code home}: one of the club's own home
+     * fields (null for unknown and other). Counted non-forfeit results only. The four totals are sums over the usable
+     * innings and null when none was recorded.
+     */
+    public record MyTeamVenue(
+            String venueKey,
+            String name,
+            Boolean home,
+            long matches,
+            long won,
+            long lost,
+            long tied,
+            Long runsScored,
+            Long runsConceded,
+            Long wicketsTaken,
+            Long wicketsLost) {
+    }
+
+    /**
+     * How the team's bowlers took wickets, from the stored bowling wickets of the opposition's usable innings split by the
+     * dismissal types of the batters named against the bowler (bowler-credited types only; run-outs are never a bowler's).
+     * {@code total} = Σ types + {@code notItemised}; each {@code percent} is the share of {@code total}.
+     * {@code coverage}: opposition usable innings with a bowling card of those counted.
+     */
+    public record MyTeamWicketTypes(
+            long total, List<MyTeamTypeCount> types, long notItemised, MyTeamCount coverage) {
+    }
+
+    /**
+     * Fielding credits of the team's own fielders over the counted non-forfeit results: totals, per counted result with
+     * fielding recorded, the top eight fielders ({@code others}: the total of the rest) and {@code coverage} (results with a
+     * fielding record of those counted). Full names, Hub only; guests and unconfirmed import guesses grouped as "Guests".
+     */
+    public record MyTeamFielding(
+            long catches,
+            long stumpings,
+            long runOuts,
+            long dismissals,
+            BigDecimal dismissalsPerMatch,
+            List<MyTeamFielder> byFielder,
+            long others,
+            MyTeamCount coverage) {
+    }
+
+    /** One fielder's credits. */
+    public record MyTeamFielder(String name, long catches, long stumpings, long runOuts, long total) {
+    }
+
+    /** Batting first ({@code first}) v chasing: results that recorded the order, with the team's usable innings in them. */
+    public record MyTeamInningsSplit(MyTeamInningsSide first, MyTeamInningsSide chasing) {
+    }
+
+    /** {@code runs} is the total of the usable innings (null with none); {@code average} is runs per such innings. */
+    public record MyTeamInningsSide(long played, long won, long innings, Long runs, BigDecimal average) {
     }
 }

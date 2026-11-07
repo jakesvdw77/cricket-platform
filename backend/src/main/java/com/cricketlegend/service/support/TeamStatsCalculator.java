@@ -1,5 +1,6 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.dto.MyTeamStatsDto;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -7,6 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -886,6 +888,438 @@ public final class TeamStatsCalculator {
             }
         }
         return false;
+    }
+
+    // ---- docs/specs/147 amendment 3: Team Stats on a par with Player Stats ----
+
+    /** One batting entry of a counted usable own innings; {@code hasEntry} false: the innings has no batting entry (all else null). */
+    public record BattingFact(
+            UUID matchId,
+            int sequence,
+            Long inningsRuns,
+            boolean hasEntry,
+            Integer position,
+            Integer runs,
+            Integer balls,
+            Integer fours,
+            Integer sixes,
+            String howOut) {
+    }
+
+    /** One counted non-forfeit result's playing area ({@code areaId} null: none recorded) and the sums of its usable innings. */
+    public record VenueFact(
+            UUID matchId,
+            UUID areaId,
+            String areaName,
+            boolean clubField,
+            Long ownRuns,
+            Long ownWickets,
+            Long oppRuns,
+            Long oppWickets) {
+    }
+
+    /** One stored bowling row of an opposition usable innings and one dismissal type credited against it ({@code bowlingEntryId} null: no bowling row). */
+    public record WicketFact(
+            UUID matchId, int sequence, UUID bowlingEntryId, Integer wickets, String howOut, long credited) {
+    }
+
+    /** Fielding credits of one fielder (profile id null: the guest group) in one result; {@code entries} 0: the result has no fielding record. */
+    public record FieldingFact(
+            UUID matchId, UUID profileId, String name, long entries, long catches, long stumpings, long runOuts) {
+    }
+
+    /** The stored facts the amendment 3 blocks are decided from; rows outside the capped history are ignored. */
+    public record HubFacts(
+            List<BattingFact> batting, List<VenueFact> venues, List<WicketFact> wickets, List<FieldingFact> fielding) {
+
+        public static final HubFacts EMPTY = new HubFacts(List.of(), List.of(), List.of(), List.of());
+    }
+
+    private static final int OPENERS_LAST = 2;
+    private static final int TAIL_LAST = 11;
+    private static final int VENUE_CAP = 12;
+    private static final int FIELDER_CAP = 8;
+    private static final String UNKNOWN_VENUE = "Unknown venue";
+    private static final String OTHER_VENUES = "Other venues";
+
+    private static java.util.Set<UUID> countedMatches(List<ResultFact> results) {
+        java.util.Set<UUID> ids = new java.util.HashSet<>();
+        for (ResultFact r : results) {
+            if (!r.forfeit()) {
+                ids.add(r.matchId());
+            }
+        }
+        return ids;
+    }
+
+    private static com.cricketlegend.domain.DismissalType dismissal(String howOut) {
+        if (howOut == null) {
+            return null;
+        }
+        try {
+            return com.cricketlegend.domain.DismissalType.valueOf(howOut);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static boolean notOutKind(com.cricketlegend.domain.DismissalType t) {
+        return t == com.cricketlegend.domain.DismissalType.NOT_OUT
+                || t == com.cricketlegend.domain.DismissalType.RETIRED_NOT_OUT;
+    }
+
+    private static String inningsKey(UUID matchId, int sequence) {
+        return matchId + "/" + sequence;
+    }
+
+    private static List<BattingFact> cappedBatting(HubFacts facts, List<ResultFact> results) {
+        java.util.Set<UUID> in = countedMatches(results);
+        return facts.batting().stream().filter(b -> in.contains(b.matchId())).toList();
+    }
+
+    /** A batting row that counts: how-out recorded and the player batted (the player rule of {@code COUNTED_BATTING_ROW}). */
+    private static com.cricketlegend.domain.DismissalType countedType(BattingFact b) {
+        if (!b.hasEntry()) {
+            return null;
+        }
+        com.cricketlegend.domain.DismissalType t = dismissal(b.howOut());
+        return t != null && t.batted() ? t : null;
+    }
+
+    private static List<MyTeamStatsDto.MyTeamTypeCount> typeCounts(
+            Map<com.cricketlegend.domain.DismissalType, Long> counts, long denominator) {
+        List<MyTeamStatsDto.MyTeamTypeCount> list = new ArrayList<>();
+        counts.forEach((type, n) -> {
+            if (n > 0) {
+                list.add(new MyTeamStatsDto.MyTeamTypeCount(
+                        type.name(), PlayerDashboardSeriesBuilder.label(type), n, ratio(n * 100, denominator, 1)));
+            }
+        });
+        return list;
+    }
+
+    /**
+     * How the team's batters got out: the batting rows of the counted usable own innings by how-out (not out and retired
+     * not out are {@code notOut}; did not bat is not counted; a row with no how-out is {@code notRecorded}). Each type's
+     * percent is its share of {@code notOut + wickets}, all batted innings of the team's batters.
+     */
+    public static MyTeamStatsDto.MyTeamDismissals dismissals(HubFacts facts, List<ResultFact> results) {
+        java.util.Set<String> all = new java.util.HashSet<>();
+        java.util.Set<String> recorded = new java.util.HashSet<>();
+        long notOut = 0;
+        long notRecorded = 0;
+        Map<com.cricketlegend.domain.DismissalType, Long> types =
+                new java.util.EnumMap<>(com.cricketlegend.domain.DismissalType.class);
+        for (BattingFact b : cappedBatting(facts, results)) {
+            String key = inningsKey(b.matchId(), b.sequence());
+            all.add(key);
+            if (!b.hasEntry()) {
+                continue;
+            }
+            com.cricketlegend.domain.DismissalType t = dismissal(b.howOut());
+            if (t == null) {
+                notRecorded++;
+                continue;
+            }
+            if (!t.batted()) {
+                continue;
+            }
+            recorded.add(key);
+            if (notOutKind(t)) {
+                notOut++;
+            } else {
+                types.merge(t, 1L, Long::sum);
+            }
+        }
+        long wickets = types.values().stream().mapToLong(Long::longValue).sum();
+        return new MyTeamStatsDto.MyTeamDismissals(
+                notOut,
+                wickets,
+                typeCounts(types, notOut + wickets),
+                notRecorded,
+                new MyTeamStatsDto.MyTeamCount(recorded.size(), all.size()));
+    }
+
+    /**
+     * Runs by batting position, positions 1 and 2 as one OPENER group, then 3 to 11; a row without a position (or outside 1
+     * to 11) is left out, as are positions with no innings. A dismissal is any counted row that is not a not-out kind.
+     */
+    public static List<MyTeamStatsDto.MyTeamPositionGroup> battingPositionGroups(HubFacts facts, List<ResultFact> results) {
+        long[][] acc = new long[TAIL_LAST + 1][4]; // innings, runs, notOuts, dismissals (index 0 = opener group)
+        long total = 0;
+        for (BattingFact b : cappedBatting(facts, results)) {
+            com.cricketlegend.domain.DismissalType t = countedType(b);
+            if (t == null || b.position() == null || b.position() < 1 || b.position() > TAIL_LAST) {
+                continue;
+            }
+            int slot = b.position() <= OPENERS_LAST ? 0 : b.position();
+            long runs = b.runs() == null ? 0L : b.runs();
+            acc[slot][0]++;
+            acc[slot][1] += runs;
+            acc[slot][notOutKind(t) ? 2 : 3]++;
+            total += runs;
+        }
+        List<MyTeamStatsDto.MyTeamPositionGroup> groups = new ArrayList<>();
+        for (int slot = 0; slot <= TAIL_LAST; slot++) {
+            if (slot == 1 || slot == 2 || acc[slot][0] == 0) {
+                continue;
+            }
+            groups.add(new MyTeamStatsDto.MyTeamPositionGroup(
+                    slot == 0 ? "OPENER" : String.valueOf(slot),
+                    slot == 0 ? "Opener" : String.valueOf(slot),
+                    acc[slot][0],
+                    acc[slot][1],
+                    ratio(acc[slot][1] * 100, total, 1),
+                    acc[slot][2],
+                    acc[slot][3],
+                    ratio(acc[slot][1], acc[slot][3], 2)));
+        }
+        return groups;
+    }
+
+    /** Fours and sixes of the innings in which every counted batting row recorded both; see {@link MyTeamStatsDto.MyTeamBoundaries}. */
+    public static MyTeamStatsDto.MyTeamBoundaries boundaries(HubFacts facts, List<ResultFact> results) {
+        // per innings: rows, rows with both, rows with valid balls too, fours, sixes, balls, innings runs
+        Map<String, long[]> innings = new LinkedHashMap<>();
+        for (BattingFact b : cappedBatting(facts, results)) {
+            long[] c = innings.computeIfAbsent(inningsKey(b.matchId(), b.sequence()), k -> new long[7]);
+            c[6] = b.inningsRuns() == null ? 0L : b.inningsRuns();
+            if (countedType(b) == null) {
+                continue;
+            }
+            c[0]++;
+            if (b.fours() != null && b.sixes() != null) {
+                c[1]++;
+                c[3] += b.fours();
+                c[4] += b.sixes();
+                if (b.balls() != null) {
+                    c[2]++;
+                    c[5] += b.balls();
+                }
+            }
+        }
+        long recorded = 0;
+        long fours = 0;
+        long sixes = 0;
+        long teamRuns = 0;
+        long balls = 0;
+        long ballBoundaries = 0;
+        for (long[] c : innings.values()) {
+            if (c[0] == 0 || c[1] != c[0]) {
+                continue;
+            }
+            recorded++;
+            fours += c[3];
+            sixes += c[4];
+            teamRuns += c[6];
+            if (c[2] == c[0]) {
+                balls += c[5];
+                ballBoundaries += c[3] + c[4];
+            }
+        }
+        if (recorded == 0) {
+            return new MyTeamStatsDto.MyTeamBoundaries(null, null, null, null, null, 0, innings.size());
+        }
+        long boundaryRuns = 4 * fours + 6 * sixes;
+        return new MyTeamStatsDto.MyTeamBoundaries(
+                fours,
+                sixes,
+                boundaryRuns,
+                ratio(boundaryRuns * 100, teamRuns, 1),
+                ratio(balls, ballBoundaries, 1),
+                recorded,
+                innings.size());
+    }
+
+    /** Batting first v chasing with the team's usable innings: {@code first} = results that batted first, {@code chasing} = batted second. */
+    public static MyTeamStatsDto.MyTeamInningsSplit byInningsNumber(HubFacts facts, List<ResultFact> results) {
+        Map<UUID, Map<Integer, Long>> inningsRuns = new HashMap<>();
+        for (BattingFact b : facts.batting()) {
+            inningsRuns.computeIfAbsent(b.matchId(), k -> new LinkedHashMap<>())
+                    .put(b.sequence(), b.inningsRuns() == null ? 0L : b.inningsRuns());
+        }
+        long[] first = new long[4]; // played, won, innings, runs
+        long[] chase = new long[4];
+        for (ResultFact r : played(results)) {
+            if (r.firstBattingSide() == null) {
+                continue;
+            }
+            long[] into = r.firstBattingSide().equals(r.side()) ? first : chase;
+            into[0]++;
+            into[1] += r.line().result() == FormResult.WON ? 1 : 0;
+            Map<Integer, Long> own = inningsRuns.getOrDefault(r.matchId(), Map.of());
+            into[2] += own.size();
+            into[3] += own.values().stream().mapToLong(Long::longValue).sum();
+        }
+        return new MyTeamStatsDto.MyTeamInningsSplit(inningsSide(first), inningsSide(chase));
+    }
+
+    private static MyTeamStatsDto.MyTeamInningsSide inningsSide(long[] c) {
+        return new MyTeamStatsDto.MyTeamInningsSide(
+                c[0], c[1], c[2], c[2] == 0 ? null : c[3], ratio(c[3], c[2], 2));
+    }
+
+    private static String venueKey(UUID areaId) {
+        return areaId == null ? "unknown" : areaId.toString();
+    }
+
+    private static Long plus(Long a, Long b) {
+        return a == null ? b : b == null ? a : a + b;
+    }
+
+    /** The team at each playing area: most matches first then name, twelve at most and the rest as "Other venues". */
+    public static List<MyTeamStatsDto.MyTeamVenue> venues(HubFacts facts, List<ResultFact> results) {
+        Map<UUID, ResultFact> byMatch = new HashMap<>();
+        played(results).forEach(r -> byMatch.putIfAbsent(r.matchId(), r));
+        Map<String, MyTeamStatsDto.MyTeamVenue> acc = new LinkedHashMap<>();
+        for (VenueFact v : facts.venues()) {
+            ResultFact r = byMatch.get(v.matchId());
+            if (r == null) {
+                continue;
+            }
+            FormResult result = r.line().result();
+            String key = venueKey(v.areaId());
+            MyTeamStatsDto.MyTeamVenue was = acc.get(key);
+            String name = v.areaName() == null || v.areaName().isBlank() ? UNKNOWN_VENUE : v.areaName();
+            acc.put(key, new MyTeamStatsDto.MyTeamVenue(
+                    key,
+                    name,
+                    v.areaId() == null ? null : v.clubField(),
+                    (was == null ? 0 : was.matches()) + 1,
+                    (was == null ? 0 : was.won()) + (result == FormResult.WON ? 1 : 0),
+                    (was == null ? 0 : was.lost()) + (result == FormResult.LOST ? 1 : 0),
+                    (was == null ? 0 : was.tied()) + (result == FormResult.TIED ? 1 : 0),
+                    plus(was == null ? null : was.runsScored(), v.ownRuns()),
+                    plus(was == null ? null : was.runsConceded(), v.oppRuns()),
+                    plus(was == null ? null : was.wicketsTaken(), v.oppWickets()),
+                    plus(was == null ? null : was.wicketsLost(), v.ownWickets())));
+        }
+        List<MyTeamStatsDto.MyTeamVenue> all = new ArrayList<>(acc.values());
+        all.sort(Comparator.comparingLong(MyTeamStatsDto.MyTeamVenue::matches)
+                .reversed()
+                .thenComparing(MyTeamStatsDto.MyTeamVenue::name, String.CASE_INSENSITIVE_ORDER));
+        if (all.size() <= VENUE_CAP) {
+            return all;
+        }
+        List<MyTeamStatsDto.MyTeamVenue> capped = new ArrayList<>(all.subList(0, VENUE_CAP));
+        MyTeamStatsDto.MyTeamVenue rest = new MyTeamStatsDto.MyTeamVenue(
+                "other", OTHER_VENUES, null, 0, 0, 0, 0, null, null, null, null);
+        for (MyTeamStatsDto.MyTeamVenue v : all.subList(VENUE_CAP, all.size())) {
+            rest = new MyTeamStatsDto.MyTeamVenue(
+                    "other",
+                    OTHER_VENUES,
+                    null,
+                    rest.matches() + v.matches(),
+                    rest.won() + v.won(),
+                    rest.lost() + v.lost(),
+                    rest.tied() + v.tied(),
+                    plus(rest.runsScored(), v.runsScored()),
+                    plus(rest.runsConceded(), v.runsConceded()),
+                    plus(rest.wicketsTaken(), v.wicketsTaken()),
+                    plus(rest.wicketsLost(), v.wicketsLost()));
+        }
+        capped.add(rest);
+        return capped;
+    }
+
+    /**
+     * How the team's bowlers took wickets: {@link PlayerStatsCalculator#splitWickets} over every stored bowling row of the
+     * opposition's counted usable innings (the player rule, so a row whose credited dismissals exceed its stored wickets is
+     * wholly not itemised). Each percent is the share of {@code total}.
+     */
+    public static MyTeamStatsDto.MyTeamWicketTypes wicketTypes(HubFacts facts, List<ResultFact> results) {
+        java.util.Set<UUID> in = countedMatches(results);
+        java.util.Set<String> all = new java.util.HashSet<>();
+        java.util.Set<String> withCard = new java.util.HashSet<>();
+        List<PlayerStatsCalculator.BowlingCredit> credits = new ArrayList<>();
+        for (WicketFact w : facts.wickets()) {
+            if (!in.contains(w.matchId())) {
+                continue;
+            }
+            String key = inningsKey(w.matchId(), w.sequence());
+            all.add(key);
+            if (w.bowlingEntryId() == null) {
+                continue;
+            }
+            withCard.add(key);
+            credits.add(new PlayerStatsCalculator.BowlingCredit(
+                    w.bowlingEntryId(), w.wickets() == null ? 0 : w.wickets(), dismissal(w.howOut()), w.credited()));
+        }
+        PlayerStatsCalculator.WicketSplit split = PlayerStatsCalculator.splitWickets(credits);
+        return new MyTeamStatsDto.MyTeamWicketTypes(
+                split.total(),
+                typeCounts(split.types(), split.total()),
+                split.notItemised(),
+                new MyTeamStatsDto.MyTeamCount(withCard.size(), all.size()));
+    }
+
+    /** The team's fielding credits: totals, the top {@value #FIELDER_CAP} fielders (guests grouped as one) and the rest. */
+    public static MyTeamStatsDto.MyTeamFielding fielding(HubFacts facts, List<ResultFact> results) {
+        java.util.Set<UUID> in = countedMatches(results);
+        java.util.Set<UUID> withRecord = new java.util.HashSet<>();
+        Map<UUID, long[]> byProfile = new LinkedHashMap<>();
+        Map<UUID, String> names = new HashMap<>();
+        long[] guests = new long[3];
+        boolean anyGuests = false;
+        long catches = 0;
+        long stumpings = 0;
+        long runOuts = 0;
+        for (FieldingFact f : facts.fielding()) {
+            if (!in.contains(f.matchId())) {
+                continue;
+            }
+            if (f.entries() > 0) {
+                withRecord.add(f.matchId());
+            }
+            catches += f.catches();
+            stumpings += f.stumpings();
+            runOuts += f.runOuts();
+            if (f.entries() == 0) {
+                continue;
+            }
+            long[] into;
+            if (f.profileId() == null) {
+                into = guests;
+                anyGuests = true;
+            } else {
+                into = byProfile.computeIfAbsent(f.profileId(), k -> new long[3]);
+                names.putIfAbsent(f.profileId(), f.name() == null || f.name().isBlank() ? UNNAMED_PLAYER : f.name());
+            }
+            into[0] += f.catches();
+            into[1] += f.stumpings();
+            into[2] += f.runOuts();
+        }
+        List<MyTeamStatsDto.MyTeamFielder> fielders = new ArrayList<>();
+        byProfile.forEach((id, c) -> fielders.add(fielder(names.get(id), c)));
+        if (anyGuests) {
+            fielders.add(fielder("Guests", guests));
+        }
+        fielders.removeIf(f -> f.total() <= 0);
+        fielders.sort(Comparator.comparingLong(MyTeamStatsDto.MyTeamFielder::total)
+                .reversed()
+                .thenComparing(f -> f.name().toLowerCase(Locale.ROOT)));
+        long others = fielders.size() <= FIELDER_CAP
+                ? 0
+                : fielders.subList(FIELDER_CAP, fielders.size()).stream()
+                        .mapToLong(MyTeamStatsDto.MyTeamFielder::total)
+                        .sum();
+        List<MyTeamStatsDto.MyTeamFielder> top = fielders.size() <= FIELDER_CAP
+                ? fielders
+                : new ArrayList<>(fielders.subList(0, FIELDER_CAP));
+        long dismissals = catches + stumpings + runOuts;
+        return new MyTeamStatsDto.MyTeamFielding(
+                catches,
+                stumpings,
+                runOuts,
+                dismissals,
+                ratio(dismissals, withRecord.size(), 2),
+                top,
+                others,
+                new MyTeamStatsDto.MyTeamCount(withRecord.size(), in.size()));
+    }
+
+    private static MyTeamStatsDto.MyTeamFielder fielder(String name, long[] c) {
+        return new MyTeamStatsDto.MyTeamFielder(name, c[0], c[1], c[2], c[0] + c[1] + c[2]);
     }
 
     // ---- division ----

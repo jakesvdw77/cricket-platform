@@ -127,6 +127,54 @@ public interface TeamStatsFactsRepository extends Repository<MatchResult, UUID> 
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly);
 
+    /** docs/specs/147 amendment 3: the batting entries of the team's own usable innings. See {@link TeamStatsSql#HELD_BATTING_ROWS}. */
+    @Query(value = TeamStatsSql.HELD_BATTING_ROWS, nativeQuery = true)
+    List<HeldBattingRowView> heldBattingRows(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
+
+    /** docs/specs/147 amendment 3: the bowling rows and batter dismissals of the opposition's usable innings. See {@link TeamStatsSql#HELD_WICKET_ROWS}. */
+    @Query(value = TeamStatsSql.HELD_WICKET_ROWS, nativeQuery = true)
+    List<HeldWicketRowView> heldWicketRows(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
+
+    /** docs/specs/147 amendment 3: the playing area and innings sums of each counted non-forfeit result. See {@link TeamStatsSql#HELD_VENUE_ROWS}. */
+    @Query(value = TeamStatsSql.HELD_VENUE_ROWS, nativeQuery = true)
+    List<HeldVenueRowView> heldVenueRows(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
+
+    /** docs/specs/147 amendment 3: the team's fielding credits per result and fielder. See {@link TeamStatsSql#HELD_FIELDING_ROWS}. */
+    @Query(value = TeamStatsSql.HELD_FIELDING_ROWS, nativeQuery = true)
+    List<HeldFieldingRowView> heldFieldingRows(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
+
     /** One counted result of {@link TeamStatsSql#HELD_RESULT_FACTS}; the getter names are its quoted aliases. */
     interface HeldResultFactView {
         UUID getMatchId();
@@ -317,5 +365,79 @@ public interface TeamStatsFactsRepository extends Repository<MatchResult, UUID> 
         BigDecimal getNrrOwnOvers();
 
         BigDecimal getNrrOppOvers();
+    }
+
+    /** One row of {@link TeamStatsSql#HELD_BATTING_ROWS}; the getter names are its quoted aliases. */
+    interface HeldBattingRowView {
+        UUID getMatchId();
+
+        Integer getSequence();
+
+        Integer getInningsRuns();
+
+        Boolean getHasEntry();
+
+        Integer getPosition();
+
+        Integer getRuns();
+
+        Integer getBalls();
+
+        Integer getFours();
+
+        Integer getSixes();
+
+        String getHowOut();
+    }
+
+    /** One row of {@link TeamStatsSql#HELD_WICKET_ROWS}. */
+    interface HeldWicketRowView {
+        UUID getMatchId();
+
+        Integer getSequence();
+
+        UUID getBowlingEntryId();
+
+        Integer getWickets();
+
+        String getHowOut();
+
+        Long getCredited();
+    }
+
+    /** One row of {@link TeamStatsSql#HELD_VENUE_ROWS}. */
+    interface HeldVenueRowView {
+        UUID getMatchId();
+
+        UUID getAreaId();
+
+        String getAreaName();
+
+        Boolean getClubField();
+
+        Long getOwnRuns();
+
+        Long getOwnWickets();
+
+        Long getOppRuns();
+
+        Long getOppWickets();
+    }
+
+    /** One row of {@link TeamStatsSql#HELD_FIELDING_ROWS}. */
+    interface HeldFieldingRowView {
+        UUID getMatchId();
+
+        UUID getProfileId();
+
+        String getPlayerName();
+
+        Long getEntries();
+
+        Long getCatches();
+
+        Long getStumpings();
+
+        Long getRunOuts();
     }
 }

@@ -1,8 +1,12 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldBattingRowView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.HeldContributionView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.HeldExtentView;
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldFieldingRowView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.HeldResultFactView;
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldVenueRowView;
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldWicketRowView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.MatchReferenceView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.TeamFormView;
 import java.time.Instant;
@@ -115,6 +119,58 @@ public final class TeamStatsFactsReader {
                 n(v.getOppUsableExtrasRuns()),
                 n(v.getPlayersUsed()),
                 n(v.getGuestRows()));
+    }
+
+    /** docs/specs/147 amendment 3: the batting, venue, wicket-type and fielding rows as plain facts. */
+    public static TeamStatsCalculator.HubFacts hubFacts(
+            List<HeldBattingRowView> batting,
+            List<HeldVenueRowView> venues,
+            List<HeldWicketRowView> wickets,
+            List<HeldFieldingRowView> fielding) {
+        return new TeamStatsCalculator.HubFacts(
+                batting.stream()
+                        .map(v -> new TeamStatsCalculator.BattingFact(
+                                v.getMatchId(),
+                                v.getSequence(),
+                                v.getInningsRuns() == null ? null : v.getInningsRuns().longValue(),
+                                Boolean.TRUE.equals(v.getHasEntry()),
+                                v.getPosition(),
+                                v.getRuns(),
+                                v.getBalls(),
+                                v.getFours(),
+                                v.getSixes(),
+                                v.getHowOut()))
+                        .toList(),
+                venues.stream()
+                        .map(v -> new TeamStatsCalculator.VenueFact(
+                                v.getMatchId(),
+                                v.getAreaId(),
+                                v.getAreaName(),
+                                Boolean.TRUE.equals(v.getClubField()),
+                                v.getOwnRuns(),
+                                v.getOwnWickets(),
+                                v.getOppRuns(),
+                                v.getOppWickets()))
+                        .toList(),
+                wickets.stream()
+                        .map(v -> new TeamStatsCalculator.WicketFact(
+                                v.getMatchId(),
+                                v.getSequence(),
+                                v.getBowlingEntryId(),
+                                v.getWickets(),
+                                v.getHowOut(),
+                                n(v.getCredited())))
+                        .toList(),
+                fielding.stream()
+                        .map(v -> new TeamStatsCalculator.FieldingFact(
+                                v.getMatchId(),
+                                v.getProfileId(),
+                                v.getPlayerName(),
+                                n(v.getEntries()),
+                                n(v.getCatches()),
+                                n(v.getStumpings()),
+                                n(v.getRunOuts())))
+                        .toList());
     }
 
     private static long n(Long value) {

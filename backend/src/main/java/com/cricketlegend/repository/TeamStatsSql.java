@@ -731,4 +731,104 @@ final class TeamStatsSql {
                    sq.guest_rows as "guestRows"
             from ext cross join sq
             """;
+
+    // ---- docs/specs/147 amendment 3: batting, venue, wicket-type and fielding facts (all under TEAM_RESULTS/TEAM_INNINGS) ----
+
+    /**
+     * docs/specs/147 amendment 3: one row per batting entry of the team's own usable innings (an innings with no entry gives
+     * one row with null entry columns, so an innings is counted even without a card), with the innings total, the position,
+     * runs, the valid balls (null when not valid), fours, sixes and how-out as stored. Dismissal types, position groups,
+     * boundaries and the batting-first split are the calculator's. The eight parameters of {@link #TEAM_RESULTS}.
+     */
+    static final String HELD_BATTING_ROWS = TEAM_INNINGS + """
+            select ti.match_id as "matchId", ti.sequence as "sequence", ti.runs as "inningsRuns",
+                   (be.id is not null) as "hasEntry",
+                   be.position as "position", be.runs as "runs",
+                   case when\s""" + PlayerStatsSql.VALID_BALLS + """
+
+                        then be.balls end as "balls",
+                   be.fours as "fours", be.sixes as "sixes", be.how_out as "howOut"
+            from ti
+            join match_innings bi on bi.match_result_id = ti.mrid and bi.kind = 'REGULAR' and bi.sequence = ti.sequence
+            left join batting_entry be on be.match_innings_id = bi.id
+            where ti.own and ti.usable
+            order by ti.match_id, ti.sequence, be.position, be.id
+            """;
+
+    /**
+     * docs/specs/147 amendment 3: one row per (bowling row, how the batter was out) of the opposition's usable innings, the
+     * same shape as the player's bowling credits, for every bowler of the team (an innings with no bowling row gives one row
+     * with a null {@code bowlingEntryId}). Which types a bowler is credited with is {@code DismissalType.isBowlerCredited()},
+     * decided by the calculator through {@code PlayerStatsCalculator.splitWickets}.
+     */
+    static final String HELD_WICKET_ROWS = TEAM_INNINGS + """
+            select ti.match_id as "matchId", ti.sequence as "sequence", bw.id as "bowlingEntryId",
+                   bw.wickets as "wickets", be.how_out as "howOut", count(be.id) as "credited"
+            from ti
+            join match_innings bi on bi.match_result_id = ti.mrid and bi.kind = 'REGULAR' and bi.sequence = ti.sequence
+            left join bowling_entry bw on bw.match_innings_id = bi.id
+            left join batting_entry be on be.match_innings_id = bi.id and be.bowler_result_player_id = bw.result_player_id
+                                      and be.how_out is not null
+            where not ti.own and ti.usable
+            group by ti.match_id, ti.sequence, bw.id, bw.wickets, be.how_out
+            order by ti.match_id, ti.sequence, bw.id
+            """;
+
+    /**
+     * docs/specs/147 amendment 3: one row per counted non-forfeit result with its playing area (the result's, else the
+     * match's; null id when none), whether that area is one of the club's home fields, and the sums of the team's usable
+     * innings (runs and wickets, own and opposition; null when no usable innings of that kind).
+     */
+    static final String HELD_VENUE_ROWS = TEAM_INNINGS + """
+            , agg as (
+              select ti.team_id as team_id, ti.mrid as mrid,
+                     cast(sum(ti.runs) filter (where ti.own and ti.usable) as bigint) as own_runs,
+                     cast(sum(ti.wickets) filter (where ti.own and ti.usable) as bigint) as own_wickets,
+                     cast(sum(ti.runs) filter (where not ti.own and ti.usable) as bigint) as opp_runs,
+                     cast(sum(ti.wickets) filter (where not ti.own and ti.usable) as bigint) as opp_wickets
+              from ti
+              group by ti.team_id, ti.mrid
+            )
+            select tr.match_id as "matchId", pa.id as "areaId", pa.name as "areaName",
+                   exists (select 1 from club_playing_area cpa
+                           where cpa.club_id = :clubId and cpa.is_home and cpa.playing_area_id = pa.id) as "clubField",
+                   agg.own_runs as "ownRuns", agg.own_wickets as "ownWickets",
+                   agg.opp_runs as "oppRuns", agg.opp_wickets as "oppWickets"
+            from tr
+            join match dm on dm.id = tr.match_id
+            join match_result dr on dr.id = tr.mrid
+            left join playing_area pa on pa.id = coalesce(dr.playing_area_id, dm.playing_area_id)
+            left join agg on agg.team_id = tr.team_id and agg.mrid = tr.mrid
+            where tr.outcome <> 'FORFEIT'
+            """;
+
+    /**
+     * docs/specs/147 amendment 3: the fielding credits of the team's own fielders (non-opposition players of the team's
+     * side, any regular innings: the facts the player fielding counters use), summed per counted non-forfeit result and
+     * fielder. A registered profile is grouped by it; a guest and an unconfirmed import guess go to one group with a null
+     * {@code profileId}. A result with no credit gives one row with {@code entries} = 0.
+     */
+    static final String HELD_FIELDING_ROWS = TEAM_RESULTS + """
+            select tr.match_id as "matchId", f.pid as "profileId",
+                   max(nullif(trim(concat_ws(' ', per.first_name, per.last_name)), '')) as "playerName",
+                   count(f.rpid) as "entries",
+                   coalesce(sum(f.catches), 0) as "catches",
+                   coalesce(sum(f.stumpings), 0) as "stumpings",
+                   coalesce(sum(f.run_outs), 0) as "runOuts"
+            from tr
+            left join (
+              select fi.match_result_id as mrid, rp.side as side, rp.id as rpid,
+                     case when rp.player_profile_id is not null and rp.import_match is null
+                          then rp.player_profile_id end as pid,
+                     fe.catches as catches, fe.stumpings as stumpings, fe.run_outs as run_outs
+              from fielding_entry fe
+              join match_innings fi on fi.id = fe.match_innings_id and fi.kind = 'REGULAR'
+              join result_player rp on rp.id = fe.result_player_id and rp.opposition = false
+            ) f on f.mrid = tr.mrid and f.side = tr.side
+            left join player_profile pp on pp.id = f.pid
+            left join person per on per.id = pp.person_id
+            where tr.outcome <> 'FORFEIT'
+            group by tr.match_id, f.pid
+            order by tr.match_id, f.pid
+            """;
 }

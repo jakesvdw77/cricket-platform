@@ -199,6 +199,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
         List<TeamStatsCalculator.ResultFact> results = List.of();
         List<TeamStatsCalculator.ContributionFact> contribution = List.of();
         TeamStatsCalculator.Extent extent = TeamStatsCalculator.Extent.EMPTY;
+        TeamStatsCalculator.HubFacts hub = TeamStatsCalculator.HubFacts.EMPTY;
         boolean truncated = false;
         if (read.stats().basis().resultsCounted() > 0) {
             // newest first; the extra row beyond the cap only proves the scope was truncated
@@ -222,10 +223,19 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                     .toList();
             extent = TeamStatsFactsReader.heldExtent(factsRepository.heldExtent(
                     clubId, scope.seasonId(), scope.leagueId(), teamId, comp, scope.sectionRestricted(), sectionTeams, hubOnly));
+            hub = TeamStatsFactsReader.hubFacts(
+                    factsRepository.heldBattingRows(clubId, scope.seasonId(), scope.leagueId(), teamId, comp,
+                            scope.sectionRestricted(), sectionTeams, hubOnly),
+                    factsRepository.heldVenueRows(clubId, scope.seasonId(), scope.leagueId(), teamId, comp,
+                            scope.sectionRestricted(), sectionTeams, hubOnly),
+                    factsRepository.heldWicketRows(clubId, scope.seasonId(), scope.leagueId(), teamId, comp,
+                            scope.sectionRestricted(), sectionTeams, hubOnly),
+                    factsRepository.heldFieldingRows(clubId, scope.seasonId(), scope.leagueId(), teamId, comp,
+                            scope.sectionRestricted(), sectionTeams, hubOnly));
         }
         log.debug("Held team history for club {} team {}: {} results covered, truncated {}", clubId, teamId,
                 results.size(), truncated);
-        return new HeldTeamHistory(read.stats(), read.counters(), truncated, results, contribution, extent);
+        return new HeldTeamHistory(read.stats(), read.counters(), truncated, results, contribution, extent, hub);
     }
 
     /** The team page with the counters it was built from. */

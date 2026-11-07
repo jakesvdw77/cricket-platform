@@ -17677,6 +17677,24 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TeamStatsNotCaptured"
+        dismissals:
+          $ref: "#/components/schemas/MyTeamDismissals"
+        battingPositionGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamPositionGroup"
+        boundaries:
+          $ref: "#/components/schemas/MyTeamBoundaries"
+        venues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamVenue"
+        wicketTypes:
+          $ref: "#/components/schemas/MyTeamWicketTypes"
+        fielding:
+          $ref: "#/components/schemas/MyTeamFielding"
+        byInningsNumber:
+          $ref: "#/components/schemas/MyTeamInningsSplit"
     MyTeamScope:
       type: object
       properties:
@@ -18114,6 +18132,221 @@ components:
         inningsCounted:
           type: integer
           format: int64
+    MyTeamTypeCount:
+      type: object
+      description: "One dismissal or wicket type: type is the DismissalType name; percent is relative to the owning block's total (see the block)."
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+          nullable: true
+    MyTeamDismissals:
+      type: object
+      description: "How the team's batters got out over the counted usable innings (capped history). notOut = not out and retired not out; wickets = every other batted type; each percent is the share of notOut + wickets. notRecorded rows are in no percent. coverage: innings with a recorded how-out of the usable innings."
+      properties:
+        notOut:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamTypeCount"
+        notRecorded:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamPositionGroup:
+      type: object
+      description: "Batting by position, 1 and 2 as OPENER then 3 to 11; sharePercent is the group's runs over the runs of all groups."
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+          nullable: true
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+          nullable: true
+    MyTeamBoundaries:
+      type: object
+      description: "Fours and sixes of the innings whose every batting row recorded both (inningsRecorded of inningsCounted). boundaryRuns = 4 x fours + 6 x sixes; boundaryPercent over the team runs of those innings. Null when not recorded."
+      properties:
+        fours:
+          type: integer
+          format: int64
+          nullable: true
+        sixes:
+          type: integer
+          format: int64
+          nullable: true
+        boundaryRuns:
+          type: integer
+          format: int64
+          nullable: true
+        boundaryPercent:
+          type: number
+          nullable: true
+        ballsPerBoundary:
+          type: number
+          nullable: true
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamVenue:
+      type: object
+      description: "The team at one playing area (the result's, else the match's); venueKey is the area id, unknown or other. home: one of the club's home fields (null for unknown and other). Totals are null when not recorded."
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+          nullable: true
+        matches:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        runsScored:
+          type: integer
+          format: int64
+          nullable: true
+        runsConceded:
+          type: integer
+          format: int64
+          nullable: true
+        wicketsTaken:
+          type: integer
+          format: int64
+          nullable: true
+        wicketsLost:
+          type: integer
+          format: int64
+          nullable: true
+    MyTeamWicketTypes:
+      type: object
+      description: "How the team's bowlers took wickets (bowler-credited types; run-outs excluded). total = sum of types + notItemised; each percent is the share of total. coverage: opposition usable innings with a bowling card of those counted."
+      properties:
+        total:
+          type: integer
+          format: int64
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamTypeCount"
+        notItemised:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFielding:
+      type: object
+      description: "The team's fielding credits over the counted non-forfeit results; top eight fielders (guests grouped) and others; dismissalsPerMatch per result with a fielding record; coverage: results with a fielding record of those counted."
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        dismissalsPerMatch:
+          type: number
+          nullable: true
+        byFielder:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamFielder"
+        others:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFielder:
+      type: object
+      properties:
+        name:
+          type: string
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    MyTeamInningsSplit:
+      type: object
+      description: "Batting first (first) v chasing, from the results that recorded the batting order."
+      properties:
+        first:
+          $ref: "#/components/schemas/MyTeamInningsSide"
+        chasing:
+          $ref: "#/components/schemas/MyTeamInningsSide"
+    MyTeamInningsSide:
+      type: object
+      description: "runs is the total of the usable innings (null with none); average is runs per such innings."
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+          nullable: true
+        average:
+          type: number
+          nullable: true
     MyStatsInningsPageDto:
       type: object
       description: "One page of the My stats match drill (docs/specs/147), newest first. kind is BATTING, BOWLING, FIELDING or MATCHES; page.totalElements is the rows after the filter; truncated says the history cap (300 matches) cut the set. Only the block of the row kind is filled; MATCHES rows fill all three where the player took part."
