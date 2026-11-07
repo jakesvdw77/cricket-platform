@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FocusEvent, KeyboardEvent } from 'react'
+import { readHubFlag } from './hubPreferences'
 
 // docs/specs/145 decision 12 (owner, 2026-11-06): on a wide screen the Hub menu collapses MENU_COLLAPSE_MS after a page loads, unless the pointer is
 // over the menu or focus is inside it. Collapsed, the menu is ONE menu button at the left of the header band and the content takes the whole
@@ -24,9 +25,9 @@ export const PEEK_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 export function menuAutoCollapsePreference(): boolean {
   try {
-    return localStorage.getItem(MENU_AUTO_COLLAPSE_KEY) !== 'off'
+    return readHubFlag(MENU_AUTO_COLLAPSE_KEY, false)
   } catch {
-    return true
+    return false
   }
 }
 
@@ -36,8 +37,9 @@ export type MenuVeil = 'idle' | 'in' | 'out'
 
 // `enabled` is the layout's answer (md up, a content page); `routeKey` changes with the page and re-arms the timer.
 export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
-  const [preferred] = useState(menuAutoCollapsePreference)
-  const active = enabled && preferred
+  // Owner, 2026-11-07: the preference only switches the 10-second timer; the collapse and pin controls stay available either way. Off by default.
+  const [timerOn] = useState(menuAutoCollapsePreference)
+  const active = enabled
   const [open, setOpen] = useState(true)
   const [veil, setVeil] = useState<MenuVeil>('idle')
   const [hover, setHover] = useState(false)
@@ -53,7 +55,7 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
     lockedUntil.current = Date.now() + ms
   }
   const collapsed = active && !open
-  const armed = active && open && veil === 'idle' && !hover && !focusWithin
+  const armed = active && timerOn && open && veil === 'idle' && !hover && !focusWithin
 
   useEffect(
     () => () => {

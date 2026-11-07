@@ -34,6 +34,17 @@ describe('hubPreferences', () => {
     expect(localStorage.getItem('k')).toBeNull()
   })
 
+  it('supports a flag that is off by default, storing only on', () => {
+    expect(readHubFlag('d', false)).toBe(false)
+    writeHubFlag('d', true, false)
+    expect(localStorage.getItem('d')).toBe('on')
+    expect(readHubFlag('d', false)).toBe(true)
+    writeHubFlag('d', false, false)
+    expect(localStorage.getItem('d')).toBeNull()
+    localStorage.setItem('d', 'garbage')
+    expect(readHubFlag('d', false)).toBe(false)
+  })
+
   it('updates a mounted hook in the same tab and on a storage event from another tab', () => {
     const { result } = renderHook(() => useHubFlag('k'))
     expect(result.current[0]).toBe(true)

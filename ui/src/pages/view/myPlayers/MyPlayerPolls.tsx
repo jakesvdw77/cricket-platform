@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
+import { useLocation } from 'react-router-dom'
 import { Alert, Box, Skeleton, Typography } from '@mui/material'
 import { useMyPlayerPolls, useSaveMyPlayerPollAnswers } from '../../../api/myPlayersApi'
 import { LinkedPollCard } from './LinkedPollCard'
@@ -11,6 +12,11 @@ export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; pl
   const polls = useMyPlayerPolls(playerKey)
   const save = useSaveMyPlayerPollAnswers(playerKey)
   const [failed, setFailed] = useState<Record<string, 'closed' | 'failed'>>({})
+  // A link to #poll-<id> (the scoreboard ticker's poll item) brings that poll's card into view, also when the page is already open.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash.startsWith('#poll-')) document.getElementById(hash.slice(1))?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  }, [hash, polls.data])
 
   if (polls.isLoading) return <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(.12) }} />
   if (polls.isError) return <Alert severity="error">We could not load the availability polls.</Alert>
@@ -27,8 +33,8 @@ export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; pl
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       {items.map((poll) => (
+        <Box key={poll.pollId} id={`poll-${poll.pollId}`} sx={{ scrollMarginTop: 16 }}>
         <LinkedPollCard
-          key={poll.pollId}
           poll={poll}
           playerName={playerName}
           saving={save.isPending && save.variables?.pollId === poll.pollId}
@@ -48,6 +54,7 @@ export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; pl
             )
           }}
         />
+        </Box>
       ))}
     </Box>
   )

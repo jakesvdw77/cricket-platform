@@ -39,7 +39,7 @@ function PreferenceRow({ id, title, help, checked, onChange }: { id: string; tit
 export default function MyPreferencesPage() {
   const navigate = useNavigate()
   const [ticker, setTicker] = useHubTickerPreference()
-  const [autoCollapse, setAutoCollapse] = useHubFlag(MENU_AUTO_COLLAPSE_KEY)
+  const [autoCollapse, setAutoCollapse] = useHubFlag(MENU_AUTO_COLLAPSE_KEY, false)
   return (
     <HubFrame
       title="Preferences"
@@ -60,8 +60,8 @@ export default function MyPreferencesPage() {
         />
         <PreferenceRow
           id="pref-menu"
-          title="Collapse the menu when idle"
-          help="Tucks the Player Hub menu away after 10 seconds so the page gets the space. Wide screens only."
+          title="Collapse the menu automatically"
+          help="Tucks the Player Hub menu away after 10 seconds so the page gets the space. Off by default; the collapse and pin buttons work either way. Wide screens only."
           checked={autoCollapse}
           onChange={setAutoCollapse}
         />

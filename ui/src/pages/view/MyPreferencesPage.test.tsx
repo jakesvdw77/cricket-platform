@@ -28,11 +28,11 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('MyPreferencesPage', () => {
-  it('shows both switches on by default, each with its explanation', async () => {
+  it('shows the ticker on and the menu collapse off by default, each with its explanation', async () => {
     setup()
 
     expect(await screen.findByRole('checkbox', { name: 'Scoreboard ticker' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Collapse the menu when idle' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Collapse the menu automatically' })).not.toBeChecked()
     expect(screen.getByText(/rolling news line along the bottom/)).toBeInTheDocument()
   })
 
@@ -53,8 +53,8 @@ describe('MyPreferencesPage', () => {
     const user = userEvent.setup()
     setup()
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Collapse the menu when idle' }))
-    expect(localStorage.getItem('hub:menuAutoCollapse')).toBe('off')
+    await user.click(await screen.findByRole('checkbox', { name: 'Collapse the menu automatically' }))
+    expect(localStorage.getItem('hub:menuAutoCollapse')).toBe('on')
   })
 
   it('goes Back to account from the footer', async () => {

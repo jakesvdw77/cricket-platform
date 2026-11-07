@@ -56,10 +56,10 @@ describe('the accessible list', () => {
     const list = screen.getByRole('list', { name: 'Scoreboard ticker' })
     const links = within(list).getAllByRole('link')
     expect(links).toHaveLength(4)
-    expect(links.map((link) => link.getAttribute('href'))).toEqual([`${BASE}/results/r1`, `${BASE}/schedule/matches/m1`, `${BASE}/schedule/matches/u1`, `${BASE}/availability`])
+    expect(links.map((link) => link.getAttribute('data-to'))).toEqual([`${BASE}/results/r1`, `${BASE}/schedule/matches/m1`, `${BASE}/schedule/matches/u1`, `${BASE}/availability`])
     const copy = screen.getByTestId('ticker-copy')
     expect(copy).toHaveAttribute('aria-hidden', 'true')
-    const copied = Array.from(copy.querySelectorAll('a'))
+    const copied = Array.from(copy.querySelectorAll('[data-testid="ticker-link"]'))
     expect(copied).toHaveLength(4)
     for (const link of copied) expect(link).toHaveAttribute('tabindex', '-1')
     // Assistive technology meets each item once.
@@ -110,7 +110,7 @@ describe('the accessible list', () => {
     }
     const copy = screen.getByTestId('ticker-copy')
     expect(reached.some((element) => copy.contains(element))).toBe(false)
-    expect(reached.filter((element) => element.tagName === 'A')).toHaveLength(4)
+    expect(reached.filter((element) => element.getAttribute('data-testid') === 'ticker-link')).toHaveLength(4)
     expect(reached.some((element) => element.getAttribute('aria-label') === 'Pause Ticker')).toBe(true)
   })
 })

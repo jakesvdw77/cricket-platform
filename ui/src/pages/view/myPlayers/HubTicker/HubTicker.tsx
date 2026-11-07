@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FocusEvent, ReactNode } from 'react'
-import { Box, IconButton, useMediaQuery } from '@mui/material'
+import { Box, ButtonBase, IconButton, useMediaQuery } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
 import PauseIcon from '@mui/icons-material/Pause'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import SkipNextIcon from '@mui/icons-material/SkipNext'
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious'
-import { Link as RouterLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { PulseDot } from '../../../../components/RecordCard/RecordCard'
 import { TICKER_FADE, TICKER_TONES, blackAlpha, creamAlpha } from '../../../../brandTokens'
 import { HUB } from '../hubStyle'
@@ -80,6 +80,7 @@ interface EntryProps {
 }
 
 function Entry({ item, rules, decorative, truncate, onFocusItem }: EntryProps) {
+  const navigate = useNavigate()
   const text = (
     <Box component="span" sx={{ ...display, fontWeight: 600, fontSize: { xs: 17, sm: 20 }, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.cream, whiteSpace: 'nowrap', ...(truncate && { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
       {item.parts.map((part, index) => <Part key={index} part={part} />)}
@@ -95,19 +96,25 @@ function Entry({ item, rules, decorative, truncate, onFocusItem }: EntryProps) {
     )
   }
   return (
-    <Box
-      component={RouterLink}
-      to={item.to}
+    // A button that behaves as a link (role="link", Enter and Space both follow it) rather than an anchor: an anchor made the browser show the
+    // full address in its status bar on hover (owner, 2026-11-07). After a click the focus is released, so the pause that focus causes ends.
+    <ButtonBase
+      role="link"
+      data-to={item.to}
       aria-label={itemName(item, rules)}
       title={itemSentence(item)}
       tabIndex={decorative ? -1 : undefined}
+      onClick={(event) => {
+        navigate(item.to as string)
+        event.currentTarget.blur()
+      }}
       onFocus={(event: FocusEvent<HTMLElement>) => onFocusItem?.(event.currentTarget)}
       data-testid="ticker-link"
-      sx={{ ...layout, color: 'inherit', textDecoration: 'none', borderRadius: '4px', '&:hover': { bgcolor: creamAlpha(0.08) }, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 } }}
+      sx={{ ...layout, justifyContent: 'flex-start', color: 'inherit', borderRadius: '4px', '&:hover': { bgcolor: creamAlpha(0.08) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 } }}
     >
       <TypeChip rules={rules} />
       {text}
-    </Box>
+    </ButtonBase>
   )
 }
 

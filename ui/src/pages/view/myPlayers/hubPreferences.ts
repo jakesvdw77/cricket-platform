@@ -5,18 +5,23 @@ import { useSyncExternalStore } from 'react'
 // (the event below), so a switch on the Preferences page and the screen it controls stay in step.
 const CHANGE_EVENT = 'hub:preference'
 
-export function readHubFlag(key: string): boolean {
+// `defaultOn` is what an absent, unreadable or corrupt value means. A flag that is on by default stores only 'off'; one that is off by default
+// (the idle menu collapse) stores only 'on'.
+export function readHubFlag(key: string, defaultOn = true): boolean {
   try {
-    return window.localStorage.getItem(key) !== 'off'
+    const value = window.localStorage.getItem(key)
+    if (value === 'off') return false
+    if (value === 'on') return true
+    return defaultOn
   } catch {
-    return true
+    return defaultOn
   }
 }
 
-export function writeHubFlag(key: string, on: boolean) {
+export function writeHubFlag(key: string, on: boolean, defaultOn = true) {
   try {
-    if (on) window.localStorage.removeItem(key)
-    else window.localStorage.setItem(key, 'off')
+    if (on === defaultOn) window.localStorage.removeItem(key)
+    else window.localStorage.setItem(key, on ? 'on' : 'off')
   } catch {
     // Storage unavailable: the choice just lasts for this visit.
   }
@@ -32,7 +37,7 @@ function subscribe(listener: () => void) {
   }
 }
 
-export function useHubFlag(key: string): [boolean, (on: boolean) => void] {
-  const on = useSyncExternalStore(subscribe, () => readHubFlag(key), () => true)
-  return [on, (value: boolean) => writeHubFlag(key, value)]
+export function useHubFlag(key: string, defaultOn = true): [boolean, (on: boolean) => void] {
+  const on = useSyncExternalStore(subscribe, () => readHubFlag(key, defaultOn), () => defaultOn)
+  return [on, (value: boolean) => writeHubFlag(key, value, defaultOn)]
 }

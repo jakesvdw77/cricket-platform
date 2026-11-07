@@ -44,7 +44,7 @@ export function pollsSource(ctx: TickerContext): TickerItem[] {
           { type: 'text' as const, text: ' closes ' },
           { type: 'strong' as const, text: when },
         ],
-        to: `/account/players/${ctx.playerKey}/availability`,
+        to: `/account/players/${ctx.playerKey}/availability#poll-${poll.pollId}`,
         weight: RULES.defaultWeight,
         expiresAt: close.toISOString(),
       }

@@ -98,7 +98,7 @@ describe('upcomingSource', () => {
 describe('pollsSource', () => {
   it('shows an unanswered open poll closing within 48 hours', () => {
     const [entry] = pollsSource(ctx({ polls: [pollRow()] }))
-    expect(entry).toMatchObject({ kind: 'poll', id: 'p1', to: '/account/players/k1/availability', weight: 2 })
+    expect(entry).toMatchObject({ kind: 'poll', id: 'p1', to: '/account/players/k1/availability#poll-p1', weight: 2 })
     expect(partsText(entry.parts)).toBe('Availability for Saturday closes tonight')
   })
 
@@ -168,7 +168,7 @@ describe('buildTickerItems', () => {
       result: '/account/players/k1/results/r1',
       live: '/account/players/k1/schedule/matches/l1',
       upcoming: '/account/players/k1/schedule/matches/u1',
-      poll: '/account/players/k1/availability',
+      poll: '/account/players/k1/availability#poll-p1',
     })
   })
 
