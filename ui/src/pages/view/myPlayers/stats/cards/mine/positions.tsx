@@ -2,7 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
-import { battingBasis, truncatedNote } from '../../cardKit'
+import { truncatedNote } from '../../cardKit'
 import { DASH, formatDecimal, positionLabel, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 5, mine.positions: where the batter bats. Positions 1 and 2 are one group, Opener, then 3 to 11 each (the

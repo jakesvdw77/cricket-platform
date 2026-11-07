@@ -137,7 +137,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
           '& > :not([data-chart-grow])': { flexShrink: 0 },
           ...cardScrollSx,
           // Safety net: an overfull front fades out over its last 12 px instead of hard-cutting (a front is meant to fit; do not rely on this).
-          ...(heading && !expanded ? { maskImage: 'linear-gradient(to bottom, #000 calc(100% - 12px), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, #000 calc(100% - 12px), transparent)' } : {}),
+          ...(heading && !expanded ? { maskImage: 'linear-gradient(to bottom, black calc(100% - 12px), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 12px), transparent)' } : {}),
           '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
         }}
       >

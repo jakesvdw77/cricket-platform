@@ -90,7 +90,7 @@ export interface StatsCardDef<P> {
   tag: DataTag
   // The payload paths the card reads (checked at compile time).
   needs: NeedsPath<P>[]
-  // Unique within its page; cards sort by (group order, order).
+  // Unique within its group of the page; cards sort by (group order, order).
   order: number
   // Row layout size; default 'normal'. See layoutRows.
   size?: CardSize

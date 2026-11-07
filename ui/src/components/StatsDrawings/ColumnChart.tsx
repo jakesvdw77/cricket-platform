@@ -3,7 +3,7 @@ import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
 import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
-import { fluid, STATS_TYPE } from '../StatsCards/statsCardStyle'
+import { fluid } from '../StatsCards/statsCardStyle'
 
 export interface ColumnChartColumn {
   key: string

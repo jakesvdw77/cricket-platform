@@ -14,15 +14,6 @@ const ranked = (line: MyStandingLine): boolean => line.rank !== null && allowsRa
 
 const rankText = (line: MyStandingLine): string => (ranked(line) ? ordinal(line.rank) : DASH)
 
-// "of 24 players", or "of 18 ranked, 24 listed" for a rate where some players are under the minimum.
-function ofText(line: MyStandingLine): string {
-  if (!ranked(line)) {
-    if (line.belowMinimum && line.minimum) return `Below the minimum of ${line.minimum.value} ${minimumUnitWord(line.minimum.unit)}`
-    return 'No figure yet'
-  }
-  return line.playersRanked === line.playersListed ? `of ${line.playersListed} players` : `of ${line.playersRanked} ranked, ${line.playersListed} listed`
-}
-
 // Front tile text: "of 18" when ranked, else why there is no rank. Labels are the payload's; a long one is shortened for the tile only.
 const SHORT_LABELS: Record<string, string> = { playerOfTheMatch: 'POTM awards' }
 const shortLabel = (line: MyStandingLine): string => SHORT_LABELS[line.key] ?? line.label
