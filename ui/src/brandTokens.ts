@@ -90,3 +90,17 @@ export const blackAlpha = (opacity: number) => alpha('#000000', opacity)
 
 // The gold avatar disc: a radial from the light to the solid gold (avatarSx and the console avatars share it).
 export const GOLD_DISC_GRADIENT = `radial-gradient(circle at 30% 25%, ${BRAND.goldLight}, ${BRAND.gold})`
+
+// docs/specs/146 (Player Hub scoreboard ticker): the type chip tones and the edge fade of the ticker band, from the owner-chosen
+// mockup (docs/mockups/player-hub-ticker-round2-mockup.html). Named here so no ticker file carries a hex literal. Each tone reads at
+// 4.5:1 or better on the dark band (pinned by tickerTokens.test.ts).
+export const TICKER_TONES = {
+  win: '#3FBF7F',
+  live: '#F0675D',
+  next: '#7FB6E8',
+  message: '#C9A7F0',
+  sponsor: BRAND.gold,
+  info: '#9ED3B5',
+} as const
+// The ticker's edge fade: the console ground under the footer band.
+export const TICKER_FADE = '#08271b'

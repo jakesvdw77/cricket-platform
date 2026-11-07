@@ -211,13 +211,15 @@ export async function getMyPlayerResult(key: string, matchId: string): Promise<M
 }
 
 // The list, page by page: more rows are asked of the server (never sliced in the browser) and flattened by the caller.
-export function useMyPlayerResults(key: string | undefined, scope: MyResultScope, enabled = true) {
+// docs/specs/146: the scoreboard ticker also passes a longer `staleTime`.
+export function useMyPlayerResults(key: string | undefined, scope: MyResultScope, enabled = true, staleTime?: number) {
   return useInfiniteQuery({
     queryKey: [...myResultsKey(key), 'list', params(scope)],
     queryFn: ({ pageParam }) => getMyPlayerResults(key as string, scope, pageParam),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.page.hasMore ? last.page.number + 1 : undefined),
     placeholderData: keepPreviousData,
+    ...(staleTime !== undefined && { staleTime }),
     retry: false,
     enabled: Boolean(key) && enabled,
   })
