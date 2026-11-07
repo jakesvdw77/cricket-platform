@@ -1,6 +1,7 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyTeamExtrasComponent, MyTeamStatsDto } from '../../../../../../api/meStatsApi'
+import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Cap, FaceTable, Note, Tiles } from '../../cardParts'
 import { DASH, dayText, formatCount, formatPercent } from '../../statsFormat'
 
@@ -47,8 +48,8 @@ export const teamExtras: StatsCardDef<MyTeamStatsDto> = {
       <>
         <Tiles
           items={[
-            { key: 'gave', label: 'Gave away', value: formatCount(gave.total) },
-            { key: 'got', label: 'Received', value: formatCount(p.extrasCard.received.total) },
+            { key: 'gave', label: 'Gave away', swatch: STATS_COLOUR.compareFirst, value: formatCount(gave.total) },
+            { key: 'got', label: 'Received', swatch: STATS_COLOUR.compareSecond, value: formatCount(p.extrasCard.received.total) },
             { key: 'share', label: 'Of runs conceded', value: formatPercent(gave.sharePercent, 0) },
           ]}
         />

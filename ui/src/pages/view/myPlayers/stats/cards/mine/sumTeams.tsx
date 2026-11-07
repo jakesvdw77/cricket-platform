@@ -27,6 +27,7 @@ export const mineSumTeams: StatsCardDef<MyStatsDto> = {
     const teams = [...p.summary.teamsRepresented].sort((a, b) => b.matches - a.matches)
     return (
       <BigBars
+        unit={['match', 'matches']}
         value={String(teams.length)}
         caption={teams.length === 1 ? 'team' : 'teams'}
         total={teams.length}

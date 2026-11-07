@@ -127,8 +127,8 @@ export const STATS_SERIES = [STATS_TONES.gold, STATS_TONES.blue, STATS_TONES.win
 
 // docs/specs/147 Amendment 2 item 16 (the restrained stats colour rule, owner decision 2026-11-07: "not everything gets a colour, only
 // where it makes sense"). Gold is only the headline number, the selected thing and the focus ring. Everything else is neutral sand, one
-// muted cool tone for the second category of a two-way comparison, or a tonal ramp of the same two families. Win green and loss red are
-// not used on these cards (they stay for Results and the W/L/T chips). Every use also carries a label, so colour is never the only cue.
+// tonal ramp. The one exception is a comparison of exactly two categories (Fours v Sixes, Home v Away): green and blue at full strength.
+// Loss red is not used on these cards (it stays for Results and the W/L/T chips). Every use also carries a label, so colour is never the only cue.
 export const STATS_COLOUR = {
   // A single-series or ordinal bar or column, and the faint track under it.
   bar: alpha(BRAND.sand, 0.62),
@@ -136,9 +136,9 @@ export const STATS_COLOUR = {
   trackHover: alpha(BRAND.cream, 0.18),
   // The selected row's bar.
   selected: BRAND.gold,
-  // The two tones of a comparison of two categories: neutral sand, and one desaturated cool tone (the existing blue, softened).
-  compareFirst: alpha(BRAND.sand, 0.62),
-  compareSecond: alpha(STATS_TONES.blue, 0.7),
+  // The two tones of a comparison of exactly two categories, at full strength so they read at a glance: win green, then the ticker blue.
+  compareFirst: STATS_TONES.win,
+  compareSecond: STATS_TONES.blue,
   // Three or more parts: sand shades then cool shades, largest first, then a pale cream.
   ramp: [alpha(BRAND.sand, 1), alpha(BRAND.sand, 0.6), alpha(STATS_TONES.blue, 0.7), alpha(STATS_TONES.blue, 0.4), alpha(BRAND.cream, 0.3)],
   // Line charts: the data line and markers, the dashed running average, the faint guides and their muted labels.

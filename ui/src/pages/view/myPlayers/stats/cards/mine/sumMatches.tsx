@@ -22,6 +22,7 @@ export const mineSumMatches: StatsCardDef<MyStatsDto> = {
     const seasons = [...p.bySeason].reverse()
     return (
       <BigBars
+        unit={['match', 'matches']}
         value={String(p.summary.matchesPlayed)}
         caption={p.summary.matchesPlayed === 1 ? 'match played' : 'matches played'}
         total={seasons.length}

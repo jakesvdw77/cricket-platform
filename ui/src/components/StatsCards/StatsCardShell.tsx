@@ -59,13 +59,15 @@ interface FaceProps {
   note?: string
   // Some or all data missing: tint, amber line and the written cue.
   lacking: boolean
+  // The state is simply empty (nothing to be missing): keep the quiet tint, centre the one line, drop the written cue.
+  empty?: boolean
   expanded: boolean
   // Room at the top right for the expand / close button.
   reserve: boolean
   children: ReactNode
 }
 
-function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded, reserve, children }: FaceProps) {
+function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = false, expanded, reserve, children }: FaceProps) {
   const active = useFaceActive()
   const regionRef = useRef<HTMLDivElement>(null)
   // The scroll position goes back to the top whenever this face stops or starts showing, so a flip never lands half way down a table.
@@ -125,6 +127,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
           // empty gap between the chart and the footer.
           display: 'flex',
           flexDirection: 'column',
+          ...(empty ? { justifyContent: 'center' } : {}),
           gap: expanded ? 1.5 : '6px',
           '& > :not([data-chart-grow])': { flexShrink: 0 },
           ...cardScrollSx,
@@ -139,7 +142,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 14 }}>
         <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: STATS_TYPE.footer, lineHeight: 1.25 }}>
           <Typography data-testid="stats-basis" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0, flexShrink: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
-          {lacking && (
+          {lacking && !empty && (
             <Typography data-testid="stats-data-cue" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.partly, m: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {basis ? '· ' : ''}{DATA_MISSING_CUE}
             </Typography>
@@ -208,7 +211,7 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
     const text = state === 'empty' ? emptyText : missingText
     return (
       <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} aria-label={title} sx={articleSx}>
-        <Face title={title} scopeLabel={scopeLabel} heading lacking expanded={false} reserve={false}>
+        <Face title={title} scopeLabel={scopeLabel} heading lacking empty={state === 'empty'} expanded={false} reserve={false}>
           <Typography data-testid="stats-state-text" sx={{ fontSize: 13, m: 0 }}>{text}</Typography>
         </Face>
       </Box>

@@ -45,10 +45,12 @@ export function Big({ value, caption, compact = false }: { value: string; captio
 // "+N more" under the figure when there are more). The back is then just the full table, so a chart is never shown twice.
 export const FRONT_BARS = 3
 
-export function BigBars({ value, caption, rows, alt, total, hint, clear, legend }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void }; legend?: [string, string] }) {
+export function BigBars({ value, caption, rows, alt, total, hint, clear, legend, unit }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void }; legend?: [string, string]; unit?: [string, string] }) {
   const more = total - Math.min(rows.length, FRONT_BARS)
   const tabIndex = useFaceTabIndex()
-  const selectable = rows.some((row) => row.onSelect)
+  // One item draws no bar (a full-width bar says nothing): its label and value are one quiet line, and there is nothing to choose to filter.
+  const single = rows.length === 1 ? rows[0] : null
+  const selectable = !single && rows.some((row) => row.onSelect)
   return (
     <Box sx={{ display: 'grid', gap: '2px', minWidth: 0, my: 'auto' }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
@@ -56,7 +58,12 @@ export function BigBars({ value, caption, rows, alt, total, hint, clear, legend 
           <Big compact value={value} caption={caption} />
           {more > 0 && <Typography sx={captionSx}>+{more} more</Typography>}
         </Box>
-        {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} legend={legend} />}
+        {single && (
+          <Typography data-testid="stats-single-item" title={single.label} sx={{ fontSize: 11, lineHeight: 1.3, color: STATS_UI.muted, m: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflowWrap: 'anywhere' }}>
+            {single.label} · {single.valueLabel}{unit ? ` ${single.value === 1 ? unit[0] : unit[1]}` : ''}
+          </Typography>
+        )}
+        {rows.length > 1 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} legend={legend} />}
       </Box>
       {(clear || (selectable && hint)) && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
@@ -86,6 +93,8 @@ export interface TileSpec {
   key: string
   label: string
   value: string
+  // A comparison tone (STATS_COLOUR.compareFirst / compareSecond): a small swatch before the label and the figure in that colour.
+  swatch?: string
   // The drill this tile opens (a real link); omitted, the tile is plain.
   href?: string
   // The link's accessible name ("Scores of 50 or more: 3").
@@ -100,8 +109,8 @@ export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; m
       {items.map((item) => {
         const content = (
           <>
-            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 16 : STATS_TYPE.tileValue, lineHeight: 1.1, color: STATS_UI.cream }}>{item.value}</Typography>
-            <Typography component="span" sx={captionSx}>{item.label}</Typography>
+            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 16 : STATS_TYPE.tileValue, lineHeight: 1.1, color: item.swatch ?? STATS_UI.cream }}>{item.value}</Typography>
+            <Typography component="span" sx={captionSx}>{item.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: item.swatch, mr: '5px' }} />}{item.label}</Typography>
           </>
         )
         return item.href ? (
@@ -144,7 +153,7 @@ export function Split({ columns }: { columns: SplitColumn[] }) {
           {column.rows.map((row) => (
             <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: STATS_TYPE.body, lineHeight: 1.3 }}>
               <Typography component="dt" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0 }}>{row.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: row.swatch, mr: '5px' }} />}{row.label}</Typography>
-              <Typography component="dd" sx={{ fontSize: 'inherit', lineHeight: 'inherit', fontWeight: 700, color: STATS_UI.cream, m: 0 }}>{row.value}</Typography>
+              <Typography component="dd" sx={{ fontSize: 'inherit', lineHeight: 'inherit', fontWeight: 700, color: row.swatch ?? column.swatch ?? STATS_UI.cream, m: 0 }}>{row.value}</Typography>
             </Box>
           ))}
         </Box>
