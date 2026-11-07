@@ -2,11 +2,25 @@ import { sortCards } from '../../../../components/StatsCards'
 import type { StatsCardDef, StatsPage } from '../../../../components/StatsCards'
 import type { MyStanding, MyStatsDto, MyTeamStatsDto } from '../../../../api/meStatsApi'
 import { groupsFor } from './statsCardGroups'
+import { mineAvailability } from './cards/mine/availability'
+import { mineBands } from './cards/mine/bands'
+import { mineBowling } from './cards/mine/bowling'
+import { mineDismissals } from './cards/mine/dismissals'
+import { mineDiscipline } from './cards/mine/discipline'
+import { mineFielding } from './cards/mine/fielding'
+import { mineFires } from './cards/mine/fires'
+import { mineHomeAway } from './cards/mine/homeAway'
+import { mineInnings } from './cards/mine/innings'
+import { mineInningsNumber } from './cards/mine/inningsNumber'
+import { mineMilestone } from './cards/mine/milestone'
+import { mineSeason } from './cards/mine/season'
+import { mineSeasons } from './cards/mine/seasons'
+import { mineWicketsHow } from './cards/mine/wicketsHow'
 
 // docs/specs/147 section 3: THE list of cards. A card is one file under ./cards/<page>/ exporting its StatsCardDef; adding it is one import
 // and one line in the array of its page below, and nothing else: the pages, StatsCardGrid, StatsCardShell, FlipCard and the endpoint are
 // never edited. The pages import `cardsFor` / `placeholdersFor` from here and no individual card (a guard test pins it).
-// Slice 0 ships the lists empty; the first cards arrive with the My stats page.
+// One line per card. Order within a group is the card's own `order`, not its position here.
 
 export interface StatsPayloads {
   mine: MyStatsDto
@@ -14,7 +28,22 @@ export interface StatsPayloads {
   boards: MyStanding
 }
 
-const MINE_CARDS: StatsCardDef<MyStatsDto>[] = []
+const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
+  mineSeason,
+  mineInnings,
+  mineDismissals,
+  mineBands,
+  mineInningsNumber,
+  mineMilestone,
+  mineFires,
+  mineBowling,
+  mineWicketsHow,
+  mineDiscipline,
+  mineFielding,
+  mineAvailability,
+  mineHomeAway,
+  mineSeasons,
+]
 const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = []
 const BOARD_CARDS: StatsCardDef<MyStanding>[] = []
 

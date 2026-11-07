@@ -75,6 +75,71 @@ export function HubResults({ playerKey }: { playerKey: string }) {
   const failed = filtersQuery.isError || list.isError || summaryQuery.isError
   const header = <HubPageHeader title="Results" context={failed ? undefined : controls.context} actions={controls.actions} />
 
+  let body
+  if (failed) {
+    body = (
+      <Alert
+        severity="error"
+        action={
+          <Button
+            variant="secondary"
+            size="compact"
+            onClick={() => {
+              void filtersQuery.refetch()
+              void list.refetch()
+              void summaryQuery.refetch()
+            }}
+          >
+            Retry
+          </Button>
+        }
+      >
+        We could not load the results. Please try again.
+      </Alert>
+    )
+  } else if (!filters || list.isLoading || summaryQuery.isLoading || !summary) {
+    body = <Skeletons />
+  } else if (rows.length === 0 && narrowed) {
+    body = (
+      <Box data-testid="hub-results-filtered-empty" sx={{ ...cardSx('neutral'), alignItems: 'center', textAlign: 'center', py: 4, gap: 1.5 }}>
+        <BrandIcon name="nav/match-results" size={64} onDark />
+        <Typography sx={{ ...bigSx, fontSize: 40 }}>No matches for this filter</Typography>
+        <Typography sx={{ fontSize: 16, maxWidth: 320, color: HUB.muted }}>{scopeText} has no results shared with the Player Hub.</Typography>
+        <Link component="button" type="button" underline="always" onClick={clearFilters} sx={{ color: HUB.gold, fontSize: 16, minHeight: 44 }}>
+          Clear Filters
+        </Link>
+      </Box>
+    )
+  } else if (rows.length === 0) {
+    body = (
+      <Box data-testid="hub-results-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+        <BrandIcon name="nav/match-results" size={64} onDark />
+        <Typography sx={{ fontSize: 18 }}>No results yet</Typography>
+        <Typography sx={{ fontSize: 15 }}>Finished matches will appear here once the club shares them.</Typography>
+      </Box>
+    )
+  } else {
+    body = (
+      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
+        {summary.lastFive.length > 0 && <RecentForm rows={summary.lastFive} />}
+        <HubResultCard latest playerKey={playerKey} playerName={playerName} row={rows[0]} scopeQuery={query} />
+        {rows.length > 1 && (
+          <Box data-testid="hub-results-grid" sx={{ display: 'grid', gap: 1.75, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(310px, 1fr))' } }}>
+            {rows.slice(1).map((row) => (
+              <HubResultCard key={row.matchId} playerKey={playerKey} playerName={playerName} row={row} scopeQuery={query} />
+            ))}
+          </Box>
+        )}
+        {list.hasNextPage && (
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Button variant="secondary" size="compact" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()} sx={{ ...hubOutlineButton, alignSelf: 'center' }}>
+              {list.isFetchingNextPage ? 'Loading...' : 'Show More'}
+            </Button>
+          </Box>
+        )}
+      </Box>
+    )
+  }
 
   return (
     <Box data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>

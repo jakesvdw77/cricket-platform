@@ -53,3 +53,11 @@ export const basedOn = (basis: StatsBasis | null | undefined): string => (basis 
 // The player's first name for card copy.
 export const firstNameOf = (name: string | null | undefined): string => name?.trim() || FALLBACK_NAME
 
+
+// "1 Nov": the short date a card row or a dot is named by; the raw text when it is not a date.
+export function dayText(iso: string | null | undefined): string {
+  if (!iso) return DASH
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}

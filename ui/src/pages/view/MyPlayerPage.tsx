@@ -24,6 +24,8 @@ import { HubMatch } from './myPlayers/HubMatch'
 import { HubMatches } from './myPlayers/HubMatches'
 import { HubResult } from './myPlayers/HubResult'
 import { HubResults } from './myPlayers/HubResults'
+import { HubMyStats } from './myPlayers/stats/HubMyStats'
+import { HubStatsDrill } from './myPlayers/stats/HubStatsDrill'
 import { resultsQuery } from './myPlayers/resultsFormat'
 import { HubWatchLive } from './myPlayers/HubWatchLive'
 import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
@@ -96,8 +98,11 @@ export default function MyPlayerPage() {
   const matchPage = rawSection === 'schedule' && sub === 'matches' && Boolean(leaf)
   const from = search.get('from') ?? undefined
   const fromLeague = useMyPlayerMatch(key, matchPage && from?.startsWith('league:') ? leaf : undefined).data?.league?.name
-  const resultsScope = rawSection === 'results' ? resultsQuery(search) : undefined
-  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined, extra, from, fromLabel: fromLeague, scope: resultsScope })
+  // docs/specs/147: a result page and the My stats drill carry the scope (and, for a result, where it was opened from) so Back restores them.
+  const statsDrill = rawSection === 'stats' && sub === 'mine' && leaf === 'innings'
+  const resultsScope = rawSection === 'results' || statsDrill ? resultsQuery(search) : undefined
+  const origin = rawSection === 'results' ? (search.get('origin') ?? undefined) : undefined
+  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined, extra, from, fromLabel: fromLeague, scope: resultsScope, origin })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
@@ -216,6 +221,8 @@ export default function MyPlayerPage() {
     )
   } else if (section.id === 'results') {
     panel = sub ? <HubResult playerKey={key} matchId={sub} /> : <HubResults playerKey={key} />
+  } else if (pageItem?.id === 'stats.mine') {
+    panel = statsDrill ? <HubStatsDrill playerKey={key} /> : <HubMyStats playerKey={key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>

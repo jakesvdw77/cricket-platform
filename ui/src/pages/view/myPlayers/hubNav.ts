@@ -60,12 +60,8 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'stats',
     label: 'Stats',
     children: [
-      {
-        id: 'stats.mine',
-        label: 'My stats',
-        soon: true,
-        soonCopy: "Personal bests, form and season progress. Figures come from the club's published results and are never ranked against other players.",
-      },
+      // docs/specs/147: live now (flip cards); the other two stay Soon until their slices land.
+      { id: 'stats.mine', label: 'My stats' },
       { id: 'stats.boards', label: 'Leaderboards', soon: true, soonCopy: 'Club leaderboards, shown only where the club switches them on.' },
       { id: 'stats.teams', label: 'Team stats', soon: true, soonCopy: "How the player's teams are doing this season." },
     ],
@@ -242,7 +238,10 @@ export interface HubBackState {
   from?: string
   fromLabel?: string
   // docs/specs/145: the Results scope (season, team, league) as a query string without the "?", carried by a result page so Back restores it.
+  // docs/specs/147: the same for a My stats page's match drill.
   scope?: string
+  // docs/specs/147: where a result page was opened from (`stats`: a My stats card, dot or drill row); its Back returns to My Stats.
+  origin?: string
 }
 
 export interface HubBackAction {
@@ -252,7 +251,7 @@ export interface HubBackAction {
 
 // The footer's one Back (Decision 15); Escape runs the same action. Null means no Back control at all.
 export function hubBack(state: HubBackState): HubBackAction | null {
-  const { playerKey, layout, many, section, item, view, season, extra, from, fromLabel, scope } = state
+  const { playerKey, layout, many, section, item, view, season, extra, from, fromLabel, scope, origin } = state
   const main = hubPath(playerKey)
   const route = resolveRoute(section, item)
   // docs/specs/135: the match page goes back to where it was opened from, the Watch Live page back to the match, on every layout.
@@ -264,6 +263,10 @@ export function hubBack(state: HubBackState): HubBackAction | null {
       return { label: `Back to ${fromLabel ?? 'League'} ${word}`, target: hubLeaguePath(playerKey, origin.leagueId, { tab: origin.tab }) }
     }
     return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
+  }
+  // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to My Stats with the same scope.
+  if ((route.section.id === 'results' && item && origin === 'stats') || (route.section.id === 'stats' && item === 'mine' && view === 'innings')) {
+    return { label: 'Back to My Stats', target: `${hubPath(playerKey, 'stats', 'mine')}${scope ? `?${scope}` : ''}` }
   }
   // docs/specs/145: a Hub result page (results/:matchId) goes back to the Results list with the same Season, Team and League.
   if (route.section.id === 'results' && item) {

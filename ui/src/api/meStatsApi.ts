@@ -1,10 +1,10 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import api from './axiosConfig'
 import { myPlayersKey } from './myPlayersApi'
-import type { MyResultScope } from './meResultsApi'
+import type { MyResultOutcome, MyResultScope } from './meResultsApi'
 import type { BattingStats, BowlingStats, FieldingStats, NotCapturedItem, PlayerAwardCounts, PlayerRecord, PlayerStats } from './playerStatsApi'
 import type { DashboardBattingSummary, DashboardEconomySummary, DashboardWicketTypes, DashboardWindow } from './playerDashboardApi'
-import type { LeaderboardGroup, LeaderboardTable, LeaderboardTableRow } from './leaderboardApi'
+import type { LeaderboardGroup, LeaderboardPageInfo, LeaderboardTable, LeaderboardTableRow } from './leaderboardApi'
 import type { TeamStatsPageData } from './teamStatsApi'
 
 // docs/specs/147 (Player Hub stats): the held player's own statistics, team statistics and leaderboards as flip cards.
@@ -13,7 +13,7 @@ import type { TeamStatsPageData } from './teamStatsApi'
 // Show In Player Hub on count. The page filters (Season, League, Team) are the Results page's `results/filters` read.
 // The client computes no figure: every number below is the server's, formatted by pages/view/myPlayers/stats/statsFormat.ts.
 
-// ===== PAYLOAD TYPES: MyStatsDto mirrors backend/.../dto/MyStatsDto.java (slice 1, written by the backend builder). The drill page, ===
+// ===== PAYLOAD TYPES: MyStatsDto and the drill page mirror backend/.../dto/MyStatsDto.java and MyStatsInningsPageDto.java. ======
 // ===== MyTeamStatsDto and the leaderboard types are still the spec's description until slices 3 and 4. Change only this block. =======
 
 export type MyStatsAgeBand = 'ADULT' | 'UNDER_13' | 'AGE_13_17' | 'UNKNOWN'
@@ -260,23 +260,60 @@ export interface MyStatsDto {
   notCaptured: NotCapturedItem[]
 }
 
-// The match drill (GET .../stats/innings). Awaiting the backend's MyStatsInningsPageDto: these keys are the spec's description.
+// The match drill (GET .../stats/innings): mirrors backend/.../dto/MyStatsInningsPageDto.java. `title` and `filterLabel` are plain header
+// words; only the block of the row's kind is filled (a MATCHES row fills all three where the player took part). A figure that was not
+// recorded is null, never 0. Rows are newest first and cut on the server.
+export interface MyStatsInningsBatting {
+  // Null on a MATCHES row (the match's batting totals).
+  inningsNumber: number | null
+  runs: number | null
+  balls: number | null
+  fours: number | null
+  sixes: number | null
+  notOut: boolean
+  howOut: string | null
+  bowlerName: string | null
+  strikeRate: number | null
+}
+
+export interface MyStatsInningsBowling {
+  balls: number
+  ballsPerOver: number
+  maidens: number
+  runs: number
+  wickets: number
+  economy: number | null
+  wides: number | null
+  noBalls: number | null
+  dots: number | null
+}
+
+export interface MyStatsInningsFielding {
+  catches: number
+  stumpings: number
+  runOuts: number
+}
+
 export interface MyStatsInningsRow {
   matchId: string
-  date: string
-  opponent: string | null
-  ourTeam: string
+  matchDate: string
+  opponentName: string | null
+  derby: boolean
+  ourTeamName: string
   // The result from the player's side.
-  result: string
-  // The figures of this innings, spell or match with every derived value already computed, keyed by column code.
-  figures: Record<string, string | number | boolean | null>
+  result: MyResultOutcome
+  batting: MyStatsInningsBatting | null
+  bowling: MyStatsInningsBowling | null
+  fielding: MyStatsInningsFielding | null
 }
 
 export interface MyStatsInningsPage {
   kind: MyStatsDrillKind
   filter: string | null
+  title: string
+  filterLabel: string | null
   truncated: boolean
-  page: { number: number; size: number; totalElements: number; hasMore: boolean }
+  page: LeaderboardPageInfo
   rows: MyStatsInningsRow[]
 }
 
