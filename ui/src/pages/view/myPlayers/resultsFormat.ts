@@ -214,7 +214,7 @@ export function howOutWords(type: MyResultDismissal | null | undefined, bowler?:
     case 'BOWLED':
       return bowler ? `b ${bowler}` : HOW_OUT.BOWLED
     case 'CAUGHT':
-      return `c ${fielder ?? 'fielder'}${bowler ? ` b ${bowler}` : ''}`
+      return `${fielder ? `c ${fielder}` : HOW_OUT.CAUGHT}${bowler ? ` b ${bowler}` : ''}`
     case 'CAUGHT_AND_BOWLED':
       return bowler ? `c and b ${bowler}` : HOW_OUT.CAUGHT_AND_BOWLED
     case 'LBW':
