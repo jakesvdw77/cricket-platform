@@ -39,7 +39,7 @@ export const mineInningsNumber: StatsCardDef<MyStatsDto> = {
           ]}
         />
         <Note>
-          Average {formatDecimal(first.average)} batting first in {first.innings} innings and {formatDecimal(chasing.average)} chasing in {chasing.innings}. Tap a bar to see those innings.
+          Average {formatDecimal(first.average)} batting first, {formatDecimal(chasing.average)} chasing. Tap a bar.
         </Note>
       </>
     )

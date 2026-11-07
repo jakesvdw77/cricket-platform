@@ -15,8 +15,8 @@ import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroup
 // A page with a single group shows no pill row.
 // Rows: layoutRows turns the group's cards into rows of three cards, or a tall card beside two stacked ones, with a short last row of
 // equal halves or one capped card, or rows of up to three compact tiles (the Summary, 3 + 3 + 2). Each row is its own CSS grid with FIXED row
-// heights in rem (the variable --stats-card-h: 15rem normal, 10rem compact; a tall card spans two rows and the gap), so every card in
-// a row has the same height and neither face can make it taller (the back scrolls inside the card). Below 600 px of content a card is
+// heights in rem (the variable --stats-card-h: 17rem normal, 11rem compact; a tall card spans two rows and the gap), so every card in
+// a row has the same height and neither face can make it taller (the front never scrolls, the back scrolls inside the card). Below 600 px of content a card is
 // at least that tall and may grow to fit its face. The rows lay out by the grid's own width (a container query, not the screen's,
 // because the Hub's scope panel narrows the content): 3 columns from 880 px of content, pairs from 600 px, compact tiles 3 across from
 // 880 px and 2 across from 600 px, otherwise one column.

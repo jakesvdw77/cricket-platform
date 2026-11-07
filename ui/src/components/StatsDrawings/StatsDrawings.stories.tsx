@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { MemoryRouter } from 'react-router-dom'
 import { BRAND } from '../../brandTokens'
+import { ColumnChart } from './ColumnChart'
 import { Donut } from './Donut'
 import { HorizontalBars } from './HorizontalBars'
 import { LineChart } from './LineChart'
@@ -87,3 +88,18 @@ export const MilestoneProgress: StoryObj = {
   ),
 }
 export const TrendSparkline: StoryObj = { render: () => <Sparkline values={[12, 29.5, null, 30.5, 30.6]} alt="Running average over five innings, now 30.6." /> }
+
+export const BowlingColumns: StoryObj = {
+  render: () => (
+    <div style={{ height: 150 }}>
+      <ColumnChart
+        alt="Wickets in the last three innings bowled."
+        columns={[
+          { key: 'a', value: 3, valueLabel: '3', label: '4 Oct', sub: 'Econ 4.50', href: '/hub/result/a', name: '3 wickets, 4 October. Open the match.' },
+          { key: 'b', value: 0, valueLabel: '0', label: '11 Oct', sub: 'Econ 6.10', href: '/hub/result/b', name: '0 wickets, 11 October. Open the match.' },
+          { key: 'c', value: 2, valueLabel: '2', label: '18 Oct', sub: 'Econ 3.80', href: '/hub/result/c', name: '2 wickets, 18 October. Open the match.' },
+        ]}
+      />
+    </div>
+  ),
+}

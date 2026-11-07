@@ -34,8 +34,8 @@ export const teamSquad: StatsCardDef<MyTeamStatsDto> = {
       />
       <Note>
         {p.squad.averageAvailable === null
-          ? 'No availability polls have closed for this team yet.'
-          : `Average of ${formatDecimal(p.squad.averageAvailable, 1)} available per match, from the availability polls.`}
+          ? 'No availability polls have closed yet.'
+          : 'Averages come from the closed polls.'}
       </Note>
     </>
   ),

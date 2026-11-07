@@ -7,7 +7,7 @@ import { formatDecimal, plural, whereText } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 6, mine.batting-venues: runs at each venue. Front: bars of runs per venue, a home venue marked "Home"
 // (venues beyond the server's cap arrive as "Other venues", a match with no playing area as "Unknown venue"). Back: the table. Source: battingVenues.
-const SHOWN = 5
+const SHOWN = 4
 
 export const mineBattingVenues: StatsCardDef<MyStatsDto> = {
   id: 'mine.batting-venues',
@@ -40,7 +40,7 @@ export const mineBattingVenues: StatsCardDef<MyStatsDto> = {
           alt={`${ctx.firstName}'s runs at each venue: ${venues.map((venue) => `${venue.name}${venue.home === true ? ' (home)' : ''} ${venue.runs}`).join(', ')}.`}
           rows={venues.map((venue) => ({ key: venue.venueKey, label: venue.name, tag: venue.home === true ? 'Home' : undefined, value: venue.runs, valueLabel: String(venue.runs) }))}
         />
-        <Note>Runs scored at each playing area. Flip for innings, dismissals and average.</Note>
+        <Note>{p.battingVenues.length > SHOWN ? `Top ${SHOWN} of ${p.battingVenues.length} venues. Flip for all.` : 'Runs scored at each playing area.'}</Note>
       </>
     )
   },

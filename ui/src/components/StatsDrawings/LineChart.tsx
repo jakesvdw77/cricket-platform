@@ -4,6 +4,7 @@ import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
 import { BRAND, STATS_TONES } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
+import { ColumnChart } from './ColumnChart'
 import { linePath, linearScale, niceCeil, xPositions } from './statsMath'
 import type { Point } from './statsMath'
 
@@ -16,6 +17,9 @@ export interface LineChartPoint {
   href?: string
   // The dot's accessible name when it is a link ("47 not out against Rovers, 1 November"); a hollow dot says "not out" in it.
   name: string
+  // The number printed by the dot (default: the value as it is); the date under a column when there are too few points for a line.
+  valueLabel?: string
+  label?: string
 }
 
 export interface LineGuide {
@@ -36,15 +40,31 @@ export interface LineChartProps {
 }
 
 // Fixed sizes in px: the drawing is measured (ResizeObserver) and drawn in a viewBox equal to its real pixel size, so text (10 to 11 px),
-// strokes (1.5 and 2 px) and dots (radius 4) never scale with the width. Height 96 px (the expanded card sets --stats-chart-scale to 2).
+// strokes (1.5 and 2 px) and dots (radius 4) never scale with the width. The height is the region it is in (a flex item, 96 px to start, capped at 140 px; the expanded card sets --stats-chart-scale to 2).
 const DEFAULT = { w: 320, h: 96 }
-const PAD = { left: 30, right: 8, top: 8, bottom: 18 }
+const PAD = { left: 30, right: 12, top: 18, bottom: 18 }
+// Every dot gets its number when there are this many points or fewer.
+const LABELLED_MAX = 8
+// Fewer points than this are drawn as labelled columns, not a line.
+const LINE_MIN = 3
 const HIT = 12
 
 // docs/specs/147: runs per innings in date order, guide lines at the server's values, a running-average line and a hollow dot for a not
 // out. Our own SVG (no chart library). Each dot is a real link with an accessible name; links on the hidden face of a flip card leave
 // the tab order. The drawing's text alternative is `alt`; the card's back repeats the values as a table.
-export function LineChart({ points, average, guides = [], alt, startLabel, endLabel }: LineChartProps) {
+export function LineChart(props: LineChartProps) {
+  if (props.points.length < LINE_MIN) {
+    return (
+      <ColumnChart
+        alt={props.alt}
+        columns={props.points.map((point) => ({ key: point.key, value: point.value, valueLabel: point.valueLabel ?? String(point.value), label: point.label, href: point.href, name: point.name }))}
+      />
+    )
+  }
+  return <Line {...props} />
+}
+
+function Line({ points, average, guides = [], alt, startLabel, endLabel }: LineChartProps) {
   const tabIndex = useFaceTabIndex()
   const ref = useRef<SVGSVGElement>(null)
   const [size, setSize] = useState(DEFAULT)
@@ -70,7 +90,10 @@ export function LineChart({ points, average, guides = [], alt, startLabel, endLa
   const xs = xPositions(points.length, BOX.left + 6, BOX.width - 12)
   const line: Point[] = points.map((p, index) => ({ x: xs[index], y: y(p.value) }))
   const avg: Point[] = (average ?? []).map((v, index) => ({ x: xs[index], y: v === null ? null : y(v) }))
+  const labelled = points.length <= LABELLED_MAX
+  const tickClear = (value: number) => guides.every((guide) => Math.abs(y(guide.value) - y(value)) > 10)
   return (
+    <Box data-chart-grow="" sx={{ position: 'relative', flex: '1 1 auto', minWidth: 0, width: '100%', maxWidth: 'calc(560px * var(--stats-chart-scale, 1))', minHeight: 72, height: 'calc(96px * var(--stats-chart-scale, 1))', maxHeight: 'calc(140px * var(--stats-chart-scale, 1))' }}>
     <Box
       component="svg"
       ref={ref}
@@ -78,10 +101,15 @@ export function LineChart({ points, average, guides = [], alt, startLabel, endLa
       role="group"
       aria-label={alt}
       data-testid="line-chart"
-      sx={{ width: '100%', maxWidth: 'calc(560px * var(--stats-chart-scale, 1))', height: 'calc(96px * var(--stats-chart-scale, 1))', display: 'block', overflow: 'visible', '& a': { outline: 'none' }, '& a:focus-visible circle.dot': { stroke: BRAND.cream, strokeWidth: 2.5 } }}
+      sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', overflow: 'visible', '& a': { outline: 'none' }, '& a:focus-visible circle.dot': { stroke: BRAND.cream, strokeWidth: 2.5 } }}
     >
       <title>{alt}</title>
       <line x1={BOX.left} x2={BOX.left + BOX.width} y1={y(0)} y2={y(0)} stroke={alpha(BRAND.cream, 0.28)} />
+      {[0, ceiling].filter(tickClear).map((tick) => (
+        <text key={`tick-${tick}`} data-testid="line-tick" x={BOX.left - 5} y={y(tick) + 3} fontSize="10" textAnchor="end" fill={alpha(BRAND.cream, 0.55)} aria-hidden>
+          {tick}
+        </text>
+      ))}
       {guides.map((guide) => (
         <g key={guide.label} data-testid="line-guide">
           <line x1={BOX.left} x2={BOX.left + BOX.width} y1={y(guide.value)} y2={y(guide.value)} stroke={alpha(STATS_TONES.gold, 0.7)} strokeDasharray="3 3" />
@@ -96,6 +124,11 @@ export function LineChart({ points, average, guides = [], alt, startLabel, endLa
         const dot = (
           <>
             <circle className="dot" cx={xs[index]} cy={y(point.value)} r={4} fill={point.notOut ? 'transparent' : BRAND.cream} stroke={BRAND.cream} strokeWidth={1.5} data-notout={point.notOut ? 'true' : 'false'} />
+            {labelled && (
+              <text data-testid="line-value" x={xs[index]} y={y(point.value) - 8} fontSize="10" fontWeight="700" textAnchor="middle" fill={BRAND.cream} aria-hidden>
+                {point.valueLabel ?? String(point.value)}
+              </text>
+            )}
             {point.href && <circle cx={xs[index]} cy={y(point.value)} r={HIT} fill="transparent" />}
           </>
         )
@@ -119,6 +152,7 @@ export function LineChart({ points, average, guides = [], alt, startLabel, endLa
           {endLabel}
         </text>
       )}
+    </Box>
     </Box>
   )
 }

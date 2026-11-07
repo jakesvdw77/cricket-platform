@@ -7,6 +7,8 @@ import { DASH, formatDecimal, positionLabel } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 5, mine.positions: where the batter bats. Positions 1 and 2 are one group, Opener, then 3 to 11 each (the
 // server groups them: battingPositionGroups). Front: runs scored in each as bars. Back: the table. Source: battingPositionGroups, batting.
+const SHOWN = 5
+
 export const minePositions: StatsCardDef<MyStatsDto> = {
   id: 'mine.positions',
   page: 'mine',
@@ -29,15 +31,20 @@ export const minePositions: StatsCardDef<MyStatsDto> = {
     return recorded < p.batting.innings ? `Batting position is recorded for ${recorded} of ${p.batting.innings} innings.` : truncatedNote(p)
   },
   summary: (p, ctx) => `${ctx.firstName}'s runs by batting position: ${p.battingPositionGroups.map((group) => `${positionLabel(group)} ${group.runs}`).join(', ')}.`,
-  Front: ({ payload: p, ctx }) => (
-    <>
-      <HorizontalBars
-        alt={`${ctx.firstName}'s runs by batting position: ${p.battingPositionGroups.map((group) => `${positionLabel(group)} ${group.runs}`).join(', ')}.`}
-        rows={p.battingPositionGroups.map((group) => ({ key: group.key, label: positionLabel(group), value: group.runs, valueLabel: String(group.runs) }))}
-      />
-      <Note>Runs scored at each batting position; the openers are positions 1 and 2 together. Flip for the table.</Note>
-    </>
-  ),
+  Front: ({ payload: p, ctx }) => {
+    // At most five bars fit the card: when there are more positions, the five with the most runs, kept in batting order.
+    const groups = p.battingPositionGroups
+    const shown = groups.length > SHOWN ? [...groups].sort((a, b) => b.runs - a.runs).slice(0, SHOWN).sort((a, b) => groups.indexOf(a) - groups.indexOf(b)) : groups
+    return (
+      <>
+        <HorizontalBars
+          alt={`${ctx.firstName}'s runs by batting position: ${shown.map((group) => `${positionLabel(group)} ${group.runs}`).join(', ')}.`}
+          rows={shown.map((group) => ({ key: group.key, label: positionLabel(group), value: group.runs, valueLabel: String(group.runs) }))}
+        />
+        <Note>{groups.length > SHOWN ? `Top ${SHOWN} of ${groups.length} positions by runs. Flip for all.` : 'Runs at each batting position; openers together.'}</Note>
+      </>
+    )
+  },
   Back: ({ payload: p }) => (
     <>
       <Cap>Batting position</Cap>

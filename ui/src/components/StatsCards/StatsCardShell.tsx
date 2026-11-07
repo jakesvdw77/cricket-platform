@@ -77,7 +77,8 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
     if ((event.target as HTMLElement).closest('a, button')) return
     event.currentTarget.closest('article')?.querySelector<HTMLButtonElement>('button[aria-pressed]')?.click()
   }
-  const scrolls = !expanded
+  // Only a back scrolls inside the card; a front's region clips (a front must fit its card, so an overfull one shows in review).
+  const scrolls = !expanded && !heading
   return (
     <Box
       sx={{
@@ -110,30 +111,39 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
       <Box
         ref={regionRef}
         data-flip-interactive={scrolls ? '' : undefined}
-        role={scrolls && !heading ? 'region' : undefined}
-        aria-label={scrolls && !heading ? `${title}, details` : undefined}
-        tabIndex={scrolls && !heading ? (active ? 0 : -1) : undefined}
+        role={scrolls ? 'region' : undefined}
+        aria-label={scrolls ? `${title}, details` : undefined}
+        tabIndex={scrolls ? (active ? 0 : -1) : undefined}
         onClick={scrolls ? flipFromRegion : undefined}
         sx={{
           flex: 1,
           minWidth: 0,
           minHeight: 0,
           overflowX: 'hidden',
-          overflowY: 'auto',
-          display: 'grid',
-          alignContent: 'start',
+          overflowY: heading && !expanded ? 'hidden' : 'auto',
+          // A column: the parts keep their natural height, a chart (data-chart-grow) takes the spare height up to its cap, so there is no
+          // empty gap between the chart and the footer.
+          display: 'flex',
+          flexDirection: 'column',
           gap: expanded ? 1.5 : '6px',
+          '& > :not([data-chart-grow])': { flexShrink: 0 },
           ...cardScrollSx,
           '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
         }}
       >
         {children}
       </Box>
-      {note && <Typography data-testid="stats-partial-note" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>}
+      {note && (
+        <Typography data-testid="stats-partial-note" title={heading ? note : undefined} sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0, ...(heading && !expanded ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}>{note}</Typography>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 14 }}>
-        <Box sx={{ minWidth: 0, display: 'grid' }}>
-          <Typography data-testid="stats-basis" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
-          {lacking && <Typography data-testid="stats-data-cue" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{DATA_MISSING_CUE}</Typography>}
+        <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: STATS_TYPE.footer, lineHeight: 1.25 }}>
+          <Typography data-testid="stats-basis" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0, flexShrink: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
+          {lacking && (
+            <Typography data-testid="stats-data-cue" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.partly, m: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {basis ? '· ' : ''}{DATA_MISSING_CUE}
+            </Typography>
+          )}
         </Box>
         {hint && (
           <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: STATS_TYPE.hint, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.gold }}>

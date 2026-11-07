@@ -27,6 +27,8 @@ const tileSx = {
   textDecoration: 'none',
 } as const
 
+const denseTileSx = { minHeight: 32, py: '3px' } as const
+
 const captionSx = { fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, lineHeight: 1.25, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
 
 // The headline figure: "412" over "runs in 7 innings".
@@ -67,14 +69,15 @@ export interface TileSpec {
   name?: string
 }
 
-export function Tiles({ items, min = 64 }: { items: TileSpec[]; min?: number }) {
+// `dense`: a shorter tile (16 px figure, tight padding) for a card with little height to spare.
+export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; min?: number; dense?: boolean }) {
   const tabIndex = useFaceTabIndex()
   return (
     <Box data-testid="stats-tiles" sx={{ display: 'grid', gap: '6px', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))` }}>
       {items.map((item) => {
         const content = (
           <>
-            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: STATS_TYPE.tileValue, lineHeight: 1.1, color: STATS_UI.cream }}>{item.value}</Typography>
+            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 16 : STATS_TYPE.tileValue, lineHeight: 1.1, color: STATS_UI.cream }}>{item.value}</Typography>
             <Typography component="span" sx={captionSx}>{item.label}</Typography>
           </>
         )
@@ -86,16 +89,41 @@ export function Tiles({ items, min = 64 }: { items: TileSpec[]; min?: number }) 
             tabIndex={tabIndex}
             aria-label={item.name ?? `${item.label}: ${item.value}`}
             data-testid="stats-tile-link"
-            sx={{ ...tileSx, borderColor: alpha(STATS_UI.gold, 0.55), '&:hover': { bgcolor: blackAlpha(0.45) }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
+            sx={{ ...tileSx, ...(dense ? denseTileSx : {}), borderColor: alpha(STATS_UI.gold, 0.55), '&:hover': { bgcolor: blackAlpha(0.45) }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
           >
             {content}
           </Box>
         ) : (
-          <Box key={item.key} data-testid="stats-tile" sx={tileSx}>
+          <Box key={item.key} data-testid="stats-tile" sx={dense ? { ...tileSx, ...denseTileSx } : tileSx}>
             {content}
           </Box>
         )
       })}
+    </Box>
+  )
+}
+
+export interface SplitColumn {
+  key: string
+  title: string
+  rows: { key: string; label: string; value: string }[]
+}
+
+// Two or three short columns side by side (Home | Away), each a heading and a few label / value pairs on one line. Compact: about 14 px a line.
+export function Split({ columns }: { columns: SplitColumn[] }) {
+  return (
+    <Box data-testid="stats-split" sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, columnGap: '14px', minWidth: 0 }}>
+      {columns.map((column) => (
+        <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gap: '3px', alignContent: 'start', minWidth: 0 }}>
+          <Typography component="dt" sx={{ ...captionSx, color: STATS_UI.gold, pb: '2px', borderBottom: `1px solid ${STATS_UI.lineSoft}` }}>{column.title}</Typography>
+          {column.rows.map((row) => (
+            <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: STATS_TYPE.body, lineHeight: 1.3 }}>
+              <Typography component="dt" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0 }}>{row.label}</Typography>
+              <Typography component="dd" sx={{ fontSize: 'inherit', lineHeight: 'inherit', fontWeight: 700, color: STATS_UI.cream, m: 0 }}>{row.value}</Typography>
+            </Box>
+          ))}
+        </Box>
+      ))}
     </Box>
   )
 }
@@ -122,12 +150,14 @@ export interface ChipSpec {
 const CHIP_TONE: Record<ChipTone, string> = { win: STATS_TONES.win, loss: STATS_TONES.loss, neutral: STATS_UI.cream }
 
 // Small figure chips (the last five scores); a chip with a match is a link to its Hub Result page.
-export function Chips({ items }: { items: ChipSpec[] }) {
+// `large`: bigger chips for a card where the scores are the content; `lead`: a small caption before the first chip ("Last 5").
+export function Chips({ items, large = false, lead }: { items: ChipSpec[]; large?: boolean; lead?: string }) {
   const tabIndex = useFaceTabIndex()
   return (
-    <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+    <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
+      {lead && <Typography component="span" sx={{ ...captionSx, mr: '4px' }}>{lead}</Typography>}
       {items.map((item) => {
-        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: 22, px: '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
+        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: large ? 28 : 22, px: large ? '12px' : '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: large ? 16 : STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
         return item.href ? (
           <Box key={item.key} component={RouterLink} to={item.href} tabIndex={tabIndex} aria-label={item.name ?? item.text} sx={{ ...sx, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
             {item.text}

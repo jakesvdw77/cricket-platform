@@ -40,6 +40,8 @@ export const mineInnings: StatsCardDef<MyStatsDto> = {
           points={innings.map((entry, index) => ({
             key: `${entry.matchId}-${index}`,
             value: entry.runs ?? 0,
+            valueLabel: `${entry.runs ?? 0}${entry.notOut ? '*' : ''}`,
+            label: dayText(entry.matchDate),
             notOut: entry.notOut,
             href: ctx.resultHref(entry.matchId),
             name: `${scoreText(entry.runs, false)}${entry.notOut ? ' not out' : ''} ${againstText(entry.opponentName)}, ${dayText(entry.matchDate)}`,
@@ -53,9 +55,8 @@ export const mineInnings: StatsCardDef<MyStatsDto> = {
           endLabel={dayText(last?.matchDate)}
         />
         <Note>
-          Dots are runs per innings, the blue line the running average, a hollow dot not out. Guides at {p.guides.low} and {p.guides.high}. Tap a dot to open the match.
+          Runs per innings (* not out), blue line the average.{summary.inningsTotal > summary.shown ? ` Latest ${summary.shown} of ${summary.inningsTotal}.` : ''}
         </Note>
-        {summary.inningsTotal > summary.shown && <Note>Showing the latest {summary.shown} of {summary.inningsTotal} innings.</Note>}
       </>
     )
   },

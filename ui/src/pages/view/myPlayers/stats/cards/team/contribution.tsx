@@ -37,11 +37,11 @@ export const teamContribution: StatsCardDef<MyTeamStatsDto> = {
       <>
         <Cap>Runs by player</Cap>
         {runs.lines.length > 0 ? (
-          <HorizontalBars rows={rowsOf(runs)} max={runs.total ?? undefined} alt={altOf('Runs by player', runs)} />
+          <HorizontalBars rows={rowsOf(runs).slice(0, 4)} max={runs.total ?? undefined} alt={altOf('Runs by player', runs)} />
         ) : (
           <Note>No batting cards yet.</Note>
         )}
-        <Note>{runs.total === null ? 'No runs recorded yet.' : `${runs.total} runs in ${runs.inningsWithCard} of ${runs.inningsCounted} innings with a batting card.`}</Note>
+        <Note>{runs.total === null ? 'No runs recorded yet.' : `${runs.total} runs${runs.lines.length > 4 ? ', top 4 shown' : ''}.`}</Note>
       </>
     )
   },

@@ -7,6 +7,8 @@ import { formatDecimal } from '../../statsFormat'
 // docs/specs/147 section 5, mine.seasons: runs in each season (the Season filter is ignored for this block; the other filters apply).
 // Back: the seasons as a table. Source: bySeason.
 const SHOWN = 8
+// The front has room for four bars.
+const FRONT_SHOWN = 4
 
 export const mineSeasons: StatsCardDef<MyStatsDto> = {
   id: 'mine.seasons',
@@ -22,14 +24,14 @@ export const mineSeasons: StatsCardDef<MyStatsDto> = {
   state: (p) => (p.bySeason.length === 0 ? 'empty' : 'ready'),
   summary: (p, ctx) => `${ctx.firstName}'s runs in each of ${p.bySeason.length} seasons.`,
   Front: ({ payload: p, ctx }) => {
-    const seasons = p.bySeason.slice(-SHOWN)
+    const seasons = p.bySeason.slice(-FRONT_SHOWN)
     return (
       <>
         <HorizontalBars
           alt={`${ctx.firstName}'s runs by season: ${seasons.map((season) => `${season.label} ${season.runs}`).join(', ')}.`}
           rows={seasons.map((season) => ({ key: season.seasonId, label: season.label, value: season.runs, valueLabel: String(season.runs) }))}
         />
-        <Note>Runs in each season, whichever season is chosen above.</Note>
+        <Note>{p.bySeason.length > FRONT_SHOWN ? `Runs in the latest ${FRONT_SHOWN} of ${p.bySeason.length} seasons.` : 'Runs in each season.'}</Note>
       </>
     )
   },

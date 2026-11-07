@@ -1,15 +1,24 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
-import { Sparkline } from '../../../../../../components/StatsDrawings'
+import { LineChart } from '../../../../../../components/StatsDrawings'
+import type { LineChartPoint } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { STATS_TONES } from '../../../../../../brandTokens'
-import { Big, Cap, Chips, FaceTable, Note, Tiles } from '../../cardParts'
+import { Box } from '@mui/material'
+import { Big, Cap, Chips, FaceTable, Note, Split, Tiles } from '../../cardParts'
 import { battingBasis } from '../../cardKit'
 import { DASH, dayText, formatCount, formatDecimal, plural, scoreText } from '../../statsFormat'
 
 // docs/specs/147 section 5, mine.season: the headline of the season. Front: runs, innings, average, strike rate, highest score, the last
-// five scores; innings played, not outs and times dismissed are stated outright (Amendment 2 item 4) and the runs at home and away sit here
-// too (item 6; a home or away side with no innings is a dash and the matches with no venue are the partial note). Back: the rolling average of
+// five scores; innings played, not outs and times dismissed are stated outright (Amendment 2 item 4) and the runs at home and away sit beside the headline
+// (no chart: Innings charts the runs; a normal card) (item 6; a home or away side with no innings is a dash and the matches with no venue are the partial note). Back: the rolling average of
 // the last five innings with the server's trend sentence. Source: batting, form, rolling, homeAway.
+// The rolling average after each innings as chart points (every dot labelled with its average, a link to its match).
+const averagePoints = (p: MyStatsDto, ctx: { resultHref: (matchId: string) => string }): LineChartPoint[] =>
+  p.rolling.points.flatMap((point, index) =>
+    point.average === null
+      ? []
+      : [{ key: `${point.matchId}-${index}`, value: point.average, valueLabel: formatDecimal(point.average), label: dayText(point.matchDate), href: ctx.resultHref(point.matchId), name: `Average ${formatDecimal(point.average)} after the match of ${dayText(point.matchDate)}. Open the match.` }],
+  )
+
 export const mineSeason: StatsCardDef<MyStatsDto> = {
   id: 'mine.season',
   page: 'mine',
@@ -18,8 +27,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['batting', 'form', 'rolling', 'homeAway', 'basis'],
   order: 10,
-  // Amendment 2 item 10: the hero card is tall (beside Innings and Dismissals stacked).
-  size: 'tall',
+  // A normal card (the tall layout is supported but unused for now).
   whenMissing: 'hide',
   emptyText: 'Not enough innings yet.',
   basis: (p) => battingBasis(p),
@@ -29,8 +37,8 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
   },
   partialNote: (p) =>
     [
-      p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? `Strike rate is from ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.` : '',
-      p.homeAway.unknownFieldMatches > 0 ? `${plural(p.homeAway.unknownFieldMatches, 'match', 'matches')} with no venue recorded are left out of home and away.` : '',
+      p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? `SR from ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.` : '',
+      p.homeAway.unknownFieldMatches > 0 ? `${plural(p.homeAway.unknownFieldMatches, 'match', 'matches')} have no venue.` : '',
     ]
       .filter(Boolean)
       .join(' '),
@@ -38,10 +46,28 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
     `${ctx.firstName} has ${p.batting.runs} runs in ${plural(p.batting.innings, 'innings', 'innings')} (${p.batting.notOuts} not out, dismissed ${p.batting.dismissals} times), averaging ${formatDecimal(p.batting.average)}.`,
   Front: ({ payload: p, ctx }) => {
     const best = p.batting.highestScore
+    const runsAt = (side: { innings: number; runs: number }) => (side.innings > 0 ? formatCount(side.runs) : DASH)
     return (
       <>
-        <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minWidth: 0 }}>
+          <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
+          <Box sx={{ width: 118, flexShrink: 0 }}>
+            <Split
+              columns={[
+                {
+                  key: 'venue',
+                  title: 'Runs',
+                  rows: [
+                    { key: 'home', label: 'Home', value: runsAt(p.homeAway.home) },
+                    { key: 'away', label: 'Away', value: runsAt(p.homeAway.away) },
+                  ],
+                },
+              ]}
+            />
+          </Box>
+        </Box>
         <Tiles
+          dense
           min={72}
           items={[
             { key: 'innings', label: 'Innings', value: String(p.batting.innings) },
@@ -52,28 +78,18 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
             { key: 'hs', label: 'HS', value: best ? scoreText(best.runs, best.notOut) : DASH },
           ]}
         />
-        <Note>
-          Home {p.homeAway.home.innings > 0 ? formatCount(p.homeAway.home.runs) : DASH} runs · Away {p.homeAway.away.innings > 0 ? formatCount(p.homeAway.away.runs) : DASH} runs
-        </Note>
         {p.form.batting.length > 0 && (
-          <>
-            <Cap>Last {Math.min(5, p.form.batting.length)} scores</Cap>
-            <Chips
-              items={p.form.batting.slice(0, 5).map((entry, index) => ({
-                key: `${entry.matchId}-${index}`,
-                text: scoreText(entry.runs, entry.notOut),
-                tone: entry.notOut ? 'win' : entry.runs === 0 ? 'loss' : 'neutral',
-                href: ctx.resultHref(entry.matchId),
-                name: `${scoreText(entry.runs, entry.notOut)}, ${dayText(entry.matchDate)}. Open the match.`,
-              }))}
-            />
-          </>
-        )}
-        {p.rolling.points.length > 1 && (
-          <>
-            <Cap>Average of the last {p.rolling.span} innings</Cap>
-            <Sparkline values={p.rolling.points.map((point) => point.average)} width={240} height={44} colour={STATS_TONES.gold} alt={`Rolling average of the last ${p.rolling.span} innings for ${ctx.firstName}.`} />
-          </>
+          <Chips
+            large
+            lead={`Last ${Math.min(5, p.form.batting.length)}`}
+            items={p.form.batting.slice(0, 5).map((entry, index) => ({
+              key: `${entry.matchId}-${index}`,
+              text: scoreText(entry.runs, entry.notOut),
+              tone: entry.notOut ? 'win' : entry.runs === 0 ? 'loss' : 'neutral',
+              href: ctx.resultHref(entry.matchId),
+              name: `${scoreText(entry.runs, entry.notOut)}, ${dayText(entry.matchDate)}. Open the match.`,
+            }))}
+          />
         )}
       </>
     )
@@ -90,7 +106,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
     return (
       <>
         <Cap>Average of the last {rolling.span} innings</Cap>
-        <Sparkline values={rolling.points.map((point) => point.average)} width={200} height={36} colour={STATS_TONES.gold} alt={`Rolling average of the last ${rolling.span} innings for ${ctx.firstName}: ${sentence}`} />
+        <LineChart points={averagePoints(p, ctx)} alt={`Rolling average of the last ${rolling.span} innings for ${ctx.firstName}: ${sentence}`} />
         <Note>{sentence}</Note>
         {latest.length > 0 && (
           <FaceTable

@@ -38,12 +38,11 @@ export const teamExtras: StatsCardDef<MyTeamStatsDto> = {
   summary: (p) => `${p.teamName} gave away ${formatCount(p.extrasCard.gaveAway.total)} extras and received ${formatCount(p.extrasCard.received.total)}.`,
   Front: ({ payload: p }) => {
     const gave = p.extrasCard.gaveAway
-    const rows = COMPONENTS.filter(({ key }) => shown(gave[key], key)).map(({ key, label }) => ({
-      key,
-      label,
-      value: gave[key].value ?? 0,
-      valueLabel: formatCount(gave[key].value),
-    }))
+    // Four bars fit the card: the four largest, in the usual order. The back table has every type.
+    const rows = COMPONENTS.filter(({ key }) => shown(gave[key], key))
+      .map(({ key, label }) => ({ key, label, value: gave[key].value ?? 0, valueLabel: formatCount(gave[key].value) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 4)
     return (
       <>
         <Tiles

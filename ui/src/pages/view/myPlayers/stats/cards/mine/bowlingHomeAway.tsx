@@ -1,6 +1,6 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { Cap, FaceTable, Note, Tiles } from '../../cardParts'
+import { Cap, FaceTable, Note, Split } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
 import { formatDecimal, oversOrBalls, plural } from '../../statsFormat'
 
@@ -23,33 +23,20 @@ export const mineBowlingHomeAway: StatsCardDef<MyStatsDto> = {
     if (home.spells + away.spells === 0) return unknownVenueSpells > 0 ? 'missing' : 'empty'
     return unknownVenueSpells > 0 ? 'partial' : 'ready'
   },
-  partialNote: (p) => `${plural(p.bowlingHomeAway.unknownVenueSpells, 'spell')} in matches with no venue recorded are left out.`,
+  partialNote: (p) => `${plural(p.bowlingHomeAway.unknownVenueSpells, 'spell')} with no venue left out.`,
   summary: (p, ctx) => `${ctx.firstName} has ${p.bowlingHomeAway.home.wickets} wickets at home and ${p.bowlingHomeAway.away.wickets} away.`,
   Front: ({ payload: p }) => {
     const { home, away } = p.bowlingHomeAway
-    return (
-      <>
-        <Cap>Wickets</Cap>
-        <Tiles
-          min={96}
-          items={[
-            { key: 'home-wkts', label: 'Home', value: String(home.wickets) },
-            { key: 'away-wkts', label: 'Away', value: String(away.wickets) },
-          ]}
-        />
-        <Cap>Economy</Cap>
-        <Tiles
-          min={96}
-          items={[
-            { key: 'home-econ', label: 'Home', value: formatDecimal(home.economy, 2) },
-            { key: 'away-econ', label: 'Away', value: formatDecimal(away.economy, 2) },
-          ]}
-        />
-        <Note>
-          {plural(home.spells, 'spell')} at home and {plural(away.spells, 'spell')} away.
-        </Note>
-      </>
-    )
+    const column = (key: string, title: string, side: typeof home) => ({
+      key,
+      title,
+      rows: [
+        { key: `${key}-wkts`, label: 'Wickets', value: String(side.wickets) },
+        { key: `${key}-econ`, label: 'Economy', value: formatDecimal(side.economy, 2) },
+        { key: `${key}-spells`, label: 'Spells', value: String(side.spells) },
+      ],
+    })
+    return <Split columns={[column('home', 'Home', home), column('away', 'Away', away)]} />
   },
   Back: ({ payload: p }) => {
     const { home, away, unknownVenueSpells } = p.bowlingHomeAway

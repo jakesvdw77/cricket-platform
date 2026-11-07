@@ -1,7 +1,7 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
-import { LineChart } from '../../../../../../components/StatsDrawings'
+import { ColumnChart } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { Big, Cap, FaceTable, Note, Tiles } from '../../cardParts'
+import { Big, Cap, FaceTable, Note } from '../../cardParts'
 import { againstText, bowlingBasis } from '../../cardKit'
 import { dayText, formatDecimal, formatPercent, wicketsForRuns } from '../../statsFormat'
 import { oversText } from '../../../resultsFormat'
@@ -10,6 +10,8 @@ import { oversText } from '../../../resultsFormat'
 // bowled with the economy line, each dot a link to its match, and the same as a table. Source: bowling, series.bowlingMatches,
 // series.economySummary.
 const SHOWN_ROWS = 8
+// The columns on the front: the latest six innings bowled.
+const RECENT = 6
 
 export const mineBowling: StatsCardDef<MyStatsDto> = {
   id: 'mine.bowling',
@@ -19,8 +21,7 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['bowling', 'series', 'basis'],
   order: 10,
-  // Amendment 2 item 10: the chart card is tall (beside the two cards after it, stacked).
-  size: 'tall',
+  // A normal card (the tall layout is supported but unused for now).
   whenMissing: 'hide',
   emptyText: 'No bowling yet.',
   basis: (p) => bowlingBasis(p),
@@ -33,31 +34,27 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
   Front: ({ payload: p, ctx }) => {
     const best = p.bowling.best
     const spells = p.series.bowlingMatches
+    const recent = spells.slice(-RECENT)
     return (
       <>
         <Big value={String(p.bowling.wickets)} caption={`wickets · best ${best ? wicketsForRuns(best.wickets, best.runs) : '–'}`} />
-        <Tiles
-          items={[
-            { key: 'econ', label: 'Econ', value: formatDecimal(p.bowling.economy, 2) },
-            { key: 'avg', label: 'Avg', value: formatDecimal(p.bowling.average, 1) },
-            { key: 'dots', label: 'Dots', value: formatPercent(p.bowling.dotBallPercentage, 0) },
-          ]}
-        />
-        {spells.length > 0 && (
-          <LineChart
-            alt={`${ctx.firstName}'s wickets in each of ${spells.length} innings bowled, with the economy of each. The table on the back has every value.`}
-            points={spells.map((spell, index) => ({
+        {recent.length > 0 && (
+          <ColumnChart
+            alt={`${ctx.firstName}'s wickets in each of the last ${recent.length} innings bowled, with the economy of each: ${recent.map((spell) => `${dayText(spell.matchDate)} ${spell.wickets} wickets, economy ${formatDecimal(spell.economy, 2)}`).join('; ')}. The table on the back has every value.`}
+            columns={recent.map((spell, index) => ({
               key: `${spell.matchId}-${index}`,
               value: spell.wickets,
+              valueLabel: String(spell.wickets),
+              label: dayText(spell.matchDate),
+              sub: `Econ ${formatDecimal(spell.economy, 2)}`,
               href: ctx.resultHref(spell.matchId),
-              name: `${spell.wickets} ${spell.wickets === 1 ? 'wicket' : 'wickets'} ${againstText(spell.opponentName)}, ${dayText(spell.matchDate)}`,
+              name: `${spell.wickets} ${spell.wickets === 1 ? 'wicket' : 'wickets'} ${againstText(spell.opponentName)}, ${dayText(spell.matchDate)}, economy ${formatDecimal(spell.economy, 2)}. Open the match.`,
             }))}
-            average={spells.map((spell) => spell.economy)}
-            startLabel={dayText(spells[0].matchDate)}
-            endLabel={dayText(spells[spells.length - 1].matchDate)}
           />
         )}
-        <Note>Dots are wickets per innings, the blue line the economy. Tap a dot to open the match.</Note>
+        <Note>
+          Econ {formatDecimal(p.bowling.economy, 2)} · Avg {formatDecimal(p.bowling.average, 1)} · Dots {formatPercent(p.bowling.dotBallPercentage, 0)}
+        </Note>
       </>
     )
   },

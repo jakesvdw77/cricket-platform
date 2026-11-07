@@ -43,7 +43,7 @@ export const mineDiscipline: StatsCardDef<MyStatsDto> = {
           { key: 'noballsper', label: 'No-balls per over', value: formatDecimal(p.bowlingDiscipline.noBallsPerOver, 2) },
         ]}
       />
-      <Note>Extras given away from deliveries bowled by {ctx.firstName}. Byes and leg byes belong to the team, not a bowler.</Note>
+      <Note>Extras from {ctx.firstName}'s deliveries. Byes belong to the team.</Note>
     </>
   ),
   Back: ({ payload: p, ctx }) => {

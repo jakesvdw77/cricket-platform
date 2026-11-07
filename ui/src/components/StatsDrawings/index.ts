@@ -1,5 +1,7 @@
 export { LineChart } from './LineChart'
 export type { LineChartProps, LineChartPoint, LineGuide } from './LineChart'
+export { ColumnChart } from './ColumnChart'
+export type { ColumnChartProps, ColumnChartColumn } from './ColumnChart'
 export { Donut } from './Donut'
 export type { DonutProps, DonutSlice } from './Donut'
 export { HorizontalBars } from './HorizontalBars'

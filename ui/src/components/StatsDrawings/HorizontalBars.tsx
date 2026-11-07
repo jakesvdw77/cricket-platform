@@ -52,7 +52,7 @@ const denseRowSx = {
   alignItems: 'center',
   columnGap: '8px',
   rowGap: '2px',
-  py: '2px',
+  py: '1px',
   minWidth: 0,
   color: BRAND.cream,
   textDecoration: 'none',

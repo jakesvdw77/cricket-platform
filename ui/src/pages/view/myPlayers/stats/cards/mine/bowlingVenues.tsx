@@ -7,7 +7,7 @@ import { formatDecimal, oversOrBalls, plural, whereText } from '../../statsForma
 
 // docs/specs/147 Amendment 2 item 6, mine.bowling-venues: wickets at each venue with the economy beside each (in the small line under the
 // venue name, with "Home" where it is a home venue). Back: the table. Source: bowlingVenues.
-const SHOWN = 5
+const SHOWN = 4
 
 export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
   id: 'mine.bowling-venues',
@@ -40,7 +40,7 @@ export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
           alt={`${ctx.firstName}'s wickets at each venue, with the economy: ${venues.map((venue) => `${venue.name}${venue.home === true ? ' (home)' : ''} ${venue.wickets} wickets, economy ${formatDecimal(venue.economy, 2)}`).join('; ')}.`}
           rows={venues.map((venue) => ({ key: venue.venueKey, label: venue.name, tag: tagOf(venue.home, venue.economy), value: venue.wickets, valueLabel: String(venue.wickets) }))}
         />
-        <Note>Wickets at each playing area, with the economy rate under the name. Flip for the table.</Note>
+        <Note>{p.bowlingVenues.length > SHOWN ? `Top ${SHOWN} of ${p.bowlingVenues.length} venues. Flip for all.` : 'Wickets, with the economy under each name.'}</Note>
       </>
     )
   },

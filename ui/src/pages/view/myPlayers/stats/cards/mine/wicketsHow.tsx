@@ -44,7 +44,7 @@ export const mineWicketsHow: StatsCardDef<MyStatsDto> = {
             ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, colour: STATS_TONES.sand }] : []),
           ]}
         />
-        <Note>Counts only dismissals credited to the bowler: bowled, caught, caught and bowled, LBW, stumped and hit wicket. Run-outs are not a bowler's wicket.</Note>
+        <Note>Bowler's wickets only; run-outs are not counted.</Note>
       </>
     )
   },

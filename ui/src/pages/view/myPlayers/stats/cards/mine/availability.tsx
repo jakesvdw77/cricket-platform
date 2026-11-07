@@ -28,7 +28,7 @@ export const mineAvailability: StatsCardDef<MyStatsDto> = {
           rows={[{ key: 'answered', label: 'Polls answered', value: a.pollsAnswered, target: a.pollsTotal, text: nOfM(a.pollsAnswered, a.pollsTotal) }]}
         />
         <Note>
-          Selected {plural(a.matchesSelected, 'time')}, played {a.matchesPlayed}. A reliable teammate is something parents and coaches like to see.
+          Selected {plural(a.matchesSelected, 'time')}, played {a.matchesPlayed}.
         </Note>
       </>
     )

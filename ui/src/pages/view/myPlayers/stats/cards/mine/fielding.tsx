@@ -38,7 +38,7 @@ export const mineFielding: StatsCardDef<MyStatsDto> = {
             { key: 'permatch', label: 'Per match', value: formatDecimal(p.fielding.dismissalsPerMatch, 1) },
           ]}
         />
-        <Note>Catches, stumpings and run-outs are recorded. Dropped catches and direct hits are not.</Note>
+        <Note>Dropped catches and direct hits are not recorded.</Note>
       </>
     )
   },

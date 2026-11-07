@@ -38,7 +38,7 @@ export const mineBands: StatsCardDef<MyStatsDto> = {
         }))}
       />
       <Note>
-        {plural(p.batting.fiftyPlus, 'fifty', 'fifties')}, {plural(p.batting.thirtyPlus, 'score', 'scores')} of 30 or more, {plural(p.batting.ducks, 'duck')}. Tap a bar to see those innings.
+        {plural(p.batting.fiftyPlus, 'fifty', 'fifties')}, {plural(p.batting.ducks, 'duck')}. Tap a bar for those innings.
       </Note>
     </>
   ),
