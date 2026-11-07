@@ -14,7 +14,7 @@ export const mineSumWickets: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['bowling', 'series', 'basis'],
   order: 65,
-  // Summary tile: a compact (13.5 rem) card, three to a row.
+  // Summary tile: a compact (15 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No wickets yet.',

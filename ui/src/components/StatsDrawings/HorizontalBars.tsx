@@ -4,6 +4,7 @@ import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
 import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
+import { fluid, STATS_TYPE } from '../StatsCards/statsCardStyle'
 import { barLengths } from './statsMath'
 
 export interface BarRow {
@@ -49,14 +50,15 @@ function barFill(row: Pick<BarRow, 'colour' | 'tone' | 'selected' | 'seriesIndex
 // link. The values are also written as text in the row so the drawing is not the only carrier.
 const rowSx = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(7rem, 42%) minmax(0, 1fr) auto',
+  // The label column is 42% on a card and 30% expanded (the scale variable runs 1 to 1.6).
+  gridTemplateColumns: 'minmax(7rem, calc(42% - 20% * (var(--stats-scale, 1) - 1))) minmax(0, 1fr) auto',
   alignItems: 'center',
-  columnGap: '8px',
-  minHeight: 'calc(22px * var(--stats-row-scale, 1))',
+  columnGap: fluid(8, 16),
+  minHeight: fluid(24, 40),
   minWidth: 0,
   color: BRAND.cream,
   textDecoration: 'none',
-  fontSize: 12,
+  fontSize: fluid(STATS_TYPE.label, STATS_TYPE.labelExpanded),
   lineHeight: 1.2,
 } as const
 
@@ -67,12 +69,12 @@ const denseRowSx = {
   gridTemplateRows: 'auto auto',
   alignItems: 'center',
   columnGap: '8px',
-  rowGap: '4px',
+  rowGap: fluid(3, 6),
   minWidth: 0,
   color: BRAND.cream,
   textDecoration: 'none',
-  fontSize: 11,
-  lineHeight: 1.2,
+  fontSize: fluid(STATS_TYPE.label, STATS_TYPE.labelExpanded),
+  lineHeight: 1.1,
 } as const
 
 // A label wraps to two lines before it is cut, and the full text is always the title.
@@ -82,14 +84,14 @@ const selectRowSx = {
   border: 0,
   m: 0,
   px: '4px',
-  py: '3px',
+  py: '1px',
   mx: '-4px',
   font: 'inherit',
-  fontSize: 11,
+  fontSize: fluid(STATS_TYPE.label, STATS_TYPE.labelExpanded),
   textAlign: 'left',
   bgcolor: 'transparent',
   cursor: 'pointer',
-  minHeight: 32,
+  minHeight: 30,
   alignContent: 'center',
   borderRadius: '6px',
   '&:hover': { bgcolor: alpha(BRAND.gold, 0.12) },
@@ -104,12 +106,12 @@ export function HorizontalBars({ rows, alt, max, dense = false, legend }: Horizo
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
   const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
-    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 320 : 'calc(520px * var(--stats-row-scale, 1))', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : '10px' } : {}) }}>
+    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 'none' : 'calc(520px + (var(--stats-scale, 1) - 1) * 10000px)', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : fluid(5, 14) } : { rowGap: fluid(0, 4) }) }}>
       {legend && (
-        <Box component="span" data-testid="bars-legend" sx={{ display: 'flex', gap: '12px', fontSize: 10, lineHeight: 1.2, color: alpha(BRAND.cream, 0.8), mb: '2px' }}>
+        <Box component="span" data-testid="bars-legend" sx={{ display: 'flex', gap: '12px', fontSize: fluid(11, 14), lineHeight: 1.2, color: alpha(BRAND.cream, 0.8), mb: '2px' }}>
           {legend.map((name, index) => (
             <Box key={name} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <Box aria-hidden component="span" sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: index === 0 ? STATS_COLOUR.compareFirst : STATS_COLOUR.compareSecond }} />
+              <Box aria-hidden component="span" sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: index === 0 ? STATS_COLOUR.compareFirst : STATS_COLOUR.compareSecond }} />
               {name}
             </Box>
           ))}
@@ -118,17 +120,17 @@ export function HorizontalBars({ rows, alt, max, dense = false, legend }: Horizo
       {rows.map((row, index) => {
         const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
         const bar = (
-          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 8 : 10, borderRadius: '5px', bgcolor: STATS_COLOUR.track, overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
-            {(lengths[index] > 0 || row.tone === 'compare' || row.colour) && <Box component="span" data-testid={lengths[index] > 0 ? undefined : 'bar-stub'} sx={{ display: 'block', height: '100%', borderRadius: '5px', ...(lengths[index] > 0 ? { width: `${Math.max(lengths[index], 3)}%` } : { width: 3 }), bgcolor: barFill(row) }} />}
+          <Box component="span" className="track" sx={{ display: 'block', height: fluid(10, 16), borderRadius: '8px', bgcolor: STATS_COLOUR.track, overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
+            {(lengths[index] > 0 || row.tone === 'compare' || row.colour) && <Box component="span" data-testid={lengths[index] > 0 ? undefined : 'bar-stub'} sx={{ display: 'block', height: '100%', borderRadius: '8px', ...(lengths[index] > 0 ? { width: `${Math.max(lengths[index], 3)}%` } : { width: 3 }), bgcolor: barFill(row) }} />}
           </Box>
         )
         const label = (
           <Box component="span" title={row.label} sx={{ display: 'grid', minWidth: 0, textAlign: dense ? 'left' : 'right' }}>
             <Box component="span" sx={dense ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : clampSx}>{row.label}</Box>
-            {row.tag && <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, color: alpha(BRAND.cream, 0.66) }}>{row.tag}</Box>}
+            {row.tag && <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: fluid(11, 14), color: alpha(BRAND.cream, 0.66) }}>{row.tag}</Box>}
           </Box>
         )
-        const value = <Box component="span" sx={{ fontSize: dense ? 11 : 12, fontWeight: 700, minWidth: dense ? undefined : '2.2em', textAlign: 'right', ...((row.tone === 'compare' || row.colour) && !row.selected ? { color: barFill(row) } : {}) }}>{row.valueLabel}</Box>
+        const value = <Box component="span" sx={{ fontSize: fluid(STATS_TYPE.value, STATS_TYPE.valueExpanded), fontWeight: 700, minWidth: dense ? undefined : '2.2em', textAlign: 'right', ...((row.tone === 'compare' || row.colour) && !row.selected ? { color: barFill(row) } : {}) }}>{row.valueLabel}</Box>
         const content = dense ? (
           <>
             {label}

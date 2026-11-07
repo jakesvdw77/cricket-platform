@@ -1,4 +1,4 @@
-import { STATS_TYPE, STATS_UI } from '../../../../../../components/StatsCards'
+import { STATS_TYPE, STATS_UI, fluid } from '../../../../../../components/StatsCards'
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { LineChart } from '../../../../../../components/StatsDrawings'
 import type { LineChartPoint } from '../../../../../../components/StatsDrawings'
@@ -51,9 +51,9 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
     const runsAt = (side: { innings: number; runs: number }) => (side.innings > 0 ? formatCount(side.runs) : DASH)
     return (
       <>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, minWidth: 0 }}>
           <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
-          <Box sx={{ width: 118, flexShrink: 0 }}>
+          <Box sx={{ width: fluid(124, 220), flexShrink: 0 }}>
             <Split
               columns={[
                 {
@@ -78,7 +78,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
             { key: 'avg', label: 'Avg', value: formatDecimal(p.batting.average) },
           ]}
         />
-        <Typography data-testid="stats-season-line" sx={{ fontSize: STATS_TYPE.body, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>
+        <Typography data-testid="stats-season-line" sx={{ fontSize: fluid(STATS_TYPE.body, STATS_TYPE.bodyExpanded), lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>
           SR {formatDecimal(p.batting.strikeRate)} · HS {best ? scoreText(best.runs, best.notOut) : DASH}
         </Typography>
         {p.form.batting.length > 0 && (

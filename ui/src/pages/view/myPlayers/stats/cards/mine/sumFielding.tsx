@@ -12,7 +12,7 @@ export const mineSumFielding: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['fielding', 'basis'],
   order: 70,
-  // Summary tile: a compact (13.5 rem) card, three to a row.
+  // Summary tile: a compact (15 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'notCaptured',
   emptyText: 'No matches played yet.',

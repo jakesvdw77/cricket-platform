@@ -3,7 +3,7 @@ import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } fro
 import { Link as RouterLink } from 'react-router-dom'
 import { STATS_TONES, blackAlpha } from '../../../../brandTokens'
 import { useFaceTabIndex } from '../../../../components/FlipCard'
-import { STATS_TYPE, STATS_UI } from '../../../../components/StatsCards'
+import { STATS_TYPE, STATS_UI, fluid, useExpanded } from '../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../components/StatsDrawings'
 import type { BarRow } from '../../../../components/StatsDrawings'
 
@@ -16,7 +16,7 @@ const tileSx = {
   alignContent: 'center',
   gap: '1px',
   minWidth: 0,
-  minHeight: 40,
+  minHeight: fluid(40, 64),
   px: '8px',
   py: '6px',
   borderRadius: '6px',
@@ -26,65 +26,85 @@ const tileSx = {
   textDecoration: 'none',
 } as const
 
-const denseTileSx = { minHeight: 0, py: '4px', gap: 0 } as const
+const denseTileSx = { minHeight: 0, py: '3px', gap: 0 } as const
 
-const captionSx = { fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, lineHeight: 1.25, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
+const captionSx = { fontFamily: STATS_UI.display, fontSize: fluid(STATS_TYPE.caption, STATS_TYPE.captionExpanded), lineHeight: 1.25, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
 
-// The headline figure: "412" over "runs in 7 innings".
-// `compact` is the Summary tile's larger figure (34 px), the normal one is 30 px.
+// The headline figure: "412" with its caption beside it on the baseline (top-left, never centred); the caption wraps under the number when
+// the room is short. `compact` is the Summary tile's larger figure (52 px, normal 44 px; both 84 px expanded).
 export function Big({ value, caption, compact = false }: { value: string; caption: string; compact?: boolean }) {
   return (
-    <Box sx={compact ? { my: 'auto' } : undefined}>
-      <Typography data-testid="stats-big" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: compact ? STATS_TYPE.bigCompact : STATS_TYPE.big, lineHeight: 1, color: STATS_UI.gold, m: 0 }}>{value}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '8px', minWidth: 0 }}>
+      <Typography data-testid="stats-big" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: fluid(compact ? STATS_TYPE.bigCompact : STATS_TYPE.big, STATS_TYPE.bigExpanded), lineHeight: 0.95, color: STATS_UI.gold, m: 0 }}>{value}</Typography>
       <Typography sx={captionSx}>{caption}</Typography>
     </Box>
   )
 }
 
-// The front of a Summary tile that has a breakdown: the big figure at the left and, to its right, up to three compact bars (the top items;
-// "+N more" under the figure when there are more). The back is then just the full table, so a chart is never shown twice.
+// The front of a Summary tile that has a breakdown: the big figure top-left and the top bars UNDER it at the full card width (up to three;
+// "+N more" beside the figure when there are more). Expanded and wide, the figure block (about 240 px) sits at the left and the bars fill
+// the right. The back is then just the full table, so a chart is never shown twice.
 export const FRONT_BARS = 3
 
 export function BigBars({ value, caption, rows, alt, total, hint, clear, legend, unit }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void }; legend?: [string, string]; unit?: [string, string] }) {
-  const more = total - Math.min(rows.length, FRONT_BARS)
+  const expanded = useExpanded()
+  const shown = expanded ? rows : rows.slice(0, FRONT_BARS)
+  const more = total - shown.length
   const tabIndex = useFaceTabIndex()
   // One item draws no bar (a full-width bar says nothing): its label and value are one quiet line, and there is nothing to choose to filter.
   const single = rows.length === 1 ? rows[0] : null
   const selectable = !single && rows.some((row) => row.onSelect)
-  return (
-    <Box sx={{ display: 'grid', gap: '2px', minWidth: 0, my: 'auto' }}>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
-        <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
-          <Big compact value={value} caption={caption} />
-          {more > 0 && <Typography sx={captionSx}>+{more} more</Typography>}
-        </Box>
-        {single && (
-          <Typography data-testid="stats-single-item" title={single.label} sx={{ fontSize: 11, lineHeight: 1.3, color: STATS_UI.muted, m: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflowWrap: 'anywhere' }}>
-            {single.label} · {single.valueLabel}{unit ? ` ${single.value === 1 ? unit[0] : unit[1]}` : ''}
-          </Typography>
-        )}
-        {rows.length > 1 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} legend={legend} />}
-      </Box>
-      {(clear || (selectable && hint)) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
-          {selectable && hint && <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: STATS_UI.muted, m: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</Typography>}
-          {clear && (
-            <Box
-              component="button"
-              type="button"
-              tabIndex={tabIndex}
-              data-flip-interactive
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation()
-                clear.onClear()
-              }}
-              sx={{ appearance: 'none', border: 0, bgcolor: 'transparent', p: 0, ml: 'auto', minHeight: 24, font: 'inherit', fontSize: 11, color: STATS_UI.gold, textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap', '&:hover': { color: STATS_UI.cream }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
-            >
-              {clear.label}
-            </Box>
-          )}
+  const asideLine = { fontSize: fluid(STATS_TYPE.hint, STATS_TYPE.footerExpanded), lineHeight: 1.2, color: STATS_UI.muted, m: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const
+  // The small notes beside the figure: "+N more", the filter hint, and the clear control.
+  const aside = (more > 0 || (selectable && hint) || clear) && (
+    <Box sx={{ display: 'grid', justifyItems: expanded ? 'start' : 'end', gap: '2px', minWidth: 0 }}>
+      {more > 0 && <Typography sx={{ ...captionSx, whiteSpace: 'nowrap' }}>+{more} more</Typography>}
+      {!clear && selectable && hint && <Typography sx={asideLine}>{hint}</Typography>}
+      {clear && (
+        <Box
+          component="button"
+          type="button"
+          tabIndex={tabIndex}
+          data-flip-interactive
+          onClick={(event: MouseEvent) => {
+            event.stopPropagation()
+            clear.onClear()
+          }}
+          sx={{ appearance: 'none', border: 0, bgcolor: 'transparent', p: 0, minHeight: 20, font: 'inherit', fontSize: fluid(12, 15), color: STATS_UI.gold, textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap', '&:hover': { color: STATS_UI.cream }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
+        >
+          {clear.label}
         </Box>
       )}
+    </Box>
+  )
+  const singleLine = single && (
+    <Typography data-testid="stats-single-item" title={single.label} sx={{ fontSize: fluid(STATS_TYPE.label, STATS_TYPE.labelExpanded), lineHeight: 1.3, color: STATS_UI.muted, m: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflowWrap: 'anywhere' }}>
+      {single.label} · {single.valueLabel}{unit ? ` ${single.value === 1 ? unit[0] : unit[1]}` : ''}
+    </Typography>
+  )
+  const bars = shown.length > 1 && <HorizontalBars dense alt={alt} rows={shown} legend={legend} />
+  if (expanded) {
+    return (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: '40px', rowGap: '16px', minWidth: 0 }}>
+        <Box sx={{ flex: '0 0 240px', display: 'grid', gap: '8px', minWidth: 0 }}>
+          <Big compact value={value} caption={caption} />
+          {aside}
+        </Box>
+        <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
+          {singleLine}
+          {bars}
+        </Box>
+      </Box>
+    )
+  }
+  return (
+    <Box sx={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
+        <Big compact value={value} caption={caption} />
+        {aside}
+      </Box>
+      {singleLine}
+      {bars}
     </Box>
   )
 }
@@ -109,8 +129,8 @@ export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; m
       {items.map((item) => {
         const content = (
           <>
-            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 17 : STATS_TYPE.tileValue, lineHeight: 1.1, color: item.swatch ?? STATS_UI.cream }}>{item.value}</Typography>
-            <Typography component="span" sx={dense ? { ...captionSx, fontSize: 9.5 } : captionSx}>{item.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: item.swatch, mr: '5px' }} />}{item.label}</Typography>
+            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: fluid(dense ? 18 : STATS_TYPE.tileValue, dense ? 26 : 30), lineHeight: 1.1, color: item.swatch ?? STATS_UI.cream }}>{item.value}</Typography>
+            <Typography component="span" sx={{ ...captionSx, fontSize: fluid(STATS_TYPE.tileLabel, 14), letterSpacing: '0.08em' }}>{item.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 9, height: 9, borderRadius: '2px', bgcolor: item.swatch, mr: '5px' }} />}{item.label}</Typography>
           </>
         )
         return item.href ? (
@@ -146,12 +166,12 @@ export interface SplitColumn {
 // Two or three short columns side by side (Home | Away), each a heading and a few label / value pairs on one line. Compact: about 14 px a line.
 export function Split({ columns }: { columns: SplitColumn[] }) {
   return (
-    <Box data-testid="stats-split" sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, columnGap: '14px', minWidth: 0 }}>
+    <Box data-testid="stats-split" sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, columnGap: fluid(14, 32), minWidth: 0 }}>
       {columns.map((column) => (
-        <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gap: '3px', alignContent: 'start', minWidth: 0 }}>
+        <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gap: fluid(3, 8), alignContent: 'start', minWidth: 0 }}>
           <Typography component="dt" sx={{ ...captionSx, pb: '2px', borderBottom: `1px solid ${STATS_UI.lineSoft}` }}>{column.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: column.swatch, mr: '5px' }} />}{column.title}</Typography>
           {column.rows.map((row) => (
-            <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: STATS_TYPE.body, lineHeight: 1.3 }}>
+            <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: fluid(STATS_TYPE.body, STATS_TYPE.bodyExpanded), lineHeight: 1.3 }}>
               <Typography component="dt" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0 }}>{row.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: row.swatch, mr: '5px' }} />}{row.label}</Typography>
               <Typography component="dd" sx={{ fontSize: 'inherit', lineHeight: 'inherit', fontWeight: 700, color: row.swatch ?? column.swatch ?? STATS_UI.cream, m: 0 }}>{row.value}</Typography>
             </Box>
@@ -163,7 +183,7 @@ export function Split({ columns }: { columns: SplitColumn[] }) {
 }
 
 export function Note({ children }: { children: ReactNode }) {
-  return <Typography sx={{ fontSize: STATS_TYPE.body, lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>{children}</Typography>
+  return <Typography sx={{ fontSize: fluid(STATS_TYPE.body, STATS_TYPE.bodyExpanded), lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>{children}</Typography>
 }
 
 // A small muted heading over a block ("Average of the last 5 innings").
@@ -191,7 +211,7 @@ export function Chips({ items, large = false, lead }: { items: ChipSpec[]; large
     <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
       {lead && <Typography component="span" sx={{ ...captionSx, mr: '4px' }}>{lead}</Typography>}
       {items.map((item) => {
-        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: large ? 26 : 22, px: large ? '10px' : '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: large ? 14 : STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
+        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: large ? fluid(26, 36) : fluid(22, 30), px: large ? '10px' : '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: large ? fluid(14, 18) : fluid(STATS_TYPE.chip, 16), fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
         return item.href ? (
           <Box key={item.key} component={RouterLink} to={item.href} tabIndex={tabIndex} aria-label={item.name ?? item.text} sx={{ ...sx, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
             {item.text}
@@ -214,8 +234,8 @@ export interface TableRowSpec {
   linkName?: string
 }
 
-const headCell = { color: STATS_UI.muted, borderColor: STATS_UI.lineSoft, px: '6px', py: '3px', fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' } as const
-const bodyCell = { color: STATS_UI.cream, borderColor: STATS_UI.lineSoft, px: '6px', py: '3px', fontSize: STATS_TYPE.table } as const
+const headCell = { color: STATS_UI.muted, borderColor: STATS_UI.lineSoft, px: fluid(6, 12), py: fluid(3, 10), fontFamily: STATS_UI.display, fontSize: fluid(STATS_TYPE.tileLabel, 14), fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' } as const
+const bodyCell = { color: STATS_UI.cream, borderColor: STATS_UI.lineSoft, px: fluid(6, 12), py: fluid(3, 10), fontSize: fluid(STATS_TYPE.table, STATS_TYPE.tableExpanded) } as const
 
 // A real table (column headings with scope="col"): the text alternative of a drawing, and the story on the back of a card. The first
 // column is the row's name; every other column is right aligned.

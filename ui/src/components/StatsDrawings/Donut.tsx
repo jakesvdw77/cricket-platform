@@ -3,6 +3,7 @@ import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
 import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
+import { fluid } from '../StatsCards/statsCardStyle'
 import { donutArcs } from './statsMath'
 
 export interface DonutSlice {
@@ -27,9 +28,9 @@ export interface DonutProps {
 
 // docs/specs/147: a donut of counts (how a batter gets out, how a bowler takes wickets), our own SVG. A slice is a link only when it has a
 // drill; a zero slice is not drawn. The legend below is real text so colour is never the only cue.
-export function Donut({ slices, alt, centre, centreCaption, size = 96 }: DonutProps) {
+export function Donut({ slices, alt, centre, centreCaption, size = 120 }: DonutProps) {
   const tabIndex = useFaceTabIndex()
-  // Never wider than 120 px; text is sized in viewBox units that equal real pixels at this size.
+  // The hole text is sized in viewBox units; the drawing is `size` px on a card and up to 280 px expanded (the scale variable).
   const px = Math.min(size, 120)
   const unit = 120 / px
   const c = 60
@@ -38,8 +39,8 @@ export function Donut({ slices, alt, centre, centreCaption, size = 96 }: DonutPr
   const rank = slices.map((slice, index) => slices.filter((other, otherIndex) => other.value > slice.value || (other.value === slice.value && otherIndex < index)).length)
   const shown = slices.map((slice, index) => ({ slice, arc: arcs[index], colour: slice.colour ?? STATS_COLOUR.ramp[rank[index] % STATS_COLOUR.ramp.length] }))
   return (
-    <Box data-testid="donut" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minWidth: 0 }}>
-      <Box component="svg" viewBox="0 0 120 120" role="group" aria-label={alt} sx={{ width: px, height: px, flexShrink: 0, '& a': { outline: 'none' }, '& a:focus-visible path': { stroke: BRAND.cream, strokeWidth: 2 } }}>
+    <Box data-testid="donut" sx={{ display: 'flex', alignItems: 'center', columnGap: fluid(12, 32), rowGap: 1, flexWrap: 'wrap', minWidth: 0 }}>
+      <Box component="svg" viewBox="0 0 120 120" role="group" aria-label={alt} sx={{ width: `calc(${px}px + ${280 - px}px * (var(--stats-scale, 1) - 1) / 0.6)`, height: `calc(${px}px + ${280 - px}px * (var(--stats-scale, 1) - 1) / 0.6)`, flexShrink: 0, '& a': { outline: 'none' }, '& a:focus-visible path': { stroke: BRAND.cream, strokeWidth: 2 } }}>
         <title>{alt}</title>
         {shown.length === 0 || shown.every((s) => s.arc === null) ? <circle cx={c} cy={c} r={46} fill="none" stroke={alpha(BRAND.cream, 0.2)} strokeWidth={20} /> : null}
         {shown.map(({ slice, arc, colour }) =>
@@ -52,20 +53,20 @@ export function Donut({ slices, alt, centre, centreCaption, size = 96 }: DonutPr
           ),
         )}
         {centre && (
-          <text x={c} y={centreCaption ? c + 2 * unit : c + 6 * unit} textAnchor="middle" fontSize={17 * unit} fontWeight="700" fill={BRAND.cream} aria-hidden>
+          <text x={c} y={centreCaption ? c + unit : c + 7 * unit} textAnchor="middle" fontSize={20 * unit} fontWeight="700" fill={BRAND.cream} aria-hidden>
             {centre}
           </text>
         )}
         {centre && centreCaption && (
-          <text x={c} y={c + 12 * unit} textAnchor="middle" fontSize={9 * unit} fill={alpha(BRAND.cream, 0.66)} aria-hidden>
+          <text x={c} y={c + 15 * unit} textAnchor="middle" fontSize={11 * unit} fill={alpha(BRAND.cream, 0.66)} aria-hidden>
             {centreCaption}
           </text>
         )}
       </Box>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: '2px', fontSize: 12, minWidth: 0 }}>
+      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: fluid(2, 8), fontSize: fluid(13, 16), minWidth: 0 }}>
         {shown.filter(({ arc }) => arc !== null).map(({ slice, colour }) => (
           <Box component="li" key={slice.key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box aria-hidden component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: colour, flexShrink: 0 }} />
+            <Box aria-hidden component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: colour, flexShrink: 0 }} />
             <span>{slice.label}</span>
             <Box component="span" sx={{ ml: 'auto', pl: 1.5, fontWeight: 700 }}>{slice.value}</Box>
           </Box>

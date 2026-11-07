@@ -16,7 +16,7 @@ export const mineSumOvers: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['summary', 'series', 'basis'],
   order: 60,
-  // Summary tile: a compact (13.5 rem) card, three to a row.
+  // Summary tile: a compact (15 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No bowling yet.',

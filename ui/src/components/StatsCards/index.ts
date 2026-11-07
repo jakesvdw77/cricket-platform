@@ -4,7 +4,7 @@ export { StatsCardGrid, GROUP_PARAM } from './StatsCardGrid'
 export type { StatsCardGridProps, GroupPickerProps } from './StatsCardGrid'
 export { sortCards, basedOnText, layoutRows } from './statsCardOrder'
 export type { CardRow, CardRowKind } from './statsCardOrder'
-export { STATS_UI, STATS_TYPE, cardScrollSx, visuallyHiddenSx, CARD_HEIGHT_REM, CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_VAR } from './statsCardStyle'
+export { STATS_UI, STATS_TYPE, STATS_SCALE_VAR, EXPANDED_SCALE, fluid, cardScrollSx, visuallyHiddenSx, CARD_HEIGHT_REM, CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_VAR } from './statsCardStyle'
 export type {
   BoardGroup,
   CardCtx,
@@ -24,4 +24,4 @@ export type {
   StatsPage,
   TeamGroup,
 } from './statsCardTypes'
-export { CardHeaderControls, useCardHeaderSlot } from './cardHeaderSlot'
+export { CardHeaderControls, useCardHeaderSlot, useExpanded } from './cardHeaderSlot'

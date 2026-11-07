@@ -15,14 +15,14 @@ import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroup
 // A page with a single group shows no pill row.
 // Rows: layoutRows turns the group's cards into rows of three cards, or a tall card beside two stacked ones, with a short last row of
 // equal halves or one capped card, or rows of up to three compact tiles (the Summary, 3 + 3 + 2). Each row is its own CSS grid with FIXED row
-// heights in rem (the variable --stats-card-h: 17rem normal, 13.5rem compact; a tall card spans two rows and the gap), so every card in
+// heights in rem (the variable --stats-card-h: 17rem normal, 15rem compact; a tall card spans two rows and the gap), so every card in
 // a row has the same height and neither face can make it taller (the front never scrolls, the back scrolls inside the card). Below 600 px of content a card is
 // at least that tall and may grow to fit its face. The rows lay out by the grid's own width (a container query, not the screen's,
 // because the Hub's scope panel narrows the content): 3 columns from 880 px of content, pairs from 600 px, compact tiles 3 across from
 // 880 px and 2 across from 600 px, otherwise one column.
 // Expand: on desktop (md up) a card has an expand button; the card is then drawn a second time in an overlay that covers the grid's
 // own area (not the whole app), with a Close button. The cards underneath are inert and hidden. Escape closes; focus moves into the overlay's
-// Close button and returns to the expand button. The overlay card has its own flip state and gets `expanded` on its faces.
+// Close button and returns to the expand button. The overlay does not flip: it shows the card's Front and Back side by side (or the card's own `Expanded` face) at the expanded scale.
 // The grid imports no card: the page hands it the cards (from the registry's cardsFor).
 export const GROUP_PARAM = 'group'
 
@@ -219,6 +219,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
             }
           : undefined
       }
+      expandedBody={asExpanded && def.Expanded ? <def.Expanded payload={payload} ctx={ctx} state={state} expanded /> : undefined}
       front={<def.Front payload={payload} ctx={ctx} state={state} expanded={asExpanded} />}
       back={<def.Back payload={payload} ctx={ctx} state={state} expanded={asExpanded} />}
     />
@@ -254,7 +255,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
               role="region"
               aria-label={`${expandedEntry.def.title(ctx)}, expanded`}
               data-testid={`${testId}-expanded`}
-              sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: fitHeight ?? '100%', zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden' }}
+              sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: fitHeight ?? '100%', zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden', '--stats-exp-h': fitHeight ? `${fitHeight}px` : '560px' }}
             >
               {card(expandedEntry, true)}
             </Box>

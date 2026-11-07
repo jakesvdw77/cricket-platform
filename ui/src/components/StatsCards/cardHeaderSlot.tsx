@@ -8,6 +8,10 @@ import type { ReactNode } from 'react'
 export const CardHeaderSlotContext = createContext<HTMLElement | null>(null)
 export const useCardHeaderSlot = (): HTMLElement | null => useContext(CardHeaderSlotContext)
 
+// True inside the expanded overlay: the shared parts read it to lay out wide (number beside bars) where the scale variable alone is not enough.
+export const ExpandedContext = createContext(false)
+export const useExpanded = (): boolean => useContext(ExpandedContext)
+
 export function CardHeaderControls({ children }: { children: ReactNode }) {
   const slot = useCardHeaderSlot()
   return slot ? createPortal(children, slot) : <>{children}</>

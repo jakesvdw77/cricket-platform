@@ -7,9 +7,9 @@ import CloseIcon from '@mui/icons-material/Close'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
 import { STATS_TONES } from '../../brandTokens'
 import { FlipCard, useFaceActive } from '../FlipCard'
-import { CardHeaderSlotContext } from './cardHeaderSlot'
+import { CardHeaderSlotContext, ExpandedContext } from './cardHeaderSlot'
 import { basedOnText } from './statsCardOrder'
-import { STATS_TYPE, STATS_UI, cardScrollSx, visuallyHiddenSx } from './statsCardStyle'
+import { EXPANDED_SCALE, STATS_SCALE_VAR, STATS_TYPE, STATS_UI, cardScrollSx, fluid, visuallyHiddenSx } from './statsCardStyle'
 import type { CardState, DataTag, StatsBasis } from './statsCardTypes'
 
 // docs/specs/147 section 3: what every stats card has in common, so a card file draws only its two faces. The title row (the card's h3),
@@ -94,7 +94,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         minWidth: 0,
         minHeight: 0,
         height: '100%',
-        p: expanded ? '24px 28px 16px' : '10px 12px 8px',
+        p: expanded ? '24px 28px 16px' : '8px 12px 6px',
         borderRadius: expanded ? '22px' : '14px',
         border: `1px solid ${lacking ? STATS_UI.lackingLine : STATS_UI.lineSoft}`,
         bgcolor: STATS_UI.faceGround,
@@ -102,18 +102,19 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         color: STATS_UI.cream,
         boxSizing: 'border-box',
         overflow: expanded ? 'visible' : 'hidden',
-        // Drawings keep fixed pixel type; the expanded card only lets bars and charts be a little taller.
-        '--stats-row-scale': expanded ? '1.25' : '1',
-        '--stats-chart-scale': expanded ? '2' : '1',
+        // The one scale variable (Amendment 2 item 20): every size in the shared parts and drawings follows it (fluid()). A normal card
+        // leaves it at 1; an expanded one sets EXPANDED_SCALE and a chart height of about 55% of the overlay (--stats-exp-h, set by the grid).
+        [STATS_SCALE_VAR]: expanded ? EXPANDED_SCALE : 1,
+        ...(expanded ? { '--stats-chart-h': 'clamp(260px, calc(var(--stats-exp-h, 560px) * 0.55), 460px)' } : {}),
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', pr: reserve ? (expanded ? 5 : 4) : 0 }}>
-        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: expanded ? STATS_TYPE.titleExpanded : STATS_TYPE.title, lineHeight: 1.2, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0, flex: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', pr: reserve ? (expanded ? 6 : 4) : 0 }}>
+        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: fluid(STATS_TYPE.title, STATS_TYPE.titleExpanded), lineHeight: 1.2, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0, flex: 1 }}>
           {title}
         </Typography>
         {heading && !empty && <Box ref={setSlot} data-testid="stats-header-actions" sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative', zIndex: 3, '&:empty': { display: 'none' } }} />}
       </Box>
-      <Typography data-testid="stats-scope" sx={{ fontSize: expanded ? STATS_TYPE.scopeExpanded : STATS_TYPE.scope, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{scopeLabel}</Typography>
+      <Typography data-testid="stats-scope" sx={{ fontSize: fluid(STATS_TYPE.scope, STATS_TYPE.scopeExpanded), lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{scopeLabel}</Typography>
       <Box
         ref={regionRef}
         data-flip-interactive={scrolls ? '' : undefined}
@@ -140,14 +141,16 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
           '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
         }}
       >
-        <CardHeaderSlotContext.Provider value={heading ? slot : null}>{children}</CardHeaderSlotContext.Provider>
+        <ExpandedContext.Provider value={expanded}>
+          <CardHeaderSlotContext.Provider value={heading ? slot : null}>{children}</CardHeaderSlotContext.Provider>
+        </ExpandedContext.Provider>
       </Box>
       {/* The front carries no note line (the footer cue says it and holds the sentence as its tooltip); the back and an expanded card print the sentence. */}
       {note && (!heading || expanded) && (
-        <Typography data-testid="stats-partial-note" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>
+        <Typography data-testid="stats-partial-note" sx={{ fontSize: fluid(STATS_TYPE.footer, STATS_TYPE.footerExpanded), lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 14 }}>
-        <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: STATS_TYPE.footer, lineHeight: 1.25 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 16 }}>
+        <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: fluid(STATS_TYPE.footer, STATS_TYPE.footerExpanded), lineHeight: 1.25 }}>
           <Typography data-testid="stats-basis" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0, flexShrink: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
           {lacking && !empty && (
             <Typography data-testid="stats-data-cue" component="span" title={note} sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.partly, m: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -156,7 +159,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
           )}
         </Box>
         {hint && (
-          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: STATS_TYPE.hint, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.muted }}>
+          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: fluid(STATS_TYPE.hint, STATS_TYPE.footerExpanded), letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.muted }}>
             {hint}
           </Typography>
         )}
@@ -201,10 +204,12 @@ export interface StatsCardShellProps {
   // True for the instance drawn in the grid's overlay: fills its box, shows Close ("Close <title>") and takes focus.
   expanded?: boolean
   onClose?: () => void
+  // Expanded only: what the overlay shows instead of Front and Back side by side (the card's own `Expanded` face).
+  expandedBody?: ReactNode
   testId?: string
 }
 
-export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeLabel, basis, partialNote, summary, front, back, emptyText = 'Not enough data yet.', missingText = 'The scorecard does not record this yet.', scopeKey, onExpand, expanded = false, onClose, testId = 'stats-card' }: StatsCardShellProps) {
+export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeLabel, basis, partialNote, summary, front, back, emptyText = 'Not enough data yet.', missingText = 'The scorecard does not record this yet.', scopeKey, onExpand, expanded = false, onClose, expandedBody, testId = 'stats-card' }: StatsCardShellProps) {
   const summaryId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -219,7 +224,7 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
     return (
       <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} aria-label={title} sx={articleSx}>
         <Face title={title} scopeLabel={scopeLabel} heading lacking empty={state === 'empty'} expanded={false} reserve={false}>
-          <Typography data-testid="stats-state-text" sx={{ fontSize: 13, m: 0 }}>{text}</Typography>
+          <Typography data-testid="stats-state-text" sx={{ fontSize: STATS_TYPE.body, m: 0 }}>{text}</Typography>
         </Face>
       </Box>
     )
@@ -228,15 +233,37 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
   const lacking = state === 'partial'
   const note = lacking ? partialNote : undefined
   const reserve = expanded || Boolean(onExpand)
+  if (expanded) {
+    // The combined detail view: no flip. The card's own Expanded face, or its Front (left, about 42%) and Back (right) side by side from
+    // about 900 px of content, stacked below that; both at the expanded scale, top-aligned.
+    return (
+      <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} data-expanded="true" sx={articleSx}>
+        <Typography id={summaryId} sx={visuallyHiddenSx}>{summary}</Typography>
+        <Face title={title} scopeLabel={scopeLabel} heading basis={basis} note={note} lacking={lacking} expanded reserve={reserve}>
+          {expandedBody ?? (
+            <Box data-testid="stats-expanded-body" sx={{ containerType: 'inline-size', minWidth: 0 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 3, alignItems: 'start', minWidth: 0, '@container (min-width: 900px)': { gridTemplateColumns: 'minmax(0, 42fr) minmax(0, 58fr)', columnGap: 5 } }}>
+                <Box data-testid="stats-expanded-front" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>{front}</Box>
+                <Box data-testid="stats-expanded-back" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>{back}</Box>
+              </Box>
+            </Box>
+          )}
+        </Face>
+        <IconButton ref={closeRef} aria-label={`Close ${title}`} data-testid={`${testId}-close`} onClick={onClose} sx={{ ...cornerButtonSx, top: 16, right: 18 }}>
+          <CloseIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Box>
+    )
+  }
   return (
-    <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} data-expanded={expanded ? 'true' : 'false'} sx={articleSx}>
+    <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} data-expanded="false" sx={articleSx}>
       <Typography id={summaryId} sx={visuallyHiddenSx}>{summary}</Typography>
       <FlipCard
         label={title}
         describedBy={summaryId}
         scopeKey={scopeKey}
         testId={`${testId}-flip-card`}
-        radius={expanded ? '22px' : '14px'}
+        radius="14px"
         front={
           <Face title={title} scopeLabel={scopeLabel} heading hint="Flip" basis={basis} note={note} lacking={lacking} expanded={expanded} reserve={reserve}>
             {front}
@@ -248,16 +275,10 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
           </Face>
         }
       />
-      {expanded ? (
-        <IconButton ref={closeRef} aria-label={`Close ${title}`} data-testid={`${testId}-close`} onClick={onClose} sx={cornerButtonSx}>
-          <CloseIcon sx={{ fontSize: 18 }} />
+      {onExpand && (
+        <IconButton aria-label={`Expand ${title}`} data-testid={`${testId}-expand`} onClick={(event) => onExpand(event.currentTarget)} sx={cornerButtonSx}>
+          <OpenInFullIcon sx={{ fontSize: 16 }} />
         </IconButton>
-      ) : (
-        onExpand && (
-          <IconButton aria-label={`Expand ${title}`} data-testid={`${testId}-expand`} onClick={(event) => onExpand(event.currentTarget)} sx={cornerButtonSx}>
-            <OpenInFullIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        )
       )}
     </Box>
   )

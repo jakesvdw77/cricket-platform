@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react'
 import { Box, ToggleButton, Typography } from '@mui/material'
 import { CompactToggleGroup } from '../../../../../../components/CompactToggleGroup'
 import { useFaceTabIndex } from '../../../../../../components/FlipCard'
-import { CardHeaderControls, STATS_UI } from '../../../../../../components/StatsCards'
+import { CardHeaderControls, STATS_TYPE, STATS_UI, fluid, useExpanded } from '../../../../../../components/StatsCards'
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
@@ -13,25 +13,26 @@ import { formatDecimal } from '../../statsFormat'
 // docs/specs/147 section 5, mine.seasons: runs in each season (the Season filter is ignored for this block; the other filters apply).
 // Front: a Runs | Wickets switch in the card header (CardHeaderControls; local state, default Runs) over the chosen measure per season. Back: the seasons as a table. Source: bySeason.
 const SHOWN = 8
-// The front has room for four bars.
-const FRONT_SHOWN = 4
+// The front has room for three bars (a card; expanded shows every season).
+const FRONT_SHOWN = 3
 
 type Measure = 'runs' | 'wickets'
 
 function SeasonsFront({ payload: p, ctx }: { payload: MyStatsDto; ctx: { firstName: string } }) {
+  const expanded = useExpanded()
   const [measure, setMeasure] = useState<Measure>('runs')
   const tabIndex = useFaceTabIndex()
   const noBowling = p.bySeason.every((season) => season.wickets === 0)
   // A disabled Wickets option falls back to Runs.
   const active: Measure = noBowling ? 'runs' : measure
-  const seasons = p.bySeason.slice(-FRONT_SHOWN)
+  const seasons = expanded ? p.bySeason : p.bySeason.slice(-FRONT_SHOWN)
   const earlier = p.bySeason.length - seasons.length
   // The headline is a display sum of the server's per-season counts (the payload's overall totals follow the Season filter, which this card ignores).
   const total = p.bySeason.reduce((sum, season) => sum + season[active], 0)
   const rows = seasons.map((season) => ({ key: season.seasonId, label: season.label, value: season[active], valueLabel: String(season[active]) }))
   const single = rows.length === 1 ? rows[0] : null
   return (
-    <Box sx={{ display: 'grid', gap: '6px', minWidth: 0, my: 'auto' }}>
+    <Box sx={{ display: 'grid', gap: '4px', minWidth: 0 }}>
       <CardHeaderControls>
         <Box data-flip-interactive onClick={(event: MouseEvent) => event.stopPropagation()} sx={{ display: 'flex', minWidth: 0 }}>
           <CompactToggleGroup<Measure> tone="dark" value={active} onChange={setMeasure} ariaLabel="Measure by season">
@@ -40,10 +41,10 @@ function SeasonsFront({ payload: p, ctx }: { payload: MyStatsDto; ctx: { firstNa
           </CompactToggleGroup>
         </Box>
       </CardHeaderControls>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: expanded ? 'minmax(200px, 240px) minmax(0, 1fr)' : 'minmax(0, 1fr)', alignItems: 'start', columnGap: '40px', rowGap: '4px', minWidth: 0 }}>
         <Big value={String(total)} caption={active === 'runs' ? 'runs' : 'wickets'} />
         {single ? (
-          <Typography data-testid="stats-single-item" sx={{ fontSize: 11, lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>
+          <Typography data-testid="stats-single-item" sx={{ fontSize: fluid(STATS_TYPE.label, STATS_TYPE.labelExpanded), lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>
             {single.label} · {single.valueLabel}
           </Typography>
         ) : (
