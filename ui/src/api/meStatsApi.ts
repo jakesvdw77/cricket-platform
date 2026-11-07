@@ -576,6 +576,94 @@ export interface MyTeamExtrasSide {
   inningsCounted: number
 }
 
+// The additive blocks of docs/specs/147 Amendment 3 (the Team stats rebuild). A figure that was not recorded is null, never 0.
+export interface MyTeamDismissalType {
+  type: string
+  label: string
+  count: number
+  percent: number | null
+}
+
+export interface MyTeamDismissals {
+  notOut: number
+  wickets: number
+  types: MyTeamDismissalType[]
+  notRecorded: number
+  coverage: MyTeamCount
+}
+
+export interface MyTeamPositionGroup {
+  // OPENER or '3' to '11'.
+  key: string
+  label: string
+  innings: number
+  runs: number
+  sharePercent: number | null
+  notOuts: number
+  dismissals: number
+  average: number | null
+}
+
+export interface MyTeamBoundaries {
+  fours: number | null
+  sixes: number | null
+  boundaryRuns: number | null
+  boundaryPercent: number | null
+  ballsPerBoundary: number | null
+  inningsRecorded: number
+  inningsCounted: number
+}
+
+// venueKey is the area id, 'unknown' (Unknown venue) or 'other' (Other venues); home is null for those two.
+export interface MyTeamVenue {
+  venueKey: string
+  name: string
+  home: boolean | null
+  matches: number
+  won: number
+  lost: number
+  tied: number
+  // The four totals are sums over the usable innings: null when none was recorded.
+  runsScored: number | null
+  runsConceded: number | null
+  wicketsTaken: number | null
+  wicketsLost: number | null
+}
+
+export interface MyTeamWicketTypes {
+  total: number
+  types: MyTeamDismissalType[]
+  notItemised: number
+  coverage: MyTeamCount
+}
+
+export interface MyTeamFielder {
+  name: string
+  catches: number
+  stumpings: number
+  runOuts: number
+  total: number
+}
+
+export interface MyTeamFielding {
+  catches: number
+  stumpings: number
+  runOuts: number
+  dismissals: number
+  dismissalsPerMatch: number | null
+  byFielder: MyTeamFielder[]
+  others: number
+  coverage: MyTeamCount
+}
+
+export interface MyTeamInningsNumberSplit {
+  played: number
+  won: number
+  innings: number
+  runs: number | null
+  average: number | null
+}
+
 export interface MyTeamStatsDto {
   scope: MyTeamScope
   teamName: string
@@ -598,6 +686,13 @@ export interface MyTeamStatsDto {
   closeGames: { played: number; won: number; closeRuns: number; closeWickets: number; decided: number; withMargin: number }
   extrasCard: { gaveAway: MyTeamExtrasSide; received: MyTeamExtrasSide; partly: boolean }
   notCaptured: TeamStatsNotCapturedItem[]
+  dismissals: MyTeamDismissals
+  battingPositionGroups: MyTeamPositionGroup[]
+  boundaries: MyTeamBoundaries
+  venues: MyTeamVenue[]
+  wicketTypes: MyTeamWicketTypes
+  fielding: MyTeamFielding
+  byInningsNumber: { first: MyTeamInningsNumberSplit; chasing: MyTeamInningsNumberSplit }
 }
 
 // ----- The leaderboard payloads: mirror backend/.../dto/MyLeaderboardTableDto.java, MyLeaderboardStandingDto.java, MyLeaderboardAwardsDto.java

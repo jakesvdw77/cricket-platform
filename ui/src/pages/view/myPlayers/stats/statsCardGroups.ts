@@ -11,9 +11,10 @@ export const STATS_GROUPS: Record<StatsPage, StatsGroupDef[]> = {
     { id: 'teammate', label: 'Teammate' },
   ],
   team: [
-    { id: 'record', label: 'Record' },
-    { id: 'contribution', label: 'Contribution' },
-    { id: 'matchups', label: 'Matchups' },
+    { id: 'summary', label: 'Summary' },
+    { id: 'batting', label: 'Batting' },
+    { id: 'bowling', label: 'Bowling' },
+    { id: 'fielding', label: 'Fielding' },
     { id: 'squad', label: 'Squad' },
   ],
   boards: [{ id: 'standing', label: 'Standing' }],

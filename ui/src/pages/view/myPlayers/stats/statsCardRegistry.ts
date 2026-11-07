@@ -31,11 +31,34 @@ import { mineSumRuns } from './cards/mine/sumRuns'
 import { mineSumTeams } from './cards/mine/sumTeams'
 import { mineSumWickets } from './cards/mine/sumWickets'
 import { boardsStanding } from './cards/boards/standing'
-import { teamContribution } from './cards/team/contribution'
-import { teamExtras } from './cards/team/extras'
-import { teamFirstChasing } from './cards/team/firstChasing'
-import { teamSeason } from './cards/team/season'
+import { teamBattingCard } from './cards/team/battingCard'
+import { teamBattingFirstChasing } from './cards/team/battingFirstChasing'
+import { teamBattingVenues } from './cards/team/battingVenues'
+import { teamBoundaries } from './cards/team/boundaries'
+import { teamBowlingCard } from './cards/team/bowlingCard'
+import { teamBowlingVenues } from './cards/team/bowlingVenues'
+import { teamCatchesByFielder } from './cards/team/catchesByFielder'
+import { teamCloseGames } from './cards/team/closeGames'
+import { teamConcededByMatch } from './cards/team/concededByMatch'
+import { teamDismissals } from './cards/team/dismissals'
+import { teamExtrasGiven } from './cards/team/extrasGiven'
+import { teamFielding } from './cards/team/fielding'
+import { teamPositions } from './cards/team/positions'
+import { teamRunsFrom } from './cards/team/runsFrom'
 import { teamSquad } from './cards/team/squad'
+import { teamSumExtras } from './cards/team/sumExtras'
+import { teamSumHighest } from './cards/team/sumHighest'
+import { teamSumMatches } from './cards/team/sumMatches'
+import { teamSumNetRunRate } from './cards/team/sumNetRunRate'
+import { teamSumRuns } from './cards/team/sumRuns'
+import { teamSumRunsConceded } from './cards/team/sumRunsConceded'
+import { teamSumWicketsLost } from './cards/team/sumWicketsLost'
+import { teamSumWicketsTaken } from './cards/team/sumWicketsTaken'
+import { teamSumWinRate } from './cards/team/sumWinRate'
+import { teamTossHeadToHead } from './cards/team/tossHeadToHead'
+import { teamTotalsByMatch } from './cards/team/totalsByMatch'
+import { teamWicketTypes } from './cards/team/wicketTypes'
+import { teamWicketsFrom } from './cards/team/wicketsFrom'
 
 // docs/specs/147 section 3: THE list of cards. A card is one file under ./cards/<page>/ exporting its StatsCardDef; adding it is one import
 // and one line in the array of its page below, and nothing else: the pages, StatsCardGrid, StatsCardShell, FlipCard and the endpoint are
@@ -78,7 +101,36 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineHomeAway,
   mineSeasons,
 ]
-const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = [teamSeason, teamContribution, teamExtras, teamFirstChasing, teamSquad]
+const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = [
+  teamSumMatches,
+  teamSumWinRate,
+  teamSumNetRunRate,
+  teamSumRuns,
+  teamSumRunsConceded,
+  teamSumWicketsTaken,
+  teamSumWicketsLost,
+  teamSumHighest,
+  teamSumExtras,
+  teamBattingCard,
+  teamTotalsByMatch,
+  teamDismissals,
+  teamBattingFirstChasing,
+  teamRunsFrom,
+  teamPositions,
+  teamBoundaries,
+  teamBattingVenues,
+  teamBowlingCard,
+  teamConcededByMatch,
+  teamWicketTypes,
+  teamWicketsFrom,
+  teamExtrasGiven,
+  teamBowlingVenues,
+  teamFielding,
+  teamCatchesByFielder,
+  teamSquad,
+  teamCloseGames,
+  teamTossHeadToHead,
+]
 const BOARD_CARDS: StatsCardDef<MyStanding>[] = [boardsStanding]
 
 const REGISTRY: { [K in StatsPage]: StatsCardDef<StatsPayloads[K]>[] } = { mine: MINE_CARDS, team: TEAM_CARDS, boards: BOARD_CARDS }

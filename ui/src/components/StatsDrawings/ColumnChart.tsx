@@ -13,6 +13,8 @@ export interface ColumnChartColumn {
   // Beneath the column (a date) and a second small line beneath that ("Econ 4.50").
   label?: string
   sub?: string
+  // An explicit bar colour (a STATS_COLOUR token) that carries meaning, e.g. win green and loss coral; omitted, the neutral sand.
+  colour?: string
   // The Result page the column opens; omitted, it is plain.
   href?: string
   // The accessible name of the column when it is a link.
@@ -52,7 +54,7 @@ export function ColumnChart({ columns, alt }: ColumnChartProps) {
                   {zero ? (
                     <Box aria-hidden data-testid="column-zero" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: '-5px', width: 10, height: 10, boxSizing: 'border-box', borderRadius: '50%', border: `1.5px solid ${BRAND.cream}` }} />
                   ) : (
-                    <Box aria-hidden data-testid="column-bar" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: `calc(${-BAR / 2}px * var(--stats-scale, 1))`, width: `calc(${BAR}px * var(--stats-scale, 1))`, height: `${pct}%`, minHeight: 3, borderRadius: '3px 3px 0 0', bgcolor: STATS_COLOUR.bar }} />
+                    <Box aria-hidden data-testid="column-bar" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: `calc(${-BAR / 2}px * var(--stats-scale, 1))`, width: `calc(${BAR}px * var(--stats-scale, 1))`, height: `${pct}%`, minHeight: 3, borderRadius: '3px 3px 0 0', bgcolor: column.colour ?? STATS_COLOUR.bar }} />
                   )}
                   <Box aria-hidden component="span" sx={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: fluid(12, 14), fontWeight: 700, lineHeight: 1.1, bottom: zero ? 12 : `calc(${pct}% + 2px)` }}>
                     {column.valueLabel}

@@ -6,7 +6,7 @@ import type { FC } from 'react'
 
 export type StatsPage = 'mine' | 'team' | 'boards'
 export type MineGroup = 'summary' | 'batting' | 'bowling' | 'fielding' | 'teammate'
-export type TeamGroup = 'record' | 'contribution' | 'matchups' | 'squad'
+export type TeamGroup = 'summary' | 'batting' | 'bowling' | 'fielding' | 'squad'
 export type BoardGroup = 'standing'
 export type StatsGroupId = MineGroup | TeamGroup | BoardGroup
 

@@ -5,10 +5,11 @@ import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Cap, FaceTable, Note, Tiles } from '../../cardParts'
 import { DASH, dayText, formatCount, formatPercent } from '../../statsFormat'
 
-// docs/specs/147 Addendum, team.extras: the extras the team gave away and received. Front: gave away, received and the share of the runs
+// docs/specs/147 Addendum, team.extras-given: the extras the team gave away and received. Front: gave away, received and the share of the runs
 // conceded, with the breakdown of wides, no-balls, byes and leg byes as bars. Back: the breakdown as a table and the extras given away
 // match by match. PARTLY: summary-level results record no breakdown. Source: extrasCard, series.extrasConceded.
 const SHOWN_ROWS = 6
+// The front draws wides, no-balls, byes and leg byes (the four commonest); the back has every type.
 
 const COMPONENTS = [
   { key: 'wides', label: 'Wides' },
@@ -21,14 +22,14 @@ const COMPONENTS = [
 // Penalty runs are a rare extra: drawn only when some innings recorded them.
 const shown = (component: MyTeamExtrasComponent, key: string): boolean => key !== 'penaltyRuns' || (component.value ?? 0) > 0
 
-export const teamExtras: StatsCardDef<MyTeamStatsDto> = {
-  id: 'team.extras',
+export const teamExtrasGiven: StatsCardDef<MyTeamStatsDto> = {
+  id: 'team.extras-given',
   page: 'team',
-  group: 'contribution',
-  title: () => 'Extras',
+  group: 'bowling',
+  title: () => 'Extras Given',
   tag: 'PARTLY',
   needs: ['extrasCard', 'series', 'basis'],
-  order: 20,
+  order: 50,
   whenMissing: 'hide',
   emptyText: 'No extras recorded yet.',
   state: (p) => {
@@ -47,13 +48,13 @@ export const teamExtras: StatsCardDef<MyTeamStatsDto> = {
     return (
       <>
         <Tiles
+          dense
           items={[
             { key: 'gave', label: 'Gave away', swatch: STATS_COLOUR.compareFirst, value: formatCount(gave.total) },
             { key: 'got', label: 'Received', swatch: STATS_COLOUR.compareSecond, value: formatCount(p.extrasCard.received.total) },
             { key: 'share', label: 'Of runs conceded', value: formatPercent(gave.sharePercent, 0) },
           ]}
         />
-        <Cap>What was given away</Cap>
         <HorizontalBars
           rows={rows}
           alt={`Extras given away: ${rows.map((row) => `${row.label} ${row.valueLabel}`).join(', ')}. The back has the same in a table.`}
