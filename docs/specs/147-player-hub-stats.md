@@ -329,7 +329,8 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 9. **Expand on desktop.** Each card has an expand button (desktop only): the card takes the whole available area of the view with a visible Close; Escape closes; focus returns to the card.
 10. **Even rows.** Cards no longer differ in height per row: each group lays out as rows of **three equal-height cards**, or **one tall card beside two vertically stacked cards**, set per card in the registry (a `size` of `normal` or `tall`). No ragged rows.
 11. **No 'Not captured yet' panel in the UI.** The catalogue of figures the scorecard cannot yet provide is documented in `docs/specs/147-not-captured.md` instead (a doc, not a page element). `payload.notCaptured` stays in the API.
-12. **Order of work:** Player Stats is completed first; Team stats and Leaderboards changes follow. No tests until the owner says.
+13. **Order of work:** Player Stats is completed first; Team stats and Leaderboards changes follow. No tests until the owner says.
+12. **Who the bowler dismisses is its own card** (`mine.wickets-position`, Bowling group, order 60): batters dismissed by position (Openers, Middle Order, Tail) and the top three catchers on the front, full tables on the flip; `mine.wickets-how` keeps its donut with the table of dismissal types on its flip. Bowling stays rows of 3 + 3.
 
 ### Amendment 2, density pass (owner, 2026-11-07: the page was "basically unusable", the first row of cards needed scrolling even on a 27 inch screen)
 

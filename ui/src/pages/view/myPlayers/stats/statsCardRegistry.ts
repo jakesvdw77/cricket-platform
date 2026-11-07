@@ -16,6 +16,7 @@ import { mineMilestone } from './cards/mine/milestone'
 import { mineSeason } from './cards/mine/season'
 import { mineSeasons } from './cards/mine/seasons'
 import { mineWicketsHow } from './cards/mine/wicketsHow'
+import { mineWicketsPosition } from './cards/mine/wicketsPosition'
 import { mineBattingVenues } from './cards/mine/battingVenues'
 import { mineBowlingHomeAway } from './cards/mine/bowlingHomeAway'
 import { mineBowlingVenues } from './cards/mine/bowlingVenues'
@@ -68,6 +69,7 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineBowlingHomeAway,
   mineBowlingVenues,
   mineWicketsHow,
+  mineWicketsPosition,
   mineDiscipline,
   mineFielding,
   mineAvailability,
