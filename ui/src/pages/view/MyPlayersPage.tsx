@@ -7,7 +7,7 @@ import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { MyLinkRequests } from './MyLinkRequests'
 import { HubFooterButton, HubFrame } from './myPlayers/HubFrame'
 import { HUB, hubHeading } from './myPlayers/hubStyle'
-import { useClubHome } from './myPlayers/useClubHome'
+import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { creamAlpha, blackAlpha, GOLD_DISC_GRADIENT } from '../../brandTokens'
 
 // docs/specs/119 3C: /account is the picker, in the same dark console as the player hub. One tile per player (own record
@@ -53,7 +53,8 @@ export default function MyPlayersPage() {
   const [params] = useSearchParams()
   const players = useMyPlayers()
   const requests = useMyLinkRequests()
-  const clubHome = useClubHome()
+  // The footer's way out is Switch profile (the chooser); Back to club is the link in the page corner (AccountShell). Owner, 2026-11-06.
+  const canSwitchProfile = Boolean(useProfileSwitch())
   const invitations = useMyInvitations()
   const invitationCount = invitations.data?.length ?? 0
   const list = players.data ?? []
@@ -143,7 +144,7 @@ export default function MyPlayersPage() {
       glass={0.4}
       maxWidth={1320}
       testId="my-players-page"
-      footer={clubHome ? <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton> : undefined}
+      footer={canSwitchProfile ? <HubFooterButton onClick={() => navigate('/choose-profile')}>Switch profile</HubFooterButton> : undefined}
     >
       {invitationCount > 0 && (
         <ButtonBase

@@ -7,7 +7,6 @@ import { BrandMark } from '../../components/BrandMark'
 import { useClubHome } from './myPlayers/useClubHome'
 import { hubPath } from './myPlayers/hubNav'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
-import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 import { signOut } from '../../auth/signOut'
@@ -45,7 +44,6 @@ export function AccountShell({
   const pending = invitations + linkRequests
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null)
-  const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
   const withCount = (label: string, count: number) => (count > 0 ? `${label} (${count})` : label)
@@ -68,11 +66,10 @@ export function AccountShell({
       {!fill && <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {/* One link takes you to the chooser, where Club manager (back to the club) or Player Hub is picked; a manager with a single profile has no chooser, so it goes straight back to the club. */}
-          {(profileItems || backTo) && (
-            <ButtonBase onClick={() => navigate(profileItems ? '/choose-profile' : (backTo as string))} sx={quietLink}>
+          {backTo && (
+            <ButtonBase onClick={() => navigate(backTo)} sx={quietLink}>
               <ArrowBackIcon sx={{ fontSize: 18, mr: 0.75 }} />
-              {profileItems ? 'Switch profile' : 'Back to club'}
+              Back to club
             </ButtonBase>
           )}
         </Box>

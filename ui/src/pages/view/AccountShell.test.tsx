@@ -36,7 +36,7 @@ describe('AccountShell on a desktop', () => {
     expect(logout).toHaveBeenCalledOnce()
   })
 
-  it('offers Back to club to a manager with a single profile and not to anyone else', async () => {
+  it('offers Back to club to a manager and not to anyone else', async () => {
     const manager = renderShell(access({ clubAdminClubIds: ['c1'] }))
     await userEvent.click(await screen.findByRole('button', { name: 'Back to club' }))
     expect(await screen.findByTestId('location')).toHaveTextContent('/manage')
@@ -53,22 +53,10 @@ describe('AccountShell on a desktop', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Back to club' }))
     expect(await screen.findByTestId('location')).toHaveTextContent('/admin')
   })
-
-  it('shows Switch profile only with more than one profile card', async () => {
-    const several = renderShell(access(), [players, riverside])
-    // Switch profile is the one link at the left (it replaces Back to club) and opens the profile chooser page.
-    await userEvent.click(await screen.findByRole('button', { name: 'Switch profile' }))
-    expect(await screen.findByTestId('location')).toHaveTextContent('/choose-profile')
-    several.unmount()
-
-    renderShell(access(), [players])
-    await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
-    expect(screen.queryByRole('button', { name: 'Switch profile' })).not.toBeInTheDocument()
-  })
 })
 
 describe('AccountShell on a phone', () => {
-  it('keeps Switch profile as the link at the left and folds Sign out into the Account menu with initials', async () => {
+  it('keeps Back to club as the link at the left and folds Sign out into the Account menu with initials', async () => {
     setPhone(true)
     renderShell(access({ clubAdminClubIds: ['c1'] }), [players, riverside])
 
@@ -76,7 +64,7 @@ describe('AccountShell on a phone', () => {
     const trigger = screen.getByRole('button', { name: 'Account menu' })
     expect(trigger).toHaveTextContent('SS')
     await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
-    expect(await screen.findByRole('button', { name: 'Switch profile' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     await userEvent.click(trigger)
 
     expect(screen.queryByRole('menuitem', { name: 'Switch profile' })).not.toBeInTheDocument()
