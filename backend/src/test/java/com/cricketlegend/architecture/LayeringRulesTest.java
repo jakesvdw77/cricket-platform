@@ -43,7 +43,8 @@ class LayeringRulesTest {
 
     @Test
     void servicesMustBeInterfaceWithImplPattern() {
-        ArchRule rule = classes().that().resideInAPackage("..service.impl..")
+        // top-level classes only: a private record nested in an Impl class (a local grouping of its own data) is not a service
+        ArchRule rule = classes().that().resideInAPackage("..service.impl..").and().areTopLevelClasses()
                 .should().haveSimpleNameEndingWith("Impl")
                 .andShould().beAnnotatedWith(org.springframework.stereotype.Service.class)
                 .allowEmptyShould(true);

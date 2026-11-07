@@ -213,7 +213,7 @@ class LeaderboardServiceImplTest {
     void theAwardsViewAppliesTheSameCap() {
         inReach();
         PlayerStatsAggregateView row = mock(PlayerStatsAggregateView.class);
-        when(settingsService.awardBoards(clubId)).thenReturn(List.of());
+        // the cap is checked while loading, before the award boards are read (spec 147 shares the loading with the Hub)
         when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(Collections.nCopies(5_001, row));
 

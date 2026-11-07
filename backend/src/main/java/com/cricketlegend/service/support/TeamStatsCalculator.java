@@ -1164,7 +1164,10 @@ public final class TeamStatsCalculator {
     }
 
     private static Long plus(Long a, Long b) {
-        return a == null ? b : b == null ? a : a + b;
+        if (a == null) {
+            return b;
+        }
+        return b == null ? a : Long.valueOf(a + b);
     }
 
     /** The team at each playing area: most matches first then name, twelve at most and the rest as "Other venues". */
