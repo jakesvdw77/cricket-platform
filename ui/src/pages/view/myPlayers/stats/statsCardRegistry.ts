@@ -16,6 +16,11 @@ import { mineMilestone } from './cards/mine/milestone'
 import { mineSeason } from './cards/mine/season'
 import { mineSeasons } from './cards/mine/seasons'
 import { mineWicketsHow } from './cards/mine/wicketsHow'
+import { teamContribution } from './cards/team/contribution'
+import { teamExtras } from './cards/team/extras'
+import { teamFirstChasing } from './cards/team/firstChasing'
+import { teamSeason } from './cards/team/season'
+import { teamSquad } from './cards/team/squad'
 
 // docs/specs/147 section 3: THE list of cards. A card is one file under ./cards/<page>/ exporting its StatsCardDef; adding it is one import
 // and one line in the array of its page below, and nothing else: the pages, StatsCardGrid, StatsCardShell, FlipCard and the endpoint are
@@ -44,7 +49,7 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineHomeAway,
   mineSeasons,
 ]
-const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = []
+const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = [teamSeason, teamContribution, teamExtras, teamFirstChasing, teamSquad]
 const BOARD_CARDS: StatsCardDef<MyStanding>[] = []
 
 const REGISTRY: { [K in StatsPage]: StatsCardDef<StatsPayloads[K]>[] } = { mine: MINE_CARDS, team: TEAM_CARDS, boards: BOARD_CARDS }

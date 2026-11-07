@@ -7,6 +7,7 @@ import { resultPath } from '../resultsFormat'
 // scope live in the address, so the footer Back (hubBack) returns to the same page and scope. No React.
 
 export const STATS_ORIGIN = 'stats'
+export const TEAM_STATS_ORIGIN = 'team-stats'
 
 // The scope as a query string without the "?". Season is written even when it is All (as `all`), because an absent season would mean the
 // current season on the page the link returns to.
@@ -23,6 +24,11 @@ export const myStatsPath = (playerKey: string, scope?: string): string => `${hub
 
 // A match page opened from My stats: Back says "Back to My Stats" and restores the scope.
 export const statsResultPath = (playerKey: string, matchId: string, scope: string): string => resultPath(playerKey, matchId, `${scope}&origin=${STATS_ORIGIN}`)
+
+export const teamStatsPath = (playerKey: string, scope?: string): string => `${hubPath(playerKey, 'stats', 'teams')}${scope ? `?${scope}` : ''}`
+
+// A match page opened from Team stats: Back says "Back to Team Stats" and restores the scope.
+export const teamStatsResultPath = (playerKey: string, matchId: string, scope: string): string => resultPath(playerKey, matchId, `${scope}&origin=${TEAM_STATS_ORIGIN}`)
 
 // The drill sub-view for a tile, band or slice (stats/mine/innings): the server's kind and filter tokens plus the scope.
 export function statsDrillPath(playerKey: string, target: DrillTarget, scope: string): string {

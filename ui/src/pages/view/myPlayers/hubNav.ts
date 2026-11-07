@@ -60,10 +60,10 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'stats',
     label: 'Stats',
     children: [
-      // docs/specs/147: live now (flip cards); the other two stay Soon until their slices land.
+      // docs/specs/147: My stats and Team stats are live (flip cards); Leaderboards stays Soon until its slice lands.
       { id: 'stats.mine', label: 'My stats' },
       { id: 'stats.boards', label: 'Leaderboards', soon: true, soonCopy: 'Club leaderboards, shown only where the club switches them on.' },
-      { id: 'stats.teams', label: 'Team stats', soon: true, soonCopy: "How the player's teams are doing this season." },
+      { id: 'stats.teams', label: 'Team stats' },
     ],
   },
   {
@@ -240,7 +240,7 @@ export interface HubBackState {
   // docs/specs/145: the Results scope (season, team, league) as a query string without the "?", carried by a result page so Back restores it.
   // docs/specs/147: the same for a My stats page's match drill.
   scope?: string
-  // docs/specs/147: where a result page was opened from (`stats`: a My stats card, dot or drill row); its Back returns to My Stats.
+  // docs/specs/147: where a result page was opened from (`stats`: a My stats card, dot or drill row; `team-stats`: a Team stats card); its Back returns there.
   origin?: string
 }
 
@@ -267,6 +267,10 @@ export function hubBack(state: HubBackState): HubBackAction | null {
   // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to My Stats with the same scope.
   if ((route.section.id === 'results' && item && origin === 'stats') || (route.section.id === 'stats' && item === 'mine' && view === 'innings')) {
     return { label: 'Back to My Stats', target: `${hubPath(playerKey, 'stats', 'mine')}${scope ? `?${scope}` : ''}` }
+  }
+  // docs/specs/147: a result page opened from Team stats goes back to Team Stats with the same scope.
+  if (route.section.id === 'results' && item && origin === 'team-stats') {
+    return { label: 'Back to Team Stats', target: `${hubPath(playerKey, 'stats', 'teams')}${scope ? `?${scope}` : ''}` }
   }
   // docs/specs/145: a Hub result page (results/:matchId) goes back to the Results list with the same Season, Team and League.
   if (route.section.id === 'results' && item) {

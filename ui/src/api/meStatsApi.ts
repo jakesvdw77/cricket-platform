@@ -5,7 +5,8 @@ import type { MyResultOutcome, MyResultScope } from './meResultsApi'
 import type { BattingStats, BowlingStats, FieldingStats, NotCapturedItem, PlayerAwardCounts, PlayerRecord, PlayerStats } from './playerStatsApi'
 import type { DashboardBattingSummary, DashboardEconomySummary, DashboardWicketTypes, DashboardWindow } from './playerDashboardApi'
 import type { LeaderboardGroup, LeaderboardPageInfo, LeaderboardTable, LeaderboardTableRow } from './leaderboardApi'
-import type { TeamStatsPageData } from './teamStatsApi'
+import type { TeamNetRunRateStatus, TeamStatsNotCapturedItem, TeamStatsPageData } from './teamStatsApi'
+import type { TeamDashboardDotBallsSummary, TeamDashboardExtrasSummary, TeamDashboardResultsSummary } from './teamDashboardApi'
 
 // docs/specs/147 (Player Hub stats): the held player's own statistics, team statistics and leaderboards as flip cards.
 // Backend: GET /api/v1/me/players/{playerKey}/stats[/innings], /team-stats and /leaderboards/{group|standing|awards|filters}, authorised by
@@ -14,7 +15,7 @@ import type { TeamStatsPageData } from './teamStatsApi'
 // The client computes no figure: every number below is the server's, formatted by pages/view/myPlayers/stats/statsFormat.ts.
 
 // ===== PAYLOAD TYPES: MyStatsDto and the drill page mirror backend/.../dto/MyStatsDto.java and MyStatsInningsPageDto.java. ======
-// ===== MyTeamStatsDto and the leaderboard types are still the spec's description until slices 3 and 4. Change only this block. =======
+// ===== MyTeamStatsDto mirrors MyTeamStatsDto.java; the leaderboard types are still the spec's description until slice 4. Change only this block. =======
 
 export type MyStatsAgeBand = 'ADULT' | 'UNDER_13' | 'AGE_13_17' | 'UNKNOWN'
 export type MyStatsDrillKind = 'BATTING' | 'BOWLING' | 'FIELDING' | 'MATCHES'
@@ -317,26 +318,203 @@ export interface MyStatsInningsPage {
   rows: MyStatsInningsRow[]
 }
 
-export interface MyTeamStatsDto extends TeamStatsPageData {
-  contribution: {
-    runs: MyTeamContributionRow[]
-    wickets: MyTeamContributionRow[]
-  }
-  battingFirst: { played: number; won: number }
-  chasing: { played: number; won: number }
-  tossWon: { won: number; known: number } | null
-  headToHead: { opponent: string; results: { matchId: string; date: string; result: string }[] }[]
-  squad: { playersUsed: number; averageAvailable: number | null }
-  closeGames: { played: number; won: number; closeRuns: number; closeWickets: number }
-  extrasByMatch: { matchId: string; date: string; opponent: string | null; conceded: number | null; received: number | null }[]
+// ----- MyTeamStatsDto: mirrors backend/.../dto/MyTeamStatsDto.java field for field (slice 3). The record, batting, chasing, bowling,
+// extras and net run rate blocks are the manager Team stats page's own shapes (TeamStatsPageData). A gap is null, never 0.
+export type MyTeamResultCode = 'WON' | 'LOST' | 'TIED' | 'DRAWN' | 'NO_RESULT'
+
+export interface MyTeamScope {
+  seasonId: string | null
+  leagueId: string | null
+  teamId: string | null
+  competition: 'LEAGUE' | 'FRIENDLY' | null
 }
 
-export interface MyTeamContributionRow {
-  name: string
+export interface MyTeamCount {
+  recorded: number
+  counted: number
+}
+
+export interface MyTeamCoverage {
+  battingOrder: MyTeamCount
+  toss: MyTeamCount
+  availability: MyTeamCount
+  runCards: MyTeamCount
+  wicketCards: MyTeamCount
+  closeMargins: MyTeamCount
+}
+
+export interface MyTeamBasis {
+  // M in "Based on N of M results".
+  resultsCounted: number
+  internalResults: number
+  resultsNoBallBowled: number
+  forfeits: { received: number; conceded: number }
+  resultsWithBothInnings: number
+  // The history blocks cover the newest `historyCap` results only when true.
+  truncated: boolean
+  historyCap: number
+  coverage: MyTeamCoverage
+}
+
+export interface MyTeamFormEntry {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  derby: boolean
+  result: MyTeamResultCode
+  forfeit: boolean
+}
+
+export interface MyTeamResultPoint {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  derby: boolean
+  forfeit: boolean
+  result: MyTeamResultCode
+  ownRuns: number | null
+  ownWickets: number | null
+  ownBalls: number | null
+  oppRuns: number | null
+  oppWickets: number | null
+  oppBalls: number | null
+  ownRunRate: number | null
+  oppRunRate: number | null
+}
+
+export interface MyTeamRunRatePoint {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  teamRunRate: number | null
+  oppositionRunRate: number | null
+}
+
+export interface MyTeamNetRunRatePoint {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  value: number | null
+}
+
+export interface MyTeamExtrasPoint {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  derby: boolean
+  wides: number | null
+  noBalls: number | null
+  byes: number | null
+  legByes: number | null
+  penaltyRuns: number | null
+  itemised: boolean
+  notItemised: number | null
+  total: number | null
+}
+
+export interface MyTeamDotBallsPoint {
+  matchId: string
+  matchDate: string | null
+  opponentName: string | null
+  derby: boolean
+  ballsBowled: number | null
+  dots: number | null
+  dotPercent: number | null
+}
+
+export interface MyTeamSeries {
+  window: DashboardWindow
+  results: MyTeamResultPoint[]
+  resultsSummary: TeamDashboardResultsSummary
+  runRateTrend: MyTeamRunRatePoint[]
+  netRunRateTrend: { status: TeamNetRunRateStatus; points: MyTeamNetRunRatePoint[] | null }
+  // The extras the team gave away, by match (the Extras card's back).
+  extrasConceded: MyTeamExtrasPoint[]
+  extrasSummary: TeamDashboardExtrasSummary
+  dotBalls: MyTeamDotBallsPoint[]
+  dotBallsSummary: TeamDashboardDotBallsSummary
+}
+
+export interface MyTeamShareLine {
+  // PLAYER (full name), GUESTS, OTHERS, EXTRAS (runs only) or NOT_ATTRIBUTED; they add up to `total`.
+  kind: 'PLAYER' | 'GUESTS' | 'OTHERS' | 'EXTRAS' | 'NOT_ATTRIBUTED'
+  label: string
   value: number
-  share: number | null
-  // 'PLAYER' rows, then 'OTHERS' and (runs only) 'EXTRAS'; guests are grouped as one 'GUESTS' row.
-  kind: 'PLAYER' | 'GUESTS' | 'OTHERS' | 'EXTRAS'
+  sharePercent: number | null
+}
+
+export interface MyTeamShareBlock {
+  total: number | null
+  lines: MyTeamShareLine[]
+  inningsWithCard: number
+  inningsCounted: number
+}
+
+export interface MyTeamSplit {
+  played: number
+  won: number
+}
+
+export interface MyTeamMeeting {
+  matchId: string
+  matchDate: string | null
+  result: MyTeamResultCode
+  forfeit: boolean
+}
+
+export interface MyTeamHeadToHead {
+  // Null: no opponent name recorded.
+  opponentName: string | null
+  played: number
+  won: number
+  lost: number
+  tied: number
+  drawn: number
+  noResult: number
+  // Oldest first.
+  results: MyTeamMeeting[]
+}
+
+export interface MyTeamExtrasComponent {
+  value: number | null
+  inningsRecorded: number
+  inningsCounted: number
+}
+
+export interface MyTeamExtrasSide {
+  total: number | null
+  sharePercent: number | null
+  wides: MyTeamExtrasComponent
+  noBalls: MyTeamExtrasComponent
+  byes: MyTeamExtrasComponent
+  legByes: MyTeamExtrasComponent
+  penaltyRuns: MyTeamExtrasComponent
+  inningsWithExtras: number
+  inningsCounted: number
+}
+
+export interface MyTeamStatsDto {
+  scope: MyTeamScope
+  teamName: string
+  basis: MyTeamBasis
+  record: TeamStatsPageData['record']
+  form: MyTeamFormEntry[]
+  batting: TeamStatsPageData['batting']
+  chasing: TeamStatsPageData['chasing']
+  bowling: TeamStatsPageData['bowling']
+  extras: TeamStatsPageData['extras']
+  netRunRate: TeamStatsPageData['netRunRate']
+  series: MyTeamSeries
+  contribution: { runs: MyTeamShareBlock; wickets: MyTeamShareBlock }
+  battingOrder: { battingFirst: MyTeamSplit; chasing: MyTeamSplit; recorded: number; counted: number }
+  // `won` is null when no result recorded the toss; `partly` when only some did (`known` of `counted`).
+  tossWon: { won: number | null; known: number; counted: number; partly: boolean }
+  headToHead: MyTeamHeadToHead[]
+  // averageAvailable is null without a poll.
+  squad: { playersUsed: number; guestAppearances: number; averageAvailable: number | null; matchesWithPoll: number; counted: number; partly: boolean }
+  closeGames: { played: number; won: number; closeRuns: number; closeWickets: number; decided: number; withMargin: number }
+  extrasCard: { gaveAway: MyTeamExtrasSide; received: MyTeamExtrasSide; partly: boolean }
+  notCaptured: TeamStatsNotCapturedItem[]
 }
 
 export interface MyLeaderboardColumn {
