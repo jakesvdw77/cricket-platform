@@ -398,3 +398,5 @@ None, all answered 2026-10-24. The owner accepted every recommended default, rec
 19. **A thin or empty away-fields list is acceptable at launch (owner, 2026-10-24).** Away fields appear once managers attach a field record to matches; an on-screen note explains it.
 20. **Field location notes are left out of the parent view for now (owner, 2026-10-24).** They can be added later without a contract break.
 21. **The Field Directory endpoint is unpaged and capped at 200 with a "showing the first 200" note (owner, 2026-10-24).** Searching happens in the browser; a `q` parameter and paging are a later change if a club outgrows it.
+
+> **Update (spec 147, 2026-11-07):** My stats, Team stats and Leaderboards are no longer Soon items; they are built by `147` (Leaderboards is always visible under its amendment, no club switch).

@@ -12,7 +12,7 @@ A parent or player in the Player Hub can see what is coming (Schedule > Matches,
 - **C. Built to be drilled into later:** the Results header tiles and the form strip are the entry points of the later Stats section, so nothing built here is thrown away.
 
 ## Non-goals
-- **The Stats screens.** `stats.mine`, `stats.boards`, `stats.teams` stay Soon. This spec adds no Stats UI and no ranking; leaderboard visibility for players keeps the open questions of `103` decision 6.
+- **The Stats screens.** `stats.mine`, `stats.boards`, `stats.teams` stay Soon. *(Fulfilled by `147`, 2026-11-07: the three Stats pages are built there.)* This spec adds no Stats UI and no ranking; leaderboard visibility for players keeps the open questions of `103` decision 6.
 - **Any change to the counting rules, the manager stats pages or the manager Matches list.** No schema change.
 - **Sharing, export, live scoring.** As `135`.
 
