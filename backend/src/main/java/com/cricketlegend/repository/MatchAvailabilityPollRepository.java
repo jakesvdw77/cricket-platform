@@ -64,4 +64,31 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
             + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
             + "AND s.playerProfileId = :playerProfileId) ORDER BY m.matchDate")
     List<MatchAvailabilityPoll> findOpenForPlayer(@Param("playerProfileId") UUID playerProfileId);
+
+    /**
+     * docs/specs/147 "Always there": every closed poll of the club's active matches whose own squad (the poll team's squad for
+     * the match's season, the rule of {@link #findOpenForPlayer}) holds this player, with the player's answer ({@code status}
+     * null when unanswered). One statement; the Season, League and Team scope is applied by the calculator.
+     */
+    @Query("SELECT m.id AS matchId, m.seasonId AS seasonId, m.leagueId AS leagueId, p.teamId AS teamId, "
+            + "a.status AS status FROM MatchAvailabilityPoll p JOIN Match m ON m.id = p.matchId "
+            + "LEFT JOIN PlayerAvailability a ON a.pollId = p.id AND a.playerProfileId = :playerProfileId "
+            + "WHERE m.clubId = :clubId AND m.active = true AND p.open = false "
+            + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
+            + "AND s.playerProfileId = :playerProfileId)")
+    List<PlayerPollFactView> findPollFactsForPlayer(
+            @Param("clubId") UUID clubId, @Param("playerProfileId") UUID playerProfileId);
+
+    /** One poll the player was asked and the answer given (null when none). */
+    interface PlayerPollFactView {
+        UUID getMatchId();
+
+        UUID getSeasonId();
+
+        UUID getLeagueId();
+
+        UUID getTeamId();
+
+        com.cricketlegend.domain.AvailabilityStatus getStatus();
+    }
 }

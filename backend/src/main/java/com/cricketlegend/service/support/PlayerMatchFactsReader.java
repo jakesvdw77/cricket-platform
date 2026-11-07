@@ -3,12 +3,15 @@ package com.cricketlegend.service.support;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.BattingDetailView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.BowlingCreditView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchAwardView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchBattingView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchBowlingView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchFieldingView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchHeaderView;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.SeasonCountersView;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.WicketDetailView;
 import java.time.Instant;
 
 /**
@@ -81,6 +84,35 @@ public final class PlayerMatchFactsReader {
     public static PlayerMatchRowBuilder.AwardFact toAward(MatchAwardView v) {
         return new PlayerMatchRowBuilder.AwardFact(
                 v.getResultId(), n(v.getPlayerOfMatch()), n(v.getTeamPlayerOfMatch()));
+    }
+
+    /** docs/specs/147: a counted batting row with its innings sequence, position, bowler and field facts. */
+    public static PlayerStatsCalculator.RawBattingDetail toBattingDetail(BattingDetailView v) {
+        return new PlayerStatsCalculator.RawBattingDetail(
+                v.getResultId(),
+                n(v.getInningsSequence()),
+                v.getPosition(),
+                v.getRuns(),
+                v.getBalls(),
+                v.getFours(),
+                v.getSixes(),
+                DismissalType.valueOf(v.getHowOut()),
+                v.getBowlerName(),
+                v.getSeasonId(),
+                Boolean.TRUE.equals(v.getFieldKnown()),
+                Boolean.TRUE.equals(v.getClubField()));
+    }
+
+    /** docs/specs/147: a batter the player dismissed. */
+    public static PlayerStatsCalculator.WicketDetail toWicketDetail(WicketDetailView v) {
+        return new PlayerStatsCalculator.WicketDetail(
+                v.getResultId(), v.getPosition(), DismissalType.valueOf(v.getHowOut()), v.getFielderName());
+    }
+
+    /** docs/specs/147: one season's additive counters. */
+    public static HeldPlayerHistory.SeasonRaw toSeasonRaw(SeasonCountersView v) {
+        return new HeldPlayerHistory.SeasonRaw(
+                v.getSeasonId(), n(v.getMatches()), n(v.getInnings()), n(v.getDismissals()), n(v.getRuns()), n(v.getWickets()));
     }
 
     private static int n(Integer value) {

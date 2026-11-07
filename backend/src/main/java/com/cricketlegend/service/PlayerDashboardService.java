@@ -1,6 +1,8 @@
 package com.cricketlegend.service;
 
 import com.cricketlegend.dto.PlayerDashboardDto;
+import com.cricketlegend.service.support.HeldPlayerHistory;
+import com.cricketlegend.service.support.StatsScope;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -24,4 +26,30 @@ public interface PlayerDashboardService {
             UUID teamId,
             UUID sectionId,
             String competition);
+
+    /**
+     * docs/specs/147: the same series for a player the caller holds, in the Player Hub scope (only published results a
+     * manager switched on; no section reach). Authorisation is the caller's ({@code MyPlayerAccess}); the club and the
+     * player come from the held player. A season, league or team of another club is a 404.
+     */
+    PlayerDashboardDto getForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition);
+
+    /**
+     * docs/specs/147: everything the Player Hub "My stats" payload and drill are built from, read once (a fixed number of
+     * statements) for the same scope as {@link #getForHeldPlayer}, whose series it carries. The per-season counters ignore
+     * the Season filter; every other filter applies.
+     */
+    HeldPlayerHistory historyForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition);
 }

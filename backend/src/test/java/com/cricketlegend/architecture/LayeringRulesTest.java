@@ -180,7 +180,8 @@ class LayeringRulesTest {
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
                     + "|LeaderboardRanker|LeaderboardTableRanker|LeaderboardColumn|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers|PlayerMatchRowBuilder"
                     + "|TeamStatsCalculator|TeamStatsCounters|TeamStatsColumn|TeamTableRanker"
-                    + "|PlayerDashboardSeriesBuilder|TeamDashboardSeriesBuilder|StatsTrend|DashboardLimits)(\\$.*)?";
+                    + "|PlayerDashboardSeriesBuilder|TeamDashboardSeriesBuilder|StatsTrend|DashboardLimits"
+                    + "|HeldPlayerHistory|MyStatsBuilder|MyStatsDrill|StatsDrillFilter)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
@@ -196,9 +197,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous: exactly the 20 named top-level classes plus their nested types (89 in all: 39 from specs 103 and 115, 33 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers, and 17 for spec 117's two series builders, trend and limits with the calculators' new records and running-rate and dot-pool accumulators).
+        // proves the rule above is not vacuous: exactly the 24 named top-level classes plus their nested types (111 in all: 39 from specs 103 and 115, 33 for the team calculator, counters, column and ranker with their records and compiler-generated switch helpers, 17 for spec 117's two series builders, trend and limits with the calculators' new records and running-rate and dot-pool accumulators, and 22 for spec 147's Player Hub stats: the calculator's new records and age band, the held-player history, the My stats builder, the drill and its filter).
         // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(89);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(111);
     }
 }

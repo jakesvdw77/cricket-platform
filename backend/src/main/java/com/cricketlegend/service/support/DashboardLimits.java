@@ -29,5 +29,8 @@ public final class DashboardLimits {
     /** Dot balls: a change of at most this many percentage points is "flat" (spec 117, Dot balls). */
     public static final BigDecimal DOT_PERCENT_FLAT_BAND = new BigDecimal("0.5");
 
+    /** Batting average (docs/specs/147 rolling hint): a change of at most this many runs per dismissal is "flat". */
+    public static final BigDecimal BATTING_AVERAGE_FLAT_BAND = new BigDecimal("1.00");
+
     private DashboardLimits() {}
 }

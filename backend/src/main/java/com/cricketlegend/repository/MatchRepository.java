@@ -30,6 +30,19 @@ import org.springframework.data.repository.query.Param;
  */
 public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecificationExecutor<Match> {
 
+    /**
+     * docs/specs/147 "Next milestone": the league id (null for a friendly) of each active match of the club in {@code seasonId}
+     * that starts after {@code now} and involves one of {@code teamIds}. {@code teamIds} must not be empty. The calculator
+     * applies the League and Competition scope and counts.
+     */
+    @Query("select m.leagueId from Match m where m.clubId = :clubId and m.seasonId = :seasonId and m.active = true "
+            + "and m.matchDate > :now and (m.homeTeamId in :teamIds or m.awayTeamId in :teamIds)")
+    List<UUID> findUpcomingLeagueIdsForTeams(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("teamIds") Collection<UUID> teamIds,
+            @Param("now") Instant now);
+
     /** docs/specs/098: every match (active or not) of one league and season, for the schedule import's identity check. */
     List<Match> findByLeagueIdAndSeasonId(UUID leagueId, UUID seasonId);
 

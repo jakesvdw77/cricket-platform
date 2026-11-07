@@ -60,4 +60,31 @@ public interface MatchSidePlayerRepository extends JpaRepository<MatchSidePlayer
             """)
     List<PlayerMatchView> findSelectionsForStartedMatchesInSeason(
             @Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId, @Param("now") java.time.Instant now);
+
+    /**
+     * docs/specs/147 "Always there": the distinct matches of the club that had started by {@code now} for which this player
+     * was selected, with the season, league and the team of the side selected. One statement; the scope is applied by the
+     * calculator.
+     */
+    @Query("""
+            select distinct m.id as matchId, m.seasonId as seasonId, m.leagueId as leagueId, s.teamId as teamId
+            from MatchSidePlayer p, MatchSide s, Match m
+            where p.matchSideId = s.id and s.matchId = m.id and p.playerProfileId = :playerProfileId
+              and m.clubId = :clubId and m.active = true and m.matchDate <= :now
+            """)
+    List<PlayerSelectionFactView> findSelectionFactsForPlayer(
+            @Param("clubId") UUID clubId,
+            @Param("playerProfileId") UUID playerProfileId,
+            @Param("now") java.time.Instant now);
+
+    /** One match a player was selected for. */
+    interface PlayerSelectionFactView {
+        UUID getMatchId();
+
+        UUID getSeasonId();
+
+        UUID getLeagueId();
+
+        UUID getTeamId();
+    }
 }
