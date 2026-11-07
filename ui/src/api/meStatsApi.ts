@@ -337,11 +337,11 @@ export interface MyStatsDto {
   teamFieldingRank: number | null
   standing: { rank: number | null; playersRanked: number | null; average: number | null; innings: number | null } | null
   notCaptured: NotCapturedItem[]
-  summary: MyStatsSummary
-  battingPositionGroups: MyStatsBattingPositionGroup[]
-  battingVenues: MyStatsBattingVenue[]
-  bowlingHomeAway: MyStatsBowlingHomeAway
-  bowlingVenues: MyStatsBowlingVenue[]
+  summary?: MyStatsSummary
+  battingPositionGroups?: MyStatsBattingPositionGroup[]
+  battingVenues?: MyStatsBattingVenue[]
+  bowlingHomeAway?: MyStatsBowlingHomeAway
+  bowlingVenues?: MyStatsBowlingVenue[]
 }
 
 // The match drill (GET .../stats/innings): mirrors backend/.../dto/MyStatsInningsPageDto.java. `title` and `filterLabel` are plain header
@@ -686,13 +686,13 @@ export interface MyTeamStatsDto {
   closeGames: { played: number; won: number; closeRuns: number; closeWickets: number; decided: number; withMargin: number }
   extrasCard: { gaveAway: MyTeamExtrasSide; received: MyTeamExtrasSide; partly: boolean }
   notCaptured: TeamStatsNotCapturedItem[]
-  dismissals: MyTeamDismissals
-  battingPositionGroups: MyTeamPositionGroup[]
-  boundaries: MyTeamBoundaries
-  venues: MyTeamVenue[]
-  wicketTypes: MyTeamWicketTypes
-  fielding: MyTeamFielding
-  byInningsNumber: { first: MyTeamInningsNumberSplit; chasing: MyTeamInningsNumberSplit }
+  dismissals?: MyTeamDismissals
+  battingPositionGroups?: MyTeamPositionGroup[]
+  boundaries?: MyTeamBoundaries
+  venues?: MyTeamVenue[]
+  wicketTypes?: MyTeamWicketTypes
+  fielding?: MyTeamFielding
+  byInningsNumber?: { first: MyTeamInningsNumberSplit; chasing: MyTeamInningsNumberSplit }
 }
 
 // ----- The leaderboard payloads: mirror backend/.../dto/MyLeaderboardTableDto.java, MyLeaderboardStandingDto.java, MyLeaderboardAwardsDto.java

@@ -2,7 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { BigBars, Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis, truncatedNote } from '../../cardKit'
-import { dayText, oversOrBalls } from '../../statsFormat'
+import { dayText, oversOrBalls, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 3, mine.sum-overs: overs bowled, the balls beside them ("24.3 (147 balls)"). When the spells mix over
 // lengths there is no single overs figure and the balls are shown. Back: overs in each bowling match. Source: summary, series.bowlingMatches.
@@ -21,11 +21,11 @@ export const mineSumOvers: StatsCardDef<MyStatsDto> = {
   whenMissing: 'hide',
   emptyText: 'No bowling yet.',
   basis: (p) => bowlingBasis(p),
-  state: (p) => (p.summary.ballsBowled === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
+  state: (p) => (!p.summary ? 'missing' : p.summary.ballsBowled === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
   partialNote: truncatedNote,
-  summary: (p, ctx) => `${ctx.firstName} has bowled ${oversOrBalls(p.summary.ballsBowled, p.summary.ballsPerOver)}${p.summary.ballsPerOver === null ? '' : ' overs'}.`,
+  summary: (p, ctx) => `${ctx.firstName} has bowled ${oversOrBalls(need(p.summary).ballsBowled, need(p.summary).ballsPerOver)}${need(p.summary).ballsPerOver === null ? '' : ' overs'}.`,
   Front: ({ payload: p, ctx }) => {
-    const { ballsBowled, ballsPerOver } = p.summary
+    const { ballsBowled, ballsPerOver } = need(p.summary)
     const latest = [...p.series.bowlingMatches].reverse()
     return (
       <BigBars

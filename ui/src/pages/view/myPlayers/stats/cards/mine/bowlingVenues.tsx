@@ -3,7 +3,7 @@ import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
-import { formatDecimal, oversOrBalls, plural, whereText } from '../../statsFormat'
+import { formatDecimal, oversOrBalls, plural, whereText, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 6, mine.bowling-venues: wickets at each venue with the economy beside each (in the small line under the
 // venue name, with "Home" where it is a home venue). Back: the table. Source: bowlingVenues.
@@ -22,17 +22,18 @@ export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
   missingText: 'No venue is recorded on these matches.',
   basis: (p) => bowlingBasis(p),
   state: (p) => {
+    if (!p.bowlingVenues) return 'missing'
     if (p.bowlingVenues.length === 0) return 'empty'
     if (p.bowlingVenues.every((venue) => venue.venueKey === 'unknown')) return 'missing'
     return p.bowlingVenues.some((venue) => venue.venueKey === 'unknown') ? 'partial' : 'ready'
   },
   partialNote: (p) => {
-    const unknown = p.bowlingVenues.find((venue) => venue.venueKey === 'unknown')
+    const unknown = need(p.bowlingVenues).find((venue) => venue.venueKey === 'unknown')
     return `${plural(unknown?.spells ?? 0, 'spell')} ${unknown?.spells === 1 ? 'has' : 'have'} no venue recorded.`
   },
-  summary: (p, ctx) => `${ctx.firstName}'s wickets at each venue: ${p.bowlingVenues.map((venue) => `${venue.name} ${venue.wickets}`).join(', ')}.`,
+  summary: (p, ctx) => `${ctx.firstName}'s wickets at each venue: ${need(p.bowlingVenues).map((venue) => `${venue.name} ${venue.wickets}`).join(', ')}.`,
   Front: ({ payload: p, ctx }) => {
-    const venues = p.bowlingVenues.slice(0, SHOWN)
+    const venues = need(p.bowlingVenues).slice(0, SHOWN)
     const tagOf = (home: boolean | null, economy: number | null) => `${home === true ? 'Home · ' : ''}Econ ${formatDecimal(economy, 2)}`
     return (
       <>
@@ -40,7 +41,7 @@ export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
           alt={`${ctx.firstName}'s wickets at each venue, with the economy: ${venues.map((venue) => `${venue.name}${venue.home === true ? ' (home)' : ''} ${venue.wickets} wickets, economy ${formatDecimal(venue.economy, 2)}`).join('; ')}.`}
           rows={venues.map((venue) => ({ key: venue.venueKey, label: venue.name, tag: tagOf(venue.home, venue.economy), value: venue.wickets, valueLabel: String(venue.wickets) }))}
         />
-        <Note>{p.bowlingVenues.length > SHOWN ? `Top ${SHOWN} of ${p.bowlingVenues.length} venues. Flip for all.` : 'Wickets, with the economy under each name.'}</Note>
+        <Note>{need(p.bowlingVenues).length > SHOWN ? `Top ${SHOWN} of ${need(p.bowlingVenues).length} venues. Flip for all.` : 'Wickets, with the economy under each name.'}</Note>
       </>
     )
   },
@@ -50,7 +51,7 @@ export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
       <FaceTable
         label="Bowling at each venue"
         heads={['Venue', 'Where', 'Spells', 'Overs', 'Runs', 'Wkts', 'Econ']}
-        rows={p.bowlingVenues.map((venue) => ({
+        rows={need(p.bowlingVenues).map((venue) => ({
           key: venue.venueKey,
           cells: [venue.name, whereText(venue.home), String(venue.spells), oversOrBalls(venue.balls, venue.ballsPerOver), String(venue.runs), String(venue.wickets), formatDecimal(venue.economy, 2)],
         }))}

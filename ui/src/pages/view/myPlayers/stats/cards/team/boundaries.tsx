@@ -2,7 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyTeamStatsDto } from '../../../../../../api/meStatsApi'
 import { Big, Cap, FaceTable, Note } from '../../cardParts'
-import { DASH, formatCount, formatDecimal, formatPercent, nOfM } from '../../statsFormat'
+import { DASH, formatCount, formatDecimal, formatPercent, nOfM, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 3, team.boundaries: the fours and sixes the team hit (a two-category comparison: green and blue) and the share of
 // runs that came in boundaries. Back: the table. Source: boundaries.
@@ -17,16 +17,17 @@ export const teamBoundaries: StatsCardDef<MyTeamStatsDto> = {
   whenMissing: 'notCaptured',
   emptyText: 'No innings yet.',
   missingText: 'Fours and sixes are not recorded for these results.',
-  basis: (p) => ({ counted: p.boundaries.inningsRecorded, total: p.boundaries.inningsCounted }),
+  basis: (p) => ({ counted: need(p.boundaries).inningsRecorded, total: need(p.boundaries).inningsCounted }),
   state: (p) => {
+    if (!p.boundaries) return 'missing'
     if (p.boundaries.inningsCounted === 0) return 'empty'
     if (p.boundaries.inningsRecorded === 0) return 'missing'
     return p.boundaries.inningsRecorded < p.boundaries.inningsCounted ? 'partial' : 'ready'
   },
-  partialNote: (p) => `Fours and sixes are recorded in ${p.boundaries.inningsRecorded} of ${p.boundaries.inningsCounted} innings.`,
-  summary: (p) => `${p.teamName} has hit ${formatCount(p.boundaries.fours)} fours and ${formatCount(p.boundaries.sixes)} sixes.`,
+  partialNote: (p) => `Fours and sixes are recorded in ${need(p.boundaries).inningsRecorded} of ${need(p.boundaries).inningsCounted} innings.`,
+  summary: (p) => `${p.teamName} has hit ${formatCount(need(p.boundaries).fours)} fours and ${formatCount(need(p.boundaries).sixes)} sixes.`,
   Front: ({ payload: p }) => {
-    const { fours, sixes } = p.boundaries
+    const { fours, sixes } = need(p.boundaries)
     return (
       <>
         <Big value={fours === null || sixes === null ? DASH : String(fours + sixes)} caption="boundaries" />
@@ -38,12 +39,12 @@ export const teamBoundaries: StatsCardDef<MyTeamStatsDto> = {
             { key: 'sixes', label: 'Sixes', tone: 'compare', seriesIndex: 1, value: sixes ?? 0, valueLabel: formatCount(sixes) },
           ]}
         />
-        <Note>{formatPercent(p.boundaries.boundaryPercent, 0)} of the runs came in boundaries.</Note>
+        <Note>{formatPercent(need(p.boundaries).boundaryPercent, 0)} of the runs came in boundaries.</Note>
       </>
     )
   },
   Back: ({ payload: p }) => {
-    const b = p.boundaries
+    const b = need(p.boundaries)
     return (
       <>
         <Cap>Fours and sixes</Cap>

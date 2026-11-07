@@ -3,7 +3,7 @@ import { ProgressBars } from '../../../../../../components/StatsDrawings'
 import type { MyTeamStatsDto } from '../../../../../../api/meStatsApi'
 import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Cap, FaceTable, Note, Split } from '../../cardParts'
-import { DASH, formatCount, formatDecimal, nOfM } from '../../statsFormat'
+import { DASH, formatCount, formatDecimal, nOfM, need } from '../../statsFormat'
 import { matchLabel } from '../../teamKit'
 
 // docs/specs/147 Amendment 3, team.batting-first-chasing: wins and the batting average when batting first and when chasing (a two-category
@@ -20,13 +20,14 @@ export const teamBattingFirstChasing: StatsCardDef<MyTeamStatsDto> = {
   emptyText: 'No results with the batting order recorded yet.',
   basis: (p) => ({ counted: p.battingOrder.recorded, total: p.battingOrder.counted }),
   state: (p) => {
+    if (!p.byInningsNumber) return 'missing'
     if (p.byInningsNumber.first.played === 0 && p.byInningsNumber.chasing.played === 0) return 'empty'
     return p.battingOrder.recorded < p.battingOrder.counted ? 'partial' : 'ready'
   },
   partialNote: (p) => `The batting order is recorded in ${p.battingOrder.recorded} of ${p.battingOrder.counted} results.`,
-  summary: (p) => `${p.teamName} won ${p.byInningsNumber.first.won} of ${p.byInningsNumber.first.played} batting first and ${p.byInningsNumber.chasing.won} of ${p.byInningsNumber.chasing.played} chasing.`,
+  summary: (p) => `${p.teamName} won ${need(p.byInningsNumber).first.won} of ${need(p.byInningsNumber).first.played} batting first and ${need(p.byInningsNumber).chasing.won} of ${need(p.byInningsNumber).chasing.played} chasing.`,
   Front: ({ payload: p }) => {
-    const { first, chasing } = p.byInningsNumber
+    const { first, chasing } = need(p.byInningsNumber)
     return (
       <>
         <ProgressBars
@@ -46,7 +47,7 @@ export const teamBattingFirstChasing: StatsCardDef<MyTeamStatsDto> = {
     )
   },
   Back: ({ payload: p }) => {
-    const { first, chasing } = p.byInningsNumber
+    const { first, chasing } = need(p.byInningsNumber)
     const chase = p.chasing.highestSuccessfulChase
     return (
       <>

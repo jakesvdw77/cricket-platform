@@ -77,3 +77,10 @@ export const oversOrBalls = (balls: number, ballsPerOver: number | null | undefi
 
 // "Home", "Away" or a dash (a venue that is neither: Unknown venue, Other venues).
 export const whereText = (home: boolean | null | undefined): string => (home === true ? 'Home' : home === false ? 'Away' : DASH)
+
+// A payload block an older or partial backend may not send. Call only where the card's state() has already returned 'missing' for an absent
+// block (the grid never draws a missing card); a throw here is a bug the grid's per-card guard turns into the quiet missing text.
+export function need<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) throw new Error('A payload block this card needs is absent.')
+  return value
+}

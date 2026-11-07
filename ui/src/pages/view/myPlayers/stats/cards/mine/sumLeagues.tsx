@@ -2,7 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { BigBars, Cap, FaceTable } from '../../cardParts'
 import { truncatedNote } from '../../cardKit'
-import { plural } from '../../statsFormat'
+import { plural, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 3, mine.sum-leagues: how many leagues the player has played in. Back: matches played in each league (the top ones as bars on the front, the table here). Friendlies are not a league and are left out. Source: summary.leaguesPlayed.
 export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
@@ -17,13 +17,13 @@ export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No league matches yet.',
-  state: (p) => (p.summary.leaguesPlayed.length === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
+  state: (p) => (!p.summary ? 'missing' : p.summary.leaguesPlayed.length === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
   partialNote: truncatedNote,
-  summary: (p, ctx) => `${ctx.firstName} has played in ${plural(p.summary.leaguesPlayed.length, 'league')}.`,
+  summary: (p, ctx) => `${ctx.firstName} has played in ${plural(need(p.summary).leaguesPlayed.length, 'league')}.`,
   Front: ({ payload: p, ctx }) => {
     const scope = ctx.scope
     const active = scope?.activeLeagueId ?? null
-    const leagues = [...p.summary.leaguesPlayed].sort((a, b) => b.matches - a.matches)
+    const leagues = [...need(p.summary).leaguesPlayed].sort((a, b) => b.matches - a.matches)
     return (
       <BigBars
         unit={['match', 'matches']}
@@ -46,7 +46,7 @@ export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
   Back: ({ payload: p }) => (
     <>
       <Cap>Matches in each league</Cap>
-      <FaceTable label="Matches played in each league" heads={['League', 'Matches']} rows={p.summary.leaguesPlayed.map((league) => ({ key: league.leagueId, cells: [league.name, String(league.matches)] }))} />
+      <FaceTable label="Matches played in each league" heads={['League', 'Matches']} rows={need(p.summary).leaguesPlayed.map((league) => ({ key: league.leagueId, cells: [league.name, String(league.matches)] }))} />
     </>
   ),
 }

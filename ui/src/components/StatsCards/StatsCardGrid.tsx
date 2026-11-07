@@ -4,6 +4,7 @@ import { Box, Fade, useMediaQuery, useTheme } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
 import { usePrefersReducedMotion } from '../FlipCard'
 import { StatsCardShell } from './StatsCardShell'
+import { StatsFaceBoundary } from './StatsFaceBoundary'
 import { layoutRows } from './statsCardOrder'
 import { CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_REM, CARD_HEIGHT_VAR } from './statsCardStyle'
 import type { CardRow, CardRowKind } from './statsCardOrder'
@@ -27,6 +28,15 @@ import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroup
 export const GROUP_PARAM = 'group'
 
 const ROW_GAP = 1
+
+// A card's pure functions read payload blocks an older backend may not send; a throw is "no value", never a crash.
+function attempt<T>(read: () => T, fallback: T): T {
+  try {
+    return read()
+  } catch {
+    return fallback
+  }
+}
 // A lone card (or a lone last card) is capped so it never stretches across a desktop.
 const SINGLE_MAX_WIDTH = 560
 // Breathing room kept under an expanded card, in px.
@@ -125,7 +135,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
   const resolved = useMemo<Resolved<P>[]>(
     () =>
       cards
-        .map((def) => ({ def, state: def.state(payload, ctx), size: def.size ?? 'normal' }))
+        .map((def) => ({ def, state: attempt<CardState>(() => def.state(payload, ctx), 'missing'), size: def.size ?? 'normal' }))
         .filter((entry) => !(entry.state === 'missing' && entry.def.whenMissing === 'hide')),
     [cards, payload, ctx],
   )
@@ -194,7 +204,12 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
     setSearch(params, { replace: true })
   }
 
-  const card = ({ def, state }: Resolved<P>, asExpanded: boolean) => (
+  const card = ({ def, state }: Resolved<P>, asExpanded: boolean) => {
+    const usable = state !== 'missing'
+    const cardBasis = def.basis
+    const own = cardBasis && usable ? attempt<StatsBasis | null>(() => cardBasis(payload, ctx), null) : null
+    const fallback = def.missingText ?? 'The scorecard does not record this yet.'
+    return (
     <StatsCardShell
       key={def.id}
       testId={asExpanded ? `card-${def.id}-expanded` : `card-${def.id}`}
@@ -203,9 +218,9 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
       state={state}
       whenMissing={def.whenMissing}
       scopeLabel={ctx.scopeLabel}
-      basis={def.basis ? def.basis(payload, ctx) : basis}
-      partialNote={def.partialNote?.(payload, ctx)}
-      summary={def.summary(payload, ctx)}
+      basis={cardBasis && usable ? own : basis}
+      partialNote={usable ? attempt<string | undefined>(() => def.partialNote?.(payload, ctx), undefined) : undefined}
+      summary={usable ? attempt(() => def.summary(payload, ctx), def.title(ctx)) : def.title(ctx)}
       emptyText={def.emptyText}
       missingText={def.missingText}
       scopeKey={scopeKey}
@@ -219,11 +234,12 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
             }
           : undefined
       }
-      expandedBody={asExpanded && def.Expanded ? <def.Expanded payload={payload} ctx={ctx} state={state} expanded /> : undefined}
-      front={<def.Front payload={payload} ctx={ctx} state={state} expanded={asExpanded} />}
-      back={<def.Back payload={payload} ctx={ctx} state={state} expanded={asExpanded} />}
+      expandedBody={asExpanded && def.Expanded ? <StatsFaceBoundary text={fallback}><def.Expanded payload={payload} ctx={ctx} state={state} expanded /></StatsFaceBoundary> : undefined}
+      front={<StatsFaceBoundary text={fallback}><def.Front payload={payload} ctx={ctx} state={state} expanded={asExpanded} /></StatsFaceBoundary>}
+      back={<StatsFaceBoundary text={fallback}><def.Back payload={payload} ctx={ctx} state={state} expanded={asExpanded} /></StatsFaceBoundary>}
     />
-  )
+    )
+  }
 
   const rows = (entries: Resolved<P>[]) => {
     const laid = layoutRows(entries)

@@ -1,7 +1,7 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Big, Cap, Note, Tiles } from '../../cardParts'
-import { formatDecimal, formatPercent } from '../../statsFormat'
+import { formatDecimal, formatPercent, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 3, mine.sum-balls: balls faced. Null when no innings recorded the balls (the card then says so and shows no
 // zero). Back: the strike rate and boundary figures. Source: summary.ballsFaced, batting.
@@ -20,14 +20,15 @@ export const mineSumBalls: StatsCardDef<MyStatsDto> = {
   missingText: 'Balls faced are not recorded for these results.',
   basis: (p) => ({ counted: p.batting.coverage.inningsWithBalls, total: p.batting.coverage.inningsCounted }),
   state: (p) => {
+    if (!p.summary) return 'missing'
     if (p.batting.innings === 0) return 'empty'
     if (p.summary.ballsFaced === null) return 'missing'
     return p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? 'partial' : 'ready'
   },
   partialNote: (p) => `Balls faced are recorded in ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.`,
-  summary: (p, ctx) => `${ctx.firstName} has faced ${p.summary.ballsFaced ?? 'an unrecorded number of'} balls.`,
+  summary: (p, ctx) => `${ctx.firstName} has faced ${need(p.summary).ballsFaced ?? 'an unrecorded number of'} balls.`,
   Front: ({ payload: p }) => (
-    <Big compact value={p.summary.ballsFaced === null ? '–' : String(p.summary.ballsFaced)} caption={p.summary.ballsFaced === null ? 'not recorded' : 'balls faced'} />
+    <Big compact value={need(p.summary).ballsFaced === null ? '–' : String(need(p.summary).ballsFaced)} caption={need(p.summary).ballsFaced === null ? 'not recorded' : 'balls faced'} />
   ),
   Back: ({ payload: p }) => {
     const { batting } = p

@@ -2,7 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { BigBars, Cap, FaceTable } from '../../cardParts'
 import { truncatedNote } from '../../cardKit'
-import { plural } from '../../statsFormat'
+import { plural, need } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 3, mine.sum-teams: how many teams the player has played for. Back: matches played for each team (bars and
 // the table). Source: summary.teamsRepresented.
@@ -18,13 +18,13 @@ export const mineSumTeams: StatsCardDef<MyStatsDto> = {
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No matches played yet.',
-  state: (p) => (p.summary.teamsRepresented.length === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
+  state: (p) => (!p.summary ? 'missing' : p.summary.teamsRepresented.length === 0 ? 'empty' : p.basis.truncated ? 'partial' : 'ready'),
   partialNote: truncatedNote,
-  summary: (p, ctx) => `${ctx.firstName} has played for ${plural(p.summary.teamsRepresented.length, 'team')}.`,
+  summary: (p, ctx) => `${ctx.firstName} has played for ${plural(need(p.summary).teamsRepresented.length, 'team')}.`,
   Front: ({ payload: p, ctx }) => {
     const scope = ctx.scope
     const active = scope?.activeTeamId ?? null
-    const teams = [...p.summary.teamsRepresented].sort((a, b) => b.matches - a.matches)
+    const teams = [...need(p.summary).teamsRepresented].sort((a, b) => b.matches - a.matches)
     return (
       <BigBars
         unit={['match', 'matches']}
@@ -47,7 +47,7 @@ export const mineSumTeams: StatsCardDef<MyStatsDto> = {
   Back: ({ payload: p }) => (
     <>
       <Cap>Matches for each team</Cap>
-      <FaceTable label="Matches played for each team" heads={['Team', 'Matches']} rows={p.summary.teamsRepresented.map((team) => ({ key: team.teamId, cells: [team.name, String(team.matches)] }))} />
+      <FaceTable label="Matches played for each team" heads={['Team', 'Matches']} rows={need(p.summary).teamsRepresented.map((team) => ({ key: team.teamId, cells: [team.name, String(team.matches)] }))} />
     </>
   ),
 }
