@@ -35,6 +35,7 @@ describe('MyAccountPage', () => {
     await waitFor(() => expect(cards()[0]).toHaveTextContent('Invitations2 pending'))
     await waitFor(() => expect(cards()[1]).toHaveTextContent('Link Requests1 pending'))
     expect(cards()[2]).toHaveTextContent('Link More Players')
+    expect(cards()[3]).toHaveTextContent('Preferences')
   })
 
   it('opens the Invitations page from its card', async () => {
@@ -43,6 +44,14 @@ describe('MyAccountPage', () => {
 
     await user.click(await screen.findByRole('button', { name: /^Invitations/ }))
     expect(await screen.findByTestId('location')).toHaveTextContent('/account/invitations')
+  })
+
+  it('opens the Preferences page from its card', async () => {
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: /^Preferences/ }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/account/preferences')
   })
 
   it('goes Back to players from the footer', async () => {

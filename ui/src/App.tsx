@@ -16,6 +16,7 @@ import ProfileChooserPage from './pages/view/ProfileChooserPage'
 import MyInvitationsPage from './pages/view/MyInvitationsPage'
 import MyPlayersPage from './pages/view/MyPlayersPage'
 import MyAccountPage from './pages/view/MyAccountPage'
+import MyPreferencesPage from './pages/view/MyPreferencesPage'
 import MyPlayerPage, { LegacyDetailsRedirect } from './pages/view/MyPlayerPage'
 import AccessPage from './pages/manage/access/AccessPage'
 import PlayerAccountsTab from './pages/manage/access/PlayerAccountsTab'
@@ -133,6 +134,7 @@ function App() {
             <Route path="/choose-profile" element={<ProfileChooserPage />} />
             <Route path="/account" element={<MyPlayersPage />} />
             <Route path="/account/options" element={<MyAccountPage />} />
+            <Route path="/account/preferences" element={<MyPreferencesPage />} />
             <Route path="/account/invitations" element={<MyInvitationsPage />} />
             <Route path="/account/players/:key" element={<MyPlayerPage />} />
             <Route path="/account/players/:key/details" element={<LegacyDetailsRedirect />} />

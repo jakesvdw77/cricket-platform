@@ -59,6 +59,7 @@ export default function MyAccountPage() {
     { id: 'invitations', title: 'Invitations', help: 'A club has invited you to link a player. Accept or decline here.', to: '/account/invitations', count: invitations },
     { id: 'requests', title: 'Link Requests', help: 'The requests you sent to link a player, and where each one stands.', to: '/welcome?view=requests', count: linkRequests },
     { id: 'find', title: 'Link More Players', help: 'Find another player you manage, such as a child, and ask the club to link them.', to: '/welcome' },
+    { id: 'preferences', title: 'Preferences', help: 'Choose how Cricket Legend looks and behaves on this device, such as the scoreboard ticker.', to: '/account/preferences' },
   ]
   return (
     <HubFrame
@@ -69,7 +70,7 @@ export default function MyAccountPage() {
       testId="my-account-page"
       footer={<HubFooterButton onClick={() => navigate('/account')}>Back to players</HubFooterButton>}
     >
-      <Box role="list" aria-label="Account" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
+      <Box role="list" aria-label="Account" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }, gap: 1.5 }}>
         {options.map((option) => (
           <Box key={option.id} role="listitem" sx={{ display: 'flex' }}>
             <OptionCard option={option} />
