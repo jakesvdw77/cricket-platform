@@ -4,6 +4,7 @@ import type { StatsGroupDef, StatsPage } from '../../../../components/StatsCards
 // with no card to show has neither. A new group is the one other permitted edit (beside the registry) when a card family needs one.
 export const STATS_GROUPS: Record<StatsPage, StatsGroupDef[]> = {
   mine: [
+    { id: 'summary', label: 'Summary' },
     { id: 'batting', label: 'Batting' },
     { id: 'bowling', label: 'Bowling' },
     { id: 'fielding', label: 'Fielding' },

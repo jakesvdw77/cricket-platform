@@ -4,17 +4,19 @@ import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { STATS_TONES } from '../../../../../../brandTokens'
 import { Big, Cap, Chips, FaceTable, Note, Tiles } from '../../cardParts'
 import { battingBasis } from '../../cardKit'
-import { DASH, dayText, formatDecimal, plural, scoreText } from '../../statsFormat'
+import { DASH, dayText, formatCount, formatDecimal, plural, scoreText } from '../../statsFormat'
 
 // docs/specs/147 section 5, mine.season: the headline of the season. Front: runs, innings, average, strike rate, highest score, the last
-// five scores. Back: the rolling average of the last five innings with the server's trend sentence. Source: batting, form, rolling.
+// five scores; innings played, not outs and times dismissed are stated outright (Amendment 2 item 4) and the runs at home and away sit here
+// too (item 6; a home or away side with no innings is a dash and the matches with no venue are the partial note). Back: the rolling average of
+// the last five innings with the server's trend sentence. Source: batting, form, rolling, homeAway.
 export const mineSeason: StatsCardDef<MyStatsDto> = {
   id: 'mine.season',
   page: 'mine',
   group: 'batting',
   title: () => 'Season in a card',
   tag: 'HAVE',
-  needs: ['batting', 'form', 'rolling', 'basis'],
+  needs: ['batting', 'form', 'rolling', 'homeAway', 'basis'],
   order: 10,
   // Amendment 2 item 10: the hero card is tall (beside Innings and Dismissals stacked).
   size: 'tall',
@@ -23,10 +25,17 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
   basis: (p) => battingBasis(p),
   state: (p) => {
     if (p.batting.innings === 0) return 'empty'
-    return p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? 'partial' : 'ready'
+    return p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted || p.homeAway.unknownFieldMatches > 0 ? 'partial' : 'ready'
   },
-  partialNote: (p) => `Strike rate is from ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.`,
-  summary: (p, ctx) => `${ctx.firstName} has ${p.batting.runs} runs in ${plural(p.batting.innings, 'innings', 'innings')}, averaging ${formatDecimal(p.batting.average)}.`,
+  partialNote: (p) =>
+    [
+      p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? `Strike rate is from ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.` : '',
+      p.homeAway.unknownFieldMatches > 0 ? `${plural(p.homeAway.unknownFieldMatches, 'match', 'matches')} with no venue recorded are left out of home and away.` : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+  summary: (p, ctx) =>
+    `${ctx.firstName} has ${p.batting.runs} runs in ${plural(p.batting.innings, 'innings', 'innings')} (${p.batting.notOuts} not out, dismissed ${p.batting.dismissals} times), averaging ${formatDecimal(p.batting.average)}.`,
   Front: ({ payload: p, ctx }) => {
     const best = p.batting.highestScore
     return (
@@ -34,9 +43,22 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
         <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
         <Tiles
           items={[
+            { key: 'innings', label: 'Innings', value: String(p.batting.innings) },
+            { key: 'notouts', label: 'Not Out', value: String(p.batting.notOuts) },
+            { key: 'dismissed', label: 'Dismissed', value: String(p.batting.dismissals) },
+          ]}
+        />
+        <Tiles
+          items={[
             { key: 'avg', label: 'Avg', value: formatDecimal(p.batting.average) },
             { key: 'sr', label: 'SR', value: formatDecimal(p.batting.strikeRate) },
             { key: 'hs', label: 'HS', value: best ? scoreText(best.runs, best.notOut) : DASH },
+          ]}
+        />
+        <Tiles
+          items={[
+            { key: 'home-runs', label: 'Home Runs', value: p.homeAway.home.innings > 0 ? formatCount(p.homeAway.home.runs) : DASH },
+            { key: 'away-runs', label: 'Away Runs', value: p.homeAway.away.innings > 0 ? formatCount(p.homeAway.away.runs) : DASH },
           ]}
         />
         {p.form.batting.length > 0 && (

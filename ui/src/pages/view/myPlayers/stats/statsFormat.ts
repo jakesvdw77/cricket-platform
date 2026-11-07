@@ -1,4 +1,5 @@
 import { basedOnText } from '../../../../components/StatsCards'
+import { ballsToOvers } from '../../../../utils/oversFormat'
 import type { StatsBasis } from '../../../../components/StatsCards'
 
 // docs/specs/147: formatting only. No figure is computed here: every number is the server's, this turns it into words. A missing value
@@ -61,3 +62,18 @@ export function dayText(iso: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
+
+// A long venue or league name cut for a bar label ("Riverside Cri…"); the table beside always carries the full name.
+export const clip = (text: string, max = 13): string => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text)
+
+// "Opener" or "No. 4" from a batting position group (the server's key is OPENER or '3' to '11').
+export const positionLabel = (group: { key: string; label: string }): string => (group.key === 'OPENER' ? group.label : `No. ${group.label}`)
+
+// Overs as "24.3" when the over length is known, else the balls ("147 balls"): a mixed over length has no single overs figure.
+export const oversOrBalls = (balls: number, ballsPerOver: number | null | undefined): string => {
+  if (ballsPerOver === null || ballsPerOver === undefined || ballsPerOver <= 0) return `${balls} balls`
+  return ballsToOvers(balls, ballsPerOver)
+}
+
+// "Home", "Away" or a dash (a venue that is neither: Unknown venue, Other venues).
+export const whereText = (home: boolean | null | undefined): string => (home === true ? 'Home' : home === false ? 'Away' : DASH)

@@ -14,6 +14,8 @@ export interface BarRow {
   // The drill this bar opens (a band, a player).
   href?: string
   colour?: string
+  // A small second line under the label ("Home", "Home · Econ 4.50"); text, so it is never the only carrier of the figure.
+  tag?: string
 }
 
 export interface HorizontalBarsProps {
@@ -43,9 +45,14 @@ export function HorizontalBars({ rows, alt, max }: HorizontalBarsProps) {
           <>
             <rect className="track" x={LABEL} y={y + 6} width={W - LABEL - VALUE} height={18} rx={6} fill={alpha(BRAND.cream, 0.1)} />
             {lengths[index] > 0 && <rect x={LABEL} y={y + 6} width={Math.max(lengths[index], 3)} height={18} rx={6} fill={row.colour ?? STATS_TONES.gold} />}
-            <text x={LABEL - 8} y={y + 20} textAnchor="end" fontSize="13" fill={BRAND.cream}>
+            <text x={LABEL - 8} y={row.tag ? y + 16 : y + 20} textAnchor="end" fontSize="13" fill={BRAND.cream}>
               {row.label}
             </text>
+            {row.tag && (
+              <text x={LABEL - 8} y={y + 27} textAnchor="end" fontSize="9" fill={alpha(BRAND.cream, 0.66)}>
+                {row.tag}
+              </text>
+            )}
             <text x={W} y={y + 20} textAnchor="end" fontSize="13" fontWeight="700" fill={BRAND.cream}>
               {row.valueLabel}
             </text>
@@ -53,7 +60,7 @@ export function HorizontalBars({ rows, alt, max }: HorizontalBarsProps) {
           </>
         )
         return row.href ? (
-          <Link key={row.key} to={row.href} aria-label={`${row.label}: ${row.valueLabel}`} tabIndex={tabIndex} data-testid="bar-row">
+          <Link key={row.key} to={row.href} aria-label={`${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`} tabIndex={tabIndex} data-testid="bar-row">
             {content}
           </Link>
         ) : (

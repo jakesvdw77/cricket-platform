@@ -16,6 +16,18 @@ import { mineMilestone } from './cards/mine/milestone'
 import { mineSeason } from './cards/mine/season'
 import { mineSeasons } from './cards/mine/seasons'
 import { mineWicketsHow } from './cards/mine/wicketsHow'
+import { mineBattingVenues } from './cards/mine/battingVenues'
+import { mineBowlingHomeAway } from './cards/mine/bowlingHomeAway'
+import { mineBowlingVenues } from './cards/mine/bowlingVenues'
+import { minePositions } from './cards/mine/positions'
+import { mineSumBalls } from './cards/mine/sumBalls'
+import { mineSumCatches } from './cards/mine/sumCatches'
+import { mineSumLeagues } from './cards/mine/sumLeagues'
+import { mineSumMatches } from './cards/mine/sumMatches'
+import { mineSumOvers } from './cards/mine/sumOvers'
+import { mineSumRuns } from './cards/mine/sumRuns'
+import { mineSumTeams } from './cards/mine/sumTeams'
+import { mineSumWickets } from './cards/mine/sumWickets'
 import { boardsStanding } from './cards/boards/standing'
 import { teamContribution } from './cards/team/contribution'
 import { teamExtras } from './cards/team/extras'
@@ -35,7 +47,17 @@ export interface StatsPayloads {
 }
 
 const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
+  mineSumLeagues,
+  mineSumTeams,
+  mineSumMatches,
+  mineSumRuns,
+  mineSumBalls,
+  mineSumOvers,
+  mineSumCatches,
+  mineSumWickets,
   mineSeason,
+  minePositions,
+  mineBattingVenues,
   mineInnings,
   mineDismissals,
   mineBands,
@@ -43,6 +65,8 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineMilestone,
   mineFires,
   mineBowling,
+  mineBowlingHomeAway,
+  mineBowlingVenues,
   mineWicketsHow,
   mineDiscipline,
   mineFielding,

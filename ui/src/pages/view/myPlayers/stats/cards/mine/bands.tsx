@@ -3,11 +3,11 @@ import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import { battingBasis, truncatedNote } from '../../cardKit'
-import { formatDecimal, formatPercent, plural } from '../../statsFormat'
+import { formatPercent, plural } from '../../statsFormat'
 
 // docs/specs/147 section 5, mine.bands: scores in bands (0-9, 10-29, 30-49, 50+); each bar is a link to the innings in that band. Back: the
-// bands as a table, then the average at each batting position. The bands keep their fixed definitions whatever the age-band guides are.
-// Source: bands, batting.positions.
+// bands as a table. The bands keep their fixed definitions whatever the age-band guides are.
+// The batting positions have their own card (mine.positions). Source: bands, batting.
 export const mineBands: StatsCardDef<MyStatsDto> = {
   id: 'mine.bands',
   page: 'mine',
@@ -15,7 +15,7 @@ export const mineBands: StatsCardDef<MyStatsDto> = {
   title: () => 'Scores in bands',
   tag: 'HAVE',
   needs: ['bands', 'batting', 'basis'],
-  order: 40,
+  order: 45,
   whenMissing: 'hide',
   emptyText: 'Not enough innings yet.',
   basis: (p) => battingBasis(p),
@@ -46,16 +46,6 @@ export const mineBands: StatsCardDef<MyStatsDto> = {
     <>
       <Cap>Scores by band</Cap>
       <FaceTable label="Innings in each score band" heads={['Band', 'Innings', 'Share']} rows={p.bands.map((band) => ({ key: band.key, cells: [band.label, String(band.innings), formatPercent(band.percent, 1)] }))} />
-      <Cap>Where the batter bats</Cap>
-      {p.batting.positions.length === 0 ? (
-        <Note>Batting position is not recorded for these innings.</Note>
-      ) : (
-        <FaceTable
-          label="Batting position and average"
-          heads={['Position', 'Innings', 'Runs', 'Average']}
-          rows={p.batting.positions.map((position) => ({ key: String(position.position), cells: [`No. ${position.position}`, String(position.innings), String(position.runs), formatDecimal(position.average)] }))}
-        />
-      )}
     </>
   ),
 }

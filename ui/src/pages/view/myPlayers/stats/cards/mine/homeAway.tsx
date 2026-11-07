@@ -15,6 +15,8 @@ export const mineHomeAway: StatsCardDef<MyStatsDto> = {
   tag: 'PARTLY',
   needs: ['homeAway', 'basis'],
   order: 20,
+  // Amendment 2 item 6: its content moved into the batting card (home and away runs) and the venue cards, so it is left off the page.
+  hidden: true,
   whenMissing: 'notCaptured',
   emptyText: 'Not enough innings yet.',
   missingText: 'No field is recorded on these matches, so home and away cannot be split.',

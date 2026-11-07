@@ -229,6 +229,84 @@ export interface MyStatsAvailability {
   matchesPlayed: number
 }
 
+// Amendment 2 (spec 147): summary, batting position groups, venues. Mirrors MyStatsDto.MyStatsSummary and the records beside it.
+export interface MyStatsLeagueMatches {
+  leagueId: string
+  name: string
+  matches: number
+}
+
+export interface MyStatsTeamMatches {
+  teamId: string
+  name: string
+  matches: number
+}
+
+// ballsFaced is null when no innings recorded balls; ballsPerOver is null when the counted spells mix over lengths (or none was bowled).
+export interface MyStatsSummary {
+  leaguesPlayed: MyStatsLeagueMatches[]
+  teamsRepresented: MyStatsTeamMatches[]
+  matchesPlayed: number
+  runsScored: number
+  ballsFaced: number | null
+  ballsBowled: number
+  ballsPerOver: number | null
+  catchesTaken: number
+}
+
+// key is OPENER (positions 1 and 2) then '3' to '11'; average and highest are null when unrecorded.
+export interface MyStatsBattingPositionGroup {
+  key: string
+  label: string
+  innings: number
+  runs: number
+  notOuts: number
+  dismissals: number
+  average: number | null
+  highest: number | null
+}
+
+// venueKey is the area id, 'unknown' (Unknown venue) or 'other' (Other venues); home is null for unknown and other.
+export interface MyStatsBattingVenue {
+  venueKey: string
+  name: string
+  home: boolean | null
+  innings: number
+  notOuts: number
+  dismissals: number
+  runs: number
+  average: number | null
+}
+
+export interface MyStatsBowlingSplit {
+  spells: number
+  balls: number
+  ballsPerOver: number | null
+  maidens: number
+  runs: number
+  wickets: number
+  economy: number | null
+  average: number | null
+}
+
+export interface MyStatsBowlingHomeAway {
+  home: MyStatsBowlingSplit
+  away: MyStatsBowlingSplit
+  unknownVenueSpells: number
+}
+
+export interface MyStatsBowlingVenue {
+  venueKey: string
+  name: string
+  home: boolean | null
+  spells: number
+  balls: number
+  ballsPerOver: number | null
+  runs: number
+  wickets: number
+  economy: number | null
+}
+
 export interface MyStatsDto {
   scope: MyStatsScope
   playerFirstName: string | null
@@ -259,6 +337,11 @@ export interface MyStatsDto {
   teamFieldingRank: number | null
   standing: { rank: number | null; playersRanked: number | null; average: number | null; innings: number | null } | null
   notCaptured: NotCapturedItem[]
+  summary: MyStatsSummary
+  battingPositionGroups: MyStatsBattingPositionGroup[]
+  battingVenues: MyStatsBattingVenue[]
+  bowlingHomeAway: MyStatsBowlingHomeAway
+  bowlingVenues: MyStatsBowlingVenue[]
 }
 
 // The match drill (GET .../stats/innings): mirrors backend/.../dto/MyStatsInningsPageDto.java. `title` and `filterLabel` are plain header

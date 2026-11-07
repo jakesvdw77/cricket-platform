@@ -5,7 +5,7 @@ import type { FC } from 'react'
 // (spec 147 Addendum): each page family supplies its own payload type P, its own registry and its own group list.
 
 export type StatsPage = 'mine' | 'team' | 'boards'
-export type MineGroup = 'batting' | 'bowling' | 'fielding' | 'teammate'
+export type MineGroup = 'summary' | 'batting' | 'bowling' | 'fielding' | 'teammate'
 export type TeamGroup = 'record' | 'contribution' | 'matchups' | 'squad'
 export type BoardGroup = 'standing'
 export type StatsGroupId = MineGroup | TeamGroup | BoardGroup
