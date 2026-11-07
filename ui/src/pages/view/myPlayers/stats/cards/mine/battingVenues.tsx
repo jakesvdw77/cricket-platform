@@ -29,7 +29,7 @@ export const mineBattingVenues: StatsCardDef<MyStatsDto> = {
   },
   partialNote: (p) => {
     const unknown = p.battingVenues.find((venue) => venue.venueKey === 'unknown')
-    return unknown ? `${plural(unknown.innings, 'innings', 'innings')} have no venue recorded.` : truncatedNote(p)
+    return unknown ? `${plural(unknown.innings, 'innings', 'innings')} ${unknown.innings === 1 ? 'has' : 'have'} no venue recorded.` : truncatedNote(p)
   },
   summary: (p, ctx) => `${ctx.firstName}'s runs at each venue: ${p.battingVenues.map((venue) => `${venue.name} ${venue.runs}`).join(', ')}.`,
   Front: ({ payload: p, ctx }) => {

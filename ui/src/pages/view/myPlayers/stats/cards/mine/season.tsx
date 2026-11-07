@@ -1,8 +1,9 @@
+import { STATS_TYPE, STATS_UI } from '../../../../../../components/StatsCards'
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { LineChart } from '../../../../../../components/StatsDrawings'
 import type { LineChartPoint } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { Box } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Big, Cap, Chips, FaceTable, Note, Split, Tiles } from '../../cardParts'
 import { battingBasis } from '../../cardKit'
@@ -39,7 +40,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
   partialNote: (p) =>
     [
       p.batting.coverage.inningsWithBalls < p.batting.coverage.inningsCounted ? `SR from ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.` : '',
-      p.homeAway.unknownFieldMatches > 0 ? `${plural(p.homeAway.unknownFieldMatches, 'match', 'matches')} have no venue.` : '',
+      p.homeAway.unknownFieldMatches > 0 ? `${p.homeAway.unknownFieldMatches === 1 ? '1 match has' : `${p.homeAway.unknownFieldMatches} matches have`} no venue.` : '',
     ]
       .filter(Boolean)
       .join(' '),
@@ -50,7 +51,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
     const runsAt = (side: { innings: number; runs: number }) => (side.innings > 0 ? formatCount(side.runs) : DASH)
     return (
       <>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, minWidth: 0 }}>
           <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
           <Box sx={{ width: 118, flexShrink: 0 }}>
             <Split
@@ -69,16 +70,17 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
         </Box>
         <Tiles
           dense
-          min={72}
+          min={60}
           items={[
             { key: 'innings', label: 'Innings', value: String(p.batting.innings) },
             { key: 'notouts', label: 'Not Out', value: String(p.batting.notOuts) },
             { key: 'dismissed', label: 'Dismissed', value: String(p.batting.dismissals) },
             { key: 'avg', label: 'Avg', value: formatDecimal(p.batting.average) },
-            { key: 'sr', label: 'SR', value: formatDecimal(p.batting.strikeRate) },
-            { key: 'hs', label: 'HS', value: best ? scoreText(best.runs, best.notOut) : DASH },
           ]}
         />
+        <Typography data-testid="stats-season-line" sx={{ fontSize: STATS_TYPE.body, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>
+          SR {formatDecimal(p.batting.strikeRate)} · HS {best ? scoreText(best.runs, best.notOut) : DASH}
+        </Typography>
         {p.form.batting.length > 0 && (
           <Chips
             large

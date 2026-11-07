@@ -131,19 +131,22 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
           gap: expanded ? 1.5 : '6px',
           '& > :not([data-chart-grow])': { flexShrink: 0 },
           ...cardScrollSx,
+          // Safety net: an overfull front fades out over its last 12 px instead of hard-cutting (a front is meant to fit; do not rely on this).
+          ...(heading && !expanded ? { maskImage: 'linear-gradient(to bottom, #000 calc(100% - 12px), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, #000 calc(100% - 12px), transparent)' } : {}),
           '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
         }}
       >
         {children}
       </Box>
-      {note && (
-        <Typography data-testid="stats-partial-note" title={heading ? note : undefined} sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0, ...(heading && !expanded ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}>{note}</Typography>
+      {/* The front carries no note line (the footer cue says it and holds the sentence as its tooltip); the back and an expanded card print the sentence. */}
+      {note && (!heading || expanded) && (
+        <Typography data-testid="stats-partial-note" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 14 }}>
         <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: STATS_TYPE.footer, lineHeight: 1.25 }}>
           <Typography data-testid="stats-basis" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0, flexShrink: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
           {lacking && !empty && (
-            <Typography data-testid="stats-data-cue" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.partly, m: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Typography data-testid="stats-data-cue" component="span" title={note} sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.partly, m: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {basis ? '· ' : ''}{DATA_MISSING_CUE}
             </Typography>
           )}

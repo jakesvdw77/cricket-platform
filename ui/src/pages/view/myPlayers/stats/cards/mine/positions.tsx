@@ -7,7 +7,7 @@ import { DASH, formatDecimal, positionLabel } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 5, mine.positions: where the batter bats. Positions 1 and 2 are one group, Opener, then 3 to 11 each (the
 // server groups them: battingPositionGroups). Front: runs scored in each as bars. Back: the table. Source: battingPositionGroups, batting.
-const SHOWN = 5
+const SHOWN = 4
 
 export const minePositions: StatsCardDef<MyStatsDto> = {
   id: 'mine.positions',
@@ -32,7 +32,7 @@ export const minePositions: StatsCardDef<MyStatsDto> = {
   },
   summary: (p, ctx) => `${ctx.firstName}'s runs by batting position: ${p.battingPositionGroups.map((group) => `${positionLabel(group)} ${group.runs}`).join(', ')}.`,
   Front: ({ payload: p, ctx }) => {
-    // At most five bars fit the card: when there are more positions, the five with the most runs, kept in batting order.
+    // At most four bars fit the card: when there are more positions, the four with the most runs, kept in batting order.
     const groups = p.battingPositionGroups
     const shown = groups.length > SHOWN ? [...groups].sort((a, b) => b.runs - a.runs).slice(0, SHOWN).sort((a, b) => groups.indexOf(a) - groups.indexOf(b)) : groups
     return (

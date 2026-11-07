@@ -26,7 +26,7 @@ const tileSx = {
   textDecoration: 'none',
 } as const
 
-const denseTileSx = { minHeight: 32, py: '3px' } as const
+const denseTileSx = { minHeight: 0, py: '4px', gap: 0 } as const
 
 const captionSx = { fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, lineHeight: 1.25, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
 
@@ -101,7 +101,7 @@ export interface TileSpec {
   name?: string
 }
 
-// `dense`: a shorter tile (16 px figure, tight padding) for a card with little height to spare.
+// `dense`: a shorter tile (about 40 px: 17 px figure, 9.5 px label, tight padding) for a card with little height to spare.
 export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; min?: number; dense?: boolean }) {
   const tabIndex = useFaceTabIndex()
   return (
@@ -109,8 +109,8 @@ export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; m
       {items.map((item) => {
         const content = (
           <>
-            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 16 : STATS_TYPE.tileValue, lineHeight: 1.1, color: item.swatch ?? STATS_UI.cream }}>{item.value}</Typography>
-            <Typography component="span" sx={captionSx}>{item.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: item.swatch, mr: '5px' }} />}{item.label}</Typography>
+            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: dense ? 17 : STATS_TYPE.tileValue, lineHeight: 1.1, color: item.swatch ?? STATS_UI.cream }}>{item.value}</Typography>
+            <Typography component="span" sx={dense ? { ...captionSx, fontSize: 9.5 } : captionSx}>{item.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: item.swatch, mr: '5px' }} />}{item.label}</Typography>
           </>
         )
         return item.href ? (
@@ -191,7 +191,7 @@ export function Chips({ items, large = false, lead }: { items: ChipSpec[]; large
     <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
       {lead && <Typography component="span" sx={{ ...captionSx, mr: '4px' }}>{lead}</Typography>}
       {items.map((item) => {
-        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: large ? 28 : 22, px: large ? '12px' : '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: large ? 16 : STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
+        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: large ? 26 : 22, px: large ? '10px' : '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: large ? 14 : STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
         return item.href ? (
           <Box key={item.key} component={RouterLink} to={item.href} tabIndex={tabIndex} aria-label={item.name ?? item.text} sx={{ ...sx, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
             {item.text}
