@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
@@ -16,6 +17,9 @@ export interface BarRow {
   colour?: string
   // A small second line under the label ("Home", "Home · Econ 4.50"); text, so it is never the only carrier of the figure.
   tag?: string
+  // Dense rows only (spec 147 Amendment 2 item 15): the row is a real toggle button that filters the page; `selected` is its pressed state.
+  onSelect?: () => void
+  selected?: boolean
 }
 
 export interface HorizontalBarsProps {
@@ -60,13 +64,35 @@ const denseRowSx = {
 } as const
 
 // A label wraps to two lines before it is cut, and the full text is always the title.
+// A selectable dense row: a button reset to look like the row, at least 32 px high, with a hover tint, a gold focus ring and a gold selected state.
+const selectRowSx = {
+  appearance: 'none',
+  border: 0,
+  m: 0,
+  px: '4px',
+  py: '3px',
+  mx: '-4px',
+  font: 'inherit',
+  fontSize: 11,
+  textAlign: 'left',
+  bgcolor: 'transparent',
+  cursor: 'pointer',
+  minHeight: 32,
+  alignContent: 'center',
+  borderRadius: '6px',
+  '&:hover': { bgcolor: alpha(BRAND.gold, 0.12) },
+  '&:hover .track': { bgcolor: alpha(BRAND.cream, 0.18) },
+  '&:focus-visible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 1 },
+  '&[aria-pressed="true"]': { bgcolor: alpha(BRAND.gold, 0.18), color: BRAND.gold, fontWeight: 700 },
+} as const
+
 const clampSx = { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', overflowWrap: 'anywhere' } as const
 export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBarsProps) {
   const tabIndex = useFaceTabIndex()
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
   const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
-    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 320 : 'calc(520px * var(--stats-row-scale, 1))', ...(dense ? { rowGap: '10px' } : {}) }}>
+    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 320 : 'calc(520px * var(--stats-row-scale, 1))', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : '10px' } : {}) }}>
       {rows.map((row, index) => {
         const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
         const bar = (
@@ -95,6 +121,31 @@ export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBars
           </>
         )
         const base = dense ? denseRowSx : rowSx
+        if (dense && row.onSelect) {
+          const select = row.onSelect
+          const pressed = Boolean(row.selected)
+          const selectName = pressed ? `Clear ${row.label} filter` : `Filter to ${row.label}`
+          return (
+            <Box
+              key={row.key}
+              component="button"
+              type="button"
+              aria-pressed={pressed}
+              aria-label={selectName}
+              title={`${name}. ${selectName}`}
+              tabIndex={tabIndex}
+              data-testid="bar-row"
+              data-flip-interactive
+              onClick={(event: MouseEvent) => {
+                event.stopPropagation()
+                select()
+              }}
+              sx={{ ...base, ...selectRowSx }}
+            >
+              {content}
+            </Box>
+          )
+        }
         return row.href ? (
           <Box
             key={row.key}

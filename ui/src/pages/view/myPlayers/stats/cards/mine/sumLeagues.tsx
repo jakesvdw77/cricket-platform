@@ -21,6 +21,8 @@ export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
   partialNote: truncatedNote,
   summary: (p, ctx) => `${ctx.firstName} has played in ${plural(p.summary.leaguesPlayed.length, 'league')}.`,
   Front: ({ payload: p, ctx }) => {
+    const scope = ctx.scope
+    const active = scope?.activeLeagueId ?? null
     const leagues = [...p.summary.leaguesPlayed].sort((a, b) => b.matches - a.matches)
     return (
       <BigBars
@@ -28,7 +30,15 @@ export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
         caption={leagues.length === 1 ? 'league' : 'leagues'}
         total={leagues.length}
         alt={`${ctx.firstName}'s matches in each league: ${leagues.map((league) => `${league.name} ${league.matches}`).join(', ')}.`}
-        rows={leagues.map((league) => ({ key: league.leagueId, label: league.name, value: league.matches, valueLabel: String(league.matches) }))}
+        rows={leagues.map((league) => ({
+          key: league.leagueId,
+          label: league.name,
+          value: league.matches,
+          valueLabel: String(league.matches),
+          ...(scope ? { onSelect: () => scope.filterLeague(active === league.leagueId ? null : league.leagueId), selected: active === league.leagueId } : {}),
+        }))}
+        hint={scope ? 'Tap a bar to filter' : undefined}
+        clear={scope && active ? { label: 'Show all leagues', onClear: () => scope.filterLeague(null) } : undefined}
       />
     )
   },

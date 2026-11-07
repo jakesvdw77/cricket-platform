@@ -121,6 +121,9 @@ export interface HubScope {
   query: string
   hasChoice: boolean
   clearFilters: () => void
+  // Set or clear just the league / the team (null clears); a league pick also drops a team that did not play in it.
+  setLeague: (leagueId: string | null) => void
+  setTeam: (teamId: string | null) => void
   // Header pieces: pass `actions` and `context` to HubPageHeader.
   actions: ReactNode
   context: ReactNode | undefined
@@ -311,6 +314,8 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     query,
     hasChoice,
     clearFilters,
+    setLeague: (id) => pickLeague(id ?? '', ''),
+    setTeam: (id) => change({ team: id ?? '' }),
     actions,
     context: activeTags || quietLine || undefined,
     panelOpen: open && wide && hasChoice,

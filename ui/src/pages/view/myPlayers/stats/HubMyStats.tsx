@@ -43,7 +43,7 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
   const filtersQuery = useMyPlayerResultsFilters(playerKey)
   const filters = filtersQuery.data
   const controls = useHubScope({ playerKey, storageKey: `hubStats:filters:${playerKey}`, filters, testIdPrefix: TEST_PREFIX })
-  const { scope, narrowed, scopeText, clearFilters } = controls
+  const { scope, narrowed, scopeText, clearFilters, leagueId, teamId, setLeague, setTeam } = controls
   const [, setSearch] = useSearchParams()
 
   const statsQuery = useMyStats(playerKey, scope, Boolean(filters))
@@ -58,8 +58,9 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
       scopeLabel: scopeText,
       resultHref: (matchId: string) => statsResultPath(playerKey, matchId, scopeQuery),
       drillHref: (target: DrillTarget) => statsDrillPath(playerKey, target, scopeQuery),
+      scope: { activeLeagueId: leagueId || null, activeTeamId: teamId || null, filterLeague: setLeague, filterTeam: setTeam },
     }),
-    [firstName, scopeText, playerKey, scopeQuery],
+    [firstName, scopeText, playerKey, scopeQuery, leagueId, teamId, setLeague, setTeam],
   )
 
   const failed = filtersQuery.isError || statsQuery.isError

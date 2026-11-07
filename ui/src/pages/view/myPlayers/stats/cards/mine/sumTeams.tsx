@@ -22,6 +22,8 @@ export const mineSumTeams: StatsCardDef<MyStatsDto> = {
   partialNote: truncatedNote,
   summary: (p, ctx) => `${ctx.firstName} has played for ${plural(p.summary.teamsRepresented.length, 'team')}.`,
   Front: ({ payload: p, ctx }) => {
+    const scope = ctx.scope
+    const active = scope?.activeTeamId ?? null
     const teams = [...p.summary.teamsRepresented].sort((a, b) => b.matches - a.matches)
     return (
       <BigBars
@@ -29,7 +31,15 @@ export const mineSumTeams: StatsCardDef<MyStatsDto> = {
         caption={teams.length === 1 ? 'team' : 'teams'}
         total={teams.length}
         alt={`${ctx.firstName}'s matches for each team: ${teams.map((team) => `${team.name} ${team.matches}`).join(', ')}.`}
-        rows={teams.map((team) => ({ key: team.teamId, label: team.name, value: team.matches, valueLabel: String(team.matches) }))}
+        rows={teams.map((team) => ({
+          key: team.teamId,
+          label: team.name,
+          value: team.matches,
+          valueLabel: String(team.matches),
+          ...(scope ? { onSelect: () => scope.filterTeam(active === team.teamId ? null : team.teamId), selected: active === team.teamId } : {}),
+        }))}
+        hint={scope ? 'Tap a bar to filter' : undefined}
+        clear={scope && active ? { label: 'Show all teams', onClear: () => scope.filterTeam(null) } : undefined}
       />
     )
   },

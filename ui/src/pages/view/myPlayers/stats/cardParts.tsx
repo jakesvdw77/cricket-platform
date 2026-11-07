@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
@@ -46,15 +46,39 @@ export function Big({ value, caption, compact = false }: { value: string; captio
 // "+N more" under the figure when there are more). The back is then just the full table, so a chart is never shown twice.
 export const FRONT_BARS = 3
 
-export function BigBars({ value, caption, rows, alt, total }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number }) {
+export function BigBars({ value, caption, rows, alt, total, hint, clear }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void } }) {
   const more = total - Math.min(rows.length, FRONT_BARS)
+  const tabIndex = useFaceTabIndex()
+  const selectable = rows.some((row) => row.onSelect)
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0, my: 'auto' }}>
-      <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
-        <Big compact value={value} caption={caption} />
-        {more > 0 && <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>+{more} more</Typography>}
+    <Box sx={{ display: 'grid', gap: '2px', minWidth: 0, my: 'auto' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
+        <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
+          <Big compact value={value} caption={caption} />
+          {more > 0 && <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>+{more} more</Typography>}
+        </Box>
+        {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} />}
       </Box>
-      {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} />}
+      {(clear || (selectable && hint)) && (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
+          {selectable && hint && <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: STATS_UI.muted, m: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</Typography>}
+          {clear && (
+            <Box
+              component="button"
+              type="button"
+              tabIndex={tabIndex}
+              data-flip-interactive
+              onClick={(event: MouseEvent) => {
+                event.stopPropagation()
+                clear.onClear()
+              }}
+              sx={{ appearance: 'none', border: 0, bgcolor: 'transparent', p: 0, ml: 'auto', minHeight: 24, font: 'inherit', fontSize: 11, color: STATS_UI.gold, textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap', '&:hover': { color: STATS_UI.cream }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
+            >
+              {clear.label}
+            </Box>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }

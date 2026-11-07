@@ -36,6 +36,16 @@ export interface CardCtx {
   resultHref: (matchId: string) => string
   // The drill sub-view for a target, carrying the scope.
   drillHref: (target: DrillTarget) => string
+  // Amendment 2 item 15: the page's league / team scope, for a card front whose bars are filters. Absent on a page that has no such scope.
+  scope?: CardScope
+}
+
+// Setters take an id, or null to clear that one filter. They write the same scope as the Filters panel (URL params and the saved value).
+export interface CardScope {
+  activeLeagueId: string | null
+  activeTeamId: string | null
+  filterLeague: (leagueId: string | null) => void
+  filterTeam: (teamId: string | null) => void
 }
 
 // "Based on N of M results": N counted for this card (its coverage), M the results in scope.

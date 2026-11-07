@@ -8,6 +8,7 @@ export { STATS_UI, STATS_TYPE, cardScrollSx, visuallyHiddenSx, CARD_HEIGHT_REM, 
 export type {
   BoardGroup,
   CardCtx,
+  CardScope,
   CardFaceProps,
   CardSize,
   CardState,
