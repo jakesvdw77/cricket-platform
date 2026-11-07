@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub Stats - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ink:#06241A;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#3FBF7F;--loss:#F0675D;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:28px 20px 90px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:44px 0 4px}
+.lead,.why{color:var(--muted);max-width:940px;line-height:1.5;margin:0 0 12px}
+.cap{font:600 12px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+/* console */
+.console{max-width:1500px;border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.82);overflow:hidden}
+.band{min-height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 20px;flex-wrap:wrap}
+.band h3{margin:0;font:700 28px var(--disp);letter-spacing:.05em;text-transform:uppercase}
+.ctl{margin-left:auto;display:flex;gap:8px;align-items:center}
+.sel,.btn{height:40px;border:1px solid var(--line);border-radius:4px;background:rgba(0,0,0,.28);color:var(--cream);font:600 15px var(--disp);letter-spacing:.1em;text-transform:uppercase;padding:0 14px;display:inline-flex;align-items:center;gap:8px}
+.body{display:flex;min-height:400px}
+.menu{width:220px;border-right:1px solid var(--line);background:rgba(0,0,0,.18);flex:none}
+.mi{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:600 16px var(--disp);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--soft)}
+.mi.sel2{color:var(--gold);background:rgba(232,184,61,.1);box-shadow:inset 3px 0 var(--gold)}.mi.sub{padding-left:30px;font-size:14px;color:var(--muted)}
+.content{flex:1;padding:22px 26px;display:grid;gap:16px;align-content:start;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{padding:10px 16px;font:600 16px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}.tab.on{color:var(--gold);box-shadow:inset 0 -3px var(--gold)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--soft);background:rgba(0,0,0,.32);border-radius:4px;padding:12px 14px;cursor:pointer}
+.tile:hover{border-color:var(--gold)}
+.num{font:700 40px var(--disp);color:var(--gold);line-height:1}.lab{font:600 12px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.sub2{font-size:12.5px;color:var(--muted);margin-top:3px}
+.panel{border:1px solid var(--soft);background:rgba(0,0,0,.26);border-radius:4px;padding:14px 16px}
+.row{display:flex;align-items:center;gap:10px}
+.chip{font:700 12px var(--disp);letter-spacing:.14em;border:1px solid currentColor;border-radius:3px;padding:2px 8px}.w{color:var(--win)}.l{color:var(--loss)}.n{color:var(--sand)}
+.spark{display:flex;align-items:flex-end;gap:6px;height:84px}.spark i{flex:1;background:var(--gold);opacity:.88;border-radius:2px 2px 0 0;position:relative}
+.spark i.no{background:var(--soft)}
+table{width:100%;border-collapse:collapse;font:600 16px var(--disp);letter-spacing:.05em;text-transform:uppercase}
+td,th{padding:9px 10px;border-bottom:1px solid var(--soft);text-align:left;white-space:nowrap}th{color:var(--muted);font-size:12px;letter-spacing:.16em}th.on{color:var(--gold)}
+td.r,th.r{text-align:right}tr.me td{color:var(--gold);background:rgba(232,184,61,.07)}
+.note{color:var(--muted);font-size:13px}
+.phone{width:380px;border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.82);overflow:hidden}
+.phone .content{padding:14px}.phone .tiles{grid-template-columns:repeat(2,1fr)}
+.row2{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.decide{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:940px;line-height:1.55;font-size:14.5px}.decide b{color:var(--gold)}
+</style></head><body>
+<h1>Player Hub Stats, round 1</h1>
+<p class="lead">The three Stats pages in the Hub, in the same dark scoreboard style as Results, reusing its pieces: header band with Season and Filters, tiles, form strips, tables. All names and figures are made up. Juniors are shown by full name inside the Hub (owner, 2026-11-07), never in exports or public pages. Nothing is built.</p>
+
+<h2>1 &middot; My stats (the selected player)</h2>
+<p class="why">Opens on the player's headline figures for the chosen scope. Tabs for Batting, Bowling, Fielding and Awards &amp; record, the same four as the manager Player page. <b>Every tile is tappable</b> and drills into the innings behind it (section 2). Copy names the player, never "you".</p>
+<div class="console"><div class="band"><h3>My Stats</h3><div class="ctl"><span class="sel">2026/2027 &#9662;</span><span class="btn">&#9679; Filters</span></div></div>
+ <div class="body"><div class="menu"><div class="mi">Availability</div><div class="mi">Results</div><div class="mi">Schedule</div><div class="mi sel2">Stats</div><div class="mi sub sel2" style="box-shadow:none;background:none">My stats</div><div class="mi sub">Team stats</div><div class="mi sub">Leaderboards</div><div class="mi">Updates</div><div class="mi">Club</div><div class="mi">Profile</div></div>
+ <div class="content">
+  <div class="row"><span class="cap">Sam van der Westhuizen &middot; Over 40 &middot; 7 matches</span><span style="margin-left:auto" class="row"><span class="cap">Form</span><span class="chip w">47*</span><span class="chip n">31</span><span class="chip l">0</span><span class="chip w">52</span><span class="chip n">12</span></span></div>
+  <div class="tabs"><div class="tab on">Batting</div><div class="tab">Bowling</div><div class="tab">Fielding</div><div class="tab">Awards &amp; record</div></div>
+  <div class="tiles"><div class="tile"><div class="num">412</div><div class="lab">Runs</div><div class="sub2">7 innings</div></div><div class="tile"><div class="num">58.9</div><div class="lab">Average</div><div class="sub2">1 not out</div></div><div class="tile"><div class="num">84.6</div><div class="lab">Strike rate</div></div><div class="tile"><div class="num">96*</div><div class="lab">Highest score</div></div><div class="tile"><div class="num">3</div><div class="lab">Fifties</div></div><div class="tile"><div class="num">41</div><div class="lab">Fours &amp; sixes</div><div class="sub2">34 fours, 7 sixes</div></div></div>
+  <div class="panel"><div class="cap" style="margin-bottom:8px">Runs per innings</div><div class="spark"><i style="height:38%"></i><i style="height:25%"></i><i style="height:100%"></i><i style="height:12%"></i><i style="height:55%"></i><i style="height:32%"></i><i class="no" style="height:6%"></i></div></div>
+  <div class="note">Based on 7 of 7 published results with a full scorecard.</div>
+ </div></div></div>
+
+<h2>2 &middot; Drill into a figure</h2>
+<p class="why">Tapping Runs opens the innings behind it (the "match drill" you liked). A row opens that match's scorecard (the Hub Result page). The figure at the top equals the sum of the rows, as on the manager pages.</p>
+<div class="console"><div class="band"><h3>&larr; Runs</h3><div class="ctl"><span class="sel">2026/2027 &#9662;</span></div></div>
+ <div class="content"><div class="row"><span class="num">412</span><span class="cap">runs in 7 innings &middot; average 58.9</span></div>
+ <table><tr><th>Match</th><th>Date</th><th class="r on">Runs</th><th class="r">Balls</th><th class="r">4s</th><th class="r">6s</th><th class="r">SR</th><th>How out</th></tr>
+ <tr><td>v Rovers</td><td>Sat 1 Nov</td><td class="r">47*</td><td class="r">52</td><td class="r">4</td><td class="r">1</td><td class="r">90</td><td>not out</td></tr>
+ <tr><td>v Eagles</td><td>Sat 25 Oct</td><td class="r">96*</td><td class="r">101</td><td class="r">9</td><td class="r">3</td><td class="r">95</td><td>not out</td></tr>
+ <tr><td>v Parkview</td><td>Sat 18 Oct</td><td class="r">31</td><td class="r">44</td><td class="r">3</td><td class="r">0</td><td class="r">70</td><td>b Naidoo</td></tr>
+ <tr><td>v Riverside</td><td>Sat 11 Oct</td><td class="r">0</td><td class="r">3</td><td class="r">0</td><td class="r">0</td><td class="r">0</td><td>c Smith b Jacobs</td></tr></table></div></div>
+
+<h2>3 &middot; Team stats</h2>
+<p class="why">The team the player plays in (a team picker only for a player in several teams). Record and form first, then the table of totals and the top performers. Team figures name no one except the top performers, who follow the same full-name rule as everywhere in the Hub.</p>
+<div class="console"><div class="band"><h3>Team Stats</h3><div class="ctl"><span class="sel">2026/2027 &#9662;</span><span class="btn">&#9679; Filters</span></div></div>
+ <div class="content">
+  <div class="row"><span class="cap">Villagers Over 40</span><span style="margin-left:auto" class="row"><span class="cap">Form</span><span class="chip w">W</span><span class="chip w">W</span><span class="chip l">L</span><span class="chip w">W</span><span class="chip w">W</span></span></div>
+  <div class="tiles"><div class="tile"><div class="num">7</div><div class="lab">Played</div></div><div class="tile"><div class="num">5</div><div class="lab">Won</div><div class="sub2">71% win rate</div></div><div class="tile"><div class="num">231</div><div class="lab">Highest total</div></div><div class="tile"><div class="num">4.8</div><div class="lab">Run rate</div></div><div class="tile"><div class="num">+0.62</div><div class="lab">Net run rate</div></div></div>
+  <div class="row2"><div class="panel" style="flex:1;min-width:300px"><div class="cap" style="margin-bottom:6px">Top batters</div><table><tr><td>Sam van der W.</td><td class="r">412</td></tr><tr><td>Anton de V.</td><td class="r">366</td></tr><tr><td>Irene K.</td><td class="r">290</td></tr></table></div>
+  <div class="panel" style="flex:1;min-width:300px"><div class="cap" style="margin-bottom:6px">Top bowlers</div><table><tr><td>Pieter N.</td><td class="r">14 wkts</td></tr><tr><td>Jano van der W.</td><td class="r">11 wkts</td></tr><tr><td>Zane B.</td><td class="r">9 wkts</td></tr></table></div></div>
+ </div></div>
+
+<h2>4 &middot; Leaderboards</h2>
+<p class="why">Tables, sorted by a chosen column, same as the manager version (spec 103 decision 26). The viewer's own player row is highlighted in gold, and a "Jump to Sam" link scrolls to it. Filters: Season, League, Team. Only published results with the Show In Player Hub flag, so it agrees with Results.</p>
+<div class="console"><div class="band"><h3>Leaderboards</h3><div class="ctl"><span class="sel">2026/2027 &#9662;</span><span class="btn">&#9679; Filters</span></div></div>
+ <div class="content">
+  <div class="tabs"><div class="tab on">Batting</div><div class="tab">Bowling</div><div class="tab">Fielding</div><div class="tab">Awards</div></div>
+  <div class="row"><span class="cap">Sort by</span><span class="sel">Runs &#9662;</span><span class="note" style="margin-left:auto">Jump to Sam &darr;</span></div>
+  <table><tr><th>#</th><th>Player</th><th>Team</th><th class="r">Mat</th><th class="r on">Runs</th><th class="r">Avg</th><th class="r">SR</th><th class="r">HS</th></tr>
+  <tr><td>1</td><td>Marius Pretorius</td><td>Under 19</td><td class="r">8</td><td class="r">498</td><td class="r">71.1</td><td class="r">88</td><td class="r">121</td></tr>
+  <tr class="me"><td>2</td><td>Sam van der Westhuizen</td><td>Over 40</td><td class="r">7</td><td class="r">412</td><td class="r">58.9</td><td class="r">85</td><td class="r">96*</td></tr>
+  <tr><td>3</td><td>Anton de Villiers</td><td>Over 40</td><td class="r">7</td><td class="r">366</td><td class="r">52.3</td><td class="r">79</td><td class="r">88</td></tr>
+  <tr><td>4</td><td>Jano van der Westhuizen</td><td>Under 13A</td><td class="r">9</td><td class="r">301</td><td class="r">37.6</td><td class="r">92</td><td class="r">64</td></tr></table>
+  <div class="note">Rates show their sample size; players under the minimum are listed after the ranked ones. Shown inside the Hub only: never exported or shown on a public page.</div>
+ </div></div>
+
+<h2>5 &middot; On a phone</h2>
+<div class="row2">
+ <div class="phone"><div class="band" style="min-height:52px;padding:0 14px"><h3 style="font-size:22px">My Stats</h3><div class="ctl"><span class="sel" style="height:36px">2026/27 &#9662;</span></div></div><div class="content"><div class="tabs" style="overflow:hidden"><div class="tab on" style="padding:8px 10px">Batting</div><div class="tab" style="padding:8px 10px">Bowling</div><div class="tab" style="padding:8px 10px">Field</div></div><div class="tiles"><div class="tile"><div class="num" style="font-size:34px">412</div><div class="lab">Runs</div></div><div class="tile"><div class="num" style="font-size:34px">58.9</div><div class="lab">Average</div></div><div class="tile"><div class="num" style="font-size:34px">84.6</div><div class="lab">Strike rate</div></div><div class="tile"><div class="num" style="font-size:34px">96*</div><div class="lab">High score</div></div></div><div class="panel"><div class="spark" style="height:60px"><i style="height:38%"></i><i style="height:25%"></i><i style="height:100%"></i><i style="height:12%"></i><i style="height:55%"></i><i style="height:32%"></i><i class="no" style="height:6%"></i></div></div></div></div>
+ <div class="phone"><div class="band" style="min-height:52px;padding:0 14px"><h3 style="font-size:22px">Leaderboards</h3></div><div class="content"><div class="row"><span class="sel" style="height:36px">Sort: Runs &#9662;</span></div><table><tr><th>#</th><th>Player</th><th class="r on">Runs</th></tr><tr><td>1</td><td>Marius P.</td><td class="r">498</td></tr><tr class="me"><td>2</td><td>Sam v.d.W.</td><td class="r">412</td></tr><tr><td>3</td><td>Anton d.V.</td><td class="r">366</td></tr></table><div class="note">Tap a row for the full line.</div></div></div>
+</div>
+
+<h2>What is on each page, in one list</h2>
+<div class="decide">
+<b>My stats:</b> Batting, Bowling, Fielding, Awards &amp; record tabs; tiles with drill into innings; form strip; scope Season, League, Team; "based on N of M results" note.<br>
+<b>Team stats:</b> record, form, totals, run rates, top batters and bowlers; team picker for multi-team players.<br>
+<b>Leaderboards:</b> Batting, Bowling, Fielding, Awards; Sort by; own row highlighted; Season, League, Team filters.<br>
+<b>Menu:</b> Stats stays a group of three (My stats, Team stats, Leaderboards); no new main items.<br><br>
+<b>Questions:</b> 1) Should My stats default to the player's current team and season, as Results does? 2) Should Leaderboards be club-wide or limited to leagues the player's teams play in? 3) Awards: show the end-of-season awards sheet to players, or hold it back for the club's presentation evening? 4) Which of the manager Batting, Bowling, Fielding columns are too much for a parent (for example dot balls, strike rate)?
+</div>
+</body></html>
