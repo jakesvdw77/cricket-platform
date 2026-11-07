@@ -102,7 +102,7 @@ describe('MyPlayerPage on a desktop', () => {
   })
 
   it.each([
-    ['stats', 'My stats', /Personal bests, form and season progress/],
+    ['updates', 'Messages', /Notices from the club to parents and players/],
   ])('%s opens on its first child, a locked panel that says Coming soon', async (path, label, text) => {
     setup(`/account/players/k1/${path}`)
 
@@ -300,7 +300,7 @@ describe('MyPlayerPage on a phone (menu first, then a page)', () => {
   })
 
   it('a locked section is a full screen too', async () => {
-    setup('/account/players/k1/stats')
+    setup('/account/players/k1/updates')
 
     expect(await screen.findByText('Coming soon')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Back to menu' })).toBeInTheDocument()

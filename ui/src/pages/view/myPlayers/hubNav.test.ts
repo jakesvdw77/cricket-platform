@@ -24,7 +24,7 @@ describe('HUB_NAV', () => {
     expect(childLabels('availability')).toBeUndefined()
     expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
     expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Team sheets'])
-    expect(childLabels('stats')).toEqual(['My stats', 'Leaderboards', 'Team stats'])
+    expect(childLabels('stats')).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
     expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
     expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Switch profile', 'Back to club', 'Sign out'])
@@ -32,9 +32,22 @@ describe('HUB_NAV', () => {
 
   it('marks Field Directory as the only live Club item, and the other sections as Soon where they are not built', () => {
     expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Field Directory'])
-    for (const id of ['updates', 'stats']) expect(byId(id).children?.every((child) => child.soon)).toBe(true)
+    expect(byId('updates').children?.every((child) => child.soon)).toBe(true)
+    expect(byId('stats').children?.some((child) => child.soon)).toBe(false)
     expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues'])
     for (const id of ['profile', 'account']) expect(byId(id).children?.some((child) => child.soon)).toBe(false)
+  })
+
+  it('has the three Stats pages live (not Soon) and always visible, with no club-switch gate', () => {
+    const stats = byId('stats').children as HubNavItem[]
+    expect(stats.map((child) => child.id)).toEqual(['stats.mine', 'stats.boards', 'stats.teams'])
+    for (const child of stats) {
+      expect(child.soon).toBeFalsy()
+      expect(child.action).toBeUndefined()
+      expect(child.visibleWhen?.(ctx) ?? true).toBe(true)
+    }
+    expect(visibleItems(ctx).find((item) => item.id === 'stats')?.children).toHaveLength(3)
+    expect(resolveRoute('stats', 'teams')).toMatchObject({ section: { id: 'stats' }, item: { id: 'stats.teams' } })
   })
 
   it('gives the two Account actions an action and no page', () => {
@@ -52,7 +65,7 @@ describe('defaultChild', () => {
     expect(defaultChild(byId('account'))?.label).toBe('Invitations')
     expect(defaultChild(byId('profile'))?.label).toBe('Contact')
     expect(defaultChild(byId('schedule'))?.label).toBe('Matches')
-    expect(defaultChild(byId('stats'))?.label).toBe('My stats')
+    expect(defaultChild(byId('stats'))?.label).toBe('Player Stats')
   })
 
   it('skips an action even when it comes first, and has nothing for a leaf', () => {
