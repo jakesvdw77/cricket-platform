@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react'
 import { Box, ToggleButton, Typography } from '@mui/material'
 import { CompactToggleGroup } from '../../../../../../components/CompactToggleGroup'
 import { useFaceTabIndex } from '../../../../../../components/FlipCard'
-import { STATS_UI } from '../../../../../../components/StatsCards'
+import { CardHeaderControls, STATS_UI } from '../../../../../../components/StatsCards'
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
@@ -11,7 +11,7 @@ import { Big, Cap, FaceTable, Note } from '../../cardParts'
 import { formatDecimal } from '../../statsFormat'
 
 // docs/specs/147 section 5, mine.seasons: runs in each season (the Season filter is ignored for this block; the other filters apply).
-// Front: a Runs | Wickets switch (local state, default Runs) over the chosen measure per season. Back: the seasons as a table. Source: bySeason.
+// Front: a Runs | Wickets switch in the card header (CardHeaderControls; local state, default Runs) over the chosen measure per season. Back: the seasons as a table. Source: bySeason.
 const SHOWN = 8
 // The front has room for four bars.
 const FRONT_SHOWN = 4
@@ -32,12 +32,14 @@ function SeasonsFront({ payload: p, ctx }: { payload: MyStatsDto; ctx: { firstNa
   const single = rows.length === 1 ? rows[0] : null
   return (
     <Box sx={{ display: 'grid', gap: '6px', minWidth: 0, my: 'auto' }}>
-      <Box data-flip-interactive onClick={(event: MouseEvent) => event.stopPropagation()} sx={{ display: 'flex', minWidth: 0 }}>
-        <CompactToggleGroup<Measure> value={active} onChange={setMeasure} ariaLabel="Measure by season">
-          <ToggleButton value="runs" aria-label="Runs" tabIndex={tabIndex}>Runs</ToggleButton>
-          <ToggleButton value="wickets" aria-label={noBowling ? 'Wickets, no bowling yet' : 'Wickets'} title={noBowling ? 'No bowling yet' : undefined} disabled={noBowling} tabIndex={tabIndex}>Wickets</ToggleButton>
-        </CompactToggleGroup>
-      </Box>
+      <CardHeaderControls>
+        <Box data-flip-interactive onClick={(event: MouseEvent) => event.stopPropagation()} sx={{ display: 'flex', minWidth: 0 }}>
+          <CompactToggleGroup<Measure> tone="dark" value={active} onChange={setMeasure} ariaLabel="Measure by season">
+            <ToggleButton value="runs" aria-label="Runs" tabIndex={tabIndex}>Runs</ToggleButton>
+            <ToggleButton value="wickets" aria-label={noBowling ? 'Wickets, no bowling yet' : 'Wickets'} title={noBowling ? 'No bowling yet' : undefined} disabled={noBowling} tabIndex={tabIndex}>Wickets</ToggleButton>
+          </CompactToggleGroup>
+        </Box>
+      </CardHeaderControls>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
         <Big value={String(total)} caption={active === 'runs' ? 'runs' : 'wickets'} />
         {single ? (

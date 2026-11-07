@@ -24,3 +24,4 @@ export type {
   StatsPage,
   TeamGroup,
 } from './statsCardTypes'
+export { CardHeaderControls, useCardHeaderSlot } from './cardHeaderSlot'

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import type { ReactNode } from 'react'
 import { Box, IconButton, Typography } from '@mui/material'
@@ -7,6 +7,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
 import { STATS_TONES } from '../../brandTokens'
 import { FlipCard, useFaceActive } from '../FlipCard'
+import { CardHeaderSlotContext } from './cardHeaderSlot'
 import { basedOnText } from './statsCardOrder'
 import { STATS_TYPE, STATS_UI, cardScrollSx, visuallyHiddenSx } from './statsCardStyle'
 import type { CardState, DataTag, StatsBasis } from './statsCardTypes'
@@ -69,6 +70,8 @@ interface FaceProps {
 
 function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = false, expanded, reserve, children }: FaceProps) {
   const active = useFaceActive()
+  // The header slot (front only): a state element so the controls portalled into it render once it is mounted.
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
   const regionRef = useRef<HTMLDivElement>(null)
   // The scroll position goes back to the top whenever this face stops or starts showing, so a flip never lands half way down a table.
   useEffect(() => {
@@ -104,10 +107,11 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         '--stats-chart-scale': expanded ? '2' : '1',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, pr: reserve ? (expanded ? 5 : 4) : 0 }}>
-        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: expanded ? STATS_TYPE.titleExpanded : STATS_TYPE.title, lineHeight: 1.2, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', pr: reserve ? (expanded ? 5 : 4) : 0 }}>
+        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: expanded ? STATS_TYPE.titleExpanded : STATS_TYPE.title, lineHeight: 1.2, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0, flex: 1 }}>
           {title}
         </Typography>
+        {heading && !empty && <Box ref={setSlot} data-testid="stats-header-actions" sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative', zIndex: 3, '&:empty': { display: 'none' } }} />}
       </Box>
       <Typography data-testid="stats-scope" sx={{ fontSize: expanded ? STATS_TYPE.scopeExpanded : STATS_TYPE.scope, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{scopeLabel}</Typography>
       <Box
@@ -136,7 +140,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
           '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
         }}
       >
-        {children}
+        <CardHeaderSlotContext.Provider value={heading ? slot : null}>{children}</CardHeaderSlotContext.Provider>
       </Box>
       {/* The front carries no note line (the footer cue says it and holds the sentence as its tooltip); the back and an expanded card print the sentence. */}
       {note && (!heading || expanded) && (
