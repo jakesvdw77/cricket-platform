@@ -7,7 +7,6 @@ import { BrandMark } from '../../components/BrandMark'
 import { useClubHome } from './myPlayers/useClubHome'
 import { hubPath } from './myPlayers/hubNav'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
-import { ProfileSwitcher } from '../../components/ProfileSwitcher'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
@@ -46,7 +45,6 @@ export function AccountShell({
   const pending = invitations + linkRequests
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null)
-  const [switchAnchor, setSwitchAnchor] = useState<HTMLElement | null>(null)
   const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
@@ -70,10 +68,11 @@ export function AccountShell({
       {!fill && <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {backTo && (
-            <ButtonBase onClick={() => navigate(backTo)} sx={quietLink}>
+          {/* One link takes you to the chooser, where Club manager (back to the club) or Player Hub is picked; a manager with a single profile has no chooser, so it goes straight back to the club. */}
+          {(profileItems || backTo) && (
+            <ButtonBase onClick={() => navigate(profileItems ? '/choose-profile' : (backTo as string))} sx={quietLink}>
               <ArrowBackIcon sx={{ fontSize: 18, mr: 0.75 }} />
-              Back to club
+              {profileItems ? 'Switch profile' : 'Back to club'}
             </ButtonBase>
           )}
         </Box>
@@ -91,16 +90,6 @@ export function AccountShell({
               PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
             >
               {accountEntries(() => setAnchor(null))}
-              {profileItems && (
-                <MenuItem
-                  onClick={() => {
-                    setSwitchAnchor(anchor)
-                    setAnchor(null)
-                  }}
-                >
-                  Switch profile
-                </MenuItem>
-              )}
               <MenuItem
                 onClick={() => {
                   setAnchor(null)
@@ -127,11 +116,6 @@ export function AccountShell({
           >
             {accountEntries(() => setAccountAnchor(null))}
           </Menu>
-          {profileItems && (
-            <ButtonBase sx={quietLink} onClick={(event) => setSwitchAnchor(event.currentTarget)}>
-              Switch profile
-            </ButtonBase>
-          )}
           <ButtonBase sx={quietLink} onClick={() => {
             forgetProfileChoices()
             signOut()
@@ -140,7 +124,6 @@ export function AccountShell({
           </ButtonBase>
         </Box>
         )}
-        {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
       </Box>}
       <Box sx={{ width: '100%', maxWidth, mx: 'auto', boxSizing: 'border-box', ...(fill ? { px: { xs: 0, sm: 2 }, pt: { xs: 0, sm: 2 }, pb: { xs: 0, sm: 3 } } : { px: 2, py: { xs: 2, sm: 4 } }) }}>
         <Box

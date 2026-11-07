@@ -141,8 +141,8 @@ export default function MyPlayerPage() {
     } else if (item.action === 'backToClub') {
       if (clubHome) navigate(clubHome)
     } else if (item.action === 'switchProfile') {
-      // Switch profile is the player picker page (owner, 2026-11-06), not a pop-up.
-      navigate('/account')
+      // Switch profile is the profile chooser page (owner, 2026-11-06), not a pop-up.
+      navigate('/choose-profile')
     } else if (isParent(item)) {
       setFocusId(item.children?.[0]?.id)
       navigate(hubPath(key, segmentOf(item)))
