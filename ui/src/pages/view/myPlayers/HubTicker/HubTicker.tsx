@@ -113,6 +113,8 @@ function Entry({ item, rules, decorative, truncate, onFocusItem }: EntryProps) {
 
 const separator = <Box component="span" aria-hidden sx={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', bgcolor: HUB.gold, opacity: 0.7, mx: '26px' }} />
 
+const hiddenSeparator = <Box component="span" aria-hidden sx={{ flex: 'none', width: 6, height: 6, mx: '26px', visibility: 'hidden' }} />
+
 const listSx = { listStyle: 'none', m: 0, p: 0, display: 'flex', alignItems: 'center', flex: 'none', position: 'relative' } as const
 
 export interface HubTickerProps {
@@ -158,7 +160,7 @@ function Strip({ items, kinds, reducedMotion }: { items: TickerItem[]; kinds: Ki
     const view = viewRef.current
     const list = listRef.current
     if (!view || !list || typeof ResizeObserver === 'undefined') return
-    const measure = () => setSize((previous) => (previous.cycle === list.offsetWidth && previous.view === view.clientWidth ? previous : { cycle: list.offsetWidth, view: view.clientWidth }))
+    const measure = () => setSize((previous) => (Math.abs(previous.cycle - list.offsetWidth) <= 1 && Math.abs(previous.view - view.clientWidth) <= 1 ? previous : { cycle: list.offsetWidth, view: view.clientWidth }))
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(view)
@@ -212,7 +214,8 @@ function Strip({ items, kinds, reducedMotion }: { items: TickerItem[]; kinds: Ki
       {items.map((item, position) => (
         <Box component="li" key={`${position}-${itemKey(item)}`} sx={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
           <Entry item={item} rules={kinds[item.kind] as TickerKindRules} decorative={decorative} onFocusItem={decorative ? undefined : reveal} />
-          {(mode === 'marquee' || position < count - 1) && separator}
+          {/* The trailing separator is always rendered, so the list is the same width in the marquee and the static layout: a width that differed by mode could flip the two modes back and forth forever (Maximum update depth). In the static layout the last one is only hidden. */}
+          {position < count - 1 || mode === 'marquee' ? separator : hiddenSeparator}
         </Box>
       ))}
     </Box>
@@ -233,8 +236,10 @@ function Strip({ items, kinds, reducedMotion }: { items: TickerItem[]; kinds: Ki
         onTouchCancel={onTouchEnd}
         onFocus={() => setFocused(true)}
         onBlur={onBlur}
-        sx={{ flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: mode === 'marquee' ? 'flex-start' : 'center' }}
+        sx={{ flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' }}
       >
+        {/* The content is absolutely positioned so it never takes part in the width of the footer: with the track's width feeding back into the viewport's, measuring it flipped marquee and static layout forever (Maximum update depth exceeded, 2026-11-07). */}
+        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: mode === 'marquee' ? 'flex-start' : 'center', overflow: 'hidden' }}>
         {mode === 'marquee' && (
           <>
             <Box aria-hidden sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: FADE_PX, zIndex: 2, pointerEvents: 'none', background: `linear-gradient(90deg, ${TICKER_FADE}, ${blackAlpha(0)})` }} />
@@ -266,6 +271,7 @@ function Strip({ items, kinds, reducedMotion }: { items: TickerItem[]; kinds: Ki
             ))}
           </Box>
         )}
+        </Box>
       </Box>
       <Box sx={{ flex: 'none', display: 'flex', alignItems: 'center', px: 0.5, gap: 0.25 }}>
         {mode === 'rotate' && (

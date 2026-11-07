@@ -1,7 +1,7 @@
 import { HUB_TICKER_KEY } from './useHubTickerPreference'
 
 // docs/specs/146 section 11: the named constants of the Player Hub scoreboard ticker, in one file.
-export const TICKER_SPEED_PX_PER_S = 50
+export const TICKER_SPEED_PX_PER_S = 30
 export const TICKER_STATIC_MS = 6000
 export const TICKER_MAX_ITEMS = 12
 export const TICKER_RESULT_MAX_AGE_DAYS = 14

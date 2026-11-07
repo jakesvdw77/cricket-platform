@@ -6,6 +6,7 @@ import { LocationProbe } from '../../../../test/LocationProbe'
 import { item, SYNTHETIC_KINDS } from '../../../../test/tickerFixtures'
 import { TICKER_STATIC_MS, TICKER_TOUCH_GRACE_MS } from '../tickerConfig'
 import type { TickerItem } from '../tickerTypes'
+import { TICKER_SPEED_PX_PER_S } from '../tickerConfig'
 import { HubTicker } from './HubTicker'
 
 // docs/specs/146 section 6 and 7: the strip. It renders what it is given; these tests never touch a source.
@@ -211,8 +212,8 @@ describe('layout', () => {
     vi.spyOn(link, 'getBoundingClientRect').mockReturnValue({ left: 900, right: 1200, top: 0, bottom: 56, width: 300, height: 56, x: 900, y: 0, toJSON: () => ({}) })
     Object.defineProperty(link, 'offsetLeft', { value: 900, configurable: true })
     act(() => link.focus())
-    // (900 - 70 px fade) / 2000 px cycle of the duration (2000 / 50 = 40 s).
-    expect(animation.currentTime).toBeCloseTo((830 / 2000) * 40 * 1000)
+    // (900 - 70 px fade) / 2000 px cycle of the duration (2000 / TICKER_SPEED_PX_PER_S s).
+    expect(animation.currentTime).toBeCloseTo((830 / 2000) * (2000 / TICKER_SPEED_PX_PER_S) * 1000)
   })
 })
 

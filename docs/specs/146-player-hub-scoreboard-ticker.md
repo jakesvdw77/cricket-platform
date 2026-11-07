@@ -180,7 +180,7 @@ Output is stable for a given `(items, seed)`. The seed comes from the route (bel
 ### 11. Components used
 Existing: `HubFrame` and its footer (`HubFooterButton`), `hubStyle.ts` (`HUB`), `brandTokens.ts`, `resultsFormat.ts`, the countdown and elapsed-time helpers used by `HubMatchRow`, `LiveBadge`'s `PulseDot` (reused for the live chip), `AccountShell`, the shared compact `Button` (the Pause control is an icon button at the Hub's 44 px target; no raw MUI `Button`, no `fullWidth`, `docs/standards/page-anatomy.md` section 0.6). New: the pieces in section 1 and the named constants below. No new dependency.
 
-Named constants (one file, `tickerConfig.ts`): `TICKER_SPEED_PX_PER_S = 50`, `TICKER_STATIC_MS = 6000`, `TICKER_MAX_ITEMS = 12`, `TICKER_RESULT_MAX_AGE_DAYS = 14`, `TICKER_UPCOMING_WINDOW_DAYS = 7`, `TICKER_COUNTDOWN_HOURS = 24`, `TICKER_POLL_WINDOW_HOURS = 48`, `TICKER_PREFERENCE_KEY = 'hub:ticker'`.
+Named constants (one file, `tickerConfig.ts`): `TICKER_SPEED_PX_PER_S = 30`, `TICKER_STATIC_MS = 6000`, `TICKER_MAX_ITEMS = 12`, `TICKER_RESULT_MAX_AGE_DAYS = 14`, `TICKER_UPCOMING_WINDOW_DAYS = 7`, `TICKER_COUNTDOWN_HOURS = 24`, `TICKER_POLL_WINDOW_HOURS = 48`, `TICKER_PREFERENCE_KEY = 'hub:ticker'`.
 
 ## Test Plan
 Per `docs/standards/testing.md`. Following the owner's working rule, tests are written after the owner has checked the function; targeted runs per step, one full run at the end. **No backend tests are needed: no backend change.** Playwright is not run by this spec.
@@ -227,7 +227,7 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 3. **Hide on Watch Live.** Default: hidden (video page). Alternative: shown but paused.
 4. **Which polls.** Default: only polls the held player has not answered. Alternative: every open poll closing soon.
 5. **Phone band height.** Default: 56 px (`121`), not the mockup's 64 px. Alternative: 64 px when items exist.
-6. **Speed.** Default: 50 px per second. Tune after the owner has seen it on a phone.
+6. **Speed.** Was 50 px per second; the owner found it too fast on first sight (2026-11-07), now 30. Tune further after a phone check.
 
 ## Rollout Notes
 - **One PR, frontend only.** Order: `tickerConfig.ts`, the item contract and registry, `weightedShuffle.ts` and its tests, the four sources and `tickerItems.ts`, `useTickerData`, `useHubTickerPreference`, `HubTicker`, `HubFooter` wired into `HubFrame`, the avatar menu switch, stories, then the owner's check; tests after the owner's function check (working rule), then a standards review and the full suite once at the end. No feature flag (the preference is the user-level off switch; there is nothing server side to flag).
