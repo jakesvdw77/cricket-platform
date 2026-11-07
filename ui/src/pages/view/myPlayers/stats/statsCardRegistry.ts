@@ -142,7 +142,7 @@ export function cardsFor<K extends StatsPage>(page: K): StatsCardDef<StatsPayloa
   return sortCards(REGISTRY[page], page, groupsFor(page)).filter((card) => card.tag !== 'NOT_CAPTURED' && !card.hidden)
 }
 
-// The NOT_CAPTURED placeholders (the page panel is gone, Amendment 2 item 11; see docs/specs/147-not-captured.md).
+// The NOT_CAPTURED placeholders (the page panel is gone, Amendment 2 item 11; see docs/stats-not-captured.md).
 export function placeholdersFor<K extends StatsPage>(page: K): StatsCardDef<StatsPayloads[K]>[] {
   return sortCards(REGISTRY[page], page, groupsFor(page)).filter((card) => card.tag === 'NOT_CAPTURED')
 }
