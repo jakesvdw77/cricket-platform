@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub Stats - round 2, flip cards and more</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ink:#06241A;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#3FBF7F;--loss:#F0675D;--blue:#7FB6E8;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:28px 20px 100px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 22px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:46px 0 4px;display:flex;gap:12px;align-items:center}
+.lead,.why{color:var(--muted);max-width:960px;line-height:1.5;margin:0 0 14px}
+.cap{font:600 12px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;max-width:1500px}
+/* flip card */
+.flip{perspective:1000px;height:290px;cursor:pointer}
+.flip .in{position:relative;width:100%;height:100%;transition:transform .7s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d}
+.flip.on .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;border:1px solid var(--line);border-radius:6px;background:linear-gradient(180deg,rgba(15,60,40,.92),rgba(7,36,26,.95));padding:14px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.face.back{transform:rotateY(180deg);background:linear-gradient(180deg,rgba(40,50,25,.95),rgba(7,36,26,.96))}
+.ft{display:flex;align-items:center;gap:8px}.ft h3{margin:0;font:700 19px var(--disp);letter-spacing:.1em;text-transform:uppercase}
+.hint{margin-left:auto;font:600 11px var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.tag{font:700 10px var(--disp);letter-spacing:.14em;border-radius:3px;padding:2px 6px;border:1px solid currentColor}.have{color:var(--win)}.part{color:var(--gold)}.miss{color:var(--loss)}
+.big{font:700 54px var(--disp);color:var(--gold);line-height:1}.lab{font:600 12px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mini div{border:1px solid var(--soft);background:rgba(0,0,0,.3);border-radius:4px;padding:6px 8px}
+.mini b{font:700 22px var(--disp);color:var(--cream);display:block;line-height:1.1}
+.bars{display:grid;gap:6px}.br{display:grid;grid-template-columns:96px 1fr 32px;gap:8px;align-items:center;font:600 13px var(--disp);letter-spacing:.08em;text-transform:uppercase}
+.br i{display:block;height:12px;background:var(--gold);border-radius:2px}.br span.t{background:var(--soft);border-radius:2px;display:block}
+.spark{display:flex;align-items:flex-end;gap:5px;height:90px}.spark i{flex:1;background:var(--gold);opacity:.88;border-radius:2px 2px 0 0}
+.line{height:90px;border-bottom:1px solid var(--soft);border-left:1px solid var(--soft);position:relative}
+.line svg{position:absolute;inset:0;width:100%;height:100%}
+.note{color:var(--muted);font-size:12.5px;line-height:1.4}
+.chip{font:700 12px var(--disp);letter-spacing:.14em;border:1px solid currentColor;border-radius:3px;padding:2px 8px}.w{color:var(--win)}.l{color:var(--loss)}
+.prog{height:10px;border-radius:5px;background:var(--soft);overflow:hidden}.prog i{display:block;height:100%;background:var(--gold)}
+.donut{width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--gold) 0 38%,var(--win) 0 63%,var(--blue) 0 78%,var(--loss) 0 90%,var(--soft) 0);position:relative;flex:none}
+.donut::after{content:"";position:absolute;inset:22px;border-radius:50%;background:#0b2f21}
+.leg{font:600 13px var(--disp);letter-spacing:.06em;text-transform:uppercase;display:grid;gap:3px}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+table{width:100%;border-collapse:collapse;font:600 14px var(--disp);letter-spacing:.05em;text-transform:uppercase}td{padding:5px 6px;border-bottom:1px solid var(--soft)}td.r{text-align:right}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:960px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+</style></head><body>
+<h1>Player Hub Stats, round 2: more than a table</h1>
+<p class="lead">Every card below <b>flips</b> (tap it): the front is the headline, the back is the story behind it. All made-up figures. Each card carries a small tag saying whether we <span class="tag have">HAVE</span> the data, only have it <span class="tag part">PARTLY</span>, or it is <span class="tag miss">NOT CAPTURED</span> yet, taken from what the scorecard records today (batting: runs, balls, 4s, 6s, how out, bowler, fielder; bowling: balls, maidens, runs, wickets, dots, wides, no-balls; fielding: catches, stumpings, run-outs). There is <b>no ball-by-ball, fall-of-wickets, partnership or per-over data</b>, so nothing here pretends to be a worm chart or a wagon wheel.</p>
+
+<h2>Player: Sam <span class="cap">batting</span></h2>
+<div class="grid">
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Season in a card</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">412</div><div class="lab">runs in 7 innings</div><div class="mini"><div><b>58.9</b><span class="lab">Avg</span></div><div><b>84.6</b><span class="lab">SR</span></div><div><b>96*</b><span class="lab">HS</span></div></div><div class="note" style="margin-top:auto">Form: <span class="chip w">47*</span> <span class="chip">31</span> <span class="chip l">0</span> <span class="chip w">52</span></div></div>
+ <div class="face back"><div class="ft"><h3>Trend</h3><span class="hint">&#8635; Back</span></div><div class="cap">Average of the last 5 innings</div><div class="line"><svg viewBox="0 0 100 40" preserveAspectRatio="none"><polyline fill="none" stroke="#E8B83D" stroke-width="2" points="0,30 25,24 50,28 75,14 100,8"/></svg></div><div class="note">Last 5 average <b style="color:var(--gold)">61.4</b>, up from 48.0 earlier in the season. Season average 58.9.</div><div class="note">Compared with last season: 9 more runs per innings.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>How Sam gets out</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div style="display:flex;gap:14px;align-items:center"><div class="donut"></div><div class="leg"><span><i style="background:var(--gold)"></i>Not out 38%</span><span><i style="background:var(--win)"></i>Caught 25%</span><span><i style="background:var(--blue)"></i>Bowled 15%</span><span><i style="background:var(--loss)"></i>LBW 12%</span><span><i style="background:var(--soft)"></i>Other 10%</span></div></div><div class="note" style="margin-top:auto">Over 7 innings. Dismissal mode is a figure the manager pages already have.</div></div>
+ <div class="face back"><div class="ft"><h3>Who got Sam out</h3><span class="tag part">PARTLY</span><span class="hint">&#8635; Back</span></div><table><tr><td>Naidoo (Parkview)</td><td class="r">2</td></tr><tr><td>Jacobs (Riverside)</td><td class="r">1</td></tr><tr><td>Smith (Eagles)</td><td class="r">1</td></tr></table><div class="note">The bowler and fielder are on the scorecard where the manager recorded them. Opposition names are free text, so the same bowler can appear spelled two ways; shown as recorded.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Scores, in bands</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="spark"><i style="height:30%"></i><i style="height:50%"></i><i style="height:100%"></i><i style="height:35%"></i></div><div class="lab" style="display:flex;justify-content:space-around"><span>0-9</span><span>10-29</span><span>30-49</span><span>50+</span></div><div class="note" style="margin-top:auto">3 fifties, 2 thirties, 1 duck. A steady batter looks different from a boom-or-bust one.</div></div>
+ <div class="face back"><div class="ft"><h3>Where Sam bats</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="bars"><div class="br"><span>No. 3</span><span class="t"><i style="width:70%"></i></span><span>5</span></div><div class="br"><span>No. 4</span><span class="t"><i style="width:28%"></i></span><span>2</span></div></div><div class="note">Average at No. 3: 64.2. At No. 4: 38.0. Batting position is the order of the batting card.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>First or chasing</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Batting 1st</span><span class="t"><i style="width:62%"></i></span><span>231</span></div><div class="br"><span>Chasing</span><span class="t"><i style="width:80%"></i></span><span>181</span></div></div><div class="note" style="margin-top:auto">Runs split by innings number: Sam scores more when chasing (a target to aim at).</div></div>
+ <div class="face back"><div class="ft"><h3>By opposition</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><table><tr><td>Rovers</td><td class="r">47*, 61</td></tr><tr><td>Eagles</td><td class="r">96*</td></tr><tr><td>Parkview</td><td class="r">31, 12</td></tr><tr><td>Riverside</td><td class="r">0</td></tr></table></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Next milestone</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="lab">500 runs this season</div><div class="prog"><i style="width:82%"></i></div><div class="note"><b style="color:var(--gold)">88 to go</b>, 3 matches left in the fixture list.</div><div class="lab" style="margin-top:10px">15 wickets</div><div class="prog"><i style="width:60%"></i></div><div class="note"><b style="color:var(--gold)">6 to go</b></div></div>
+ <div class="face back"><div class="ft"><h3>Personal bests</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><table><tr><td>Highest score</td><td class="r">96* v Eagles</td></tr><tr><td>Best bowling</td><td class="r">3/18 v Rovers</td></tr><tr><td>Most catches</td><td class="r">3 v Parkview</td></tr><tr><td>Best strike rate</td><td class="r">132 v Riverside</td></tr></table></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>When Sam fires, we win</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">5 / 5</div><div class="lab">wins when Sam scores 30+</div><div class="note" style="margin-top:auto">Team record in matches where Sam scored 30 or more, against 0 from 2 when he did not.</div></div>
+ <div class="face back"><div class="ft"><h3>Where he stands</h3><span class="tag part">PARTLY</span><span class="hint">&#8635; Back</span></div><div class="lab">Average, Over 40 league</div><div class="prog"><i style="width:88%"></i></div><div class="note">Top 12% of the league's batters (only counts players with results recorded here).</div></div></div></div>
+</div>
+
+<h2>Player: Sam <span class="cap">bowling, fielding, availability</span></h2>
+<div class="grid">
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Bowling card</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">9</div><div class="lab">wickets &middot; 3/18 best</div><div class="mini"><div><b>4.6</b><span class="lab">Econ</span></div><div><b>21.4</b><span class="lab">Avg</span></div><div><b>46%</b><span class="lab">Dots</span></div></div></div>
+ <div class="face back"><div class="ft"><h3>How Sam takes wickets</h3><span class="tag part">PARTLY</span><span class="hint">&#8635; Back</span></div><div class="bars"><div class="br"><span>Bowled</span><span class="t"><i style="width:60%"></i></span><span>4</span></div><div class="br"><span>Caught</span><span class="t"><i style="width:45%"></i></span><span>3</span></div><div class="br"><span>LBW</span><span class="t"><i style="width:25%"></i></span><span>2</span></div></div><div class="note">No boundaries conceded or ball-by-ball, so no "where he gets hit".</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>In the field</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="mini"><div><b>7</b><span class="lab">Catches</span></div><div><b>1</b><span class="lab">Run-out</span></div><div><b>1.1</b><span class="lab">Per match</span></div></div><div class="note" style="margin-top:auto">Catches, stumpings, run-outs are recorded. Dropped catches and direct hits are not.</div></div>
+ <div class="face back"><div class="ft"><h3>Team fielding</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="note">Villagers took 38 catches, 6 run-outs, 2 stumpings this season. Sam is 2nd for catches in the team.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Always there</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">100%</div><div class="lab">availability answered</div><div class="note" style="margin-top:auto">12 of 12 polls answered; selected 8 times, played 7. A reliable teammate is something parents and coaches like to see.</div></div>
+ <div class="face back"><div class="ft"><h3>Selected v played</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="note">Selected in 8, played 7 (1 match rained off). Available for 11 of 12; unavailable once, for a family event.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Home ground</h3><span class="tag part">PARTLY</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Main Oval</span><span class="t"><i style="width:80%"></i></span><span>71</span></div><div class="br"><span>Away</span><span class="t"><i style="width:45%"></i></span><span>38</span></div></div><div class="note" style="margin-top:auto">Average at the club's home ground against away grounds, where a field is recorded on the match.</div></div>
+ <div class="face back"><div class="ft"><h3>Season by season</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="spark" style="height:80px"><i style="height:45%"></i><i style="height:60%"></i><i style="height:82%"></i><i style="height:100%"></i></div><div class="lab" style="display:flex;justify-content:space-around"><span>23/24</span><span>24/25</span><span>25/26</span><span>26/27</span></div></div></div></div>
+</div>
+
+<h2>Team <span class="cap">Villagers Over 40</span></h2>
+<div class="grid">
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Team season card</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">5 / 7</div><div class="lab">won &middot; 71%</div><div class="mini"><div><b>+0.62</b><span class="lab">NRR</span></div><div><b>4.8</b><span class="lab">Run rate</span></div><div><b>231</b><span class="lab">High</span></div></div></div>
+ <div class="face back"><div class="ft"><h3>Form and margins</h3><span class="hint">&#8635; Back</span></div><div class="note"><span class="chip w">W</span> <span class="chip w">W</span> <span class="chip l">L</span> <span class="chip w">W</span> <span class="chip w">W</span></div><div class="note">Biggest win: 112 runs v Rovers. Closest game: won by 2 wickets.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Where the runs come from</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Sam</span><span class="t"><i style="width:75%"></i></span><span>26%</span></div><div class="br"><span>Anton</span><span class="t"><i style="width:66%"></i></span><span>23%</span></div><div class="br"><span>Irene</span><span class="t"><i style="width:52%"></i></span><span>18%</span></div><div class="br"><span>Extras</span><span class="t"><i style="width:25%"></i></span><span>9%</span></div></div></div>
+ <div class="face back"><div class="ft"><h3>Where the wickets come from</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="note">Pieter 14, Jano 11, Zane 9, others 6. Three bowlers take 85% of the wickets.</div></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Batting first v chasing</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Bat first</span><span class="t"><i style="width:75%"></i></span><span>3/4</span></div><div class="br"><span>Chasing</span><span class="t"><i style="width:66%"></i></span><span>2/3</span></div></div><div class="note" style="margin-top:auto">Wins when batting first and when chasing. Toss won: 4 of 7.</div></div>
+ <div class="face back"><div class="ft"><h3>Head to head</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><table><tr><td>Rovers</td><td class="r">W W</td></tr><tr><td>Eagles</td><td class="r">W</td></tr><tr><td>Parkview</td><td class="r">L W</td></tr></table></div></div></div>
+
+<div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+ <div class="face"><div class="ft"><h3>Squad strength</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">14</div><div class="lab">players used this season</div><div class="note" style="margin-top:auto">Average of 11.4 available per match, from the availability polls.</div></div>
+ <div class="face back"><div class="ft"><h3>Won the close ones</h3><span class="tag have">HAVE</span><span class="hint">&#8635; Back</span></div><div class="note">Games decided by under 20 runs or 2 wickets: won 3 of 4.</div></div></div></div>
+</div>
+
+<h2>What we cannot show yet</h2>
+<div class="sum">
+<span class="tag miss">NOT CAPTURED</span> Worm chart, run rate by phase (powerplay, middle, death), partnerships, fall of wickets, scoring zones and wagon wheels, balls dot percentage for batters, boundaries conceded by bowlers, wicketkeeper dismissals, dropped catches. Each needs ball-by-ball capture or extra scorecard fields; spec 103 lists them. A future ball-by-ball scorer would unlock most of them at once.
+</div>
+
+<h2>A shape for the pages</h2>
+<div class="sum">
+<b>My stats:</b> a header strip (the season card), then a grid of flip cards grouped Batting, Bowling, Fielding and "Sam as a teammate" (availability, selection). Tiles still drill to the innings table. <b>Team stats:</b> the same grid for the team. <b>Leaderboards:</b> stay tables, with a flip card at the top for "Where Sam stands".<br><br>
+<b>Questions:</b> 1) Do you like flipping every card, or the front as headline and back only where there is a real second story? 2) Which cards would a parent most want first? 3) Are "availability answered" and "selected v played" fine to show on the player's own page, or only to managers? 4) Percentile rankings ("top 12%") can sting for juniors: show them, hide them for under 13s, or leave them out?
+</div>
+</body></html>
