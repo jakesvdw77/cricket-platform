@@ -1,18 +1,18 @@
 import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
-import { Avatar, Badge, Box, Button, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Avatar, Badge, Box, ButtonBase, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { BrandMark } from '../../components/BrandMark'
 import { useClubHome } from './myPlayers/useClubHome'
 import { hubPath } from './myPlayers/hubNav'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { ProfileSwitcher } from '../../components/ProfileSwitcher'
-import { BrandMark } from '../../components/BrandMark'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 import { signOut } from '../../auth/signOut'
-import { BRAND, creamAlpha, DARK_MENU_BG } from '../../brandTokens'
+import { BRAND, creamAlpha, DARK_MENU_BG, FONT_DISPLAY } from '../../brandTokens'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
@@ -63,16 +63,19 @@ export function AccountShell({
       Link More Players
     </MenuItem>,
   ]
-  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, bgcolor: 'transparent', '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12), backgroundImage: 'none' } }
+  const quietLink = { fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, letterSpacing: '0.14em', textTransform: 'uppercase', color: BACKDROP_COLOURS.cream, py: 0.75, borderBottom: '2px solid transparent', '&:hover': { borderBottomColor: BRAND.gold }, '&.Mui-focusVisible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 2 } } as const
   return (
     <PageBackdrop>
       {/* The Player Hub (fill) has no header row: Switch profile, Back to club and Sign out live under Account in its menu (owner, 2026-11-06). */}
       {!fill && <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <BrandMark size={28} />
-          <Typography fontWeight={700} fontSize={16}>
-            Cricket Legend
-          </Typography>
+        {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {backTo && (
+            <ButtonBase onClick={() => navigate(backTo)} sx={quietLink}>
+              <ArrowBackIcon sx={{ fontSize: 18, mr: 0.75 }} />
+              Back to club
+            </ButtonBase>
+          )}
         </Box>
         {phone ? (
           <>
@@ -88,16 +91,6 @@ export function AccountShell({
               PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
             >
               {accountEntries(() => setAnchor(null))}
-              {backTo && (
-                <MenuItem
-                  onClick={() => {
-                    setAnchor(null)
-                    navigate(backTo)
-                  }}
-                >
-                  Back to club
-                </MenuItem>
-              )}
               {profileItems && (
                 <MenuItem
                   onClick={() => {
@@ -120,11 +113,11 @@ export function AccountShell({
             </Menu>
           </>
         ) : (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
-            <Button variant="outlined" size="small" sx={outline} aria-haspopup="menu" onClick={(event) => setAccountAnchor(event.currentTarget)}>
+            <ButtonBase aria-haspopup="menu" sx={quietLink} onClick={(event) => setAccountAnchor(event.currentTarget)}>
               Account
-            </Button>
+            </ButtonBase>
           </Badge>
           <Menu
             anchorEl={accountAnchor}
@@ -134,22 +127,17 @@ export function AccountShell({
           >
             {accountEntries(() => setAccountAnchor(null))}
           </Menu>
-          {backTo && (
-            <Button variant="outlined" size="small" startIcon={<ArrowBackIcon />} sx={outline} onClick={() => navigate(backTo)}>
-              Back to club
-            </Button>
-          )}
           {profileItems && (
-            <Button variant="outlined" size="small" sx={outline} onClick={(event) => setSwitchAnchor(event.currentTarget)}>
+            <ButtonBase sx={quietLink} onClick={(event) => setSwitchAnchor(event.currentTarget)}>
               Switch profile
-            </Button>
+            </ButtonBase>
           )}
-          <Button variant="outlined" size="small" sx={outline} onClick={() => {
+          <ButtonBase sx={quietLink} onClick={() => {
             forgetProfileChoices()
             signOut()
           }}>
             Sign out
-          </Button>
+          </ButtonBase>
         </Box>
         )}
         {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
@@ -162,6 +150,18 @@ export function AccountShell({
           {children}
         </Box>
       </Box>
+      {/* Owner, 2026-11-06: the brand sits bottom left and the copyright bottom right (not on the Player Hub console, which fills the window). */}
+      {!fill && (
+        <Box component="footer" sx={{ mt: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, px: 2, py: 1.5, color: creamAlpha(0.72) }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <BrandMark size={24} />
+            <Typography fontWeight={700} fontSize={14}>
+              Cricket Legend
+            </Typography>
+          </Box>
+          <Typography fontSize={12.5}>&copy; {new Date().getFullYear()} Cricket Legend. All rights reserved.</Typography>
+        </Box>
+      )}
     </PageBackdrop>
   )
 }

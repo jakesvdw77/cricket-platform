@@ -67,7 +67,7 @@ describe('AccountShell on a desktop', () => {
 })
 
 describe('AccountShell on a phone', () => {
-  it('folds Back to club, Switch profile and Sign out into the Account menu with initials', async () => {
+  it('keeps Back to club as the link at the left and folds Switch profile and Sign out into the Account menu with initials', async () => {
     setPhone(true)
     renderShell(access({ clubAdminClubIds: ['c1'] }), [players, riverside])
 
@@ -77,7 +77,7 @@ describe('AccountShell on a phone', () => {
     await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
     await userEvent.click(trigger)
 
-    expect(await screen.findByRole('menuitem', { name: 'Back to club' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     expect(await screen.findByRole('menuitem', { name: 'Switch profile' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
     expect(logout).toHaveBeenCalledOnce()
