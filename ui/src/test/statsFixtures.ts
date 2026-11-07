@@ -1,5 +1,6 @@
-import type { MyLeaderboardColumn, MyLeaderboardRow, MyLeaderboardTable, MyStanding, MyStandingLine, MyStatsDto, MyStatsInningsPage, MyStatsInningsRow, MyTeamResultPoint, MyTeamStatsDto } from '../api/meStatsApi'
+import type { MyAwards, MyBoardsFilters, MyLeaderboardColumn, MyLeaderboardRow, MyLeaderboardTable, MyStanding, MyStandingLine, MyStatsDto, MyStatsInningsPage, MyStatsInningsRow, MyTeamResultPoint, MyTeamStatsDto } from '../api/meStatsApi'
 import type { MyResultFilters } from '../api/meResultsApi'
+import { AWARD_BOARDS } from './leaderboardFixtures'
 import { makeTeamStats } from './teamStatsFixtures'
 
 // docs/specs/147: payload fixtures for the Player Hub stats tests, built from the API types. `makeMyStats` and `makeMyTeamStats` are FULL
@@ -322,4 +323,29 @@ export function drillRow(n: number, over: Partial<MyStatsInningsRow> = {}): MySt
 
 export function drillPage(rows: MyStatsInningsRow[], number: number, hasMore: boolean, total = rows.length, over: Partial<MyStatsInningsPage> = {}): MyStatsInningsPage {
   return { kind: 'BATTING', filter: 'BAND_50', title: 'Batting innings', filterLabel: 'Scores of 50 or more', truncated: false, page: { number, size: 20, totalElements: total, hasMore }, rows, ...over }
+}
+
+export const makeBoardsFilters = (over: Partial<MyBoardsFilters> = {}): MyBoardsFilters => ({
+  currentSeasonId: SEASON.id,
+  seasons: [SEASON],
+  leagues: [LEAGUE],
+  teams: [TEAM],
+  combos: [{ seasonId: 's1', leagueId: 'l1', teamId: 't1' }],
+  ...over,
+})
+
+// Awards: revealed with one category and a joint-leader-free leader (the viewer), or held back until the season ends.
+export function makeMyAwards(over: Partial<MyAwards> = {}): MyAwards {
+  return {
+    scope: { seasonId: 's1', leagueId: null, teamId: 't1' },
+    revealed: true,
+    reason: null,
+    message: null,
+    seasonEndDate: null,
+    basis: { resultsCounted: 12, playersConsidered: 14 },
+    minimums: { innings: 3, overs: 10, defaultInnings: 3, defaultOvers: 10 },
+    categories: [{ board: AWARD_BOARDS[0], leaders: [{ rank: 1, mine: true, firstName: 'Sam', lastName: 'Naidoo', figure: 158, matches: 7, innings: 6, sample: null, smallSample: false, detail: null }] }],
+    omitted: [],
+    ...over,
+  }
 }

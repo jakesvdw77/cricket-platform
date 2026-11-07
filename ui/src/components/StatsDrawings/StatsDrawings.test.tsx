@@ -150,7 +150,7 @@ describe('LineChart', () => {
         guides={[{ value: 30, label: '30' }, { value: 50, label: '50' }]}
       />,
     )
-    const dots = [...document.querySelectorAll('circle.dot')]
+    const dots = Array.from(document.querySelectorAll('circle.dot'))
     expect(dots.map((dot) => dot.getAttribute('data-notout'))).toEqual(['false', 'false', 'true', 'false'])
     expect(dots[2]).toHaveAttribute('fill', 'transparent')
     expect(screen.getAllByTestId('line-guide')).toHaveLength(2)

@@ -94,17 +94,25 @@ export function HubTeamStats({ playerKey }: { playerKey: string }) {
   const stats = statsQuery.data
   const firstName = firstNameOf(player?.firstName)
   const scopeQuery = statsScopeQuery(scope)
+  // The cards always name the team: when it is only implied (the player's current team, not in the address) the shared scope text has no team in
+  // it, so the team is put after the season ("2025/26 · U14 A · Premier League") and a screenshot is never about an unnamed team.
+  const impliedTeam = controls.teamId ? undefined : stats?.teamName
+  const cardScope = useMemo(() => {
+    if (!impliedTeam) return scopeText
+    const [season, ...rest] = scopeText.split(' · ')
+    return [season, impliedTeam, ...rest].join(' · ')
+  }, [scopeText, impliedTeam])
 
   // The card context: links keep the team-stats origin and the scope in the address, so Back returns to this page with the same scope.
   const ctx = useMemo<CardCtx>(
     () => ({
       firstName,
       teamName: stats?.teamName,
-      scopeLabel: scopeText,
+      scopeLabel: cardScope,
       resultHref: (matchId: string) => teamStatsResultPath(playerKey, matchId, scopeQuery),
       drillHref: (target: DrillTarget) => statsDrillPath(playerKey, target, scopeQuery),
     }),
-    [firstName, stats?.teamName, scopeText, playerKey, scopeQuery],
+    [firstName, stats?.teamName, cardScope, playerKey, scopeQuery],
   )
 
   const failed = filtersQuery.isError || statsQuery.isError

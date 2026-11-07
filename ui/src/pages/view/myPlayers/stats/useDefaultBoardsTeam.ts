@@ -15,8 +15,15 @@ function teamsOf(filters: MyResultFilters, controls: HubScope): { id: string }[]
 }
 
 export function useDefaultBoardsTeam(playerKey: string, controls: HubScope, ownFilters: MyResultFilters | undefined, reachTeamIds: string[] | undefined): boolean {
-  const [, setSearch] = useSearchParams()
+  const [search, setSearch] = useSearchParams()
   const [done, setDone] = useState(false)
+  // True from the render that knows the default until the address carries it: the address update lands a render after `done`, and without this
+  // the page would ask the server for the unfiltered table (and the standing card) once before the team arrives.
+  const [applying, setApplying] = useState(false)
+  const inAddress = Boolean(search.get('team'))
+  useEffect(() => {
+    if (applying && inAddress) setApplying(false)
+  }, [applying, inAddress])
   const ready = Boolean(ownFilters && reachTeamIds)
   const explicit = Boolean(controls.teamId)
   const options = ownFilters ? teamsOf(ownFilters, controls).filter((team) => reachTeamIds?.includes(team.id)) : []
@@ -47,9 +54,10 @@ export function useDefaultBoardsTeam(playerKey: string, controls: HubScope, ownF
       },
       { replace: true },
     )
+    setApplying(true)
     setDone(true)
     // `options` is derived from the two payloads; the three values below decide everything.
   }, [ready, done, explicit, options.length, target, setSearch])
 
-  return !ready || waiting
+  return !ready || waiting || (applying && !inAddress)
 }

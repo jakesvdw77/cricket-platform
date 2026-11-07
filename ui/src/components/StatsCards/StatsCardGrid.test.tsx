@@ -14,7 +14,7 @@ interface Payload {
 const ctx: CardCtx = { firstName: 'Sam', scopeLabel: '2025/26', resultHref: (id) => `/r/${id}`, drillHref: () => '/d' }
 const groups: StatsGroupDef[] = [{ id: 'summary', label: 'Summary' }, { id: 'batting', label: 'Batting' }, { id: 'bowling', label: 'Bowling' }]
 
-function card(id: string, group: StatsGroupDef['id'], over: Partial<StatsCardDef<Payload>> & { state?: CardState; size?: CardSize } = {}): StatsCardDef<Payload> {
+function card(id: string, group: StatsGroupDef['id'], over: Partial<Omit<StatsCardDef<Payload>, 'state'>> & { state?: CardState; size?: CardSize } = {}): StatsCardDef<Payload> {
   const { state = 'ready', ...rest } = over
   return {
     id,
@@ -136,7 +136,7 @@ describe('StatsCardGrid groups', () => {
 describe('StatsCardGrid rows and cards', () => {
   it('lays the cards out in rows by kind', () => {
     renderGrid([card('b1', 'batting', { size: 'tall' }), card('b2', 'batting', { order: 2 }), card('b3', 'batting', { order: 3 }), card('b4', 'batting', { order: 4 })], { picker: false })
-    const kinds = [...document.querySelectorAll('[data-row]')].map((row) => row.getAttribute('data-row'))
+    const kinds = Array.from(document.querySelectorAll('[data-row]')).map((row) => row.getAttribute('data-row'))
     expect(kinds).toEqual(['tall', 'single'])
   })
 

@@ -8,6 +8,7 @@ import MyPlayerPage from './MyPlayerPage'
 import { calls, clearViewport, httpError, renderRoutes, routeApi, setPhone } from '../../test/accountTestUtils'
 import type { ApiMock } from '../../test/accountTestUtils'
 import { agent, makeMyPlayer } from '../../test/myPlayerFixtures'
+import { drillPage, drillRow, makeMyStats, makeResultFilters } from '../../test/statsFixtures'
 import { STREAM, matchDto, matchList, summary as matchSummary } from '../../test/hubMatchFixtures'
 
 vi.mock('../../auth/keycloak', () => ({ keycloak: { tokenParsed: { name: 'Priya Naidoo' }, logout: vi.fn() } }))
@@ -145,6 +146,29 @@ describe('MyPlayerPage on a desktop', () => {
     setup('/account/players/k1/schedule/matches/m1', { extra })
     await user.click(await screen.findByRole('button', { name: 'Answer Availability' }))
     expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
+  })
+
+  // docs/specs/147: the Stats pages are live under Stats, and the drill's one Back returns to Player Stats with the same scope.
+  it('stats opens on Player Stats, a live page with its sub menu', async () => {
+    setup('/account/players/k1/stats', { extra: { 'GET /me/players/k1/results/filters': makeResultFilters(), 'GET /me/players/k1/stats': makeMyStats() } })
+
+    expect(await screen.findByTestId('hub-stats-grid')).toBeInTheDocument()
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
+    expect(within(menu()).getAllByRole('button').map((bar) => bar.textContent)).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
+    expect(within(menu()).getByRole('button', { name: 'Player Stats' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('the Player Stats drill has Back to Player Stats as its one Back, which returns to the stats page with the scope', async () => {
+    const user = userEvent.setup()
+    setup('/account/players/k1/stats/mine/innings?kind=BATTING&filter=BAND_50&season=s1&team=t1', {
+      extra: { 'GET /me/players/k1/stats/innings': drillPage([drillRow(1)], 0, false, 1), 'GET /me/players/k1/results/filters': makeResultFilters(), 'GET /me/players/k1/stats': makeMyStats() },
+    })
+
+    expect(await screen.findByTestId('hub-stats-drill')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Back to Player Stats' }))
+    expect(await screen.findByTestId('hub-stats-grid')).toBeInTheDocument()
+    expect(http.get).toHaveBeenCalledWith('/me/players/k1/stats', { params: { seasonId: 's1', teamId: 't1' } })
   })
 
   it('shows the Invitations count on the Invitations page, which is route-only (Account is the corner link)', async () => {
