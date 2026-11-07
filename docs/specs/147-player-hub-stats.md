@@ -331,6 +331,7 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 11. **No 'Not captured yet' panel in the UI.** The catalogue of figures the scorecard cannot yet provide is documented in `docs/specs/147-not-captured.md` instead (a doc, not a page element). `payload.notCaptured` stays in the API.
 12. **Order of work:** Player Stats is completed first; Team stats and Leaderboards changes follow. No tests until the owner says.
 13. **Who the bowler dismisses is its own card** (`mine.wickets-position`, Bowling group, order 60): batters dismissed by position (Openers, Middle Order, Tail) and the top three catchers on the front, full tables on the flip; `mine.wickets-how` keeps its donut with the table of dismissal types on its flip. Bowling stays rows of 3 + 3.
+14. **Boundaries Hit** (`mine.sum-boundaries`, compact, Summary): fours plus sixes on the front with Fours and Sixes bars, the table on the flip. The nine Summary cards run in three rows of three by `order`: Leagues Played 10, Teams Represented 20, Matches Played 30 | Runs Scored 40, Balls Faced 50, Boundaries Hit 55 | Overs Bowled 60, Wickets Taken 65, Catches Taken 70.
 
 ### Amendment 2, density pass (owner, 2026-11-07: the page was "basically unusable", the first row of cards needed scrolling even on a 27 inch screen)
 

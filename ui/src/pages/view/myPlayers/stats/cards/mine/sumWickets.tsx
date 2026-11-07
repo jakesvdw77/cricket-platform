@@ -14,7 +14,7 @@ export const mineSumWickets: StatsCardDef<MyStatsDto> = {
   title: () => 'Wickets Taken',
   tag: 'HAVE',
   needs: ['bowling', 'series', 'basis'],
-  order: 80,
+  order: 65,
   // Summary tile: a compact (13.5 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'hide',
