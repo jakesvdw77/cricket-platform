@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { Avatar, Badge, Box, ButtonBase, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { BrandMark } from '../../components/BrandMark'
 import { useClubHome } from './myPlayers/useClubHome'
-import { hubPath } from './myPlayers/hubNav'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
@@ -38,27 +37,12 @@ export function AccountShell({
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
   // docs/specs/145: Invitations, Link Requests and Link More Players moved here from the Hub menu's Account item; the counts are the
   // same reads the Hub used for the old Account pills, and the avatar carries the total.
-  const { key: playerKey } = useParams<{ key?: string }>()
   const invitations = useMyInvitations().data?.length ?? 0
   const linkRequests = (useMyLinkRequests().data ?? []).filter((request) => request.status === 'PENDING').length
   const pending = invitations + linkRequests
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null)
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
-  const withCount = (label: string, count: number) => (count > 0 ? `${label} (${count})` : label)
-  // Menu items cannot sit in a Fragment (MUI Menu reads its children), so the entries are returned as an array.
-  const accountEntries = (close: () => void) => [
-    <MenuItem key="invitations" onClick={() => { close(); navigate(playerKey ? hubPath(playerKey, 'account', 'invitations') : '/account/invitations') }}>
-      {withCount('Invitations', invitations)}
-    </MenuItem>,
-    <MenuItem key="requests" onClick={() => { close(); navigate(playerKey ? hubPath(playerKey, 'account', 'requests') : '/welcome') }}>
-      {withCount('Link Requests', linkRequests)}
-    </MenuItem>,
-    <MenuItem key="find" onClick={() => { close(); navigate('/welcome') }}>
-      Link More Players
-    </MenuItem>,
-  ]
   const quietLink = { fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, letterSpacing: '0.14em', textTransform: 'uppercase', color: BACKDROP_COLOURS.cream, py: 0.75, borderBottom: '2px solid transparent', '&:hover': { borderBottomColor: BRAND.gold }, '&.Mui-focusVisible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 2 } } as const
   return (
     <PageBackdrop>
@@ -86,7 +70,14 @@ export function AccountShell({
               onClose={() => setAnchor(null)}
               PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
             >
-              {accountEntries(() => setAnchor(null))}
+              <MenuItem
+                onClick={() => {
+                  setAnchor(null)
+                  navigate('/account/options')
+                }}
+              >
+                {pending > 0 ? `Account (${pending})` : 'Account'}
+              </MenuItem>
               <MenuItem
                 onClick={() => {
                   setAnchor(null)
@@ -101,18 +92,10 @@ export function AccountShell({
         ) : (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
-            <ButtonBase aria-haspopup="menu" sx={quietLink} onClick={(event) => setAccountAnchor(event.currentTarget)}>
+            <ButtonBase sx={quietLink} onClick={() => navigate('/account/options')}>
               Account
             </ButtonBase>
           </Badge>
-          <Menu
-            anchorEl={accountAnchor}
-            open={Boolean(accountAnchor)}
-            onClose={() => setAccountAnchor(null)}
-            PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
-          >
-            {accountEntries(() => setAccountAnchor(null))}
-          </Menu>
           <ButtonBase sx={quietLink} onClick={() => {
             forgetProfileChoices()
             signOut()

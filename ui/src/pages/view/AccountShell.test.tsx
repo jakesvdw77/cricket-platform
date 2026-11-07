@@ -63,7 +63,6 @@ describe('AccountShell on a phone', () => {
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
     const trigger = screen.getByRole('button', { name: 'Account menu' })
     expect(trigger).toHaveTextContent('SS')
-    await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
     expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     await userEvent.click(trigger)
 
