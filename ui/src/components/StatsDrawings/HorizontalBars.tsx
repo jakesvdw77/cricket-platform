@@ -51,8 +51,7 @@ const denseRowSx = {
   gridTemplateRows: 'auto auto',
   alignItems: 'center',
   columnGap: '8px',
-  rowGap: '2px',
-  py: '1px',
+  rowGap: '4px',
   minWidth: 0,
   color: BRAND.cream,
   textDecoration: 'none',
@@ -67,11 +66,11 @@ export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBars
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
   const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
-    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: 'calc(520px * var(--stats-row-scale, 1))' }}>
+    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 320 : 'calc(520px * var(--stats-row-scale, 1))', ...(dense ? { rowGap: '10px' } : {}) }}>
       {rows.map((row, index) => {
         const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
         const bar = (
-          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 5 : 10, borderRadius: '5px', bgcolor: alpha(BRAND.cream, 0.1), overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
+          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 8 : 10, borderRadius: '5px', bgcolor: alpha(BRAND.cream, 0.1), overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
             {lengths[index] > 0 && <Box component="span" sx={{ display: 'block', height: '100%', borderRadius: '5px', width: `${Math.max(lengths[index], 3)}%`, bgcolor: row.colour ?? STATS_TONES.gold }} />}
           </Box>
         )

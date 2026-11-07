@@ -14,7 +14,7 @@ export const mineSumRuns: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['summary', 'batting', 'bySeason', 'basis'],
   order: 40,
-  // Summary tile: a compact (10 rem) card, three to a row.
+  // Summary tile: a compact (13.5 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No innings yet.',

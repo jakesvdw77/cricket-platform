@@ -35,7 +35,7 @@ const captionSx = { fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, 
 // `compact` is the Summary tile's larger figure (34 px), the normal one is 30 px.
 export function Big({ value, caption, compact = false }: { value: string; caption: string; compact?: boolean }) {
   return (
-    <Box>
+    <Box sx={compact ? { my: 'auto' } : undefined}>
       <Typography data-testid="stats-big" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: compact ? STATS_TYPE.bigCompact : STATS_TYPE.big, lineHeight: 1, color: STATS_UI.gold, m: 0 }}>{value}</Typography>
       <Typography sx={captionSx}>{caption}</Typography>
     </Box>
@@ -49,7 +49,7 @@ export const FRONT_BARS = 3
 export function BigBars({ value, caption, rows, alt, total }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number }) {
   const more = total - Math.min(rows.length, FRONT_BARS)
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '14px', minWidth: 0 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0, my: 'auto' }}>
       <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
         <Big compact value={value} caption={caption} />
         {more > 0 && <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>+{more} more</Typography>}
