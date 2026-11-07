@@ -56,7 +56,7 @@ describe('meResultsApi requests', () => {
 describe('meResultsApi hooks', () => {
   it('pages the list by the server hasMore and stops when there is no more', async () => {
     get.mockImplementation(async (_url, config) => {
-      const page = (config?.params as { page: number }).page
+      const page = ((config ?? {}) as { params: { page: number } }).params.page
       return { data: makeResultList([battingRow({ matchId: `m${page}` })], { page: { number: page, size: 1, totalElements: 2, hasMore: page === 0 } }) }
     })
     const { result } = renderHook(() => useMyPlayerResults('k1', {}), { wrapper: wrapper() })
@@ -65,7 +65,7 @@ describe('meResultsApi hooks', () => {
     await result.current.fetchNextPage()
     await waitFor(() => expect(result.current.data?.pages).toHaveLength(2))
     expect(result.current.hasNextPage).toBe(false)
-    expect(get.mock.calls.map((call) => (call[1]?.params as { page: number }).page)).toEqual([0, 1])
+    expect(get.mock.calls.map((call) => ((call[1] ?? {}) as { params: { page: number } }).params.page)).toEqual([0, 1])
   })
 
   it('does not ask while disabled or without a key', async () => {

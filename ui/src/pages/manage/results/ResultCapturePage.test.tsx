@@ -36,7 +36,7 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
     getMatchResult: (clubId: string, matchId: string) => getMatchResult(clubId, matchId),
     saveResultDraft: (clubId: string, matchId: string, body: unknown) => saveResultDraft(clubId, matchId, body),
     validateResult: (clubId: string, matchId: string, body: unknown) => validateResult(clubId, matchId, body),
-    publishResult: (clubId: string, matchId: string, ack: boolean) => publishResult(clubId, matchId, ack),
+    publishResult: (clubId: string, matchId: string, ack: boolean, showInPlayerHub?: boolean) => publishResult(clubId, matchId, ack, showInPlayerHub),
     getScorecard: (clubId: string, matchId: string) => getScorecard(clubId, matchId),
     getScorecardPrefill: (clubId: string, matchId: string) => getScorecardPrefill(clubId, matchId),
   }
@@ -484,7 +484,7 @@ describe('ResultCapturePage', () => {
       expect(screen.getByText('Publish this result?')).toBeInTheDocument()
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Publish' }))
 
-      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', true))
+      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', true, true))
       expect(await screen.findByText('At: /manage/results')).toBeInTheDocument()
     })
 
@@ -498,7 +498,40 @@ describe('ResultCapturePage', () => {
       await user.click(screen.getByRole('button', { name: 'Publish' }))
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Publish' }))
 
-      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', false))
+      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', false, true))
+    })
+
+    // docs/specs/145 decision 8: the publish confirmation carries "Show In Player Hub", ticked by default.
+    it('asks "Show In Player Hub" in the publish confirmation, ticked by default, and publishes with it', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      renderPage()
+      await toReview(user)
+      await screen.findByText('The margin of 24 runs matches the scores.')
+
+      await user.click(screen.getByRole('button', { name: 'Publish' }))
+      const dialog = within(screen.getByRole('dialog'))
+      expect(dialog.getByRole('checkbox', { name: 'Show In Player Hub' })).toBeChecked()
+      expect(dialog.getByText(/Parents and players can see this result in the Player Hub/)).toBeInTheDocument()
+      await user.click(dialog.getByRole('button', { name: 'Publish' }))
+
+      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', false, true))
+    })
+
+    it('publishes without showing the result in the Player Hub when the tick is removed', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      renderPage()
+      await toReview(user)
+      await screen.findByText('The margin of 24 runs matches the scores.')
+
+      await user.click(screen.getByRole('button', { name: 'Publish' }))
+      const dialog = within(screen.getByRole('dialog'))
+      await user.click(dialog.getByRole('checkbox', { name: 'Show In Player Hub' }))
+      expect(dialog.getByRole('checkbox', { name: 'Show In Player Hub' })).not.toBeChecked()
+      await user.click(dialog.getByRole('button', { name: 'Publish' }))
+
+      await waitFor(() => expect(publishResult).toHaveBeenCalledWith('club-1', 'match-1', false, false))
     })
 
     it('blocks Publish and lists the errors when the server finds the result invalid', async () => {

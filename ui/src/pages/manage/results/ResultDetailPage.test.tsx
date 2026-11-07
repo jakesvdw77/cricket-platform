@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
@@ -13,6 +13,8 @@ const unpublishResult = vi.fn()
 const deleteResultDraft = vi.fn()
 const validateResult = vi.fn()
 const publishResult = vi.fn()
+const showResultToPlayers = vi.fn()
+const hideResultFromPlayers = vi.fn()
 
 vi.mock('../../../api/matchApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../api/matchApi')>()
@@ -27,6 +29,8 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
     deleteResultDraft: (clubId: string, matchId: string) => deleteResultDraft(clubId, matchId),
     validateResult: (clubId: string, matchId: string) => validateResult(clubId, matchId),
     publishResult: (clubId: string, matchId: string, ack: boolean) => publishResult(clubId, matchId, ack),
+    showResultToPlayers: (clubId: string, matchId: string) => showResultToPlayers(clubId, matchId),
+    hideResultFromPlayers: (clubId: string, matchId: string) => hideResultFromPlayers(clubId, matchId),
   }
 })
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([{ id: 'team-1', name: '1st XI', logoUrl: null }]) }))
@@ -145,6 +149,66 @@ describe('ResultDetailPage', () => {
       expect(rows).toHaveLength(4)
       expect(rows[2]).toHaveTextContent('Super over 1')
       expect(screen.getByTestId('result-figure-result-value')).toHaveTextContent('Tied · 1st XI won in the super over')
+    })
+  })
+
+  // docs/specs/145 decision 8 and acceptance 3a: a manager shows or hides a published result in the Player Hub (off by default for old results).
+  describe('Player Hub visibility', () => {
+    const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByTestId('manage-result'))
+      return within(await screen.findByRole('menu'))
+    }
+
+    it('offers Show In Player Hub on a published result that is not shown, and no chip', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(makeResult({ visibleToPlayers: false }))
+      renderPage()
+      const menu = await openMenu(user)
+
+      expect(menu.getByRole('menuitem', { name: /Show In Player Hub/ })).toBeEnabled()
+      expect(menu.queryByRole('menuitem', { name: /Hide From Player Hub/ })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('result-hub-chip')).not.toBeInTheDocument()
+    })
+
+    it('shows the result in the Player Hub, then the chip appears and the action turns into Hide', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValueOnce(makeResult({ visibleToPlayers: false })).mockResolvedValue(makeResult({ visibleToPlayers: true }))
+      showResultToPlayers.mockResolvedValue(makeResult({ visibleToPlayers: true }))
+      renderPage()
+      await user.click((await openMenu(user)).getByRole('menuitem', { name: /Show In Player Hub/ }))
+
+      await waitFor(() => expect(showResultToPlayers).toHaveBeenCalledWith('club-1', 'match-1'))
+      expect(hideResultFromPlayers).not.toHaveBeenCalled()
+      expect(await screen.findByTestId('result-hub-chip')).toHaveTextContent('In Player Hub')
+      await user.click(await screen.findByTestId('manage-result'))
+      expect(await screen.findByRole('menuitem', { name: /Hide From Player Hub/ })).toBeInTheDocument()
+    })
+
+    it('hides a shown result from the Player Hub and the chip goes', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValueOnce(makeResult({ visibleToPlayers: true })).mockResolvedValue(makeResult({ visibleToPlayers: false }))
+      hideResultFromPlayers.mockResolvedValue(makeResult({ visibleToPlayers: false }))
+      renderPage()
+      expect(await screen.findByTestId('result-hub-chip')).toBeInTheDocument()
+      await user.click((await openMenu(user)).getByRole('menuitem', { name: /Hide From Player Hub/ }))
+
+      await waitFor(() => expect(hideResultFromPlayers).toHaveBeenCalledWith('club-1', 'match-1'))
+      expect(showResultToPlayers).not.toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByTestId('result-hub-chip')).not.toBeInTheDocument())
+    })
+
+    it('disables the action on a draft with the reason "Publish the result first", and never calls the server', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(makeResult({ status: 'DRAFT', publishedAt: null }))
+      renderPage()
+      const menu = await openMenu(user)
+
+      const item = menu.getByRole('menuitem', { name: /Show In Player Hub/ })
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(menu.getByText('Publish the result first')).toBeInTheDocument()
+      fireEvent.click(item)
+      expect(showResultToPlayers).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('result-hub-chip')).not.toBeInTheDocument()
     })
   })
 

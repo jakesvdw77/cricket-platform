@@ -77,7 +77,7 @@ describe('RunsMixBar', () => {
   it('animates the growth only under a no-preference media query (reduced motion keeps it still)', () => {
     const { container } = render(<RunsMixBar runs={46} fours={4} sixes={1} />)
     const cls = (container.querySelector('path') as SVGPathElement).getAttribute('class')?.split(' ').find((name) => name.startsWith('css-')) as string
-    const rules = [...document.querySelectorAll('style')].map((style) => style.textContent ?? '')
+    const rules = Array.from(document.querySelectorAll('style')).map((style) => style.textContent ?? '')
     const withAnimation = rules.filter((text) => text.includes(`.${cls}`) && text.includes('animation:'))
     expect(withAnimation).toHaveLength(1)
     expect(withAnimation[0].startsWith('@media (prefers-reduced-motion: no-preference)')).toBe(true)
