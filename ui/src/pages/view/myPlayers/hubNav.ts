@@ -102,6 +102,8 @@ export const HUB_NAV: HubNavItem[] = [
   {
     id: 'account',
     label: 'Account',
+    // Route-only: Account is the page-corner link on every screen, not a Hub menu item (owner, 2026-11-06).
+    inMenu: false,
     children: [
       { id: 'account.invitations', label: 'Invitations', pill: 'invitations' },
       { id: 'account.requests', label: 'Link requests', pill: 'linkRequests' },

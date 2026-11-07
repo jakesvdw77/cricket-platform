@@ -46,8 +46,8 @@ export function AccountShell({
   const quietLink = { fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, letterSpacing: '0.14em', textTransform: 'uppercase', color: BACKDROP_COLOURS.cream, py: 0.75, borderBottom: '2px solid transparent', '&:hover': { borderBottomColor: BRAND.gold }, '&.Mui-focusVisible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 2 } } as const
   return (
     <PageBackdrop>
-      {/* The Player Hub (fill) has no header row: Switch profile, Back to club and Sign out live under Account in its menu (owner, 2026-11-06). */}
-      {!fill && <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
+      {/* The quiet top row (Back to club, Account, Sign out) is on every screen, the Player Hub included (owner, 2026-11-06); Account is not a Hub menu item. */}
+      <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           {backTo && (
@@ -104,7 +104,7 @@ export function AccountShell({
           </ButtonBase>
         </Box>
         )}
-      </Box>}
+      </Box>
       <Box sx={{ width: '100%', maxWidth, mx: 'auto', boxSizing: 'border-box', ...(fill ? { px: { xs: 0, sm: 2 }, pt: { xs: 0, sm: 2 }, pb: { xs: 0, sm: 3 } } : { px: 2, py: { xs: 2, sm: 4 } }) }}>
         <Box
           data-testid={testId}
