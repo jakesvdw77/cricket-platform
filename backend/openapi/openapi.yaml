@@ -2523,6 +2523,126 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyResultDto"
+  /api/v1/me/players/{playerKey}/stats:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The one payload of the Player Hub My stats page (docs/specs/147): the held player figures, series and cards data for the scope, over published results a manager switched on for the Player Hub only. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season, league or team 404, a competition other than LEAGUE or FRIENDLY 400."
+      operationId: getMyPlayerStats
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404). The seasons block ignores it."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyStatsDto"
+  /api/v1/me/players/{playerKey}/stats/innings:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The My stats match drill (docs/specs/147): one page of the innings, spells or matches behind a figure, newest first, from the held player counted Player Hub results (up to 300 matches). filter must be a token the stats payload advertises for the kind; unknown kind, unknown or inapplicable filter, bad competition, negative page or size outside 1 to 100 is 400. Key not held is 404, a suspended caller 403."
+      operationId: getMyPlayerStatsInnings
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: kind
+        in: query
+        required: true
+        description: "BATTING, BOWLING, FIELDING or MATCHES (else 400)."
+        schema:
+          type: string
+      - name: filter
+        in: query
+        required: false
+        description: "One drill token from the stats payload for this kind (else 400); absent keeps every row of the kind."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based page, default 0."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "Page size, default 20, 1 to 100 (else 400)."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyStatsInningsPageDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -16470,6 +16590,749 @@ components:
           $ref: "#/components/schemas/PlayerMatchFielding"
         awards:
           $ref: "#/components/schemas/PlayerMatchAwards"
+    MyStatsDto:
+      type: object
+      description: "The Player Hub My stats payload (docs/specs/147) for a held player in the Player Hub scope (only published results a manager switched on). Every figure is the calculator output; the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the per-match blocks cover the newest basis.historyCap matches only. Every filter string is a drill token accepted by the stats/innings read for its kind. teamFielding, teamFieldingRank and standing are null until the team-stats and leaderboard slices."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyStatsScope"
+        playerFirstName:
+          type: string
+        ageBand:
+          type: string
+        basis:
+          $ref: "#/components/schemas/MyStatsBasis"
+        batting:
+          $ref: "#/components/schemas/PlayerBatting"
+        bowling:
+          $ref: "#/components/schemas/PlayerBowling"
+        fielding:
+          $ref: "#/components/schemas/PlayerFielding"
+        awards:
+          $ref: "#/components/schemas/PlayerAwards"
+        record:
+          $ref: "#/components/schemas/PlayerRecord"
+        form:
+          $ref: "#/components/schemas/PlayerForm"
+        series:
+          $ref: "#/components/schemas/MyStatsSeries"
+        rolling:
+          $ref: "#/components/schemas/MyStatsRolling"
+        guides:
+          $ref: "#/components/schemas/MyStatsGuides"
+        bands:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBand"
+        byInningsNumber:
+          $ref: "#/components/schemas/MyStatsByInningsNumber"
+        byOpposition:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsOpposition"
+        dismissedBy:
+          $ref: "#/components/schemas/MyStatsDismissedBy"
+        wicketsByPosition:
+          $ref: "#/components/schemas/MyStatsWicketsByPosition"
+        milestones:
+          $ref: "#/components/schemas/MyStatsMilestones"
+        teamRecordWhenScoring:
+          $ref: "#/components/schemas/MyStatsTeamRecordWhenScoring"
+        homeAway:
+          $ref: "#/components/schemas/MyStatsHomeAway"
+        bySeason:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsSeason"
+        bowlingDiscipline:
+          $ref: "#/components/schemas/MyStatsBowlingDiscipline"
+        availability:
+          $ref: "#/components/schemas/MyStatsAvailability"
+        teamFielding:
+          $ref: "#/components/schemas/MyStatsTeamFielding"
+        teamFieldingRank:
+          type: integer
+          format: int32
+        standing:
+          $ref: "#/components/schemas/MyStatsStanding"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerNotCaptured"
+    MyStatsScope:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    MyStatsBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        resultsWithBattingCard:
+          type: integer
+          format: int64
+        resultsWithBowlingCard:
+          type: integer
+          format: int64
+        resultsWithFieldingCard:
+          type: integer
+          format: int64
+        fixturesRemaining:
+          type: integer
+          format: int64
+        truncated:
+          type: boolean
+        historyCap:
+          type: integer
+          format: int32
+    MyStatsSeries:
+      type: object
+      properties:
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        battingInnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsSeriesInnings"
+        battingSummary:
+          $ref: "#/components/schemas/PlayerDashboardBattingSummary"
+        dismissals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsDismissal"
+        battingTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsTrendPoint"
+        bowlingMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBowlingMatch"
+        wicketTypes:
+          $ref: "#/components/schemas/PlayerDashboardWicketTypes"
+        economySummary:
+          $ref: "#/components/schemas/PlayerDashboardEconomySummary"
+    MyStatsSeriesInnings:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        howOut:
+          type: string
+    MyStatsDismissal:
+      type: object
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+        filter:
+          type: string
+    MyStatsTrendPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        cumulativeRuns:
+          type: integer
+          format: int64
+        cumulativeDismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsBowlingMatch:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+    MyStatsRolling:
+      type: object
+      properties:
+        span:
+          type: integer
+          format: int32
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsRollingPoint"
+        hint:
+          $ref: "#/components/schemas/MyStatsTrendHint"
+    MyStatsRollingPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        average:
+          type: number
+    MyStatsTrendHint:
+      type: object
+      properties:
+        recent:
+          type: number
+        earlier:
+          type: number
+        direction:
+          type: string
+    MyStatsGuides:
+      type: object
+      properties:
+        low:
+          type: integer
+          format: int32
+        high:
+          type: integer
+          format: int32
+        basis:
+          type: string
+    MyStatsBand:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        percent:
+          type: number
+        filter:
+          type: string
+    MyStatsByInningsNumber:
+      type: object
+      properties:
+        battingFirst:
+          $ref: "#/components/schemas/MyStatsInningsSplit"
+        chasing:
+          $ref: "#/components/schemas/MyStatsInningsSplit"
+    MyStatsInningsSplit:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        filter:
+          type: string
+    MyStatsOpposition:
+      type: object
+      properties:
+        opponentName:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        scores:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsScore"
+    MyStatsScore:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        runs:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+    MyStatsDismissedBy:
+      type: object
+      properties:
+        bowlers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsNameCount"
+        notRecorded:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    MyStatsNameCount:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int64
+    MyStatsWicketsByPosition:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsPositionGroup"
+        notRecorded:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        caughtBy:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsNameCount"
+    MyStatsPositionGroup:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+    MyStatsMilestones:
+      type: object
+      properties:
+        runs:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        wickets:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        catches:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        personalBests:
+          $ref: "#/components/schemas/MyStatsPersonalBests"
+    MyStatsMilestone:
+      type: object
+      properties:
+        current:
+          type: integer
+          format: int64
+        target:
+          type: integer
+          format: int64
+        toGo:
+          type: integer
+          format: int64
+    MyStatsPersonalBests:
+      type: object
+      properties:
+        highestScore:
+          $ref: "#/components/schemas/MyStatsBestInnings"
+        bestBowling:
+          $ref: "#/components/schemas/MyStatsBestBowling"
+        mostCatches:
+          $ref: "#/components/schemas/MyStatsBestCatches"
+        bestStrikeRate:
+          $ref: "#/components/schemas/MyStatsBestStrikeRate"
+        minimumBalls:
+          type: integer
+          format: int32
+    MyStatsBestInnings:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestBowling:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestCatches:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestStrikeRate:
+      type: object
+      properties:
+        strikeRate:
+          type: number
+        runs:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsTeamRecordWhenScoring:
+      type: object
+      properties:
+        threshold:
+          type: integer
+          format: int32
+        scored:
+          $ref: "#/components/schemas/MyStatsRecordSplit"
+        notScored:
+          $ref: "#/components/schemas/MyStatsRecordSplit"
+        scoredFilter:
+          type: string
+        notScoredFilter:
+          type: string
+    MyStatsRecordSplit:
+      type: object
+      properties:
+        matches:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        winPercent:
+          type: number
+    MyStatsHomeAway:
+      type: object
+      properties:
+        home:
+          $ref: "#/components/schemas/MyStatsFieldSplit"
+        away:
+          $ref: "#/components/schemas/MyStatsFieldSplit"
+        unknownFieldMatches:
+          type: integer
+          format: int64
+    MyStatsFieldSplit:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsSeason:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        wickets:
+          type: integer
+          format: int64
+    MyStatsBowlingDiscipline:
+      type: object
+      properties:
+        wides:
+          type: integer
+          format: int64
+        noBalls:
+          type: integer
+          format: int64
+        widesPerOver:
+          type: number
+        noBallsPerOver:
+          type: number
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+        byInnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsDisciplineSpell"
+    MyStatsDisciplineSpell:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+    MyStatsAvailability:
+      type: object
+      properties:
+        pollsTotal:
+          type: integer
+          format: int64
+        pollsAnswered:
+          type: integer
+          format: int64
+        answeredAvailable:
+          type: integer
+          format: int64
+        matchesSelected:
+          type: integer
+          format: int64
+        matchesPlayed:
+          type: integer
+          format: int64
+    MyStatsTeamFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+    MyStatsStanding:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+        playersRanked:
+          type: integer
+          format: int64
+        average:
+          type: number
+        innings:
+          type: integer
+          format: int64
+    MyStatsInningsPageDto:
+      type: object
+      description: "One page of the My stats match drill (docs/specs/147), newest first. kind is BATTING, BOWLING, FIELDING or MATCHES; page.totalElements is the rows after the filter; truncated says the history cap (300 matches) cut the set. Only the block of the row kind is filled; MATCHES rows fill all three where the player took part."
+      properties:
+        kind:
+          type: string
+        filter:
+          type: string
+        title:
+          type: string
+        filterLabel:
+          type: string
+        truncated:
+          type: boolean
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsInningsRow"
+    MyStatsInningsRow:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        ourTeamName:
+          type: string
+        result:
+          type: string
+        batting:
+          $ref: "#/components/schemas/MyStatsInningsBatting"
+        bowling:
+          $ref: "#/components/schemas/MyStatsInningsBowling"
+        fielding:
+          $ref: "#/components/schemas/MyStatsInningsFielding"
+    MyStatsInningsBatting:
+      type: object
+      properties:
+        inningsNumber:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        fours:
+          type: integer
+          format: int32
+        sixes:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        howOut:
+          type: string
+        bowlerName:
+          type: string
+        strikeRate:
+          type: number
+    MyStatsInningsBowling:
+      type: object
+      properties:
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+    MyStatsInningsFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
     MyResultListDto:
       type: object
       description: "One page of the held player results shown in the Player Hub, newest first."
