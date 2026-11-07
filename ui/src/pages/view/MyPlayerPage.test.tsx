@@ -56,10 +56,10 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile', 'Account']
+const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile']
 
 describe('MyPlayerPage on a desktop', () => {
-  it('opens on Availability with the eight-item menu, the player card and the open polls', async () => {
+  it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
     setup('/account/players/k1', { polls: [poll('a'), poll('b')] })
 
     expect(await screen.findByText('Aman Naidoo', { selector: 'p' })).toBeInTheDocument()
@@ -147,15 +147,21 @@ describe('MyPlayerPage on a desktop', () => {
     expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
   })
 
-  it('shows the Invitations count under Account in the menu, opening the invitations page in the hub', async () => {
-    const user = userEvent.setup()
-    setup('/account/players/k1/availability', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
-
-    await user.click(await within(await findMenu()).findByRole('button', { name: /^Account/ }))
-    await user.click(await within(menu()).findByRole('button', { name: /^Invitations, 2/ }))
+  it('shows the Invitations count on the Invitations page, which is route-only (Account is the corner link)', async () => {
+    setup('/account/players/k1/account', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
 
     expect(await screen.findByRole('heading', { name: 'Invitations' })).toBeInTheDocument()
-    expect(within(menu()).getByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
+    expect(await within(menu()).findByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('has Account as the corner link in the top row, opening the Account page, and not as a menu item', async () => {
+    const user = userEvent.setup()
+    setup('/account/players/k1/availability')
+
+    await within(await findMenu()).findByRole('button', { name: /^Availability/ })
+    expect(within(menu()).queryByRole('button', { name: /^Account/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Account' }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
   })
 
   it('has no Invitations count without invitations', async () => {
@@ -185,15 +191,14 @@ describe('MyPlayerPage on a desktop', () => {
       expect(screen.queryByTestId('hub-profile')).not.toBeInTheDocument()
     })
 
-    it('is hidden for a single player, who links more players from Account', async () => {
+    it('is hidden for a single player, who reaches Account from the corner link', async () => {
       const user = userEvent.setup()
       setup('/account/players/k1/availability', { players: [summary('k1')] })
 
       await within(await findMenu()).findByRole('button', { name: /^Availability/ })
       expect(screen.queryByRole('button', { name: 'Back to players' })).not.toBeInTheDocument()
-      await user.click(within(await findMenu()).getByRole('button', { name: /^Account/ }))
-      await user.click(await within(menu()).findByRole('button', { name: 'Link more players' }))
-      expect(await screen.findByTestId('location')).toHaveTextContent('/welcome')
+      await user.click(screen.getByRole('button', { name: 'Account' }))
+      expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
     })
   })
 
@@ -266,7 +271,7 @@ describe('MyPlayerPage on a desktop', () => {
 describe('MyPlayerPage on a phone (menu first, then a page)', () => {
   beforeEach(() => setPhone(true))
 
-  it('the base URL is the menu screen: the player card and the eight bars, with no page', async () => {
+  it('the base URL is the menu screen: the player card and the seven bars, with no page', async () => {
     setup('/account/players/k1', { polls: [poll('a')] })
 
     await within(await findMenu()).findByRole('button', { name: /^Availability, 1 open/ })

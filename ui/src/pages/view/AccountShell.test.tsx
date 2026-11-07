@@ -71,13 +71,13 @@ describe('AccountShell on a phone', () => {
     expect(logout).toHaveBeenCalledOnce()
   })
 
-  it('leaves out Back to club and Switch profile when they do not apply', async () => {
+  it('has Account and Sign out in the avatar menu, and nothing else, when there is no club to go back to', async () => {
     setPhone(true)
     renderShell(access())
     await vi.waitFor(() => expect(http.post).toHaveBeenCalledWith('/me/activate'))
 
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
 
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invitations', 'Link Requests', 'Link More Players', 'Sign out'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Account', 'Sign out'])
   })
 })

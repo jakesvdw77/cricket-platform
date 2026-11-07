@@ -57,7 +57,7 @@ export default function MyAccountPage() {
   const linkRequests = (useMyLinkRequests().data ?? []).filter((request) => request.status === 'PENDING').length
   const options: AccountOption[] = [
     { id: 'invitations', title: 'Invitations', help: 'A club has invited you to link a player. Accept or decline here.', to: '/account/invitations', count: invitations },
-    { id: 'requests', title: 'Link Requests', help: 'The requests you sent to link a player, and where each one stands.', to: '/welcome', count: linkRequests },
+    { id: 'requests', title: 'Link Requests', help: 'The requests you sent to link a player, and where each one stands.', to: '/welcome?view=requests', count: linkRequests },
     { id: 'find', title: 'Link More Players', help: 'Find another player you manage, such as a child, and ask the club to link them.', to: '/welcome' },
   ]
   return (
