@@ -15,6 +15,8 @@ export const VEIL_IN_MS = 240
 export const VEIL_OUT_MS = 760
 // Owner, 2026-11-06: after the pointer leaves the unpinned panel it stays open this long, enough time to reach a sub-menu entry.
 export const PEEK_CLOSE_DELAY_MS = 1500
+// After a menu row is clicked (the page changes) the unpinned panel stays this long, so a wrong click can be corrected without reopening it.
+export const PEEK_AFTER_CLICK_MS = 2500
 // Hover intent (owner, 2026-11-06): the panel opens only when the pointer rests on the menu button this long, not when it brushes past.
 export const PEEK_OPEN_DELAY_MS = 500
 // The collapsed menu's panel slides in and out over these times (an even ease, not a snap: a decelerating curve does most of its travel in the first
@@ -49,6 +51,7 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   const closeTimer = useRef<number | undefined>(undefined)
   const openTimer = useRef<number | undefined>(undefined)
   // Clicks are ignored while a transition runs (owner, 2026-11-06: a double click flipped the menu twice). Hover and the timer are not locked.
+  const pointerInside = useRef(false)
   const lockedUntil = useRef(0)
   const locked = () => Date.now() < lockedUntil.current
   const lockFor = (ms: number) => {
@@ -113,9 +116,13 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   const closePeek = useCallback((delay = PEEK_CLOSE_DELAY_MS) => {
     window.clearTimeout(openTimer.current)
     window.clearTimeout(closeTimer.current)
-    closeTimer.current = window.setTimeout(() => setPeek(false), delay)
+    // Never closes under the pointer: a panel the pointer is still on stays until the pointer leaves (which starts its own close delay).
+    closeTimer.current = window.setTimeout(() => {
+      if (!pointerInside.current) setPeek(false)
+    }, delay)
   }, [])
-  useEffect(() => setPeek(false), [routeKey])
+  // Choosing a page closes the panel, but after a delay rather than at once.
+  useEffect(() => closePeek(PEEK_AFTER_CLICK_MS), [routeKey, closePeek])
   const pin = useCallback(() => {
     if (veil !== 'idle' || locked()) return
     lockFor(VEIL_IN_MS + VEIL_OUT_MS)
@@ -140,10 +147,12 @@ export function useHubMenuAutoCollapse(enabled: boolean, routeKey: string) {
   // While the menu is in the layout these only PAUSE the collapse timer. While collapsed they keep the peek panel open under the pointer or focus.
   const columnProps = {
     onMouseEnter: () => {
+      pointerInside.current = true
       setHover(true)
       if (collapsed) openPeek()
     },
     onMouseLeave: () => {
+      pointerInside.current = false
       setHover(false)
       if (collapsed) closePeek()
     },
