@@ -28,7 +28,7 @@ Goals:
 - **Results and Team sheets Hub items** (still Soon; they can reuse `MyMatchDto` later).
 - **Per-club time zones** (known gap: South Africa assumed, so "started" uses that zone). Forecast hours use the field's own forecast time zone only to read the API, and are shown as the match-day clock times.
 - **A weather key, paid weather service, radar, alerts or weather history.** The Brief reuses the free no-key forecast.
-- **A scrolling ticker anywhere** (accessibility, see the Match Brief).
+- **A scrolling ticker anywhere** (accessibility, see the Match Brief). *Amended by `146` (2026-11-07) for the Hub console footer only: the match rows stay static; the footer ticker ships with the mitigations named here (visible pause control, pause on hover, touch and focus, a static fallback under `prefers-reduced-motion`, an off switch).*
 - **The "other ideas" list** (Match Brief section 4): none is built by this spec.
 
 ## Decisions
