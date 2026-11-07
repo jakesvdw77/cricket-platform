@@ -76,15 +76,12 @@ public final class MyLeaderboardBuilder {
 
     private record LineDef(String key, String group, LeaderboardBoard board, LeaderboardColumn column) {
 
-        /** The player of the match line has no standings column; its label and value come from the awards figures. */
         String label() {
-            return column == null ? "Player Of The Match" : column.getLongLabel();
+            return column.getLongLabel();
         }
 
         LeaderboardCell value(Candidate c) {
-            return column == null
-                    ? new LeaderboardCell(BigDecimal.valueOf(c.figures().awards().playerOfTheMatch()), null, null, null, null, null)
-                    : column.cell(c);
+            return column.cell(c);
         }
     }
 
@@ -92,12 +89,13 @@ public final class MyLeaderboardBuilder {
             new LineDef("runs", "batting", LeaderboardBoard.MOST_RUNS, LeaderboardColumn.BAT_RUNS),
             new LineDef("average", "batting", LeaderboardBoard.BATTING_AVERAGE, LeaderboardColumn.BAT_AVERAGE),
             new LineDef("strikeRate", "batting", LeaderboardBoard.STRIKE_RATE, LeaderboardColumn.BAT_STRIKE_RATE),
+            new LineDef("fours", "batting", LeaderboardBoard.MOST_FOURS, LeaderboardColumn.BAT_FOURS),
+            new LineDef("sixes", "batting", LeaderboardBoard.MOST_SIXES, LeaderboardColumn.BAT_SIXES),
             new LineDef("wickets", "bowling", LeaderboardBoard.MOST_WICKETS, LeaderboardColumn.BOWL_WICKETS),
             new LineDef("economy", "bowling", LeaderboardBoard.ECONOMY_RATE, LeaderboardColumn.BOWL_ECONOMY),
-            new LineDef("catches", "fielding", LeaderboardBoard.MOST_CATCHES, LeaderboardColumn.FIELD_CATCHES),
-            new LineDef("playerOfTheMatch", "awards", LeaderboardBoard.MOST_POTM, null));
+            new LineDef("catches", "fielding", LeaderboardBoard.MOST_CATCHES, LeaderboardColumn.FIELD_CATCHES));
 
-    /** The held player's place in the seven headline figures among everyone loaded (the reach, in the Player Hub scope). */
+    /** The held player's place in the eight headline figures among everyone loaded (the reach, in the Player Hub scope). */
     public static MyLeaderboardStandingDto standing(
             LeaderboardPlayers loaded, UUID playerId, String playerFirstName, MyLeaderboardScope scope) {
         LeaderboardQualification.Defaults defaults =

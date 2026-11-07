@@ -18444,7 +18444,7 @@ components:
             $ref: "#/components/schemas/MyStandingLine"
     MyStandingLine:
       type: object
-      description: "One headline. key is runs, average, strikeRate, wickets, economy, catches or playerOfTheMatch; group is batting, bowling, fielding or awards. rank (competition rank) is out of playersRanked; playersListed is everyone the table lists. minimum is set for the rate lines only; belowMinimum says the held player is below it. value is the held player standings cell (null when no figure)."
+      description: "One headline. key is runs, average, strikeRate, fours, sixes, wickets, economy or catches; group is batting, bowling or fielding. rank (competition rank) is out of playersRanked; playersListed is everyone the table lists. minimum is set for the rate lines only; belowMinimum says the held player is below it. value is the held player standings cell (null when no figure)."
       properties:
         key:
           type: string

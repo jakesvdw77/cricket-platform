@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * docs/specs/147, "Where Sam stands": the held player's ordinal place among the players of the leaderboard reach in five
- * headline figures (runs, batting average, wickets, economy and catches). Every figure and every order is the one the
+ * headline figures (runs, batting average, strike rate, fours, sixes, wickets, economy and catches). Every figure and every order is the one the
  * standings tables use. {@code lines} is empty when {@code HubRankingPolicy} does not allow rankings; a line's {@code
  * rank} is null when the player has no figure in it (or is below the minimum of a rate). No player id and no other
  * player's name appears.
@@ -20,8 +20,8 @@ public record MyLeaderboardStandingDto(
         List<MyStandingLine> lines) {
 
     /**
-     * One headline. {@code key} is runs, average, strikeRate, wickets, economy, catches or playerOfTheMatch; {@code group} is
-     * batting, bowling, fielding or awards (the table the line comes from). {@code rank} (competition rank, ties share) is out of {@code
+     * One headline. {@code key} is runs, average, strikeRate, fours, sixes, wickets, economy or catches; {@code group} is
+     * batting, bowling or fielding (the table the line comes from). {@code rank} (competition rank, ties share) is out of {@code
      * playersRanked}; {@code playersListed} is everyone the table lists for the group. {@code value} is the player's
      * cell of the matching standings column (null parts when there is no figure). {@code minimum} is set for the rate lines
      * only (average, strikeRate, economy): players below it are not ranked, and {@code belowMinimum} says the held player is one.
