@@ -23,7 +23,7 @@ import { mineBowlingVenues } from './cards/mine/bowlingVenues'
 import { minePositions } from './cards/mine/positions'
 import { mineSumBalls } from './cards/mine/sumBalls'
 import { mineSumBoundaries } from './cards/mine/sumBoundaries'
-import { mineSumCatches } from './cards/mine/sumCatches'
+import { mineSumFielding } from './cards/mine/sumFielding'
 import { mineSumLeagues } from './cards/mine/sumLeagues'
 import { mineSumMatches } from './cards/mine/sumMatches'
 import { mineSumOvers } from './cards/mine/sumOvers'
@@ -56,7 +56,7 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineSumBalls,
   mineSumBoundaries,
   mineSumOvers,
-  mineSumCatches,
+  mineSumFielding,
   mineSumWickets,
   mineSeason,
   minePositions,

@@ -3,14 +3,14 @@ import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { BigBars, Cap, FaceTable } from '../../cardParts'
 import { fieldingBasis } from '../../cardKit'
 
-// docs/specs/147 Amendment 2 item 3, mine.sum-catches: catches taken. Back: catches, stumpings and run-outs. Source: summary.catchesTaken, fielding.
-export const mineSumCatches: StatsCardDef<MyStatsDto> = {
-  id: 'mine.sum-catches',
+// docs/specs/147 Amendment 2 item 3, mine.sum-fielding: fielding dismissals. Back: catches, stumpings, run-outs, total. Source: fielding.
+export const mineSumFielding: StatsCardDef<MyStatsDto> = {
+  id: 'mine.sum-fielding',
   page: 'mine',
   group: 'summary',
-  title: () => 'Catches Taken',
+  title: () => 'Fielding Dismissals',
   tag: 'HAVE',
-  needs: ['summary', 'fielding', 'basis'],
+  needs: ['fielding', 'basis'],
   order: 70,
   // Summary tile: a compact (13.5 rem) card, three to a row.
   size: 'compact',
@@ -23,15 +23,16 @@ export const mineSumCatches: StatsCardDef<MyStatsDto> = {
     return p.basis.resultsWithFieldingCard < p.basis.resultsCounted ? 'partial' : 'ready'
   },
   partialNote: (p) => `Fielding is recorded in ${p.basis.resultsWithFieldingCard} of ${p.basis.resultsCounted} results.`,
-  summary: (p, ctx) => `${ctx.firstName} has taken ${p.summary.catchesTaken} ${p.summary.catchesTaken === 1 ? 'catch' : 'catches'}.`,
+  summary: (p, ctx) => `${ctx.firstName} has made ${p.fielding.dismissals} fielding ${p.fielding.dismissals === 1 ? 'dismissal' : 'dismissals'}: ${p.fielding.catches} catches, ${p.fielding.stumpings} stumpings and ${p.fielding.runOuts} run-outs.`,
   Front: ({ payload: p, ctx }) => {
-    const { catches, stumpings, runOuts } = p.fielding
+    // The server's own total (fielding.dismissals), shown as is.
+    const { catches, stumpings, runOuts, dismissals } = p.fielding
     return (
       <BigBars
-        value={String(p.summary.catchesTaken)}
-        caption={p.summary.catchesTaken === 1 ? 'catch taken' : 'catches taken'}
+        value={String(dismissals)}
+        caption={dismissals === 1 ? 'fielding dismissal' : 'fielding dismissals'}
         total={3}
-        alt={`${ctx.firstName}'s fielding: ${catches} catches, ${stumpings} stumpings, ${runOuts} run-outs.`}
+        alt={`${ctx.firstName}'s ${dismissals} fielding dismissals: ${catches} catches, ${stumpings} stumpings, ${runOuts} run-outs.`}
         rows={[
           { key: 'catches', label: 'Catches', value: catches, valueLabel: String(catches) },
           { key: 'stumpings', label: 'Stumpings', value: stumpings, valueLabel: String(stumpings) },
@@ -41,17 +42,19 @@ export const mineSumCatches: StatsCardDef<MyStatsDto> = {
     )
   },
   Back: ({ payload: p }) => {
-    const { catches, stumpings, runOuts } = p.fielding
+    const { catches, stumpings, runOuts, dismissals, dismissalsPerMatch } = p.fielding
     return (
       <>
-        <Cap>Catches, stumpings and run-outs</Cap>
+        <Cap>Fielding dismissals</Cap>
         <FaceTable
-          label="Catches, stumpings and run-outs"
+          label="Fielding dismissals"
           heads={['Fielding', 'Count']}
           rows={[
             { key: 'catches', cells: ['Catches', String(catches)] },
             { key: 'stumpings', cells: ['Stumpings', String(stumpings)] },
             { key: 'runouts', cells: ['Run-outs', String(runOuts)] },
+            { key: 'total', cells: ['Total', String(dismissals)] },
+            { key: 'permatch', cells: ['Dismissals per match', dismissalsPerMatch == null ? '–' : dismissalsPerMatch.toFixed(2)] },
           ]}
         />
       </>
