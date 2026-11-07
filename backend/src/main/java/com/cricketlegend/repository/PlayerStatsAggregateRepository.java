@@ -24,6 +24,8 @@ public interface PlayerStatsAggregateRepository extends Repository<MatchResult, 
      * One row per player with a counted appearance; {@code playerId} null reads the whole club (boards), a value
      * restricts to that profile (the Player page, same query). Optional filters are null for "no filter";
      * {@code sectionTeamIds} must never be empty (pass a sentinel when {@code sectionRestricted} is false).
+     * docs/specs/147: {@code leagueReachRestricted} (Player Hub leaderboards only, false for every other read) keeps only
+     * matches in one of {@code leagueReachIds}, which must never be empty (pass {@code PlayerStatsSql.NO_REACH} when unrestricted).
      */
     @Query(value = PlayerStatsSql.AGGREGATE, nativeQuery = true)
     List<PlayerStatsAggregateView> aggregate(
@@ -36,7 +38,26 @@ public interface PlayerStatsAggregateRepository extends Repository<MatchResult, 
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<PlayerStatsAggregateView> aggregate(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return aggregate(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds,
+                playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default List<PlayerStatsAggregateView> aggregate(

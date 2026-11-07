@@ -32,7 +32,10 @@ public final class MyStatsBuilder {
             List<PlayerStatsCalculator.SeasonCounters> seasons,
             Collection<PlayerStatsCalculator.PollFact> polls,
             Collection<PlayerStatsCalculator.SelectionFact> selections,
-            Long fixturesRemaining) {
+            Long fixturesRemaining,
+            MyStatsDto.MyStatsTeamFielding teamFielding,
+            Integer teamFieldingRank,
+            MyStatsDto.MyStatsStanding standing) {
     }
 
     public static MyStatsDto build(PlayerStatsDto stats, HeldPlayerHistory history, Extras extras) {
@@ -85,9 +88,9 @@ public final class MyStatsBuilder {
                         extras.leagueId(),
                         extras.teamId(),
                         extras.competition()),
-                null,
-                null,
-                null,
+                extras.teamFielding(),
+                extras.teamFieldingRank(),
+                extras.standing(),
                 stats.notCaptured());
     }
 

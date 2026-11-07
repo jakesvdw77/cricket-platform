@@ -10,11 +10,15 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
+import com.cricketlegend.service.LeaderboardService;
 import com.cricketlegend.service.MyStatsService;
 import com.cricketlegend.service.PlayerDashboardService;
 import com.cricketlegend.service.PlayerStatsService;
 import com.cricketlegend.service.support.HeldPlayer;
 import com.cricketlegend.service.support.HeldPlayerHistory;
+import com.cricketlegend.service.support.HubRankingPolicy;
+import com.cricketlegend.service.support.LeaderboardPlayers;
+import com.cricketlegend.service.support.MyLeaderboardBuilder;
 import com.cricketlegend.service.support.MyPlayerAccess;
 import com.cricketlegend.service.support.MyStatsBuilder;
 import com.cricketlegend.service.support.MyStatsDrill;
@@ -51,6 +55,8 @@ class MyStatsServiceImpl implements MyStatsService {
     private final MatchSidePlayerRepository selectionRepository;
     private final MatchRepository matchRepository;
     private final TeamSquadMemberRepository squadRepository;
+    private final LeaderboardService leaderboardService;
+    private final HubRankingPolicy rankingPolicy;
 
     MyStatsServiceImpl(
             MyPlayerAccess access,
@@ -60,7 +66,9 @@ class MyStatsServiceImpl implements MyStatsService {
             MatchAvailabilityPollRepository pollRepository,
             MatchSidePlayerRepository selectionRepository,
             MatchRepository matchRepository,
-            TeamSquadMemberRepository squadRepository) {
+            TeamSquadMemberRepository squadRepository,
+            LeaderboardService leaderboardService,
+            HubRankingPolicy rankingPolicy) {
         this.access = access;
         this.statsService = statsService;
         this.dashboardService = dashboardService;
@@ -69,6 +77,8 @@ class MyStatsServiceImpl implements MyStatsService {
         this.selectionRepository = selectionRepository;
         this.matchRepository = matchRepository;
         this.squadRepository = squadRepository;
+        this.leaderboardService = leaderboardService;
+        this.rankingPolicy = rankingPolicy;
     }
 
     @Override
@@ -111,6 +121,24 @@ class MyStatsServiceImpl implements MyStatsService {
                         .map(v -> new PlayerStatsCalculator.SelectionFact(
                                 v.getMatchId(), v.getSeasonId(), v.getLeagueId(), v.getTeamId()))
                         .toList();
+        // team-wide figures and the two ranking fields (docs/specs/147 slice 4); a ranking goes through HubRankingPolicy only
+        boolean rankings = rankingPolicy.allowsRankings(clubId);
+        Set<UUID> teamsInScope = teamsInScope(clubId, playerId, seasonId, leagueId, teamId, comp);
+        MyStatsDto.MyStatsTeamFielding teamFielding = null;
+        Integer teamFieldingRank = null;
+        if (!teamsInScope.isEmpty()) {
+            LeaderboardPlayers team = leaderboardService.playersForHeldPlayer(
+                    clubId, seasonId, leagueId, null, comp, null, teamsInScope, false);
+            teamFielding = MyLeaderboardBuilder.teamFielding(team);
+            teamFieldingRank = rankings ? MyLeaderboardBuilder.teamFieldingRank(team, playerId) : null;
+        }
+        // the batting rank among the league's batters, only when the scope is one league
+        MyStatsDto.MyStatsStanding standing = null;
+        if (rankings && leagueId != null) {
+            standing = MyLeaderboardBuilder.leagueBattingStanding(
+                    leaderboardService.playersForHeldPlayer(clubId, seasonId, leagueId, null, null, Set.of(leagueId), null, false),
+                    playerId);
+        }
         return MyStatsBuilder.build(
                 stats,
                 history,
@@ -124,7 +152,25 @@ class MyStatsServiceImpl implements MyStatsService {
                         seasonCounters,
                         polls,
                         selections,
-                        fixturesRemaining(clubId, playerId, seasonId, leagueId, teamId, comp)));
+                        fixturesRemaining(clubId, playerId, seasonId, leagueId, teamId, comp),
+                        teamFielding,
+                        teamFieldingRank,
+                        standing));
+    }
+
+    /**
+     * The player's own teams in the chosen scope: the teams of the player's flagged results that match the Season, League,
+     * Team and Competition filters (a friendly has no league).
+     */
+    private Set<UUID> teamsInScope(
+            UUID clubId, UUID playerId, UUID seasonId, UUID leagueId, UUID teamId, StatsScope.Competition comp) {
+        return statsService.comboOptionsForHeldPlayer(clubId, playerId).stream()
+                .filter(c -> seasonId == null || seasonId.equals(c.seasonId()))
+                .filter(c -> leagueId == null || leagueId.equals(c.leagueId()))
+                .filter(c -> teamId == null || teamId.equals(c.teamId()))
+                .filter(c -> comp == null || (comp == StatsScope.Competition.LEAGUE) == (c.leagueId() != null))
+                .map(PlayerStatsService.PlayerStatsCombo::teamId)
+                .collect(Collectors.toSet());
     }
 
     @Override

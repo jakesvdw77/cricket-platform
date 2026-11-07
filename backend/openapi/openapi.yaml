@@ -2690,6 +2690,187 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyTeamStatsDto"
+  /api/v1/me/players/{playerKey}/leaderboards/{group}:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "One page of a Player Hub standings table (docs/specs/147) for the held player: the manager leaderboard table over published results a manager switched on for the Player Hub only, limited to the players of the leagues the held player teams played in during the chosen season (friendlies are outside the reach). Each column carries more, each row mine, and me is the held player row and place even when it is not on the page. Names are full names; no row carries a player id. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season, league or team 404; group other than batting, bowling or fielding, an unknown sort, a direction other than asc or desc, a bad minimum, a negative page or a size below 1 is 400 (a size above 100 is capped at 100); more than 5000 players in the reach is 400. When HubRankingPolicy does not allow rankings the table is empty."
+      operationId: getMyPlayerLeaderboard
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: group
+        in: path
+        required: true
+        description: "batting, bowling or fielding (else 400)."
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        description: "A column code of the group; absent is the group default (runs, wickets or total). Unknown is 400."
+        schema:
+          type: string
+      - name: direction
+        in: query
+        required: false
+        description: "asc or desc; absent is the column natural direction. Anything else is 400."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: minimum
+        in: query
+        required: false
+        description: "Optional minimum innings or overs, applied to rate sorts only; a bad value is 400."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based page, default 0 (negative is 400)."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "Page size, default 10, minimum 1, capped at 100."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardTableDto"
+  /api/v1/me/players/{playerKey}/leaderboards/standing:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Where Sam stands card payload (docs/specs/147): the held player place in runs, batting average, wickets, economy and catches among the players of the leaderboard reach, each with the number of players listed, the sample and, for the two rate lines, the minimum. Same access and 404 rules as the standings table. With HubRankingPolicy not allowing rankings lines is empty."
+      operationId: getMyPlayerLeaderboardStanding
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardStandingDto"
+  /api/v1/me/players/{playerKey}/leaderboards/awards:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Awards tab (docs/specs/147, Open question 2): the club award category leaders among the players of the leaderboard reach, only for a season that has ended. For a season still running (or not started), or with no season chosen while one is running, revealed is false with reason SEASON_NOT_ENDED, the message and the season end date, and no leaders. With HubRankingPolicy not allowing rankings revealed is false with reason RANKINGS_NOT_SHARED. Same access and 404 rules as the standings table."
+      operationId: getMyPlayerLeaderboardAwards
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardAwardsDto"
+  /api/v1/me/players/{playerKey}/leaderboards/filters:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Season, League and Team options inside the held player leaderboard reach (docs/specs/147): only values with flagged, counted results of the players of the leagues the held player teams played in. Key not held is 404, a suspended caller 403. Empty when HubRankingPolicy does not allow rankings."
+      operationId: getMyPlayerLeaderboardFilters
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardFiltersDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -16639,7 +16820,7 @@ components:
           $ref: "#/components/schemas/PlayerMatchAwards"
     MyStatsDto:
       type: object
-      description: "The Player Hub My stats payload (docs/specs/147) for a held player in the Player Hub scope (only published results a manager switched on). Every figure is the calculator output; the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the per-match blocks cover the newest basis.historyCap matches only. Every filter string is a drill token accepted by the stats/innings read for its kind. teamFielding, teamFieldingRank and standing are null until the team-stats and leaderboard slices."
+      description: "The Player Hub My stats payload (docs/specs/147) for a held player in the Player Hub scope (only published results a manager switched on). Every figure is the calculator output; the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the per-match blocks cover the newest basis.historyCap matches only. Every filter string is a drill token accepted by the stats/innings read for its kind. teamFielding is the catches, run-outs and stumpings of the linked players in the games of the player own team(s) in the scope (null when the player has no team in the scope); teamFieldingRank (rank for catches within those teams) and standing (batting-average rank among the batters of the chosen league, only when a league is chosen) are rankings, null unless HubRankingPolicy allows rankings."
       properties:
         scope:
           $ref: "#/components/schemas/MyStatsScope"
@@ -17968,6 +18149,295 @@ components:
           format: uuid
         name:
           type: string
+    MyLeaderboardTableDto:
+      type: object
+      description: "One page of a Player Hub standings table (docs/specs/147): LeaderboardTableDto with the Hub changes. Each column carries more (folded behind More Columns, a server constant), each row mine, me is the held player row and place even when not on the page (null when the player has no listed figure), the scope has no section, and no row carries a player id. Full names, inside the signed-in Hub only."
+      properties:
+        group:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeaderboardColumn"
+        sort:
+          $ref: "#/components/schemas/LeaderboardSort"
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        minimum:
+          $ref: "#/components/schemas/LeaderboardMinimum"
+        basis:
+          $ref: "#/components/schemas/LeaderboardBasis"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeaderboardRow"
+        me:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyLeaderboardMe"
+    MyLeaderboardScope:
+      type: object
+      description: "The filters the Hub leaderboard figures were computed for."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+          nullable: true
+        leagueId:
+          type: string
+          format: uuid
+          nullable: true
+        teamId:
+          type: string
+          format: uuid
+          nullable: true
+    MyLeaderboardColumn:
+      type: object
+      description: "A standings column plus more: the column is folded behind More Columns in the Player Hub."
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        longLabel:
+          type: string
+        sortable:
+          type: boolean
+        direction:
+          type: string
+        minimumKind:
+          type: string
+        more:
+          type: boolean
+    MyLeaderboardRow:
+      type: object
+      description: "One player row, no player id. rank is null for the unranked group; mine is true for the held player; values are keyed by column code."
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        mine:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        teamName:
+          type: string
+          nullable: true
+        smallSample:
+          type: boolean
+        values:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/LeaderboardCell"
+    MyLeaderboardMe:
+      type: object
+      description: "The held player row. position is its zero-based place in the whole ordered list, page the page (at the requested size) that holds it."
+      properties:
+        position:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        row:
+          $ref: "#/components/schemas/MyLeaderboardRow"
+    MyLeaderboardStandingDto:
+      type: object
+      description: "Where Sam stands (docs/specs/147): the held player place in five headline figures among the players of the leaderboard reach. lines is empty when HubRankingPolicy does not allow rankings."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        playerFirstName:
+          type: string
+        resultsCounted:
+          type: integer
+          format: int64
+        playersInReach:
+          type: integer
+          format: int64
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStandingLine"
+    MyStandingLine:
+      type: object
+      description: "One headline. key is runs, average, wickets, economy or catches; group is batting, bowling or fielding. rank (competition rank) is out of playersRanked; playersListed is everyone the table lists. minimum is set for the rate lines only; belowMinimum says the held player is below it. value is the held player standings cell (null when no figure)."
+      properties:
+        key:
+          type: string
+        group:
+          type: string
+        label:
+          type: string
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        playersListed:
+          type: integer
+          format: int64
+        playersRanked:
+          type: integer
+          format: int64
+        value:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardCell"
+        sample:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyStandingSample"
+        minimum:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyStandingMinimum"
+        belowMinimum:
+          type: boolean
+    MyStandingSample:
+      type: object
+      description: "The sample behind a line: matches always; batting lines add innings and ballsFaced; the economy line adds innings, balls, overs (null when over lengths are mixed) and ballsPerOver."
+      properties:
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+          nullable: true
+        ballsFaced:
+          type: integer
+          format: int64
+          nullable: true
+        balls:
+          type: integer
+          format: int64
+          nullable: true
+        overs:
+          type: number
+          nullable: true
+        ballsPerOver:
+          type: integer
+          format: int32
+          nullable: true
+    MyStandingMinimum:
+      type: object
+      properties:
+        unit:
+          type: string
+          description: "INNINGS or OVERS."
+        value:
+          type: integer
+          format: int32
+    MyLeaderboardAwardsDto:
+      type: object
+      description: "The Awards tab (docs/specs/147, Open question 2). revealed false means no leaders: reason is SEASON_NOT_ENDED or RANKINGS_NOT_SHARED, message the sentence to show, seasonEndDate the day the season ends (null when no single season applies). Revealed leaders are every player at rank 1 of a category; no row carries a player id."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        revealed:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        seasonEndDate:
+          type: string
+          format: date
+          nullable: true
+        basis:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/AwardsBasis"
+        minimums:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/AwardsMinimums"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAwardsCategory"
+        omitted:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsOmittedCategory"
+    MyAwardsCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        leaders:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAwardsLeader"
+    MyAwardsLeader:
+      type: object
+      description: "A category leader, no player id; mine is true for the held player. figure is as on the manager Awards view."
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        mine:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        figure:
+          description: A number, a wickets/runs object (best bowling), a runs/notOut object (highest score), or null
+          nullable: true
+          oneOf:
+          - type: number
+          - $ref: "#/components/schemas/LeaderboardWicketsRuns"
+          - $ref: "#/components/schemas/LeaderboardRunsNotOut"
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+          nullable: true
+        sample:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardSample"
+        smallSample:
+          type: boolean
+        detail:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardDetail"
+    MyLeaderboardFiltersDto:
+      type: object
+      description: "The Season, League and Team options inside the held player leaderboard reach (docs/specs/147). currentSeasonId is the club current season when listed, else the newest listed season, else null. combos are the distinct season, league and team combinations of the reach; leagues are reach leagues only (no friendlies)."
+      properties:
+        currentSeasonId:
+          type: string
+          format: uuid
+          nullable: true
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        combos:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterCombo"
     MyResultDto:
       type: object
       description: "One result for the Player Hub Result page: the held player own card (mine, also the match header), venue, the full scorecard of both sides with names in full, and awards. No result, entry or player ids."

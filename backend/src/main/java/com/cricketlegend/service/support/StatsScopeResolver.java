@@ -118,6 +118,13 @@ public class StatsScopeResolver {
                 : List.of(NO_TEAM);
     }
 
+    /** docs/specs/147: the {@code leagueReachIds} query parameter: never empty (a sentinel matching no league when unrestricted or empty). */
+    public static List<UUID> leagueReachParameter(StatsScope scope) {
+        return scope.leagueReachRestricted() && !scope.leagueReachIds().isEmpty()
+                ? List.copyOf(scope.leagueReachIds())
+                : List.of(NO_TEAM);
+    }
+
     /** Reads the {@code competition} request filter: blank is no filter; anything but LEAGUE or FRIENDLY is a 400. */
     public static StatsScope.Competition parseCompetition(String competition) {
         if (competition == null || competition.isBlank()) {

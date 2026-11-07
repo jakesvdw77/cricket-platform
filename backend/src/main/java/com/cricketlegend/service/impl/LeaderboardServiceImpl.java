@@ -9,6 +9,7 @@ import com.cricketlegend.dto.AwardsViewDto.LeaderboardDetail;
 import com.cricketlegend.dto.AwardsViewDto.LeaderboardRow;
 import com.cricketlegend.dto.LeaderboardTableDto;
 import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardScope;
+import com.cricketlegend.dto.LeaderboardTableDto.LeaderboardTableRow;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeaderboardMapper;
@@ -20,6 +21,9 @@ import com.cricketlegend.repository.PlayerStatsFactsRepository.PlayerNameView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.PlayerTeamView;
 import com.cricketlegend.service.ClubLeaderboardSettingsService;
 import com.cricketlegend.service.LeaderboardService;
+import com.cricketlegend.service.PlayerStatsService;
+import com.cricketlegend.service.support.HeldLeaderboardTable;
+import com.cricketlegend.service.support.HubLeaderboardReach;
 import com.cricketlegend.service.support.LeaderboardBoard;
 import com.cricketlegend.service.support.LeaderboardColumn;
 import com.cricketlegend.service.support.LeaderboardInningsFact;
@@ -125,59 +129,127 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             String minimumText,
             Integer pageNumber,
             Integer pageSize) {
-        LeaderboardBoard.Group group = Arrays.stream(LeaderboardBoard.Group.values())
-                .filter(g -> g != LeaderboardBoard.Group.AWARDS && routeCode(g).equals(groupCode))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Leaderboard not found: " + groupCode));
-        LeaderboardColumn sort = sortCode == null || sortCode.isBlank()
-                ? LeaderboardColumn.defaultFor(group)
-                : LeaderboardColumn.byCode(group, sortCode)
-                        .orElseThrow(() -> new ValidationException("Unknown sort for " + groupCode + ": " + sortCode));
-        LeaderboardBoard.Direction direction = sort.getDirection();
-        if (directionText != null && !directionText.isBlank()) {
-            direction = switch (directionText.trim().toLowerCase(Locale.ROOT)) {
-                case "asc" -> LeaderboardBoard.Direction.LOWEST;
-                case "desc" -> LeaderboardBoard.Direction.HIGHEST;
-                default -> throw new ValidationException("direction must be asc or desc.");
-            };
-        }
-        Integer minimum = parseMinimum(minimumText, "minimum");
-        boolean rate = sort.getMinimumKind() != LeaderboardBoard.MinimumKind.NONE;
-        if (!rate) {
-            minimum = null;
-        }
-        int page = pageNumber == null ? 0 : pageNumber;
-        int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
-        if (page < 0) {
-            throw new ValidationException("page must be zero or more.");
-        }
-        if (size < 1) {
-            throw new ValidationException("size must be at least 1.");
-        }
-        size = Math.min(size, MAX_PAGE_SIZE);
-
+        TableRequest request = TableRequest.parse(groupCode, sortCode, directionText, minimumText, pageNumber, pageSize);
         LeaderboardPlayers loaded = load(authentication, clubId, seasonId, leagueId, teamId, sectionId);
+        return rankTable(request, loaded, new LeaderboardScope(KIND, seasonId, leagueId, teamId, sectionId)).page();
+    }
+
+    /**
+     * docs/specs/147: the same table for the Player Hub scope (only results switched on for the Player Hub, only the
+     * players of {@code leagueReach}, no section reach), plus where the held player's own row is in the whole ordered
+     * table. The parameters are validated and the table ranked exactly as {@link #table} does.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public HeldLeaderboardTable tableForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            String groupCode,
+            String sortCode,
+            String directionText,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            Set<UUID> leagueReach,
+            String minimumText,
+            Integer pageNumber,
+            Integer pageSize) {
+        TableRequest request = TableRequest.parse(groupCode, sortCode, directionText, minimumText, pageNumber, pageSize);
+        LeaderboardPlayers loaded = loadScope(
+                scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, null).withLeagueReach(leagueReach),
+                leagueReach.isEmpty(),
+                true);
+        Ranked ranked = rankTable(request, loaded, new LeaderboardScope(KIND, seasonId, leagueId, teamId, null));
+        List<LeaderboardTableRow> all = ranked.table().rows();
+        int position = -1;
+        for (int i = 0; i < all.size(); i++) {
+            if (playerId.equals(all.get(i).playerId())) {
+                position = i;
+                break;
+            }
+        }
+        return new HeldLeaderboardTable(ranked.page(), position < 0 ? null : all.get(position), position);
+    }
+
+    /** The ranked table and its page DTO for already validated parameters and loaded players. */
+    private Ranked rankTable(TableRequest request, LeaderboardPlayers loaded, LeaderboardScope scopeDto) {
+        LeaderboardColumn sort = request.sort();
+        LeaderboardBoard.Group group = request.group();
         LeaderboardQualification.Defaults defaults = defaultsOf(loaded);
         Map<UUID, LeaderboardInningsFact> facts = new HashMap<>(tieBreakFacts(sort.getBoard(), loaded));
         LeaderboardTableRanker.Table table = LeaderboardTableRanker.rank(
-                group, sort, direction, loaded.candidates(), minimum, defaults, teamNames(loaded), facts);
+                group, sort, request.direction(), loaded.candidates(), request.minimum(), defaults, teamNames(loaded), facts);
 
         LeaderboardTableDto.LeaderboardMinimum minimumDto = new LeaderboardTableDto.LeaderboardMinimum(
-                rate,
-                minimum,
-                rate ? LeaderboardQualification.suggestedFor(sort.getBoard(), defaults) : null,
+                request.rate(),
+                request.minimum(),
+                request.rate() ? LeaderboardQualification.suggestedFor(sort.getBoard(), defaults) : null,
                 sort.getMinimumKind().name());
-        return new LeaderboardTableDto(
+        LeaderboardTableDto dto = new LeaderboardTableDto(
                 routeCode(group),
                 LeaderboardColumn.of(group).stream().map(mapper::toColumnInfo).toList(),
-                new LeaderboardTableDto.LeaderboardSort(sort.getCode(), direction.name()),
-                new LeaderboardScope(KIND, seasonId, leagueId, teamId, sectionId),
+                new LeaderboardTableDto.LeaderboardSort(sort.getCode(), request.direction().name()),
+                scopeDto,
                 minimumDto,
                 new LeaderboardTableDto.LeaderboardBasis(
                         loaded.resultsCounted(), table.listed(), table.ranked(), table.belowMinimum(), table.coverage()),
                 new LeaderboardTableDto.LeaderboardPageInfo(
-                        page, size, table.listed(), ((long) page + 1) * size < table.listed()),
-                table.page(page, size));
+                        request.page(), request.size(), table.listed(), ((long) request.page() + 1) * request.size() < table.listed()),
+                table.page(request.page(), request.size()));
+        return new Ranked(table, dto);
+    }
+
+    private record Ranked(LeaderboardTableRanker.Table table, LeaderboardTableDto page) {
+    }
+
+    /** The validated table parameters, in the order the checks run (group, sort, direction, minimum, page, size). */
+    private record TableRequest(
+            LeaderboardBoard.Group group,
+            LeaderboardColumn sort,
+            LeaderboardBoard.Direction direction,
+            boolean rate,
+            Integer minimum,
+            int page,
+            int size) {
+
+        static TableRequest parse(
+                String groupCode,
+                String sortCode,
+                String directionText,
+                String minimumText,
+                Integer pageNumber,
+                Integer pageSize) {
+            LeaderboardBoard.Group group = Arrays.stream(LeaderboardBoard.Group.values())
+                    .filter(g -> g != LeaderboardBoard.Group.AWARDS && routeCode(g).equals(groupCode))
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException("Leaderboard not found: " + groupCode));
+            LeaderboardColumn sort = sortCode == null || sortCode.isBlank()
+                    ? LeaderboardColumn.defaultFor(group)
+                    : LeaderboardColumn.byCode(group, sortCode)
+                            .orElseThrow(() -> new ValidationException("Unknown sort for " + groupCode + ": " + sortCode));
+            LeaderboardBoard.Direction direction = sort.getDirection();
+            if (directionText != null && !directionText.isBlank()) {
+                direction = switch (directionText.trim().toLowerCase(Locale.ROOT)) {
+                    case "asc" -> LeaderboardBoard.Direction.LOWEST;
+                    case "desc" -> LeaderboardBoard.Direction.HIGHEST;
+                    default -> throw new ValidationException("direction must be asc or desc.");
+                };
+            }
+            Integer minimum = parseMinimum(minimumText, "minimum");
+            boolean rate = sort.getMinimumKind() != LeaderboardBoard.MinimumKind.NONE;
+            if (!rate) {
+                minimum = null;
+            }
+            int page = pageNumber == null ? 0 : pageNumber;
+            int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
+            if (page < 0) {
+                throw new ValidationException("page must be zero or more.");
+            }
+            if (size < 1) {
+                throw new ValidationException("size must be at least 1.");
+            }
+            return new TableRequest(group, sort, direction, rate, minimum, page, Math.min(size, MAX_PAGE_SIZE));
+        }
     }
 
     private static String routeCode(LeaderboardBoard.Group group) {
@@ -197,9 +269,34 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             String minimumOversText) {
         Integer requestedInnings = parseMinimum(minimumInningsText, "minimumInnings");
         Integer requestedOvers = parseMinimum(minimumOversText, "minimumOvers");
-        List<LeaderboardBoard> categories = settingsService.awardBoards(clubId);
-
         LeaderboardPlayers loaded = load(authentication, clubId, seasonId, leagueId, teamId, sectionId);
+        return buildAwards(
+                clubId,
+                loaded,
+                new LeaderboardScope(KIND, seasonId, leagueId, teamId, sectionId),
+                requestedInnings,
+                requestedOvers);
+    }
+
+    /** docs/specs/147: the same category leaders for the Player Hub scope; the default minimums apply. */
+    @Override
+    @Transactional(readOnly = true)
+    public AwardsViewDto awardsForHeldPlayer(
+            UUID clubId, UUID seasonId, UUID leagueId, UUID teamId, Set<UUID> leagueReach) {
+        LeaderboardPlayers loaded = loadScope(
+                scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, null).withLeagueReach(leagueReach),
+                leagueReach.isEmpty(),
+                true);
+        return buildAwards(clubId, loaded, new LeaderboardScope(KIND, seasonId, leagueId, teamId, null), null, null);
+    }
+
+    private AwardsViewDto buildAwards(
+            UUID clubId,
+            LeaderboardPlayers loaded,
+            LeaderboardScope scopeDto,
+            Integer requestedInnings,
+            Integer requestedOvers) {
+        List<LeaderboardBoard> categories = settingsService.awardBoards(clubId);
         LeaderboardQualification.Defaults defaults = defaultsOf(loaded);
         int minInnings = requestedInnings == null ? defaults.innings() : requestedInnings;
         int minOvers = requestedOvers == null ? defaults.overs() : requestedOvers;
@@ -221,7 +318,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             }
         }
         return new AwardsViewDto(
-                new LeaderboardScope(KIND, seasonId, leagueId, teamId, sectionId),
+                scopeDto,
                 new AwardsViewDto.AwardsBasis(loaded.resultsCounted(), loaded.candidates().size()),
                 new AwardsViewDto.AwardsMinimums(minInnings, minOvers, defaults.innings(), defaults.overs()),
                 shown,
@@ -250,6 +347,65 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                 lists.seasonIds(), lists.leagueIds(), lists.teamIds(), lists.sectionIds(), lists.competitions());
     }
 
+    /**
+     * docs/specs/147: the (season, league, team) combinations of the flagged, counted appearances of every player in the
+     * leagues of {@code reach}, kept to the (season, league) pairs the reach names. Reads one filter-option statement.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlayerStatsService.PlayerStatsCombo> comboOptionsForHeldPlayer(UUID clubId, HubLeaderboardReach reach) {
+        Set<UUID> leagues = reach.leagueIds(null);
+        if (leagues.isEmpty()) {
+            return List.of();
+        }
+        return factsRepository
+                .filterOptions(
+                        clubId,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
+                        List.of(new UUID(0L, 0L)),
+                        true,
+                        null,
+                        true,
+                        List.copyOf(leagues))
+                .stream()
+                .filter(row -> row.getLeagueId() != null && reach.contains(row.getSeasonId(), row.getLeagueId()))
+                .map(row -> new PlayerStatsService.PlayerStatsCombo(row.getSeasonId(), row.getLeagueId(), row.getTeamId()))
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * docs/specs/147: everyone in a Player Hub scope as ranker candidates. {@code leagueReach} (null is unrestricted) keeps
+     * only matches of those leagues, {@code teamIds} (null is unrestricted) only the games of those club teams; only
+     * results switched on for the Player Hub count. Season, league and team must belong to the club (404 otherwise).
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public LeaderboardPlayers playersForHeldPlayer(
+            UUID clubId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition,
+            Set<UUID> leagueReach,
+            Set<UUID> teamIds,
+            boolean countResults) {
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, competition);
+        if (leagueReach != null) {
+            scope = scope.withLeagueReach(leagueReach);
+        }
+        if (teamIds != null) {
+            scope = scope.withTeams(teamIds);
+        }
+        boolean nothing = (leagueReach != null && leagueReach.isEmpty()) || (teamIds != null && teamIds.isEmpty());
+        return loadScope(scope, nothing, countResults);
+    }
+
     // ---- loading ----
 
     /** One aggregate query for the whole scope, joined in memory to the club roster for names and status. */
@@ -262,21 +418,15 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             UUID sectionId) {
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, sectionId, null);
-        StatsScope scope = resolved.scope();
-        if (resolved.nothingInReach()) {
+        return loadScope(resolved.scope(), resolved.nothingInReach(), true);
+    }
+
+    private LeaderboardPlayers loadScope(StatsScope scope, boolean nothingInReach, boolean countResults) {
+        if (nothingInReach) {
             return new LeaderboardPlayers(scope, List.of(), 0);
         }
-        String competition = StatsScopeResolver.competitionName(scope);
-        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
-        List<PlayerStatsAggregateView> rows = aggregateRepository.aggregate(
-                clubId,
-                null,
-                scope.seasonId(),
-                scope.leagueId(),
-                scope.teamId(),
-                competition,
-                scope.sectionRestricted(),
-                sectionTeams);
+        UUID clubId = scope.clubId();
+        List<PlayerStatsAggregateView> rows = aggregateRows(scope);
         if (rows.size() > MAX_PLAYERS) {
             log.warn("Leaderboard refused for club {}: {} players in scope (cap {})", clubId, rows.size(), MAX_PLAYERS);
             throw new ValidationException(
@@ -301,17 +451,77 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                     counters,
                     PlayerStatsCalculator.calculate(counters, PlayerStatsFacts.EMPTY)));
         }
-        long results = factsRepository.countResults(
-                clubId,
-                null,
-                scope.seasonId(),
-                scope.leagueId(),
-                scope.teamId(),
-                competition,
-                scope.sectionRestricted(),
-                sectionTeams);
+        long results = countResults ? countResultRows(scope) : 0;
         log.debug("Leaderboard read for club {}: {} players, {} results", clubId, candidates.size(), results);
         return new LeaderboardPlayers(scope, candidates, results);
+    }
+
+    // A manager scope keeps the original eight-argument repository calls; a Player Hub scope (docs/specs/145 and 147) also
+    // passes the Player Hub flag and the optional league reach.
+
+    private List<PlayerStatsAggregateView> aggregateRows(StatsScope scope) {
+        String competition = StatsScopeResolver.competitionName(scope);
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        if (!scope.playerVisibleOnly()) {
+            return aggregateRepository.aggregate(
+                    scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                    scope.sectionRestricted(), sectionTeams);
+        }
+        return aggregateRepository.aggregate(
+                scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                scope.sectionRestricted(), sectionTeams, true, scope.matchId(), scope.leagueReachRestricted(),
+                StatsScopeResolver.leagueReachParameter(scope));
+    }
+
+    private long countResultRows(StatsScope scope) {
+        String competition = StatsScopeResolver.competitionName(scope);
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        if (!scope.playerVisibleOnly()) {
+            return factsRepository.countResults(
+                    scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                    scope.sectionRestricted(), sectionTeams);
+        }
+        return factsRepository.countResults(
+                scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                scope.sectionRestricted(), sectionTeams, true, scope.matchId(), scope.leagueReachRestricted(),
+                StatsScopeResolver.leagueReachParameter(scope));
+    }
+
+    private List<PlayerTeamView> playerTeamRows(StatsScope scope) {
+        String competition = StatsScopeResolver.competitionName(scope);
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        if (!scope.playerVisibleOnly()) {
+            return factsRepository.playerTeams(
+                    scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                    scope.sectionRestricted(), sectionTeams);
+        }
+        return factsRepository.playerTeams(
+                scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                scope.sectionRestricted(), sectionTeams, true, scope.matchId(), scope.leagueReachRestricted(),
+                StatsScopeResolver.leagueReachParameter(scope));
+    }
+
+    private List<BestInningsView> bestInningsRows(StatsScope scope, boolean innings, Collection<UUID> playerIds) {
+        String competition = StatsScopeResolver.competitionName(scope);
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        if (!scope.playerVisibleOnly()) {
+            return innings
+                    ? factsRepository.bestInnings(
+                            scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                            scope.sectionRestricted(), sectionTeams, playerIds)
+                    : factsRepository.bestSpells(
+                            scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                            scope.sectionRestricted(), sectionTeams, playerIds);
+        }
+        return innings
+                ? factsRepository.bestInnings(
+                        scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                        scope.sectionRestricted(), sectionTeams, playerIds, true, scope.matchId(),
+                        scope.leagueReachRestricted(), StatsScopeResolver.leagueReachParameter(scope))
+                : factsRepository.bestSpells(
+                        scope.clubId(), null, scope.seasonId(), scope.leagueId(), scope.teamId(), competition,
+                        scope.sectionRestricted(), sectionTeams, playerIds, true, scope.matchId(),
+                        scope.leagueReachRestricted(), StatsScopeResolver.leagueReachParameter(scope));
     }
 
     private static LeaderboardQualification.Defaults defaultsOf(LeaderboardPlayers loaded) {
@@ -324,17 +534,8 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         if (loaded.candidates().isEmpty()) {
             return Map.of();
         }
-        StatsScope scope = loaded.scope();
         Map<UUID, PlayerTeamView> best = new HashMap<>();
-        for (PlayerTeamView view : factsRepository.playerTeams(
-                scope.clubId(),
-                null,
-                scope.seasonId(),
-                scope.leagueId(),
-                scope.teamId(),
-                StatsScopeResolver.competitionName(scope),
-                scope.sectionRestricted(),
-                StatsScopeResolver.sectionTeamParameter(scope))) {
+        for (PlayerTeamView view : playerTeamRows(loaded.scope())) {
             PlayerTeamView current = best.get(view.getPlayerId());
             if (current == null || view.getTotal() > current.getTotal()
                     || (view.getTotal().equals(current.getTotal())
@@ -399,28 +600,8 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         if (playerIds.isEmpty()) {
             return Map.of();
         }
-        StatsScope scope = loaded.scope();
-        List<BestInningsView> views = board == LeaderboardBoard.HIGHEST_SCORE
-                ? factsRepository.bestInnings(
-                        scope.clubId(),
-                        null,
-                        scope.seasonId(),
-                        scope.leagueId(),
-                        scope.teamId(),
-                        StatsScopeResolver.competitionName(scope),
-                        scope.sectionRestricted(),
-                        StatsScopeResolver.sectionTeamParameter(scope),
-                        playerIds)
-                : factsRepository.bestSpells(
-                        scope.clubId(),
-                        null,
-                        scope.seasonId(),
-                        scope.leagueId(),
-                        scope.teamId(),
-                        StatsScopeResolver.competitionName(scope),
-                        scope.sectionRestricted(),
-                        StatsScopeResolver.sectionTeamParameter(scope),
-                        playerIds);
+        List<BestInningsView> views =
+                bestInningsRows(loaded.scope(), board == LeaderboardBoard.HIGHEST_SCORE, playerIds);
         Map<UUID, LeaderboardInningsFact> facts = new HashMap<>();
         for (BestInningsView view : views) {
             facts.put(

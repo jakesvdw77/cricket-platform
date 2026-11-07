@@ -1,8 +1,13 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.MyLeaderboardAwardsDto;
+import com.cricketlegend.dto.MyLeaderboardFiltersDto;
+import com.cricketlegend.dto.MyLeaderboardStandingDto;
+import com.cricketlegend.dto.MyLeaderboardTableDto;
 import com.cricketlegend.dto.MyStatsDto;
 import com.cricketlegend.dto.MyStatsInningsPageDto;
 import com.cricketlegend.dto.MyTeamStatsDto;
+import com.cricketlegend.service.MyLeaderboardService;
 import com.cricketlegend.service.MyStatsService;
 import com.cricketlegend.service.MyTeamStatsService;
 import java.util.UUID;
@@ -24,10 +29,15 @@ class MePlayerStatsController {
 
     private final MyStatsService myStatsService;
     private final MyTeamStatsService myTeamStatsService;
+    private final MyLeaderboardService myLeaderboardService;
 
-    MePlayerStatsController(MyStatsService myStatsService, MyTeamStatsService myTeamStatsService) {
+    MePlayerStatsController(
+            MyStatsService myStatsService,
+            MyTeamStatsService myTeamStatsService,
+            MyLeaderboardService myLeaderboardService) {
         this.myStatsService = myStatsService;
         this.myTeamStatsService = myTeamStatsService;
+        this.myLeaderboardService = myLeaderboardService;
     }
 
     /** The one payload of the My stats page for the Season, League, Team and Competition filters (all optional). */
@@ -72,5 +82,54 @@ class MePlayerStatsController {
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) String competition) {
         return myTeamStatsService.get(authentication, playerKey, teamId, seasonId, leagueId, competition);
+    }
+
+    /**
+     * One page of a Player Hub standings table. {@code group} is batting, bowling or fielding (400 otherwise); sort,
+     * direction, minimum, page and size are the manager table's (400 when bad).
+     */
+    @GetMapping("/{playerKey}/leaderboards/{group}")
+    MyLeaderboardTableDto leaderboard(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @PathVariable String group,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) String minimum,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return myLeaderboardService.table(
+                authentication, playerKey, group, sort, direction, seasonId, leagueId, teamId, minimum, page, size);
+    }
+
+    /** The "Where Sam stands" card payload. */
+    @GetMapping("/{playerKey}/leaderboards/standing")
+    MyLeaderboardStandingDto standing(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId) {
+        return myLeaderboardService.standing(authentication, playerKey, seasonId, leagueId, teamId);
+    }
+
+    /** The Awards tab: category leaders for a season that has ended, otherwise a held-back payload. */
+    @GetMapping("/{playerKey}/leaderboards/awards")
+    MyLeaderboardAwardsDto awards(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId) {
+        return myLeaderboardService.awards(authentication, playerKey, seasonId, leagueId, teamId);
+    }
+
+    /** The Season, League and Team options inside the leaderboard reach. */
+    @GetMapping("/{playerKey}/leaderboards/filters")
+    MyLeaderboardFiltersDto leaderboardFilters(Authentication authentication, @PathVariable String playerKey) {
+        return myLeaderboardService.filters(authentication, playerKey);
     }
 }

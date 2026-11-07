@@ -214,7 +214,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * The distinct season, league, own-side team (of this club), its section and competition type across the player's
      * counted appearances. Pass null for the four optional filters: the options are never narrowed by them.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct m.season_id as "seasonId",
                    m.league_id as "leagueId",
                    t.id as "teamId",
@@ -235,7 +235,25 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<FilterOptionView> filterOptions(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return filterOptions(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default List<FilterOptionView> filterOptions(
@@ -254,7 +272,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * The number of distinct published results with at least one counted appearance in the scope: the "based on N
      * results" line of the leaderboards. Pass null {@code playerId} for the whole club.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select count(distinct ap.mrid) from ap
             """, nativeQuery = true)
     long countResults(
@@ -267,7 +285,25 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default long countResults(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return countResults(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default long countResults(
@@ -349,7 +385,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * aggregate's highest score: more runs, a not-out innings first, then the most recent match), with the match, the
      * opponent and the balls faced when recorded. One row per player; {@code playerIds} must not be empty.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct on (ap.pid)
                    ap.pid as "playerId",
                    ap.match_id as "matchId",
@@ -384,7 +420,26 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerIds") Collection<UUID> playerIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<BestInningsView> bestInnings(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return bestInnings(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default List<BestInningsView> bestInnings(
@@ -405,7 +460,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * wickets, fewest runs, most balls, then the most recent match), with the match and the opponent; {@code balls} is
      * the balls bowled. One row per player; {@code playerIds} must not be empty.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct on (ap.pid)
                    ap.pid as "playerId",
                    ap.match_id as "matchId",
@@ -439,7 +494,26 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerIds") Collection<UUID> playerIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<BestInningsView> bestSpells(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return bestSpells(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default List<BestInningsView> bestSpells(
@@ -460,7 +534,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * team), so the standings can show the most frequent one as the player's team. Pass null {@code playerId} for the whole
      * club.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select ap.pid as "playerId", t.name as "teamName", count(distinct ap.mrid) as "total"
             from ap
             join match m on m.id = ap.match_id
@@ -478,7 +552,25 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("playerVisibleOnly") boolean playerVisibleOnly,
-            @Param("matchId") UUID matchId);
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<PlayerTeamView> playerTeams(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return playerTeams(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
 
     /** The default scope: every counted appearance (no Player Hub flag), any match. */
     default List<PlayerTeamView> playerTeams(

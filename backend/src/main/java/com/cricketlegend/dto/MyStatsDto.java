@@ -34,8 +34,12 @@ import java.util.UUID;
  * .../stats/innings?kind=&filter=} accepts for the kind named beside it (see {@code StatsDrillFilter}); the client builds
  * no filter of its own.
  *
- * <p>{@code teamFielding}, {@code teamFieldingRank} and {@code standing} are {@code null} until the team-stats and
- * leaderboard slices (spec 147 slices 3 and 4); {@code HubRankingPolicy} decides whether a ranking is ever filled.
+ * <p>{@code teamFielding} (spec 147 slice 4) is the catches, run-outs and stumpings credited to the linked players in the
+ * games of the player's own team(s) in the scope (null when the player has no team in the scope; a guest's or an unlinked
+ * player's credits are not counted). {@code teamFieldingRank} (the player's rank for catches within those teams, null
+ * without a catch) and {@code standing} (the player's batting-average rank among the batters of the league, only when a
+ * league is chosen, under the default minimum innings) are rankings: they are {@code null} unless {@code HubRankingPolicy}
+ * allows rankings.
  */
 public record MyStatsDto(
         MyStatsScope scope,
@@ -319,11 +323,15 @@ public record MyStatsDto(
             long pollsTotal, long pollsAnswered, long answeredAvailable, long matchesSelected, long matchesPlayed) {
     }
 
-    /** The player's team(s) fielding totals for the scope. Null until spec 147 slice 3. */
+    /** The player's team(s) fielding totals for the scope (see the class note). */
     public record MyStatsTeamFielding(long catches, long runOuts, long stumpings) {
     }
 
-    /** The player's rank among the league's batters. Null until spec 147 slice 4. */
+    /**
+     * The player's rank by batting average among the league's batters ({@code rank} is null while the player is below the
+     * minimum innings or has no average yet), out of {@code playersRanked}; {@code average} and {@code innings} are the
+     * player's own in that league.
+     */
     public record MyStatsStanding(Integer rank, Long playersRanked, BigDecimal average, Long innings) {
     }
 }
