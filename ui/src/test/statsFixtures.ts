@@ -54,7 +54,7 @@ export function makeMyStats(over: Partial<MyStatsDto> = {}): MyStatsDto {
     fielding: { catches: 4, stumpings: 0, runOuts: 1, dismissals: 5, dismissalsPerMatch: 0.7 },
     awards: { playerOfTheMatch: 1, teamPlayerOfTheMatch: 0 },
     record: { won: 4, lost: 2, tied: 0, drawn: 1, internal: 0 },
-    form: { batting: [], bowling: [] },
+    form: { batting: [6, 5, 4].map((n) => ({ matchId: `m${n}`, matchDate: day(n), runs: scores[n - 1], notOut: false, balls: scores[n - 1] + 8 })), bowling: [] },
     series: {
       window: { pointLimit: 30, historyCap: 50 },
       battingInnings: scores.map((runs, index) => ({ ...ref(index + 1), runs, balls: runs + 8, notOut: index === 1, howOut: index === 1 ? null : 'BOWLED' })),

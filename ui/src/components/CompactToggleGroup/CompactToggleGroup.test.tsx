@@ -30,3 +30,31 @@ describe('CompactToggleGroup', () => {
     expect(onChange).toHaveBeenCalledWith('b')
   })
 })
+
+// docs/specs/147: the Hub console look. The tone changes the look only; the behaviour is the same.
+describe('CompactToggleGroup tone dark', () => {
+  const dark = (onChange = vi.fn()) => {
+    render(
+      <CompactToggleGroup value="a" onChange={onChange} ariaLabel="Mode" tone="dark">
+        <ToggleButton value="a">One</ToggleButton>
+        <ToggleButton value="b">Two</ToggleButton>
+      </CompactToggleGroup>,
+    )
+    return onChange
+  }
+
+  it('keeps the labelled group and the pressed state, and draws 28 px uppercase labels with a gold selected one', () => {
+    dark()
+    expect(screen.getByRole('group', { name: 'Mode' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'true')
+    const two = screen.getByRole('button', { name: 'Two' })
+    expect(two).toHaveStyle({ height: '28px', 'text-transform': 'uppercase', 'font-size': '12px' })
+    expect(screen.getByRole('button', { name: 'One' })).toHaveStyle({ color: 'rgb(232, 184, 61)' })
+  })
+
+  it('still reports another option on a click', async () => {
+    const onChange = dark()
+    await userEvent.click(screen.getByRole('button', { name: 'Two' }))
+    expect(onChange).toHaveBeenCalledWith('b')
+  })
+})
