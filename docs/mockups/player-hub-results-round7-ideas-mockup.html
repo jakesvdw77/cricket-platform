@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub Results - more to add, round 7 ideas</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ink:#06241A;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#3FBF7F;--loss:#F0675D;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:28px 20px 80px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+p.lead{color:var(--muted);max-width:900px;line-height:1.5;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;max-width:1500px}
+.idea{border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.82);overflow:hidden}
+.idea h2{font:700 20px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:0;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.idea h2 b{background:var(--gold);color:var(--ink);border-radius:3px;padding:1px 8px;font-size:15px}
+.sketch{padding:16px;min-height:190px;display:grid;gap:10px;align-content:start}
+.meta{border-top:1px solid var(--soft);padding:10px 16px 14px;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.meta b{color:var(--cream)}
+.tile{border:1px solid var(--soft);background:rgba(0,0,0,.32);border-radius:4px;padding:10px 12px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.num{font:700 30px var(--disp);color:var(--gold);line-height:1}.lab{font:600 11px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;align-items:center;gap:10px;font:600 15px var(--disp);letter-spacing:.06em;text-transform:uppercase}
+.chip{font:700 11px var(--disp);letter-spacing:.14em;border:1px solid currentColor;border-radius:3px;padding:2px 7px}.w{color:var(--win)}.l{color:var(--loss)}
+.bar{height:12px;border-radius:2px;background:var(--soft);position:relative;overflow:hidden}.bar i{position:absolute;inset:0 auto 0 0;background:var(--gold)}
+.spark{display:flex;align-items:flex-end;gap:5px;height:60px}.spark i{flex:1;background:var(--gold);opacity:.85;border-radius:2px 2px 0 0}
+.cap{font:600 12px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+table{width:100%;border-collapse:collapse;font:600 14px var(--disp);letter-spacing:.05em;text-transform:uppercase}td,th{padding:6px 8px;border-bottom:1px solid var(--soft);text-align:left}th{color:var(--muted);font-size:11px;letter-spacing:.16em}
+td.n{text-align:right}tr.me td{color:var(--gold)}
+</style></head><body>
+<h1>More for Results: ideas to choose from</h1>
+<p class="lead">Six directions for adding to the Results area, each sketched on the data the app already has. They are independent: pick any, drop any, or tell me what is missing. Nothing is built. All names and figures are made up.</p>
+<div class="grid">
+
+<div class="idea"><h2><b>1</b>Season so far</h2><div class="sketch">
+ <div class="tiles"><div class="tile"><div class="num">7</div><div class="lab">Played</div></div><div class="tile"><div class="num">5</div><div class="lab">Won</div></div><div class="tile"><div class="num">412</div><div class="lab">Runs</div></div><div class="tile"><div class="num">9</div><div class="lab">Wickets</div></div></div>
+ <div class="row"><span class="cap">Form</span><span class="chip w">W</span><span class="chip w">W</span><span class="chip l">L</span><span class="chip w">W</span><span class="chip w">W</span></div>
+ <div class="bar"><i style="width:71%"></i></div><div class="lab">Team won 5 of 7 this season</div></div>
+ <div class="meta"><b>What it is:</b> a banner at the top of Results: the player's figures for the chosen scope and the team's record. <b>Data:</b> already built (the summary read). <b>Effort:</b> small. Tapping a tile would open idea 3.</div></div>
+
+<div class="idea"><h2><b>2</b>Inside a result: the story of the match</h2><div class="sketch">
+ <div class="cap">Worm and key moments</div>
+ <div class="spark"><i style="height:20%"></i><i style="height:34%"></i><i style="height:48%"></i><i style="height:52%"></i><i style="height:70%"></i><i style="height:76%"></i><i style="height:90%"></i><i style="height:100%"></i></div>
+ <div class="tile row">Player of the match <span style="margin-left:auto;color:var(--gold)">Sam, 47* and 2/18</span></div>
+ <div class="tile row">Best partnership <span style="margin-left:auto;color:var(--gold)">63 for the 4th wicket</span></div>
+ <div class="tile row">Turning point <span style="margin-left:auto;color:var(--gold)">3 wickets in 2 overs</span></div></div>
+ <div class="meta"><b>What it is:</b> more on the Hub Result page: a run progress chart, player of the match, partnerships, fall of wickets. <b>Data:</b> scorecard and over-by-over already captured for imported and captured results; player of the match needs a manager to pick one (or we compute a suggestion). <b>Effort:</b> medium.</div></div>
+
+<div class="idea"><h2><b>3</b>Drill into the figures (the Stats section)</h2><div class="sketch">
+ <div class="cap">Sam: batting this season</div>
+ <div class="spark"><i style="height:30%"></i><i style="height:12%"></i><i style="height:60%"></i><i style="height:100%"></i><i style="height:45%"></i><i style="height:80%"></i><i style="height:70%"></i></div>
+ <table><tr><th>Match</th><th class="n">Runs</th><th class="n">Balls</th><th class="n">SR</th></tr><tr><td>v Rovers</td><td class="n">47*</td><td class="n">52</td><td class="n">90</td></tr><tr><td>v Eagles</td><td class="n">31</td><td class="n">44</td><td class="n">70</td></tr><tr><td>v Parkview</td><td class="n">12</td><td class="n">20</td><td class="n">60</td></tr></table></div>
+ <div class="meta"><b>What it is:</b> tap any figure to see the innings behind it, with a small chart. This is the "drillable stats on the same foundation" planned in spec 145. <b>Data:</b> the player-stats reads exist for managers; a Hub version needs the same access rules as Results. <b>Effort:</b> medium to large, but replaces the Soon "My stats" page.</div></div>
+
+<div class="idea"><h2><b>4</b>The league table beside the results</h2><div class="sketch">
+ <div class="cap">Division 1 &middot; Over 40</div>
+ <table><tr><th>#</th><th>Team</th><th class="n">P</th><th class="n">W</th><th class="n">Pts</th></tr><tr class="me"><td>1</td><td>Villagers</td><td class="n">7</td><td class="n">5</td><td class="n">22</td></tr><tr><td>2</td><td>Rovers</td><td class="n">7</td><td class="n">4</td><td class="n">20</td></tr><tr><td>3</td><td>Eagles</td><td class="n">6</td><td class="n">3</td><td class="n">15</td></tr></table></div>
+ <div class="meta"><b>What it is:</b> a Table tab in the League filter showing where the team stands, with the team highlighted. <b>Data:</b> the league page (spec 123) already has standings. <b>Effort:</b> small to medium. It would also feed a "Division 1: Villagers top" item in the scoreboard ticker.</div></div>
+
+<div class="idea"><h2><b>5</b>Head to head</h2><div class="sketch">
+ <div class="row">Villagers <span class="num">3</span><span class="lab">v</span><span class="num">2</span> Rovers</div>
+ <div class="bar"><i style="width:60%"></i></div>
+ <div class="tile row">Last meeting <span style="margin-left:auto;color:var(--gold)">Villagers by 24 runs, Sat</span></div>
+ <div class="tile row">Highest score <span style="margin-left:auto;color:var(--gold)">231/6</span></div></div>
+ <div class="meta"><b>What it is:</b> on a result (and on an upcoming match later), the history between the two teams. <b>Data:</b> derivable from results the club already holds. <b>Effort:</b> small to medium. Counts only results visible to players, so it agrees with the Results list.</div></div>
+
+<div class="idea"><h2><b>6</b>Share and keep</h2><div class="sketch">
+ <div class="tile" style="text-align:center"><div class="cap">Villagers beat Rovers</div><div class="num" style="font-size:44px">by 24 runs</div><div class="lab">Sam 47* &middot; 2/18 &middot; Over 40 &middot; Sat 1 Nov</div></div>
+ <div class="row"><span class="chip">Share</span><span class="chip">Save image</span></div></div>
+ <div class="meta"><b>What it is:</b> a share card for a result a parent is proud of, to send on to family. <b>Data:</b> none new. <b>Note:</b> spec 145 lists sharing as a non-goal and the manager app already has Share Result (spec 114). The Hub version would need its own rules for juniors' names. <b>Effort:</b> medium.</div></div>
+
+</div>
+<p class="lead" style="margin-top:22px"><b style="color:var(--gold)">My lean:</b> 1 and 4 first (small, built on what exists, they make the page feel like a scoreboard), then 3, which is the Stats section you already wanted. 2 is the most striking but needs a "player of the match" decision. 5 and 6 are nice extras.</p>
+</body></html>
