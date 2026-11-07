@@ -55,7 +55,7 @@ export function HubTeamStats({ playerKey }: { playerKey: string }) {
   const player = useMyPlayer(playerKey).data
   const filtersQuery = useMyPlayerResultsFilters(playerKey)
   const filters = filtersQuery.data
-  const controls = useHubScope({ playerKey, storageKey: `hubStats:filters:${playerKey}`, filters, testIdPrefix: TEST_PREFIX })
+  const controls = useHubScope({ playerKey, storageKey: `hubStats:filters:${playerKey}`, filters, alwaysShowFilters: true, testIdPrefix: TEST_PREFIX })
   const { scopeText, clearFilters } = controls
   const leagueNarrowed = Boolean(controls.leagueId || controls.friendly)
   const [, setSearch] = useSearchParams()

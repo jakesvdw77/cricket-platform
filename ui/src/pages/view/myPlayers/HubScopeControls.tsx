@@ -103,6 +103,8 @@ export interface HubScopeOptions {
   // False on a page whose options are not the player's own results (the Leaderboards reach): the chips then show names alone, because the
   // played and won record under a chip is the player's own results record.
   chipRecords?: boolean
+  // True on the Stats pages: the Filters button, panel and sheet show even with one league and one team, so the layout is stable.
+  alwaysShowFilters?: boolean
 }
 
 export interface HubScope {
@@ -139,10 +141,11 @@ export interface HubScope {
     panelHeading: RefObject<HTMLHeadingElement | null>
     resetLink: ReactNode
     chipGroups: (columns: 1 | 2) => ReactNode
+    showFilters: boolean
   }
 }
 
-export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hub-results', chipRecords = true }: HubScopeOptions): HubScope {
+export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hub-results', chipRecords = true, alwaysShowFilters = false }: HubScopeOptions): HubScope {
   const [search, setSearch] = useSearchParams()
   const [saved, save] = usePersistedListFilters<SavedScope>(storageKey, { season: '', team: '', league: '', competition: '' })
 
@@ -228,6 +231,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
 
   const leagueCount = leagueOptions.length + (hasFriendly ? 1 : 0)
   const hasChoice = leagueCount > 1 || teamOptions.length > 1
+  const showFilters = hasChoice || alwaysShowFilters
   const activeCount = (leagueId || friendly ? 1 : 0) + (teamId ? 1 : 0)
   const closePanel = () => {
     setOpen(false)
@@ -245,7 +249,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     </Box>
   )
 
-  const quietLine = filters && !hasChoice && leagueCount === 1 && (
+  const quietLine = filters && !showFilters && leagueCount === 1 && (
     <Typography noWrap data-testid={`${testIdPrefix}-context`} sx={{ fontFamily: HUB.display, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 14, color: HUB.sand }}>
       {[leagueOptions[0]?.name ?? 'Friendly', teamOptions[0]?.name].filter(Boolean).join(' · ')}
     </Typography>
@@ -271,7 +275,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
           </Select>
         </Box>
       )}
-      {filters && hasChoice && (
+      {filters && showFilters && (
         <Button
           ref={filtersButton}
           variant="secondary"
@@ -291,7 +295,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
   )
 
   const resetLink = (
-    <Link component="button" type="button" underline="always" onClick={clearFilters} sx={{ color: HUB.gold, fontSize: 15, minHeight: 44 }}>
+    <Link component="button" type="button" underline="always" disabled={!narrowed} onClick={clearFilters} sx={{ color: HUB.gold, fontSize: 15, minHeight: 44, '&:disabled': { opacity: 0.4, cursor: 'default', textDecoration: 'none' } }}>
       Reset
     </Link>
   )
@@ -299,6 +303,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     <Box sx={{ display: 'grid', gap: 2 }}>
       <ChipGroup label="Leagues" chips={leagueChips} columns={columns} />
       {teamOptions.length > 0 && <ChipGroup label="Teams" chips={teamChips} columns={columns} />}
+      {!hasChoice && <Typography sx={{ color: HUB.muted, fontSize: 13 }}>Only one league and team to choose from</Typography>}
     </Box>
   )
 
@@ -318,9 +323,9 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     setTeam: (id) => change({ team: id ?? '' }),
     actions,
     context: activeTags || quietLine || undefined,
-    panelOpen: open && wide && hasChoice,
+    panelOpen: open && wide && showFilters,
     testIdPrefix,
-    internal: { open, wide, setOpen, closePanel, panelHeading, resetLink, chipGroups },
+    internal: { open, wide, setOpen, closePanel, panelHeading, resetLink, chipGroups, showFilters },
   }
 }
 
@@ -357,7 +362,7 @@ export function HubScopeSheet({ controls, matchCount, noun = 'match', nounPlural
   const { internal } = controls
   const label = matchCount === undefined ? fallbackLabel : `Show ${matchCount} ${matchCount === 1 ? noun : nounPlural}`
   return (
-    <BottomSheet open={internal.open && !internal.wide && controls.hasChoice} onOpen={() => internal.setOpen(true)} onClose={() => internal.setOpen(false)} ariaLabel="Filters" title="Filters" closeLabel="Close Filters" tone="dark">
+    <BottomSheet open={internal.open && !internal.wide && internal.showFilters} onOpen={() => internal.setOpen(true)} onClose={() => internal.setOpen(false)} ariaLabel="Filters" title="Filters" closeLabel="Close Filters" tone="dark">
       <Box sx={{ display: 'grid', gap: 1.5 }}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>{internal.resetLink}</Box>
         {internal.chipGroups(2)}

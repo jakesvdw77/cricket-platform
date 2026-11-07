@@ -53,7 +53,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
   const boardsQuery = useMyBoardsFilters(playerKey)
   const ownFiltersQuery = useMyPlayerResultsFilters(playerKey)
   const filters = boardsQuery.data
-  const controls = useHubScope({ playerKey, storageKey: `hubBoards:filters:${playerKey}`, filters, testIdPrefix: TEST_PREFIX, chipRecords: false })
+  const controls = useHubScope({ playerKey, storageKey: `hubBoards:filters:${playerKey}`, filters, alwaysShowFilters: true, testIdPrefix: TEST_PREFIX, chipRecords: false })
   const { scopeText, clearFilters, scope } = controls
   const [search, setSearch] = useSearchParams()
   const awaitingTeam = useDefaultBoardsTeam(playerKey, controls, ownFiltersQuery.data, filters?.teams.map((team) => team.id))
