@@ -1,7 +1,7 @@
 # 146: Player Hub Scoreboard Ticker: a rolling strip along the whole Hub console footer
 
 **Depends on:** `121` (Hub frame, the footer bar and `hubBack`, `MyPlayerAccess`, phone and safe-area rules, Decision 15 "the footer holds the one Back"), `135` (`useMyPlayerMatches`, `MyMatchSummaryDto`, `MatchPhase`, the Hub match page, and its Non-goal "a scrolling ticker anywhere", which this spec amends for the footer only, see Problem & Goals), `145` (`useMyPlayerResults`, `MyResultDto`, the Show In Player Hub flag, the Hub Result page, Decision 12's `hub:menuAutoCollapse` preference and its `useHubMenuAutoCollapse` hook, Decision 13 "game feel", Decisions 6a and 7 on names), `034`/`064`-`066` and `119` (`useMyPlayerPolls`, `MyPoll`, the Hub availability page), `120` (no new hex literals; `brandTokens.ts`, `hubStyle.ts`), `docs/standards/frontend.md`, `docs/standards/design-system.md` ("Player Hub results"), `docs/standards/page-anatomy.md` (section 4 "the Hub differs only where the dark console and footer Back require it"), `docs/standards/testing.md`.
-**Status:** draft. Direction decided by the owner on 2026-11-06 from `docs/mockups/player-hub-ticker-round2-mockup.html`: **variant A, the classic rolling ticker, is chosen; D2 (scoreboard glass) is not.** The footer is taken over **entirely** by the ticker (owner). Not built yet. No code is written by this spec.
+**Status:** approved for build by the owner 2026-11-07 (autonomous run; owner checks on return). Direction decided by the owner on 2026-11-06 from `docs/mockups/player-hub-ticker-round2-mockup.html`: **variant A, the classic rolling ticker, is chosen; D2 (scoreboard glass) is not.** The footer is taken over **entirely** by the ticker (owner). Not built yet. No code is written by this spec.
 
 ## Problem & Goals
 The Player Hub is meant to feel like a scoreboard or a TV broadcast (`145` Decision 13), but the console footer is a bar that holds one Back button and otherwise sits empty. Everything a parent would like to glance at (the result that was just published, a match that is on now, the next fixture, an availability poll about to close) is a tap and a screen away, so nothing on the Hub moves or says "something is happening". A rolling strip along the bottom, like the one under a TV scoreboard, fills the space with what is current and links each item to the page it came from.
@@ -11,7 +11,7 @@ The Player Hub is meant to feel like a scoreboard or a TV broadcast (`145` Decis
 - **B. Four item kinds built now**, all from reads that already exist: **results** (published and Show In Player Hub on), **live now**, **upcoming matches** (countdown label inside 24 hours) and **poll deadlines** (open polls closing soon).
 - **C. A typed item contract and a kind registry** so each later kind (messages, sponsors, milestones, league standing, birthdays, weather, on this day, fun facts) is added as one source function plus one registry entry, without touching the ticker, the shuffle or the footer.
 - **D. A pure, tested ordering**: a weighted shuffle that never puts the same kind twice in a row, allows a sponsor at most 1 in 5, and keeps a live match in the mix while it is on.
-- **E. Quiet by choice and accessible**: a pause control reachable by keyboard, a static rotation under reduced motion, and a Settings-style switch that turns it off (`hub:ticker`, a per-device preference).
+- **E. Quiet by choice and accessible**: a pause control reachable by keyboard, a static rotation under reduced motion, and a switch that turns it off on the **Preferences page** under Account (`hub:ticker`, a per-device preference).
 - **F. No backend and no data model change.** Everything is composed in the browser from reads the Hub already makes.
 
 **Amendment to `135`.** `135` rejected a scrolling ticker on the match rows because moving text that cannot be paused fails WCAG 2.2.2 and competes with a tap target. This spec does not reopen the rows (they stay static). The owner chose a ticker for the footer, a region with no tap-target competition, so the footer ticker ships with exactly the mitigations `135` said a ticker would need: a visible pause control, pause on hover, touch and focus, a static fallback under `prefers-reduced-motion`, and the off switch.
@@ -26,14 +26,14 @@ The Player Hub is meant to feel like a scoreboard or a TV broadcast (`145` Decis
 - **Per-account or per-club ticker settings, or a club switch to disable it for all its viewers.** The preference is per device (`hub:ticker`), like `hub:menuAutoCollapse`. A club-level switch arrives with the first club-authored kind (messages or sponsors), where it is needed.
 - **The manager application.** The ticker is the Player Hub console only; whether managers get one is a separate decision.
 - **Changing the header band, the menu auto-collapse or any Hub page body.** Only the footer changes.
-- **A Settings page.** None exists in the Hub today; this spec adds one switch in the existing avatar menu (see UI Requirements and Open question 1), not a new area.
+- **The Preferences page itself.** Built before this spec (owner, 2026-11-07): `MyPreferencesPage` under Account (`/account/preferences`) with the ticker and menu auto-collapse switches, `hubPreferences.ts` and `useHubTickerPreference.ts`. This spec only reads the preference.
 
 ## User Stories
 - As a parent, I see a slow strip along the bottom of the Hub that tells me what is happening for my player's club (a result, a match on now, the next match, a poll about to close), so the Hub feels alive.
 - As a parent, I tap an item and land on the page it came from: a result opens the Hub Result page, a match opens the match page, a poll deadline opens Availability.
 - As a parent, I can stop the strip (hover, touch and hold, keyboard focus, or the Pause button) so I can finish reading an item.
 - As a parent who is sensitive to motion, I see one item at a time that changes slowly, not a scroll, and I can pause that too.
-- As a parent who finds it distracting, I turn the ticker off in the account menu and the footer is just the Back button again, on this device.
+- As a parent who finds it distracting, I turn the ticker off on the Preferences page (Account, then Preferences) and the footer is just the Back button again, on this device.
 - As a screen reader user, I can reach the items as an ordinary list of links, in a stable order, without a constantly announcing region.
 - As a parent with a live match on, I see it in the strip every cycle, first, until it ends.
 - As a parent with nothing current (no results shown, nothing upcoming), I see the footer exactly as today.
@@ -160,7 +160,7 @@ Output is stable for a given `(items, seed)`. The seed comes from the route (bel
 - **Names:** each link's accessible name is the item `label` (chip word then sentence, for example "Result: Villagers beat Rovers by 24 runs, Over 40, Saturday"), not the chip alone.
 - **Contrast** checked once at the token stage: gold on the dark band, cream on the band and each chip tone on the band at 4.5:1 or better (a test over the tokens, as `PageCounters.test.tsx` does for `primary.main`).
 - **Targets** 44 px; text scales (no fixed pixel heights that clip at 200 percent zoom; the band height is `min-height`).
-- **Switch state in the account menu** is a real switch or a menu item with `role="menuitemcheckbox"` and `aria-checked`.
+- **Switch state on the Preferences page** is a real labelled MUI Switch (a checkbox input with an accessible name and description).
 
 ### 8. Footer geometry, phone and safe area
 - **Height:** the footer band keeps the pinned `56 px` of `121` at every width (the mockup's phone band was 64 px; staying at 56 keeps the layout from jumping when items load and keeps `121`'s content-above-footer maths, Open question 5). Padding-bottom is `env(safe-area-inset-bottom)` added on top, as `121` already does for the footer on a phone.
@@ -174,7 +174,7 @@ Output is stable for a given `(items, seed)`. The seed comes from the route (bel
 
 ### 10. The off switch and the preference
 - **Key: `hub:ticker`** in `localStorage`, same convention as `hub:menuAutoCollapse`: the value `'off'` disables it; absent (or anything else, or storage unavailable) means on. Per device and browser, not per account. Read and written through `useHubTickerPreference()`, which wraps every storage access in `try/catch` (as `menuAutoCollapsePreference` does) and listens to the `storage` event plus an in-tab custom event, so flipping the switch updates the footer immediately in the same tab and in other open tabs. The key name is exported as the constant `TICKER_PREFERENCE_KEY` beside `MENU_AUTO_COLLAPSE_KEY`.
-- **Where the switch is:** there is no Settings page in the Hub. The default is one entry in the existing avatar menu (`AccountShell`, where Invitations, Link Requests, Switch Profile, Back To Club and Sign Out already live, `145`): **"Scoreboard Ticker"** with an on/off state (`menuitemcheckbox`), placed above Sign Out. Open question 1 asks whether the owner would rather have a Hub Settings page that also hosts the long-promised `hub:menuAutoCollapse` switch; the preference key and hook do not change either way.
+- **Where the switch is (decided, owner 2026-11-07):** the **Preferences page** under Account (`/account/preferences`, card on the Account page), already built with `useHubTickerPreference()` and `hubPreferences.ts` (`useSyncExternalStore` over `localStorage`, the `storage` event and an in-tab event). Account is a person-level screen reached from the page-corner link, not a Hub menu item or avatar menu entry. `TICKER_PREFERENCE_KEY` is the existing `HUB_TICKER_KEY` constant in `useHubTickerPreference.ts`.
 - When off: no ticker requests are made, the footer is today's footer.
 
 ### 11. Components used
@@ -198,7 +198,7 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 - **Unit (Vitest), `useHubTickerPreference`:** default on; `'off'` disables; corrupt or unavailable storage means on; a `storage` event and the in-tab event update the value.
 - **Component (Testing Library), `HubTicker.test.tsx`:** renders the accessible list once and the duplicate with `aria-hidden` and `tabIndex={-1}` links; **pause** on hover, on `touchstart` and on focus (`animation-play-state` paused) and resumes after; the Pause button toggles `aria-pressed` and the name; **reduced motion** (mocked `matchMedia`) shows one item at a time, advances every `TICKER_STATIC_MS` (fake timers), shows Previous and Next, and the pulse is static; **links**: each item's `href` is the page it came from and clicking navigates (memory router); a `null` `to` is not a link; a focused link is brought into view; Tab never reaches the duplicate; **preference off** renders no ticker and makes no request (the three hooks are called with `enabled: false`); **empty** renders nothing; text that fits renders static without animation.
 - **Component, `HubFooter.test.tsx`:** Back and ticker together (Back at the left, label from `hubBack`, Escape still triggers Back); no Back: ticker spans full width; no items and no Back: no footer; no items with Back: today's footer; the narrow-window case hides the ticker; hidden on the Watch Live route and on the chooser; the footer keeps 56 px and the safe-area padding.
-- **Component, `HubFrame`/`AccountShell`:** the "Scoreboard Ticker" menu item toggles the preference and the footer updates at once; keyboard operable (`menuitemcheckbox`).
+- **Component, `MyPreferencesPage`:** already covered (the switch writes `hub:ticker`); a `HubFooter` test covers that the footer updates at once when the preference changes.
 - **Storybook:** `HubTicker` stories: all four built kinds, plus a "future kinds" story using synthetic message, sponsor (with plate), milestone, standing, birthday, weather, on-this-day and fun-fact items to prove the contract needs no ticker change; live pinned; paused; reduced motion (static); a single item that fits; a long item; empty. `HubFooter` stories: with Back, without Back, with and without items, phone (375), tablet (768), desktop (1280). Per `design-system.md`, viewports 375, 768, 1280.
 - **Manual (owner):** a 375 px sweep (footer height, safe-area, Back plus strip at 120 px minimum), keyboard pass (Tab order, pause, focus visible), a reduced-motion pass, 200 percent zoom, a real club with a live match, a flagged result and an open poll.
 
@@ -215,14 +215,14 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 10. Hover, touch and keyboard focus pause the strip; the Pause button pauses and resumes it and is reachable by keyboard.
 11. Under `prefers-reduced-motion` the strip shows one item at a time, changing every 6 seconds, with no scroll, and can be paused and stepped.
 12. Screen readers and keyboard users meet each item exactly once as a link in a list; the moving duplicate is hidden from them; there is no live region.
-13. The "Scoreboard Ticker" switch in the avatar menu turns the ticker off for this device (`hub:ticker` = `off`); when off the footer is today's footer and no ticker request is made; the setting survives a reload.
+13. The "Scoreboard ticker" switch on the Preferences page turns the ticker off for this device (`hub:ticker` = `off`); when off the footer is today's footer and no ticker request is made; the setting survives a reload.
 14. With nothing to show, or with every read failed or loading, the footer is exactly as before (just Back, or absent), with no placeholder.
 15. No endpoint, migration or `openapi.yaml` change exists in the PR, and no data beyond what the Results, Matches and Availability pages show the same viewer is displayed.
 16. No later kind (message, sponsor, milestone, standing, birthday, weather, on this day, fun fact) is implemented, and each can be added by one registry entry and one source file (proved by the Storybook "future kinds" story using the unchanged `HubTicker`).
 17. The ticker is not shown on the Watch Live page, the chooser, Find Players, Welcome or an edit sub-view.
 
 ## Open questions (short, defaults apply)
-1. **Where the switch lives.** Default: one "Scoreboard Ticker" item in the avatar menu. Alternative: a small Hub Settings page that also hosts the `hub:menuAutoCollapse` switch (`145` Decision 12 said a Settings switch "can come later").
+1. **Where the switch lives.** Resolved 2026-11-07: the Preferences page under Account (built).
 2. **Result freshness.** Default: results from the last 14 days, at most 5. Alternative: last 30 days.
 3. **Hide on Watch Live.** Default: hidden (video page). Alternative: shown but paused.
 4. **Which polls.** Default: only polls the held player has not answered. Alternative: every open poll closing soon.
