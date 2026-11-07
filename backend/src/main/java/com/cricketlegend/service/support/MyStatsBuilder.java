@@ -91,7 +91,12 @@ public final class MyStatsBuilder {
                 extras.teamFielding(),
                 extras.teamFieldingRank(),
                 extras.standing(),
-                stats.notCaptured());
+                stats.notCaptured(),
+                PlayerStatsCalculator.summary(stats, counters, rows),
+                PlayerStatsCalculator.battingPositionGroups(innings),
+                PlayerStatsCalculator.battingVenues(innings),
+                PlayerStatsCalculator.bowlingHomeAway(rows, history.venues()),
+                PlayerStatsCalculator.bowlingVenues(rows, history.venues()));
     }
 
     /** The Dashboard series without result ids, with a drill token on every dismissal slice. */

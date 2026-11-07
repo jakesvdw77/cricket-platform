@@ -931,10 +931,13 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
                    (coalesce(dr.playing_area_id, dm.playing_area_id) is not null) as "fieldKnown",
                    exists (select 1 from club_playing_area cpa
                            where cpa.club_id = :clubId and cpa.is_home
-                             and cpa.playing_area_id = coalesce(dr.playing_area_id, dm.playing_area_id)) as "clubField"
+                             and cpa.playing_area_id = coalesce(dr.playing_area_id, dm.playing_area_id)) as "clubField",
+                   pa.id as "areaId",
+                   pa.name as "areaName"
             from ap
             join match dm on dm.id = ap.match_id
             join match_result dr on dr.id = ap.mrid
+            left join playing_area pa on pa.id = coalesce(dr.playing_area_id, dm.playing_area_id)
             join batting_entry be on be.result_player_id = ap.rpid
             join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
             left join result_player brp on brp.id = be.bowler_result_player_id
@@ -946,6 +949,36 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             order by ap.mrid, i.sequence, be.id
             """, nativeQuery = true)
     List<BattingDetailView> battingDetail(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /**
+     * docs/specs/147 amendment 2: the playing area of each listed counted match (null area when none is recorded) and whether
+     * it is one of the club's own home fields (the same rule as {@code battingDetail}). One row per match.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select distinct ap.mrid as "resultId",
+                   pa.id as "areaId",
+                   pa.name as "areaName",
+                   exists (select 1 from club_playing_area cpa
+                           where cpa.club_id = :clubId and cpa.is_home
+                             and cpa.playing_area_id = pa.id) as "clubField"
+            from ap
+            join match dm on dm.id = ap.match_id
+            join match_result dr on dr.id = ap.mrid
+            left join playing_area pa on pa.id = coalesce(dr.playing_area_id, dm.playing_area_id)
+            where ap.mrid in (:resultIds)
+            """, nativeQuery = true)
+    List<ResultVenueView> resultVenues(
             @Param("clubId") UUID clubId,
             @Param("playerId") UUID playerId,
             @Param("seasonId") UUID seasonId,
@@ -1065,6 +1098,20 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
         UUID getSeasonId();
 
         Boolean getFieldKnown();
+
+        Boolean getClubField();
+
+        UUID getAreaId();
+
+        String getAreaName();
+    }
+
+    interface ResultVenueView {
+        UUID getResultId();
+
+        UUID getAreaId();
+
+        String getAreaName();
 
         Boolean getClubField();
     }

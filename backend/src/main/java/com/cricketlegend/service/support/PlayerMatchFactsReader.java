@@ -4,6 +4,7 @@ import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.BattingDetailView;
+import com.cricketlegend.repository.PlayerStatsFactsRepository.ResultVenueView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.BowlingCreditView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchAwardView;
 import com.cricketlegend.repository.PlayerStatsFactsRepository.MatchBattingView;
@@ -100,7 +101,15 @@ public final class PlayerMatchFactsReader {
                 v.getBowlerName(),
                 v.getSeasonId(),
                 Boolean.TRUE.equals(v.getFieldKnown()),
-                Boolean.TRUE.equals(v.getClubField()));
+                Boolean.TRUE.equals(v.getClubField()),
+                v.getAreaId(),
+                v.getAreaName());
+    }
+
+    /** docs/specs/147 amendment 2: the playing area of a counted match. */
+    public static PlayerStatsCalculator.ResultVenue toResultVenue(ResultVenueView v) {
+        return new PlayerStatsCalculator.ResultVenue(
+                v.getResultId(), v.getAreaId(), v.getAreaName(), Boolean.TRUE.equals(v.getClubField()));
     }
 
     /** docs/specs/147: a batter the player dismissed. */

@@ -69,7 +69,12 @@ public record MyStatsDto(
         MyStatsTeamFielding teamFielding,
         Integer teamFieldingRank,
         MyStatsStanding standing,
-        List<PlayerNotCaptured> notCaptured) {
+        List<PlayerNotCaptured> notCaptured,
+        MyStatsSummary summary,
+        List<MyStatsBattingPositionGroup> battingPositionGroups,
+        List<MyStatsBattingVenue> battingVenues,
+        MyStatsBowlingHomeAway bowlingHomeAway,
+        List<MyStatsBowlingVenue> bowlingVenues) {
 
     /** The filters applied, echoed. {@code competition} is LEAGUE, FRIENDLY or null. */
     public record MyStatsScope(UUID seasonId, UUID leagueId, UUID teamId, String competition) {
@@ -333,5 +338,85 @@ public record MyStatsDto(
      * player's own in that league.
      */
     public record MyStatsStanding(Integer rank, Long playersRanked, BigDecimal average, Long innings) {
+    }
+
+    // ---- amendment 2 (spec 147): summary, positions, venues ----
+
+    /**
+     * The Summary group. {@code leaguesPlayed} (leagues only, friendlies excluded) and {@code teamsRepresented} count the
+     * distinct counted matches of the (capped) history, most matches first then name; the other figures cover the whole
+     * scope. {@code ballsFaced} is null when no innings recorded balls; {@code ballsPerOver} is null when the counted
+     * spells mix over lengths (or none was bowled).
+     */
+    public record MyStatsSummary(
+            List<MyStatsLeagueMatches> leaguesPlayed,
+            List<MyStatsTeamMatches> teamsRepresented,
+            long matchesPlayed,
+            long runsScored,
+            Long ballsFaced,
+            long ballsBowled,
+            Integer ballsPerOver,
+            long catchesTaken) {
+    }
+
+    public record MyStatsLeagueMatches(UUID leagueId, String name, long matches) {
+    }
+
+    public record MyStatsTeamMatches(UUID teamId, String name, long matches) {
+    }
+
+    /** {@code key} is OPENER (positions 1 and 2) then 3 to 11; {@code highest} and {@code average} are null when unrecorded. */
+    public record MyStatsBattingPositionGroup(
+            String key,
+            String label,
+            long innings,
+            long runs,
+            long notOuts,
+            long dismissals,
+            BigDecimal average,
+            Integer highest) {
+    }
+
+    /**
+     * Batting at one playing area. {@code venueKey} is the area id, {@code unknown} (name "Unknown venue") or {@code other}
+     * (name "Other venues"); {@code home} is null for unknown and other.
+     */
+    public record MyStatsBattingVenue(
+            String venueKey,
+            String name,
+            Boolean home,
+            long innings,
+            long notOuts,
+            long dismissals,
+            long runs,
+            BigDecimal average) {
+    }
+
+    /** {@code unknownVenueSpells}: spells in matches with no playing area (left out of both splits). */
+    public record MyStatsBowlingHomeAway(MyStatsBowlingSplit home, MyStatsBowlingSplit away, long unknownVenueSpells) {
+    }
+
+    /** {@code ballsPerOver} is null when the spells mix over lengths (or none bowled a ball). */
+    public record MyStatsBowlingSplit(
+            long spells,
+            long balls,
+            Integer ballsPerOver,
+            long maidens,
+            long runs,
+            long wickets,
+            BigDecimal economy,
+            BigDecimal average) {
+    }
+
+    public record MyStatsBowlingVenue(
+            String venueKey,
+            String name,
+            Boolean home,
+            long spells,
+            long balls,
+            Integer ballsPerOver,
+            long runs,
+            long wickets,
+            BigDecimal economy) {
     }
 }

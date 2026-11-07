@@ -389,7 +389,9 @@ public final class PlayerStatsCalculator {
             String bowlerName,
             UUID seasonId,
             boolean fieldKnown,
-            boolean clubField) {
+            boolean clubField,
+            UUID areaId,
+            String areaName) {
     }
 
     /** A counted batting row joined to its match (opponent, date); {@code balls} is null when not valid (spec 103). */
@@ -410,7 +412,13 @@ public final class PlayerStatsCalculator {
             boolean notOut,
             String bowlerName,
             boolean fieldKnown,
-            boolean clubField) {
+            boolean clubField,
+            UUID areaId,
+            String areaName) {
+    }
+
+    /** The playing area of a counted match (null ids when none is recorded) and whether it is one of the club's home fields. */
+    public record ResultVenue(UUID resultId, UUID areaId, String areaName, boolean clubField) {
     }
 
     /**
@@ -501,7 +509,9 @@ public final class PlayerStatsCalculator {
                         d.howOut() != null && !d.howOut().isWicket() && d.howOut().batted(),
                         d.bowlerName(),
                         d.fieldKnown(),
-                        d.clubField()));
+                        d.clubField(),
+                        d.areaId(),
+                        d.areaName()));
             }
         }
         return joined;
@@ -830,6 +840,261 @@ public final class PlayerStatsCalculator {
 
     private static MyStatsDto.MyStatsFieldSplit fieldSplit(long[] c) {
         return new MyStatsDto.MyStatsFieldSplit(c[0], c[1], c[2], battingAverage(c[2], c[1]));
+    }
+
+    // ---- amendment 2: summary, batting position groups, venues ----
+
+    private static final int VENUE_CAP = 12;
+    private static final String UNKNOWN_VENUE = "Unknown venue";
+    private static final String OTHER_VENUES = "Other venues";
+
+    /**
+     * The Summary group: leagues (friendlies excluded) and teams the player appeared for, each with its distinct counted
+     * matches (from the capped history rows), and the whole-scope totals from the already-defined counters.
+     */
+    public static MyStatsDto.MyStatsSummary summary(
+            PlayerStatsDto stats, PlayerStatsCounters counters, Collection<PlayerMatchRowDto> rows) {
+        Map<UUID, String> leagueNames = new LinkedHashMap<>();
+        Map<UUID, java.util.Set<UUID>> leagueMatches = new HashMap<>();
+        Map<UUID, String> teamNames = new LinkedHashMap<>();
+        Map<UUID, java.util.Set<UUID>> teamMatches = new HashMap<>();
+        for (PlayerMatchRowDto row : rows) {
+            if (row.leagueId() != null) {
+                leagueNames.putIfAbsent(row.leagueId(), row.leagueName());
+                leagueMatches.computeIfAbsent(row.leagueId(), k -> new java.util.HashSet<>()).add(row.matchId());
+            }
+            for (PlayerMatchRowDto.PlayerMatchTeam t : row.ourTeams()) {
+                if (t.teamId() != null) {
+                    teamNames.putIfAbsent(t.teamId(), t.teamName());
+                    teamMatches.computeIfAbsent(t.teamId(), k -> new java.util.HashSet<>()).add(row.matchId());
+                }
+            }
+        }
+        List<MyStatsDto.MyStatsLeagueMatches> leagues = new ArrayList<>();
+        leagueNames.forEach((id, name) ->
+                leagues.add(new MyStatsDto.MyStatsLeagueMatches(id, name, leagueMatches.get(id).size())));
+        leagues.sort(Comparator.comparingLong(MyStatsDto.MyStatsLeagueMatches::matches).reversed()
+                .thenComparing(MyStatsDto.MyStatsLeagueMatches::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        List<MyStatsDto.MyStatsTeamMatches> teams = new ArrayList<>();
+        teamNames.forEach((id, name) ->
+                teams.add(new MyStatsDto.MyStatsTeamMatches(id, name, teamMatches.get(id).size())));
+        teams.sort(Comparator.comparingLong(MyStatsDto.MyStatsTeamMatches::matches).reversed()
+                .thenComparing(MyStatsDto.MyStatsTeamMatches::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        PlayerStatsDto.PlayerBowling bowling = stats.bowling();
+        Integer ballsPerOver = bowling.mixedOverLengths() || bowling.ballsPerOver().isEmpty()
+                ? null
+                : bowling.ballsPerOver().get(0);
+        return new MyStatsDto.MyStatsSummary(
+                leagues,
+                teams,
+                stats.basis().matchesCounted(),
+                stats.batting().runs(),
+                counters.batting().inningsWithBalls() == 0 ? null : stats.batting().ballsFaced(),
+                bowling.ballsBowled(),
+                ballsPerOver,
+                stats.fielding().catches());
+    }
+
+    /**
+     * Batting by position with positions 1 and 2 as one OPENER group, then 3 to 11. Same per-innings position data and the
+     * same dismissal rule (a not-out kind is not a dismissal) as {@code batting.positions}; positions without an innings
+     * are omitted.
+     */
+    public static List<MyStatsDto.MyStatsBattingPositionGroup> battingPositionGroups(Collection<InningsDetail> innings) {
+        long[][] acc = new long[TAIL_LAST + 1][4]; // innings, runs, notOuts, dismissals (index 0 = opener group)
+        Integer[] highest = new Integer[TAIL_LAST + 1];
+        for (InningsDetail d : innings) {
+            if (d.position() == null || d.position() < 1 || d.position() > TAIL_LAST) {
+                continue;
+            }
+            int slot = d.position() <= OPENERS_LAST ? 0 : d.position();
+            acc[slot][0]++;
+            acc[slot][1] += d.runs() == null ? 0L : d.runs();
+            if (d.notOut()) {
+                acc[slot][2]++;
+            } else {
+                acc[slot][3]++;
+            }
+            if (d.runs() != null && (highest[slot] == null || d.runs() > highest[slot])) {
+                highest[slot] = d.runs();
+            }
+        }
+        List<MyStatsDto.MyStatsBattingPositionGroup> groups = new ArrayList<>();
+        for (int slot = 0; slot <= TAIL_LAST; slot++) {
+            if (slot == 1 || slot == 2 || acc[slot][0] == 0) {
+                continue;
+            }
+            String key = slot == 0 ? "OPENER" : String.valueOf(slot);
+            String label = slot == 0 ? "Opener" : String.valueOf(slot);
+            groups.add(new MyStatsDto.MyStatsBattingPositionGroup(
+                    key, label, acc[slot][0], acc[slot][1], acc[slot][2], acc[slot][3],
+                    battingAverage(acc[slot][1], acc[slot][3]), highest[slot]));
+        }
+        return groups;
+    }
+
+    private static String venueKey(UUID areaId) {
+        return areaId == null ? "unknown" : areaId.toString();
+    }
+
+    private static String venueName(String name) {
+        return name == null || name.isBlank() ? UNKNOWN_VENUE : name;
+    }
+
+    /** Runs at each playing area, most runs first, at most {@value #VENUE_CAP} venues and the rest as "Other venues". */
+    public static List<MyStatsDto.MyStatsBattingVenue> battingVenues(Collection<InningsDetail> innings) {
+        Map<String, long[]> acc = new LinkedHashMap<>(); // innings, notOuts, dismissals, runs
+        Map<String, String> names = new HashMap<>();
+        Map<String, Boolean> homes = new HashMap<>();
+        for (InningsDetail d : innings) {
+            String key = venueKey(d.areaId());
+            names.putIfAbsent(key, venueName(d.areaName()));
+            homes.putIfAbsent(key, d.areaId() == null ? null : d.clubField());
+            long[] c = acc.computeIfAbsent(key, k -> new long[4]);
+            c[0]++;
+            if (d.notOut()) {
+                c[1]++;
+            } else {
+                c[2]++;
+            }
+            c[3] += d.runs() == null ? 0L : d.runs();
+        }
+        List<MyStatsDto.MyStatsBattingVenue> all = new ArrayList<>();
+        acc.forEach((key, c) -> all.add(new MyStatsDto.MyStatsBattingVenue(
+                key, names.get(key), homes.get(key), c[0], c[1], c[2], c[3], battingAverage(c[3], c[2]))));
+        all.sort(Comparator.comparingLong(MyStatsDto.MyStatsBattingVenue::runs).reversed()
+                .thenComparing(MyStatsDto.MyStatsBattingVenue::name, String.CASE_INSENSITIVE_ORDER));
+        if (all.size() <= VENUE_CAP) {
+            return all;
+        }
+        List<MyStatsDto.MyStatsBattingVenue> capped = new ArrayList<>(all.subList(0, VENUE_CAP));
+        long[] rest = new long[4];
+        for (MyStatsDto.MyStatsBattingVenue v : all.subList(VENUE_CAP, all.size())) {
+            rest[0] += v.innings();
+            rest[1] += v.notOuts();
+            rest[2] += v.dismissals();
+            rest[3] += v.runs();
+        }
+        capped.add(new MyStatsDto.MyStatsBattingVenue(
+                "other", OTHER_VENUES, null, rest[0], rest[1], rest[2], rest[3], battingAverage(rest[3], rest[2])));
+        return capped;
+    }
+
+    /** Spells (balls, maidens, runs, wickets, overs) summed; overs use each match's own balls per over. */
+    private static final class SpellSum {
+        long spells;
+        long balls;
+        long maidens;
+        long runs;
+        long wickets;
+        BigDecimal overs = BigDecimal.ZERO;
+        final java.util.Set<Integer> overLengths = new java.util.TreeSet<>();
+
+        void add(PlayerMatchRowDto.PlayerMatchSpell s, int ballsPerOver) {
+            spells++;
+            balls += s.balls();
+            maidens += s.maidens();
+            runs += s.runs();
+            wickets += s.wickets();
+            BigDecimal o = matchOvers(s.balls(), ballsPerOver);
+            if (o != null) {
+                overs = overs.add(o);
+            }
+            if (s.balls() > 0) {
+                overLengths.add(ballsPerOver);
+            }
+        }
+
+        Integer ballsPerOver() {
+            return overLengths.size() == 1 ? overLengths.iterator().next() : null;
+        }
+
+        BigDecimal economy() {
+            return balls > 0 ? PlayerStatsCalculator.economy(runs, overs) : null;
+        }
+    }
+
+    private static MyStatsDto.MyStatsBowlingSplit bowlingSplit(SpellSum c) {
+        return new MyStatsDto.MyStatsBowlingSplit(
+                c.spells, c.balls, c.ballsPerOver(), c.maidens, c.runs, c.wickets, c.economy(), divide(c.runs, c.wickets, 2));
+    }
+
+    /** Bowling at the club's own home fields versus elsewhere; spells of matches with no playing area are only counted. */
+    public static MyStatsDto.MyStatsBowlingHomeAway bowlingHomeAway(
+            Collection<PlayerMatchRowDto> rows, Collection<ResultVenue> venues) {
+        Map<UUID, ResultVenue> byResult = new HashMap<>();
+        venues.forEach(v -> byResult.putIfAbsent(v.resultId(), v));
+        SpellSum home = new SpellSum();
+        SpellSum away = new SpellSum();
+        long unknown = 0;
+        for (PlayerMatchRowDto row : rows) {
+            if (row.bowling().spells() == null) {
+                continue;
+            }
+            ResultVenue v = byResult.get(row.resultId());
+            for (PlayerMatchRowDto.PlayerMatchSpell s : row.bowling().spells()) {
+                if (v == null || v.areaId() == null) {
+                    unknown++;
+                } else {
+                    (v.clubField() ? home : away).add(s, row.ballsPerOver());
+                }
+            }
+        }
+        return new MyStatsDto.MyStatsBowlingHomeAway(bowlingSplit(home), bowlingSplit(away), unknown);
+    }
+
+    /** Bowling at each playing area, most wickets first then best economy, capped like {@link #battingVenues}. */
+    public static List<MyStatsDto.MyStatsBowlingVenue> bowlingVenues(
+            Collection<PlayerMatchRowDto> rows, Collection<ResultVenue> venues) {
+        Map<UUID, ResultVenue> byResult = new HashMap<>();
+        venues.forEach(v -> byResult.putIfAbsent(v.resultId(), v));
+        Map<String, SpellSum> acc = new LinkedHashMap<>();
+        Map<String, String> names = new HashMap<>();
+        Map<String, Boolean> homes = new HashMap<>();
+        for (PlayerMatchRowDto row : rows) {
+            if (row.bowling().spells() == null) {
+                continue;
+            }
+            ResultVenue v = byResult.get(row.resultId());
+            UUID areaId = v == null ? null : v.areaId();
+            String key = venueKey(areaId);
+            names.putIfAbsent(key, venueName(v == null ? null : v.areaName()));
+            homes.putIfAbsent(key, areaId == null ? null : v.clubField());
+            SpellSum sum = acc.computeIfAbsent(key, k -> new SpellSum());
+            for (PlayerMatchRowDto.PlayerMatchSpell s : row.bowling().spells()) {
+                sum.add(s, row.ballsPerOver());
+            }
+        }
+        List<MyStatsDto.MyStatsBowlingVenue> all = new ArrayList<>();
+        acc.forEach((key, c) -> all.add(bowlingVenue(key, names.get(key), homes.get(key), c)));
+        all.sort(Comparator.comparingLong(MyStatsDto.MyStatsBowlingVenue::wickets).reversed()
+                .thenComparing(MyStatsDto.MyStatsBowlingVenue::economy, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(MyStatsDto.MyStatsBowlingVenue::name, String.CASE_INSENSITIVE_ORDER));
+        if (all.size() <= VENUE_CAP) {
+            return all;
+        }
+        List<MyStatsDto.MyStatsBowlingVenue> capped = new ArrayList<>(all.subList(0, VENUE_CAP));
+        SpellSum rest = new SpellSum();
+        for (String key : acc.keySet()) {
+            boolean kept = capped.stream().anyMatch(v -> v.venueKey().equals(key));
+            if (!kept) {
+                SpellSum c = acc.get(key);
+                rest.spells += c.spells;
+                rest.balls += c.balls;
+                rest.maidens += c.maidens;
+                rest.runs += c.runs;
+                rest.wickets += c.wickets;
+                rest.overs = rest.overs.add(c.overs);
+                rest.overLengths.addAll(c.overLengths);
+            }
+        }
+        capped.add(bowlingVenue("other", OTHER_VENUES, null, rest));
+        return capped;
+    }
+
+    private static MyStatsDto.MyStatsBowlingVenue bowlingVenue(String key, String name, Boolean home, SpellSum c) {
+        return new MyStatsDto.MyStatsBowlingVenue(
+                key, name, home, c.spells, c.balls, c.ballsPerOver(), c.runs, c.wickets, c.economy());
     }
 
     // ---- season by season ----

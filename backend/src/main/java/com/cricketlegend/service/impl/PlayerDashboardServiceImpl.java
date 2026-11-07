@@ -201,6 +201,7 @@ public class PlayerDashboardServiceImpl implements PlayerDashboardService {
         List<PlayerStatsCalculator.RawBattingDetail> battingDetail = List.of();
         List<PlayerStatsCalculator.WicketDetail> wicketDetail = List.of();
         List<HeldPlayerHistory.SeasonRaw> seasons = List.of();
+        List<PlayerStatsCalculator.ResultVenue> venues = List.of();
 
         List<PlayerStatsAggregateView> rows = aggregateRepository.aggregate(
                 clubId, playerId, seasonId, leagueId, teamId, comp, restricted, sectionTeams, hubOnly, null);
@@ -262,6 +263,11 @@ public class PlayerDashboardServiceImpl implements PlayerDashboardService {
                         .stream()
                         .map(PlayerMatchFactsReader::toBattingDetail)
                         .toList();
+                venues = factsRepository
+                        .resultVenues(clubId, playerId, seasonId, leagueId, teamId, comp, restricted, sectionTeams, resultIds, hubOnly, null)
+                        .stream()
+                        .map(PlayerMatchFactsReader::toResultVenue)
+                        .toList();
                 wicketDetail = factsRepository
                         .wicketDetail(clubId, playerId, seasonId, leagueId, teamId, comp, restricted, sectionTeams, resultIds, hubOnly, null)
                         .stream()
@@ -301,6 +307,7 @@ public class PlayerDashboardServiceImpl implements PlayerDashboardService {
                 battingDetail,
                 wicketDetail,
                 seasons,
-                series);
+                series,
+                venues);
     }
 }

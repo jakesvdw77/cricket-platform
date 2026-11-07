@@ -10,7 +10,7 @@ import java.util.UUID;
  * player in the Player Hub scope: the whole-scope counters, the counted matches (newest {@code
  * DashboardLimits#HISTORY_CAP}, oldest first, as full match rows), the batting rows with their position, bowler and field
  * facts, the batters the player dismissed, the per-season counters (the Season filter ignored) and the Dashboard series
- * built from the same rows. Pure data: no Spring, repository, entity, caller or access information.
+ * built from the same rows, and the playing area of each counted match (amendment 2). Pure data: no Spring, repository, entity, caller or access information.
  */
 public record HeldPlayerHistory(
         PlayerStatsCounters counters,
@@ -19,7 +19,8 @@ public record HeldPlayerHistory(
         List<PlayerStatsCalculator.RawBattingDetail> battingDetail,
         List<PlayerStatsCalculator.WicketDetail> wicketDetail,
         List<SeasonRaw> seasons,
-        PlayerDashboardDto series) {
+        PlayerDashboardDto series,
+        List<PlayerStatsCalculator.ResultVenue> venues) {
 
     /** One season's additive counters before the season's label and start are attached. */
     public record SeasonRaw(UUID seasonId, long matches, long innings, long dismissals, long runs, long wickets) {

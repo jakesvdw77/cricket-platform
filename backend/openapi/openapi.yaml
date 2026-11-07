@@ -16887,6 +16887,184 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PlayerNotCaptured"
+        summary:
+          $ref: "#/components/schemas/MyStatsSummary"
+        battingPositionGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBattingPositionGroup"
+        battingVenues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBattingVenue"
+        bowlingHomeAway:
+          $ref: "#/components/schemas/MyStatsBowlingHomeAway"
+        bowlingVenues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBowlingVenue"
+    MyStatsSummary:
+      type: object
+      description: "Summary group (spec 147 amendment 2). leaguesPlayed (friendlies excluded) and teamsRepresented count distinct counted matches of the capped history, most matches first then name. ballsFaced is null when no innings recorded balls; ballsPerOver is null when the counted spells mix over lengths."
+      properties:
+        leaguesPlayed:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsLeagueMatches"
+        teamsRepresented:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsTeamMatches"
+        matchesPlayed:
+          type: integer
+          format: int64
+        runsScored:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        ballsBowled:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        catchesTaken:
+          type: integer
+          format: int64
+    MyStatsLeagueMatches:
+      type: object
+      properties:
+        leagueId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        matches:
+          type: integer
+          format: int64
+    MyStatsTeamMatches:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        matches:
+          type: integer
+          format: int64
+    MyStatsBattingPositionGroup:
+      type: object
+      description: "key is OPENER (positions 1 and 2) then 3 to 11; positions with no innings are omitted; average and highest are null when unrecorded."
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+        highest:
+          type: integer
+          format: int32
+    MyStatsBattingVenue:
+      type: object
+      description: "Batting at one playing area. venueKey is the area id, unknown (Unknown venue) or other (Other venues); home is null for unknown and other."
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsBowlingHomeAway:
+      type: object
+      properties:
+        home:
+          $ref: "#/components/schemas/MyStatsBowlingSplit"
+        away:
+          $ref: "#/components/schemas/MyStatsBowlingSplit"
+        unknownVenueSpells:
+          type: integer
+          format: int64
+    MyStatsBowlingSplit:
+      type: object
+      properties:
+        spells:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+        average:
+          type: number
+    MyStatsBowlingVenue:
+      type: object
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+        spells:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
     MyStatsScope:
       type: object
       properties:
