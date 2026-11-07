@@ -11,7 +11,7 @@ import { BRAND, blackAlpha } from '../../brandTokens'
 // never aria-hidden, display none or visibility hidden. Controls on the face that is not showing leave the tab order through
 // FaceActive (useFaceTabIndex) but their text stays readable. Flip state is local, never stored, and resets when `scopeKey` changes.
 // Motion: a 0.7 s rotation about the Y axis (transform only, backface-visibility hidden); under prefers-reduced-motion there is no
-// rotation, only a 150 ms cross-fade. The faces share one grid cell, so the card is as tall as its taller face (no fixed height).
+// rotation, only a 150 ms cross-fade. The faces share one grid cell, so the card is as tall as its taller face; it also fills a taller parent (height 100%) so a row of cards can be even.
 
 export const FLIP_MS = 700
 export const FADE_MS = 150
@@ -87,11 +87,12 @@ export function FlipCard({ label, front, back, flipped, defaultFlipped = false, 
   })
 
   return (
-    <Box data-testid={testId} data-flipped={showingBack ? 'true' : 'false'} sx={{ position: 'relative', minWidth: 0, perspective: '1400px', borderRadius: RADIUS }}>
+    <Box data-testid={testId} data-flipped={showingBack ? 'true' : 'false'} sx={{ position: 'relative', minWidth: 0, height: '100%', perspective: '1400px', borderRadius: RADIUS }}>
       <Box
         sx={{
           display: 'grid',
           minWidth: 0,
+          height: '100%',
           position: 'relative',
           zIndex: 2,
           pointerEvents: 'none',

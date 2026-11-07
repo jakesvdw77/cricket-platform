@@ -61,7 +61,7 @@ export const HUB_NAV: HubNavItem[] = [
     label: 'Stats',
     children: [
       // docs/specs/147: My stats, Team stats and Leaderboards are live. Leaderboards is always visible (the owner's amendment: no club switch yet).
-      { id: 'stats.mine', label: 'My stats' },
+      { id: 'stats.mine', label: 'Player Stats' },
       { id: 'stats.boards', label: 'Leaderboards' },
       { id: 'stats.teams', label: 'Team stats' },
     ],
@@ -146,7 +146,7 @@ export function legacyProfileTarget(view: string | undefined): string | undefine
 }
 
 // Old URLs that still land somewhere sensible (Decision 14). `/stats` is not here: Stats is now a section of its own, and
-// on desktop and tablet it opens on My stats (its first child) by itself; on a phone it opens on My stats with the pill row.
+// on desktop and tablet it opens on Player Stats (its first child) by itself; on a phone it opens on Player Stats with the pill row.
 // `/account/invitations` stays a real route (App.tsx).
 export const LEGACY_REDIRECTS: Record<string, string> = {
   requests: 'account/requests',
@@ -264,9 +264,9 @@ export function hubBack(state: HubBackState): HubBackAction | null {
     }
     return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
   }
-  // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to My Stats with the same scope.
+  // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to Player Stats with the same scope.
   if ((route.section.id === 'results' && item && origin === 'stats') || (route.section.id === 'stats' && item === 'mine' && view === 'innings')) {
-    return { label: 'Back to My Stats', target: `${hubPath(playerKey, 'stats', 'mine')}${scope ? `?${scope}` : ''}` }
+    return { label: 'Back to Player Stats', target: `${hubPath(playerKey, 'stats', 'mine')}${scope ? `?${scope}` : ''}` }
   }
   // docs/specs/147: a result page opened from Team stats goes back to Team Stats with the same scope.
   if (route.section.id === 'results' && item && origin === 'team-stats') {

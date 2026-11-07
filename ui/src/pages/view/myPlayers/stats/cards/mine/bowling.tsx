@@ -19,6 +19,8 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['bowling', 'series', 'basis'],
   order: 10,
+  // Amendment 2 item 10: the chart card is tall (beside the two cards after it, stacked).
+  size: 'tall',
   whenMissing: 'hide',
   emptyText: 'No bowling yet.',
   basis: (p) => bowlingBasis(p),

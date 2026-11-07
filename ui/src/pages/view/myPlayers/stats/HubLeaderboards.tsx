@@ -154,7 +154,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
     body = (
       <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
         {standing && standing.resultsCounted > 0 && (
-          <Box data-testid="hub-boards-standing" sx={{ maxWidth: 560, minWidth: 0, opacity: standingQuery.isPlaceholderData ? 0.55 : 1 }}>
+          <Box data-testid="hub-boards-standing" sx={{ minWidth: 0, opacity: standingQuery.isPlaceholderData ? 0.55 : 1 }}>
             <StatsCardGrid
               payload={standing}
               ctx={ctx}

@@ -22,7 +22,7 @@ export function statsScopeQuery(scope: MyResultScope): string {
 
 export const myStatsPath = (playerKey: string, scope?: string): string => `${hubPath(playerKey, 'stats', 'mine')}${scope ? `?${scope}` : ''}`
 
-// A match page opened from My stats: Back says "Back to My Stats" and restores the scope.
+// A match page opened from My stats: Back says "Back to Player Stats" and restores the scope.
 export const statsResultPath = (playerKey: string, matchId: string, scope: string): string => resultPath(playerKey, matchId, `${scope}&origin=${STATS_ORIGIN}`)
 
 export const teamStatsPath = (playerKey: string, scope?: string): string => `${hubPath(playerKey, 'stats', 'teams')}${scope ? `?${scope}` : ''}`

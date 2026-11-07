@@ -1,5 +1,5 @@
 import { alpha } from '@mui/material/styles'
-import { BRAND, FONT_DISPLAY, blackAlpha } from '../../brandTokens'
+import { BRAND, FONT_DISPLAY, STATS_TONES, blackAlpha } from '../../brandTokens'
 
 // The dark console look of a stats card, from the brand tokens (components/ may not import the Hub's hubStyle; HUB is built from the
 // same tokens, so the values are identical).
@@ -13,6 +13,10 @@ export const STATS_UI = {
   muted: alpha(BRAND.cream, 0.66),
   display: FONT_DISPLAY,
   faceGround: blackAlpha(0.22),
+  // A card with some or all data missing (Amendment 2 item 8): a quiet amber tint over the ground and a thin amber line. Never the only cue.
+  lackingTint: alpha(STATS_TONES.partly, 0.08),
+  lackingLine: alpha(STATS_TONES.partly, 0.55),
+  partly: STATS_TONES.partly,
 } as const
 
 export const visuallyHiddenSx = {
@@ -26,3 +30,6 @@ export const visuallyHiddenSx = {
   whiteSpace: 'nowrap',
   border: 0,
 } as const
+
+// The least height of a card cell, so a row of cards is never squashed and the faces of every card in a row stand even.
+export const CARD_MIN_HEIGHT = 280

@@ -16,6 +16,8 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['batting', 'form', 'rolling', 'basis'],
   order: 10,
+  // Amendment 2 item 10: the hero card is tall (beside Innings and Dismissals stacked).
+  size: 'tall',
   whenMissing: 'hide',
   emptyText: 'Not enough innings yet.',
   basis: (p) => battingBasis(p),

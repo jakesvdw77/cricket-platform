@@ -17,7 +17,7 @@ import { scopeFromSearch, statsResultPath, statsScopeQuery } from './statsRoutes
 // docs/specs/147 (the match drill, stats/mine/innings?kind=&filter=&season=...): the innings, spells or matches behind a tile, a band or a
 // slice of the My stats page. The kind and the filter are the server's tokens, taken from the address; the browser builds no query of its
 // own and slices nothing (Show More asks the server for the next page). A row opens the Hub Result page with the stats origin, so Back
-// returns to My Stats with the scope. The footer's Back ("Back to My Stats") is hubBack's stats case. Read only.
+// returns to Player Stats with the scope. The footer's Back ("Back to Player Stats") is hubBack's stats case. Read only.
 const KINDS: MyStatsDrillKind[] = ['BATTING', 'BOWLING', 'FIELDING', 'MATCHES']
 const KIND_TITLE: Record<MyStatsDrillKind, string> = { BATTING: 'Batting Innings', BOWLING: 'Bowling Spells', FIELDING: 'Fielding', MATCHES: 'Matches' }
 

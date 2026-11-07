@@ -3,7 +3,7 @@ import { Alert, Box, Link, Skeleton, Typography } from '@mui/material'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../../components/Button'
 import { BrandIcon } from '../../../../components/BrandIcon'
-import { DataTagChip, StatsCardGrid } from '../../../../components/StatsCards'
+import { StatsCardGrid } from '../../../../components/StatsCards'
 import type { CardCtx, DrillTarget, GroupPickerProps } from '../../../../components/StatsCards'
 import { useMyPlayer } from '../../../../api/myPlayersApi'
 import { useMyPlayerResultsFilters } from '../../../../api/meResultsApi'
@@ -12,9 +12,9 @@ import { creamAlpha } from '../../../../brandTokens'
 import { HubPageHeader } from '../HubPageHeader'
 import { HubPillStrip } from '../HubPillStrip'
 import { HubScopePanel, HubScopeSheet, useHubScope } from '../HubScopeControls'
-import { HUB, hubHeading } from '../hubStyle'
+import { HUB } from '../hubStyle'
 import { bigSx, cardSx } from '../resultCardStyle'
-import { cardsFor, placeholdersFor } from './statsCardRegistry'
+import { cardsFor } from './statsCardRegistry'
 import { groupsFor } from './statsCardGroups'
 import { firstNameOf } from './statsFormat'
 import { statsDrillPath, statsResultPath, statsScopeQuery } from './statsRoutes'
@@ -34,27 +34,6 @@ function Skeletons() {
       {[0, 1, 2, 3].map((index) => (
         <Skeleton key={index} variant="rounded" height={290} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px' }} />
       ))}
-    </Box>
-  )
-}
-
-// The closing panel: what the scorecard does not record yet, from the payload's own catalogue and the registry's placeholders.
-function NotCaptured({ items }: { items: { key: string; title: string; reason: string }[] }) {
-  if (items.length === 0) return null
-  return (
-    <Box component="section" aria-label="Not Captured Yet" data-testid="hub-stats-not-captured" sx={{ ...cardSx('neutral'), p: 2, borderRadius: '20px', gap: 1.25 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-        <Typography component="h2" sx={hubHeading}>Not Captured Yet</Typography>
-        <DataTagChip tag="NOT_CAPTURED" />
-      </Box>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
-        {items.map((item) => (
-          <Box component="li" key={item.key} sx={{ display: 'grid', gap: '2px' }}>
-            <Typography component="span" sx={{ fontWeight: 600, fontSize: 15 }}>{item.title}</Typography>
-            <Typography component="span" sx={{ fontSize: 14, color: HUB.muted }}>{item.reason}</Typography>
-          </Box>
-        ))}
-      </Box>
     </Box>
   )
 }
@@ -84,7 +63,7 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
   )
 
   const failed = filtersQuery.isError || statsQuery.isError
-  const header = <HubPageHeader title="My Stats" context={failed ? undefined : controls.context} actions={controls.actions} />
+  const header = <HubPageHeader title="Player Stats" context={failed ? undefined : controls.context} actions={controls.actions} />
 
   const showAllSeasons = () =>
     setSearch(
@@ -149,10 +128,6 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
       </Box>
     )
   } else {
-    const notCaptured = [
-      ...stats.notCaptured.map((item) => ({ key: `payload-${item.code}`, title: item.label, reason: item.reason })),
-      ...placeholdersFor('mine').map((card) => ({ key: card.id, title: card.title(ctx), reason: card.missingText ?? 'The scorecard does not record this yet.' })),
-    ]
     body = (
       <Box sx={{ display: 'grid', gap: 2.5, minWidth: 0, opacity: statsQuery.isPlaceholderData ? 0.55 : 1 }}>
         <StatsCardGrid
@@ -165,7 +140,6 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
           renderGroupPicker={renderGroupPicker}
           testId="hub-stats-grid"
         />
-        <NotCaptured items={notCaptured} />
       </Box>
     )
   }

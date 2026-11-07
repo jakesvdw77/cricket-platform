@@ -18,6 +18,8 @@ export const mineFires: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['teamRecordWhenScoring', 'standing', 'basis'],
   order: 70,
+  // Amendment 2 item 7 (docs/specs/147): "When the player fires we win" is on hold for discussion. Registered, but cardsFor leaves it off the page.
+  hidden: true,
   whenMissing: 'hide',
   emptyText: 'Not enough matches yet.',
   basis: (p) => battingBasis(p),

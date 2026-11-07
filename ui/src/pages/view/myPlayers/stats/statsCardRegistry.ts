@@ -56,12 +56,13 @@ const BOARD_CARDS: StatsCardDef<MyStanding>[] = [boardsStanding]
 const REGISTRY: { [K in StatsPage]: StatsCardDef<StatsPayloads[K]>[] } = { mine: MINE_CARDS, team: TEAM_CARDS, boards: BOARD_CARDS }
 
 // The flipping cards of a page in display order: by group order, then `order`. A card tagged NOT_CAPTURED is a documented placeholder,
-// never a flipping card, and appears only in placeholdersFor.
+// never a flipping card, and appears only in placeholdersFor. A card with `hidden: true` stays registered but is left off the page
+// (Amendment 2 item 7: mine.fires is on hold until the owner decides).
 export function cardsFor<K extends StatsPage>(page: K): StatsCardDef<StatsPayloads[K]>[] {
-  return sortCards(REGISTRY[page], page, groupsFor(page)).filter((card) => card.tag !== 'NOT_CAPTURED')
+  return sortCards(REGISTRY[page], page, groupsFor(page)).filter((card) => card.tag !== 'NOT_CAPTURED' && !card.hidden)
 }
 
-// The placeholders for the page's closing "Not captured yet" panel.
+// The NOT_CAPTURED placeholders (the page panel is gone, Amendment 2 item 11; see docs/specs/147-not-captured.md).
 export function placeholdersFor<K extends StatsPage>(page: K): StatsCardDef<StatsPayloads[K]>[] {
   return sortCards(REGISTRY[page], page, groupsFor(page)).filter((card) => card.tag === 'NOT_CAPTURED')
 }

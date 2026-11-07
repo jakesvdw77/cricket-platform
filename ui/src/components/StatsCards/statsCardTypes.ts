@@ -48,7 +48,13 @@ export interface CardFaceProps<P> {
   payload: P
   ctx: CardCtx
   state: CardState
+  // True when the card is expanded over the stats view (desktop). A face may lay its content out larger; absent or false, the same layout.
+  expanded?: boolean
 }
+
+// Row layout (docs/specs/147 Amendment 2 item 10): a `normal` card takes one cell of a row of three equal-height cards; a `tall` card
+// followed by two normal cards sits beside them, the two stacked.
+export type CardSize = 'normal' | 'tall'
 
 // Dotted paths into the payload, to a depth of four levels; an array's elements are reached through the array's own key
 // (`series.battingInnings` or `series.battingInnings.runs`). A `needs` entry that is not a path of P does not compile.
@@ -76,6 +82,10 @@ export interface StatsCardDef<P> {
   needs: NeedsPath<P>[]
   // Unique within its page; cards sort by (group order, order).
   order: number
+  // Row layout size; default 'normal'. See layoutRows.
+  size?: CardSize
+  // Amendment 2 item 7: a hidden card stays registered but is left off the page (cardsFor skips it) until the owner decides.
+  hidden?: boolean
   // Missing data: render nothing, or the "Not captured yet" state.
   whenMissing: 'hide' | 'notCaptured'
   // Pure; reads only `needs`.

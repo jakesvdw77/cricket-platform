@@ -2,12 +2,14 @@ export { StatsCardShell, DataTagChip, effectiveTag } from './StatsCardShell'
 export type { StatsCardShellProps } from './StatsCardShell'
 export { StatsCardGrid, GROUP_PARAM } from './StatsCardGrid'
 export type { StatsCardGridProps, GroupPickerProps } from './StatsCardGrid'
-export { sortCards, basedOnText } from './statsCardOrder'
+export { sortCards, basedOnText, layoutRows } from './statsCardOrder'
+export type { CardRow, CardRowKind } from './statsCardOrder'
 export { STATS_UI, visuallyHiddenSx } from './statsCardStyle'
 export type {
   BoardGroup,
   CardCtx,
   CardFaceProps,
+  CardSize,
   CardState,
   DataTag,
   DrillKind,
