@@ -148,4 +148,18 @@ export const STATS_COLOUR = {
   guide: alpha(BRAND.cream, 0.3),
   guideLabel: alpha(BRAND.cream, 0.66),
   valueLabel: alpha(BRAND.cream, 0.8),
+  // Intelligent colour (spec 147 Amendment 2 items 16 and 19): where better or worse is clear, a calm desaturated scale. Soft coral, not a
+  // harsh red (children's stats). Text in good, goodSoft, amber, warm, bad and neutralGrey reads at 4.5:1 or better on the dark card ground;
+  // badDeep and rose are for slices and bars only, never for text. Every use also carries a label and a number.
+  good: '#5DB887',
+  goodSoft: '#8FCF9F',
+  amber: '#D9B563',
+  warm: '#E0875F',
+  bad: '#D9786A',
+  badDeep: '#C45F55',
+  rose: '#C98A9A',
+  roseDeep: '#A8687A',
+  clay: '#B58A6E',
+  neutralGrey: '#8A948C',
+  wicketBlue: STATS_TONES.blue,
 } as const

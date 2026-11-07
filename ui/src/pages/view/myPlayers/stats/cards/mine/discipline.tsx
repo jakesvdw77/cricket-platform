@@ -2,6 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note, Tiles } from '../../cardParts'
 import { bowlingBasis, truncatedNote } from '../../cardKit'
+import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { DASH, dayText, formatDecimal } from '../../statsFormat'
 
 // docs/specs/147 Addendum, mine.discipline: the wides and no-balls the bowler gave away and per over. Byes and leg byes belong to the team,
@@ -37,8 +38,8 @@ export const mineDiscipline: StatsCardDef<MyStatsDto> = {
       <Tiles
         min={110}
         items={[
-          { key: 'wides', label: 'Wides', value: String(p.bowlingDiscipline.wides) },
-          { key: 'noballs', label: 'No-balls', value: String(p.bowlingDiscipline.noBalls) },
+          { key: 'wides', label: 'Wides', value: String(p.bowlingDiscipline.wides), swatch: STATS_COLOUR.warm },
+          { key: 'noballs', label: 'No-balls', value: String(p.bowlingDiscipline.noBalls), swatch: STATS_COLOUR.bad },
           { key: 'widesper', label: 'Wides per over', value: formatDecimal(p.bowlingDiscipline.widesPerOver, 2) },
           { key: 'noballsper', label: 'No-balls per over', value: formatDecimal(p.bowlingDiscipline.noBallsPerOver, 2) },
         ]}

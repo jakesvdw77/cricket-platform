@@ -2,6 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto, MyStatsRecordSplit } from '../../../../../../api/meStatsApi'
 import { Big, Cap, FaceTable, Note, Tiles } from '../../cardParts'
 import { battingBasis, truncatedNote } from '../../cardKit'
+import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { DASH, formatDecimal, formatPercent, nOfM, ordinal } from '../../statsFormat'
 import { allowsRankings } from '../../statsRankingPolicy'
 
@@ -43,6 +44,7 @@ export const mineFires: StatsCardDef<MyStatsDto> = {
           items={[
             {
               key: 'scored',
+              swatch: STATS_COLOUR.good,
               label: `Scored ${threshold}+`,
               value: nOfM(scored.won, scored.matches),
               href: scoredFilter && scored.matches > 0 ? ctx.drillHref({ kind: 'MATCHES', filter: scoredFilter, label: `Scored ${threshold} or more` }) : undefined,
@@ -50,6 +52,7 @@ export const mineFires: StatsCardDef<MyStatsDto> = {
             },
             {
               key: 'not',
+              swatch: STATS_COLOUR.bad,
               label: 'Did not',
               value: nOfM(notScored.won, notScored.matches),
               href: notScoredFilter && notScored.matches > 0 ? ctx.drillHref({ kind: 'MATCHES', filter: notScoredFilter, label: `Did not score ${threshold}` }) : undefined,

@@ -119,7 +119,7 @@ export function HorizontalBars({ rows, alt, max, dense = false, legend }: Horizo
         const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
         const bar = (
           <Box component="span" className="track" sx={{ display: 'block', height: dense ? 8 : 10, borderRadius: '5px', bgcolor: STATS_COLOUR.track, overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
-            {(lengths[index] > 0 || row.tone === 'compare') && <Box component="span" data-testid={lengths[index] > 0 ? undefined : 'bar-stub'} sx={{ display: 'block', height: '100%', borderRadius: '5px', ...(lengths[index] > 0 ? { width: `${Math.max(lengths[index], 3)}%` } : { width: 3 }), bgcolor: barFill(row) }} />}
+            {(lengths[index] > 0 || row.tone === 'compare' || row.colour) && <Box component="span" data-testid={lengths[index] > 0 ? undefined : 'bar-stub'} sx={{ display: 'block', height: '100%', borderRadius: '5px', ...(lengths[index] > 0 ? { width: `${Math.max(lengths[index], 3)}%` } : { width: 3 }), bgcolor: barFill(row) }} />}
           </Box>
         )
         const label = (
@@ -128,7 +128,7 @@ export function HorizontalBars({ rows, alt, max, dense = false, legend }: Horizo
             {row.tag && <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, color: alpha(BRAND.cream, 0.66) }}>{row.tag}</Box>}
           </Box>
         )
-        const value = <Box component="span" sx={{ fontSize: dense ? 11 : 12, fontWeight: 700, minWidth: dense ? undefined : '2.2em', textAlign: 'right', ...(row.tone === 'compare' && !row.selected ? { color: barFill(row) } : {}) }}>{row.valueLabel}</Box>
+        const value = <Box component="span" sx={{ fontSize: dense ? 11 : 12, fontWeight: 700, minWidth: dense ? undefined : '2.2em', textAlign: 'right', ...((row.tone === 'compare' || row.colour) && !row.selected ? { color: barFill(row) } : {}) }}>{row.valueLabel}</Box>
         const content = dense ? (
           <>
             {label}

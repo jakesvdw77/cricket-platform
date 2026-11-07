@@ -3,7 +3,21 @@ import { ProgressBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import type { TableRowSpec } from '../../cardParts'
+import { BRAND, STATS_COLOUR } from '../../../../../../brandTokens'
+import type { MyStatsMilestone } from '../../../../../../api/meStatsApi'
 import { formatDecimal, plural, scoreText, wicketsForRuns } from '../../statsFormat'
+
+// Amendment 2 item 19: the bar's colour is how close the milestone is (display classification of the server's numbers, no new statistic).
+export const MILESTONE_AMBER_FROM = 0.5
+export const MILESTONE_GREEN_FROM = 0.8
+
+function milestoneRow(key: string, label: string, m: MyStatsMilestone) {
+  // Reached: a full gold bar and 'Done' (gold is the answer); the server then names the next ladder step, which starts as a new grey bar.
+  if (m.target > 0 && m.current >= m.target) return { key, label, value: m.target, target: m.target, text: 'Done', colour: BRAND.gold }
+  const fraction = m.target > 0 ? m.current / m.target : 0
+  const colour = fraction >= MILESTONE_GREEN_FROM ? STATS_COLOUR.good : fraction >= MILESTONE_AMBER_FROM ? STATS_COLOUR.amber : STATS_COLOUR.neutralGrey
+  return { key, label, value: m.current, target: m.target, text: `${m.toGo} to go`, colour }
+}
 
 // docs/specs/147 section 5, mine.milestone: progress to the next round number for runs and wickets, with the matches left in the fixture list.
 // Back: personal bests, each opening its match. Source: milestones, basis.fixturesRemaining.
@@ -27,8 +41,8 @@ export const mineMilestone: StatsCardDef<MyStatsDto> = {
         <ProgressBars
           alt={`Progress to the next milestones: ${runs.current} of ${runs.target} runs, ${wickets.current} of ${wickets.target} wickets.`}
           rows={[
-            { key: 'runs', label: `${runs.target} runs`, value: runs.current, target: runs.target, text: `${runs.toGo} to go` },
-            { key: 'wickets', label: `${wickets.target} wickets`, value: wickets.current, target: wickets.target, text: `${wickets.toGo} to go` },
+            milestoneRow('runs', `${runs.target} runs`, runs),
+            milestoneRow('wickets', `${wickets.target} wickets`, wickets),
           ]}
         />
         <Note>

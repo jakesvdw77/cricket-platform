@@ -2,6 +2,7 @@ import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { Donut } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
+import { bowlerWicketColour } from '../../dismissalColours'
 import { bowlingBasis, truncatedNote } from '../../cardKit'
 
 // docs/specs/147 section 5, mine.wickets-how: how the bowler takes wickets (bowler-credited dismissals only: run-outs are not a bowler's
@@ -36,8 +37,8 @@ export const mineWicketsHow: StatsCardDef<MyStatsDto> = {
           centre={String(total)}
           centreCaption="wickets"
           slices={[
-            ...types.map((type) => ({ key: type.type, label: type.label, value: type.count })),
-            ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count }] : []),
+            ...types.map((type) => ({ key: type.type, label: type.label, value: type.count, colour: bowlerWicketColour(type.type) })),
+            ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, colour: bowlerWicketColour('NOT_ITEMISED') }] : []),
           ]}
         />
         <Note>Bowler's wickets only; run-outs are not counted.</Note>

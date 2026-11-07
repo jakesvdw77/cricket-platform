@@ -3,6 +3,7 @@ import { Donut } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import { battingBasis, truncatedNote } from '../../cardKit'
+import { batterDismissalColour } from '../../dismissalColours'
 import { NOT_RECORDED, nOfM } from '../../statsFormat'
 
 // docs/specs/147 section 5, mine.dismissals: how the batter gets out (a donut; each slice with a drill is a link to those innings). Back:
@@ -37,6 +38,7 @@ export const mineDismissals: StatsCardDef<MyStatsDto> = {
           key: slice.type,
           label: slice.label,
           value: slice.count,
+          colour: batterDismissalColour(slice.type),
           href: slice.filter && slice.count > 0 ? ctx.drillHref({ kind: 'BATTING', filter: slice.filter, label: slice.label }) : undefined,
         }))}
       />

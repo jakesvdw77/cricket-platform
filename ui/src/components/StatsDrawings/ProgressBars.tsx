@@ -14,6 +14,8 @@ export interface ProgressRow {
   // 'compare' paints the bar in the tone of `seriesIndex` (0 green, 1 blue) for a two-category comparison; default neutral sand.
   tone?: 'neutral' | 'compare'
   seriesIndex?: 0 | 1
+  // An explicit bar colour (a STATS_COLOUR token) that carries meaning, e.g. milestone closeness; it also colours the row's text.
+  colour?: string
 }
 
 export interface ProgressBarsProps {
@@ -31,10 +33,10 @@ export function ProgressBars({ rows, alt }: ProgressBarsProps) {
         <Box key={row.key} data-testid="progress-row" sx={{ display: 'grid', gap: '3px', minWidth: 0 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, fontSize: 12, lineHeight: 1.2 }}>
             <Box component="span" aria-hidden sx={{ color: alpha(BRAND.cream, 0.8), minWidth: 0 }}>{row.label}</Box>
-            <Box component="span" aria-hidden sx={{ color: row.tone === 'compare' ? (row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : STATS_COLOUR.compareFirst) : BRAND.cream, fontWeight: 700, textAlign: 'right' }}>{row.text}</Box>
+            <Box component="span" aria-hidden sx={{ color: row.colour ?? (row.tone === 'compare' ? (row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : STATS_COLOUR.compareFirst) : BRAND.cream), fontWeight: 700, textAlign: 'right' }}>{row.text}</Box>
           </Box>
           <Box aria-hidden sx={{ height: 8, borderRadius: '4px', bgcolor: STATS_COLOUR.track, overflow: 'hidden' }}>
-            {(fills[index] > 0 || row.tone === 'compare') && <Box sx={{ height: '100%', borderRadius: '4px', width: fills[index] > 0 ? `${Math.max(fills[index], 3)}%` : 3, bgcolor: row.tone === 'compare' && row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : row.tone === 'compare' ? STATS_COLOUR.compareFirst : STATS_COLOUR.bar }} />}
+            {(fills[index] > 0 || row.tone === 'compare') && <Box sx={{ height: '100%', borderRadius: '4px', width: fills[index] > 0 ? `${Math.max(fills[index], 3)}%` : 3, bgcolor: row.colour ? row.colour : row.tone === 'compare' && row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : row.tone === 'compare' ? STATS_COLOUR.compareFirst : STATS_COLOUR.bar }} />}
           </Box>
         </Box>
       ))}
