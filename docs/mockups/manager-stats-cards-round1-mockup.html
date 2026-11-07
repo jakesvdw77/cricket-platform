@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manager stats pages as flip cards - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--g9:#0B3D26;--g8:#0F5132;--g7:#14633F;--ink:#10231a;--muted:#55665c;--line:#d8dfd2;--gold:#E8B83D;--win:#14633F;--loss:#b3402f;--tie:#4a77b5;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--ink);background:linear-gradient(170deg,#e9efe6 0%,#f4f1e6 55%,#f7f4ea 100%);padding:24px 24px 100px}
+.wrap{max-width:1400px;margin:0 auto}
+h1.page{font:700 44px var(--disp);letter-spacing:.04em;text-transform:uppercase;margin:6px 0 10px;display:flex;gap:12px;align-items:center}
+.pill{font:600 13px var(--body);background:#d4e6da;color:var(--g8);border-radius:14px;padding:3px 12px;letter-spacing:0;text-transform:none}
+.back{font:600 14px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h2{font:700 22px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--g8);margin:46px 0 4px}
+.why{color:var(--muted);max-width:960px;line-height:1.5;margin:0 0 14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 3px rgba(11,61,38,.08)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0}
+.strip .card{padding:12px 16px}.n{font:700 36px var(--disp);line-height:1;color:var(--g9)}.l{font:600 13px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.sel{height:36px;border:1px solid #b9c4b2;border-radius:4px;background:#fff;padding:0 12px;display:inline-flex;align-items:center;font:500 14px var(--body)}
+.form{display:flex;gap:10px;align-items:center;padding:12px 16px;margin:12px 0}.form .l{margin-right:6px}
+.ch{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:700 16px var(--disp);border:1px solid var(--line)}.ch.w{background:#d4e6da;color:var(--g8);border-color:#a8cdb5}.ch.l2{background:#f2d9d4;color:var(--loss);border-color:#e1b3aa}.ch.t{background:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
+.flip{perspective:1200px;height:300px;cursor:pointer}.flip.tall{grid-column:span 2;height:300px}
+.in{position:relative;width:100%;height:100%;transition:transform .7s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d}.flip.on .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 3px rgba(11,61,38,.08);padding:14px 18px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.face.bk{transform:rotateY(180deg);background:#f8faf6}
+.ft{display:flex;gap:8px;align-items:center}.ft h3{margin:0;font:700 17px var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--g9)}
+.hint{margin-left:auto;font:600 11px var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:3px 8px;background:#fff}
+.tag{font:700 10px var(--disp);letter-spacing:.14em;border-radius:3px;padding:2px 6px;border:1px solid currentColor}.have{color:var(--g7)}.part{color:#a07808}.mgr{color:#4a3f9f}
+.note{color:var(--muted);font-size:12.5px;line-height:1.45}
+.bars{display:grid;gap:7px}.br{display:grid;grid-template-columns:110px 1fr 40px;gap:8px;align-items:center;font:600 13px var(--disp);letter-spacing:.07em;text-transform:uppercase}.br i{display:block;height:13px;background:var(--g7);border-radius:2px}.br .t{background:#e6ece2;border-radius:2px;display:block}.br.x i{background:var(--loss)}
+.donut{width:104px;height:104px;border-radius:50%;background:conic-gradient(var(--win) 0 33.3%,var(--loss) 0 66.6%,var(--tie) 0);position:relative;flex:none}.donut::after{content:"";position:absolute;inset:26px;border-radius:50%;background:#fff}
+.dn{position:absolute;inset:0;display:grid;place-items:center;font:700 22px var(--disp);z-index:1}
+.leg{display:grid;gap:3px;font:500 13px var(--body)}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.pair{display:flex;align-items:flex-end;gap:14px;height:120px;padding:0 6px;border-bottom:1px solid var(--line)}.pair div{flex:1;display:flex;gap:4px;align-items:flex-end;justify-content:center;height:100%}.pair i{width:30%;border-radius:2px 2px 0 0}.pair .s{background:var(--g7)}.pair .c{background:var(--loss);opacity:.75}
+.line{height:110px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);position:relative}.line svg{position:absolute;inset:0;width:100%;height:100%}
+table{width:100%;border-collapse:collapse;font:500 13.5px var(--body)}th{font:600 11px var(--disp);letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}td{padding:5px 6px;border-bottom:1px solid #edf1ea}td.r,th.r{text-align:right}
+.big{font:700 54px var(--disp);color:var(--g9);line-height:1}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mini div{border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:#fafcf8}.mini b{font:700 22px var(--disp);display:block}
+.sum{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px 18px;max-width:960px;line-height:1.55;font-size:14.5px}.sum b{color:var(--g8)}
+</style></head><body><div class="wrap">
+<div class="back">&larr; Back to team</div>
+<h1 class="page">Irene Villagers 1 <span class="pill">Active</span></h1>
+<p class="why">The manager Team stats page today: four counters, three filter dropdowns, a form row, then an Overview of five charts, each with a <b>View As Table</b> button. Below is the same page rethought with flip cards. <b>The flip replaces View As Table</b>: a chart on the front, its table on the back, so nothing is hidden and nothing needs a second button. Light manager theme, same tokens as the app. Made-up figures; nothing is built.</p>
+
+<h2>1 &middot; Team page, rethought</h2>
+<p class="why">Top: the record strip and a single compact filter row (one Filters control would also work, as in the Hub). Then the cards in groups: Record, Scoring, Contribution, Squad. <span class="tag mgr">MANAGER</span> marks cards a parent would never see.</p>
+<div class="strip"><div class="card"><div class="n">3</div><div class="l">Played</div></div><div class="card"><div class="n">1</div><div class="l">Won</div></div><div class="card"><div class="n">1</div><div class="l">Lost</div></div><div class="card"><div class="n">50.0</div><div class="l">Win %</div></div><div class="card"><div class="n">+0.00</div><div class="l">Net run rate</div></div></div>
+<div class="bar"><span class="sel">All leagues &#9662;</span><span class="sel">2026/2027 &#9662;</span><span class="sel">Competition: All &#9662;</span></div>
+<div class="card form"><span class="l">Recent form</span><span class="ch t">T</span><span class="ch w">W</span><span class="ch l2">L</span><span class="note" style="margin-left:auto">Tap a result to open the match</span></div>
+
+<div class="l" style="margin:18px 0 8px">Record</div>
+<div class="grid">
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Results</h3><span class="tag have">HAVE</span><span class="hint">Table &#8635;</span></div><div style="display:flex;gap:16px;align-items:center"><div class="donut"><div class="dn">3</div></div><div class="leg"><span><i style="background:var(--win)"></i>Won 1 &middot; 33%</span><span><i style="background:var(--loss)"></i>Lost 1 &middot; 33%</span><span><i style="background:var(--tie)"></i>Tied 1 &middot; 33%</span></div></div><div class="note" style="margin-top:auto">3 played. Forfeits count as a win or a loss, as in the record.</div></div>
+  <div class="face bk"><div class="ft"><h3>Results, as a table</h3><span class="hint">Chart &#8635;</span></div><table><tr><th>Date</th><th>Opponent</th><th>Result</th></tr><tr><td>4 Oct</td><td>Rovers</td><td>Tied</td></tr><tr><td>27 Sept</td><td>Eagles</td><td>Won by 12 runs</td></tr><tr><td>13 Sept</td><td>Parkview</td><td>Lost by 3 wkts</td></tr></table></div></div></div>
+
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Runs scored v conceded</h3><span class="tag have">HAVE</span><span class="hint">Table &#8635;</span></div><div class="pair"><div><i class="s" style="height:60%"></i><i class="c" style="height:62%"></i></div><div><i class="s" style="height:64%"></i><i class="c" style="height:63%"></i></div><div><i class="s" style="height:65%"></i><i class="c" style="height:65%"></i></div></div><div class="note">13 Sept L &middot; 27 Sept W &middot; 4 Oct T. Scored 119, 128, 129.</div></div>
+  <div class="face bk"><div class="ft"><h3>Scored v conceded, table</h3><span class="hint">Chart &#8635;</span></div><table><tr><th>Match</th><th class="r">Scored</th><th class="r">Conceded</th></tr><tr><td>13 Sept L</td><td class="r">119</td><td class="r">121</td></tr><tr><td>27 Sept W</td><td class="r">128</td><td class="r">116</td></tr><tr><td>4 Oct T</td><td class="r">129</td><td class="r">129</td></tr></table></div></div></div>
+
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Run rate trend</h3><span class="tag have">HAVE</span><span class="hint">Table &#8635;</span></div><div class="line"><svg viewBox="0 0 100 40" preserveAspectRatio="none"><polyline fill="none" stroke="#14633F" stroke-width="2" vector-effect="non-scaling-stroke" points="8,30 50,18 92,14"/><polyline fill="none" stroke="#b3402f" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" points="8,28 50,22 92,14"/></svg></div><div class="note">Our run rate (green) against the opposition's (dashed red) per match.</div></div>
+  <div class="face bk"><div class="ft"><h3>Run rate, table</h3><span class="hint">Chart &#8635;</span></div><table><tr><th>Match</th><th class="r">Ours</th><th class="r">Theirs</th></tr><tr><td>13 Sept</td><td class="r">4.8</td><td class="r">4.9</td></tr><tr><td>27 Sept</td><td class="r">5.1</td><td class="r">4.6</td></tr><tr><td>4 Oct</td><td class="r">5.2</td><td class="r">5.2</td></tr></table></div></div></div>
+
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Batting first v chasing</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Bat first</span><span class="t"><i style="width:50%"></i></span><span>1/2</span></div><div class="br"><span>Chasing</span><span class="t"><i style="width:50%"></i></span><span>0/1</span></div></div><div class="note" style="margin-top:auto">Toss won 2 of 3.</div></div>
+  <div class="face bk"><div class="ft"><h3>Head to head</h3><span class="hint">&#8635;</span></div><table><tr><th>Opponent</th><th>Record</th></tr><tr><td>Rovers</td><td>T</td></tr><tr><td>Eagles</td><td>W</td></tr><tr><td>Parkview</td><td>L</td></tr></table></div></div></div>
+</div>
+
+<div class="l" style="margin:22px 0 8px">Contribution</div>
+<div class="grid">
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Where the runs come from</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Sam</span><span class="t"><i style="width:75%"></i></span><span>26%</span></div><div class="br"><span>Anton</span><span class="t"><i style="width:66%"></i></span><span>23%</span></div><div class="br"><span>Irene</span><span class="t"><i style="width:52%"></i></span><span>18%</span></div><div class="br"><span>Extras</span><span class="t"><i style="width:25%"></i></span><span>9%</span></div></div></div>
+  <div class="face bk"><div class="ft"><h3>Where the wickets come from</h3><span class="hint">&#8635;</span></div><div class="note">Pieter 14, Jano 11, Zane 9, others 6. Three bowlers take 85% of the wickets: <b>a depth risk if one is unavailable</b>.</div></div></div></div>
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Top performers</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><table><tr><th>Batter</th><th class="r">Runs</th><th class="r">Avg</th></tr><tr><td>Sam van der W.</td><td class="r">412</td><td class="r">58.9</td></tr><tr><td>Anton de V.</td><td class="r">366</td><td class="r">52.3</td></tr></table></div>
+  <div class="face bk"><div class="ft"><h3>Top bowlers</h3><span class="hint">&#8635;</span></div><table><tr><th>Bowler</th><th class="r">Wkts</th><th class="r">Econ</th></tr><tr><td>Pieter N.</td><td class="r">14</td><td class="r">4.2</td></tr><tr><td>Jano van der W.</td><td class="r">11</td><td class="r">4.9</td></tr></table></div></div></div>
+</div>
+
+<div class="l" style="margin:22px 0 8px">Squad <span class="tag mgr">MANAGER</span></div>
+<div class="grid">
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Squad depth</h3><span class="tag mgr">MANAGER</span><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="big">14</div><div class="note">players used this season; 11.4 available per match on average (from the availability polls).</div><div class="note" style="margin-top:auto">Only 9 have played in more than half the matches.</div></div>
+  <div class="face bk"><div class="ft"><h3>Used v available</h3><span class="hint">&#8635;</span></div><table><tr><th>Player</th><th class="r">Avail.</th><th class="r">Sel.</th><th class="r">Played</th></tr><tr><td>Sam</td><td class="r">11</td><td class="r">8</td><td class="r">7</td></tr><tr><td>Irene</td><td class="r">10</td><td class="r">6</td><td class="r">6</td></tr><tr><td>Zane</td><td class="r">12</td><td class="r">3</td><td class="r">3</td></tr></table><div class="note">Zane is available for 12 and selected for 3: <b>a selection question for the manager</b>.</div></div></div></div>
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in">
+  <div class="face"><div class="ft"><h3>Captured data health</h3><span class="tag mgr">MANAGER</span><span class="hint">Flip &#8635;</span></div><div class="big">2 / 3</div><div class="note">results have a full scorecard. Figures that rely on balls, fours and sixes are "based on 2 of 3".</div></div>
+  <div class="face bk"><div class="ft"><h3>What is missing</h3><span class="hint">&#8635;</span></div><div class="note">13 Sept: summary only (no batting card). Tap to open the result and complete it. This is the same "based on N of M" note the Hub shows, but with a way to fix it.</div></div></div></div>
+</div>
+
+<h2>2 &middot; Player stats page</h2>
+<p class="why">Same idea on the manager Player page: the headline strip, one filter row, then batting, bowling, fielding cards that flip chart-to-table, plus manager-only cards (selection history, availability reliability, data coverage). The Hub's cards from round 2 are reused as they are.</p>
+<div class="grid">
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in"><div class="face"><div class="ft"><h3>Batting, innings by innings</h3><span class="tag have">HAVE</span><span class="hint">Table &#8635;</span></div><div class="line" style="height:130px"><svg viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="#14633F" stroke-width="2" vector-effect="non-scaling-stroke" points="7,34 21,38 36,2 50,48 64,22 79,30 93,26"/><polyline fill="none" stroke="#4a77b5" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" points="7,34 21,36 36,24 50,30 64,28 79,28 93,26"/></svg></div><div class="note">Runs per innings and running average.</div></div><div class="face bk"><div class="ft"><h3>The innings</h3><span class="hint">&#8635;</span></div><table><tr><th>Match</th><th class="r">Runs</th><th class="r">Balls</th><th>Out</th></tr><tr><td>v Rovers</td><td class="r">47*</td><td class="r">52</td><td>not out</td></tr><tr><td>v Eagles</td><td class="r">96*</td><td class="r">101</td><td>not out</td></tr><tr><td>v Parkview</td><td class="r">31</td><td class="r">44</td><td>b Naidoo</td></tr></table></div></div></div>
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in"><div class="face"><div class="ft"><h3>How he gets out</h3><span class="tag have">HAVE</span><span class="hint">Flip &#8635;</span></div><div class="bars"><div class="br"><span>Not out</span><span class="t"><i style="width:38%"></i></span><span>38%</span></div><div class="br"><span>Caught</span><span class="t"><i style="width:25%"></i></span><span>25%</span></div><div class="br"><span>Bowled</span><span class="t"><i style="width:15%"></i></span><span>15%</span></div><div class="br x"><span>LBW</span><span class="t"><i style="width:12%"></i></span><span>12%</span></div></div></div><div class="face bk"><div class="ft"><h3>Who got him out</h3><span class="hint">&#8635;</span></div><table><tr><td>Naidoo (Parkview)</td><td class="r">2</td></tr><tr><td>Jacobs (Riverside)</td><td class="r">1</td></tr></table></div></div></div>
+ <div class="flip" onclick="this.classList.toggle('on')"><div class="in"><div class="face"><div class="ft"><h3>Selection and availability</h3><span class="tag mgr">MANAGER</span><span class="hint">Flip &#8635;</span></div><div class="mini"><div><b>12/12</b><span class="note">answered</span></div><div><b>8</b><span class="note">selected</span></div><div><b>7</b><span class="note">played</span></div></div><div class="note" style="margin-top:auto">Reliable: answers every poll. Selected in 8 of 11 matches he was available for.</div></div><div class="face bk"><div class="ft"><h3>Games by team</h3><span class="hint">&#8635;</span></div><table><tr><td>Over 40</td><td class="r">6</td></tr><tr><td>Friendlies</td><td class="r">1</td></tr></table></div></div></div>
+</div>
+
+<h2>What changes, in one list</h2>
+<div class="sum">
+<b>Replaces:</b> the "View As Table" buttons (the flip is the table), the five fixed Overview charts (they become cards), and the always-open chart wall (cards group under headings and can be collapsed).<br>
+<b>Keeps:</b> the counters strip, the filters (League, Season, Competition, as one compact row), the form row, and every table (on the back of its card). Leaderboards stay tables, because a manager needs to sort and scan.<br>
+<b>Adds:</b> manager-only cards (squad depth, used v available, data health with a fix-it link), who got him out, selection and availability history.<br>
+<b>One system:</b> the card contract and registry from spec 147, shared by the Hub and the manager app; each side chooses its cards.<br><br>
+<b>Questions:</b> 1) Is chart-front, table-back the right trade, or should managers have a toggle that shows tables everywhere? 2) Should the cards be collapsible per group? 3) Which manager-only cards matter most for selection? 4) Same flip animation as the Hub, or a quieter cross-fade on the manager side?
+</div>
+</div></body></html>
