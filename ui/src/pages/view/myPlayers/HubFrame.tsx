@@ -10,6 +10,7 @@ import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
+import { HubFooter } from './HubFooter'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
 import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
 
@@ -227,24 +228,8 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           )}
         </Box>
 
-        {footer && (
-          <Box
-            component="footer"
-            sx={{
-              gridRow: 3,
-              alignSelf: 'end',
-              borderTop: `1px solid ${HUB.line}`,
-              px: { xs: 2, md: 2.5 },
-              py: 1,
-              bgcolor: blackAlpha(0.35),
-              display: 'flex',
-              alignItems: 'center',
-              ...(fill && { minHeight: 56, pb: 'max(8px, env(safe-area-inset-bottom))' }),
-            }}
-          >
-            {footer}
-          </Box>
-        )}
+        {/* docs/specs/146: the footer band holds the Back slot and, on a Player Hub page with something to show, the scoreboard ticker. */}
+        <HubFooter back={footer} fill={fill} />
       </Box>
     </AccountShell>
     </HubHeaderProvider>
