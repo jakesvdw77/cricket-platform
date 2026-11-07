@@ -29,8 +29,17 @@ export const GROUP_PARAM = 'group'
 const ROW_GAP = 1
 // A lone card (or a lone last card) is capped so it never stretches across a desktop.
 const SINGLE_MAX_WIDTH = 560
-// The least height of the grid while a card is expanded, so a short group still gives the card room.
-const EXPANDED_MIN_HEIGHT = '75vh'
+// Breathing room kept under an expanded card, in px.
+const EXPANDED_BOTTOM_MARGIN = 8
+
+// The nearest ancestor that scrolls vertically (the Hub content section), or null.
+function scrollParent(node: HTMLElement | null): HTMLElement | null {
+  for (let el = node?.parentElement ?? null; el; el = el.parentElement) {
+    const overflowY = getComputedStyle(el).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') return el
+  }
+  return null
+}
 
 export interface GroupPickerProps {
   label: string
@@ -107,6 +116,9 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
   const reduced = usePrefersReducedMotion()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
+  const areaRef = useRef<HTMLDivElement | null>(null)
+  // The height of the visible inner area from the top of the grid area down; null when nothing is expanded or nothing scrolls.
+  const [fitHeight, setFitHeight] = useState<number | null>(null)
 
   // State is computed here, at render; a missing card that hides itself is not in the list, so its group can disappear.
   const resolved = useMemo<Resolved<P>[]>(
@@ -136,6 +148,34 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [expandedId])
+
+  // An expanded card fits the visible area exactly: scroll the content region to the top (the grid area then sits at its natural offset
+  // under the header and pills), lock its scrolling while the card is open, and size the overlay to the region's height minus that offset.
+  // Locking also stops the hidden cards from scrolling the page; the scroll position is restored on close.
+  const expandedOpen = Boolean(expandedEntry)
+  useEffect(() => {
+    if (!expandedOpen) return undefined
+    const area = areaRef.current
+    const scroller = scrollParent(area)
+    if (!area || !scroller) return undefined
+    const savedTop = scroller.scrollTop
+    const savedOverflow = scroller.style.overflowY
+    scroller.scrollTop = 0
+    scroller.style.overflowY = 'hidden'
+    const measure = () => {
+      const offset = area.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+      setFitHeight(Math.max(240, Math.floor(scroller.clientHeight - offset - EXPANDED_BOTTOM_MARGIN)))
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    observer?.observe(scroller)
+    return () => {
+      observer?.disconnect()
+      scroller.style.overflowY = savedOverflow
+      scroller.scrollTop = savedTop
+      setFitHeight(null)
+    }
+  }, [expandedOpen])
 
   // Focus goes back to the expand button that opened the card (the overlay is gone and the cards are no longer inert by now).
   useEffect(() => {
@@ -197,7 +237,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
   return (
     <Box data-testid={testId} sx={{ display: 'grid', gap: ROW_GAP, minWidth: 0 }}>
       {usePicker && selected && renderGroupPicker?.({ label: 'Card groups', items: visibleGroups.map((group) => ({ id: group.id, label: group.label })), selectedId: selected.id, onSelect: select })}
-      <Box data-testid={`${testId}-area`} sx={{ position: 'relative', minWidth: 0, containerType: 'inline-size', minHeight: expandedEntry ? EXPANDED_MIN_HEIGHT : undefined }}>
+      <Box data-testid={`${testId}-area`} ref={areaRef} sx={{ position: 'relative', minWidth: 0, containerType: 'inline-size' }}>
         <Box inert={expandedEntry ? true : undefined} sx={{ display: 'grid', gap: 2, minWidth: 0, visibility: expandedEntry ? 'hidden' : 'visible' }}>
           {shownGroups.map((group) => (
             <Box key={group.id} component="section" aria-label={group.label} data-testid={`${testId}-group-${group.id}`} sx={{ display: 'grid', gap: ROW_GAP, minWidth: 0 }}>
@@ -211,7 +251,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
               role="region"
               aria-label={`${expandedEntry.def.title(ctx)}, expanded`}
               data-testid={`${testId}-expanded`}
-              sx={{ position: 'absolute', inset: 0, zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden' }}
+              sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: fitHeight ?? '100%', zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden' }}
             >
               {card(expandedEntry, true)}
             </Box>
