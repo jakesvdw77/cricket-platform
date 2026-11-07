@@ -651,9 +651,9 @@ export interface MyStandingSample {
 }
 
 export interface MyStandingLine {
-  // runs, average, wickets, economy or catches.
+  // runs, average, strikeRate, wickets, economy, catches or playerOfTheMatch (render whatever lines arrive).
   key: string
-  // batting, bowling or fielding: the table the line comes from.
+  // batting, bowling, fielding or awards: the table the line comes from.
   group: string
   label: string
   // Competition rank (ties share); null with no figure or below the minimum of a rate.

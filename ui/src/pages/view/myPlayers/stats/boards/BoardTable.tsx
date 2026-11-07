@@ -252,12 +252,19 @@ export function BoardTable({ playerKey, group, scope, firstName, sort, direction
                     </TableRow>
                   )}
                   <TableRow ref={row.mine ? mineRow : undefined} aria-current={row.mine ? 'true' : undefined} tabIndex={row.mine ? -1 : undefined} data-testid={row.mine ? 'hub-boards-mine' : 'hub-boards-row'} sx={rowSx(row)}>
-                    <TableCell align="right" sx={{ ...bodyCell, ...pinnedRank, ...rowSx(row), fontWeight: 700, color: row.rank === null ? HUB.muted : HUB.cream, borderLeft: row.mine ? `4px solid ${HUB.gold}` : '4px solid transparent' }}>
+                    <TableCell align="right" sx={{ ...bodyCell, ...pinnedRank, ...rowSx(row), fontWeight: 700, color: row.rank === null ? HUB.muted : row.rank <= 3 ? HUB.gold : HUB.cream, borderLeft: row.mine ? `4px solid ${HUB.gold}` : '4px solid transparent' }}>
                       {row.rank === null ? DASH : row.rank}
                     </TableCell>
                     <TableCell component="th" scope="row" sx={{ ...bodyCell, ...pinnedPlayer, ...rowSx(row), fontWeight: 600, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                      {row.firstName} {row.lastName}
+                      <Box component="span" sx={{ fontSize: 14, lineHeight: 1.25 }}>
+                        {row.firstName} {row.lastName}
+                      </Box>
                       {row.mine && <Box component="span" sx={visuallyHiddenSx}> (This player)</Box>}
+                      {row.teamName && (
+                        <Box component="span" sx={{ display: 'block', fontSize: 11, lineHeight: 1.2, fontWeight: 400, color: HUB.muted }}>
+                          {row.teamName}
+                        </Box>
+                      )}
                       {row.smallSample && (
                         <Box component="span" sx={{ display: 'inline-block', ml: 0.75, px: 0.75, borderRadius: '999px', border: `1px solid ${HUB.line}`, color: HUB.muted, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', lineHeight: '16px' }}>
                           Small sample
