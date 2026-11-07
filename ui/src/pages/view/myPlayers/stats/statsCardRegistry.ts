@@ -16,6 +16,7 @@ import { mineMilestone } from './cards/mine/milestone'
 import { mineSeason } from './cards/mine/season'
 import { mineSeasons } from './cards/mine/seasons'
 import { mineWicketsHow } from './cards/mine/wicketsHow'
+import { boardsStanding } from './cards/boards/standing'
 import { teamContribution } from './cards/team/contribution'
 import { teamExtras } from './cards/team/extras'
 import { teamFirstChasing } from './cards/team/firstChasing'
@@ -50,7 +51,7 @@ const MINE_CARDS: StatsCardDef<MyStatsDto>[] = [
   mineSeasons,
 ]
 const TEAM_CARDS: StatsCardDef<MyTeamStatsDto>[] = [teamSeason, teamContribution, teamExtras, teamFirstChasing, teamSquad]
-const BOARD_CARDS: StatsCardDef<MyStanding>[] = []
+const BOARD_CARDS: StatsCardDef<MyStanding>[] = [boardsStanding]
 
 const REGISTRY: { [K in StatsPage]: StatsCardDef<StatsPayloads[K]>[] } = { mine: MINE_CARDS, team: TEAM_CARDS, boards: BOARD_CARDS }
 

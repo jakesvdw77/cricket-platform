@@ -60,9 +60,9 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'stats',
     label: 'Stats',
     children: [
-      // docs/specs/147: My stats and Team stats are live (flip cards); Leaderboards stays Soon until its slice lands.
+      // docs/specs/147: My stats, Team stats and Leaderboards are live. Leaderboards is always visible (the owner's amendment: no club switch yet).
       { id: 'stats.mine', label: 'My stats' },
-      { id: 'stats.boards', label: 'Leaderboards', soon: true, soonCopy: 'Club leaderboards, shown only where the club switches them on.' },
+      { id: 'stats.boards', label: 'Leaderboards' },
       { id: 'stats.teams', label: 'Team stats' },
     ],
   },

@@ -4,7 +4,7 @@ import { myPlayersKey } from './myPlayersApi'
 import type { MyResultOutcome, MyResultScope } from './meResultsApi'
 import type { BattingStats, BowlingStats, FieldingStats, NotCapturedItem, PlayerAwardCounts, PlayerRecord, PlayerStats } from './playerStatsApi'
 import type { DashboardBattingSummary, DashboardEconomySummary, DashboardWicketTypes, DashboardWindow } from './playerDashboardApi'
-import type { LeaderboardGroup, LeaderboardPageInfo, LeaderboardTable, LeaderboardTableRow } from './leaderboardApi'
+import type { AwardsBasis, AwardsMinimums, AwardsOmission, LeaderboardBasis, LeaderboardBoardInfo, LeaderboardCell, LeaderboardFigure, LeaderboardGroup, LeaderboardMinimum, LeaderboardPageInfo, LeaderboardRowDetail, LeaderboardSample, MinimumKind } from './leaderboardApi'
 import type { TeamNetRunRateStatus, TeamStatsNotCapturedItem, TeamStatsPageData } from './teamStatsApi'
 import type { TeamDashboardDotBallsSummary, TeamDashboardExtrasSummary, TeamDashboardResultsSummary } from './teamDashboardApi'
 
@@ -15,7 +15,7 @@ import type { TeamDashboardDotBallsSummary, TeamDashboardExtrasSummary, TeamDash
 // The client computes no figure: every number below is the server's, formatted by pages/view/myPlayers/stats/statsFormat.ts.
 
 // ===== PAYLOAD TYPES: MyStatsDto and the drill page mirror backend/.../dto/MyStatsDto.java and MyStatsInningsPageDto.java. ======
-// ===== MyTeamStatsDto mirrors MyTeamStatsDto.java; the leaderboard types are still the spec's description until slice 4. Change only this block. =======
+// ===== MyTeamStatsDto mirrors MyTeamStatsDto.java; the leaderboard types mirror MyLeaderboard*Dto.java (slice 4). Change only this block. =======
 
 export type MyStatsAgeBand = 'ADULT' | 'UNDER_13' | 'AGE_13_17' | 'UNKNOWN'
 export type MyStatsDrillKind = 'BATTING' | 'BOWLING' | 'FIELDING' | 'MATCHES'
@@ -254,7 +254,7 @@ export interface MyStatsDto {
   bySeason: MyStatsSeason[]
   bowlingDiscipline: MyStatsBowlingDiscipline
   availability: MyStatsAvailability
-  // Null until the Team stats and Leaderboards slices (spec 147 slices 3 and 4).
+  // Filled since slices 3 and 4; null when the player has none or rankings are off.
   teamFielding: { catches: number; runOuts: number; stumpings: number } | null
   teamFieldingRank: number | null
   standing: { rank: number | null; playersRanked: number | null; average: number | null; innings: number | null } | null
@@ -517,34 +517,114 @@ export interface MyTeamStatsDto {
   notCaptured: TeamStatsNotCapturedItem[]
 }
 
+// ----- The leaderboard payloads: mirror backend/.../dto/MyLeaderboardTableDto.java, MyLeaderboardStandingDto.java, MyLeaderboardAwardsDto.java
+// and MyLeaderboardFiltersDto.java field for field (slice 4). The cell, sort, minimum, basis and page shapes are the manager table's own.
 export interface MyLeaderboardColumn {
   code: string
   label: string
-  longLabel?: string
+  longLabel?: string | null
   sortable: boolean
   direction: 'HIGHEST' | 'LOWEST'
-  minimumKind: 'NONE' | 'INNINGS' | 'OVERS'
+  minimumKind: MinimumKind
   // Folded behind the More Columns toggle (a server constant).
   more: boolean
 }
 
-export interface MyLeaderboardRow extends LeaderboardTableRow {
+export interface MyLeaderboardRow {
+  // Null for the unranked group.
+  rank: number | null
   // True for the held player's own row.
   mine: boolean
+  // Full names (inside the Hub only); no row carries a player id.
+  firstName: string
+  lastName: string
+  teamName: string | null
+  smallSample: boolean
+  // Keyed by column code.
+  values: Record<string, LeaderboardCell | undefined>
 }
 
-export interface MyLeaderboardTable extends Omit<LeaderboardTable, 'columns' | 'rows'> {
+export interface MyLeaderboardTable {
+  group: string
   columns: MyLeaderboardColumn[]
+  sort: { code: string; direction: 'HIGHEST' | 'LOWEST' }
+  scope: { seasonId: string | null; leagueId: string | null; teamId: string | null }
+  minimum: LeaderboardMinimum
+  basis: LeaderboardBasis
+  page: LeaderboardPageInfo
   rows: MyLeaderboardRow[]
-  // The held player's row and rank even when not on the returned page; null with no figure in scope.
-  me: (MyLeaderboardRow & { page: number }) | null
+  // The held player's row and place even when not on the returned page; `page` is the page (at the requested size) that holds it. Null with no figure in scope.
+  me: { position: number; page: number; row: MyLeaderboardRow } | null
+}
+
+export interface MyStandingSample {
+  matches: number
+  innings: number | null
+  ballsFaced: number | null
+  balls: number | null
+  // Null when over lengths are mixed.
+  overs: number | null
+  ballsPerOver: number | null
+}
+
+export interface MyStandingLine {
+  // runs, average, wickets, economy or catches.
+  key: string
+  // batting, bowling or fielding: the table the line comes from.
+  group: string
+  label: string
+  // Competition rank (ties share); null with no figure or below the minimum of a rate.
+  rank: number | null
+  playersListed: number
+  playersRanked: number
+  value: LeaderboardCell | null
+  sample: MyStandingSample | null
+  // Set for the rate lines only (average, economy).
+  minimum: { unit: MinimumKind; value: number } | null
+  belowMinimum: boolean
 }
 
 export interface MyStanding {
-  // The rank in each headline column within the reach, with the number of players listed and the sample behind it.
-  rows: { code: string; label: string; rank: number | null; of: number; sample: string | null; figure: number | null }[]
-  minimumNote: string | null
-  basis: { resultsCounted: number; playersListed: number }
+  scope: { seasonId: string | null; leagueId: string | null; teamId: string | null }
+  playerFirstName: string | null
+  resultsCounted: number
+  playersInReach: number
+  // Empty when rankings are switched off (HubRankingPolicy).
+  lines: MyStandingLine[]
+}
+
+export interface MyAwardsLeader {
+  rank: number | null
+  mine: boolean
+  firstName: string
+  lastName: string
+  // A number, { wickets, runs } (best bowling), { runs, notOut } (highest score) or null.
+  figure: LeaderboardFigure
+  matches: number
+  innings: number | null
+  sample: LeaderboardSample | null
+  smallSample: boolean
+  detail: LeaderboardRowDetail | null
+}
+
+export interface MyAwardsCategory {
+  board: LeaderboardBoardInfo
+  leaders: MyAwardsLeader[]
+}
+
+export interface MyAwards {
+  scope: { seasonId: string | null; leagueId: string | null; teamId: string | null }
+  revealed: boolean
+  // SEASON_NOT_ENDED or RANKINGS_NOT_SHARED while not revealed.
+  reason: string | null
+  // The sentence to show while not revealed.
+  message: string | null
+  // An ISO date; null when no single season applies.
+  seasonEndDate: string | null
+  basis: AwardsBasis
+  minimums: AwardsMinimums
+  categories: MyAwardsCategory[]
+  omitted: AwardsOmission[]
 }
 
 export interface MyBoardsFilters {
@@ -616,6 +696,11 @@ export async function getMyStanding(key: string, scope: MyResultScope): Promise<
   return data
 }
 
+export async function getMyAwards(key: string, scope: MyResultScope): Promise<MyAwards> {
+  const { data } = await api.get<MyAwards>(`/me/players/${key}/leaderboards/awards`, { params: scopeParams(scope) })
+  return data
+}
+
 export async function getMyBoardsFilters(key: string): Promise<MyBoardsFilters> {
   const { data } = await api.get<MyBoardsFilters>(`/me/players/${key}/leaderboards/filters`)
   return data
@@ -674,6 +759,17 @@ export function useMyStanding(key: string | undefined, scope: MyResultScope, ena
   return useQuery({
     queryKey: [...myLeaderboardsKey(key), 'standing', scopeParams(scope)],
     queryFn: () => getMyStanding(key as string, scope),
+    placeholderData: keepPreviousData,
+    retry: false,
+    enabled: Boolean(key) && enabled,
+  })
+}
+
+// The Awards tab: category leaders for a season that has ended, otherwise a held-back message.
+export function useMyAwards(key: string | undefined, scope: MyResultScope, enabled = true) {
+  return useQuery({
+    queryKey: [...myLeaderboardsKey(key), 'awards', scopeParams(scope)],
+    queryFn: () => getMyAwards(key as string, scope),
     placeholderData: keepPreviousData,
     retry: false,
     enabled: Boolean(key) && enabled,

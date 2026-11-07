@@ -100,6 +100,9 @@ export interface HubScopeOptions {
   filters: MyResultFilters | undefined
   // Prefix of every test id and of the panel id (Results keeps 'hub-results').
   testIdPrefix?: string
+  // False on a page whose options are not the player's own results (the Leaderboards reach): the chips then show names alone, because the
+  // played and won record under a chip is the player's own results record.
+  chipRecords?: boolean
 }
 
 export interface HubScope {
@@ -136,7 +139,7 @@ export interface HubScope {
   }
 }
 
-export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hub-results' }: HubScopeOptions): HubScope {
+export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hub-results', chipRecords = true }: HubScopeOptions): HubScope {
   const [search, setSearch] = useSearchParams()
   const [saved, save] = usePersistedListFilters<SavedScope>(storageKey, { season: '', team: '', league: '', competition: '' })
 
@@ -199,8 +202,8 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     ...(hasFriendly ? [{ seasonId, competition: FRIENDLY }] : []),
   ]
   const teamChipScopes: MyResultScope[] = [{ seasonId, leagueId: leagueId || null, competition }, ...teamOptions.map((team) => ({ seasonId, leagueId: leagueId || null, competition, teamId: team.id }))]
-  const chipSummaries = useMyPlayerResultsSummaries(playerKey, [...leagueChipScopes, ...teamChipScopes], ready && open)
-  const chipSummary = (index: number) => chipSummaries[index]?.data
+  const chipSummaries = useMyPlayerResultsSummaries(playerKey, [...leagueChipScopes, ...teamChipScopes], ready && open && chipRecords)
+  const chipSummary = (index: number) => (chipRecords ? chipSummaries[index]?.data : undefined)
 
   const leagueChips: ChipSpec[] = [
     { id: 'all-leagues', name: 'All Leagues', selected: !leagueId && !friendly, summary: chipSummary(0), onPick: () => pickLeague('', '') },

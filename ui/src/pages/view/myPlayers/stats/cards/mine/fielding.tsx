@@ -57,7 +57,7 @@ export const mineFielding: StatsCardDef<MyStatsDto> = {
           ]}
         />
         {p.teamFieldingRank !== null && allowsRankings() && <Note>{ctx.firstName} is {ordinal(p.teamFieldingRank)} for catches in the team.</Note>}
-        {!team && <Note>The team's totals are not shown yet.</Note>}
+        {!team && <Note>There are no team totals for this scope (no team of the player's has results in it).</Note>}
       </>
     )
   },

@@ -27,6 +27,7 @@ import { HubResults } from './myPlayers/HubResults'
 import { HubMyStats } from './myPlayers/stats/HubMyStats'
 import { HubStatsDrill } from './myPlayers/stats/HubStatsDrill'
 import { HubTeamStats } from './myPlayers/stats/HubTeamStats'
+import { HubLeaderboards } from './myPlayers/stats/HubLeaderboards'
 import { resultsQuery } from './myPlayers/resultsFormat'
 import { HubWatchLive } from './myPlayers/HubWatchLive'
 import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
@@ -226,6 +227,8 @@ export default function MyPlayerPage() {
     panel = statsDrill ? <HubStatsDrill playerKey={key} /> : <HubMyStats playerKey={key} />
   } else if (pageItem?.id === 'stats.teams') {
     panel = <HubTeamStats playerKey={key} />
+  } else if (pageItem?.id === 'stats.boards') {
+    panel = <HubLeaderboards playerKey={key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
