@@ -2643,6 +2643,53 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyStatsInningsPageDto"
+  /api/v1/me/players/{playerKey}/team-stats:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The one payload of the Player Hub Team stats page (docs/specs/147) for one team of the held player, over published results a manager switched on for the Player Hub only. teamId is required (400 when absent) and must be one of the held player teams, a team in the player results filter options; any other team, including another club team, is 404. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season or league 404, a competition other than LEAGUE or FRIENDLY 400. There is no sectionId."
+      operationId: getMyPlayerTeamStats
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: teamId
+        in: query
+        required: true
+        description: "One of the held player teams (else 404); absent is 400."
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyTeamStatsDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -17221,6 +17268,491 @@ components:
         average:
           type: number
         innings:
+          type: integer
+          format: int64
+    MyTeamStatsDto:
+      type: object
+      description: "The Player Hub Team stats payload (docs/specs/147) for one team of a held player in the Player Hub scope (only published results a manager switched on). It is the manager team page figures for the same scope plus the team Dashboard series plus the Hub blocks; every figure is the calculator output and the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the result-history blocks (series, battingOrder, tossWon, headToHead, squad, closeGames) cover the newest basis.historyCap results only. chasing is the manager block (highest chase, largest victories); the batting-first v chasing split is battingOrder."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyTeamScope"
+        teamName:
+          type: string
+        basis:
+          $ref: "#/components/schemas/MyTeamBasis"
+        record:
+          $ref: "#/components/schemas/TeamStatsRecord"
+        form:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamFormEntry"
+        batting:
+          $ref: "#/components/schemas/TeamStatsBatting"
+        chasing:
+          $ref: "#/components/schemas/TeamStatsChasing"
+        bowling:
+          $ref: "#/components/schemas/TeamStatsBowling"
+        extras:
+          $ref: "#/components/schemas/TeamStatsExtras"
+        netRunRate:
+          $ref: "#/components/schemas/TeamStatsNetRunRate"
+        series:
+          $ref: "#/components/schemas/MyTeamSeries"
+        contribution:
+          $ref: "#/components/schemas/MyTeamContribution"
+        battingOrder:
+          $ref: "#/components/schemas/MyTeamBattingOrder"
+        tossWon:
+          $ref: "#/components/schemas/MyTeamToss"
+        headToHead:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamHeadToHead"
+        squad:
+          $ref: "#/components/schemas/MyTeamSquad"
+        closeGames:
+          $ref: "#/components/schemas/MyTeamCloseGames"
+        extrasCard:
+          $ref: "#/components/schemas/MyTeamExtrasCard"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStatsNotCaptured"
+    MyTeamScope:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    MyTeamBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        internalResults:
+          type: integer
+          format: int64
+        resultsNoBallBowled:
+          type: integer
+          format: int64
+        forfeits:
+          $ref: "#/components/schemas/TeamStatsForfeits"
+        resultsWithBothInnings:
+          type: integer
+          format: int64
+        truncated:
+          type: boolean
+        historyCap:
+          type: integer
+          format: int32
+        coverage:
+          $ref: "#/components/schemas/MyTeamCoverage"
+    MyTeamCount:
+      type: object
+      properties:
+        recorded:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    MyTeamCoverage:
+      type: object
+      properties:
+        battingOrder:
+          $ref: "#/components/schemas/MyTeamCount"
+        toss:
+          $ref: "#/components/schemas/MyTeamCount"
+        availability:
+          $ref: "#/components/schemas/MyTeamCount"
+        runCards:
+          $ref: "#/components/schemas/MyTeamCount"
+        wicketCards:
+          $ref: "#/components/schemas/MyTeamCount"
+        closeMargins:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFormEntry:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        result:
+          type: string
+        forfeit:
+          type: boolean
+    MyTeamSeries:
+      type: object
+      properties:
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamResult"
+        resultsSummary:
+          $ref: "#/components/schemas/TeamDashboardResultsSummary"
+        runRateTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamRunRatePoint"
+        netRunRateTrend:
+          $ref: "#/components/schemas/MyTeamNetRunRateTrend"
+        extrasConceded:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamExtrasPoint"
+        extrasSummary:
+          $ref: "#/components/schemas/TeamDashboardExtrasSummary"
+        dotBalls:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamDotBallsPoint"
+        dotBallsSummary:
+          $ref: "#/components/schemas/TeamDashboardDotBallsSummary"
+    MyTeamResult:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        forfeit:
+          type: boolean
+        result:
+          type: string
+        ownRuns:
+          type: integer
+          format: int64
+        ownWickets:
+          type: integer
+          format: int64
+        ownBalls:
+          type: integer
+          format: int64
+        oppRuns:
+          type: integer
+          format: int64
+        oppWickets:
+          type: integer
+          format: int64
+        oppBalls:
+          type: integer
+          format: int64
+        ownRunRate:
+          type: number
+        oppRunRate:
+          type: number
+    MyTeamRunRatePoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        teamRunRate:
+          type: number
+        oppositionRunRate:
+          type: number
+    MyTeamNetRunRateTrend:
+      type: object
+      properties:
+        status:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamNetRunRatePoint"
+    MyTeamNetRunRatePoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        value:
+          type: number
+    MyTeamExtrasPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        itemised:
+          type: boolean
+        notItemised:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+    MyTeamDotBallsPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        ballsBowled:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+        dotPercent:
+          type: number
+    MyTeamContribution:
+      type: object
+      properties:
+        runs:
+          $ref: "#/components/schemas/MyTeamShareBlock"
+        wickets:
+          $ref: "#/components/schemas/MyTeamShareBlock"
+    MyTeamShareBlock:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamShareLine"
+        inningsWithCard:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamShareLine:
+      type: object
+      properties:
+        kind:
+          type: string
+        label:
+          type: string
+        value:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+    MyTeamSplit:
+      type: object
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+    MyTeamBattingOrder:
+      type: object
+      properties:
+        battingFirst:
+          $ref: "#/components/schemas/MyTeamSplit"
+        chasing:
+          $ref: "#/components/schemas/MyTeamSplit"
+        recorded:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    MyTeamToss:
+      type: object
+      properties:
+        won:
+          type: integer
+          format: int64
+        known:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+        partly:
+          type: boolean
+    MyTeamHeadToHead:
+      type: object
+      properties:
+        opponentName:
+          type: string
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        noResult:
+          type: integer
+          format: int64
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamMeeting"
+    MyTeamMeeting:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        result:
+          type: string
+        forfeit:
+          type: boolean
+    MyTeamSquad:
+      type: object
+      properties:
+        playersUsed:
+          type: integer
+          format: int64
+        guestAppearances:
+          type: integer
+          format: int64
+        averageAvailable:
+          type: number
+        matchesWithPoll:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+        partly:
+          type: boolean
+    MyTeamCloseGames:
+      type: object
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        closeRuns:
+          type: integer
+          format: int32
+        closeWickets:
+          type: integer
+          format: int32
+        decided:
+          type: integer
+          format: int64
+        withMargin:
+          type: integer
+          format: int64
+    MyTeamExtrasCard:
+      type: object
+      properties:
+        gaveAway:
+          $ref: "#/components/schemas/MyTeamExtrasSide"
+        received:
+          $ref: "#/components/schemas/MyTeamExtrasSide"
+        partly:
+          type: boolean
+    MyTeamExtrasSide:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+        wides:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        noBalls:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        byes:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        legByes:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        penaltyRuns:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        inningsWithExtras:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamExtrasComponent:
+      type: object
+      properties:
+        value:
+          type: integer
+          format: int64
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
           type: integer
           format: int64
     MyStatsInningsPageDto:

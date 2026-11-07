@@ -22,7 +22,8 @@ public interface TeamStatsAggregateRepository extends Repository<MatchResult, UU
 
     /**
      * One row per team with a counted team result. Optional filters are null for "no filter"; {@code sectionTeamIds} must
-     * never be empty (pass a sentinel when {@code sectionRestricted} is false).
+     * never be empty (pass a sentinel when {@code sectionRestricted} is false). {@code playerVisibleOnly} (docs/specs/147) is
+     * false for every manager read and true for the Player Hub, which counts only results switched on for it.
      */
     @Query(value = TeamStatsSql.AGGREGATE, nativeQuery = true)
     List<TeamStatsAggregateView> aggregate(
@@ -32,7 +33,8 @@ public interface TeamStatsAggregateRepository extends Repository<MatchResult, UU
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
 
     /** The scope-wide disclosure counters of the table's basis line (one row; a derby counts once). */
     @Query(value = TeamStatsSql.BASIS, nativeQuery = true)
@@ -43,7 +45,8 @@ public interface TeamStatsAggregateRepository extends Repository<MatchResult, UU
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly);
 
     /** The scope-wide basis counters. */
     interface TeamStatsBasisView {

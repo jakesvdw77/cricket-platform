@@ -21,6 +21,8 @@ import com.cricketlegend.repository.TeamStatsAggregateRepository.TeamStatsBasisV
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamStatsFactsRepository;
 import com.cricketlegend.service.TeamStatsService;
+import com.cricketlegend.service.support.DashboardLimits;
+import com.cricketlegend.service.support.HeldTeamHistory;
 import com.cricketlegend.service.support.LeaderboardBoard.Direction;
 import com.cricketlegend.service.support.StatsFilterOptionLists;
 import com.cricketlegend.service.support.StatsScope;
@@ -34,6 +36,7 @@ import com.cricketlegend.service.support.TeamStatsFactsReader.MatchRef;
 import com.cricketlegend.service.support.TeamTableRanker;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -136,14 +139,16 @@ public class TeamStatsServiceImpl implements TeamStatsService {
             String competition = StatsScopeResolver.competitionName(scope);
             List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
             List<TeamStatsAggregateView> rows = aggregateRepository.aggregate(
-                    clubId, scope.seasonId(), scope.leagueId(), null, competition, scope.sectionRestricted(), sectionTeams);
+                    clubId, scope.seasonId(), scope.leagueId(), null, competition, scope.sectionRestricted(), sectionTeams,
+                    scope.playerVisibleOnly());
             if (rows.size() > MAX_TEAMS) {
                 log.warn("Team statistics refused for club {}: {} teams in scope (cap {})", clubId, rows.size(), MAX_TEAMS);
                 throw new ValidationException(
                         "Too many teams in scope to rank (more than " + MAX_TEAMS + "). Narrow the filters.");
             }
             basis = aggregateRepository.basis(
-                    clubId, scope.seasonId(), scope.leagueId(), null, competition, scope.sectionRestricted(), sectionTeams);
+                    clubId, scope.seasonId(), scope.leagueId(), null, competition, scope.sectionRestricted(), sectionTeams,
+                    scope.playerVisibleOnly());
             candidates = candidates(clubId, rows);
             log.debug("Team statistics read for club {}: {} teams", clubId, candidates.size());
         }
@@ -174,6 +179,61 @@ public class TeamStatsServiceImpl implements TeamStatsService {
         // 404 for an unknown or other-club team, season or league; 403 for a team outside a section-scoped caller's reach.
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, null, competitionFilter);
+        return readTeam(clubId, teamId, seasonId, leagueId, resolved).stats();
+    }
+
+    /**
+     * docs/specs/147: the Player Hub scope of the same page, plus the new fact queries (the counted results, the per-player
+     * runs and wickets, the extent counters). The caller was authorised by {@code MyPlayerAccess}; season, league and team
+     * must belong to the club (404 otherwise) and only results shown in the Player Hub count. A fixed number of statements.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public HeldTeamHistory historyForHeldPlayer(
+            UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScope.Competition competition) {
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, competition);
+        TeamRead read = readTeam(clubId, teamId, seasonId, leagueId, new StatsScopeResolver.Resolved(scope, false));
+        String comp = StatsScopeResolver.competitionName(scope);
+        List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
+        boolean hubOnly = scope.playerVisibleOnly();
+        List<TeamStatsCalculator.ResultFact> results = List.of();
+        List<TeamStatsCalculator.ContributionFact> contribution = List.of();
+        TeamStatsCalculator.Extent extent = TeamStatsCalculator.Extent.EMPTY;
+        boolean truncated = false;
+        if (read.stats().basis().resultsCounted() > 0) {
+            // newest first; the extra row beyond the cap only proves the scope was truncated
+            List<TeamStatsCalculator.ResultFact> newestFirst = new ArrayList<>(factsRepository
+                    .heldResultFacts(clubId, scope.seasonId(), scope.leagueId(), teamId, comp, scope.sectionRestricted(),
+                            sectionTeams, hubOnly, DashboardLimits.HISTORY_READ)
+                    .stream()
+                    .map(TeamStatsFactsReader::heldResult)
+                    .toList());
+            truncated = newestFirst.size() > DashboardLimits.HISTORY_CAP;
+            if (truncated) {
+                newestFirst = new ArrayList<>(newestFirst.subList(0, DashboardLimits.HISTORY_CAP));
+            }
+            Collections.reverse(newestFirst);
+            results = newestFirst;
+            contribution = factsRepository
+                    .heldContribution(clubId, scope.seasonId(), scope.leagueId(), teamId, comp, scope.sectionRestricted(),
+                            sectionTeams, hubOnly)
+                    .stream()
+                    .map(TeamStatsFactsReader::heldContribution)
+                    .toList();
+            extent = TeamStatsFactsReader.heldExtent(factsRepository.heldExtent(
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, comp, scope.sectionRestricted(), sectionTeams, hubOnly));
+        }
+        log.debug("Held team history for club {} team {}: {} results covered, truncated {}", clubId, teamId,
+                results.size(), truncated);
+        return new HeldTeamHistory(read.stats(), read.counters(), truncated, results, contribution, extent);
+    }
+
+    /** The team page with the counters it was built from. */
+    private record TeamRead(TeamStatsDto stats, TeamStatsCounters counters) {
+    }
+
+    /** The team page for an already resolved scope; the Hub flag of the scope decides which results count. */
+    private TeamRead readTeam(UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScopeResolver.Resolved resolved) {
         StatsScope scope = resolved.scope();
         Team team = teamRepository
                 .findById(teamId)
@@ -187,11 +247,12 @@ public class TeamStatsServiceImpl implements TeamStatsService {
         List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
         if (!resolved.nothingInReach()) {
             List<TeamStatsAggregateView> rows = aggregateRepository.aggregate(
-                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams);
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams,
+                    scope.playerVisibleOnly());
             counters = rows.isEmpty()
                     ? TeamStatsCountersReader.empty(n(aggregateRepository
                             .basis(clubId, scope.seasonId(), scope.leagueId(), teamId, competition,
-                                    scope.sectionRestricted(), sectionTeams)
+                                    scope.sectionRestricted(), sectionTeams, scope.playerVisibleOnly())
                             .getResultsNoBallBowled()))
                     : TeamStatsCountersReader.toCounters(rows.get(0));
         }
@@ -201,7 +262,8 @@ public class TeamStatsServiceImpl implements TeamStatsService {
         Map<String, MatchRef> refs = Map.of();
         if (figures.basis().resultsCounted() > 0) {
             form = TeamStatsFactsReader.form(factsRepository.form(
-                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams));
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams,
+                    scope.playerVisibleOnly()));
             TeamStatsCounters.Keys keys = counters.keys();
             if (keys.highTotal() != null
                     || keys.lowTotal() != null
@@ -216,6 +278,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                         competition,
                         scope.sectionRestricted(),
                         sectionTeams,
+                        scope.playerVisibleOnly(),
                         keys.highTotal(),
                         keys.lowTotal(),
                         keys.chase(),
@@ -226,7 +289,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
         log.debug("Team statistics page read for club {} team {}: {} counted results", clubId, teamId,
                 figures.basis().resultsCounted());
 
-        return new TeamStatsDto(
+        TeamStatsDto page = new TeamStatsDto(
                 team.getId(),
                 team.getName(),
                 team.getSectionId(),
@@ -246,6 +309,7 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                 mapper.toExtras(figures.extras()),
                 mapper.toNetRunRate(figures.netRunRate()),
                 mapper.toNotCaptured(figures.notCaptured()));
+        return new TeamRead(page, counters);
     }
 
     @Override
@@ -264,7 +328,8 @@ public class TeamStatsServiceImpl implements TeamStatsService {
                     teamId,
                     null,
                     scope.sectionRestricted(),
-                    StatsScopeResolver.sectionTeamParameter(scope)));
+                    StatsScopeResolver.sectionTeamParameter(scope),
+                    scope.playerVisibleOnly()));
         }
         return new TeamStatsFilterOptionsDto(
                 lists.seasonIds(), lists.leagueIds(), lists.sectionIds(), lists.competitions());

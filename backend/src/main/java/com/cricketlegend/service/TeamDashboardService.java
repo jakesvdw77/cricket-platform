@@ -1,6 +1,7 @@
 package com.cricketlegend.service;
 
 import com.cricketlegend.dto.TeamDashboardDto;
+import com.cricketlegend.service.support.StatsScope;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -17,4 +18,12 @@ public interface TeamDashboardService {
      */
     TeamDashboardDto get(
             Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, String competition);
+
+    /**
+     * docs/specs/147: the same series for the Player Hub scope (only published results a manager switched on for the Player
+     * Hub; no section reach, the caller was authorised by {@code MyPlayerAccess}). An unknown or other-club team, season or
+     * league is a {@code NotFoundException}.
+     */
+    TeamDashboardDto getForHeldPlayer(
+            UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScope.Competition competition);
 }

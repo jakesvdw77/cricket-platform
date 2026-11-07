@@ -79,6 +79,25 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
     List<PlayerPollFactView> findPollFactsForPlayer(
             @Param("clubId") UUID clubId, @Param("playerProfileId") UUID playerProfileId);
 
+    /**
+     * docs/specs/147 Team stats "Squad": for each closed poll of this team among these matches, how many players answered
+     * with {@code status} (pass AVAILABLE). One statement; the matches come from the team's counted, flagged results.
+     */
+    @Query("SELECT p.matchId AS matchId, (SELECT COUNT(a) FROM PlayerAvailability a WHERE a.pollId = p.id "
+            + "AND a.status = :status) AS answered FROM MatchAvailabilityPoll p "
+            + "WHERE p.teamId = :teamId AND p.open = false AND p.matchId IN :matchIds")
+    List<TeamPollAnswerCountView> countAnswersForTeamPolls(
+            @Param("teamId") UUID teamId,
+            @Param("matchIds") Collection<UUID> matchIds,
+            @Param("status") com.cricketlegend.domain.AvailabilityStatus status);
+
+    /** One closed poll of a team and how many players gave the asked answer. */
+    interface TeamPollAnswerCountView {
+        UUID getMatchId();
+
+        Long getAnswered();
+    }
+
     /** One poll the player was asked and the answer given (null when none). */
     interface PlayerPollFactView {
         UUID getMatchId();

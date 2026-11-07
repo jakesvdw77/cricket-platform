@@ -2,7 +2,9 @@ package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.MyStatsDto;
 import com.cricketlegend.dto.MyStatsInningsPageDto;
+import com.cricketlegend.dto.MyTeamStatsDto;
 import com.cricketlegend.service.MyStatsService;
+import com.cricketlegend.service.MyTeamStatsService;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 class MePlayerStatsController {
 
     private final MyStatsService myStatsService;
+    private final MyTeamStatsService myTeamStatsService;
 
-    MePlayerStatsController(MyStatsService myStatsService) {
+    MePlayerStatsController(MyStatsService myStatsService, MyTeamStatsService myTeamStatsService) {
         this.myStatsService = myStatsService;
+        this.myTeamStatsService = myTeamStatsService;
     }
 
     /** The one payload of the My stats page for the Season, League, Team and Competition filters (all optional). */
@@ -53,5 +57,20 @@ class MePlayerStatsController {
             @RequestParam(required = false) Integer size) {
         return myStatsService.innings(
                 authentication, playerKey, kind, filter, seasonId, leagueId, teamId, competition, page, size);
+    }
+
+    /**
+     * The one payload of the Team stats page for one of the player's teams. {@code teamId} is required (400) and must be a
+     * team the player has flagged results for (any other team is a 404). There is no {@code sectionId}.
+     */
+    @GetMapping("/{playerKey}/team-stats")
+    MyTeamStatsDto teamStats(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) String competition) {
+        return myTeamStatsService.get(authentication, playerKey, teamId, seasonId, leagueId, competition);
     }
 }

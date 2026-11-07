@@ -5,7 +5,12 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -459,6 +464,428 @@ public final class TeamStatsCalculator {
             }
         }
         return new ExtrasPoint(itemised, !itemised && effective != null ? effective : null, effective);
+    }
+
+    // ---- docs/specs/147 slice 3: the Player Hub Team stats figures ----
+
+    /**
+     * A close game (spec 147, Open question 9, owner may correct): a regular win or loss decided by fewer than this many
+     * runs ...
+     */
+    public static final int CLOSE_RUNS = 20;
+
+    /** ... or by fewer than this many wickets (a one-wicket finish). A tie is not decided, so it is never close. */
+    public static final int CLOSE_WICKETS = 2;
+
+    /** How many named contributors the contribution card lists before the rest fold into Others. */
+    public static final int TOP_CONTRIBUTORS = 5;
+
+    /** The kinds of {@link ContributionFact}. */
+    public static final String RUNS = "RUNS";
+
+    public static final String WICKETS = "WICKETS";
+
+    private static final String FORFEIT = "FORFEIT";
+    private static final String UNNAMED_PLAYER = "Unnamed Player";
+
+    /**
+     * One counted team result as stored: the opponent as recorded, the outcome and stored margin, the toss winner and the
+     * side that batted first ({@code HOME} or {@code AWAY}, null when not recorded; always null for a forfeit). {@code side}
+     * is the team's side. Pure data; every reading of it is below.
+     */
+    public record ResultFact(
+            UUID matchId,
+            Instant matchDate,
+            String opponentName,
+            String outcome,
+            String winningSide,
+            String side,
+            String decidedBy,
+            String marginType,
+            Long marginValue,
+            String tossWonBy,
+            String firstBattingSide) {
+
+        boolean forfeit() {
+            return FORFEIT.equals(outcome);
+        }
+
+        FormLine line() {
+            return formLine(outcome, winningSide, side);
+        }
+    }
+
+    /** {@code played} results of this kind and the {@code won} among them (a tie or draw is played, not won). */
+    public record Split(long played, long won) {
+    }
+
+    /**
+     * Batting first v chasing: {@code recorded} of {@code counted} (non-forfeit) results recorded which side batted first;
+     * only those are in the two splits.
+     */
+    public record BattingOrder(Split battingFirst, Split chasing, long recorded, long counted) {
+    }
+
+    /** {@code won} the toss in {@code known} results that recorded it, of {@code counted} non-forfeit results. */
+    public record Toss(long won, long known, long counted) {
+    }
+
+    /** One meeting with an opponent, for the head-to-head list (oldest first). */
+    public record HeadToHeadResult(UUID matchId, Instant matchDate, FormResult result, boolean forfeit) {
+    }
+
+    /** One opponent name as recorded (null: none recorded) and every counted result against it, oldest first. */
+    public record HeadToHead(
+            String opponentName,
+            long played,
+            long won,
+            long lost,
+            long tied,
+            long drawn,
+            long noResult,
+            List<HeadToHeadResult> results) {
+    }
+
+    /**
+     * Close games: {@code played} and {@code won} among the regular decided results whose stored margin is below {@code
+     * closeRuns} runs or {@code closeWickets} wickets. {@code decided} are the counted non-forfeit WON-outcome results and
+     * {@code withMargin} those of them that stored a margin (a result without one cannot be classified).
+     */
+    public record CloseGames(long played, long won, int closeRuns, int closeWickets, long decided, long withMargin) {
+    }
+
+    /**
+     * One of the squad figures: {@code playersUsed} distinct registered players in the counted results' teams (a
+     * substitute does not count), {@code guestAppearances} guest or unconfirmed rows, and the average number of players who
+     * answered "available" per closed availability poll of those matches (null without a poll), over {@code matchesWithPoll}
+     * of {@code counted} non-forfeit results.
+     */
+    public record Squad(
+            long playersUsed, long guestAppearances, BigDecimal averageAvailable, long matchesWithPoll, long counted) {
+    }
+
+    /** The additive per-player sums of the contribution query ({@code kind} is {@link #RUNS} or {@link #WICKETS}); a null {@code profileId} is a guest. */
+    public record ContributionFact(String kind, UUID profileId, String name, long value) {
+    }
+
+    /** How a line of a contribution card reads. */
+    public enum ShareKind {
+        PLAYER,
+        GUESTS,
+        OTHERS,
+        EXTRAS,
+        NOT_ATTRIBUTED
+    }
+
+    /** One line of a contribution card; {@code sharePercent} is {@code value} of the block total, 1 decimal, null without a total. */
+    public record ShareLine(ShareKind kind, String label, long value, BigDecimal sharePercent) {
+    }
+
+    /**
+     * Where the runs (or wickets) come from: the {@code total} of the usable innings, its lines (top contributors, Others,
+     * Extras, then whatever the scorecards do not attribute), and the coverage ({@code inningsWithCard} of {@code
+     * inningsCounted} usable innings had the batting or bowling card).
+     */
+    public record ShareBlock(Long total, List<ShareLine> lines, long inningsWithCard, long inningsCounted) {
+    }
+
+    /** Additive counters of {@code TeamStatsSql#HELD_EXTENT}; see that query for what each counts. */
+    public record Extent(
+            long ownUsable,
+            long ownWithCard,
+            long oppUsable,
+            long oppWithCard,
+            TeamStatsCounters.Extras ownExtras,
+            long ownUsableExtrasInnings,
+            long ownUsableExtras,
+            long ownUsableExtrasRuns,
+            long oppUsableExtrasInnings,
+            long oppUsableExtras,
+            long oppUsableExtrasRuns,
+            long playersUsed,
+            long guestRows) {
+
+        public static final Extent EMPTY = new Extent(
+                0,
+                0,
+                0,
+                0,
+                new TeamStatsCounters.Extras(
+                        new TeamStatsCounters.Component(0, 0),
+                        new TeamStatsCounters.Component(0, 0),
+                        new TeamStatsCounters.Component(0, 0),
+                        new TeamStatsCounters.Component(0, 0),
+                        new TeamStatsCounters.Component(0, 0),
+                        new TeamStatsCounters.Component(0, 0)),
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0);
+    }
+
+    /**
+     * Extras on one side of the Extras card. {@code total} is the stored total (null: none recorded); {@code sharePercent}
+     * is those extras over the runs of the same innings (1 decimal, null without them): of the runs conceded for {@code
+     * gaveAway}, of the team's runs for {@code received}. Each component has its own coverage; {@code inningsWithExtras} of
+     * {@code inningsCounted} innings recorded a total.
+     */
+    public record ExtrasSide(
+            Long total,
+            BigDecimal sharePercent,
+            ExtrasFigure wides,
+            ExtrasFigure noBalls,
+            ExtrasFigure byes,
+            ExtrasFigure legByes,
+            ExtrasFigure penaltyRuns,
+            long inningsWithExtras,
+            long inningsCounted) {
+    }
+
+    /** The Extras card: what the team gave away and received. {@code partly}: some innings did not itemise wides, no-balls, byes and leg byes. */
+    public record ExtrasCard(ExtrasSide gaveAway, ExtrasSide received, boolean partly) {
+    }
+
+    private static List<ResultFact> played(List<ResultFact> results) {
+        return results.stream().filter(r -> !r.forfeit()).toList();
+    }
+
+    /** Batting first v chasing from the stored first-innings side (spec 147); a forfeit and a result with no order recorded are left out. */
+    public static BattingOrder battingOrder(List<ResultFact> results) {
+        long firstPlayed = 0;
+        long firstWon = 0;
+        long chasePlayed = 0;
+        long chaseWon = 0;
+        long recorded = 0;
+        List<ResultFact> counted = played(results);
+        for (ResultFact r : counted) {
+            if (r.firstBattingSide() == null) {
+                continue;
+            }
+            recorded++;
+            boolean won = r.line().result() == FormResult.WON;
+            if (r.firstBattingSide().equals(r.side())) {
+                firstPlayed++;
+                firstWon += won ? 1 : 0;
+            } else {
+                chasePlayed++;
+                chaseWon += won ? 1 : 0;
+            }
+        }
+        return new BattingOrder(new Split(firstPlayed, firstWon), new Split(chasePlayed, chaseWon), recorded, counted.size());
+    }
+
+    /** The toss: won of the results that recorded it. */
+    public static Toss toss(List<ResultFact> results) {
+        long won = 0;
+        long known = 0;
+        List<ResultFact> counted = played(results);
+        for (ResultFact r : counted) {
+            if (r.tossWonBy() == null) {
+                continue;
+            }
+            known++;
+            won += r.tossWonBy().equals(r.side()) ? 1 : 0;
+        }
+        return new Toss(won, known, counted.size());
+    }
+
+    /**
+     * Head to head per opponent name as recorded (trimmed, otherwise exact; a blank name is none recorded). Results are in
+     * date order within an opponent; opponents are ordered by results played (most first), then by name.
+     */
+    public static List<HeadToHead> headToHead(List<ResultFact> results) {
+        Map<String, List<ResultFact>> byOpponent = new LinkedHashMap<>();
+        List<ResultFact> ordered = new ArrayList<>(results);
+        ordered.sort(Comparator.comparing(ResultFact::matchDate).thenComparing(ResultFact::matchId));
+        for (ResultFact r : ordered) {
+            String name = r.opponentName() == null || r.opponentName().isBlank() ? null : r.opponentName().trim();
+            byOpponent.computeIfAbsent(name, k -> new ArrayList<>()).add(r);
+        }
+        List<HeadToHead> out = new ArrayList<>();
+        byOpponent.forEach((name, list) -> {
+            long won = 0;
+            long lost = 0;
+            long tied = 0;
+            long drawn = 0;
+            long none = 0;
+            List<HeadToHeadResult> rows = new ArrayList<>();
+            for (ResultFact r : list) {
+                FormLine line = r.line();
+                switch (line.result()) {
+                    case WON -> won++;
+                    case LOST -> lost++;
+                    case TIED -> tied++;
+                    case DRAWN -> drawn++;
+                    case NO_RESULT -> none++;
+                }
+                rows.add(new HeadToHeadResult(r.matchId(), r.matchDate(), line.result(), line.forfeit()));
+            }
+            out.add(new HeadToHead(name, list.size(), won, lost, tied, drawn, none, rows));
+        });
+        out.sort(Comparator.comparingLong(HeadToHead::played)
+                .reversed()
+                .thenComparing(h -> h.opponentName() == null ? "￿" : h.opponentName().toLowerCase(Locale.ROOT)));
+        return out;
+    }
+
+    /** Close games (spec 147): regular decided results with a stored margin under {@link #CLOSE_RUNS} runs or {@link #CLOSE_WICKETS} wickets. */
+    public static CloseGames closeGames(List<ResultFact> results) {
+        long decided = 0;
+        long withMargin = 0;
+        long close = 0;
+        long won = 0;
+        for (ResultFact r : played(results)) {
+            if (!"WON".equals(r.outcome())) {
+                continue;
+            }
+            decided++;
+            if (r.marginType() == null || r.marginValue() == null || !"REGULAR".equals(r.decidedBy())) {
+                continue;
+            }
+            withMargin++;
+            boolean isClose = ("RUNS".equals(r.marginType()) && r.marginValue() < CLOSE_RUNS)
+                    || ("WICKETS".equals(r.marginType()) && r.marginValue() < CLOSE_WICKETS);
+            if (isClose) {
+                close++;
+                won += r.line().result() == FormResult.WON ? 1 : 0;
+            }
+        }
+        return new CloseGames(close, won, CLOSE_RUNS, CLOSE_WICKETS, decided, withMargin);
+    }
+
+    /**
+     * The squad figures (spec 147): {@code availableCounts} holds, for each closed availability poll of the counted
+     * matches, how many players answered "available". The average is to 1 decimal, null without a poll.
+     */
+    public static Squad squad(Extent extent, Collection<Long> availableCounts, long countedResults) {
+        long sum = 0;
+        for (Long n : availableCounts) {
+            sum += n == null ? 0L : n;
+        }
+        return new Squad(
+                extent.playersUsed(),
+                extent.guestRows(),
+                ratio(sum, availableCounts.size(), 1),
+                availableCounts.size(),
+                countedResults);
+    }
+
+    private record Contributor(ShareKind kind, String label, long value) {
+    }
+
+    /**
+     * Where the runs come from (spec 147): the top {@link #TOP_CONTRIBUTORS} batters by runs (guests grouped as one
+     * "Guests" entry that ranks with them; ties by name), the rest as Others, the extras our batters received (when
+     * recorded), and last whatever the scorecards do not attribute so the lines add up to the {@code teamRuns} total. A
+     * line of no runs is left out. A null {@code teamRuns} (no usable innings) gives no lines.
+     */
+    public static ShareBlock runsContribution(List<ContributionFact> facts, Extent extent, Long teamRuns) {
+        List<ShareLine> lines = contributionLines(facts, RUNS, teamRuns, extent.ownUsableExtrasInnings() > 0
+                ? extent.ownUsableExtras()
+                : null, "Not Attributed");
+        return new ShareBlock(teamRuns, lines, extent.ownWithCard(), extent.ownUsable());
+    }
+
+    /**
+     * Where the wickets come from: the same shape for bowlers' stored wickets, with no Extras line; wickets no bowler is
+     * credited with (run-outs and the like) are the last "Not By A Bowler" line.
+     */
+    public static ShareBlock wicketsContribution(List<ContributionFact> facts, Extent extent, Long teamWickets) {
+        return new ShareBlock(
+                teamWickets,
+                contributionLines(facts, WICKETS, teamWickets, null, "Not By A Bowler"),
+                extent.oppWithCard(),
+                extent.oppUsable());
+    }
+
+    private static List<ShareLine> contributionLines(
+            List<ContributionFact> facts, String kind, Long total, Long extras, String notAttributedLabel) {
+        if (total == null) {
+            return List.of();
+        }
+        long guests = 0;
+        List<Contributor> pool = new ArrayList<>();
+        for (ContributionFact f : facts) {
+            if (!kind.equals(f.kind()) || f.value() <= 0) {
+                continue;
+            }
+            if (f.profileId() == null) {
+                guests += f.value();
+            } else {
+                String label = f.name() == null || f.name().isBlank() ? UNNAMED_PLAYER : f.name();
+                pool.add(new Contributor(ShareKind.PLAYER, label, f.value()));
+            }
+        }
+        if (guests > 0) {
+            pool.add(new Contributor(ShareKind.GUESTS, "Guests", guests));
+        }
+        pool.sort(Comparator.comparingLong(Contributor::value)
+                .reversed()
+                .thenComparing(c -> c.label().toLowerCase(Locale.ROOT)));
+        List<ShareLine> lines = new ArrayList<>();
+        long attributed = 0;
+        for (int i = 0; i < Math.min(TOP_CONTRIBUTORS, pool.size()); i++) {
+            Contributor c = pool.get(i);
+            lines.add(line(c.kind(), c.label(), c.value(), total));
+            attributed += c.value();
+        }
+        if (pool.size() > TOP_CONTRIBUTORS) {
+            long others = pool.subList(TOP_CONTRIBUTORS, pool.size()).stream().mapToLong(Contributor::value).sum();
+            lines.add(line(ShareKind.OTHERS, "Others", others, total));
+            attributed += others;
+        }
+        if (extras != null) {
+            lines.add(line(ShareKind.EXTRAS, "Extras", extras, total));
+            attributed += extras;
+        }
+        if (total - attributed > 0) {
+            lines.add(line(ShareKind.NOT_ATTRIBUTED, notAttributedLabel, total - attributed, total));
+        }
+        return lines;
+    }
+
+    private static ShareLine line(ShareKind kind, String label, long value, long total) {
+        return new ShareLine(kind, label, value, ratio(value * 100, total, 1));
+    }
+
+    /**
+     * The Extras card (spec 147): what the team gave away (the opposition innings' extras, the figures of {@link #extras})
+     * and what its batters received (the team's own innings), each with its share of the runs of the innings that recorded an
+     * extras total and its components with their own coverage.
+     */
+    public static ExtrasCard extrasCard(TeamStatsCounters c, Extent e) {
+        long oppCounted = c.opposition().innings();
+        long ownCounted = c.own().innings();
+        ExtrasSide gaveAway = extrasSide(c.extras(), oppCounted, e.oppUsableExtras(), e.oppUsableExtrasRuns());
+        ExtrasSide received = extrasSide(e.ownExtras(), ownCounted, e.ownUsableExtras(), e.ownUsableExtrasRuns());
+        boolean partly = itemisedPartly(gaveAway) || itemisedPartly(received);
+        return new ExtrasCard(gaveAway, received, partly);
+    }
+
+    private static ExtrasSide extrasSide(TeamStatsCounters.Extras x, long counted, long shareExtras, long shareRuns) {
+        return new ExtrasSide(
+                x.total().innings() > 0 ? x.total().sum() : null,
+                ratio(shareExtras * 100, shareRuns, 1),
+                figure(x.wides(), counted),
+                figure(x.noBalls(), counted),
+                figure(x.byes(), counted),
+                figure(x.legByes(), counted),
+                figure(x.penalty(), counted),
+                x.total().innings(),
+                counted);
+    }
+
+    private static boolean itemisedPartly(ExtrasSide s) {
+        for (ExtrasFigure f : List.of(s.wides(), s.noBalls(), s.byes(), s.legByes())) {
+            if (f.inningsRecorded() < f.inningsCounted()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ---- division ----

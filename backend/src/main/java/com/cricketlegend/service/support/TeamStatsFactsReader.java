@@ -1,5 +1,8 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldContributionView;
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldExtentView;
+import com.cricketlegend.repository.TeamStatsFactsRepository.HeldResultFactView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.MatchReferenceView;
 import com.cricketlegend.repository.TeamStatsFactsRepository.TeamFormView;
 import java.time.Instant;
@@ -64,5 +67,57 @@ public final class TeamStatsFactsReader {
             byKind.putIfAbsent(row.getKind(), new MatchRef(row.getMatchId(), row.getOpponentName()));
         }
         return byKind;
+    }
+
+    // ---- docs/specs/147: the Player Hub Team stats facts (values copied; every reading is TeamStatsCalculator's) ----
+
+    public static TeamStatsCalculator.ResultFact heldResult(HeldResultFactView v) {
+        return new TeamStatsCalculator.ResultFact(
+                v.getMatchId(),
+                Instant.ofEpochMilli(v.getMatchEpochMillis()),
+                v.getOpponentName(),
+                v.getOutcome(),
+                v.getWinningSide(),
+                v.getSide(),
+                v.getDecidedBy(),
+                v.getMarginType(),
+                v.getMarginValue() == null ? null : v.getMarginValue().longValue(),
+                v.getTossWonBy(),
+                v.getFirstBattingSide());
+    }
+
+    public static TeamStatsCalculator.ContributionFact heldContribution(HeldContributionView v) {
+        return new TeamStatsCalculator.ContributionFact(
+                v.getKind(), v.getProfileId(), v.getPlayerName(), v.getValue() == null ? 0L : v.getValue());
+    }
+
+    public static TeamStatsCalculator.Extent heldExtent(HeldExtentView v) {
+        if (v == null) {
+            return TeamStatsCalculator.Extent.EMPTY;
+        }
+        return new TeamStatsCalculator.Extent(
+                n(v.getOwnUsable()),
+                n(v.getOwnWithCard()),
+                n(v.getOppUsable()),
+                n(v.getOppWithCard()),
+                new TeamStatsCounters.Extras(
+                        new TeamStatsCounters.Component(n(v.getOwnExtrasInnings()), n(v.getOwnExtras())),
+                        new TeamStatsCounters.Component(n(v.getOwnWidesInnings()), n(v.getOwnWides())),
+                        new TeamStatsCounters.Component(n(v.getOwnNoBallsInnings()), n(v.getOwnNoBalls())),
+                        new TeamStatsCounters.Component(n(v.getOwnByesInnings()), n(v.getOwnByes())),
+                        new TeamStatsCounters.Component(n(v.getOwnLegByesInnings()), n(v.getOwnLegByes())),
+                        new TeamStatsCounters.Component(n(v.getOwnPenaltyInnings()), n(v.getOwnPenaltyRuns()))),
+                n(v.getOwnUsableExtrasInnings()),
+                n(v.getOwnUsableExtras()),
+                n(v.getOwnUsableExtrasRuns()),
+                n(v.getOppUsableExtrasInnings()),
+                n(v.getOppUsableExtras()),
+                n(v.getOppUsableExtrasRuns()),
+                n(v.getPlayersUsed()),
+                n(v.getGuestRows()));
+    }
+
+    private static long n(Long value) {
+        return value == null ? 0L : value;
     }
 }
