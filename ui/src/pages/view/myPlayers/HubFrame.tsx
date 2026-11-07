@@ -42,9 +42,11 @@ export interface HubFrameProps {
   hideContent?: boolean
   // A strip pinned to the top of the scrolling content (the phone's pill row), bleeding to the content edges.
   stickyTop?: ReactNode
+  // Stats pages: a tight content area (16 px 20 px from md) so the first row of cards is on screen without scrolling.
+  dense?: boolean
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', glass = 1, fill = false, hideContent = false, stickyTop }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', glass = 1, fill = false, hideContent = false, stickyTop, dense = false }: HubFrameProps) {
   const header = useHubHeaderState()
   const a = (v: number) => (v * glass).toFixed(3)
   const twoColumns = Boolean(menu) && !hideContent
@@ -70,12 +72,12 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         '&::-webkit-scrollbar': { display: 'none' },
         minHeight: 0,
         bgcolor: panel === 'solid' ? `rgba(5, 30, 22, ${a(fill ? 0.92 : 0.88)})` : 'transparent',
-        p: { xs: '16px 16px', md: '36px 40px' },
+        p: { xs: '16px 16px', md: dense ? '16px 20px' : '36px 40px' },
         minWidth: 0,
       }}
     >
       {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 2, mx: -2, mt: -2, mb: 2, bgcolor: HUB_GROUND }}>{stickyTop}</Box>}
-      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
+      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: dense ? 2 : 3.25 } }}>{children}</Box>
     </Box>
   )
 

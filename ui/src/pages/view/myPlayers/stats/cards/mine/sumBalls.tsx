@@ -13,6 +13,8 @@ export const mineSumBalls: StatsCardDef<MyStatsDto> = {
   tag: 'PARTLY',
   needs: ['summary', 'batting', 'basis'],
   order: 50,
+  // Summary tile: a compact (10 rem) card, three to a row.
+  size: 'compact',
   whenMissing: 'notCaptured',
   emptyText: 'No innings yet.',
   missingText: 'Balls faced are not recorded for these results.',
@@ -24,11 +26,8 @@ export const mineSumBalls: StatsCardDef<MyStatsDto> = {
   },
   partialNote: (p) => `Balls faced are recorded in ${p.batting.coverage.inningsWithBalls} of ${p.batting.coverage.inningsCounted} innings.`,
   summary: (p, ctx) => `${ctx.firstName} has faced ${p.summary.ballsFaced ?? 'an unrecorded number of'} balls.`,
-  Front: ({ payload: p, ctx }) => (
-    <>
-      <Big value={p.summary.ballsFaced === null ? '–' : String(p.summary.ballsFaced)} caption={p.summary.ballsFaced === null ? 'not recorded' : 'balls faced'} />
-      <Note>The balls {ctx.firstName} has faced where the manager recorded them. Flip for the strike rate and boundaries.</Note>
-    </>
+  Front: ({ payload: p }) => (
+    <Big compact value={p.summary.ballsFaced === null ? '–' : String(p.summary.ballsFaced)} caption={p.summary.ballsFaced === null ? 'not recorded' : 'balls faced'} />
   ),
   Back: ({ payload: p }) => {
     const { batting } = p

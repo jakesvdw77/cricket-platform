@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef } from 'react'
+import type { MouseEvent } from 'react'
 import type { ReactNode } from 'react'
 import { Box, IconButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
 import { STATS_TONES } from '../../brandTokens'
-import { FlipCard } from '../FlipCard'
+import { FlipCard, useFaceActive } from '../FlipCard'
 import { basedOnText } from './statsCardOrder'
-import { CARD_MIN_HEIGHT, STATS_UI, visuallyHiddenSx } from './statsCardStyle'
+import { STATS_TYPE, STATS_UI, cardScrollSx, visuallyHiddenSx } from './statsCardStyle'
 import type { CardState, DataTag, StatsBasis } from './statsCardTypes'
 
 // docs/specs/147 section 3: what every stats card has in common, so a card file draws only its two faces. The title row (the card's h3),
@@ -65,39 +66,77 @@ interface FaceProps {
 }
 
 function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded, reserve, children }: FaceProps) {
+  const active = useFaceActive()
+  const regionRef = useRef<HTMLDivElement>(null)
+  // The scroll position goes back to the top whenever this face stops or starts showing, so a flip never lands half way down a table.
+  useEffect(() => {
+    if (regionRef.current) regionRef.current.scrollTop = 0
+  }, [active])
+  // The scrolling region sits above the stretched flip button (so the wheel and touch reach it); a click on plain text in it still flips.
+  const flipFromRegion = (event: MouseEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('a, button')) return
+    event.currentTarget.closest('article')?.querySelector<HTMLButtonElement>('button[aria-pressed]')?.click()
+  }
+  const scrolls = !expanded
   return (
     <Box
       sx={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        gap: expanded ? 1.5 : 1,
+        gap: expanded ? 1.5 : '6px',
         minWidth: 0,
+        minHeight: 0,
         height: '100%',
-        p: expanded ? '28px 32px 20px' : '18px 18px 14px',
-        borderRadius: '22px',
+        p: expanded ? '24px 28px 16px' : '10px 12px 8px',
+        borderRadius: expanded ? '22px' : '14px',
         border: `1px solid ${lacking ? STATS_UI.lackingLine : STATS_UI.lineSoft}`,
         bgcolor: STATS_UI.faceGround,
         ...(lacking ? { backgroundImage: `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint})` } : {}),
         color: STATS_UI.cream,
         boxSizing: 'border-box',
+        overflow: expanded ? 'visible' : 'hidden',
+        // Drawings keep fixed pixel type; the expanded card only lets bars and charts be a little taller.
+        '--stats-row-scale': expanded ? '1.25' : '1',
+        '--stats-chart-scale': expanded ? '2' : '1',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, pr: reserve ? 5 : 0 }}>
-        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: expanded ? 28 : 20, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, pr: reserve ? (expanded ? 5 : 4) : 0 }}>
+        <Typography component={heading ? 'h3' : 'p'} sx={{ fontFamily: STATS_UI.display, fontSize: expanded ? STATS_TYPE.titleExpanded : STATS_TYPE.title, lineHeight: 1.2, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATS_UI.sand, m: 0, minWidth: 0 }}>
           {title}
         </Typography>
       </Box>
-      <Typography data-testid="stats-scope" sx={{ fontSize: expanded ? 15 : 13, color: STATS_UI.muted, m: 0 }}>{scopeLabel}</Typography>
-      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: expanded ? 'auto' : 'visible', display: 'grid', alignContent: 'start', gap: expanded ? 1.5 : 1 }}>{children}</Box>
-      {note && <Typography data-testid="stats-partial-note" sx={{ fontSize: 13, color: STATS_UI.partly, m: 0 }}>{note}</Typography>}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 20 }}>
+      <Typography data-testid="stats-scope" sx={{ fontSize: expanded ? STATS_TYPE.scopeExpanded : STATS_TYPE.scope, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{scopeLabel}</Typography>
+      <Box
+        ref={regionRef}
+        data-flip-interactive={scrolls ? '' : undefined}
+        role={scrolls && !heading ? 'region' : undefined}
+        aria-label={scrolls && !heading ? `${title}, details` : undefined}
+        tabIndex={scrolls && !heading ? (active ? 0 : -1) : undefined}
+        onClick={scrolls ? flipFromRegion : undefined}
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          display: 'grid',
+          alignContent: 'start',
+          gap: expanded ? 1.5 : '6px',
+          ...cardScrollSx,
+          '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: -2 },
+        }}
+      >
+        {children}
+      </Box>
+      {note && <Typography data-testid="stats-partial-note" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 14 }}>
         <Box sx={{ minWidth: 0, display: 'grid' }}>
-          <Typography data-testid="stats-basis" sx={{ fontSize: 12, color: STATS_UI.muted, m: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
-          {lacking && <Typography data-testid="stats-data-cue" sx={{ fontSize: 12, color: STATS_UI.partly, m: 0 }}>{DATA_MISSING_CUE}</Typography>}
+          <Typography data-testid="stats-basis" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.muted, m: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
+          {lacking && <Typography data-testid="stats-data-cue" sx={{ fontSize: STATS_TYPE.footer, lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{DATA_MISSING_CUE}</Typography>}
         </Box>
         {hint && (
-          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: 14, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.gold }}>
+          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: STATS_TYPE.hint, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.gold }}>
             {hint}
           </Typography>
         )}
@@ -108,11 +147,11 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
 
 const cornerButtonSx = {
   position: 'absolute',
-  top: 10,
-  right: 10,
+  top: 6,
+  right: 6,
   zIndex: 3,
-  width: 36,
-  height: 36,
+  width: 32,
+  height: 32,
   color: STATS_UI.sand,
   '&:hover': { bgcolor: STATS_UI.lineSoft },
   '&:focus-visible': { outline: `3px solid ${STATS_UI.gold}`, outlineOffset: 2 },
@@ -153,14 +192,14 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
   }, [expanded])
   if (state === 'missing' && whenMissing === 'hide') return null
 
-  const articleSx = { position: 'relative', minWidth: 0, height: '100%', minHeight: expanded ? 0 : CARD_MIN_HEIGHT } as const
+  const articleSx = { position: 'relative', minWidth: 0, height: '100%', minHeight: 0 } as const
 
   if (state === 'empty' || state === 'missing') {
     const text = state === 'empty' ? emptyText : missingText
     return (
       <Box component="article" data-testid={testId} data-state={state} data-tag={effectiveTag(tag, state)} aria-label={title} sx={articleSx}>
         <Face title={title} scopeLabel={scopeLabel} heading lacking expanded={false} reserve={false}>
-          <Typography data-testid="stats-state-text" sx={{ fontSize: 16, m: 0 }}>{text}</Typography>
+          <Typography data-testid="stats-state-text" sx={{ fontSize: 13, m: 0 }}>{text}</Typography>
         </Face>
       </Box>
     )
@@ -177,6 +216,7 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
         describedBy={summaryId}
         scopeKey={scopeKey}
         testId={`${testId}-flip-card`}
+        radius={expanded ? '22px' : '14px'}
         front={
           <Face title={title} scopeLabel={scopeLabel} heading hint="Flip" basis={basis} note={note} lacking={lacking} expanded={expanded} reserve={reserve}>
             {front}
@@ -190,12 +230,12 @@ export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeL
       />
       {expanded ? (
         <IconButton ref={closeRef} aria-label={`Close ${title}`} data-testid={`${testId}-close`} onClick={onClose} sx={cornerButtonSx}>
-          <CloseIcon fontSize="small" />
+          <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       ) : (
         onExpand && (
           <IconButton aria-label={`Expand ${title}`} data-testid={`${testId}-expand`} onClick={(event) => onExpand(event.currentTarget)} sx={cornerButtonSx}>
-            <OpenInFullIcon fontSize="small" />
+            <OpenInFullIcon sx={{ fontSize: 16 }} />
           </IconButton>
         )
       )}

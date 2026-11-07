@@ -3,11 +3,11 @@ import { HorizontalBars } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
-import { clip, formatDecimal, oversOrBalls, plural, whereText } from '../../statsFormat'
+import { formatDecimal, oversOrBalls, plural, whereText } from '../../statsFormat'
 
 // docs/specs/147 Amendment 2 item 6, mine.bowling-venues: wickets at each venue with the economy beside each (in the small line under the
 // venue name, with "Home" where it is a home venue). Back: the table. Source: bowlingVenues.
-const SHOWN = 8
+const SHOWN = 5
 
 export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
   id: 'mine.bowling-venues',
@@ -38,7 +38,7 @@ export const mineBowlingVenues: StatsCardDef<MyStatsDto> = {
       <>
         <HorizontalBars
           alt={`${ctx.firstName}'s wickets at each venue, with the economy: ${venues.map((venue) => `${venue.name}${venue.home === true ? ' (home)' : ''} ${venue.wickets} wickets, economy ${formatDecimal(venue.economy, 2)}`).join('; ')}.`}
-          rows={venues.map((venue) => ({ key: venue.venueKey, label: clip(venue.name), tag: tagOf(venue.home, venue.economy), value: venue.wickets, valueLabel: String(venue.wickets) }))}
+          rows={venues.map((venue) => ({ key: venue.venueKey, label: venue.name, tag: tagOf(venue.home, venue.economy), value: venue.wickets, valueLabel: String(venue.wickets) }))}
         />
         <Note>Wickets at each playing area, with the economy rate under the name. Flip for the table.</Note>
       </>

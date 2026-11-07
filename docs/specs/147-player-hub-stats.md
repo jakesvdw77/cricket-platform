@@ -331,3 +331,8 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 11. **No 'Not captured yet' panel in the UI.** The catalogue of figures the scorecard cannot yet provide is documented in `docs/specs/147-not-captured.md` instead (a doc, not a page element). `payload.notCaptured` stays in the API.
 12. **Order of work:** Player Stats is completed first; Team stats and Leaderboards changes follow. No tests until the owner says.
 
+### Amendment 2, density pass (owner, 2026-11-07: the page was "basically unusable", the first row of cards needed scrolling even on a 27 inch screen)
+
+- **Card height is fixed, in rem, with an inner scroll on the back.** This supersedes section 2's "no fixed pixel height" and section 4's "the card height is the taller face". A normal card is 15 rem, a tall row is two normal heights plus the gap, a compact card is 10 rem (`--stats-card-h` on each row). The front is designed to fit; the back scrolls inside the card (keyboard focusable region, resets on flip); the expanded overlay still lets faces grow. Below 600 px of content a card is at least that height and may grow.
+- **New card size `compact`** (`StatsCardDef.size`): a 10 rem tile, up to three to a row (`layoutRows` kind `compact`); the eight Summary cards use it, so the Summary is 3 + 3 + 2.
+- **Density:** type, padding and drawings scaled down about 35 to 40 percent (numbers in `docs/standards/design-system.md`, Player Hub stats); drawings keep fixed pixel type and never scale with the card width; the Season card is the headline, one tile row of six figures, a Home and Away line, the last five scores and a small trend; the missing-data tint is a 1 px line.

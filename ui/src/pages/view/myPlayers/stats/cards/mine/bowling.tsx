@@ -30,8 +30,9 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
   },
   partialNote: (p) => `Dot balls are recorded in ${p.bowling.coverage.inningsWithDots} of ${p.bowling.coverage.inningsCounted} innings.`,
   summary: (p, ctx) => `${ctx.firstName} has ${p.bowling.wickets} wickets, with an economy of ${formatDecimal(p.bowling.economy, 2)}.`,
-  Front: ({ payload: p }) => {
+  Front: ({ payload: p, ctx }) => {
     const best = p.bowling.best
+    const spells = p.series.bowlingMatches
     return (
       <>
         <Big value={String(p.bowling.wickets)} caption={`wickets · best ${best ? wicketsForRuns(best.wickets, best.runs) : '–'}`} />
@@ -42,18 +43,9 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
             { key: 'dots', label: 'Dots', value: formatPercent(p.bowling.dotBallPercentage, 0) },
           ]}
         />
-      </>
-    )
-  },
-  Back: ({ payload: p, ctx }) => {
-    const spells = p.series.bowlingMatches
-    const latest = [...spells].reverse().slice(0, SHOWN_ROWS)
-    return (
-      <>
-        <Cap>Wickets and economy, innings by innings</Cap>
         {spells.length > 0 && (
           <LineChart
-            alt={`${ctx.firstName}'s wickets in each of ${spells.length} innings bowled, with the economy of each. The table below has every value.`}
+            alt={`${ctx.firstName}'s wickets in each of ${spells.length} innings bowled, with the economy of each. The table on the back has every value.`}
             points={spells.map((spell, index) => ({
               key: `${spell.matchId}-${index}`,
               value: spell.wickets,
@@ -65,7 +57,16 @@ export const mineBowling: StatsCardDef<MyStatsDto> = {
             endLabel={dayText(spells[spells.length - 1].matchDate)}
           />
         )}
-        <Note>Dots are wickets in each innings bowled, the blue line is the economy. Tap a dot to open that match.</Note>
+        <Note>Dots are wickets per innings, the blue line the economy. Tap a dot to open the match.</Note>
+      </>
+    )
+  },
+  Back: ({ payload: p, ctx }) => {
+    const spells = p.series.bowlingMatches
+    const latest = [...spells].reverse().slice(0, SHOWN_ROWS)
+    return (
+      <>
+        <Cap>Wickets and economy, innings by innings</Cap>
         <FaceTable
           label="Wickets and economy by innings"
           heads={['Date and opponent', 'Overs', 'Runs', 'Wkts', 'Econ']}

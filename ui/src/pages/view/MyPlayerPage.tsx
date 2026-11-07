@@ -269,6 +269,7 @@ export default function MyPlayerPage() {
     <HubLeaveGuardProvider value={guard}>
     <HubFrame
       fill
+      dense={section.id === 'stats'}
       title={title}
       stickyTop={phone && parentOpen && !subView ? <HubPillStrip label={`${section.label} pages`} items={section.children ?? []} selectedId={pageItem?.id} onSelect={select} /> : undefined}
       menu={menu}

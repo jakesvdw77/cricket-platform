@@ -58,12 +58,7 @@ export const teamContribution: StatsCardDef<MyTeamStatsDto> = {
     }
     return (
       <>
-        <Cap>Wickets by bowler</Cap>
-        {wickets.lines.length > 0 ? (
-          <HorizontalBars rows={rowsOf(wickets)} max={wickets.total ?? undefined} alt={altOf('Wickets by bowler', wickets)} />
-        ) : (
-          <Note>No bowling cards yet.</Note>
-        )}
+        <Cap>Runs and wickets by player</Cap>
         <FaceTable
           label="Runs and wickets by player"
           heads={['Player', 'Runs', 'Wkts']}

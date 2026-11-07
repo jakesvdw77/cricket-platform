@@ -18,31 +18,23 @@ export interface ProgressBarsProps {
   alt: string
 }
 
-const W = 320
-const TRACK = 14
-const ROW = 46
-
-// docs/specs/147: progress towards the next round number. The bar shows value over target; the written sentence ("88 to go") is part of
-// the row, so the figure is never only a length. Our own SVG.
+// docs/specs/147: progress towards the next round number. The bar (8 px) shows value over target; the written sentence ("88 to go") is part
+// of the row, so the figure is never only a length. Plain HTML rows with fixed 12 px type, capped in width.
 export function ProgressBars({ rows, alt }: ProgressBarsProps) {
-  const fills = barLengths(rows.map((row) => progressFraction(row.value, row.target)), 1, W)
+  const fills = barLengths(rows.map((row) => progressFraction(row.value, row.target)), 1, 100)
   return (
-    <Box component="svg" viewBox={`0 0 ${W} ${Math.max(rows.length, 1) * ROW}`} role="img" aria-label={alt} data-testid="progress-bars" sx={{ width: '100%', height: 'auto', display: 'block' }}>
-      {rows.map((row, index) => {
-        const y = index * ROW
-        return (
-          <g key={row.key} data-testid="progress-row">
-            <text x={0} y={y + 14} fontSize="13" fill={alpha(BRAND.cream, 0.8)} aria-hidden>
-              {row.label}
-            </text>
-            <text x={W} y={y + 14} fontSize="13" fontWeight="700" textAnchor="end" fill={BRAND.cream} aria-hidden>
-              {row.text}
-            </text>
-            <rect x={0} y={y + 22} width={W} height={TRACK} rx={7} fill={alpha(BRAND.cream, 0.12)} />
-            {fills[index] > 0 && <rect x={0} y={y + 22} width={Math.max(fills[index], TRACK / 2)} height={TRACK} rx={7} fill={STATS_TONES.gold} />}
-          </g>
-        )
-      })}
+    <Box role="img" aria-label={alt} data-testid="progress-bars" sx={{ display: 'grid', gap: '8px', minWidth: 0, width: '100%', maxWidth: 'calc(520px * var(--stats-row-scale, 1))' }}>
+      {rows.map((row, index) => (
+        <Box key={row.key} data-testid="progress-row" sx={{ display: 'grid', gap: '3px', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, fontSize: 12, lineHeight: 1.2 }}>
+            <Box component="span" aria-hidden sx={{ color: alpha(BRAND.cream, 0.8), minWidth: 0 }}>{row.label}</Box>
+            <Box component="span" aria-hidden sx={{ color: BRAND.cream, fontWeight: 700, textAlign: 'right' }}>{row.text}</Box>
+          </Box>
+          <Box aria-hidden sx={{ height: 8, borderRadius: '4px', bgcolor: alpha(BRAND.cream, 0.12), overflow: 'hidden' }}>
+            {fills[index] > 0 && <Box sx={{ height: '100%', borderRadius: '4px', width: `${Math.max(fills[index], 3)}%`, bgcolor: STATS_TONES.gold }} />}
+          </Box>
+        </Box>
+      ))}
     </Box>
   )
 }

@@ -1,8 +1,7 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
-import { Donut } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { STATS_TONES } from '../../../../../../brandTokens'
-import { Big, Cap, FaceTable, Note } from '../../cardParts'
+import { BigBars, Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
 import { formatPercent } from '../../statsFormat'
 
@@ -16,6 +15,8 @@ export const mineSumWickets: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['bowling', 'series', 'basis'],
   order: 80,
+  // Summary tile: a compact (10 rem) card, three to a row.
+  size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No wickets yet.',
   basis: (p) => bowlingBasis(p),
@@ -25,26 +26,27 @@ export const mineSumWickets: StatsCardDef<MyStatsDto> = {
   },
   partialNote: (p) => `${p.series.wicketTypes.notItemised.count} of ${p.series.wicketTypes.total} wickets have no recorded dismissal type.`,
   summary: (p, ctx) => `${ctx.firstName} has taken ${p.bowling.wickets} ${p.bowling.wickets === 1 ? 'wicket' : 'wickets'}.`,
-  Front: ({ payload: p, ctx }) => (
-    <>
-      <Big value={String(p.bowling.wickets)} caption={p.bowling.wickets === 1 ? 'wicket taken' : 'wickets taken'} />
-      <Note>The wickets {ctx.firstName} has taken. Flip for how they came.</Note>
-    </>
-  ),
-  Back: ({ payload: p, ctx }) => {
-    const { types, notItemised, total } = p.series.wicketTypes
+  Front: ({ payload: p, ctx }) => {
+    const { types, notItemised } = p.series.wicketTypes
+    const rows = [
+      ...types.filter((type) => type.count > 0).map((type) => ({ key: type.type, label: type.label, value: type.count, valueLabel: String(type.count) })),
+      ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, valueLabel: String(notItemised.count), colour: STATS_TONES.sand }] : []),
+    ].sort((a, b) => b.value - a.value)
+    return (
+      <BigBars
+        value={String(p.bowling.wickets)}
+        caption={p.bowling.wickets === 1 ? 'wicket taken' : 'wickets taken'}
+        total={rows.length}
+        alt={`How ${ctx.firstName} takes wickets: ${rows.map((row) => `${row.label} ${row.value}`).join(', ')}.`}
+        rows={rows}
+      />
+    )
+  },
+  Back: ({ payload: p }) => {
+    const { types, notItemised } = p.series.wicketTypes
     return (
       <>
         <Cap>How the wickets came</Cap>
-        <Donut
-          alt={`How ${ctx.firstName} takes wickets: ${types.map((type) => `${type.label} ${type.count}`).join(', ')}${notItemised.count > 0 ? `, not itemised ${notItemised.count}` : ''}.`}
-          centre={String(total)}
-          centreCaption="wickets"
-          slices={[
-            ...types.map((type) => ({ key: type.type, label: type.label, value: type.count })),
-            ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, colour: STATS_TONES.sand }] : []),
-          ]}
-        />
         <FaceTable
           label="Wickets by type"
           heads={['Type', 'Wickets', 'Share']}

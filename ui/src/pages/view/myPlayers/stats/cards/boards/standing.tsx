@@ -57,17 +57,17 @@ export const boardsStanding: StatsCardDef<MyStanding> = {
       : `${ctx.firstName}'s place among the players in runs, average, wickets, economy and catches.`
   },
   Front: ({ payload: p }) => (
-    <Box component="ol" data-testid="standing-lines" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
+    <Box component="ol" data-testid="standing-lines" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: '4px' }}>
       {p.lines.map((line) => (
-        <Box component="li" key={line.key} data-testid={`standing-${line.key}`} sx={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-          <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: 34, lineHeight: 1, color: ranked(line) ? STATS_UI.gold : STATS_UI.muted }}>
+        <Box component="li" key={line.key} data-testid={`standing-${line.key}`} sx={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: 22, lineHeight: 1, color: ranked(line) ? STATS_UI.gold : STATS_UI.muted }}>
             {rankText(line)}
           </Typography>
           <Box sx={{ minWidth: 0, display: 'grid', gap: '1px' }}>
-            <Typography component="span" sx={{ fontSize: 15, fontWeight: 600, color: STATS_UI.cream }}>
+            <Typography component="span" sx={{ fontSize: 12, lineHeight: 1.2, fontWeight: 600, color: STATS_UI.cream }}>
               {line.label} · {valueText(line)}
             </Typography>
-            <Typography component="span" sx={{ fontSize: 13, color: STATS_UI.muted }}>
+            <Typography component="span" sx={{ fontSize: 10.5, lineHeight: 1.2, color: STATS_UI.muted }}>
               {ofText(line)}
               {standingSampleText(line.sample, line.key) ? ` · ${standingSampleText(line.sample, line.key)}` : ''}
             </Typography>

@@ -41,7 +41,7 @@ const TABS: { id: BoardTab; label: string }[] = [
 function Skeletons() {
   return (
     <Box sx={{ display: 'grid', gap: 1.75 }} aria-busy="true" data-testid="hub-boards-loading">
-      <Skeleton variant="rounded" height={290} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px', maxWidth: 560 }} />
+      <Skeleton variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px', maxWidth: 560 }} />
       <Skeleton variant="rounded" height={44} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.08) }} />
     </Box>
@@ -166,8 +166,8 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
             />
           </Box>
         )}
-        {standingQuery.isLoading && <Skeleton variant="rounded" height={200} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px', maxWidth: 560 }} />}
-        <HubPillStrip label="Leaderboard" items={TABS} selectedId={tab} onSelect={(item) => selectTab(item.id as BoardTab)} />
+        {standingQuery.isLoading && <Skeleton variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px', maxWidth: 560 }} />}
+        <HubPillStrip compact label="Leaderboard" items={TABS} selectedId={tab} onSelect={(item) => selectTab(item.id as BoardTab)} />
         {tab === 'awards' ? (
           <BoardAwards playerKey={playerKey} scope={scope} empty={empty} enabled={ready} />
         ) : (
@@ -179,7 +179,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
 
   return (
     <Box data-testid="hub-boards" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gap: 1, minWidth: 0 }}>
         {header}
         {body}
       </Box>

@@ -11,11 +11,11 @@ import { BRAND, blackAlpha } from '../../brandTokens'
 // never aria-hidden, display none or visibility hidden. Controls on the face that is not showing leave the tab order through
 // FaceActive (useFaceTabIndex) but their text stays readable. Flip state is local, never stored, and resets when `scopeKey` changes.
 // Motion: a 0.7 s rotation about the Y axis (transform only, backface-visibility hidden); under prefers-reduced-motion there is no
-// rotation, only a 150 ms cross-fade. The faces share one grid cell, so the card is as tall as its taller face; it also fills a taller parent (height 100%) so a row of cards can be even.
+// rotation, only a 150 ms cross-fade. The faces share one grid cell whose row is `minmax(0, 1fr)`: the card fills its parent (height 100%) and a face never makes it taller, so a parent with a fixed height gives a fixed-height card (a face scrolls its own content); in a parent with no height the card is as tall as its taller face.
 
 export const FLIP_MS = 700
 export const FADE_MS = 150
-const RADIUS = '22px'
+const DEFAULT_RADIUS = '22px'
 
 // True while the face that contains the reader is the one showing.
 const FaceActiveContext = createContext(true)
@@ -54,9 +54,11 @@ export interface FlipCardProps {
   // id of the element holding the card's one-sentence summary (aria-describedby of the button).
   describedBy?: string
   testId?: string
+  // The corner radius of the faces and of the flip button's focus ring; default 22px.
+  radius?: string
 }
 
-export function FlipCard({ label, front, back, flipped, defaultFlipped = false, onFlip, scopeKey = '', describedBy, testId = 'flip-card' }: FlipCardProps) {
+export function FlipCard({ label, front, back, flipped, defaultFlipped = false, onFlip, scopeKey = '', describedBy, testId = 'flip-card', radius = DEFAULT_RADIUS }: FlipCardProps) {
   const reduced = usePrefersReducedMotion()
   const [local, setLocal] = useState(defaultFlipped)
   const [seenScope, setSeenScope] = useState(scopeKey)
@@ -74,7 +76,8 @@ export function FlipCard({ label, front, back, flipped, defaultFlipped = false, 
   const face = (active: boolean, isBack: boolean): SxProps<Theme> => ({
     gridArea: '1 / 1',
     minWidth: 0,
-    borderRadius: RADIUS,
+    minHeight: 0,
+    borderRadius: radius,
     // The face is never removed from the tree; only what the eye and the pointer reach changes.
     pointerEvents: 'none',
     backfaceVisibility: 'hidden',
@@ -87,10 +90,11 @@ export function FlipCard({ label, front, back, flipped, defaultFlipped = false, 
   })
 
   return (
-    <Box data-testid={testId} data-flipped={showingBack ? 'true' : 'false'} sx={{ position: 'relative', minWidth: 0, height: '100%', perspective: '1400px', borderRadius: RADIUS }}>
+    <Box data-testid={testId} data-flipped={showingBack ? 'true' : 'false'} sx={{ position: 'relative', minWidth: 0, height: '100%', perspective: '1400px', borderRadius: radius }}>
       <Box
         sx={{
           display: 'grid',
+          gridTemplateRows: 'minmax(0, 1fr)',
           minWidth: 0,
           height: '100%',
           position: 'relative',
@@ -126,7 +130,7 @@ export function FlipCard({ label, front, back, flipped, defaultFlipped = false, 
           m: 0,
           p: 0,
           border: 0,
-          borderRadius: RADIUS,
+          borderRadius: radius,
           background: 'transparent',
           cursor: 'pointer',
           WebkitTapHighlightColor: alpha(BRAND.gold, 0.18),

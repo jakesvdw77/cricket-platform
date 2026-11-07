@@ -4,7 +4,9 @@ import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { STATS_TONES, blackAlpha } from '../../../../brandTokens'
 import { useFaceTabIndex } from '../../../../components/FlipCard'
-import { STATS_UI } from '../../../../components/StatsCards'
+import { STATS_TYPE, STATS_UI } from '../../../../components/StatsCards'
+import { HorizontalBars } from '../../../../components/StatsDrawings'
+import type { BarRow } from '../../../../components/StatsDrawings'
 
 // docs/specs/147: the small pieces the card faces are drawn from, so a card file holds only its content: the big figure, tiles (a tile
 // with a drill is a real link), a real table, chips, a note. Shared by every My stats card; none of them knows a payload. A link here sits
@@ -13,26 +15,44 @@ import { STATS_UI } from '../../../../components/StatsCards'
 const tileSx = {
   display: 'grid',
   alignContent: 'center',
-  gap: '2px',
+  gap: '1px',
   minWidth: 0,
-  minHeight: 56,
-  px: 1.25,
-  py: 0.75,
-  borderRadius: '8px',
+  minHeight: 40,
+  px: '8px',
+  py: '6px',
+  borderRadius: '6px',
   border: `1px solid ${STATS_UI.lineSoft}`,
   bgcolor: blackAlpha(0.3),
   color: STATS_UI.cream,
   textDecoration: 'none',
 } as const
 
-const captionSx = { fontFamily: STATS_UI.display, fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
+const captionSx = { fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, lineHeight: 1.25, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: STATS_UI.muted, m: 0 } as const
 
 // The headline figure: "412" over "runs in 7 innings".
-export function Big({ value, caption }: { value: string; caption: string }) {
+// `compact` is the Summary tile's larger figure (34 px), the normal one is 30 px.
+export function Big({ value, caption, compact = false }: { value: string; caption: string; compact?: boolean }) {
   return (
     <Box>
-      <Typography data-testid="stats-big" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: 54, lineHeight: 1, color: STATS_UI.gold, m: 0 }}>{value}</Typography>
+      <Typography data-testid="stats-big" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: compact ? STATS_TYPE.bigCompact : STATS_TYPE.big, lineHeight: 1, color: STATS_UI.gold, m: 0 }}>{value}</Typography>
       <Typography sx={captionSx}>{caption}</Typography>
+    </Box>
+  )
+}
+
+// The front of a Summary tile that has a breakdown: the big figure at the left and, to its right, up to three compact bars (the top items;
+// "+N more" under the figure when there are more). The back is then just the full table, so a chart is never shown twice.
+export const FRONT_BARS = 3
+
+export function BigBars({ value, caption, rows, alt, total }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number }) {
+  const more = total - Math.min(rows.length, FRONT_BARS)
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '14px', minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
+        <Big compact value={value} caption={caption} />
+        {more > 0 && <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>+{more} more</Typography>}
+      </Box>
+      {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} />}
     </Box>
   )
 }
@@ -47,14 +67,14 @@ export interface TileSpec {
   name?: string
 }
 
-export function Tiles({ items, min = 84 }: { items: TileSpec[]; min?: number }) {
+export function Tiles({ items, min = 64 }: { items: TileSpec[]; min?: number }) {
   const tabIndex = useFaceTabIndex()
   return (
-    <Box data-testid="stats-tiles" sx={{ display: 'grid', gap: 1, gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))` }}>
+    <Box data-testid="stats-tiles" sx={{ display: 'grid', gap: '6px', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))` }}>
       {items.map((item) => {
         const content = (
           <>
-            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: 22, lineHeight: 1.1, color: STATS_UI.cream }}>{item.value}</Typography>
+            <Typography component="span" sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: STATS_TYPE.tileValue, lineHeight: 1.1, color: STATS_UI.cream }}>{item.value}</Typography>
             <Typography component="span" sx={captionSx}>{item.label}</Typography>
           </>
         )
@@ -81,7 +101,7 @@ export function Tiles({ items, min = 84 }: { items: TileSpec[]; min?: number }) 
 }
 
 export function Note({ children }: { children: ReactNode }) {
-  return <Typography sx={{ fontSize: 14, lineHeight: 1.4, color: STATS_UI.muted, m: 0 }}>{children}</Typography>
+  return <Typography sx={{ fontSize: STATS_TYPE.body, lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>{children}</Typography>
 }
 
 // A small gold heading over a block ("Average of the last 5 innings").
@@ -105,9 +125,9 @@ const CHIP_TONE: Record<ChipTone, string> = { win: STATS_TONES.win, loss: STATS_
 export function Chips({ items }: { items: ChipSpec[] }) {
   const tabIndex = useFaceTabIndex()
   return (
-    <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+    <Box data-testid="stats-chips" sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
       {items.map((item) => {
-        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: 28, px: 1.25, borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', textDecoration: 'none' } as const
+        const sx = { display: 'inline-flex', alignItems: 'center', minHeight: 22, px: '8px', borderRadius: '999px', border: `1px solid ${CHIP_TONE[item.tone]}`, color: CHIP_TONE[item.tone], fontFamily: STATS_UI.display, fontSize: STATS_TYPE.chip, fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none' } as const
         return item.href ? (
           <Box key={item.key} component={RouterLink} to={item.href} tabIndex={tabIndex} aria-label={item.name ?? item.text} sx={{ ...sx, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
             {item.text}
@@ -130,8 +150,8 @@ export interface TableRowSpec {
   linkName?: string
 }
 
-const headCell = { color: STATS_UI.muted, borderColor: STATS_UI.lineSoft, px: 0.75, py: 0.5, fontFamily: STATS_UI.display, fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' } as const
-const bodyCell = { color: STATS_UI.cream, borderColor: STATS_UI.lineSoft, px: 0.75, py: 0.625, fontSize: 14 } as const
+const headCell = { color: STATS_UI.muted, borderColor: STATS_UI.lineSoft, px: '6px', py: '3px', fontFamily: STATS_UI.display, fontSize: STATS_TYPE.caption, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' } as const
+const bodyCell = { color: STATS_UI.cream, borderColor: STATS_UI.lineSoft, px: '6px', py: '3px', fontSize: STATS_TYPE.table } as const
 
 // A real table (column headings with scope="col"): the text alternative of a drawing, and the story on the back of a card. The first
 // column is the row's name; every other column is right aligned.

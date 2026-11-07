@@ -12,9 +12,11 @@ export interface HubPillStripProps {
   items: HubNavItem[]
   selectedId?: string
   onSelect: (item: HubNavItem) => void
+  // The stats pages' group row: one slim row (32 px pills), no bar behind it and no rule under it.
+  compact?: boolean
 }
 
-export function HubPillStrip({ label, items, selectedId, onSelect }: HubPillStripProps) {
+export function HubPillStrip({ label, items, selectedId, onSelect, compact = false }: HubPillStripProps) {
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -33,10 +35,7 @@ export function HubPillStrip({ label, items, selectedId, onSelect }: HubPillStri
           display: 'flex',
           gap: 1,
           overflowX: 'auto',
-          px: 2,
-          py: 1.5,
-          borderBottom: `1px solid ${HUB.line}`,
-          bgcolor: blackAlpha(0.2),
+          ...(compact ? { px: 0, py: '2px' } : { px: 2, py: 1.5, borderBottom: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.2) }),
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
         }}
@@ -50,8 +49,8 @@ export function HubPillStrip({ label, items, selectedId, onSelect }: HubPillStri
               aria-current={selected ? 'page' : undefined}
               sx={{
                 flex: 'none',
-                minHeight: 40,
-                px: 2,
+                minHeight: compact ? 32 : 40,
+                px: compact ? 1.5 : 2,
                 borderRadius: 999,
                 border: `1px ${item.soon && !selected ? 'dashed' : 'solid'} ${selected ? HUB.gold : HUB.line}`,
                 fontFamily: 'inherit',

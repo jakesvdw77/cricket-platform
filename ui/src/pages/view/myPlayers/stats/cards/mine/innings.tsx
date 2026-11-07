@@ -53,7 +53,7 @@ export const mineInnings: StatsCardDef<MyStatsDto> = {
           endLabel={dayText(last?.matchDate)}
         />
         <Note>
-          Dots are runs in each innings, the blue line is the running average, a hollow dot is not out. Guide lines at {p.guides.low} and {p.guides.high}. Tap a dot to open that match.
+          Dots are runs per innings, the blue line the running average, a hollow dot not out. Guides at {p.guides.low} and {p.guides.high}. Tap a dot to open the match.
         </Note>
         {summary.inningsTotal > summary.shown && <Note>Showing the latest {summary.shown} of {summary.inningsTotal} innings.</Note>}
       </>

@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import { usePrefersReducedMotion } from '../FlipCard'
 import { StatsCardShell } from './StatsCardShell'
 import { layoutRows } from './statsCardOrder'
+import { CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_REM, CARD_HEIGHT_VAR } from './statsCardStyle'
 import type { CardRow, CardRowKind } from './statsCardOrder'
 import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroupDef } from './statsCardTypes'
 
@@ -12,17 +13,20 @@ import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroup
 // Groups: the pill row (supplied by the page as `renderGroupPicker`, the Hub passes HubPillStrip) is the group selector on EVERY width;
 // one group shows at a time through `?group=`, the default being the first group with data. A group with no card to show has no pill.
 // A page with a single group shows no pill row.
-// Rows: layoutRows turns the group's cards into rows of three equal-height cards, or a tall card beside two stacked ones, with a short
-// last row of equal halves or one capped card. Each row is its own CSS grid, so every card in a row has the same height. The rows
-// lay out by the grid's own width (a container query, not the screen's, because the Hub's scope panel narrows the content): 3 columns
-// from 880 px of content, pairs from 600 px, otherwise one column.
+// Rows: layoutRows turns the group's cards into rows of three cards, or a tall card beside two stacked ones, with a short last row of
+// equal halves or one capped card, or rows of up to three compact tiles (the Summary, 3 + 3 + 2). Each row is its own CSS grid with FIXED row
+// heights in rem (the variable --stats-card-h: 15rem normal, 10rem compact; a tall card spans two rows and the gap), so every card in
+// a row has the same height and neither face can make it taller (the back scrolls inside the card). Below 600 px of content a card is
+// at least that tall and may grow to fit its face. The rows lay out by the grid's own width (a container query, not the screen's,
+// because the Hub's scope panel narrows the content): 3 columns from 880 px of content, pairs from 600 px, compact tiles 3 across from
+// 880 px and 2 across from 600 px, otherwise one column.
 // Expand: on desktop (md up) a card has an expand button; the card is then drawn a second time in an overlay that covers the grid's
 // own area (not the whole app), with a Close button. The cards underneath are inert and hidden. Escape closes; focus moves into the overlay's
 // Close button and returns to the expand button. The overlay card has its own flip state and gets `expanded` on its faces.
 // The grid imports no card: the page hands it the cards (from the registry's cardsFor).
 export const GROUP_PARAM = 'group'
 
-const ROW_GAP = 1.75
+const ROW_GAP = 1
 // A lone card (or a lone last card) is capped so it never stretches across a desktop.
 const SINGLE_MAX_WIDTH = 560
 // The least height of the grid while a card is expanded, so a short group still gives the card room.
@@ -62,11 +66,29 @@ const THREE_UP = '@container (min-width: 880px)'
 const TWO_UP = '@container (min-width: 600px)'
 
 // The grid template of one row kind. A tall row is two columns by two equal rows; its first card spans both rows.
-function rowSx(kind: CardRowKind) {
-  const base = { display: 'grid', gap: ROW_GAP, minWidth: 0, gridTemplateColumns: ONE_COLUMN } as const
-  if (kind === 'three') return { ...base, [THREE_UP]: { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } }
-  if (kind === 'pair') return { ...base, [TWO_UP]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } }
-  if (kind === 'tall') return { ...base, [THREE_UP]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, minmax(0, 1fr))' } }
+function rowSx(kind: CardRowKind, count: number) {
+  const height = `${kind === 'compact' ? CARD_COMPACT_HEIGHT_REM : CARD_HEIGHT_REM}rem`
+  const base = {
+    display: 'grid',
+    gap: ROW_GAP,
+    minWidth: 0,
+    gridTemplateColumns: ONE_COLUMN,
+    [CARD_HEIGHT_VAR]: height,
+    gridAutoRows: `minmax(var(${CARD_HEIGHT_VAR}), auto)`,
+    [TWO_UP]: { gridAutoRows: `var(${CARD_HEIGHT_VAR})` },
+  } as const
+  if (kind === 'three') return { ...base, [THREE_UP]: { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gridAutoRows: `var(${CARD_HEIGHT_VAR})` } }
+  if (kind === 'pair') return { ...base, [TWO_UP]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridAutoRows: `var(${CARD_HEIGHT_VAR})` } }
+  if (kind === 'tall') {
+    return { ...base, [THREE_UP]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: `repeat(2, var(${CARD_HEIGHT_VAR}))`, gridAutoRows: `var(${CARD_HEIGHT_VAR})` } }
+  }
+  if (kind === 'compact') {
+    return {
+      ...base,
+      [TWO_UP]: { gridTemplateColumns: `repeat(${Math.min(Math.max(count, 1), 2)}, minmax(0, 1fr))`, gridAutoRows: `var(${CARD_HEIGHT_VAR})` },
+      [THREE_UP]: { gridTemplateColumns: `repeat(${Math.min(Math.max(count, 1), 3)}, minmax(0, 1fr))`, gridAutoRows: `var(${CARD_HEIGHT_VAR})` },
+    }
+  }
   return { ...base, maxWidth: SINGLE_MAX_WIDTH }
 }
 
@@ -163,7 +185,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
 
   const rows = (entries: Resolved<P>[]) =>
     layoutRows(entries).map((row: CardRow<Resolved<P>>, rowIndex) => (
-      <Box key={`${row.kind}-${row.cards[0].def.id}-${rowIndex}`} data-row={row.kind} sx={rowSx(row.kind)}>
+      <Box key={`${row.kind}-${row.cards[0].def.id}-${rowIndex}`} data-row={row.kind} sx={rowSx(row.kind, row.cards.length)}>
         {row.cards.map((entry, index) => (
           <Box key={entry.def.id} sx={cellSx(row.kind, index)}>
             {card(entry, false)}
@@ -176,7 +198,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
     <Box data-testid={testId} sx={{ display: 'grid', gap: ROW_GAP, minWidth: 0 }}>
       {usePicker && selected && renderGroupPicker?.({ label: 'Card groups', items: visibleGroups.map((group) => ({ id: group.id, label: group.label })), selectedId: selected.id, onSelect: select })}
       <Box data-testid={`${testId}-area`} sx={{ position: 'relative', minWidth: 0, containerType: 'inline-size', minHeight: expandedEntry ? EXPANDED_MIN_HEIGHT : undefined }}>
-        <Box inert={expandedEntry ? true : undefined} sx={{ display: 'grid', gap: 3, minWidth: 0, visibility: expandedEntry ? 'hidden' : 'visible' }}>
+        <Box inert={expandedEntry ? true : undefined} sx={{ display: 'grid', gap: 2, minWidth: 0, visibility: expandedEntry ? 'hidden' : 'visible' }}>
           {shownGroups.map((group) => (
             <Box key={group.id} component="section" aria-label={group.label} data-testid={`${testId}-group-${group.id}`} sx={{ display: 'grid', gap: ROW_GAP, minWidth: 0 }}>
               {rows(resolved.filter((entry) => entry.def.group === group.id))}

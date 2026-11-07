@@ -32,9 +32,9 @@ const gridCols = { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(310px, 1fr
 
 function Skeletons() {
   return (
-    <Box sx={{ display: 'grid', gap: 1.75, gridTemplateColumns: gridCols }} aria-busy="true" data-testid="hub-teamstats-loading">
+    <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: gridCols }} aria-busy="true" data-testid="hub-teamstats-loading">
       {[0, 1, 2, 3].map((index) => (
-        <Skeleton key={index} variant="rounded" height={290} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px' }} />
+        <Skeleton key={index} variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px' }} />
       ))}
     </Box>
   )
@@ -121,7 +121,7 @@ export function HubTeamStats({ playerKey }: { playerKey: string }) {
     )
 
   const renderGroupPicker = ({ label, items, selectedId, onSelect }: GroupPickerProps) => (
-    <HubPillStrip label={label} items={items} selectedId={selectedId} onSelect={(item) => onSelect(item.id)} />
+    <HubPillStrip compact label={label} items={items} selectedId={selectedId} onSelect={(item) => onSelect(item.id)} />
   )
 
   let body
@@ -188,7 +188,7 @@ export function HubTeamStats({ playerKey }: { playerKey: string }) {
     )
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 2.5, minWidth: 0, opacity: statsQuery.isPlaceholderData ? 0.55 : 1 }}>
+      <Box sx={{ display: 'grid', gap: 1, minWidth: 0, opacity: statsQuery.isPlaceholderData ? 0.55 : 1 }}>
         <StatsCardGrid
           payload={stats}
           ctx={ctx}
@@ -205,7 +205,7 @@ export function HubTeamStats({ playerKey }: { playerKey: string }) {
 
   return (
     <Box data-testid="hub-teamstats" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gap: 1, minWidth: 0 }}>
         {header}
         {body}
       </Box>

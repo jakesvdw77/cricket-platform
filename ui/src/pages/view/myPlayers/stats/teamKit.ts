@@ -13,8 +13,8 @@ export const resultTone = (result: MyTeamResultCode): ChipTone => (result === 'W
 // The history blocks cover the newest `historyCap` results only when the team has more (basis.truncated).
 export const truncatedTeamNote = (p: MyTeamStatsDto): string => `Covers the newest ${p.basis.historyCap} results only.`
 
-// "Anton" from "Anton Smit": a bar label has little room, the table beside it carries the full name.
-export const shortLabel = (line: MyTeamShareLine): string => (line.kind === 'PLAYER' ? (line.label.trim().split(/\s+/)[0] ?? line.label) : line.label)
+// A bar label is the full name: the label column wraps to two lines before it is cut, and the full text is its title (owner, 2026-11-07).
+export const shortLabel = (line: MyTeamShareLine): string => line.label
 
 // "26%" from the server's share, or the plain value when no share was sent.
 export const shareText = (line: MyTeamShareLine): string => (line.sharePercent === null ? String(line.value) : formatPercent(line.sharePercent, 0))

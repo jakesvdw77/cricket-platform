@@ -42,25 +42,19 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
       <>
         <Big value={String(p.batting.runs)} caption={`runs in ${plural(p.batting.innings, 'innings', 'innings')}`} />
         <Tiles
+          min={72}
           items={[
             { key: 'innings', label: 'Innings', value: String(p.batting.innings) },
             { key: 'notouts', label: 'Not Out', value: String(p.batting.notOuts) },
             { key: 'dismissed', label: 'Dismissed', value: String(p.batting.dismissals) },
-          ]}
-        />
-        <Tiles
-          items={[
             { key: 'avg', label: 'Avg', value: formatDecimal(p.batting.average) },
             { key: 'sr', label: 'SR', value: formatDecimal(p.batting.strikeRate) },
             { key: 'hs', label: 'HS', value: best ? scoreText(best.runs, best.notOut) : DASH },
           ]}
         />
-        <Tiles
-          items={[
-            { key: 'home-runs', label: 'Home Runs', value: p.homeAway.home.innings > 0 ? formatCount(p.homeAway.home.runs) : DASH },
-            { key: 'away-runs', label: 'Away Runs', value: p.homeAway.away.innings > 0 ? formatCount(p.homeAway.away.runs) : DASH },
-          ]}
-        />
+        <Note>
+          Home {p.homeAway.home.innings > 0 ? formatCount(p.homeAway.home.runs) : DASH} runs · Away {p.homeAway.away.innings > 0 ? formatCount(p.homeAway.away.runs) : DASH} runs
+        </Note>
         {p.form.batting.length > 0 && (
           <>
             <Cap>Last {Math.min(5, p.form.batting.length)} scores</Cap>
@@ -73,6 +67,12 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
                 name: `${scoreText(entry.runs, entry.notOut)}, ${dayText(entry.matchDate)}. Open the match.`,
               }))}
             />
+          </>
+        )}
+        {p.rolling.points.length > 1 && (
+          <>
+            <Cap>Average of the last {p.rolling.span} innings</Cap>
+            <Sparkline values={p.rolling.points.map((point) => point.average)} width={240} height={44} colour={STATS_TONES.gold} alt={`Rolling average of the last ${p.rolling.span} innings for ${ctx.firstName}.`} />
           </>
         )}
       </>
@@ -90,7 +90,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
     return (
       <>
         <Cap>Average of the last {rolling.span} innings</Cap>
-        <Sparkline values={rolling.points.map((point) => point.average)} width={280} height={56} colour={STATS_TONES.gold} alt={`Rolling average of the last ${rolling.span} innings for ${ctx.firstName}: ${sentence}`} />
+        <Sparkline values={rolling.points.map((point) => point.average)} width={200} height={36} colour={STATS_TONES.gold} alt={`Rolling average of the last ${rolling.span} innings for ${ctx.firstName}: ${sentence}`} />
         <Note>{sentence}</Note>
         {latest.length > 0 && (
           <FaceTable

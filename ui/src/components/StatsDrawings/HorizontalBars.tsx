@@ -23,50 +23,95 @@ export interface HorizontalBarsProps {
   alt: string
   // The scale's top; omitted, the largest value.
   max?: number
+  // The compact front of a Summary tile: each row is its label (with the value at the right) over a thin bar, so a long name keeps the width.
+  dense?: boolean
 }
 
-const W = 320
-const LABEL = 96
-const VALUE = 44
-const ROW = 30
+// docs/specs/147: labelled horizontal bars (scores in bands, runs by player), plain HTML rows (label, track, value) so type and bars keep
+// fixed pixel sizes however wide the card is: a row is 22 px high (bar 10 px), the label 12 px, the value 12 px bold. The expanded card
+// sets --stats-row-scale (1.25) for a little more air; the type never scales. The chart is capped in width and a bar with a drill is a
+// link. The values are also written as text in the row so the drawing is not the only carrier.
+const rowSx = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(7rem, 42%) minmax(0, 1fr) auto',
+  alignItems: 'center',
+  columnGap: '8px',
+  minHeight: 'calc(22px * var(--stats-row-scale, 1))',
+  minWidth: 0,
+  color: BRAND.cream,
+  textDecoration: 'none',
+  fontSize: 12,
+  lineHeight: 1.2,
+} as const
 
-// docs/specs/147: labelled horizontal bars (scores in bands, runs by player). Our own SVG; a bar with a drill is a link. The values are
-// also written as text in the row label so the drawing is not the only carrier.
-export function HorizontalBars({ rows, alt, max }: HorizontalBarsProps) {
+// Dense: label and value on one line, the bar thin under it (two grid rows).
+const denseRowSx = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gridTemplateRows: 'auto auto',
+  alignItems: 'center',
+  columnGap: '8px',
+  rowGap: '2px',
+  py: '2px',
+  minWidth: 0,
+  color: BRAND.cream,
+  textDecoration: 'none',
+  fontSize: 11,
+  lineHeight: 1.2,
+} as const
+
+// A label wraps to two lines before it is cut, and the full text is always the title.
+const clampSx = { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', overflowWrap: 'anywhere' } as const
+export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBarsProps) {
   const tabIndex = useFaceTabIndex()
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
-  const lengths = barLengths(rows.map((row) => row.value), ceiling, W - LABEL - VALUE)
+  const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
-    <Box component="svg" viewBox={`0 0 ${W} ${Math.max(rows.length, 1) * ROW}`} role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ width: '100%', height: 'auto', display: 'block', '& a': { outline: 'none' }, '& a:focus-visible rect.track': { stroke: BRAND.cream, strokeWidth: 2 } }}>
-      <title>{alt}</title>
+    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: 'calc(520px * var(--stats-row-scale, 1))' }}>
       {rows.map((row, index) => {
-        const y = index * ROW
-        const content = (
+        const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
+        const bar = (
+          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 5 : 10, borderRadius: '5px', bgcolor: alpha(BRAND.cream, 0.1), overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
+            {lengths[index] > 0 && <Box component="span" sx={{ display: 'block', height: '100%', borderRadius: '5px', width: `${Math.max(lengths[index], 3)}%`, bgcolor: row.colour ?? STATS_TONES.gold }} />}
+          </Box>
+        )
+        const label = (
+          <Box component="span" title={row.label} sx={{ display: 'grid', minWidth: 0, textAlign: dense ? 'left' : 'right' }}>
+            <Box component="span" sx={dense ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : clampSx}>{row.label}</Box>
+            {row.tag && <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, color: alpha(BRAND.cream, 0.66) }}>{row.tag}</Box>}
+          </Box>
+        )
+        const value = <Box component="span" sx={{ fontSize: dense ? 11 : 12, fontWeight: 700, minWidth: dense ? undefined : '2.2em', textAlign: 'right' }}>{row.valueLabel}</Box>
+        const content = dense ? (
           <>
-            <rect className="track" x={LABEL} y={y + 6} width={W - LABEL - VALUE} height={18} rx={6} fill={alpha(BRAND.cream, 0.1)} />
-            {lengths[index] > 0 && <rect x={LABEL} y={y + 6} width={Math.max(lengths[index], 3)} height={18} rx={6} fill={row.colour ?? STATS_TONES.gold} />}
-            <text x={LABEL - 8} y={row.tag ? y + 16 : y + 20} textAnchor="end" fontSize="13" fill={BRAND.cream}>
-              {row.label}
-            </text>
-            {row.tag && (
-              <text x={LABEL - 8} y={y + 27} textAnchor="end" fontSize="9" fill={alpha(BRAND.cream, 0.66)}>
-                {row.tag}
-              </text>
-            )}
-            <text x={W} y={y + 20} textAnchor="end" fontSize="13" fontWeight="700" fill={BRAND.cream}>
-              {row.valueLabel}
-            </text>
-            {row.href && <rect x={0} y={y} width={W} height={ROW} fill="transparent" />}
+            {label}
+            {value}
+            {bar}
+          </>
+        ) : (
+          <>
+            {label}
+            {bar}
+            {value}
           </>
         )
+        const base = dense ? denseRowSx : rowSx
         return row.href ? (
-          <Link key={row.key} to={row.href} aria-label={`${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`} tabIndex={tabIndex} data-testid="bar-row">
+          <Box
+            key={row.key}
+            component={Link}
+            to={row.href}
+            aria-label={name} title={name}
+            tabIndex={tabIndex}
+            data-testid="bar-row"
+            sx={{ ...base, '&:hover .track': { bgcolor: alpha(BRAND.cream, 0.18) }, '&:focus-visible': { outline: `2px solid ${BRAND.cream}`, outlineOffset: 1 } }}
+          >
             {content}
-          </Link>
+          </Box>
         ) : (
-          <g key={row.key} data-testid="bar-row">
+          <Box key={row.key} data-testid="bar-row" title={name} sx={base}>
             {content}
-          </g>
+          </Box>
         )
       })}
     </Box>
