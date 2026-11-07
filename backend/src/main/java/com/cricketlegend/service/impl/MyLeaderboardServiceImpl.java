@@ -168,11 +168,18 @@ class MyLeaderboardServiceImpl implements MyLeaderboardService {
     public MyLeaderboardFiltersDto filters(Authentication authentication, String playerKey) {
         HeldPlayer held = access.resolve(authentication, playerKey);
         UUID clubId = held.profile().getClubId();
-        List<PlayerStatsCombo> combos = rankingPolicy.allowsRankings(clubId)
-                ? leaderboardService.comboOptionsForHeldPlayer(clubId, reachOf(clubId, held.profile().getId()))
-                : List.of();
+        UUID playerId = held.profile().getId();
+        boolean rankings = rankingPolicy.allowsRankings(clubId);
+        HubLeaderboardReach reach = rankings ? reachOf(clubId, playerId) : HubLeaderboardReach.of(List.of());
+        List<PlayerStatsCombo> combos = rankings ? leaderboardService.comboOptionsForHeldPlayer(clubId, reach) : List.of();
 
+        // The Season list always offers the seasons of the player's own flagged results (a friendly-only season has no league
+        // in the reach) and the seasons the reach names, even when no counted result of the reach exists yet.
         Set<UUID> seasonIds = combos.stream().map(PlayerStatsCombo::seasonId).collect(Collectors.toSet());
+        if (rankings) {
+            playerStatsService.comboOptionsForHeldPlayer(clubId, playerId).forEach(c -> seasonIds.add(c.seasonId()));
+            reach.pairs().forEach(pair -> seasonIds.add(pair.seasonId()));
+        }
         Set<UUID> teamIds = combos.stream().map(PlayerStatsCombo::teamId).collect(Collectors.toSet());
         Set<UUID> leagueIds = combos.stream().map(PlayerStatsCombo::leagueId).collect(Collectors.toSet());
         List<Season> clubSeasons = seasonRepository.findByClubId(clubId);
