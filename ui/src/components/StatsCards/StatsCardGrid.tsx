@@ -75,7 +75,7 @@ const THREE_UP = '@container (min-width: 880px)'
 const TWO_UP = '@container (min-width: 600px)'
 
 // The grid template of one row kind. A tall row is two columns by two equal rows; its first card spans both rows.
-function rowSx(kind: CardRowKind, count: number) {
+function rowSx(kind: CardRowKind, count: number, onlyRow = false) {
   const height = `${kind === 'compact' ? CARD_COMPACT_HEIGHT_REM : CARD_HEIGHT_REM}rem`
   const base = {
     display: 'grid',
@@ -98,7 +98,8 @@ function rowSx(kind: CardRowKind, count: number) {
       [THREE_UP]: { gridTemplateColumns: `repeat(${Math.min(Math.max(count, 1), 3)}, minmax(0, 1fr))`, gridAutoRows: `var(${CARD_HEIGHT_VAR})` },
     }
   }
-  return { ...base, maxWidth: SINGLE_MAX_WIDTH }
+  // A group that is just one card (Fielding) is the single column at full width; a lone last card in a longer group stays capped.
+  return onlyRow ? base : { ...base, maxWidth: SINGLE_MAX_WIDTH }
 }
 
 // Where a card sits in its row (only the tall row places cards explicitly).
@@ -223,9 +224,10 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
     />
   )
 
-  const rows = (entries: Resolved<P>[]) =>
-    layoutRows(entries).map((row: CardRow<Resolved<P>>, rowIndex) => (
-      <Box key={`${row.kind}-${row.cards[0].def.id}-${rowIndex}`} data-row={row.kind} sx={rowSx(row.kind, row.cards.length)}>
+  const rows = (entries: Resolved<P>[]) => {
+    const laid = layoutRows(entries)
+    return laid.map((row: CardRow<Resolved<P>>, rowIndex) => (
+      <Box key={`${row.kind}-${row.cards[0].def.id}-${rowIndex}`} data-row={row.kind} sx={rowSx(row.kind, row.cards.length, laid.length === 1)}>
         {row.cards.map((entry, index) => (
           <Box key={entry.def.id} sx={cellSx(row.kind, index)}>
             {card(entry, false)}
@@ -233,6 +235,7 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
         ))}
       </Box>
     ))
+  }
 
   return (
     <Box data-testid={testId} sx={{ display: 'grid', gap: ROW_GAP, minWidth: 0 }}>
