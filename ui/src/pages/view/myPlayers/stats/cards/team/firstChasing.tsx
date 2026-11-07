@@ -34,8 +34,8 @@ export const teamFirstChasing: StatsCardDef<MyTeamStatsDto> = {
         <ProgressBars
           alt={`Wins when batting first: ${nOfM(battingFirst.won, battingFirst.played)}. Wins when chasing: ${nOfM(chasing.won, chasing.played)}.`}
           rows={[
-            { key: 'first', label: 'Bat first', value: battingFirst.won, target: battingFirst.played, text: nOfM(battingFirst.won, battingFirst.played) },
-            { key: 'chasing', label: 'Chasing', value: chasing.won, target: chasing.played, text: nOfM(chasing.won, chasing.played) },
+            { key: 'first', label: 'Bat first', tone: 'compare', seriesIndex: 0, value: battingFirst.won, target: battingFirst.played, text: nOfM(battingFirst.won, battingFirst.played) },
+            { key: 'chasing', label: 'Chasing', tone: 'compare', seriesIndex: 1, value: chasing.won, target: chasing.played, text: nOfM(chasing.won, chasing.played) },
           ]}
         />
         <Note>{toss}</Note>

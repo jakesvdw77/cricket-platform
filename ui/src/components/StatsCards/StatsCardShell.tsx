@@ -146,7 +146,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, expanded
           )}
         </Box>
         {hint && (
-          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: STATS_TYPE.hint, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.gold }}>
+          <Typography aria-hidden component="span" sx={{ fontFamily: STATS_UI.display, fontSize: STATS_TYPE.hint, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATS_UI.muted }}>
             {hint}
           </Typography>
         )}

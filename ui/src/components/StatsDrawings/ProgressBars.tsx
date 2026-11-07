@@ -1,6 +1,6 @@
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { BRAND, STATS_TONES } from '../../brandTokens'
+import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { barLengths, progressFraction } from './statsMath'
 
 export interface ProgressRow {
@@ -11,6 +11,9 @@ export interface ProgressRow {
   target: number
   // The sentence the server's figures make: "412 of 500, 88 to go".
   text: string
+  // 'compare' paints the bar in the tone of `seriesIndex` (0 sand, 1 cool) for a two-category comparison; default neutral sand.
+  tone?: 'neutral' | 'compare'
+  seriesIndex?: 0 | 1
 }
 
 export interface ProgressBarsProps {
@@ -30,8 +33,8 @@ export function ProgressBars({ rows, alt }: ProgressBarsProps) {
             <Box component="span" aria-hidden sx={{ color: alpha(BRAND.cream, 0.8), minWidth: 0 }}>{row.label}</Box>
             <Box component="span" aria-hidden sx={{ color: BRAND.cream, fontWeight: 700, textAlign: 'right' }}>{row.text}</Box>
           </Box>
-          <Box aria-hidden sx={{ height: 8, borderRadius: '4px', bgcolor: alpha(BRAND.cream, 0.12), overflow: 'hidden' }}>
-            {fills[index] > 0 && <Box sx={{ height: '100%', borderRadius: '4px', width: `${Math.max(fills[index], 3)}%`, bgcolor: STATS_TONES.gold }} />}
+          <Box aria-hidden sx={{ height: 8, borderRadius: '4px', bgcolor: STATS_COLOUR.track, overflow: 'hidden' }}>
+            {fills[index] > 0 && <Box sx={{ height: '100%', borderRadius: '4px', width: `${Math.max(fills[index], 3)}%`, bgcolor: row.tone === 'compare' && row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : row.tone === 'compare' ? STATS_COLOUR.compareFirst : STATS_COLOUR.bar }} />}
           </Box>
         </Box>
       ))}

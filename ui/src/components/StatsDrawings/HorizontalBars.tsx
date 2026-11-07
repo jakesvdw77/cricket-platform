@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react'
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
-import { BRAND, STATS_TONES } from '../../brandTokens'
+import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
 import { barLengths } from './statsMath'
 
@@ -15,6 +15,10 @@ export interface BarRow {
   // The drill this bar opens (a band, a player).
   href?: string
   colour?: string
+  // Spec 147 colour rule: 'neutral' (default) is sand; 'compare' paints the bar in the tone of `seriesIndex` (0 sand, 1 cool) for a
+  // comparison of two categories. A selected row is gold either way.
+  tone?: 'neutral' | 'compare'
+  seriesIndex?: 0 | 1
   // A small second line under the label ("Home", "Home · Econ 4.50"); text, so it is never the only carrier of the figure.
   tag?: string
   // Dense rows only (spec 147 Amendment 2 item 15): the row is a real toggle button that filters the page; `selected` is its pressed state.
@@ -29,6 +33,14 @@ export interface HorizontalBarsProps {
   max?: number
   // The compact front of a Summary tile: each row is its label (with the value at the right) over a thin bar, so a long name keeps the width.
   dense?: boolean
+  // Two-category cards only: the two series names, with a small swatch each ("Home", "Away"); the rows are labelled too.
+  legend?: [string, string]
+}
+
+function barFill(row: Pick<BarRow, 'colour' | 'tone' | 'selected' | 'seriesIndex'>): string {
+  if (row.selected) return STATS_COLOUR.selected
+  if (row.colour) return row.colour
+  return row.tone === 'compare' && row.seriesIndex === 1 ? STATS_COLOUR.compareSecond : row.tone === 'compare' ? STATS_COLOUR.compareFirst : STATS_COLOUR.bar
 }
 
 // docs/specs/147: labelled horizontal bars (scores in bands, runs by player), plain HTML rows (label, track, value) so type and bars keep
@@ -81,23 +93,33 @@ const selectRowSx = {
   alignContent: 'center',
   borderRadius: '6px',
   '&:hover': { bgcolor: alpha(BRAND.gold, 0.12) },
-  '&:hover .track': { bgcolor: alpha(BRAND.cream, 0.18) },
+  '&:hover .track': { bgcolor: STATS_COLOUR.trackHover },
   '&:focus-visible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 1 },
   '&[aria-pressed="true"]': { bgcolor: alpha(BRAND.gold, 0.18), color: BRAND.gold, fontWeight: 700 },
 } as const
 
 const clampSx = { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', overflowWrap: 'anywhere' } as const
-export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBarsProps) {
+export function HorizontalBars({ rows, alt, max, dense = false, legend }: HorizontalBarsProps) {
   const tabIndex = useFaceTabIndex()
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
   const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
     <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 320 : 'calc(520px * var(--stats-row-scale, 1))', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : '10px' } : {}) }}>
+      {legend && (
+        <Box component="span" data-testid="bars-legend" sx={{ display: 'flex', gap: '12px', fontSize: 10, lineHeight: 1.2, color: alpha(BRAND.cream, 0.8), mb: '2px' }}>
+          {legend.map((name, index) => (
+            <Box key={name} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Box aria-hidden component="span" sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: index === 0 ? STATS_COLOUR.compareFirst : STATS_COLOUR.compareSecond }} />
+              {name}
+            </Box>
+          ))}
+        </Box>
+      )}
       {rows.map((row, index) => {
         const name = `${row.label}${row.tag ? ` (${row.tag})` : ''}: ${row.valueLabel}`
         const bar = (
-          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 8 : 10, borderRadius: '5px', bgcolor: alpha(BRAND.cream, 0.1), overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
-            {lengths[index] > 0 && <Box component="span" sx={{ display: 'block', height: '100%', borderRadius: '5px', width: `${Math.max(lengths[index], 3)}%`, bgcolor: row.colour ?? STATS_TONES.gold }} />}
+          <Box component="span" className="track" sx={{ display: 'block', height: dense ? 8 : 10, borderRadius: '5px', bgcolor: STATS_COLOUR.track, overflow: 'hidden', ...(dense ? { gridColumn: '1 / -1' } : {}) }}>
+            {lengths[index] > 0 && <Box component="span" sx={{ display: 'block', height: '100%', borderRadius: '5px', width: `${Math.max(lengths[index], 3)}%`, bgcolor: barFill(row) }} />}
           </Box>
         )
         const label = (
@@ -154,7 +176,7 @@ export function HorizontalBars({ rows, alt, max, dense = false }: HorizontalBars
             aria-label={name} title={name}
             tabIndex={tabIndex}
             data-testid="bar-row"
-            sx={{ ...base, '&:hover .track': { bgcolor: alpha(BRAND.cream, 0.18) }, '&:focus-visible': { outline: `2px solid ${BRAND.cream}`, outlineOffset: 1 } }}
+            sx={{ ...base, '&:hover .track': { bgcolor: STATS_COLOUR.trackHover }, '&:focus-visible': { outline: `2px solid ${BRAND.cream}`, outlineOffset: 1 } }}
           >
             {content}
           </Box>

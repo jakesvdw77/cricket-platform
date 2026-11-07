@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
-import { BRAND, STATS_TONES } from '../../brandTokens'
+import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
 import { ColumnChart } from './ColumnChart'
 import { linePath, linearScale, niceCeil, xPositions } from './statsMath'
@@ -112,20 +112,20 @@ function Line({ points, average, guides = [], alt, startLabel, endLabel }: LineC
       ))}
       {guides.map((guide) => (
         <g key={guide.label} data-testid="line-guide">
-          <line x1={BOX.left} x2={BOX.left + BOX.width} y1={y(guide.value)} y2={y(guide.value)} stroke={alpha(STATS_TONES.gold, 0.7)} strokeDasharray="3 3" />
-          <text x={BOX.left - 5} y={y(guide.value) + 3} fontSize="10" textAnchor="end" fill={STATS_TONES.gold} aria-hidden>
+          <line x1={BOX.left} x2={BOX.left + BOX.width} y1={y(guide.value)} y2={y(guide.value)} stroke={STATS_COLOUR.guide} strokeDasharray="3 3" />
+          <text x={BOX.left - 5} y={y(guide.value) + 3} fontSize="10" textAnchor="end" fill={STATS_COLOUR.guideLabel} aria-hidden>
             {guide.label}
           </text>
         </g>
       ))}
-      {line.length > 1 && <path d={linePath(line)} fill="none" stroke={alpha(BRAND.cream, 0.55)} strokeWidth={1.5} strokeLinejoin="round" />}
-      {avg.length > 1 && <path data-testid="line-average" d={linePath(avg)} fill="none" stroke={STATS_TONES.blue} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+      {line.length > 1 && <path d={linePath(line)} fill="none" stroke={STATS_COLOUR.line} strokeWidth={1.5} strokeLinejoin="round" />}
+      {avg.length > 1 && <path data-testid="line-average" d={linePath(avg)} fill="none" stroke={STATS_COLOUR.average} strokeWidth={2} strokeDasharray="5 3" strokeLinecap="round" strokeLinejoin="round" />}
       {points.map((point, index) => {
         const dot = (
           <>
-            <circle className="dot" cx={xs[index]} cy={y(point.value)} r={4} fill={point.notOut ? 'transparent' : BRAND.cream} stroke={BRAND.cream} strokeWidth={1.5} data-notout={point.notOut ? 'true' : 'false'} />
+            <circle className="dot" cx={xs[index]} cy={y(point.value)} r={4} fill={point.notOut ? 'transparent' : STATS_COLOUR.marker} stroke={STATS_COLOUR.marker} strokeWidth={1.5} data-notout={point.notOut ? 'true' : 'false'} />
             {labelled && (
-              <text data-testid="line-value" x={xs[index]} y={y(point.value) - 8} fontSize="10" fontWeight="700" textAnchor="middle" fill={BRAND.cream} aria-hidden>
+              <text data-testid="line-value" x={xs[index]} y={y(point.value) - 8} fontSize="10" fontWeight="700" textAnchor="middle" fill={STATS_COLOUR.valueLabel} aria-hidden>
                 {point.valueLabel ?? String(point.value)}
               </text>
             )}

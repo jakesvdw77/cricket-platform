@@ -33,10 +33,11 @@ export const mineSumBoundaries: StatsCardDef<MyStatsDto> = {
         value={String(fours + sixes)}
         caption="boundaries hit"
         total={2}
+        legend={['Fours', 'Sixes']}
         alt={`${ctx.firstName}'s boundaries: ${fours} fours, ${sixes} sixes.`}
         rows={[
-          { key: 'fours', label: 'Fours', value: fours, valueLabel: String(fours) },
-          { key: 'sixes', label: 'Sixes', value: sixes, valueLabel: String(sixes) },
+          { key: 'fours', label: 'Fours', tone: 'compare', seriesIndex: 0, value: fours, valueLabel: String(fours) },
+          { key: 'sixes', label: 'Sixes', tone: 'compare', seriesIndex: 1, value: sixes, valueLabel: String(sixes) },
         ]}
       />
     )

@@ -1,5 +1,6 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
+import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Cap, FaceTable, Note, Split } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
 import { formatDecimal, oversOrBalls, plural } from '../../statsFormat'
@@ -27,16 +28,17 @@ export const mineBowlingHomeAway: StatsCardDef<MyStatsDto> = {
   summary: (p, ctx) => `${ctx.firstName} has ${p.bowlingHomeAway.home.wickets} wickets at home and ${p.bowlingHomeAway.away.wickets} away.`,
   Front: ({ payload: p }) => {
     const { home, away } = p.bowlingHomeAway
-    const column = (key: string, title: string, side: typeof home) => ({
+    const column = (key: string, title: string, side: typeof home, swatch: string) => ({
       key,
       title,
+      swatch,
       rows: [
         { key: `${key}-wkts`, label: 'Wickets', value: String(side.wickets) },
         { key: `${key}-econ`, label: 'Economy', value: formatDecimal(side.economy, 2) },
         { key: `${key}-spells`, label: 'Spells', value: String(side.spells) },
       ],
     })
-    return <Split columns={[column('home', 'Home', home), column('away', 'Away', away)]} />
+    return <Split columns={[column('home', 'Home', home, STATS_COLOUR.compareFirst), column('away', 'Away', away, STATS_COLOUR.compareSecond)]} />
   },
   Back: ({ payload: p }) => {
     const { home, away, unknownVenueSpells } = p.bowlingHomeAway

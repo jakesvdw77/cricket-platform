@@ -32,10 +32,11 @@ export const mineInningsNumber: StatsCardDef<MyStatsDto> = {
     return (
       <>
         <HorizontalBars
+          legend={['Batting 1st', 'Chasing']}
           alt={`Runs by innings number: batting first ${first.runs}, chasing ${chasing.runs}.`}
           rows={[
-            { key: 'first', label: 'Batting 1st', value: first.runs, valueLabel: String(first.runs), href: first.filter && first.innings > 0 ? ctx.drillHref({ kind: 'BATTING', filter: first.filter, label: 'Batting first' }) : undefined },
-            { key: 'chasing', label: 'Chasing', value: chasing.runs, valueLabel: String(chasing.runs), href: chasing.filter && chasing.innings > 0 ? ctx.drillHref({ kind: 'BATTING', filter: chasing.filter, label: 'Chasing' }) : undefined },
+            { key: 'first', label: 'Batting 1st', tone: 'compare', seriesIndex: 0, value: first.runs, valueLabel: String(first.runs), href: first.filter && first.innings > 0 ? ctx.drillHref({ kind: 'BATTING', filter: first.filter, label: 'Batting first' }) : undefined },
+            { key: 'chasing', label: 'Chasing', tone: 'compare', seriesIndex: 1, value: chasing.runs, valueLabel: String(chasing.runs), href: chasing.filter && chasing.innings > 0 ? ctx.drillHref({ kind: 'BATTING', filter: chasing.filter, label: 'Chasing' }) : undefined },
           ]}
         />
         <Note>

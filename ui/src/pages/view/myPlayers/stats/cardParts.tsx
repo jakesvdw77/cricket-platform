@@ -1,6 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { STATS_TONES, blackAlpha } from '../../../../brandTokens'
 import { useFaceTabIndex } from '../../../../components/FlipCard'
@@ -46,7 +45,7 @@ export function Big({ value, caption, compact = false }: { value: string; captio
 // "+N more" under the figure when there are more). The back is then just the full table, so a chart is never shown twice.
 export const FRONT_BARS = 3
 
-export function BigBars({ value, caption, rows, alt, total, hint, clear }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void } }) {
+export function BigBars({ value, caption, rows, alt, total, hint, clear, legend }: { value: string; caption: string; rows: BarRow[]; alt: string; total: number; hint?: string; clear?: { label: string; onClear: () => void }; legend?: [string, string] }) {
   const more = total - Math.min(rows.length, FRONT_BARS)
   const tabIndex = useFaceTabIndex()
   const selectable = rows.some((row) => row.onSelect)
@@ -55,9 +54,9 @@ export function BigBars({ value, caption, rows, alt, total, hint, clear }: { val
       <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: '18px', minWidth: 0 }}>
         <Box sx={{ display: 'grid', gap: '2px', minWidth: 0 }}>
           <Big compact value={value} caption={caption} />
-          {more > 0 && <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>+{more} more</Typography>}
+          {more > 0 && <Typography sx={captionSx}>+{more} more</Typography>}
         </Box>
-        {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} />}
+        {rows.length > 0 && <HorizontalBars dense alt={alt} rows={rows.slice(0, FRONT_BARS)} legend={legend} />}
       </Box>
       {(clear || (selectable && hint)) && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
@@ -113,7 +112,7 @@ export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; m
             tabIndex={tabIndex}
             aria-label={item.name ?? `${item.label}: ${item.value}`}
             data-testid="stats-tile-link"
-            sx={{ ...tileSx, ...(dense ? denseTileSx : {}), borderColor: alpha(STATS_UI.gold, 0.55), '&:hover': { bgcolor: blackAlpha(0.45) }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
+            sx={{ ...tileSx, ...(dense ? denseTileSx : {}), borderColor: STATS_UI.line, '&:hover': { bgcolor: blackAlpha(0.45) }, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}
           >
             {content}
           </Box>
@@ -130,7 +129,9 @@ export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; m
 export interface SplitColumn {
   key: string
   title: string
-  rows: { key: string; label: string; value: string }[]
+  rows: { key: string; label: string; value: string; swatch?: string }[]
+  // A small swatch before the title: the column's tone in a two-category comparison (STATS_COLOUR.compareFirst / compareSecond).
+  swatch?: string
 }
 
 // Two or three short columns side by side (Home | Away), each a heading and a few label / value pairs on one line. Compact: about 14 px a line.
@@ -139,10 +140,10 @@ export function Split({ columns }: { columns: SplitColumn[] }) {
     <Box data-testid="stats-split" sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, columnGap: '14px', minWidth: 0 }}>
       {columns.map((column) => (
         <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gap: '3px', alignContent: 'start', minWidth: 0 }}>
-          <Typography component="dt" sx={{ ...captionSx, color: STATS_UI.gold, pb: '2px', borderBottom: `1px solid ${STATS_UI.lineSoft}` }}>{column.title}</Typography>
+          <Typography component="dt" sx={{ ...captionSx, pb: '2px', borderBottom: `1px solid ${STATS_UI.lineSoft}` }}>{column.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: column.swatch, mr: '5px' }} />}{column.title}</Typography>
           {column.rows.map((row) => (
             <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: STATS_TYPE.body, lineHeight: 1.3 }}>
-              <Typography component="dt" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0 }}>{row.label}</Typography>
+              <Typography component="dt" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0 }}>{row.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: row.swatch, mr: '5px' }} />}{row.label}</Typography>
               <Typography component="dd" sx={{ fontSize: 'inherit', lineHeight: 'inherit', fontWeight: 700, color: STATS_UI.cream, m: 0 }}>{row.value}</Typography>
             </Box>
           ))}
@@ -156,9 +157,9 @@ export function Note({ children }: { children: ReactNode }) {
   return <Typography sx={{ fontSize: STATS_TYPE.body, lineHeight: 1.3, color: STATS_UI.muted, m: 0 }}>{children}</Typography>
 }
 
-// A small gold heading over a block ("Average of the last 5 innings").
+// A small muted heading over a block ("Average of the last 5 innings").
 export function Cap({ children }: { children: ReactNode }) {
-  return <Typography sx={{ ...captionSx, color: STATS_UI.gold }}>{children}</Typography>
+  return <Typography sx={captionSx}>{children}</Typography>
 }
 
 export type ChipTone = 'win' | 'loss' | 'neutral'
@@ -229,7 +230,7 @@ export function FaceTable({ label, heads, rows }: { label: string; heads: string
               {row.cells.map((cell, index) => (
                 <TableCell key={index} align={index === 0 ? 'left' : 'right'} sx={{ ...bodyCell, ...(index === 0 ? { fontWeight: 600 } : {}) }}>
                   {index === 0 && row.href ? (
-                    <Box component={RouterLink} to={row.href} tabIndex={tabIndex} aria-label={row.linkName} data-testid="stats-row-link" sx={{ color: STATS_UI.cream, textDecorationColor: STATS_UI.gold, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
+                    <Box component={RouterLink} to={row.href} tabIndex={tabIndex} aria-label={row.linkName} data-testid="stats-row-link" sx={{ color: STATS_UI.cream, textDecorationColor: STATS_UI.muted, '&:focus-visible': { outline: `2px solid ${STATS_UI.gold}`, outlineOffset: 2 } }}>
                       {cell}
                     </Box>
                   ) : (

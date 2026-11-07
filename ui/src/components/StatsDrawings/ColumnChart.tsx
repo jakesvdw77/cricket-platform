@@ -1,7 +1,7 @@
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
-import { BRAND, STATS_TONES } from '../../brandTokens'
+import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
 
 export interface ColumnChartColumn {
@@ -51,7 +51,7 @@ export function ColumnChart({ columns, alt }: ColumnChartProps) {
                   {zero ? (
                     <Box aria-hidden data-testid="column-zero" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: '-5px', width: 10, height: 10, boxSizing: 'border-box', borderRadius: '50%', border: `1.5px solid ${BRAND.cream}` }} />
                   ) : (
-                    <Box aria-hidden data-testid="column-bar" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: `-${BAR / 2}px`, width: BAR, height: `${pct}%`, minHeight: 3, borderRadius: '3px 3px 0 0', bgcolor: STATS_TONES.gold }} />
+                    <Box aria-hidden data-testid="column-bar" sx={{ position: 'absolute', bottom: 0, left: '50%', ml: `-${BAR / 2}px`, width: BAR, height: `${pct}%`, minHeight: 3, borderRadius: '3px 3px 0 0', bgcolor: STATS_COLOUR.bar }} />
                   )}
                   <Box aria-hidden component="span" sx={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 11, fontWeight: 700, lineHeight: 1.1, bottom: zero ? 12 : `calc(${pct}% + 2px)` }}>
                     {column.valueLabel}

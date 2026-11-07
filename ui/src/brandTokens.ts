@@ -110,7 +110,8 @@ export const TICKER_FADE = '#08271b'
 // better on the dark console ground; every use also carries a word or a pattern, colour is never the only cue.
 export const STATS_TONES = {
   have: TICKER_TONES.win,
-  partly: BRAND.gold,
+  // The quiet warm tone of a partly-captured card (spec 147 colour rule 7): a muted amber, deliberately not the selection gold.
+  partly: '#D9A66B',
   notCaptured: TICKER_TONES.live,
   // Drawings: good, poor, the second series and the neutral grid.
   win: TICKER_TONES.win,
@@ -123,3 +124,28 @@ export const STATS_TONES = {
 } as const
 // The order slices and series are coloured in (donut, stacked bars): distinct from one another on the dark ground.
 export const STATS_SERIES = [STATS_TONES.gold, STATS_TONES.blue, STATS_TONES.win, STATS_TONES.loss, STATS_TONES.violet, STATS_TONES.mint, STATS_TONES.sand] as const
+
+// docs/specs/147 Amendment 2 item 16 (the restrained stats colour rule, owner decision 2026-11-07: "not everything gets a colour, only
+// where it makes sense"). Gold is only the headline number, the selected thing and the focus ring. Everything else is neutral sand, one
+// muted cool tone for the second category of a two-way comparison, or a tonal ramp of the same two families. Win green and loss red are
+// not used on these cards (they stay for Results and the W/L/T chips). Every use also carries a label, so colour is never the only cue.
+export const STATS_COLOUR = {
+  // A single-series or ordinal bar or column, and the faint track under it.
+  bar: alpha(BRAND.sand, 0.62),
+  track: alpha(BRAND.cream, 0.1),
+  trackHover: alpha(BRAND.cream, 0.18),
+  // The selected row's bar.
+  selected: BRAND.gold,
+  // The two tones of a comparison of two categories: neutral sand, and one desaturated cool tone (the existing blue, softened).
+  compareFirst: alpha(BRAND.sand, 0.62),
+  compareSecond: alpha(STATS_TONES.blue, 0.7),
+  // Three or more parts: sand shades then cool shades, largest first, then a pale cream.
+  ramp: [alpha(BRAND.sand, 1), alpha(BRAND.sand, 0.6), alpha(STATS_TONES.blue, 0.7), alpha(STATS_TONES.blue, 0.4), alpha(BRAND.cream, 0.3)],
+  // Line charts: the data line and markers, the dashed running average, the faint guides and their muted labels.
+  line: alpha(BRAND.sand, 0.8),
+  marker: BRAND.cream,
+  average: alpha(STATS_TONES.blue, 0.8),
+  guide: alpha(BRAND.cream, 0.3),
+  guideLabel: alpha(BRAND.cream, 0.66),
+  valueLabel: alpha(BRAND.cream, 0.8),
+} as const

@@ -1,6 +1,5 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { STATS_TONES } from '../../../../../../brandTokens'
 import { BigBars, Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis } from '../../cardKit'
 import { formatPercent } from '../../statsFormat'
@@ -30,7 +29,7 @@ export const mineSumWickets: StatsCardDef<MyStatsDto> = {
     const { types, notItemised } = p.series.wicketTypes
     const rows = [
       ...types.filter((type) => type.count > 0).map((type) => ({ key: type.type, label: type.label, value: type.count, valueLabel: String(type.count) })),
-      ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, valueLabel: String(notItemised.count), colour: STATS_TONES.sand }] : []),
+      ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, valueLabel: String(notItemised.count) }] : []),
     ].sort((a, b) => b.value - a.value)
     return (
       <BigBars

@@ -1,7 +1,7 @@
 import { Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link } from 'react-router-dom'
-import { BRAND, STATS_SERIES } from '../../brandTokens'
+import { BRAND, STATS_COLOUR } from '../../brandTokens'
 import { useFaceTabIndex } from '../FlipCard'
 import { donutArcs } from './statsMath'
 
@@ -9,7 +9,7 @@ export interface DonutSlice {
   key: string
   label: string
   value: number
-  // A colour from the stats tones; omitted, the series order is used.
+  // A colour override; omitted, the tonal ramp is used, largest slice first (spec 147 colour rule).
   colour?: string
   // The drill this slice opens.
   href?: string
@@ -34,7 +34,9 @@ export function Donut({ slices, alt, centre, centreCaption, size = 96 }: DonutPr
   const unit = 120 / px
   const c = 60
   const arcs = donutArcs(slices.map((slice) => slice.value), c, c, 56, 36)
-  const shown = slices.map((slice, index) => ({ slice, arc: arcs[index], colour: slice.colour ?? STATS_SERIES[index % STATS_SERIES.length] }))
+  // The ramp goes by size, not by position: the largest slice gets the first (strongest) shade; ties keep their order.
+  const rank = slices.map((slice, index) => slices.filter((other, otherIndex) => other.value > slice.value || (other.value === slice.value && otherIndex < index)).length)
+  const shown = slices.map((slice, index) => ({ slice, arc: arcs[index], colour: slice.colour ?? STATS_COLOUR.ramp[rank[index] % STATS_COLOUR.ramp.length] }))
   return (
     <Box data-testid="donut" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minWidth: 0 }}>
       <Box component="svg" viewBox="0 0 120 120" role="group" aria-label={alt} sx={{ width: px, height: px, flexShrink: 0, '& a': { outline: 'none' }, '& a:focus-visible path': { stroke: BRAND.cream, strokeWidth: 2 } }}>

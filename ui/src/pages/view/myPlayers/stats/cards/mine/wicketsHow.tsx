@@ -1,7 +1,6 @@
 import type { StatsCardDef } from '../../../../../../components/StatsCards'
 import { Donut } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
-import { STATS_TONES } from '../../../../../../brandTokens'
 import { Cap, FaceTable, Note } from '../../cardParts'
 import { bowlingBasis, truncatedNote } from '../../cardKit'
 
@@ -38,7 +37,7 @@ export const mineWicketsHow: StatsCardDef<MyStatsDto> = {
           centreCaption="wickets"
           slices={[
             ...types.map((type) => ({ key: type.type, label: type.label, value: type.count })),
-            ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count, colour: STATS_TONES.sand }] : []),
+            ...(notItemised.count > 0 ? [{ key: 'not-itemised', label: 'Not itemised', value: notItemised.count }] : []),
           ]}
         />
         <Note>Bowler's wickets only; run-outs are not counted.</Note>

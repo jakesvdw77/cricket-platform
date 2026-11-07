@@ -3,6 +3,7 @@ import { LineChart } from '../../../../../../components/StatsDrawings'
 import type { LineChartPoint } from '../../../../../../components/StatsDrawings'
 import type { MyStatsDto } from '../../../../../../api/meStatsApi'
 import { Box } from '@mui/material'
+import { STATS_COLOUR } from '../../../../../../brandTokens'
 import { Big, Cap, Chips, FaceTable, Note, Split, Tiles } from '../../cardParts'
 import { battingBasis } from '../../cardKit'
 import { DASH, dayText, formatCount, formatDecimal, plural, scoreText } from '../../statsFormat'
@@ -58,8 +59,8 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
                   key: 'venue',
                   title: 'Runs',
                   rows: [
-                    { key: 'home', label: 'Home', value: runsAt(p.homeAway.home) },
-                    { key: 'away', label: 'Away', value: runsAt(p.homeAway.away) },
+                    { key: 'home', label: 'Home', swatch: STATS_COLOUR.compareFirst, value: runsAt(p.homeAway.home) },
+                    { key: 'away', label: 'Away', swatch: STATS_COLOUR.compareSecond, value: runsAt(p.homeAway.away) },
                   ],
                 },
               ]}
@@ -85,7 +86,7 @@ export const mineSeason: StatsCardDef<MyStatsDto> = {
             items={p.form.batting.slice(0, 5).map((entry, index) => ({
               key: `${entry.matchId}-${index}`,
               text: scoreText(entry.runs, entry.notOut),
-              tone: entry.notOut ? 'win' : entry.runs === 0 ? 'loss' : 'neutral',
+              tone: 'neutral',
               href: ctx.resultHref(entry.matchId),
               name: `${scoreText(entry.runs, entry.notOut)}, ${dayText(entry.matchDate)}. Open the match.`,
             }))}

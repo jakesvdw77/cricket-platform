@@ -33,10 +33,11 @@ export const mineHomeAway: StatsCardDef<MyStatsDto> = {
     return (
       <>
         <HorizontalBars
+          legend={['Home', 'Away']}
           alt={`Batting average at the club's fields ${formatDecimal(home.average)}, away ${formatDecimal(away.average)}.`}
           rows={[
-            { key: 'home', label: 'Home', value: home.average ?? 0, valueLabel: formatDecimal(home.average) },
-            { key: 'away', label: 'Away', value: away.average ?? 0, valueLabel: formatDecimal(away.average) },
+            { key: 'home', label: 'Home', tone: 'compare', seriesIndex: 0, value: home.average ?? 0, valueLabel: formatDecimal(home.average) },
+            { key: 'away', label: 'Away', tone: 'compare', seriesIndex: 1, value: away.average ?? 0, valueLabel: formatDecimal(away.average) },
           ]}
         />
         <Note>Batting average at the club's own fields against away grounds, where a field is recorded on the match.</Note>
