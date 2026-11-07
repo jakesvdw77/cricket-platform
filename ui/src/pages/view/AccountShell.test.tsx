@@ -75,9 +75,9 @@ describe('AccountShell on a phone', () => {
     const trigger = screen.getByRole('button', { name: 'Account menu' })
     expect(trigger).toHaveTextContent('SS')
     await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
+    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     await userEvent.click(trigger)
 
-    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     expect(await screen.findByRole('menuitem', { name: 'Switch profile' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
     expect(logout).toHaveBeenCalledOnce()
