@@ -1,5 +1,5 @@
 import { alpha } from '@mui/material/styles'
-import { BRAND, blackAlpha } from '../../../brandTokens'
+import { BRAND, RESULT_TONES, blackAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
 import type { ResultTone } from './resultsFormat'
 
@@ -19,7 +19,7 @@ export const cardSx = (tone: ResultTone) =>
       tone === 'win'
         ? `linear-gradient(160deg, ${alpha(BRAND.gold, 0.2)}, ${blackAlpha(0.22)} 55%)`
         : tone === 'loss'
-          ? `linear-gradient(160deg, ${alpha('#9d4a4a', 0.26)}, ${blackAlpha(0.22)} 55%)`
+          ? `linear-gradient(160deg, ${alpha(RESULT_TONES.lossTint, 0.26)}, ${blackAlpha(0.22)} 55%)`
           : tone === 'tie'
             ? `linear-gradient(160deg, ${alpha(BRAND.sand, 0.18)}, ${blackAlpha(0.22)} 55%)`
             : blackAlpha(0.22),

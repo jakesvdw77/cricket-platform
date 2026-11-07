@@ -22,7 +22,21 @@ const rel = (path: string) => path.slice(SRC.length + 1)
 const STAT_DIRS = ['pages/view/myPlayers/stats', 'components/StatsCards', 'components/StatsDrawings', 'components/FlipCard']
 const ALL = STAT_DIRS.flatMap((dir) => files(join(SRC, dir)))
 
+// docs/specs/145 and 146: the Results and ticker files of the Hub (outside stats/) carry no hex literal either; their colours are tokens.
+const hub = join(SRC, 'pages/view/myPlayers')
+const HUB_COLOUR_FILES = readdirSync(hub).flatMap((name) => {
+  const path = join(hub, name)
+  if (statSync(path).isDirectory()) return /^(HubFooter|HubTicker|tickerSources)$/.test(name) ? files(path) : []
+  return /^(HubResults?|HubResultCard|HubGameCard|resultCardStyle|resultsFormat|ticker.*|HubFooter|HubTicker)\.(ts|tsx)$/.test(name) && !/\.(test|stories)\./.test(name) ? [path] : []
+})
+const HEX = /#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b(?![\w-])/
+
 describe('colour and copy guards', () => {
+  it('carries no hex colour literal in the Hub Results, ticker and footer files (colours are tokens)', () => {
+    expect(HUB_COLOUR_FILES.length).toBeGreaterThan(12)
+    for (const path of HUB_COLOUR_FILES) expect(noComments(read(path)), rel(path)).not.toMatch(HEX)
+  })
+
   it('finds the stats sources (so the guards below are not vacuous)', () => {
     expect(ALL.length).toBeGreaterThan(80)
   })

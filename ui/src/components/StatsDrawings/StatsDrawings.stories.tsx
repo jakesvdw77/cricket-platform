@@ -6,7 +6,6 @@ import { Donut } from './Donut'
 import { HorizontalBars } from './HorizontalBars'
 import { LineChart } from './LineChart'
 import { ProgressBars } from './ProgressBars'
-import { Sparkline } from './Sparkline'
 
 // docs/specs/147: the shared stats drawings on the dark console ground, with fixture numbers (a real card is given the server's).
 const meta: Meta = {
@@ -87,7 +86,6 @@ export const MilestoneProgress: StoryObj = {
     />
   ),
 }
-export const TrendSparkline: StoryObj = { render: () => <Sparkline values={[12, 29.5, null, 30.5, 30.6]} alt="Running average over five innings, now 30.6." /> }
 
 export const BowlingColumns: StoryObj = {
   render: () => (

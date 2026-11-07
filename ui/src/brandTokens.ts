@@ -163,3 +163,12 @@ export const STATS_COLOUR = {
   neutralGrey: '#8A948C',
   wicketBlue: STATS_TONES.blue,
 } as const
+
+// docs/specs/145 (Player Hub Results): the loss tones of the result cards and the streak chips (win is gold and tie is sand, both
+// brand tokens). Named here so no Hub file carries a hex literal. Every use also carries a word or a letter, never colour alone.
+export const RESULT_TONES = {
+  // The L chip ground (cream text on it).
+  lossChip: '#7b3a3a',
+  // The tint at the top of a lost result card.
+  lossTint: '#9d4a4a',
+} as const

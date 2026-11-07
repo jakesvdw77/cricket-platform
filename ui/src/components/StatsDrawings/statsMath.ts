@@ -113,14 +113,3 @@ export function progressFraction(value: number, target: number): number {
   if (!(target > 0)) return 0
   return Math.min(Math.max(value / target, 0), 1)
 }
-
-// The sparkline's path and its last point, scaled into a `width` by `height` box with `pad` around it. A flat series is a middle line.
-export function sparkline(values: (number | null)[], width: number, height: number, pad = 3): { path: string; last: [number, number] | null } {
-  const real = values.filter((value): value is number => value !== null)
-  if (real.length === 0) return { path: '', last: null }
-  const x = xPositions(values.length, pad, width - pad * 2)
-  const y = linearScale(Math.min(...real), Math.max(...real), height - pad, pad)
-  const points: Point[] = values.map((value, index) => ({ x: x[index], y: value === null ? null : y(value) }))
-  const lastIndex = values.map((value) => value !== null).lastIndexOf(true)
-  return { path: linePath(points), last: lastIndex >= 0 ? [x[lastIndex], y(values[lastIndex] as number)] : null }
-}

@@ -5,7 +5,7 @@ import { BrandIcon } from '../../../components/BrandIcon'
 import { useMyPlayer } from '../../../api/myPlayersApi'
 import { useMyPlayerResults, useMyPlayerResultsFilters, useMyPlayerResultsSummary } from '../../../api/meResultsApi'
 import type { MyResultSummary } from '../../../api/meResultsApi'
-import { BRAND, creamAlpha } from '../../../brandTokens'
+import { BRAND, RESULT_TONES, creamAlpha } from '../../../brandTokens'
 import { HubPageHeader } from './HubPageHeader'
 import { HubScopePanel, HubScopeSheet, useHubScope } from './HubScopeControls'
 import { HUB, hubOutlineButton } from './hubStyle'
@@ -31,7 +31,7 @@ function Skeletons() {
 }
 
 const chipColours = (tone: ReturnType<typeof resultTone>) =>
-  tone === 'win' ? { bgcolor: BRAND.gold, color: BRAND.ink } : tone === 'loss' ? { bgcolor: '#7b3a3a', color: BRAND.cream } : tone === 'tie' ? { bgcolor: BRAND.sand, color: BRAND.ink } : { bgcolor: creamAlpha(0.22), color: BRAND.cream }
+  tone === 'win' ? { bgcolor: BRAND.gold, color: BRAND.ink } : tone === 'loss' ? { bgcolor: RESULT_TONES.lossChip, color: BRAND.cream } : tone === 'tie' ? { bgcolor: BRAND.sand, color: BRAND.ink } : { bgcolor: creamAlpha(0.22), color: BRAND.cream }
 
 function RecentForm({ rows }: { rows: MyResultSummary['lastFive'] }) {
   const streak = [...rows].reverse()
