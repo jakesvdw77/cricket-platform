@@ -57,7 +57,7 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile']
+const ROOT_BARS = ['Availability', 'Schedule', 'Results', 'Stats', 'Updates', 'Club', 'Profile']
 
 describe('MyPlayerPage on a desktop', () => {
   it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
@@ -140,7 +140,8 @@ describe('MyPlayerPage on a desktop', () => {
     const extra = { 'GET /me/players/k1/matches/m1': matchDto({ phase: 'LIVE', stream: STREAM, availability: { answer: null, pollId: 'p1', pollOpen: true } }) }
     const { unmount } = setup('/account/players/k1/schedule/matches/m1/watch?from=matches', { extra })
     expect(await screen.findByTestId('hub-watch-live')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Back to Match' })).toBeInTheDocument()
+    // The theatre page has its own Back (the footer's is under it, out of reach).
+    expect(within(screen.getByTestId('hub-watch-live')).getByRole('button', { name: 'Back to Match' })).toBeInTheDocument()
     unmount()
 
     setup('/account/players/k1/schedule/matches/m1', { extra })
@@ -154,7 +155,7 @@ describe('MyPlayerPage on a desktop', () => {
 
     expect(await screen.findByTestId('hub-stats-grid')).toBeInTheDocument()
     expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
-    expect(within(menu()).getAllByRole('button').map((bar) => bar.textContent)).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
+    expect(within(menu()).getAllByRole('button').map((bar) => bar.textContent)).toEqual(['Player Stats', 'Team Stats', 'Leaderboards'])
     expect(within(menu()).getByRole('button', { name: 'Player Stats' })).toHaveAttribute('aria-current', 'page')
   })
 

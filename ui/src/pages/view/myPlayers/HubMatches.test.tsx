@@ -33,7 +33,7 @@ function renderMatches(routes: Record<string, unknown>, key = 'k1') {
 beforeEach(() => vi.clearAllMocks())
 
 describe('HubMatches', () => {
-  it('pins Live Now first with the LIVE badge, elapsed time, selection, Follow Live Score and Watch Live', async () => {
+  it('opens on the Live pill with the LIVE badge, elapsed time, selection, Live Score and Watch Live top right', async () => {
     renderMatches({
       'GET /me/players/k1/matches': matchList({ live: [LIVE], upcoming: [summary({ matchId: 'up1', date: '2099-11-08' })] }),
       'GET /me/players/k1/matches/live1': matchDto({ matchId: 'live1', phase: 'LIVE', liveScore: LIVE_SCORE }),
@@ -44,19 +44,29 @@ describe('HubMatches', () => {
     expect(within(live[0]).getByTestId('live-badge')).toHaveTextContent('LIVE')
     expect(within(live[0]).getByTestId('match-elapsed')).toHaveTextContent('Started 1h 20m ago')
     expect(within(live[0]).getByTestId('selection-tag')).toHaveTextContent('Selected')
-    expect(within(live[0]).getByRole('link', { name: 'Riverside U15 A versus Hillside U15' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/live1?from=matches')
-    expect(await within(live[0]).findByRole('link', { name: 'Follow Live Score' })).toHaveAttribute('target', '_blank')
-    expect(within(live[0]).getByRole('link', { name: 'Watch Live' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/live1/watch?from=matches')
-    expect(screen.getByRole('heading', { name: 'Live Now' })).toBeInTheDocument()
-    expect(live[1]).toHaveAttribute('data-phase', 'UPCOMING')
+    expect(within(live[0]).getByRole('link', { name: 'Riverside U15 A versus Hillside U15' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/live1?from=matches%3Alive')
+    expect(await within(live[0]).findByRole('link', { name: 'Live Score, opens in a new tab' })).toHaveAttribute('target', '_blank')
+    expect(within(live[0]).getByRole('link', { name: 'Watch Live' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/live1/watch?from=matches%3Alive')
+    // Only the chosen pill's list is shown, so the upcoming row is behind its own pill.
+    expect(live).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /^Upcoming/ })).toHaveTextContent('1')
   })
 
-  it('has no Live Now section, and no live controls, when nothing is on', async () => {
+  it('always has a Live pill (count 0) and opens on Upcoming with no live controls when nothing is on', async () => {
     renderMatches({ 'GET /me/players/k1/matches': matchList({ upcoming: [summary()] }) })
 
     await screen.findByTestId('hub-match-row')
-    expect(screen.queryByRole('heading', { name: 'Live Now' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Live/ })).toHaveTextContent('0')
     expect(screen.queryByTestId('live-badge')).not.toBeInTheDocument()
+  })
+
+  it('shows an icon and a friendly line, not "None yet", on an empty Live pill', async () => {
+    renderMatches({ 'GET /me/players/k1/matches': matchList({ upcoming: [summary()] }) })
+
+    await screen.findByTestId('hub-match-row')
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Live/ }))
+    expect(screen.getByTestId('matches-none')).toHaveTextContent('No match is live right now')
+    expect(screen.getByTestId('matches-none')).toHaveTextContent('Sam')
   })
 
   it('lists Upcoming under its date with the time, a countdown and the Title Case selection tag, no chevron or kebab', async () => {
@@ -71,20 +81,15 @@ describe('HubMatches', () => {
     expect(within(row).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('keeps Recent collapsed until asked for, then shows the result and Result pending', async () => {
-    renderMatches({ 'GET /me/players/k1/matches': matchList({ upcoming: [summary()], recent: [RECENT, PENDING] }) })
+  it('opens on Recent when it is all there is, newest first, with the result and Result pending', async () => {
+    renderMatches({ 'GET /me/players/k1/matches': matchList({ recent: [RECENT, PENDING] }) })
 
-    const toggle = await screen.findByRole('button', { name: 'Recent Matches' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getAllByTestId('hub-match-row')).toHaveLength(1)
-
-    await userEvent.setup().click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await screen.findAllByTestId('hub-match-row')
     const rows = screen.getAllByTestId('hub-match-row')
-    expect(rows).toHaveLength(3)
-    expect(rows[1]).toHaveTextContent('142/6')
-    expect(within(rows[1]).getByTestId('match-result-line')).toHaveTextContent('Riverside U15 A won by 4 runs')
-    expect(within(rows[2]).getByTestId('match-result-line')).toHaveTextContent('Result pending')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('142/6')
+    expect(within(rows[0]).getByTestId('match-result-line')).toHaveTextContent('Riverside U15 A won by 4 runs')
+    expect(within(rows[1]).getByTestId('match-result-line')).toHaveTextContent('Result pending')
   })
 
   it('shows the empty state naming the player', async () => {

@@ -41,20 +41,20 @@ const card = (name: string) => cards().find((c) => within(c).queryByRole('headin
 beforeEach(() => vi.clearAllMocks())
 
 describe('HubFields', () => {
-  it('shows one card per field with name, address and the Home and Address checked tags', async () => {
+  it('shows one card per field with name, the address as lines, Verified top right and the Home Field tag only for a home field', async () => {
     renderFields(FIELDS)
 
     expect(await screen.findByRole('heading', { name: 'Field Directory' })).toBeInTheDocument()
     await screen.findByRole('heading', { name: 'Riverside Oval' })
     expect(cards()).toHaveLength(2)
     const home = card('Riverside Oval')
-    expect(within(home).getByText('1 Main Rd, Paarl, Western Cape, 7646, South Africa')).toBeInTheDocument()
-    expect(within(home).getByText('Home field')).toBeInTheDocument()
-    expect(within(home).getByText('Address checked')).toBeInTheDocument()
+    expect(within(home).getByTestId('field-address').textContent).toBe('1 Main RdPaarl, Western Cape 7646South Africa')
+    expect(within(home).getByText('Home Field')).toBeInTheDocument()
+    expect(within(home).getByTestId('field-verified')).toHaveTextContent('Verified')
     const away = card('Hillcrest Park')
-    expect(within(away).getByText('Away this season')).toBeInTheDocument()
-    expect(within(away).getByText('Address not checked yet')).toBeInTheDocument()
-    expect(within(away).queryByText('Home field')).not.toBeInTheDocument()
+    expect(within(away).queryByText('Away this season')).not.toBeInTheDocument()
+    expect(within(away).getByTestId('field-verified')).toHaveTextContent('Not Verified')
+    expect(within(away).queryByText('Home Field')).not.toBeInTheDocument()
   })
 
   it('shows the owner only when there is one', async () => {
@@ -99,7 +99,7 @@ describe('HubFields', () => {
     await user.clear(box)
     await user.type(box, 'zzz')
     expect(screen.queryByTestId('hub-field-card')).not.toBeInTheDocument()
-    expect(screen.getByText('No fields match your search.')).toBeInTheDocument()
+    expect(screen.getByText('No fields match that search.')).toBeInTheDocument()
   })
 
   it('Escape in the search clears the text first and is left for the page only when the box is empty', async () => {
@@ -148,13 +148,13 @@ describe('HubFields', () => {
   it('shows the empty state when the club has no fields', async () => {
     renderFields([])
     expect(await screen.findByText(/No fields yet\. Fields appear here once your club adds them/)).toBeInTheDocument()
-    expect(screen.queryByText('No fields match your search.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No fields match that search.')).not.toBeInTheDocument()
   })
 
   it('always shows the away-fields note, and the 200 note only at exactly 200', async () => {
     const first = renderFields(FIELDS)
     await screen.findByRole('heading', { name: 'Riverside Oval' })
-    expect(screen.getByText('Away fields appear once your club links a field to a match.')).toBeInTheDocument()
+    expect(screen.getByText('Away fields appear once the club links a field to a match.')).toBeInTheDocument()
     expect(screen.queryByText('Showing the first 200 fields.')).not.toBeInTheDocument()
     first.unmount()
 
@@ -166,13 +166,13 @@ describe('HubFields', () => {
 
     renderFields(many(200))
     expect(await screen.findByText('Showing the first 200 fields.')).toBeInTheDocument()
-    expect(screen.getByText('Away fields appear once your club links a field to a match.')).toBeInTheDocument()
+    expect(screen.getByText('Away fields appear once the club links a field to a match.')).toBeInTheDocument()
   })
 
   it('shows the note on an empty list too', async () => {
     renderFields([])
     await screen.findByText(/No fields yet/)
-    expect(screen.getByText('Away fields appear once your club links a field to a match.')).toBeInTheDocument()
+    expect(screen.getByText('Away fields appear once the club links a field to a match.')).toBeInTheDocument()
   })
 
   it('loads again, and clears the search, when the player changes', async () => {

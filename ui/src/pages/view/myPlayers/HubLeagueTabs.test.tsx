@@ -18,7 +18,7 @@ describe('HubLeagueTabBar', () => {
   it('has six tabs in order, with no Key dates tab, and selects Details', () => {
     render(<Harness />)
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Playing conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Playing Conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
     expect(screen.queryByRole('tab', { name: 'Key dates' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
   })
@@ -39,14 +39,14 @@ describe('HubLeagueTabBar', () => {
 })
 
 describe('HubLeagueDetails', () => {
-  it('shows the description, age group, format and the key dates as tiles', () => {
+  it('shows the description and the facts card: age group, format and the key dates as label and value pairs', () => {
     render(<HubLeagueDetails dto={leagueDto()} />)
 
     expect(screen.getByText('Weekend cricket for juniors.')).toBeInTheDocument()
     expect(tile('Age group')).toHaveTextContent('Under 15')
     expect(tile('Format')).toHaveTextContent('T20')
-    expect(tile('Season starts')).toHaveTextContent(/Thursday,? 1 October 2026/)
-    expect(tile('Season ends')).toHaveTextContent(/Wednesday,? 31 March 2027/)
+    expect(tile('Season starts')).toHaveTextContent(/Thu 1 Oct 2026/)
+    expect(tile('Season ends')).toHaveTextContent(/Wed 31 Mar 2027/)
     expect(screen.getByText('First match')).toBeInTheDocument()
     expect(screen.getByText('Next match')).toBeInTheDocument()
     expect(screen.getByText('Last match')).toBeInTheDocument()

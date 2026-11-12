@@ -45,6 +45,9 @@ function FollowButton({ source, kind }: { source: LiveScoreSource; kind: keyof t
   )
 }
 
+// Whether a source is something the Hub can link to (EXTERNAL, https): callers use this, never the url itself (the seam test guards it).
+export const hasScoreLink = (source: LiveScoreSource | null | undefined): boolean => Boolean(source && source.kind === 'EXTERNAL' && isHttps(source.url))
+
 export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
   if (!source || source.kind !== 'EXTERNAL' || !isHttps(source.url)) return null
   if (variant === 'row' || variant === 'header' || variant === 'scorecard') return <FollowButton source={source} kind={variant} />

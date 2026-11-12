@@ -62,16 +62,16 @@ describe('HubWatchLive', () => {
     expect(screen.queryByTestId('stream-poster')).not.toBeInTheDocument()
   })
 
-  it('puts the LiveScore tv panel under the frame and Open Stream as the always-there fallback', async () => {
+  it('puts Live Score and Open Stream in the theatre bar, as the always-there fallback', async () => {
     renderWatch(live())
 
     await screen.findByTestId('stream-poster')
-    expect(within(screen.getByTestId('live-score-tv')).getByRole('link', { name: 'Follow Live Score' })).toHaveAttribute('target', '_blank')
-    const open = screen.getByTestId('open-stream')
+    const bar = within(screen.getByTestId('watch-scoreboard'))
+    expect(bar.getByRole('link', { name: 'Live Score, opens in a new tab' })).toHaveAttribute('target', '_blank')
+    const open = bar.getByTestId('open-stream')
     expect(open).toHaveAttribute('href', STREAM.url)
     expect(open).toHaveAttribute('target', '_blank')
     expect(open.getAttribute('rel')).toContain('noopener')
-    expect(screen.getByText('Not loading? Open the stream in a new tab.')).toBeInTheDocument()
   })
 
   it('falls back to Open Stream and embeds nothing when there is no embed URL', async () => {

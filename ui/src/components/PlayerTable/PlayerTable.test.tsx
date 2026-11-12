@@ -87,21 +87,21 @@ describe('PlayerTable', () => {
     expect(screen.getByRole('table', { name: 'Players' })).toBeInTheDocument()
   })
 
-  it('a phone shows Player, Season, Phone and the button: Status, Section, No., Bat, Bowl and Overall are the desktop-only columns', () => {
+  it('a phone shows Player (status and phone under the name), Season and the buttons: Status, Section, No., Phone, Bat, Bowl and Overall are the desktop-only columns', () => {
     renderTable([makePlayer({ id: 'p1', phone: '083 555 0177', gamesThisSeason: 5, gamesOverall: 22 })])
 
     const headers = screen.getAllByRole('columnheader')
     const desktopOnly = headers.filter((header) => header.hasAttribute('data-desktop-only')).map((header) => header.textContent)
     const kept = headers.filter((header) => !header.hasAttribute('data-desktop-only')).map((header) => header.textContent)
-    expect(desktopOnly).toEqual(['Status', 'Section', 'No.', 'Bat', 'Bowl', 'Overall'])
-    expect(kept).toEqual(['Player', 'Phone', 'Season', '', ''])
+    expect(desktopOnly).toEqual(['Status', 'Section', 'No.', 'Phone', 'Bat', 'Bowl', 'Overall'])
+    expect(kept).toEqual(['Player', 'Season', '', ''])
 
     // the cells follow the same split, and Season is ordered before Phone on a phone
     const [row] = screen.getAllByTestId('player-row')
     const cells = within(row).getAllByRole('cell')
-    expect(cells.filter((cell) => cell.hasAttribute('data-desktop-only'))).toHaveLength(6)
-    expect(cells[4]).not.toHaveAttribute('data-desktop-only') // Phone
-    expect(cells[4]).toHaveTextContent('083 555 0177')
+    expect(cells.filter((cell) => cell.hasAttribute('data-desktop-only'))).toHaveLength(7)
+    expect(cells[4]).toHaveAttribute('data-desktop-only') // Phone (a phone shows it under the name)
+    expect(cells[0]).toHaveTextContent('083 555 0177')
     expect(cells[7]).not.toHaveAttribute('data-desktop-only') // Season
     expect(cells[8]).toHaveAttribute('data-desktop-only') // Overall
   })
@@ -127,10 +127,10 @@ describe('PlayerTable', () => {
     const [full, empty] = screen.getAllByTestId('player-row')
     expect(within(full).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
       // the first cell also holds the badge a phone shows under the name (hidden from `sm` up by CSS)
-      'Sipho NdlovuVerified', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', 'View Stats', '',
+      'Sipho NdlovuVerified083 555 0177', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', 'View Stats', '',
     ])
     expect(within(empty).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Sam PetersVerified', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', 'View Stats', '',
+      'Sam PetersVerified–', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', 'View Stats', '',
     ])
   })
 

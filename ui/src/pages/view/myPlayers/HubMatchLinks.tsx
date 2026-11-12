@@ -3,7 +3,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { Button } from '../../../components/Button'
 import type { LiveScoreSource, MyMatchStreamDto } from '../../../api/myPlayersApi'
 import { hubGoldOutlineButton } from './hubStyle'
-import { HubLiveScore } from './HubLiveScore'
+import { HubLiveScore, hasScoreLink } from './HubLiveScore'
 import { isHttps } from './leagueFormat'
 
 // Owner, 2026-11-12: a finished match keeps its links. Watch Stream (the recording, where the club kept the stream link) and Online
@@ -11,8 +11,7 @@ import { isHttps } from './leagueFormat'
 // framed. Each shows only when the club set that link; with neither, nothing is drawn. Used on the finished match page and the Result page.
 export function HubMatchLinks({ stream, liveScore }: { stream?: MyMatchStreamDto | null; liveScore?: LiveScoreSource | null }) {
   const streamUrl = stream && isHttps(stream.url) ? stream.url : null
-  const hasScore = Boolean(liveScore && liveScore.kind === 'EXTERNAL' && isHttps(liveScore.url))
-  if (!streamUrl && !hasScore) return null
+  if (!streamUrl && !hasScoreLink(liveScore)) return null
   return (
     <Box data-testid="match-links" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
       {streamUrl && (

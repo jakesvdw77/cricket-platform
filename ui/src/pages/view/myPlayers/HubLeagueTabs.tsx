@@ -184,9 +184,9 @@ function SeasonTimeline({ start, end }: { start: string; end: string }) {
         {dot('100%', HUB.ink, HUB.sand)}
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 1, fontSize: 13, color: HUB.muted }}>
-        <span><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(start)}</Box>Season starts</span>
+        <span><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(start)}</Box>Starts</span>
         <Box component="span" sx={{ textAlign: 'center' }}><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{started ? 'Today' : 'Not started'}</Box>{started ? shortDate(todayIso()) : `Starts ${shortDate(start)}`}</Box>
-        <Box component="span" sx={{ textAlign: 'right' }}><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(end)}</Box>Season ends</Box>
+        <Box component="span" sx={{ textAlign: 'right' }}><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(end)}</Box>Ends</Box>
       </Box>
     </Box>
   )
