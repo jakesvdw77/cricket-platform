@@ -44,6 +44,19 @@ export const hubGoldButton = {
 // Secondary buttons on the dark console (owner, 2026-11-06): the same look as the Season dropdown beside them, not a small gold outline:
 // 44 px high, the cream hairline, the dark translucent fill, the display face. Gold stays for the filled primary (hubGoldButton) and for
 // accents such as the active dot.
+// The one framed icon button of a header row (owner, 2026-11-12): 36 px, the outline-button border and radius, cream glyph.
+export const hubFramedIconSx = {
+  width: 36,
+  height: 36,
+  color: HUB.cream,
+  border: `1px solid ${HUB.line}`,
+  borderRadius: '4px',
+  bgcolor: blackAlpha(.28),
+  '&:hover': { bgcolor: alpha(HUB.gold, 0.14) },
+  '&.Mui-disabled': { opacity: 0.5, color: HUB.cream },
+  '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
+} as const
+
 export const hubOutlineButton = {
   color: HUB.cream,
   borderColor: HUB.line,

@@ -13,10 +13,10 @@ import { compactButtonSx } from '../../../components/Button/Button'
 import { LEAGUE_FORMAT_LABELS } from '../../../api/leagueApi'
 import type { MyLeagueDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
-import { HUB, hubOutlineButton } from './hubStyle'
+import { HUB, hubFramedIconSx, hubOutlineButton } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubFieldCard } from './HubFieldCard'
-import { LEAGUE_TABS, ageBand, isHttps, longDate } from './leagueFormat'
+import { LEAGUE_TABS, ageBand, isHttps, localDate, longDate, shortDate, todayIso } from './leagueFormat'
 import type { LeagueTab } from './leagueFormat'
 import { describeBallsPerOver, describeFreeHit } from '../../../utils/playingConditions'
 
@@ -25,7 +25,7 @@ import { describeBallsPerOver, describeFreeHit } from '../../../utils/playingCon
 export const tabId = (tab: LeagueTab) => `hub-league-tab-${tab}`
 export const panelId = (tab: LeagueTab) => `hub-league-panel-${tab}`
 
-export function HubLeagueTabBar({ value, onChange }: { value: LeagueTab; onChange: (tab: LeagueTab) => void }) {
+export function HubLeagueTabBar({ value, onChange, counts }: { value: LeagueTab; onChange: (tab: LeagueTab) => void; counts?: Partial<Record<LeagueTab, number>> }) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({})
   const onKeyDown = (event: KeyboardEvent) => {
     const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -41,20 +41,11 @@ export function HubLeagueTabBar({ value, onChange }: { value: LeagueTab; onChang
       role="tablist"
       aria-label="League sections"
       onKeyDown={onKeyDown}
-      sx={{
-        display: 'flex',
-        gap: { xs: 1, sm: 0.5 },
-        overflowX: 'auto',
-        minWidth: 0,
-        maxWidth: '100%',
-        py: { xs: 1, sm: 0 },
-        borderBottom: { sm: `1px solid ${HUB.line}` },
-        scrollbarWidth: 'none',
-        '&::-webkit-scrollbar': { display: 'none' },
-      }}
+      sx={{ display: 'flex', gap: 1, overflowX: 'auto', minWidth: 0, maxWidth: '100%', py: 1, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}
     >
       {LEAGUE_TABS.map((tab) => {
         const selected = tab.id === value
+        const count = counts?.[tab.id]
         return (
           <ButtonBase
             key={tab.id}
@@ -69,20 +60,25 @@ export function HubLeagueTabBar({ value, onChange }: { value: LeagueTab; onChang
               flex: 'none',
               minHeight: 44,
               px: 2,
+              gap: 1,
               fontFamily: 'inherit',
               fontWeight: 600,
               fontSize: 15,
               whiteSpace: 'nowrap',
-              color: { xs: selected ? HUB.ink : HUB.cream, sm: selected ? HUB.gold : HUB.cream },
-              bgcolor: { xs: selected ? HUB.gold : 'transparent', sm: 'transparent' },
-              border: { xs: `1px solid ${selected ? HUB.gold : HUB.line}`, sm: 'none' },
-              borderRadius: { xs: 999, sm: 0 },
-              borderBottom: { sm: `3px solid ${selected ? HUB.gold : 'transparent'}` },
-              '&:hover': { bgcolor: { xs: selected ? HUB.gold : alpha(HUB.gold, 0.12), sm: alpha(HUB.gold, 0.08) } },
+              color: selected ? HUB.ink : HUB.cream,
+              bgcolor: selected ? HUB.gold : 'transparent',
+              border: `1px solid ${selected ? HUB.gold : HUB.line}`,
+              borderRadius: 999,
+              '&:hover': { bgcolor: selected ? HUB.gold : alpha(HUB.gold, 0.12) },
               '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
             }}
           >
             {tab.label}
+            {count !== undefined && (
+              <Box component="span" aria-hidden sx={{ minWidth: 20, height: 20, px: 0.75, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, bgcolor: selected ? alpha(HUB.ink, 0.22) : creamAlpha(0.16) }}>
+                {count}
+              </Box>
+            )}
           </ButtonBase>
         )
       })}
@@ -136,13 +132,13 @@ export function HubLeagueSocialLinks({ league }: { league: MyLeagueDto['league']
   const links = [...(isHttps(league.website) ? [{ platform: 'Website', url: league.website as string }] : []), ...league.socialLinks.filter((link) => isHttps(link.url))]
   if (links.length === 0) return null
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1 }}>
       {links.map((link) => {
         const { name, icon } = link.platform === 'Website' ? { name: 'Website', icon: <LanguageIcon /> } : socialFor(link.url, link.platform.charAt(0).toUpperCase() + link.platform.slice(1))
         const label = `${name} (opens in a new tab)`
         return (
           <Tooltip key={`${link.platform}-${link.url}`} title={name}>
-            <IconButton component="a" href={link.url} target="_blank" rel="noopener noreferrer" aria-label={label} sx={{ width: 44, height: 44, color: HUB.gold, '&:hover': { bgcolor: alpha(HUB.gold, 0.12) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}>
+            <IconButton component="a" href={link.url} target="_blank" rel="noopener noreferrer" aria-label={label} sx={hubFramedIconSx}>
               {icon}
             </IconButton>
           </Tooltip>
@@ -152,19 +148,73 @@ export function HubLeagueSocialLinks({ league }: { league: MyLeagueDto['league']
   )
 }
 
+// Owner, 2026-11-12: one facts card (label and value pairs, all cream, no gaps) and a small season timeline, in place of loose tiles.
+const datePill = (value: string) => {
+  const date = localDate(value)
+  return date ? `${date.toLocaleDateString('en-GB', { weekday: 'short' })} ${shortDate(value)}` : value
+}
+
+function Fact({ label, value, last }: { label: string; value: ReactNode; last?: boolean }) {
+  return (
+    <Box sx={{ p: '12px 16px', minWidth: 0, borderBottom: last ? 0 : `1px solid ${HUB.lineSoft}`, '&:nth-of-type(odd)': { borderRight: { sm: `1px solid ${HUB.lineSoft}` } } }}>
+      <Typography sx={{ fontSize: 13, color: HUB.muted }}>{label}</Typography>
+      <Typography sx={{ fontSize: 19, fontWeight: 600, color: HUB.cream, overflowWrap: 'anywhere' }}>{value}</Typography>
+    </Box>
+  )
+}
+
+// start, today and end on one line; "today" sits where it falls between them. Once the season is over it is one line of text instead.
+function SeasonTimeline({ start, end }: { start: string; end: string }) {
+  const startDate = localDate(start)
+  const endDate = localDate(end)
+  if (!startDate || !endDate || endDate < startDate) return null
+  const today = localDate(todayIso()) as Date
+  if (today > endDate) return <Typography data-testid="season-ended" sx={{ p: '12px 16px', borderTop: `1px solid ${HUB.lineSoft}`, fontSize: 14, color: HUB.muted }}>Season ended {shortDate(end)}</Typography>
+  const span = endDate.getTime() - startDate.getTime()
+  const pct = span === 0 ? 0 : Math.min(100, Math.max(0, ((today.getTime() - startDate.getTime()) / span) * 100))
+  const started = today >= startDate
+  const dot = (left: string, fill: string, ring: string) => <Box aria-hidden sx={{ position: 'absolute', top: '50%', left, transform: 'translate(-50%, -50%)', width: 12, height: 12, borderRadius: '50%', bgcolor: fill, border: `2px solid ${ring}` }} />
+  return (
+    <Box data-testid="season-timeline" sx={{ p: '16px 16px 14px', borderTop: `1px solid ${HUB.lineSoft}` }}>
+      <Box aria-hidden sx={{ position: 'relative', height: 14, mx: '6px' }}>
+        <Box sx={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 2, bgcolor: HUB.line, transform: 'translateY(-50%)' }} />
+        {started && <Box sx={{ position: 'absolute', top: '50%', left: 0, width: `${pct}%`, height: 2, bgcolor: HUB.gold, transform: 'translateY(-50%)' }} />}
+        {dot('0%', HUB.gold, HUB.gold)}
+        {started && pct > 0 && pct < 100 && dot(`${pct}%`, HUB.ink, HUB.cream)}
+        {dot('100%', HUB.ink, HUB.sand)}
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 1, fontSize: 13, color: HUB.muted }}>
+        <span><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(start)}</Box>Season starts</span>
+        <Box component="span" sx={{ textAlign: 'center' }}><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{started ? 'Today' : 'Not started'}</Box>{started ? shortDate(todayIso()) : `Starts ${shortDate(start)}`}</Box>
+        <Box component="span" sx={{ textAlign: 'right' }}><Box component="b" sx={{ display: 'block', color: HUB.cream, fontWeight: 600, fontSize: 14 }}>{shortDate(end)}</Box>Season ends</Box>
+      </Box>
+    </Box>
+  )
+}
+
 export function HubLeagueDetails({ dto }: { dto: MyLeagueDto }) {
-  const { league } = dto
+  const { league, keyDates: k } = dto
   const band = ageBand(league)
-  const dates = keyDateTiles(dto)
-  const hasAny = league.description || band || league.format || dates.length > 0
+  const facts: [string, ReactNode][] = [
+    ...(band ? ([['Age group', band]] as [string, ReactNode][]) : []),
+    ...(league.format ? ([['Format', LEAGUE_FORMAT_LABELS[league.format]]] as [string, ReactNode][]) : []),
+    ...(([['Season starts', k.seasonStart], ['Season ends', k.seasonEnd], ['First match', k.firstMatchDate], ['Next match', k.nextMatchDate], ['Last match', k.lastMatchDate]] as [string, string | null][])
+      .filter(([, value]) => value)
+      .map(([label, value]) => [label, <span key={label} aria-label={longDate(value as string)}>{datePill(value as string)}</span>] as [string, ReactNode])),
+  ]
+  const hasAny = Boolean(league.description) || facts.length > 0
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       {league.description && <Typography sx={{ fontSize: 17, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{league.description}</Typography>}
-      <Box sx={tileGrid}>
-        {band && <FactTile label="Age group" value={band} />}
-        {league.format && <FactTile label="Format" value={LEAGUE_FORMAT_LABELS[league.format]} />}
-      </Box>
-      {dates.length > 0 && <Box sx={tileGrid}>{dates}</Box>}
+      {facts.length > 0 && (
+        <Box data-testid="league-facts" sx={{ border: 1, borderColor: HUB.lineSoft, bgcolor: creamAlpha(0.04), borderRadius: '8px', overflow: 'hidden' }}>
+          <Typography component="h3" sx={{ p: '10px 16px', borderBottom: `1px solid ${HUB.lineSoft}`, fontFamily: HUB.display, fontWeight: 600, fontSize: 13, letterSpacing: '0.18em', textTransform: 'uppercase', color: HUB.muted }}>League facts</Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' } }}>
+            {facts.map(([label, value], index) => <Fact key={label} label={label} value={value} last={index >= facts.length - (facts.length % 2 === 0 ? 2 : 1)} />)}
+          </Box>
+          {k.seasonStart && k.seasonEnd && <SeasonTimeline start={k.seasonStart} end={k.seasonEnd} />}
+        </Box>
+      )}
       {!hasAny && <Box sx={emptyLine}>No further details have been added for this league.</Box>}
     </Box>
   )
@@ -234,17 +284,3 @@ export function HubLeagueFields({ dto }: { dto: MyLeagueDto }) {
     </Box>
   )
 }
-
-// Key dates are part of Details (no tab of their own); empty when the season has none.
-function keyDateTiles(dto: MyLeagueDto) {
-  const k = dto.keyDates
-  const dates: [string, string | null][] = [
-    ['Season starts', k.seasonStart],
-    ['Season ends', k.seasonEnd],
-    ['First match', k.firstMatchDate],
-    ['Next match', k.nextMatchDate],
-    ['Last match', k.lastMatchDate],
-  ]
-  return (dates.filter(([, value]) => value) as [string, string][]).map(([label, value]) => <FactTile key={label} label={label} value={longDate(value)} gold />)
-}
-

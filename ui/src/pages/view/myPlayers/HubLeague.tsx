@@ -61,8 +61,8 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
           <HubLeagueShare dto={dto} clubName={clubName} />
         </Box>
       </Box>
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: HUB_GROUND_SOLID, borderBottom: { xs: `1px solid ${HUB.line}`, sm: 'none' }, minWidth: 0, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 } }}>
-        <HubLeagueTabBar value={tab} onChange={onTab} />
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: HUB_GROUND_SOLID, borderBottom: `1px solid ${HUB.lineSoft}`, minWidth: 0 }}>
+        <HubLeagueTabBar value={tab} onChange={onTab} counts={{ teams: dto.teams.length, schedule: dto.schedule.length, results: dto.results.length, fields: (dto.fields ?? []).length }} />
       </Box>
       <Box role="tabpanel" id={panelId(tab)} aria-labelledby={tabId(tab)} tabIndex={0} sx={{ outline: 'none', '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
         {tab === 'details' && <HubLeagueDetails dto={dto} />}

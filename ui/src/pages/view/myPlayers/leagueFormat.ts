@@ -8,7 +8,7 @@ export type LeagueTab = 'details' | 'conditions' | 'teams' | 'schedule' | 'resul
 
 export const LEAGUE_TABS: { id: LeagueTab; label: string; content?: LeagueContent }[] = [
   { id: 'details', label: 'Details', content: 'DETAILS' },
-  { id: 'conditions', label: 'Playing conditions', content: 'CONDITIONS' },
+  { id: 'conditions', label: 'Playing Conditions', content: 'CONDITIONS' },
   { id: 'teams', label: 'Teams', content: 'TEAMS' },
   { id: 'schedule', label: 'Schedule', content: 'SCHEDULE' },
   { id: 'results', label: 'Results', content: 'RESULTS' },
