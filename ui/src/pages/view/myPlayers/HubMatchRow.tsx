@@ -1,5 +1,6 @@
 import { Box, Button as MuiButton, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { Link as RouterLink } from 'react-router-dom'
 import { compactButtonSx } from '../../../components/Button'
 import type { MyMatchSelection, MyMatchSummaryDto } from '../../../api/myPlayersApi'
@@ -87,7 +88,7 @@ const inner = { position: 'relative', zIndex: 1 } as const
 // the match page uses) and handed to the seam component.
 function LiveRowScore({ playerKey, matchId }: { playerKey: string; matchId: string }) {
   const match = useMyPlayerMatch(playerKey, matchId)
-  return <HubLiveScore source={match.data?.liveScore} variant="row" />
+  return <HubLiveScore source={match.data?.liveScore} variant="header" />
 }
 
 // The top line of an upcoming row: the time and countdown on the left, the match-hours weather badge in the top right corner (a phone
@@ -151,6 +152,23 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <LiveBadge />
           <Typography component="span" data-testid="match-elapsed" sx={{ fontSize: 14, color: HUB.muted }}>{elapsedLabel(row.startedAt, now)}</Typography>
+          {/* Owner, 2026-11-12: the live actions sit top right on the same row as the LIVE badge, as on the match page. */}
+          <Box sx={{ ...inner, ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            {row.hasStream && (
+              <MuiButton
+                variant="contained"
+                size="small"
+                component={RouterLink}
+                to={watchPath(playerKey, row.matchId, from)}
+                data-testid="watch-live"
+                startIcon={<PlayArrowIcon />}
+                sx={{ ...compactButtonSx, whiteSpace: 'nowrap', bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
+              >
+                Watch Live
+              </MuiButton>
+            )}
+            {row.hasLiveScore && <LiveRowScore playerKey={playerKey} matchId={row.matchId} />}
+          </Box>
         </Box>
       )}
       {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
@@ -178,23 +196,6 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <SelectionTag selection={row.selection} />
           {kind === 'upcoming' && row.availability && <AvailabilityTag playerKey={playerKey} availability={row.availability} />}
-        </Box>
-      )}
-      {kind === 'live' && (
-        <Box sx={{ ...inner, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          {row.hasLiveScore && <LiveRowScore playerKey={playerKey} matchId={row.matchId} />}
-          {row.hasStream && (
-            <MuiButton
-              variant="contained"
-              size="small"
-              component={RouterLink}
-              to={watchPath(playerKey, row.matchId, from)}
-              data-testid="watch-live"
-              sx={{ ...compactButtonSx, bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-            >
-              Watch Live
-            </MuiButton>
-          )}
         </Box>
       )}
     </Box>
