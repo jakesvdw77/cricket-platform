@@ -3,6 +3,7 @@ import { Alert, Box, Skeleton, Typography } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { BrandIcon } from '../../../components/BrandIcon'
+import type { BrandIconName } from '../../../components/BrandIcon'
 import { useMyPlayerMatches } from '../../../api/myPlayersApi'
 import type { MyMatchSummaryDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
@@ -36,18 +37,27 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
   const asked = search.get('tab')
   const requested = MATCHES_TABS.find((tab) => tab === asked)
   const fallback: MatchesTab = liveOn ? 'live' : upcomingCount > 0 ? 'upcoming' : 'recent'
-  // A Live pill that is no longer shown (the match ended) falls back to the default.
-  const tab: MatchesTab = requested && (requested !== 'live' || liveOn) ? requested : fallback
+  // Live is always a pill (owner, 2026-11-12) so its place never moves; it only pulses while a match is on.
+  const tab: MatchesTab = requested ?? fallback
 
   const pills: HubPillItem[] = [
-    ...(liveOn ? [{ id: 'live', label: 'Live', live: true, count: data?.live.length }] : []),
+    { id: 'live', label: 'Live', live: liveOn, count: data?.live.length ?? 0 },
     { id: 'upcoming', label: 'Upcoming', count: upcomingCount },
     { id: 'recent', label: 'Recent', count: recentCount },
   ]
   const from = `matches:${tab}`
 
   const list = (rows: MyMatchSummaryDto[]) => rows.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey as string} row={row} now={now} from={from} />)
-  const none = <Typography data-testid="matches-none" sx={{ fontSize: 15, color: HUB.muted }}>None yet</Typography>
+  const none = (icon: BrandIconName, title: string, text: string) => (
+    <Box data-testid="matches-none" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1, py: 5, px: 2, textAlign: 'center', border: `1px dashed ${creamAlpha(0.25)}`, borderRadius: 2 }}>
+      <BrandIcon name={icon} size={56} onDark />
+      <Typography component="h3" sx={{ fontSize: 18, fontWeight: 600, color: HUB.sand }}>{title}</Typography>
+      <Typography sx={{ fontSize: 15, color: HUB.muted, maxWidth: 420 }}>{text}</Typography>
+    </Box>
+  )
+  const noLive = none('nav/ground-oval', 'No match is live right now', `When ${playerName} is playing, the score appears here and updates by itself.`)
+  const noUpcoming = none('nav/upcoming-matches', 'No upcoming matches', `Fixtures for ${playerName} will show here as soon as the club schedules them.`)
+  const noRecent = none('nav/match-results', 'No recent matches', `Finished matches for ${playerName} will show here once they have been played.`)
 
   let body
   if (matches.isLoading) {
@@ -73,11 +83,11 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
     body = (
       <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPillStrip compact label="Matches" items={pills} selectedId={tab} onSelect={(item) => setSearch({ tab: item.id }, { replace: true })} />
-        {tab === 'live' && <Box data-testid="matches-live" sx={column}>{data.live.length > 0 ? list(data.live) : none}</Box>}
+        {tab === 'live' && <Box data-testid="matches-live" sx={column}>{data.live.length > 0 ? list(data.live) : noLive}</Box>}
         {tab === 'upcoming' && (
           <Box data-testid="matches-upcoming" sx={{ ...column, gap: 2 }}>
             {data.upcoming.length === 0
-              ? none
+              ? noUpcoming
               : groupByDate(data.upcoming).map((group) => (
                   <Box key={group.date} sx={column}>
                     <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(group.date)}</Typography>
@@ -88,7 +98,7 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
         )}
         {tab === 'recent' && (
           <Box data-testid="matches-recent" sx={column}>
-            {data.recent.length === 0 ? none : list(data.recent)}
+            {data.recent.length === 0 ? noRecent : list(data.recent)}
             {data.recent.length < recentCount && (
               <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <Button variant="secondary" size="compact" data-testid="show-more" disabled={matches.isFetching} onClick={() => setRecentLimit((limit) => Math.min(limit + PAGE, 100))}>
