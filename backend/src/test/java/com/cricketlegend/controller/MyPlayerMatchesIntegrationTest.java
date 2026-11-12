@@ -252,7 +252,7 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
     // ---- links ----
 
     @Test
-    void theStreamIsOnlyReturnedWhileLiveAndOnlyOverHttps() throws Exception {
+    void theStreamIsNotReturnedBeforeTheMatchAndOnlyOverHttps() throws Exception {
         Match live = match(team, season, hoursFromNow(-1));
         live.setStreamingUrl(YT);
         live.setScoringUrl("https://scores.example.com/m/1");
@@ -275,9 +275,10 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
         mockMvc.perform(get(ONE, link.getId(), upcoming.getId()).with(as(parent)))
                 .andExpect(jsonPath("$.stream").doesNotExist())
                 .andExpect(jsonPath("$.liveScore.kind").value("EXTERNAL"));
+        // A finished match keeps its recording and scoring links (owner, 2026-11-12).
         mockMvc.perform(get(ONE, link.getId(), recent.getId()).with(as(parent)))
-                .andExpect(jsonPath("$.stream").doesNotExist())
-                .andExpect(jsonPath("$.liveScore").doesNotExist());
+                .andExpect(jsonPath("$.stream.provider").value("YOUTUBE"))
+                .andExpect(jsonPath("$.liveScore.host").value("scores.example.com"));
 
         live.setStreamingUrl("javascript:alert(1)");
         live.setScoringUrl("http://scores.example.com/m/1");
@@ -341,7 +342,7 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
                 "live", "upcoming", "recent", "upcomingTotal", "recentTotal");
         assertThat(keys(lists.get("live").get(0))).containsExactlyInAnyOrder(
                 "matchId", "phase", "date", "time", "startedAt", "home", "away", "league", "venue", "mine", "selection",
-                "hasLiveScore", "hasStream", "result", "outcome");
+                "hasLiveScore", "hasStream", "result", "outcome", "availability");
     }
 
     private static Set<String> keys(JsonNode node) {

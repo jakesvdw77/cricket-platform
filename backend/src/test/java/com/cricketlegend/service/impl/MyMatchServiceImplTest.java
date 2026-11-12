@@ -188,7 +188,7 @@ class MyMatchServiceImplTest {
     }
 
     @Test
-    void theStreamIsOnlyReturnedWhileTheMatchIsLive() {
+    void theStreamIsReturnedWhileLiveAndAfterwardsButNotBeforeTheMatch() {
         assertThat(service.get(authentication, "key", match.getId()).stream().embedUrl())
                 .isEqualTo("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
         assertThat(service.get(authentication, "key", match.getId()).phase()).isEqualTo(MatchPhase.LIVE);
@@ -202,9 +202,10 @@ class MyMatchServiceImplTest {
 
         match.setMatchDate(Instant.now().minus(30, ChronoUnit.HOURS));
         MyMatchDto old = service.get(authentication, "key", match.getId());
+        // A finished match keeps its recording and scoring links (owner, 2026-11-12).
         assertThat(old.phase()).isEqualTo(MatchPhase.RECENT);
-        assertThat(old.stream()).isNull();
-        assertThat(old.liveScore()).isNull();
+        assertThat(old.stream()).isNotNull();
+        assertThat(old.liveScore()).isNotNull();
     }
 
     @Test
