@@ -42,7 +42,7 @@ export interface HubFrameProps {
   hideContent?: boolean
   // A strip pinned to the top of the scrolling content (the phone's pill row), bleeding to the content edges.
   stickyTop?: ReactNode
-  // Stats pages: a tight content area (16 px 20 px from md) so the first row of cards is on screen without scrolling.
+  // Stats pages: a tight content area (12 px 16 px from md) so the first row of cards is on screen without scrolling.
   dense?: boolean
 }
 
@@ -72,12 +72,12 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         '&::-webkit-scrollbar': { display: 'none' },
         minHeight: 0,
         bgcolor: panel === 'solid' ? `rgba(5, 30, 22, ${a(fill ? 0.92 : 0.88)})` : 'transparent',
-        p: { xs: '16px 16px', md: dense ? '16px 20px' : '36px 40px' },
+        p: { xs: '16px 16px', md: dense ? '12px 16px' : '36px 40px' },
         minWidth: 0,
       }}
     >
       {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 2, mx: -2, mt: -2, mb: 2, bgcolor: HUB_GROUND }}>{stickyTop}</Box>}
-      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: dense ? 2 : 3.25 } }}>{children}</Box>
+      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: dense ? 1.5 : 3.25 } }}>{children}</Box>
     </Box>
   )
 
@@ -100,10 +100,10 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           display: 'grid',
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
           ...(fill && {
-            // 56 px header, 16 px above and 24 px below from sm; a phone's console is the whole screen under the header.
-            height: { xs: 'calc(100vh - 56px)', sm: 'max(560px, calc(100vh - 96px))' },
+            // 56 px header, 8 px above and 12 px below from sm; a phone's console is the whole screen under the header.
+            height: { xs: 'calc(100vh - 56px)', sm: 'max(560px, calc(100vh - 76px))' },
             minHeight: 560,
-            '@supports (height: 100dvh)': { height: { xs: 'calc(100dvh - 56px)', sm: 'max(560px, calc(100dvh - 96px))' } },
+            '@supports (height: 100dvh)': { height: { xs: 'calc(100dvh - 56px)', sm: 'max(560px, calc(100dvh - 76px))' } },
             borderRadius: { xs: 0, sm: '6px' },
             borderWidth: { xs: 0, sm: 1 },
           }),

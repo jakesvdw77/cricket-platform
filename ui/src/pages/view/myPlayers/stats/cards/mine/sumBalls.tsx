@@ -13,7 +13,7 @@ export const mineSumBalls: StatsCardDef<MyStatsDto> = {
   tag: 'PARTLY',
   needs: ['summary', 'batting', 'basis'],
   order: 50,
-  // Summary tile: a compact (15 rem) card, three to a row.
+  // Summary tile: a compact (14 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'notCaptured',
   emptyText: 'No innings yet.',

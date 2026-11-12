@@ -34,10 +34,10 @@ export const visuallyHiddenSx = {
 } as const
 
 // Card heights (docs/specs/147 Amendment 2, density pass): a card is a FIXED height in rem, so it scales with text zoom and neither face
-// can grow it. A normal card is 17 rem; a tall card spans two normal rows and the gap between them; a compact (tile) card is 15 rem.
+// can grow it. A normal card is 17 rem; a tall card spans two normal rows and the gap between them; a compact (tile) card is 14 rem.
 // The FRONT never scrolls (its content region clips, so an overfull front shows in review); the back scrolls inside the card. The grid sets these as the CSS variable --stats-card-h on each row.
 export const CARD_HEIGHT_REM = 17
-export const CARD_COMPACT_HEIGHT_REM = 15
+export const CARD_COMPACT_HEIGHT_REM = 14
 export const CARD_HEIGHT_VAR = '--stats-card-h'
 
 // The type scale of a normal card, in px (the shell and the shared parts read it; a card file should not hard-code its own). Nothing is
