@@ -13,6 +13,8 @@ export const STATS_UI = {
   muted: alpha(BRAND.cream, 0.66),
   display: FONT_DISPLAY,
   faceGround: blackAlpha(0.22),
+  // The expanded card sits over the whole content region and must hide it: a solid dark ground, no transparency.
+  expandedGround: '#051E16',
   // A card with some or all data missing (Amendment 2 item 8): a very light amber tint over the ground and a 1 px warmer line. Never the only cue.
   lackingTint: alpha(STATS_TONES.partly, 0.05),
   lackingLine: alpha(STATS_TONES.partly, 0.4),

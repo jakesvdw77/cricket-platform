@@ -62,8 +62,8 @@ export const HUB_NAV: HubNavItem[] = [
     children: [
       // docs/specs/147: My stats, Team stats and Leaderboards are live. Leaderboards is always visible (the owner's amendment: no club switch yet).
       { id: 'stats.mine', label: 'Player Stats' },
+      { id: 'stats.teams', label: 'Team Stats' },
       { id: 'stats.boards', label: 'Leaderboards' },
-      { id: 'stats.teams', label: 'Team stats' },
     ],
   },
   {

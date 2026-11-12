@@ -94,14 +94,14 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         minWidth: 0,
         minHeight: 0,
         height: '100%',
-        p: expanded ? '24px 28px 16px' : '8px 12px 6px',
+        p: expanded ? '24px 28px 24px' : '8px 12px 6px',
         borderRadius: expanded ? '22px' : '14px',
         border: `1px solid ${lacking ? STATS_UI.lackingLine : STATS_UI.lineSoft}`,
-        bgcolor: STATS_UI.faceGround,
+        bgcolor: expanded ? STATS_UI.expandedGround : STATS_UI.faceGround,
         ...(lacking ? { backgroundImage: `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint})` } : {}),
         color: STATS_UI.cream,
         boxSizing: 'border-box',
-        overflow: expanded ? 'visible' : 'hidden',
+        overflow: 'hidden',
         // The one scale variable (Amendment 2 item 20): every size in the shared parts and drawings follows it (fluid()). A normal card
         // leaves it at 1; an expanded one sets EXPANDED_SCALE and a chart height of about 55% of the overlay (--stats-exp-h, set by the grid).
         [STATS_SCALE_VAR]: expanded ? EXPANDED_SCALE : 1,
@@ -147,9 +147,9 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
       </Box>
       {/* The front carries no note line (the footer cue says it and holds the sentence as its tooltip); the back and an expanded card print the sentence. */}
       {note && (!heading || expanded) && (
-        <Typography data-testid="stats-partial-note" sx={{ fontSize: fluid(STATS_TYPE.footer, STATS_TYPE.footerExpanded), lineHeight: 1.25, color: STATS_UI.partly, m: 0 }}>{note}</Typography>
+        <Typography data-testid="stats-partial-note" sx={{ fontSize: fluid(STATS_TYPE.footer, STATS_TYPE.footerExpanded), lineHeight: 1.25, color: STATS_UI.partly, m: 0, flexShrink: 0 }}>{note}</Typography>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 16 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 16, flexShrink: 0 }}>
         <Box sx={{ minWidth: 0, display: 'flex', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: fluid(STATS_TYPE.footer, STATS_TYPE.footerExpanded), lineHeight: 1.25 }}>
           <Typography data-testid="stats-basis" component="span" sx={{ fontSize: 'inherit', lineHeight: 'inherit', color: STATS_UI.muted, m: 0, flexShrink: 0 }}>{basis ? basedOnText(basis) : ''}</Typography>
           {lacking && !empty && (
