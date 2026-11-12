@@ -52,7 +52,7 @@ export function HubLeagueCard({ league, seasonName, onOpen }: { league: MyLeague
       }}
     >
       <LeagueLogo logoUrl={league.logoUrl} size={48} />
-      <Box sx={{ minWidth: 0, display: 'grid', gap: 0.25 }}>
+      <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25 }}>
         <Typography component="h3" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 24, lineHeight: 1.1, letterSpacing: '0.04em', textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
           {league.name}
         </Typography>

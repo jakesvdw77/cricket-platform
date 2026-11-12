@@ -25,7 +25,7 @@ export function HubFields({ playerKey }: { playerKey?: string }) {
   let body
   if (fields.isLoading) {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
         {[0, 1, 2, 3].map((n) => <Skeleton key={n} variant="rounded" height={150} sx={{ bgcolor: creamAlpha(0.12) }} />)}
       </Box>
     )
@@ -41,14 +41,14 @@ export function HubFields({ playerKey }: { playerKey?: string }) {
     body = <Box sx={empty}>No fields match your search.</Box>
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
         {shown.map((field) => <HubFieldCard key={field.id} field={field} />)}
       </Box>
     )
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <HubPageHeader title="Field Directory" />
       <TextField
         value={query}

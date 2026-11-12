@@ -26,12 +26,12 @@ export interface HubMatchProps {
   onAnswerAvailability: () => void
 }
 
-const panelSx = { display: 'grid', gap: 0.75, border: 1, borderColor: HUB.line, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) } as const
+const panelSx = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75, border: 1, borderColor: HUB.line, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) } as const
 const sectionTitle = { fontFamily: HUB.display, fontWeight: 600, fontSize: 17, letterSpacing: '0.04em', textTransform: 'uppercase', color: HUB.sand } as const
 
 function Skeletons() {
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }} aria-busy="true" data-testid="hub-match-loading">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} aria-busy="true" data-testid="hub-match-loading">
       <Skeleton variant="rounded" height={64} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={56} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(0.12) }} />
@@ -77,10 +77,10 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
   const live = match.phase === 'LIVE'
   const mine = match.home.mine ? match.home : match.away.mine ? match.away : match.home
   return (
-    <Box data-testid="hub-match" sx={{ display: 'grid', gap: 1.5 }}>
+    <Box data-testid="hub-match" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       {/* The status badge (or LIVE) is always in the top right corner of the title block; a phone keeps it under the title. */}
       <Box data-testid="match-title-block" sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'flex-start', justifyContent: 'space-between', gap: 0.75 }}>
-        <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5 }}>
+        <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, minWidth: 0, overflowWrap: 'anywhere', display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5 }}>
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
             <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={28} name={match.home.name} />
             <span>{match.home.name}</span>

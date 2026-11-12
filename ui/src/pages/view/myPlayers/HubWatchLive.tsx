@@ -18,7 +18,7 @@ import { providerName, streamFrame, streamHost } from './streamFrame'
 // right now". A dark surround with a thin gold top rule, the scoreboard strip, a 16:9 frame (click to play first: no third party is
 // contacted before the tap), the LiveScore slot (tv variant) under it and Open Stream as the fallback. This is the only file in the
 // Hub that renders an iframe; the footer owns Back.
-const surroundSx = { display: 'grid', gap: 1.5, border: 1, borderColor: HUB.line, borderTop: `3px solid ${HUB.gold}`, borderRadius: '4px', p: 1.5, bgcolor: BRAND.menu } as const
+const surroundSx = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, border: 1, borderColor: HUB.line, borderTop: `3px solid ${HUB.gold}`, borderRadius: '4px', p: 1.5, bgcolor: BRAND.menu } as const
 const screenSx = {
   aspectRatio: '16 / 9',
   width: '100%',
@@ -89,8 +89,8 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
   return (
     <Box data-testid="hub-watch-live" sx={surroundSx}>
       <Box data-testid="watch-scoreboard" sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}>
-        <Box sx={{ minWidth: 0, display: 'grid', gap: 0.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontFamily: HUB.display, fontWeight: 700, fontSize: 22, lineHeight: 1.15 }}>
+        <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontFamily: HUB.display, fontWeight: 700, fontSize: 22, lineHeight: 1.15, overflowWrap: 'anywhere', minWidth: 0 }}>
             <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={24} />
             <span>{match.home.name}</span>
             <Box component="span" sx={{ color: HUB.muted, fontFamily: 'inherit', fontSize: 14, fontWeight: 400 }}>versus</Box>

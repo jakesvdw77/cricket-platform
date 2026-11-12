@@ -17,7 +17,7 @@ import { leagueFrom, matchPath } from './matchFormat'
 // team's game has a gold left edge, a tinted ground and the text tag "Your game"; "Only my games" (off, not remembered) filters.
 const rowSx = (mine: boolean, dim = false) =>
   ({
-    display: 'grid',
+    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
     gap: 0.5,
     p: 1.5,
     minHeight: 44,
@@ -49,7 +49,7 @@ function Side({ name, logoUrl }: { name: string; logoUrl: string | null }) {
 // docs/specs/135: a `mine` row is one tap target opening the match page (a stretched link; Get Directions sits above it); any other row
 // opens nothing and has no tap cue. Without a player key (no way to build the link) every row is plain.
 const tapSx = { position: 'relative', '&:hover': { bgcolor: alpha(HUB.gold, 0.2) }, '&:focus-within': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } } as const
-const stretched = { color: 'inherit', textDecoration: 'none', outline: 'none', display: 'grid', gap: 0.5, '&::after': { content: '""', position: 'absolute', inset: 0 } } as const
+const stretched = { color: 'inherit', textDecoration: 'none', outline: 'none', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5, '&::after': { content: '""', position: 'absolute', inset: 0 } } as const
 
 interface RowLink {
   playerKey?: string
@@ -58,7 +58,7 @@ interface RowLink {
 }
 
 function RowBody({ link, matchId, label, tapped, children }: { link: RowLink; matchId: string; label: string; tapped: boolean; children: ReactNode }) {
-  if (!tapped || !link.playerKey) return <Box sx={{ display: 'grid', gap: 0.5 }}>{children}</Box>
+  if (!tapped || !link.playerKey) return <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>{children}</Box>
   const from = link.leagueId ? leagueFrom(link.leagueId, link.tab) : 'matches'
   return (
     <Box component={RouterLink} to={matchPath(link.playerKey, matchId, from)} aria-label={label} data-testid="hub-league-row-link" sx={stretched}>
@@ -74,11 +74,11 @@ export function HubLeagueSchedule({ dto, playerKey }: { dto: MyLeagueDto; player
   if (dto.schedule.length === 0) return <Box sx={emptyLine}>No matches scheduled yet.</Box>
   const rows = dto.schedule.filter((row) => !onlyMine || row.mine)
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <OnlyMine checked={onlyMine} onChange={setOnlyMine} />
       {rows.length === 0 && <Box sx={emptyLine}>None of your games are scheduled yet.</Box>}
       {groupByDate(rows).map((group) => (
-        <Box key={group.date} component="section" aria-label={longDate(group.date)} sx={{ display: 'grid', gap: 1 }}>
+        <Box key={group.date} component="section" aria-label={longDate(group.date)} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
           <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(group.date)}</Typography>
           {group.rows.map((row) => (
             <Box key={row.matchId} component="article" data-mine={row.mine ? 'true' : undefined} sx={[rowSx(row.mine, isPast(row.date)), row.mine && playerKey ? tapSx : {}]}>
@@ -111,7 +111,7 @@ export function HubLeagueResults({ dto, playerKey }: { dto: MyLeagueDto; playerK
   // Newest first.
   const rows = [...dto.results].filter((row) => !onlyMine || row.mine).sort((a, b) => b.date.localeCompare(a.date))
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <OnlyMine checked={onlyMine} onChange={setOnlyMine} />
       {rows.length === 0 && <Box sx={emptyLine}>None of your games have a published result yet.</Box>}
       {rows.map((row) => (

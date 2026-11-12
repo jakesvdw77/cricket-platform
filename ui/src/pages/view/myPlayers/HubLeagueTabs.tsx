@@ -45,6 +45,8 @@ export function HubLeagueTabBar({ value, onChange }: { value: LeagueTab; onChang
         display: 'flex',
         gap: { xs: 1, sm: 0.5 },
         overflowX: 'auto',
+        minWidth: 0,
+        maxWidth: '100%',
         py: { xs: 1, sm: 0 },
         borderBottom: { sm: `1px solid ${HUB.line}` },
         scrollbarWidth: 'none',
@@ -156,7 +158,7 @@ export function HubLeagueDetails({ dto }: { dto: MyLeagueDto }) {
   const dates = keyDateTiles(dto)
   const hasAny = league.description || band || league.format || dates.length > 0
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       {league.description && <Typography sx={{ fontSize: 17, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{league.description}</Typography>}
       <Box sx={tileGrid}>
         {band && <FactTile label="Age group" value={band} />}
@@ -191,7 +193,7 @@ export function HubLeagueConditions({ dto }: { dto: MyLeagueDto }) {
   const pdf = isHttps(c.documentUrl) ? c.documentUrl : null
   if (shown.length === 0 && notes.length === 0 && !pdf) return <Box sx={emptyLine}>No playing conditions set for this season yet.</Box>
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       {shown.length > 0 && (
         <Box sx={tileGrid}>
           {shown.map(([label, value]) => <FactTile key={label} label={label} value={value} />)}
@@ -211,7 +213,7 @@ export function HubLeagueConditions({ dto }: { dto: MyLeagueDto }) {
 export function HubLeagueTeams({ dto }: { dto: MyLeagueDto }) {
   if (dto.teams.length === 0) return <Box sx={emptyLine}>No teams entered yet.</Box>
   return (
-    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
       {dto.teams.map((team) => (
         <Box key={team.id} component="article" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44, border: 1, borderColor: team.mine ? HUB.gold : HUB.line, bgcolor: team.mine ? alpha(HUB.gold, 0.12) : creamAlpha(0.07), borderRadius: '4px', p: 1.5 }}>
           <LeagueLogo logoUrl={team.logoUrl} size={40} />
@@ -227,7 +229,7 @@ export function HubLeagueFields({ dto }: { dto: MyLeagueDto }) {
   const fields = dto.fields ?? []
   if (fields.length === 0) return <Box sx={emptyLine}>No fields for this league yet</Box>
   return (
-    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
       {fields.map((field) => <HubFieldCard key={field.id} field={field} />)}
     </Box>
   )

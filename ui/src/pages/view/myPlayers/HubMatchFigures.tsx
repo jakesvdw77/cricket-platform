@@ -12,7 +12,7 @@ import { countdownLabel, dayLabel, elapsedLabel, selectionLabel } from './matchF
 function Figure({ id, label, value, note, aside }: { id: string; label: string; value: string; note?: string; aside?: ReactNode }) {
   return (
     <Box data-testid={`match-figure-${id}`} sx={{ flex: '1 1 150px', minWidth: 0, minHeight: 46, border: 1, borderColor: HUB.line, borderRadius: '6px', px: 1.5, py: 0.75, bgcolor: creamAlpha(0.07), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-      <Box sx={{ display: 'grid', alignContent: 'center', minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'center', minWidth: 0 }}>
       <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.muted }}>
         {label}
         {note ? `, ${note}` : ''}

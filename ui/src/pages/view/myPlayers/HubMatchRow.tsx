@@ -18,7 +18,7 @@ import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentResultLine, 
 const rowSx = (kind: 'live' | 'upcoming' | 'recent') =>
   ({
     position: 'relative',
-    display: 'grid',
+    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
     gap: 0.75,
     p: 1.5,
     minHeight: 44,
@@ -110,7 +110,7 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
         </Box>
       )}
       {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
-      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, 'matches')} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
+      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, 'matches')} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
         <Side name={row.home.name} logoUrl={row.home.logoUrl} />
         <Typography component="span" sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
         <Side name={row.away.name} logoUrl={row.away.logoUrl} />
@@ -118,7 +118,7 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
       <Typography data-testid="match-league-line" sx={{ fontSize: 14, color: HUB.muted }}>{row.league || 'Friendly'}</Typography>
       <RowVenue playerKey={playerKey} row={row} withDirections={kind !== 'recent'} />
       {kind === 'recent' && (
-        <Box sx={{ display: 'grid', gap: 0.25 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25 }}>
           {row.result && (
             <Typography sx={{ fontSize: 15 }}>
               {row.home.name} {row.result.homeScore} · {row.away.name} {row.result.awayScore}

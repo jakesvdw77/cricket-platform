@@ -52,7 +52,7 @@ export function HubLeagueShare({ dto, clubName }: { dto: MyLeagueDto; clubName: 
   const canShareProbably = typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
   const btnSx = [compactButtonSx, hubOutlineButton, { minHeight: { xs: 44, md: 36 }, alignSelf: 'center' }] as never
   return (
-    <Box sx={{ display: 'grid', justifyItems: 'end', gap: 0.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'end', gap: 0.5 }}>
       <Box sx={{ display: 'flex', gap: 1 }}>
         {canShareProbably && (
           <Button variant="secondary" size="compact" startIcon={<ShareOutlinedIcon />} disabled={busy} onClick={() => void run('share')} sx={btnSx}>

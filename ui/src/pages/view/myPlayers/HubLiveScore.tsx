@@ -47,7 +47,7 @@ export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
   return (
     <Box
       data-testid={`live-score-${variant}`}
-      sx={{ display: 'grid', gap: 0.75, border: 1, borderColor: HUB.line, borderLeft: variant === 'tv' ? `4px solid ${HUB.gold}` : undefined, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) }}
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75, border: 1, borderColor: HUB.line, borderLeft: variant === 'tv' ? `4px solid ${HUB.gold}` : undefined, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) }}
     >
       {variant === 'card' && owner && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>

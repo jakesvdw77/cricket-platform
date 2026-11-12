@@ -2,7 +2,7 @@ import { Alert, Box, Chip, Skeleton, Typography } from '@mui/material'
 import { Button } from '../../../components/Button'
 import { useMyPlayerLeague } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
-import { HUB, HUB_GROUND } from './hubStyle'
+import { HUB, HUB_GROUND_SOLID } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLeagueResults, HubLeagueSchedule } from './HubLeagueGames'
 import { HubLeagueShare } from './HubLeagueShare'
@@ -34,7 +34,7 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
   }
   if (!dto) {
     return (
-      <Box sx={{ display: 'grid', gap: 1.5 }} aria-busy="true">
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} aria-busy="true">
         <Skeleton variant="rounded" height={72} sx={{ bgcolor: creamAlpha(0.12) }} />
         <Skeleton variant="rounded" height={44} sx={{ bgcolor: creamAlpha(0.12) }} />
         <Skeleton variant="rounded" height={160} sx={{ bgcolor: creamAlpha(0.12) }} />
@@ -44,10 +44,10 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
 
   const myTeams = dto.teams.filter((team) => team.mine)
   return (
-    <Box data-testid="hub-league" sx={{ display: 'grid', gap: 1.5 }}>
+    <Box data-testid="hub-league" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
         <LeagueLogo logoUrl={dto.league.logoUrl} size={48} />
-        <Box sx={{ minWidth: 0, flex: '1 1 160px', display: 'grid', gap: 0.5 }}>
+        <Box sx={{ minWidth: 0, flex: '1 1 160px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
           <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 26, lineHeight: 1.1, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.sand, overflowWrap: 'anywhere' }}>
             {dto.league.name}
           </Typography>
@@ -61,7 +61,7 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
           <HubLeagueShare dto={dto} clubName={clubName} />
         </Box>
       </Box>
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: HUB_GROUND, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 } }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: HUB_GROUND_SOLID, borderBottom: { xs: `1px solid ${HUB.line}`, sm: 'none' }, minWidth: 0, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 } }}>
         <HubLeagueTabBar value={tab} onChange={onTab} />
       </Box>
       <Box role="tabpanel" id={panelId(tab)} aria-labelledby={tabId(tab)} tabIndex={0} sx={{ outline: 'none', '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
