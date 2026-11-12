@@ -98,7 +98,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           // Translucent so the page's own cricket-scene backdrop shows through (no scene of its own).
           background: `linear-gradient(180deg, rgba(10,51,34,${a(0.78)}) 0%, rgba(7,42,28,${a(0.82)}) 55%, rgba(5,32,26,${a(0.88)}) 100%)`,
           backdropFilter: 'blur(1.5px)',
-          display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
+          display: 'grid',
           gridTemplateColumns: 'minmax(0, 1fr)',
           minWidth: 0,
           maxWidth: '100%',
