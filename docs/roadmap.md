@@ -568,3 +568,9 @@ Found by the standards and code review of the built feature; none blocks the mer
 
 ## Cleanup backlog: raw MUI buttons
 `ui/src/standards/pageAnatomyGuard.test.ts` lists 18 files that still use a raw MUI `Button` without the compact style (its BASELINE list). Fix each as its page is reviewed and delete it from the list; the list may never grow.
+
+- **Club info (Player Hub, owner 2026-11-12):** needs its own spec before any build (a privacy decision: what a parent, an agent and a player may see of the club profile and committee contacts; a club switch per block, personal items off by default; Field Directory link; empty state). Messages, Gallery and Bookings share the "what the club chooses to publish" question.
+- **Calendar date range (spec 135, 2026-11-12):** the Hub Calendar shows only what the Matches read returns (20 upcoming, up to 100 recent). A `month` / date-range endpoint (and real totals for the Recent pill, today counted over the rows read) is a later spec.
+- **Own live scorecard (spec 135 seam):** the only way the Live Score looks like the rest of the Hub; needs a live scoring feed from the club's scoring app or manual entry first. External scoring sites cannot be framed (CricClubs, Stumps).
+- **Hub pill row as the one sub-page pattern (2026-11-12):** Matches, Availability, Stats and the league page now share it; the Standards review noted two chip rows (`HubAvailability.StatusChips`, `HubScopeControls` chips) that should become one shared component.
+- **Hand-built DTOs in the Hub reads (backend.md exception, 2026-11-12):** the `My*` services build their response records by hand (poll history, matches, results), not through MapStruct, because each is a one-off read model with no entity twin. Recorded as an exception in `docs/standards/backend.md`; a mapper per read model is the clean-up if the standard is enforced.

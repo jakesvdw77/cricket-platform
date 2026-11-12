@@ -285,3 +285,16 @@ Per `docs/standards/testing.md`; tests are written after the owner has checked t
 10. **Per-club switch to hide streams in the Hub:** default no switch; alternative a club setting, off until switched on, given junior viewers.
 11. **Live match with no live-score source or stream:** default still shows LIVE with elapsed time and no buttons; alternative show it as Upcoming-style until a link exists.
 12. **Row weather line:** default a short static sentence (variant A); alternative the slow ticker (variant B) with pause and reduced-motion fallback.
+
+
+## Amendments (2026-11-12, owner polish pass)
+
+All decided by the owner while hand-testing the Hub; none changes a Decision above except where it says so.
+
+1. **Matches page (supersedes the "Live Now / Recent collapsed" layout of section 1).** Pills **Live**, **Upcoming**, **Recent**, each with its count; **Live is always a pill** (count 0, pulsing only while a match is on); the page opens on Live, else Upcoming, else Recent; the pill is in the URL (`?tab=`) and handed to a match page as `from` so Back returns to it. Recent is open (not collapsed), 10 at a time, **Show More** (`recentLimit` 1 to 100). Each empty pill has an icon, a title and a friendly line (never "None yet"). The API adds `upcomingTotal`, `recentTotal` (counted over the rows read: at most 200 ahead, the larger of 50 and twice the limit behind, so the Recent count stops there) and `outcome` (WON, LOST, TIED) on a recent row.
+2. **Availability on an upcoming row.** `MyMatchSummaryDto.availability` (the held player's own squad-poll answer, upcoming rows only). The row shows the answer as a tag; an open poll links to Availability.
+3. **Live actions top right.** On a live match page and a live row, **Watch Live** (gold) and **Live Score** (outlined) sit top right beside the LIVE badge, through one `HubLiveActions` and the shared compact `Button`; the full-width cards are gone. An upcoming match keeps the Live Score card.
+4. **Watch Live is a theatre page (supersedes section 3's panel).** It covers the whole window (portal to the body): a slim bar (Back, the match, Open Stream, Live Score, LIVE) and the picture filling the rest at 16:9, with a Full Screen button where the browser allows it. A stream that cannot be embedded shows the host and an Open Stream button. The scoring site stays a new tab (never framed).
+5. **Finished matches keep their links.** The match detail returns `stream` and `liveScore` for a finished match too (a recording and the scorecard). The finished match page and the Result page show **Watch Stream** and **Online Scorecard** (the latter through `HubLiveScore`, variant `scorecard`), each only when the club set that link. The list DTO's `hasStream` and `hasLiveScore` are unchanged (live and upcoming rows only).
+6. **Schedule > Calendar replaces Team sheets (supersedes the Soon item).** A month grid (Monday first) of the matches the Matches list holds, a dot per game (gold: the player's, sand: others), tapping a day lists its rows. **Known limit:** it shows what the Matches read returns (20 upcoming, up to 100 recent), so a distant month can be incomplete; a date-range endpoint is a later spec.
+7. **Menu order.** Availability, Schedule, Results, Stats, Updates, Club, Profile (chronological); Stats lists Player Stats, Team Stats, Leaderboards.

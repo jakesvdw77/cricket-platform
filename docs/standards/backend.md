@@ -4,7 +4,7 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 
 ## Non-negotiables
 
-- Controllers never touch repositories directly; services never return JPA entities across the controller boundary — DTOs only, mapped via MapStruct, never by hand.
+- Controllers never touch repositories directly; services never return JPA entities across the controller boundary — DTOs only, mapped via MapStruct, never by hand. **Exception (owner, 2026-11-12, standards review):** the Player Hub `My*` read services (`MyMatchService`, `MyResultService`, `MyPlayerPollHistoryService` and similar) build their response records by hand, because each is a one-off read model that has no entity twin to map; a new read model may do the same but must keep the build in one private method and use `ServerClock` for the time.
 - No `System.out`/`System.err` — use the injected SLF4J `Logger`; enforced by ArchUnit's `NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS` (`LayeringRulesTest.noClassesAccessStandardStreams`).
 - `ddl-auto=validate`, always. Schema changes are a numbered Liquibase migration (`backend/src/main/resources/db/changelog/v1/NNN-description.sql`) in the same PR as the entity change — never split, never Hibernate auto-DDL.
 - **Never edit a migration that has been committed or run anywhere** (the owner's local database applies each one at startup): Liquibase stores a checksum and refuses to start if it changes. A fix or an addition is a NEW numbered migration (spec 145: `062` added the backfill after `061` had already run).

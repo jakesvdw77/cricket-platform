@@ -181,6 +181,19 @@ Update the status as each page is brought in line. "Reviewed" means differences 
 | Import wizard and import history | Built and standards-reviewed (branch `feat/097-098-import-framework-and-schedule-import`, specs 097, 098, 125) | Owner hand-check pending |
 | Player Hub: My stats, Team stats, Leaderboards | Built (spec 147, owner hand-check pending) | Flip-card pages in the Hub console frame (`HubScopeControls` header, `StatsCardGrid`); Leaderboards is a Hub-styled table page with the standing card first. Tests and the 375 px sweep still to run. |
 
+## 9a. Player Hub decisions of 2026-11-12 (owner polish pass)
+
+Recorded here so no Hub page invents a one-off layout; the specs (`121`, `135`, `147`) carry the detail.
+
+- **One pill row for sub-pages** (Matches: Live, Upcoming, Recent; Availability: Open Polls, Closed Polls, My Responses; the league page sections; Stats groups). Title Case labels, counts where the number is known, the selected pill gold, `?tab=` in the URL.
+- **Header actions.** A page's actions sit top right on the heading row: the shared compact `Button` (gold for the one primary, gold outline for the secondary), never a full-width bar on a desktop. Live Score and Watch Live sit beside the LIVE badge.
+- **Framed icon buttons.** Icon-only header controls (website, social, Share, Download) are the same framed button: 36 px from `sm`, 44 px on a phone, cream glyph, the outline-button border, a tooltip and an accessible name (`hubFramedIconSx`).
+- **One Edit.** A page has one Edit button; a secondary edit (the player photo) is the photo itself with a pencil badge.
+- **Empty states** are an icon, a title and a friendly line, never "None yet".
+- **Gold means one thing:** the selected pill, the primary button, a headline number. Facts are cream.
+- **Phone (390 px).** Compact counters stack value over label and wrap; tables keep the name column and move secondary values under the name; a grid track is `minmax(0, 1fr)` (a bare `1fr` lets one wide child push the page past the screen).
+- **Watch Live** is a full-window theatre page (a portal), not a panel.
+
 ## 10. Per-page review checklist
 Copy into the PR description for each page.
 - [ ] Top row: Back alone. Title row: one filled Manage <thing> menu button right-aligned (or Add X on a list page); no separate Actions menu.
