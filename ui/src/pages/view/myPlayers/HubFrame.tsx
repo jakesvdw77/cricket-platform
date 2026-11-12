@@ -8,7 +8,7 @@ import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import { useLocation } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
-import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
+import { HUB, HUB_GROUND, HUB_GROUND_SOLID, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubFooter } from './HubFooter'
 import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
@@ -56,8 +56,8 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
   const autoCollapse = useHubMenuAutoCollapse(fill && twoColumns && wide, pathname)
   const railed = autoCollapse.collapsed
   const columns = fill
-    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? (railed ? '1fr' : `${MENU_WIDTH}px minmax(0, 1fr)`) : '1fr' }
-    : { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }
+    ? { xs: 'minmax(0, 1fr)', sm: twoColumns ? '260px minmax(0, 1fr)' : 'minmax(0, 1fr)', md: twoColumns ? (railed ? 'minmax(0, 1fr)' : `${MENU_WIDTH}px minmax(0, 1fr)`) : 'minmax(0, 1fr)' }
+    : { xs: 'minmax(0, 1fr)', md: menu ? 'minmax(250px, 36%) minmax(0, 1fr)' : 'minmax(0, 1fr)' }
   const content = (
     <Box
       component="section"
@@ -76,8 +76,9 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         minWidth: 0,
       }}
     >
-      {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 2, mx: -2, mt: -2, mb: 2, bgcolor: HUB_GROUND }}>{stickyTop}</Box>}
-      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: dense ? 1.5 : 3.25 } }}>{children}</Box>
+      {/* Phone: the pill row is a SOLID bar (nothing scrolls through it) with a hairline under it. */}
+      {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 8, mx: -2, mt: -2, mb: 2, minWidth: 0, bgcolor: HUB_GROUND_SOLID, borderBottom: `1px solid ${HUB.line}` }}>{stickyTop}</Box>}
+      <Box sx={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: { xs: 2.25, md: dense ? 1.5 : 3.25 } }}>{children}</Box>
     </Box>
   )
 
@@ -98,6 +99,9 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           background: `linear-gradient(180deg, rgba(10,51,34,${a(0.78)}) 0%, rgba(7,42,28,${a(0.82)}) 55%, rgba(5,32,26,${a(0.88)}) 100%)`,
           backdropFilter: 'blur(1.5px)',
           display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          minWidth: 0,
+          maxWidth: '100%',
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
           ...(fill && {
             // 56 px header, 8 px above and 12 px below from sm; a phone's console is the whole screen under the header.

@@ -61,14 +61,14 @@ export function HubPageHeader({ title, actions, context }: { title: string; acti
   // The context (the active filters) sits on the SAME line as the title from md up (owner, 2026-11-06: under the title it looked detached); below
   // that, on a phone or a narrow tablet window, where title, tags and controls cannot share a row, does it drop to a second line.
   return createPortal(
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%', minWidth: 0, minHeight: context ? { xs: 80, md: 'auto' } : undefined }}>
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: { xs: 'wrap', md: 'nowrap' }, alignItems: 'center', columnGap: 2, rowGap: 0.75 }}>
+    <Box sx={{ display: 'flex', flexWrap: { xs: 'wrap', md: 'nowrap' }, alignItems: 'center', columnGap: 1.5, rowGap: 0.75, width: '100%', minWidth: 0, py: { xs: 0.75, md: 0 }, minHeight: context ? { xs: 80, md: 'auto' } : undefined }}>
+      <Box sx={{ flex: { xs: '1 1 120px', md: 1 }, minWidth: 0, display: 'flex', flexWrap: { xs: 'wrap', md: 'nowrap' }, alignItems: 'center', columnGap: 2, rowGap: 0.75 }}>
         <Typography component="h1" noWrap sx={{ ...bandTitle, flex: 'none', maxWidth: '100%' }}>
           {title}
         </Typography>
         {context && <Box sx={{ minWidth: 0, flex: { xs: '1 1 100%', md: '1 1 0' }, overflow: 'hidden' }}>{context}</Box>}
       </Box>
-      {actions && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>{actions}</Box>}
+      {actions && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, maxWidth: '100%', ml: { xs: 'auto', md: 0 } }}>{actions}</Box>}
     </Box>,
     frame.slot,
   )

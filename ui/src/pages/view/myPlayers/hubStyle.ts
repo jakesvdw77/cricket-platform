@@ -29,6 +29,8 @@ export const hubHeading = {
 // docs/specs/121: the Hub's page heading (content panel) and its solid ground (about 92 percent opaque).
 export const hubPageHeading = { ...hubHeading, fontSize: 26 } as const
 export const HUB_GROUND = 'rgba(5, 30, 22, 0.92)'
+// The same ground fully opaque, for a bar that content scrolls under (the phone's sticky pill row).
+export const HUB_GROUND_SOLID = 'rgb(5, 31, 22)'
 
 export const hubGoldButton = {
   bgcolor: HUB.gold,

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Box, ButtonBase } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { HubNavItem } from './hubNav'
@@ -18,6 +18,12 @@ export interface HubPillStripProps {
 
 export function HubPillStrip({ label, items, selectedId, onSelect, compact = false }: HubPillStripProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  // A fade on the right edge while more pills are scrolled out of sight, so a cut pill reads as "scroll", not as clipped.
+  const [moreRight, setMoreRight] = useState(false)
+  const measure = useCallback(() => {
+    const list = listRef.current
+    if (list) setMoreRight(list.scrollLeft + list.clientWidth < list.scrollWidth - 2)
+  }, [])
 
   useEffect(() => {
     const list = listRef.current
@@ -25,17 +31,30 @@ export function HubPillStrip({ label, items, selectedId, onSelect, compact = fal
     if (!list || !selected) return
     // Scroll the strip itself (not the page) so the selected pill is centred where it can be.
     list.scrollLeft = selected.offsetLeft - (list.clientWidth - selected.offsetWidth) / 2
-  }, [selectedId])
+    measure()
+  }, [selectedId, measure])
+
+  useEffect(() => {
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [measure, items.length])
 
   return (
-    <Box component="nav" aria-label={label}>
+    <Box component="nav" aria-label={label} sx={{ minWidth: 0, maxWidth: '100%' }}>
       <Box
         ref={listRef}
+        onScroll={measure}
         sx={{
           display: 'flex',
+          minWidth: 0,
+          maxWidth: '100%',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+          ...(moreRight && { maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)' }),
           gap: 1,
           overflowX: 'auto',
-          ...(compact ? { px: 0, py: '2px' } : { px: 2, py: 1.5, borderBottom: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.2) }),
+          ...(compact ? { px: 0, py: '2px' } : { px: 2, py: 1.5, bgcolor: blackAlpha(0.2) }),
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
         }}

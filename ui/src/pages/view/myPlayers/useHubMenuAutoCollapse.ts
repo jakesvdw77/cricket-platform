@@ -10,9 +10,9 @@ import { readHubFlag } from './hubPreferences'
 export const MENU_COLLAPSE_MS = 10000
 export const MENU_AUTO_COLLAPSE_KEY = 'hub:menuAutoCollapse'
 // The change is a dissolve, never an animated resize: the page fades out to its background (VEIL_IN_MS), the layout swaps while it is covered,
-// and it fades back in slowly (VEIL_OUT_MS). Animating the column width re-laid out the whole content grid on every frame and flickered.
-export const VEIL_IN_MS = 240
-export const VEIL_OUT_MS = 760
+// and it fades back in (VEIL_OUT_MS). Owner, 2026-11-12: the click on the collapse arrow felt slow, so the cover-up is 90 ms (was 240) and the fade back 450 ms (was 760). Animating the column width re-laid out the whole content grid on every frame and flickered.
+export const VEIL_IN_MS = 90
+export const VEIL_OUT_MS = 450
 // Owner, 2026-11-06: after the pointer leaves the unpinned panel it stays open this long, enough time to reach a sub-menu entry.
 export const PEEK_CLOSE_DELAY_MS = 1500
 // After a menu row is clicked (the page changes) the unpinned panel stays this long, so a wrong click can be corrected without reopening it.

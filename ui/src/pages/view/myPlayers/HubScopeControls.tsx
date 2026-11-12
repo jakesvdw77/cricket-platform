@@ -36,7 +36,7 @@ interface ChipSpec {
 // One group of equal-size chips behind a heading. The panel shows one column, the phone sheet two.
 function ChipGroup({ label, chips, columns }: { label: string; chips: ChipSpec[]; columns: 1 | 2 }) {
   return (
-    <Box component="section" aria-label={label} sx={{ display: 'grid', gap: 1 }}>
+    <Box component="section" aria-label={label} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
       <Typography component="h3" sx={{ fontFamily: HUB.display, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 13, color: HUB.sand, m: 0 }}>{label}</Typography>
       <Box role="group" aria-label={label} sx={{ display: 'grid', gap: 1, minWidth: 0, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
         {chips.map((chip) => (
@@ -258,7 +258,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
   const actions = (
     <>
       {filters && filters.seasons.length > 0 && (
-        <Box sx={{ ...darkFieldSx, minWidth: { xs: 112, sm: 140 } }}>
+        <Box sx={{ ...darkFieldSx, minWidth: { xs: 112, sm: 140 }, maxWidth: { xs: 'calc(100vw - 48px)', md: 'none' } }}>
           <Select
             size="small"
             value={seasonValue}
@@ -300,7 +300,7 @@ export function useHubScope({ playerKey, storageKey, filters, testIdPrefix = 'hu
     </Link>
   )
   const chipGroups = (columns: 1 | 2) => (
-    <Box sx={{ display: 'grid', gap: 2 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
       <ChipGroup label="Leagues" chips={leagueChips} columns={columns} />
       {teamOptions.length > 0 && <ChipGroup label="Teams" chips={teamChips} columns={columns} />}
       {!hasChoice && <Typography sx={{ color: HUB.muted, fontSize: 13 }}>Only one league and team to choose from</Typography>}
@@ -363,7 +363,7 @@ export function HubScopeSheet({ controls, matchCount, noun = 'match', nounPlural
   const label = matchCount === undefined ? fallbackLabel : `Show ${matchCount} ${matchCount === 1 ? noun : nounPlural}`
   return (
     <BottomSheet open={internal.open && !internal.wide && internal.showFilters} onOpen={() => internal.setOpen(true)} onClose={() => internal.setOpen(false)} ariaLabel="Filters" title="Filters" closeLabel="Close Filters" tone="dark">
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>{internal.resetLink}</Box>
         {internal.chipGroups(2)}
         <Button variant="secondary" size="compact" onClick={() => internal.setOpen(false)} sx={{ ...hubOutlineButton, alignSelf: 'stretch', minHeight: 44 }}>
