@@ -12,7 +12,7 @@ import type { BarRow } from '../../../../components/StatsDrawings'
 // above the stretched flip button and leaves the tab order while its face is hidden (useFaceTabIndex).
 
 const tileSx = {
-  display: 'grid',
+  display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
   alignContent: 'center',
   gap: '1px',
   minWidth: 0,
@@ -57,7 +57,7 @@ export function BigBars({ value, caption, rows, alt, total, hint, clear, legend,
   const asideLine = { fontSize: fluid(STATS_TYPE.hint, STATS_TYPE.footerExpanded), lineHeight: 1.2, color: STATS_UI.muted, m: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const
   // The small notes beside the figure: "+N more", the filter hint, and the clear control.
   const aside = (more > 0 || (selectable && hint) || clear) && (
-    <Box sx={{ display: 'grid', justifyItems: expanded ? 'start' : 'end', gap: '2px', minWidth: 0 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: expanded ? 'start' : 'end', gap: '2px', minWidth: 0 }}>
       {more > 0 && <Typography sx={{ ...captionSx, whiteSpace: 'nowrap' }}>+{more} more</Typography>}
       {!clear && selectable && hint && <Typography sx={asideLine}>{hint}</Typography>}
       {clear && (
@@ -86,7 +86,7 @@ export function BigBars({ value, caption, rows, alt, total, hint, clear, legend,
   if (expanded) {
     return (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: '40px', rowGap: '16px', minWidth: 0 }}>
-        <Box sx={{ flex: '0 0 240px', display: 'grid', gap: '8px', minWidth: 0 }}>
+        <Box sx={{ flex: '0 0 240px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '8px', minWidth: 0 }}>
           <Big compact value={value} caption={caption} />
           {aside}
         </Box>
@@ -98,7 +98,7 @@ export function BigBars({ value, caption, rows, alt, total, hint, clear, legend,
     )
   }
   return (
-    <Box sx={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '4px', minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', minWidth: 0 }}>
         <Big compact value={value} caption={caption} />
         {aside}
@@ -125,7 +125,7 @@ export interface TileSpec {
 export function Tiles({ items, min = 64, dense = false }: { items: TileSpec[]; min?: number; dense?: boolean }) {
   const tabIndex = useFaceTabIndex()
   return (
-    <Box data-testid="stats-tiles" sx={{ display: 'grid', gap: '6px', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))` }}>
+    <Box data-testid="stats-tiles" sx={{ display: 'grid', gap: '6px', gridTemplateColumns: `repeat(auto-fit, minmax(min(${min}px, 100%), 1fr))` }}>
       {items.map((item) => {
         const content = (
           <>
@@ -168,7 +168,7 @@ export function Split({ columns }: { columns: SplitColumn[] }) {
   return (
     <Box data-testid="stats-split" sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, columnGap: fluid(14, 32), minWidth: 0 }}>
       {columns.map((column) => (
-        <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gap: fluid(3, 8), alignContent: 'start', minWidth: 0 }}>
+        <Box key={column.key} component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: fluid(3, 8), alignContent: 'start', minWidth: 0 }}>
           <Typography component="dt" sx={{ ...captionSx, pb: '2px', borderBottom: `1px solid ${STATS_UI.lineSoft}` }}>{column.swatch && <Box aria-hidden component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '2px', bgcolor: column.swatch, mr: '5px' }} />}{column.title}</Typography>
           {column.rows.map((row) => (
             <Box key={row.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', minWidth: 0, fontSize: fluid(STATS_TYPE.body, STATS_TYPE.bodyExpanded), lineHeight: 1.3 }}>

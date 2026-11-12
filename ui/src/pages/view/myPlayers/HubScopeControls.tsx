@@ -343,7 +343,7 @@ export function HubScopePanel({ controls }: { controls: HubScope }) {
       onKeyDown={(event) => {
         if (event.key === 'Escape') internal.closePanel()
       }}
-      sx={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 120px)', overflow: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' }, borderLeft: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.2), p: 2, display: 'grid', gap: 2 }}
+      sx={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 120px)', overflow: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' }, borderLeft: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.2), p: 2, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography ref={internal.panelHeading} component="h2" tabIndex={-1} sx={{ ...hubHeading, outline: 'none' }}>Filters</Typography>

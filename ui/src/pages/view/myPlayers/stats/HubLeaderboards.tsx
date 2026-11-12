@@ -40,7 +40,7 @@ const TABS: { id: BoardTab; label: string }[] = [
 
 function Skeletons() {
   return (
-    <Box sx={{ display: 'grid', gap: 1.75 }} aria-busy="true" data-testid="hub-boards-loading">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75 }} aria-busy="true" data-testid="hub-boards-loading">
       <Skeleton variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px', maxWidth: 560 }} />
       <Skeleton variant="rounded" height={44} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={240} sx={{ bgcolor: creamAlpha(0.08) }} />
@@ -120,7 +120,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
         </Link>
       </Box>
     ) : (
-      <Box data-testid="hub-boards-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+      <Box data-testid="hub-boards-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/match-results" size={64} onDark />
         <Typography sx={{ fontSize: 18 }}>No stats yet</Typography>
         <Typography sx={{ fontSize: 15 }}>Leaderboards are worked out from finished matches once the club shares them.</Typography>
@@ -152,7 +152,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
     body = <Skeletons />
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2, minWidth: 0 }}>
         {standing && standing.resultsCounted > 0 && (
           <Box data-testid="hub-boards-standing" sx={{ minWidth: 0, opacity: standingQuery.isPlaceholderData ? 0.55 : 1 }}>
             <StatsCardGrid
@@ -179,7 +179,7 @@ export function HubLeaderboards({ playerKey }: { playerKey: string }) {
 
   return (
     <Box data-testid="hub-boards" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 1, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, minWidth: 0 }}>
         {header}
         {body}
       </Box>

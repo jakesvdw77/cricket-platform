@@ -47,7 +47,7 @@ export function HubPageHeader({ title, actions, context }: { title: string; acti
     }
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, minHeight: 44 }}>
-        <Box sx={{ minWidth: 0, display: 'grid', gap: 0.75 }}>
+        <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75 }}>
           <Typography component="h2" sx={hubPageHeading}>
             {title}
           </Typography>

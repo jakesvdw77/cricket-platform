@@ -66,7 +66,7 @@ export function HubStatsDrill({ playerKey }: { playerKey: string }) {
     )
   } else if (drill.isLoading || !first) {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5 }} aria-busy="true" data-testid="hub-stats-drill-loading">
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} aria-busy="true" data-testid="hub-stats-drill-loading">
         {[0, 1, 2].map((index) => (
           <Skeleton key={index} variant="rounded" height={96} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '22px' }} />
         ))}
@@ -74,7 +74,7 @@ export function HubStatsDrill({ playerKey }: { playerKey: string }) {
     )
   } else if (rows.length === 0) {
     body = (
-      <Box data-testid="hub-stats-drill-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+      <Box data-testid="hub-stats-drill-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/match-results" size={64} onDark />
         <Typography sx={{ fontSize: 18 }}>Nothing here yet</Typography>
         <Typography sx={{ fontSize: 15 }}>No matches in this scope match this figure.</Typography>
@@ -82,12 +82,12 @@ export function HubStatsDrill({ playerKey }: { playerKey: string }) {
     )
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5, minWidth: 0, opacity: drill.isPlaceholderData ? 0.55 : 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, minWidth: 0, opacity: drill.isPlaceholderData ? 0.55 : 1 }}>
         <Typography data-testid="hub-stats-drill-count" sx={{ fontSize: 14, color: HUB.muted }}>
           {plural(first.page.totalElements, 'row')}
           {first.truncated ? ', from the newest matches only' : ''}. Tap a row to open that match.
         </Typography>
-        <Box component="ul" data-testid="hub-stats-drill-list" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(310px, 1fr))' } }}>
+        <Box component="ul" data-testid="hub-stats-drill-list" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(min(310px, 100%), 1fr))' } }}>
           {rows.map((row, index) => (
             <Box component="li" key={`${row.matchId}-${index}`} sx={{ ...cardSx(resultTone(row.result)), p: '14px 16px', gap: 0.5 }}>
               <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600, m: 0 }}>
@@ -122,7 +122,7 @@ export function HubStatsDrill({ playerKey }: { playerKey: string }) {
   }
 
   return (
-    <Box data-testid="hub-stats-drill" sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
+    <Box data-testid="hub-stats-drill" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75, minWidth: 0 }}>
       {header}
       {body}
     </Box>

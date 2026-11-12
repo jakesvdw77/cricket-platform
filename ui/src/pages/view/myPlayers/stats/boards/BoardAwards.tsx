@@ -29,13 +29,13 @@ function Category({ category }: { category: MyAwardsCategory }) {
         {category.board.label}
       </Typography>
       {joint && <Typography sx={{ fontSize: 13, color: HUB.muted }}>Joint leaders</Typography>}
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
+      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
         {category.leaders.map((leader, index) => (
           <Box
             component="li"
             key={`${leader.firstName}-${leader.lastName}-${index}`}
             aria-current={leader.mine ? 'true' : undefined}
-            sx={{ display: 'grid', gap: '2px', pl: 1.25, borderLeft: `4px solid ${leader.mine ? HUB.gold : 'transparent'}` }}
+            sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2px', pl: 1.25, borderLeft: `4px solid ${leader.mine ? HUB.gold : 'transparent'}` }}
           >
             <Typography sx={{ ...bigSx, fontSize: 26, lineHeight: 1, color: HUB.cream, overflowWrap: 'anywhere' }}>
               {leader.firstName} {leader.lastName}
@@ -70,7 +70,7 @@ export function BoardAwards({ playerKey, scope, empty, enabled }: BoardAwardsPro
   }
   if (!awards) {
     return (
-      <Box aria-busy="true" data-testid="hub-boards-awards-loading" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(280px, 1fr))' } }}>
+      <Box aria-busy="true" data-testid="hub-boards-awards-loading" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))' } }}>
         {[0, 1, 2].map((index) => (
           <Skeleton key={index} variant="rounded" height={120} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '18px' }} />
         ))}
@@ -102,14 +102,14 @@ export function BoardAwards({ playerKey, scope, empty, enabled }: BoardAwardsPro
     )
   }
   return (
-    <Box data-testid="hub-boards-awards" sx={{ display: 'grid', gap: 1.5, minWidth: 0 }}>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(280px, 1fr))' } }}>
+    <Box data-testid="hub-boards-awards" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, minWidth: 0 }}>
+      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))' } }}>
         {withLeaders.map((category) => (
           <Category key={category.board.code} category={category} />
         ))}
       </Box>
       {awards.omitted.length > 0 && (
-        <Box component="ul" data-testid="hub-boards-awards-omitted" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 }}>
+        <Box component="ul" data-testid="hub-boards-awards-omitted" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
           {awards.omitted.map((entry) => (
             <Typography component="li" key={entry.board.code} sx={{ fontSize: 14, color: HUB.muted }}>
               {entry.board.label}: {entry.reason || 'nobody qualified yet'}
