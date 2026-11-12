@@ -1,5 +1,6 @@
 import { Button as MuiButton } from '@mui/material'
 import type { ButtonProps as MuiButtonProps } from '@mui/material'
+import type { ElementType } from 'react'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 // 'compact' is the in-card action button (docs/standards/design-system.md, Button sizing): about 32 px high, 6px/12px padding, 13px
@@ -9,6 +10,12 @@ export type ButtonSize = 'sm' | 'md' | 'compact'
 export interface ButtonProps extends Omit<MuiButtonProps, 'variant' | 'color' | 'size'> {
   variant?: ButtonVariant
   size?: ButtonSize
+  // A button that is a link (owner, 2026-11-12, standards review): `component` (an `a`, or a router Link with `to`), `href`, `target`
+  // and `rel` pass straight through, so a link never needs a raw MUI Button.
+  component?: ElementType
+  to?: string
+  target?: string
+  rel?: string
 }
 
 const variantMap: Record<ButtonVariant, Pick<MuiButtonProps, 'variant' | 'color'>> = {
@@ -42,5 +49,5 @@ export const compactButtonSx = {
 export function Button({ variant = 'primary', size = 'md', ...props }: ButtonProps) {
   const { variant: muiVariant, color } = variantMap[variant]
   const { sx, ...rest } = props
-  return <MuiButton variant={muiVariant} color={color} size={sizeMap[size]} sx={size === 'compact' ? ([compactButtonSx, ...(Array.isArray(sx) ? sx : [sx])] as MuiButtonProps['sx']) : sx} {...rest} />
+  return <MuiButton variant={muiVariant} color={color} size={sizeMap[size]} sx={size === 'compact' ? ([compactButtonSx, ...(Array.isArray(sx) ? sx : [sx])] as MuiButtonProps['sx']) : sx} {...(rest as MuiButtonProps)} />
 }

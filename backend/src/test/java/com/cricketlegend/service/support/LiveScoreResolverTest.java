@@ -30,4 +30,14 @@ class LiveScoreResolverTest {
     void aRecentMatchHasNoLiveScore() {
         assertThat(LiveScoreResolver.resolve("https://scores.example.com/m/1", MatchPhase.RECENT)).isNull();
     }
+
+    @Test
+    void theLinkKeepsAFinishedMatchsScorecardWhateverThePhase() {
+        LiveScoreSource s = LiveScoreResolver.link("https://scores.example.com/m/1");
+        assertThat(s.kind()).isEqualTo(LiveScoreKind.EXTERNAL);
+        assertThat(s.host()).isEqualTo("scores.example.com");
+        for (String link : new String[] {"http://scores.example.com", "javascript:alert(1)", "", null}) {
+            assertThat(LiveScoreResolver.link(link)).as(String.valueOf(link)).isNull();
+        }
+    }
 }

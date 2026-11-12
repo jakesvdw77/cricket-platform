@@ -1,5 +1,5 @@
 import { alpha } from '@mui/material/styles'
-import { BRAND, FONT_DISPLAY, blackAlpha, darkMenuProps } from '../../../brandTokens'
+import { BRAND, FONT_DISPLAY, STATS_COLOUR, blackAlpha, darkMenuProps } from '../../../brandTokens'
 
 // docs/specs/119 3C: the look of the player hub (a dark, console style screen on the cricket-scene backdrop).
 // docs/specs/120: the colours and the (self-hosted) Barlow Condensed stack come from the shared brand tokens.
@@ -41,13 +41,11 @@ export const hubGoldButton = {
   '&.Mui-focusVisible, &:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
 } as const
 
-// Secondary buttons on the dark console (owner, 2026-11-06): the same look as the Season dropdown beside them, not a small gold outline:
-// 44 px high, the cream hairline, the dark translucent fill, the display face. Gold stays for the filled primary (hubGoldButton) and for
-// accents such as the active dot.
 // The one framed icon button of a header row (owner, 2026-11-12): 36 px, the outline-button border and radius, cream glyph.
 export const hubFramedIconSx = {
-  width: 36,
-  height: 36,
+  // 44 px on a phone (a touch target), 36 px from sm up.
+  width: { xs: 44, sm: 36 },
+  height: { xs: 44, sm: 36 },
   color: HUB.cream,
   border: `1px solid ${HUB.line}`,
   borderRadius: '4px',
@@ -55,6 +53,20 @@ export const hubFramedIconSx = {
   '&:hover': { bgcolor: alpha(HUB.gold, 0.14) },
   '&.Mui-disabled': { opacity: 0.5, color: HUB.cream },
   '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
+} as const
+
+// Secondary buttons on the dark console (owner, 2026-11-06): the same look as the Season dropdown beside them, not a small gold outline:
+// 44 px high, the cream hairline, the dark translucent fill, the display face. Gold stays for the filled primary (hubGoldButton) and for
+// accents such as the active dot.
+// The gold outline on the dark console (owner, 2026-11-12): the secondary action beside a gold primary, e.g. Live Score, Open Stream, Watch Stream.
+export const hubGoldOutlineButton = {
+  color: HUB.gold,
+  borderColor: HUB.gold,
+  bgcolor: 'transparent',
+  borderRadius: '4px',
+  whiteSpace: 'nowrap',
+  '&:hover': { borderColor: HUB.gold, bgcolor: HUB.lineSoft },
+  '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
 } as const
 
 export const hubOutlineButton = {
@@ -97,3 +109,10 @@ export const darkFieldSx = {
 } as const
 
 export { darkMenuProps }
+
+// One colour for each availability answer, used by every answer tag in the Hub (Availability pills, match rows).
+export const ANSWER_TONES = {
+  AVAILABLE: { label: 'Available', colour: STATS_COLOUR.good },
+  UNAVAILABLE: { label: 'Unavailable', colour: STATS_COLOUR.bad },
+  UNSURE: { label: 'Not Sure', colour: STATS_COLOUR.amber },
+} as const

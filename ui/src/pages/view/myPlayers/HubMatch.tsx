@@ -1,21 +1,20 @@
 import { isAxiosError } from 'axios'
-import { Alert, Box, Button as MuiButton, Chip, Skeleton, Typography } from '@mui/material'
+import { Alert, Box, Chip, Skeleton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { Link as RouterLink } from 'react-router-dom'
-import { Button, compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 import { useMyPlayerMatch } from '../../../api/myPlayersApi'
 import type { MyMatchDto } from '../../../api/myPlayersApi'
 import { blackAlpha, creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import { HubLiveActions } from './HubLiveActions'
 import { HubLiveScore } from './HubLiveScore'
 import { HubMatchLinks } from './HubMatchLinks'
 import { HubWeatherPanel } from './HubFixtureLocation'
 import { HubMatchFigures } from './HubMatchFigures'
 import { HubMatchSide } from './HubMatchSide'
 import { LiveBadge } from './LiveBadge'
-import { answerLabel, statusBadgeLabel, watchPath } from './matchFormat'
+import { answerLabel, statusBadgeLabel } from './matchFormat'
 import { useNow } from './useNow'
 
 // docs/specs/135 (Match page): read only. The footer owns Back (no Back, Manage, Edit or Share here). One status badge, four static
@@ -93,27 +92,10 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
             <span>{match.away.name}</span>
           </Box>
         </Typography>
-        {/* Owner, 2026-11-12 (option 3): while a game is on, Watch Live and Live Score sit beside the LIVE badge in the header. A phone puts the
-            two on a row of their own, equal width and 44 px high. Each shows only when it applies. */}
+        {/* Owner, 2026-11-12 (option 3): while a game is on, Watch Live and Live Score sit beside the LIVE badge in the header. A phone puts them on a row of
+            their own under the title. Each shows only when it applies. */}
         <Box data-testid="match-header-actions" sx={{ flex: 'none', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-          {live && (match.stream || match.liveScore) && (
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {match.stream && (
-                <MuiButton
-                  variant="contained"
-                  size="small"
-                  component={RouterLink}
-                  to={watchPath(playerKey, match.matchId, from)}
-                  data-testid="watch-live"
-                  startIcon={<PlayArrowIcon />}
-                  sx={{ ...compactButtonSx, minHeight: { xs: 44, sm: 32 }, flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap', bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-                >
-                  Watch Live
-                </MuiButton>
-              )}
-              <HubLiveScore source={match.liveScore} variant="header" />
-            </Box>
-          )}
+          {live && <HubLiveActions playerKey={playerKey} matchId={match.matchId} from={from} hasStream={Boolean(match.stream)} score={<HubLiveScore source={match.liveScore} variant="header" />} />}
           <Box sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}>
             {live ? (
               <LiveBadge />

@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
-import { Alert, Box, ButtonBase, Button as MuiButton, Skeleton, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { Alert, Box, ButtonBase, Skeleton, Typography } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
 import { isAxiosError } from 'axios'
-import { Button, compactButtonSx } from '../../../components/Button'
+import { Button } from '../../../components/Button'
 import { useMyPlayerMatch } from '../../../api/myPlayersApi'
 import { BRAND, blackAlpha, creamAlpha } from '../../../brandTokens'
-import { HUB } from './hubStyle'
+import { HUB, hubGoldButton, hubGoldOutlineButton } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLiveScore } from './HubLiveScore'
 import { LiveBadge } from './LiveBadge'
@@ -27,16 +26,16 @@ import { providerName, streamFrame, streamHost } from './streamFrame'
 // the Hub frame blurs its backdrop and so would trap a fixed child): a slim bar with Back, the match, the actions and LIVE, and the picture
 // filling everything else, as large as 16:9 allows. The browser's own Full Screen (the button on the picture) removes the bar as well.
 const BAR_PX = 52
-const theatreSx = { position: 'fixed', inset: 0, zIndex: 1400, display: 'flex', flexDirection: 'column', bgcolor: '#000', color: HUB.cream } as const
+const theatreSx = { position: 'fixed', inset: 0, zIndex: 1400, display: 'flex', flexDirection: 'column', bgcolor: blackAlpha(1), color: HUB.cream } as const
 const barSx = { flex: 'none', height: BAR_PX, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 1.5, px: { xs: 1, md: 2 }, bgcolor: BRAND.menu, borderBottom: `2px solid ${HUB.gold}` } as const
-const stageSx = { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#000' } as const
+const stageSx = { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: blackAlpha(1) } as const
 const screenSx = {
   aspectRatio: '16 / 9',
   width: `min(100vw, calc((100dvh - ${BAR_PX}px) * 16 / 9))`,
   maxHeight: '100%',
   position: 'relative',
   '&:fullscreen': { width: '100vw', height: '100vh', aspectRatio: 'auto', maxHeight: 'none' },
-  bgcolor: '#000',
+  bgcolor: blackAlpha(1),
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -47,23 +46,12 @@ const screenSx = {
   overflow: 'hidden',
 } as const
 
-const goldButton = { ...compactButtonSx, bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } } as const
-
 function OpenStream({ url, gold }: { url: string; gold?: boolean }) {
   if (!isHttps(url)) return null
   return (
-    <MuiButton
-      variant={gold ? 'contained' : 'outlined'}
-      size="small"
-      component="a"
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      data-testid="open-stream"
-      sx={gold ? goldButton : { ...compactButtonSx, color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', borderRadius: '4px', '&:hover': { borderColor: HUB.gold, bgcolor: HUB.lineSoft }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-    >
+    <Button variant={gold ? 'primary' : 'secondary'} size="compact" component="a" href={url} target="_blank" rel="noopener noreferrer" data-testid="open-stream" sx={gold ? { ...hubGoldButton, whiteSpace: 'nowrap' } : hubGoldOutlineButton}>
       Open Stream
-    </MuiButton>
+    </Button>
   )
 }
 
@@ -81,17 +69,17 @@ function FullScreenButton({ target }: { target: RefObject<HTMLElement | null> })
     else void target.current?.requestFullscreen?.()
   }
   return (
-    <MuiButton
-      variant="contained"
-      size="small"
+    <Button
+      variant="secondary"
+      size="compact"
       onClick={toggle}
       data-testid="stream-fullscreen"
       aria-label={full ? 'Exit full screen' : 'Full screen'}
       startIcon={full ? <FullscreenExitIcon /> : <FullscreenIcon />}
-      sx={{ ...compactButtonSx, position: 'absolute', top: 8, right: 8, zIndex: 2, bgcolor: blackAlpha(0.6), color: HUB.cream, borderRadius: '4px', '&:hover': { bgcolor: blackAlpha(0.8) }, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+      sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2, color: HUB.cream, borderColor: HUB.line, bgcolor: blackAlpha(0.6), borderRadius: '4px', '&:hover': { bgcolor: blackAlpha(0.8), borderColor: HUB.line } }}
     >
       {full ? 'Exit Full Screen' : 'Full Screen'}
-    </MuiButton>
+    </Button>
   )
 }
 
@@ -143,7 +131,7 @@ export function HubWatchLive({ playerKey, matchId, onBack, backLabel = 'Back' }:
           <PlayArrowIcon fontSize="large" />
         </Box>
         <Typography component="span" sx={{ fontWeight: 600, fontSize: 18 }}>Tap To Watch</Typography>
-        <Typography component="span" sx={{ fontSize: 14, color: HUB.muted }}>{providerName(stream.provider)}, loads only after you tap</Typography>
+        <Typography component="span" sx={{ fontSize: 14, color: HUB.muted }}>{providerName(stream.provider)}, loads only after a tap</Typography>
       </ButtonBase>
     ) : (
       <Box data-testid="stream-fallback" sx={screenSx}>
@@ -155,9 +143,9 @@ export function HubWatchLive({ playerKey, matchId, onBack, backLabel = 'Back' }:
     <Box data-testid="hub-watch-live" role="region" aria-label={`Watch ${title}`} sx={theatreSx}>
       <Box data-testid="watch-scoreboard" sx={barSx}>
         {onBack && (
-          <MuiButton onClick={onBack} startIcon={<ArrowBackIcon />} data-testid="watch-back" sx={{ ...compactButtonSx, flex: 'none', color: HUB.cream, minHeight: 40, '&:hover': { bgcolor: HUB.lineSoft }, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
+          <Button variant="ghost" size="compact" onClick={onBack} startIcon={<ArrowBackIcon />} data-testid="watch-back" sx={{ flex: 'none', color: HUB.cream, '&:hover': { bgcolor: HUB.lineSoft } }}>
             {backLabel}
-          </MuiButton>
+          </Button>
         )}
         <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 1, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 16, md: 20 }, lineHeight: 1.1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
           <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={22} />

@@ -121,7 +121,7 @@ public class MyPlayerPollHistoryServiceImpl implements MyPlayerPollHistoryServic
         MyPollStatusFilter filter = parseStatus(status);
         UUID clubId = held.profile().getClubId();
         UUID playerId = held.profile().getId();
-        Instant since = Instant.now().minus(Duration.ofDays(days));
+        Instant since = ServerClock.now().minus(Duration.ofDays(days));
         List<Row> rows = new ArrayList<>(squadRows(pollRepository.findClosedSinceForPlayer(playerId, clubId, since), playerId));
         rows.addAll(groupRows(roundRepository.findClosedSinceForPlayer(playerId, clubId, since), playerId));
         rows.sort(Comparator.comparing((Row r) -> r.dto().closedAt()).reversed());

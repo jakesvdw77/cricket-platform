@@ -21223,9 +21223,11 @@ components:
         upcomingTotal:
           type: integer
           format: int64
+          description: "Counted over the rows read (at most 200 ahead), not over every match the player has: the Hub shows no more than that."
         recentTotal:
           type: integer
           format: int64
+          description: "Counted over the rows read (the larger of 50 and twice recentLimit behind), not over every finished match: the pill count and Show More stop there."
       required:
       - live
       - upcoming
@@ -21234,7 +21236,7 @@ components:
       - recentTotal
     MyMatchDto:
       type: object
-      description: "One match for the Player Hub match page (docs/specs/135). Response only. No manager-only data."
+      description: "One match for the Player Hub match page (docs/specs/135). Response only. No manager-only data. stream is set while the match is live and once it is finished (a recording link); liveScore is set whenever the club saved a scoring link, a finished match keeping its scorecard link (2026-11-12)."
       properties:
         matchId:
           type: string

@@ -292,7 +292,7 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
     }
 
     @Test
-    void recentLimitDefaultsToTenGrowsOnRequestAndTheTotalsAreUncapped() throws Exception {
+    void recentLimitDefaultsToTenGrowsOnRequestAndTheTotalsCountTheRowsRead() throws Exception {
         for (int i = 1; i <= 12; i++) {
             match(team, season, hoursFromNow(-24L * i - 12));
         }

@@ -10,7 +10,7 @@ import { HubPageHeader } from './HubPageHeader'
 import { HubPillStrip } from './HubPillStrip'
 import type { HubPillItem } from './HubPillStrip'
 import { MyPlayerPolls } from './MyPlayerPolls'
-import { HUB, darkFieldSx, darkMenuProps } from './hubStyle'
+import { ANSWER_TONES, HUB, darkFieldSx, darkMenuProps } from './hubStyle'
 import { shortDate } from './leagueFormat'
 
 // docs/specs/119 (Hub Availability sub-menus, mockup player-hub-availability-pills-round1): a pill row under the title. Open Polls
@@ -29,12 +29,7 @@ const STATUS_CHIPS: Array<{ id: '' | MyPollStatusFilter; label: string }> = [
 ]
 const column = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, minWidth: 0 } as const
 
-const ANSWER_LOOK: Record<string, { label: string; colour: string }> = {
-  AVAILABLE: { label: 'Available', colour: STATS_COLOUR.good },
-  UNAVAILABLE: { label: 'Unavailable', colour: STATS_COLOUR.bad },
-  UNSURE: { label: 'Not Sure', colour: STATS_COLOUR.amber },
-  NOT_ANSWERED: { label: 'Not Answered', colour: HUB.muted },
-}
+const ANSWER_LOOK: Record<string, { label: string; colour: string }> = { ...ANSWER_TONES, NOT_ANSWERED: { label: 'Not Answered', colour: HUB.muted } }
 
 function Chip({ label, colour, testId }: { label: string; colour: string; testId?: string }) {
   return (

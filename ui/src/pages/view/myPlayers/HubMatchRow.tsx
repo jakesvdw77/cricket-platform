@@ -1,19 +1,18 @@
-import { Box, Button as MuiButton, Chip, Typography } from '@mui/material'
+import { Box, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { Link as RouterLink } from 'react-router-dom'
-import { compactButtonSx } from '../../../components/Button'
 import type { MyMatchSelection, MyMatchSummaryDto } from '../../../api/myPlayersApi'
 import { useMyPlayerMatch } from '../../../api/myPlayersApi'
 import { STATS_TONES, TICKER_TONES, creamAlpha } from '../../../brandTokens'
-import { HUB } from './hubStyle'
+import { ANSWER_TONES, HUB } from './hubStyle'
 import { HubVenueLine, HubWeatherBadge } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
+import { HubLiveActions } from './HubLiveActions'
 import { HubLiveScore } from './HubLiveScore'
 import { LiveBadge } from './LiveBadge'
 import { hubPath } from './hubNav'
 import { timeLabel } from './leagueFormat'
-import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentOutcome, recentResultLine, selectionLabel, watchPath } from './matchFormat'
+import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentOutcome, recentResultLine, selectionLabel } from './matchFormat'
 
 // docs/specs/135 (Schedule > Matches rows): the whole row is one tap target (the title is a stretched link; inner buttons sit above it),
 // 44 px, hover tint, gold focus ring, no chevron, no kebab. A live row has the gold edge and tint ("Your game" one step stronger).
@@ -62,18 +61,12 @@ function Side({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   )
 }
 
-const ANSWER_TAG = {
-  AVAILABLE: { text: 'Available', color: TICKER_TONES.win },
-  UNAVAILABLE: { text: 'Unavailable', color: TICKER_TONES.live },
-  UNSURE: { text: 'Not Sure', color: STATS_TONES.partly },
-} as const
-
 // Upcoming rows only (owner, 2026-11-12): the player's own poll answer. A poll still open links to Availability so it can be answered
 // or changed (the link sits above the row's stretched link); a closed poll is just the answer, or "No Answer" when none was given.
 function AvailabilityTag({ playerKey, availability }: { playerKey: string; availability: NonNullable<MyMatchSummaryDto['availability']> }) {
-  const look = availability.answer ? ANSWER_TAG[availability.answer] : null
-  const text = look ? look.text : availability.pollOpen ? 'Answer Availability' : 'No Answer'
-  const color = look ? look.color : availability.pollOpen ? HUB.gold : HUB.muted
+  const look = availability.answer ? ANSWER_TONES[availability.answer] : null
+  const text = look ? look.label : availability.pollOpen ? 'Answer Availability' : 'No Answer'
+  const color = look ? look.colour : availability.pollOpen ? HUB.gold : HUB.muted
   const sx = { height: 22, px: 1, display: 'inline-flex', alignItems: 'center', borderRadius: '4px', fontSize: 12, fontWeight: 600, color, border: `1px solid ${color}`, textDecoration: 'none', justifySelf: 'start' } as const
   return availability.pollOpen ? (
     <Box component={RouterLink} to={hubPath(playerKey, 'availability')} data-testid="availability-tag" aria-label={`Availability: ${text}`} sx={{ ...inner, ...sx, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>{text}</Box>
@@ -153,21 +146,8 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
           <LiveBadge />
           <Typography component="span" data-testid="match-elapsed" sx={{ fontSize: 14, color: HUB.muted }}>{elapsedLabel(row.startedAt, now)}</Typography>
           {/* Owner, 2026-11-12: the live actions sit top right on the same row as the LIVE badge, as on the match page. */}
-          <Box sx={{ ...inner, ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            {row.hasStream && (
-              <MuiButton
-                variant="contained"
-                size="small"
-                component={RouterLink}
-                to={watchPath(playerKey, row.matchId, from)}
-                data-testid="watch-live"
-                startIcon={<PlayArrowIcon />}
-                sx={{ ...compactButtonSx, whiteSpace: 'nowrap', bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-              >
-                Watch Live
-              </MuiButton>
-            )}
-            {row.hasLiveScore && <LiveRowScore playerKey={playerKey} matchId={row.matchId} />}
+          <Box sx={{ ml: 'auto' }}>
+            <HubLiveActions playerKey={playerKey} matchId={row.matchId} from={from} hasStream={row.hasStream} score={row.hasLiveScore ? <LiveRowScore playerKey={playerKey} matchId={row.matchId} /> : null} />
           </Box>
         </Box>
       )}
