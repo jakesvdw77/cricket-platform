@@ -49,6 +49,7 @@ import com.cricketlegend.service.support.LeagueResultText;
 import com.cricketlegend.service.support.LeagueSide;
 import com.cricketlegend.service.support.LiveScoreResolver;
 import com.cricketlegend.service.support.MyMatchContext;
+import com.cricketlegend.service.support.MySelectionRule;
 import com.cricketlegend.service.support.MyPlayerAccess;
 import com.cricketlegend.service.support.PlayerDisplayName;
 import com.cricketlegend.service.support.SeasonResolution;
@@ -346,19 +347,8 @@ class MyMatchServiceImpl implements MyMatchService {
 
     /** SELECTED (the twelfth man included), NOT_SELECTED once the player's side is announced, else NOT_ANNOUNCED. */
     private MatchSelectionState selection(Match m, Set<UUID> myTeams, UUID profileId, MyMatchContext ctx) {
-        boolean announced = false;
-        for (MatchSide side : ctx.sidesByMatch().getOrDefault(m.getId(), List.of())) {
-            if (!myTeams.contains(side.getTeamId()) || !side.isAnnounced()) {
-                continue;
-            }
-            announced = true;
-            boolean inXi = ctx.playersBySide().getOrDefault(side.getId(), List.of()).stream()
-                    .anyMatch(p -> profileId.equals(p.getPlayerProfileId()));
-            if (inXi || profileId.equals(side.getTwelfthManPlayerId())) {
-                return MatchSelectionState.SELECTED;
-            }
-        }
-        return announced ? MatchSelectionState.NOT_SELECTED : MatchSelectionState.NOT_ANNOUNCED;
+        return MySelectionRule.state(
+                ctx.sidesByMatch().getOrDefault(m.getId(), List.of()), ctx.playersBySide(), myTeams, profileId);
     }
 
     // ---- detail only ----

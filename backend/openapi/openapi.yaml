@@ -2241,6 +2241,81 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MyPollDto"
+  /api/v1/me/players/{playerKey}/polls/closed:
+    get:
+      tags:
+      - me-player-poll-history-controller
+      description: "Hub Closed Polls (docs/specs/119): the polls the held player belongs to that closed in the last sinceDays days, newest closed first, with the player's own answers and, for a squad poll, the selection only once announced. total counts the polls before the status filter. 404 for a key the caller does not hold; a suspended caller is 403; a sinceDays outside 1 to 365 or an unknown status is 400."
+      operationId: listMyClosedPolls
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: sinceDays
+        in: query
+        required: false
+        description: "1 to 365, default 30."
+        schema:
+          type: integer
+          format: int32
+      - name: status
+        in: query
+        required: false
+        description: "Optional. A row matches AVAILABLE, UNAVAILABLE or UNSURE when any of its answers has that status, NOT_ANSWERED when it has none."
+        schema:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+          - NOT_ANSWERED
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyClosedPollsDto"
+  /api/v1/me/players/{playerKey}/polls/responses:
+    get:
+      tags:
+      - me-player-poll-history-controller
+      description: "Hub My Responses (docs/specs/119): the held player's answers over one season's polls, open and closed, answered or not, newest first. A group round belongs to the season containing its first match date. summary counts every row of the season before the status filter; a group poll row is counted once (available if any answer is AVAILABLE, else unavailable if any is UNAVAILABLE, else not sure; no answer is not answered). 404 for a key the caller does not hold or a season of another club; 400 for an unknown status."
+      operationId: listMyPollResponses
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "A season of the player's club; default the club's current season."
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+          - NOT_ANSWERED
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyPollResponsesDto"
   /api/v1/me/players/{playerKey}/fields:
     get:
       tags:
@@ -21424,6 +21499,126 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublicAnswerDto"
+    MyPollAnswerDto:
+      type: object
+      properties:
+        windowId:
+          type: [string, 'null']
+          format: uuid
+        label:
+          type: [string, 'null']
+          description: "For example Sat morning; null for a squad poll."
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+    MyPollHistoryRowDto:
+      type: object
+      description: "A poll (open or closed) the held player belongs to. SQUAD sets matchDate, homeName, awayName and venue; GROUP sets windowDate (the window dates covered) and teamName is the section name. selected is true or false only for a squad poll whose side is announced to players, else null."
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        title:
+          type: string
+        teamName:
+          type: [string, 'null']
+        matchDate:
+          type: [string, 'null']
+          format: date-time
+        homeName:
+          type: [string, 'null']
+        awayName:
+          type: [string, 'null']
+        venue:
+          type: [string, 'null']
+        windowDate:
+          type: array
+          items:
+            type: string
+            format: date
+        open:
+          type: boolean
+        closedAt:
+          type: [string, 'null']
+          format: date-time
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyPollAnswerDto"
+        answered:
+          type: boolean
+        selected:
+          type: [boolean, 'null']
+    MyClosedPollsDto:
+      type: object
+      properties:
+        sinceDays:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+          description: "Closed polls in the window before the status filter."
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyPollHistoryRowDto"
+    MyPollResponsesDto:
+      type: object
+      properties:
+        scope:
+          type: object
+          properties:
+            seasonId:
+              type: [string, 'null']
+              format: uuid
+        seasons:
+          type: array
+          description: "Seasons in which the player has any poll, newest first."
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              label:
+                type: string
+        currentSeasonId:
+          type: [string, 'null']
+          format: uuid
+        summary:
+          type: object
+          properties:
+            polls:
+              type: integer
+              format: int64
+            answered:
+              type: integer
+              format: int64
+            available:
+              type: integer
+              format: int64
+            unavailable:
+              type: integer
+              format: int64
+            notSure:
+              type: integer
+              format: int64
+            notAnswered:
+              type: integer
+              format: int64
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyPollHistoryRowDto"
     ImportFileLimitsDto:
       type: object
       properties:

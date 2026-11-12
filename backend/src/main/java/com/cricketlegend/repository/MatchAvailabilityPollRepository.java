@@ -66,6 +66,33 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
     List<MatchAvailabilityPoll> findOpenForPlayer(@Param("playerProfileId") UUID playerProfileId);
 
     /**
+     * The polls (open or closed) of the club's active matches whose own squad holds this player, the rule of {@link
+     * #findOpenForPlayer}: closed ones updated (closed) since {@code since}, newest closed first. Backs the Hub Closed
+     * Polls pill. A closed poll's {@code updatedAt} is when it closed.
+     */
+    @Query("SELECT p FROM MatchAvailabilityPoll p, Match m WHERE p.open = false AND m.id = p.matchId "
+            + "AND m.clubId = :clubId AND m.active = true AND p.updatedAt >= :since "
+            + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
+            + "AND s.playerProfileId = :playerProfileId) ORDER BY p.updatedAt DESC")
+    List<MatchAvailabilityPoll> findClosedSinceForPlayer(
+            @Param("playerProfileId") UUID playerProfileId, @Param("clubId") UUID clubId, @Param("since") Instant since);
+
+    /** Every poll (open or closed) of this season's active matches whose squad holds the player; backs Hub My Responses. */
+    @Query("SELECT p FROM MatchAvailabilityPoll p, Match m WHERE m.id = p.matchId AND m.clubId = :clubId "
+            + "AND m.active = true AND m.seasonId = :seasonId "
+            + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
+            + "AND s.playerProfileId = :playerProfileId) ORDER BY m.matchDate DESC")
+    List<MatchAvailabilityPoll> findAllForPlayerInSeason(
+            @Param("playerProfileId") UUID playerProfileId, @Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
+
+    /** The seasons in which the player has any poll (same membership rule as {@link #findAllForPlayerInSeason}). */
+    @Query("SELECT DISTINCT m.seasonId FROM MatchAvailabilityPoll p, Match m WHERE m.id = p.matchId "
+            + "AND m.clubId = :clubId AND m.active = true "
+            + "AND EXISTS (SELECT 1 FROM TeamSquadMember s WHERE s.teamId = p.teamId AND s.seasonId = m.seasonId "
+            + "AND s.playerProfileId = :playerProfileId)")
+    List<UUID> findSeasonIdsForPlayer(@Param("playerProfileId") UUID playerProfileId, @Param("clubId") UUID clubId);
+
+    /**
      * docs/specs/147 "Always there": every closed poll of the club's active matches whose own squad (the poll team's squad for
      * the match's season, the rule of {@link #findOpenForPlayer}) holds this player, with the player's answer ({@code status}
      * null when unanswered). One statement; the Season, League and Team scope is applied by the calculator.
