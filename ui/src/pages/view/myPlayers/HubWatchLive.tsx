@@ -137,7 +137,11 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
           </Box>
           {facts && <Typography sx={{ fontSize: 14, color: HUB.sand }}>{facts}</Typography>}
         </Box>
-        <LiveBadge />
+        {/* Owner, 2026-11-12: Live Score is a header action beside the LIVE badge, as on the match page, not a full-width bar under the picture. */}
+        <Box sx={{ flex: 'none', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, alignItems: { xs: 'flex-end', sm: 'center' }, gap: 1 }}>
+          <HubLiveScore source={match.liveScore} variant="header" />
+          <LiveBadge />
+        </Box>
       </Box>
 
       {frame && playing ? (
@@ -164,8 +168,6 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
           <OpenStream url={stream.url} gold />
         </Box>
       )}
-
-      <HubLiveScore source={match.liveScore} variant="tv" />
 
       {frame && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
