@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player Hub results: round 4 (my recommendation)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g900:#0b2e1d; --g800:#103a26; --g700:#17502f; --g600:#1f6b3f;
+    --cream:#f6f1e3; --sand:#e0d5b4; --gold:#e0b44f; --gold2:#f3cf7a; --red:#c8363d; --loss:#9d4a4a; --ink:#0d1f15;
+    --muted:rgba(246,241,227,.66); --line:rgba(246,241,227,.16);
+    --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#1b1f1c; color:var(--cream); font-family:var(--body); }
+  .page { max-width:1380px; margin:0 auto; padding:24px; }
+  h1 { font-family:var(--disp); font-size:34px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  h2 { font-family:var(--disp); font-size:24px; letter-spacing:.08em; text-transform:uppercase; margin:38px 0 4px; }
+  .lead { color:var(--muted); max-width:900px; line-height:1.5; margin:0 0 6px; }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; margin-top:14px; }
+  figure { margin:0; } figcaption { font-family:var(--disp); font-size:18px; letter-spacing:.06em; text-transform:uppercase; margin:0 0 2px; }
+  figcaption + p { margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.4; max-width:375px; min-height:36px; }
+  .phone { width:375px; height:740px; border-radius:34px; border:8px solid #000; overflow:hidden; position:relative;
+    background:linear-gradient(180deg,var(--g800),var(--g900)); box-shadow:0 20px 60px rgba(0,0,0,.5); display:flex; flex-direction:column; }
+  .phone.short { height:560px; }
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px 10px; border-bottom:1px solid var(--line); flex:none; }
+  .bar b { font-family:var(--disp); font-size:19px; letter-spacing:.08em; text-transform:uppercase; } .bar span { color:var(--muted); font-size:13px; margin-left:auto; } .back { font-size:18px; opacity:.8; }
+  .stage { flex:1; min-height:0; position:relative; display:flex; flex-direction:column; }
+  .deckbar { flex:none; display:flex; align-items:center; justify-content:space-between; padding:8px 16px 4px; }
+  .count { font-family:var(--disp); font-size:18px; letter-spacing:.1em; color:var(--muted); } .count b { color:var(--cream); font-size:22px; }
+  .jump { background:rgba(0,0,0,.35); color:var(--cream); border:1px solid var(--line); border-radius:12px; height:44px; padding:0 14px; font-family:var(--disp); letter-spacing:.08em; text-transform:uppercase; font-size:15px; cursor:pointer; }
+  .deck { flex:1; min-height:0; display:flex; gap:12px; padding:6px 6% 34px; scroll-padding:0 6%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; align-items:stretch; }
+  .deck::-webkit-scrollbar { display:none; }
+  .deck > .card { flex:0 0 88%; scroll-snap-align:center; }
+  .card { background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:22px; padding:20px 18px 18px; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .card.win { background:linear-gradient(160deg,rgba(224,180,79,.20),rgba(0,0,0,.22) 55%); }
+  .card.loss { background:linear-gradient(160deg,rgba(157,74,74,.26),rgba(0,0,0,.22) 55%); }
+  .card.tie { background:linear-gradient(160deg,rgba(224,213,180,.18),rgba(0,0,0,.22) 55%); }
+  .kick { font-family:var(--disp); font-size:15px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+  .tag { position:absolute; top:14px; right:14px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; border:1px dashed var(--line); border-radius:8px; padding:3px 7px; color:var(--muted); }
+  .big { font-family:var(--disp); font-weight:700; line-height:.88; letter-spacing:.01em; }
+  .huge { font-size:118px; background:linear-gradient(180deg,var(--gold2),var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sentence { font-size:17px; line-height:1.35; margin:10px 0 0; } .sentence b { color:var(--gold); font-weight:600; } .muted { color:var(--muted); }
+  .grow { flex:1; display:flex; align-items:center; justify-content:center; }
+  .chips { display:flex; gap:8px; margin-top:12px; } .chipwrap { text-align:center; width:48px; }
+  .chip { width:48px; height:48px; border-radius:15px; display:grid; place-items:center; font-family:var(--disp); font-size:21px; font-weight:700; color:var(--ink); }
+  .chip.w { background:var(--gold); } .chip.l { background:#7b3a3a; color:var(--cream); } .chip.t { background:var(--sand); }
+  .chipcap { font-size:12px; color:var(--muted); margin-top:4px; } .chipopp { font-size:11px; color:var(--muted); letter-spacing:.04em; }
+  .mini { display:flex; gap:10px; margin-top:16px; } .mini div { flex:1; border:1px solid var(--line); border-radius:14px; padding:10px 10px 8px; background:rgba(0,0,0,.18); }
+  .mini b { font-family:var(--disp); font-size:34px; display:block; line-height:1; } .mini small { color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+  .banner { border-radius:16px; padding:12px 14px; background:rgba(0,0,0,.28); border:1px solid var(--line); margin-top:12px; }
+  .banner .t { font-family:var(--disp); font-size:25px; letter-spacing:.03em; text-transform:uppercase; line-height:1; }
+  .score { display:flex; justify-content:space-between; font-size:15px; margin-top:7px; } .score b { font-family:var(--disp); font-size:20px; font-weight:600; }
+  .star { color:var(--gold); } .next { margin-top:auto; padding-top:10px; display:flex; justify-content:flex-end; }
+  .next button { background:none; border:0; color:var(--muted); font:inherit; font-size:13px; letter-spacing:.04em; cursor:pointer; min-height:44px; } .next button:hover { color:var(--cream); }
+  .dots { position:absolute; left:0; right:0; bottom:12px; display:flex; justify-content:center; gap:7px; pointer-events:none; }
+  .dots i { width:7px; height:7px; border-radius:50%; background:var(--line); } .dots i.on { background:var(--gold); width:20px; border-radius:6px; }
+  .legend { display:flex; gap:14px; font-size:13px; color:var(--muted); margin-top:8px; justify-content:center; } .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .medal { width:120px; height:120px; margin:6px auto 0; display:block; }
+  .index { display:grid; gap:8px; margin-top:12px; } .index button { text-align:left; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:14px; color:var(--cream); padding:10px 14px; font-size:15px; min-height:44px; cursor:pointer; }
+  .index button.on { border-color:var(--gold); }
+  svg text { font-family:var(--disp); fill:var(--cream); }
+  .draw { stroke-dasharray:1000; stroke-dashoffset:1000; animation:draw 1.4s ease forwards; } @keyframes draw { to { stroke-dashoffset:0; } }
+  @media (prefers-reduced-motion:reduce) { .draw { animation:none; stroke-dashoffset:0; } }
+  /* ---- desktop ---- */
+  .desk { width:1180px; max-width:100%; height:640px; border-radius:18px; border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column;
+    background:linear-gradient(180deg,var(--g800),var(--g900)); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .desk .bar { padding:14px 22px; } .dbody { flex:1; min-height:0; display:flex; }
+  .rail { width:270px; flex:none; border-right:1px solid var(--line); padding:14px; overflow:auto; }
+  .rail .index button { min-height:40px; font-size:14px; }
+  .dmain { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; padding:14px 24px; }
+  .dstage { flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; gap:14px; }
+  .dcard { width:560px; height:100%; max-height:540px; } .dcard .card { height:100%; zoom:1.22; }
+  .arrow { width:52px; height:52px; border-radius:50%; background:rgba(0,0,0,.35); border:1px solid var(--line); color:var(--cream); font-size:22px; cursor:pointer; flex:none; }
+  .arrow:disabled { opacity:.3; cursor:default; } .dctl { display:flex; align-items:center; gap:14px; padding-top:10px; }
+  .note { color:var(--muted); font-size:13px; max-width:760px; line-height:1.5; margin-top:8px; }
+
+  /* ---- round 3: scope chip, sheet, scope label ---- */
+  .scopechip { background:rgba(0,0,0,.35); color:var(--cream); border:1px solid var(--gold); border-radius:12px; height:44px; padding:0 12px; font-family:var(--disp); letter-spacing:.06em; font-size:16px; cursor:pointer; max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .countbtn { background:none; border:0; color:inherit; cursor:pointer; padding:0; min-height:44px; font:inherit; text-align:left; }
+  .scopelbl { font-size:12px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; align-self:center; margin-right:auto; }
+  .sheet { position:absolute; inset:0; z-index:6; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; }
+  .sheet .panel { width:100%; max-height:88%; overflow:auto; background:var(--g900); border-top:1px solid var(--line); border-radius:22px 22px 0 0; padding:16px 16px 20px; }
+  .sheet h3 { font-family:var(--disp); letter-spacing:.1em; text-transform:uppercase; font-size:20px; margin:0 0 4px; display:flex; justify-content:space-between; align-items:center; }
+  .sheet h4 { font-family:var(--disp); letter-spacing:.14em; text-transform:uppercase; font-size:14px; color:var(--gold); margin:14px 0 6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; } .opt { min-height:44px; padding:0 14px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--cream); font:inherit; font-size:15px; cursor:pointer; }
+  .opt.on { border-color:var(--gold); background:rgba(224,180,79,.18); color:var(--gold2); }
+  .apply { width:100%; min-height:48px; margin-top:16px; border-radius:14px; border:0; background:var(--gold); color:var(--ink); font-family:var(--disp); font-size:19px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+  .linkbtn { background:none; border:0; color:var(--gold); text-decoration:underline; font:inherit; cursor:pointer; min-height:44px; }
+  .dscope { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-bottom:10px; width:100%; justify-content:center; }
+  .dscope select { background:rgba(0,0,0,.35); color:var(--cream); border:1px solid var(--gold); border-radius:12px; height:40px; padding:0 12px; font-family:var(--disp); font-size:16px; letter-spacing:.05em; }
+
+  /* ---- hero + carousel (pattern C) ---- */
+  .page-scroll { flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; } .page-scroll::-webkit-scrollbar { display:none; }
+  .page-scroll > .card.herocard { margin:10px 16px 0; }
+  .sect2 { display:flex; align-items:center; justify-content:space-between; padding:18px 16px 8px; }
+  .sect2 .t { font-family:var(--disp); letter-spacing:.12em; text-transform:uppercase; font-size:16px; color:var(--sand); }
+  .car { display:flex; gap:24px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 16px 12px; scroll-padding:0 16px; scrollbar-width:none; align-items:stretch; }
+  .car::-webkit-scrollbar { display:none; }
+  .car > .card { flex:0 0 100%; scroll-snap-align:start; min-height:500px; }
+  .arrowbtns { display:flex; gap:8px; align-items:center; } .arrowbtns button { width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:rgba(0,0,0,.3); color:var(--cream); font-size:20px; cursor:pointer; } .arrowbtns button:disabled { opacity:.3; cursor:default; }
+  .cardots { display:flex; justify-content:center; gap:7px; padding:2px 0 6px; }
+  .cardots i { width:7px; height:7px; border-radius:50%; background:var(--line); } .cardots i.on { background:var(--gold); width:20px; border-radius:6px; }
+  .allres { padding:0 16px 28px; }
+  .allres .index button { display:block; width:100%; } .allres .index button span { color:var(--muted); font-size:13px; }
+  .bar .scopechip { height:38px; margin-left:auto; max-width:235px; padding:0 12px; font-size:15px; }
+  .bar b.ttl { flex:none; }
+
+  .hubrow { display:flex; align-items:center; gap:12px; min-height:56px; padding:0 18px; border-bottom:1px solid var(--line); font-family:var(--disp); font-size:20px; letter-spacing:.08em; text-transform:uppercase; }
+  .hubrow .ic { width:30px; height:30px; border-radius:9px; background:rgba(246,241,227,.08); display:grid; place-items:center; font-size:16px; }
+  .hubrow .go { margin-left:auto; color:var(--muted); } .hubrow .pill { margin-left:auto; background:var(--gold); color:var(--ink); border-radius:12px; padding:2px 9px; font-size:14px; }
+  .hubrow.on { background:rgba(224,180,79,.12); box-shadow:inset 3px 0 0 var(--gold); color:var(--gold2); }
+  .hubrow .soon { margin-left:auto; border:1px dashed var(--line); border-radius:10px; padding:1px 8px; font-size:12px; color:var(--muted); letter-spacing:.1em; }
+  .hubrow .new { margin-left:8px; font-size:11px; letter-spacing:.12em; color:var(--gold); border:1px solid var(--gold); border-radius:8px; padding:1px 6px; }
+  .avatar { margin-left:auto; width:38px; height:38px; border-radius:50%; background:var(--gold); color:var(--ink); border:0; font-family:var(--disp); font-size:16px; font-weight:700; cursor:pointer; }
+  .seasonbtn { margin-left:auto; height:38px; padding:0 12px; border-radius:12px; border:1px solid var(--gold); background:rgba(0,0,0,.35); color:var(--cream); font-family:var(--disp); font-size:17px; letter-spacing:.06em; cursor:pointer; }
+  .tabsrow { flex:none; display:flex; align-items:center; gap:8px; padding:10px 14px 8px; border-bottom:1px solid var(--line); }
+  .tab { min-height:40px; padding:0 14px; border-radius:20px; border:1px solid var(--line); background:transparent; color:var(--cream); font-family:var(--disp); font-size:16px; letter-spacing:.06em; cursor:pointer; }
+  .tab.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .filterbtn { margin-left:auto; width:44px; height:40px; border-radius:12px; border:1px solid var(--line); background:rgba(0,0,0,.3); color:var(--cream); cursor:pointer; position:relative; font-size:17px; }
+  .filterbtn.has::after { content:''; position:absolute; top:6px; right:7px; width:9px; height:9px; border-radius:50%; background:var(--gold); }
+  .menu { position:absolute; right:12px; top:56px; z-index:7; background:var(--g900); border:1px solid var(--line); border-radius:14px; min-width:150px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .menu button { display:block; width:100%; text-align:left; min-height:44px; padding:0 14px; background:none; border:0; color:var(--cream); font:inherit; font-size:15px; cursor:pointer; } .menu button.on { color:var(--gold2); }
+  .why { color:var(--muted); font-size:13px; line-height:1.45; max-width:375px; margin-top:8px; }
+</style></head>
+<body><div class="page">
+<h1>Player Hub results: round 4, my recommendation</h1>
+<p class="lead">You asked what I would do, without leaning on either of your ideas. This is it, built from the Hub's normal parts (the dark console rows, a header, tabs, a dropdown, a bottom sheet) and the cards you approved. Everything is clickable.</p>
+<h2>My answer in four decisions</h2>
+<p class="lead"><b>1. Results is a main menu item (a leaf, not a group).</b> It is the thing that sells the app, so it should be one tap from the menu, not Schedule &gt; Results. It opens straight onto the page; it has no sub-menu. <b>2. Stats stays a group</b> (My stats, Team stats, Leaderboards) and uses the same page frame. <b>3. The scope is shown only when it matters (progressive disclosure):</b> the <b>Season</b> dropdown is always in the header; <b>Team tabs</b> appear only for a player who has more than one team; a <b>League filter</b> button appears with the Team tabs and shows a dot when active. A player with one team and one league sees nothing but "2026 ▾". <b>4. The menu stays at seven:</b> Account (sign out, switch player, find players) moves to the header avatar so Results can have its own slot.</p>
+<div class="row">
+ <figure><figcaption>1. Hub menu</figcaption><p>Seven items: Availability, <b>Results</b> (new), Schedule, Stats, Updates, Club, Profile. Account is the avatar top right.</p><div class="phone" id="menu"></div></figure>
+ <figure><figcaption>2. Results, one team</figcaption><p>The common case. Only a Season dropdown. Try 2025 and All seasons.</p><div class="phone" id="one"></div></figure>
+ <figure><figcaption>3. Results, two teams</figcaption><p>Team tabs (All, U15, U13) and a league filter with a dot when set. Try the tabs, then the filter button.</p><div class="phone" id="two"></div></figure>
+ <figure><figcaption>4. Stats group (later)</figcaption><p>Same frame, so Stats needs no new navigation idea.</p><div class="phone short" id="stats"></div></figure>
+</div>
+<h2>Why this over the alternatives</h2>
+<p class="lead"><b>Against Results with sub-menus per team:</b> most players have one team, so a team sub-menu would be a pointless extra tap for them; and a drill-in sub-menu hides the page you came for. Tabs appear only for the players who need them and are one tap. <b>Against the header scope chip alone:</b> the Team switch is the most common change for a two-team child, and a chip hides it behind a sheet; tabs show it. Season is the next most common, so it stays one tap in the header. League is rare, so it lives in the filter sheet. <b>What it costs:</b> the Hub menu test and spec 121 (exactly seven main items, Account as a menu item) must change, Account moves to the avatar, and Schedule &gt; Results goes away (Schedule keeps Matches, Leagues, Team sheets).</p>
+</div>
+<script>
+const P = { name:'S. Varma' };
+/* matches, newest first. kind: bat | bowl | dnb. All invented. */
+const M = [
+ { id:1, season:'2026', team:'Irene Villagers U15', tshort:'U15', league:'Diamond League U15 T20', opp:'Pretoria A', when:'Sat 17 Oct', tone:'loss', title:'Lost by 8 wickets', ours:'114/9 (30.0)', theirs:'116/2 (17.4)', kind:'bat', runs:46, fig:'46*', sub:'off 68 balls', story:'Carried the bat: 46 not out in a total of 114.', fours:7, sixes:0, how:'not out', wkts:0, catches:0, res:'L' },
+ { id:2, season:'2026', team:'Irene Villagers U15', tshort:'U15', league:'Diamond League U15 T20', opp:'Hillcrest', when:'Sat 10 Oct', tone:'win', title:'Won by 31 runs', ours:'168/6 (30.0)', theirs:'137/9 (30.0)', kind:'bat', runs:52, fig:'52', sub:'off 61 balls', story:'Top score in the win. A first fifty.', fours:6, sixes:1, how:'caught', pom:true, wkts:0, catches:0, res:'W' },
+ { id:3, season:'2026', team:'Irene Villagers U15', tshort:'U15', league:'Diamond League U15 T20', opp:'Eagles', when:'Sat 3 Oct', tone:'loss', title:'Lost by 4 wickets', ours:'121/8 (30.0)', theirs:'122/6 (27.1)', kind:'bowl', runs:2, fig:'2/21', sub:'in 6 overs', story:'Two wickets with the new ball.', overs:6, econ:3.5, wkts:2, wk:[1,4], catches:0, res:'L' },
+ { id:4, season:'2026', team:'Irene Villagers U15', tshort:'U15', league:'Diamond League U15 T20', opp:'Northside', when:'Sat 26 Sep', tone:'win', title:'Won by 6 wickets', ours:'139/10 (29.2)', theirs:'140/4 (24.0)', kind:'dnb', runs:0, fig:'DNB', story:'Team chased it down before you were needed. One catch in the field.', wkts:0, catches:1, res:'W' },
+ { id:5, season:'2026', team:'Irene Villagers U13', tshort:'U13', league:'Friendly', opp:'Lions', when:'Sat 12 Sep', tone:'win', title:'Won by 20 runs', ours:'131/7 (25.0)', theirs:'111/9 (25.0)', kind:'bat', runs:24, fig:'24', sub:'off 29 balls', story:'A busy 24 at number three.', fours:3, sixes:0, how:'bowled', wkts:0, catches:0, res:'W' },
+ { id:6, season:'2026', team:'Irene Villagers U13', tshort:'U13', league:'Friendly', opp:'Tigers', when:'Sat 5 Sep', tone:'loss', title:'Lost by 3 wickets', ours:'118/9 (25.0)', theirs:'119/7 (23.2)', kind:'bowl', runs:0, fig:'3/30', sub:'in 5 overs', story:'Three wickets in a tight loss.', overs:5, econ:6.0, wkts:3, wk:[0,2,4], catches:0, res:'L' },
+ { id:7, season:'2025', team:'Irene Villagers U13', tshort:'U13', league:'Diamond League U13 T20', opp:'Sharks', when:'Sat 11 Oct 2025', tone:'win', title:'Won by 5 wickets', ours:'102/5 (20.0)', theirs:'101/9 (20.0)', kind:'bat', runs:41, fig:'41*', sub:'off 44 balls', story:'41 not out to finish the chase.', fours:5, sixes:0, how:'not out', wkts:0, catches:0, res:'W' },
+ { id:8, season:'2025', team:'Irene Villagers U13', tshort:'U13', league:'Diamond League U13 T20', opp:'Hawks', when:'Sat 4 Oct 2025', tone:'loss', title:'Lost by 12 runs', ours:'88/10 (19.1)', theirs:'100/8 (20.0)', kind:'bowl', runs:5, fig:'2/25', sub:'in 4 overs', story:'Two wickets but not enough runs.', overs:4, econ:6.3, wkts:2, wk:[1,3], catches:0, res:'L' },
+];
+const OPT = { season:['2026','2025','All Seasons'], team:['All teams','Irene Villagers U15','Irene Villagers U13'], league:['All leagues','Diamond League U15 T20','Diamond League U13 T20','Friendly'] };
+let scope = { season:'2026', team:'All teams', league:'All leagues' };
+const scopeText = (sc=scope, hideTeam=false) => [sc.season==='All Seasons'?'All seasons':sc.season, hideTeam?null:(sc.team==='All teams'?'All teams':sc.team.replace('Irene Villagers ','')), sc.league==='All leagues'?null:(sc.league==='Friendly'?'Friendly':sc.league.replace('Diamond League ','').replace(' T20',''))].filter(Boolean).join(' · ');
+const pick = (sc=scope) => M.filter(m => (sc.season==='All Seasons'||m.season===sc.season) && (sc.team==='All teams'||m.team===sc.team) && (sc.league==='All leagues'||m.league===sc.league));
+
+/* ---- chart helpers ---- */
+function ring(w,l,t,size=200){ const tot=w+l+t,r=size/2-14,c=2*Math.PI*r;
+  const seg=(n,off,col)=>n?`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="16" stroke-dasharray="${(n/tot)*c-3} ${c}" stroke-dashoffset="${-off}" transform="rotate(-90 ${size/2} ${size/2})"/>`:'';
+  return `<svg width="${size}" height="${size}" role="img" aria-label="${w} won, ${l} lost, ${t} tied">${seg(w,0,'#e0b44f')}${seg(l,(w/tot)*c,'#9d4a4a')}${seg(t,((w+l)/tot)*c,'#e0d5b4')}
+  <text x="50%" y="53%" text-anchor="middle" font-size="62" font-weight="700">${w}</text><text x="50%" y="69%" text-anchor="middle" font-size="14" style="letter-spacing:.14em;fill:rgba(246,241,227,.66)">WON OF ${tot}</text></svg>`; }
+function line(vals,w=300,h=160){ const pad=22,max=Math.max(...vals,1)*1.15,step=(w-pad*2)/Math.max(vals.length-1,1);
+  const pts=vals.map((v,i)=>[pad+i*step,h-pad-(v/max)*(h-pad*2)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return `<svg width="${w}" height="${h}" role="img" aria-label="Runs per innings: ${vals.join(', ')}"><path d="${d} L ${pts.at(-1)[0]} ${h-pad} L ${pts[0][0]} ${h-pad} Z" fill="rgba(224,180,79,.16)"/>
+  <path class="draw" d="${d}" fill="none" stroke="#e0b44f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===pts.length-1?7:4.5}" fill="${i===pts.length-1?'#f6f1e3':'#e0b44f'}"/><text x="${p[0]}" y="${p[1]-12}" text-anchor="middle" font-size="16" font-weight="600">${vals[i]}</text>`).join('')}</svg>`; }
+function mix(total,fours,sixes,w=300){ const b4=fours*4,b6=sixes*6,rest=Math.max(total-b4-b6,0),sc=w/Math.max(total,1);
+  return `<svg width="${w}" height="64" role="img" aria-label="${b4} runs in fours, ${b6} in sixes, ${rest} in ones and twos"><rect x="0" y="6" width="${b4*sc}" height="26" rx="8" fill="#e0b44f"/><rect x="${b4*sc}" y="6" width="${b6*sc}" height="26" fill="#f3cf7a"/><rect x="${(b4+b6)*sc}" y="6" width="${rest*sc}" height="26" rx="8" fill="rgba(246,241,227,.3)"/>
+  <text x="0" y="56" font-size="13" style="fill:rgba(246,241,227,.66)">${fours} fours = ${b4}${sixes?` · ${sixes} six = ${b6}`:''} · ones and twos ${rest}</text></svg>`; }
+function wicketDots(wk,over){ return `<svg width="300" height="64" role="img" aria-label="${wk.length} wickets in ${over} overs">${Array.from({length:over},(_,i)=>`<rect x="${i*(280/over)}" y="8" width="${280/over-8}" height="26" rx="8" fill="rgba(246,241,227,.22)"/>`).join('')}
+  ${wk.map(i=>`<circle cx="${i*(280/over)+(280/over-8)/2}" cy="21" r="10" fill="#e0b44f"/>`).join('')}<text x="0" y="56" font-size="13" style="fill:rgba(246,241,227,.66)">each block is an over · gold = a wicket fell</text></svg>`; }
+const medal=()=>`<svg class="medal" viewBox="0 0 120 120" role="img" aria-label="First fifty"><circle cx="60" cy="52" r="38" fill="#e0b44f"/><circle cx="60" cy="52" r="30" fill="none" stroke="#0d1f15" stroke-width="3" opacity=".35"/><text x="60" y="64" text-anchor="middle" font-size="36" font-weight="700" style="fill:#0d1f15">50</text><path d="M40 86 L34 116 L60 104 L86 116 L80 86" fill="#c8363d"/></svg>`;
+
+/* ---- cards (each ends with the scope label and the Next label) ---- */
+const foot = (next, sc) => `<div class="next"><span class="scopelbl">${sc}</span><button>${next}</button></div>`;
+function hero(list, sc, next){
+  const runs=list.reduce((a,m)=>a+m.runs,0), wk=list.reduce((a,m)=>a+m.wkts,0), ct=list.reduce((a,m)=>a+m.catches,0), w=list.filter(m=>m.res==='W').length;
+  const last=list.slice(0,5).reverse();
+  const chips=last.map(m=>`<div class="chipwrap"><div class="chip ${m.res.toLowerCase()}">${m.res}</div><div class="chipcap">${m.kind==='dnb'?'DNB':(m.kind==='bowl'?m.fig:m.fig)}</div><div class="chipopp">${m.opp.slice(0,3).toUpperCase()}</div></div>`).join('');
+  const lowNote = list.length<4 ? `<div class="muted" style="margin-top:6px;font-size:14px">Your story is just starting. More cards appear after each match.</div>` : '';
+  return `<div class="card"><div class="kick">${P.name} · ${list[0].season===list[list.length-1].season?list[0].season:"All seasons"}</div><div class="big huge" style="margin-top:12px">${runs}</div>
+    <div class="sentence"><b>runs</b> for ${P.name}, and the team has won <b>${w} of ${list.length}</b>.</div>${lowNote}
+    <div class="mini"><div><b>${list.length}</b><small>matches</small></div><div><b>${wk}</b><small>wickets</small></div><div><b>${ct}</b><small>catches</small></div></div>
+    <div class="kick" style="margin-top:18px">Last ${last.length} · the player's figures</div><div class="chips">${chips}</div>${foot(next,sc)}</div>`; }
+function result(m, sc, next){
+  const head=`<div class="kick">${m.when} · v ${m.opp} · ${m.tshort}</div><div class="banner"><div class="t">Irene ${m.title.toLowerCase()}</div><div class="score"><span>${m.team}</span><b>${m.ours}</b></div><div class="score"><span>${m.opp}</span><b>${m.theirs}</b></div></div>`;
+  if(m.kind==='bat') return `<div class="card ${m.tone}">${head}<div class="kick" style="margin-top:16px">${P.name} ${m.pom?'<span class="star">★ Player of the match</span>':''}</div>
+    <div style="display:flex;align-items:flex-end;gap:10px"><div class="big" style="font-size:92px">${m.fig}</div><div class="muted" style="padding-bottom:8px">${m.sub}<br>${m.how}</div></div>
+    <div class="sentence" style="margin-top:6px">${m.story}</div><div style="margin-top:10px">${mix(m.runs,m.fours,m.sixes)}</div>${foot(next,sc)}</div>`;
+  if(m.kind==='bowl') return `<div class="card ${m.tone}">${head}<div class="kick" style="margin-top:16px">${P.name} · bowling</div>
+    <div style="display:flex;align-items:flex-end;gap:10px"><div class="big" style="font-size:92px">${m.fig}</div><div class="muted" style="padding-bottom:8px">${m.sub}<br>economy ${m.econ}</div></div>
+    <div class="sentence" style="margin-top:6px">${m.story}</div><div style="margin-top:10px">${wicketDots(m.wk,m.overs)}</div>${foot(next,sc)}</div>`;
+  return `<div class="card ${m.tone}">${head}<div class="kick" style="margin-top:16px">${P.name}</div><div class="grow" style="flex-direction:column;text-align:center"><div class="big" style="font-size:60px;color:var(--muted)">Did not bat</div>
+    <div class="sentence" style="max-width:260px">${m.story}</div><div class="mini" style="width:100%"><div><b>${m.catches}</b><small>catch</small></div><div><b>–</b><small>bowled</small></div></div></div>${foot(next,sc)}</div>`; }
+const milestone=(m,sc,next)=>`<div class="card win" style="text-align:center"><div class="kick">Milestone · ${m.when}</div>${medal()}<div class="big" style="font-size:60px;margin-top:8px">First fifty</div>
+  <div class="sentence">${m.runs} against ${m.opp}, with ${m.fours} fours and a six.<br><span class="muted">${m.title}.</span></div>${foot(next,sc)}</div>`;
+const runsLine=(list,sc,next)=>`<div class="card" style="align-items:center;text-align:center"><span class="tag">Stats (later)</span><div class="kick">Runs this season</div><div class="sentence">Innings by innings.</div>
+  <div class="grow">${line(list.filter(m=>m.kind!=='dnb').slice(0,6).reverse().map(m=>m.runs))}</div>${foot(next,sc)}</div>`;
+const teamRing=(list,sc,next)=>{const w=list.filter(m=>m.res==='W').length,l=list.filter(m=>m.res==='L').length,t=list.filter(m=>m.res==='T').length;
+  return `<div class="card" style="align-items:center;text-align:center"><span class="tag">Stats (later)</span><div class="kick">The team's results</div><div class="grow">${ring(w,l,t)}</div>
+  <div class="legend"><span><i style="background:#e0b44f"></i>Won ${w}</span><span><i style="background:#9d4a4a"></i>Lost ${l}</span>${t?`<span><i style="background:#e0d5b4"></i>Tied ${t}</span>`:''}</div>${foot(next,sc)}</div>`;};
+const emptyCard=(sc)=>`<div class="card" style="flex:1;align-items:center;justify-content:center;text-align:center">
+  <svg width="110" height="110" viewBox="0 0 120 120" role="img" aria-label="A cricket ball"><circle cx="60" cy="60" r="44" fill="#c8363d"/><line x1="60" y1="20" x2="60" y2="100" stroke="#8f2428" stroke-width="3" stroke-linecap="round"/><line x1="52" y1="22" x2="52" y2="98" stroke="#f6f1e3" stroke-width="2.5" stroke-dasharray="3 6" stroke-linecap="round"/><line x1="68" y1="22" x2="68" y2="98" stroke="#f6f1e3" stroke-width="2.5" stroke-dasharray="3 6" stroke-linecap="round"/></svg>
+  <div class="big" style="font-size:40px;margin-top:14px">No matches for this filter</div><div class="sentence" style="max-width:250px">${sc} has no results shared with the Player Hub.</div>
+  <button class="linkbtn" data-clear>Clear Filters</button></div>`;
+
+/* build the deck for the current scope: the list of {label, html} */
+function build(S=scope, hideTeam=false){
+  const list=pick(S), sc=scopeText(S,hideTeam);
+  if(!list.length) return { items:[{label:'No matches', html:emptyCard(sc)}], empty:true };
+  const items=[]; const labels=[]; const mk=[];
+  mk.push(['Season', n=>hero(list,sc,'See each match ↓')]);
+  list.forEach(m=>mk.push([`v ${m.opp}`, n=>result(m,sc,n)]));
+  const fifty=list.find(m=>m.kind==='bat'&&m.runs>=50&&m.runs<100); if(fifty) mk.push(['First fifty', n=>milestone(fifty,sc,n)]);
+  if(list.length>=3){ mk.push(['Runs', n=>runsLine(list,sc,n)]); mk.push(['Team results', n=>teamRing(list,sc,n)]); }
+  mk.forEach(([label,fn],i)=>{ const next=i+1<mk.length?`Next: ${mk[i+1][0]} ›`:'The end · back to the start ↺'; items.push({label, html:fn(next)}); });
+  return { items, empty:false };
+}
+
+
+
+/* ---- shared chrome ---- */
+const avatarBtn=`<button class="avatar" aria-label="Account menu">SV</button>`;
+const hbar=(title,right,back=true)=>`<div class="bar">${back?'<span class="back">‹</span>':''}<b class="ttl">${title}</b>${right||''}</div>`;
+const leagueOpts=['All leagues','Diamond League U15 T20','Diamond League U13 T20','Friendly'];
+
+/* ---- the Results page (reused by frames B and C) ---- */
+function resultsPage(el, st){            // st: {scope, tabs, hideTeam}
+  const S=st.scope, {items,empty}=build(S,st.hideTeam);
+  const seasonBtn=`<button class="seasonbtn" aria-haspopup="menu">${S.season==='All Seasons'?'All seasons':S.season} ▾</button>`;
+  const teamTabs=st.tabs?`<div class="tabsrow" role="tablist" aria-label="Team">${['All teams','Irene Villagers U15','Irene Villagers U13'].map(t=>`<button class="tab ${S.team===t?'on':''}" role="tab" aria-selected="${S.team===t}" data-team="${t}">${t==='All teams'?'All':t.replace('Irene Villagers ','')}</button>`).join('')}<button class="filterbtn ${S.league!=='All leagues'?'has':''}" aria-label="Filter by league" data-filter>⚲</button></div>`:'';
+  let body;
+  if(empty){ body=`<div class="page-scroll" style="padding:10px 16px 16px;display:flex;flex-direction:column">${items[0].html}</div>`; }
+  else { const car=items.slice(1), n=car.length;
+    body=`<div class="page-scroll">${items[0].html.replace('<div class="card">','<div class="card herocard">')}
+     ${n?`<div class="sect2"><span class="t">Flip through</span><span class="arrowbtns"><button data-prev aria-label="Previous card">‹</button><span class="count" aria-live="polite"><b>1</b> / ${n}</span><button data-next aria-label="Next card">›</button></span></div><div class="car" tabindex="0" role="region" aria-label="Result cards">${car.map(i=>i.html).join('')}</div>
+     <div class="cardots">${car.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div><div class="sect2"><span class="t">All cards</span></div><div class="allres"><div class="index">${car.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join('')}</div></div>`:''}</div>`; }
+  el.innerHTML=hbar('Results',seasonBtn)+teamTabs+`<div class="stage">${body}</div>`;
+  const redraw=()=>resultsPage(el,st);
+  el.querySelector('.seasonbtn').onclick=(e)=>{ const m=document.createElement('div'); m.className='menu';
+    m.innerHTML=OPT.season.map(o=>`<button class="${S.season===o?'on':''}">${o}</button>`).join('');
+    m.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.season=b.textContent;redraw();}); el.appendChild(m); setTimeout(()=>document.addEventListener('click',()=>m.remove(),{once:true}),0); };
+  el.querySelectorAll('[data-team]').forEach(b=>b.onclick=()=>{S.team=b.dataset.team;redraw();});
+  const fb=el.querySelector('[data-filter]'); if(fb) fb.onclick=()=>{ const sh=document.createElement('div'); sh.className='sheet';
+    const draw=()=>{ const n=pick({...S}).length; sh.innerHTML=`<div class="panel" role="dialog" aria-label="Filter results"><h3>Filter <button class="linkbtn" data-r>Reset</button></h3><h4>League</h4><div class="opts">${leagueOpts.map(o=>`<button class="opt ${S.league===o?'on':''}" data-o="${o}">${o}</button>`).join('')}</div><button class="apply">${n?`Show ${n} match${n===1?'':'es'}`:'Show (no matches)'}</button></div>`;
+      sh.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{S.league=b.dataset.o;draw();}); sh.querySelector('[data-r]').onclick=()=>{S.league='All leagues';draw();}; sh.querySelector('.apply').onclick=()=>{sh.remove();redraw();}; sh.onclick=e=>{if(e.target===sh)sh.remove();}; };
+    draw(); el.appendChild(sh); };
+  el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{S.team=st.tabs?'All teams':S.team;S.league='All leagues';S.season='2026';redraw();});
+  if(!empty){ const c=el.querySelector('.car'); if(c){ const n=c.children.length, dots=el.querySelectorAll('.cardots i'), count=el.querySelector('.count');
+    const step=()=>c.children[0].offsetWidth+24, cur=()=>Math.max(0,Math.min(n-1,Math.round(c.scrollLeft/step())));
+    const go=i=>{c.scrollTo({left:step()*Math.max(0,Math.min(n-1,i)),behavior:'smooth'});c.scrollIntoView({block:'nearest',behavior:'smooth'});};
+    const prev=el.querySelector('[data-prev]'), nxt=el.querySelector('[data-next]'); const sync=()=>{const i=cur();dots.forEach((x,k)=>x.classList.toggle('on',k===i));count.innerHTML=`<b>${i+1}</b> / ${n}`;prev.disabled=i===0;nxt.disabled=i===n-1;};
+    c.addEventListener('scroll',sync); prev.onclick=()=>go(cur()-1); nxt.onclick=()=>go(cur()+1); sync();
+    el.querySelectorAll('.car .next button').forEach((b,i)=>b.onclick=()=>go(i+1)); const hb=el.querySelector('.herocard .next button'); if(hb) hb.onclick=()=>go(0);
+    el.querySelectorAll('.allres button').forEach(b=>b.onclick=()=>go(+b.dataset.i)); } }
+}
+
+/* ---- the Hub menu frames ---- */
+document.getElementById('menu').innerHTML=hbar('Player Hub',avatarBtn,false)+`<div class="stage" style="overflow:auto">
+  <div style="padding:14px 18px 4px;color:var(--muted);font-size:13px">S. Varma · Irene Villagers</div>
+  <div class="hubrow"><span class="ic">✓</span>Availability<span class="pill">2</span></div>
+  <div class="hubrow on"><span class="ic">★</span>Results<span class="new">NEW</span></div>
+  <div class="hubrow"><span class="ic">▦</span>Schedule<span class="go">›</span></div>
+  <div class="hubrow"><span class="ic">▤</span>Stats<span class="go">›</span></div>
+  <div class="hubrow"><span class="ic">✉</span>Updates<span class="go">›</span></div>
+  <div class="hubrow"><span class="ic">⌂</span>Club<span class="go">›</span></div>
+  <div class="hubrow"><span class="ic">☺</span>Profile<span class="go">›</span></div></div>`;
+document.getElementById('stats').innerHTML=hbar('Stats',avatarBtn)+`<div class="stage">
+  <div class="hubrow"><span class="ic">▤</span>My stats<span class="soon">SOON</span></div>
+  <div class="hubrow"><span class="ic">▥</span>Team stats<span class="soon">SOON</span></div>
+  <div class="hubrow"><span class="ic">♛</span>Leaderboards<span class="soon">SOON</span></div>
+  <div style="padding:16px 18px;color:var(--muted);font-size:14px;line-height:1.5">Stats use the same header, the same <b>Season</b> dropdown, the same Team tabs and the same hero plus carousel as Results. A parent learns the page once.</div></div>`;
+
+resultsPage(document.getElementById('one'),{scope:{season:'2026',team:'Irene Villagers U15',league:'All leagues'},tabs:false,hideTeam:true});
+resultsPage(document.getElementById('two'),{scope:{season:'2026',team:'All teams',league:'All leagues'},tabs:true,hideTeam:false});
+
+</script></body></html>

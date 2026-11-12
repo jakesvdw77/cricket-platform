@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Stats colour - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ink:#06241A;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#3FBF7F;--loss:#F0675D;--blue:#7FB6E8;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 90px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:38px 0 4px}
+.lead,.why{color:var(--muted);max-width:940px;line-height:1.5;margin:0 0 12px;font-size:14.5px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:8px;max-width:1100px;margin-bottom:8px}
+.card{height:216px;border:1px solid var(--line);border-radius:14px;background:rgba(7,36,26,.9);padding:10px 12px;display:flex;flex-direction:column;overflow:hidden}
+.card h3{margin:0;font:700 14px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--cream)}
+.scope{font-size:11px;color:var(--muted);margin:3px 0 6px}
+.body{flex:1;display:flex;gap:16px;align-items:center;min-height:0}
+.big{font:700 34px var(--disp);line-height:1}.cap{font:600 10px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.bars{flex:1;display:grid;gap:9px;min-width:0}
+.b{display:grid;gap:3px;font-size:12px}.b .t{display:flex;justify-content:space-between}.b .t b{font-weight:700}
+.b .tr{height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}.b .tr i{display:block;height:100%;border-radius:4px}
+.foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}.foot em{font-style:normal;font:700 10px var(--disp);letter-spacing:.16em;text-transform:uppercase}
+.leg{display:flex;gap:12px;font:600 10px var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}.leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.sel{outline:1px solid var(--gold);background:rgba(232,184,61,.12);border-radius:6px;padding:3px 5px;margin:-3px -5px}
+.tag{margin-top:6px;font:600 10px var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+/* CURRENT */
+.cur .big{color:var(--gold)}.cur .cap{color:var(--gold)}.cur .tr i{background:var(--gold)}.cur .foot em{color:var(--gold)}.cur .scope{color:var(--muted)}.cur .sel{}
+/* A */
+.a .big{color:var(--gold)}.a .tr i{background:rgba(226,213,176,.62)}.a .foot em{color:var(--muted)}
+.a .sel .tr i{background:var(--gold)}.a .sel{outline-color:var(--gold)}
+/* A+B */
+.ab .big{color:var(--gold)}.ab .tr i{background:rgba(226,213,176,.62)}.ab .foot em{color:var(--muted)}
+.ab .sel .tr i{background:var(--gold)}
+.c-g{background:var(--win)!important}.c-b{background:var(--blue)!important}.c-s{background:var(--sand)!important}.c-r{background:var(--loss)!important}
+.pairs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px;width:100%}
+.pairs div{border:1px solid var(--soft);border-radius:6px;padding:6px 8px}.pairs b{font:700 20px var(--disp);display:block}.pairs span{font:600 10px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:940px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+</style></head><body>
+<h1>Player Stats colour: three looks</h1>
+<p class="lead">The same three cards in each look (Leagues Played with a selected league, Boundaries Hit comparing fours and sixes, and Who Hannes Dismisses comparing batting positions) plus one more comparison card (Home v Away). Made-up figures. Nothing is built.</p>
+
+<h2>1 &middot; Today: gold everywhere</h2>
+<p class="why">Gold is the bar colour, the label colour, the caption colour, the "Flip" hint and the selection. Nothing stands out.</p>
+<div class="cur">
+<div class="row">
+ <div class="card"><h3>Leagues Played</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">3</div><div class="cap">leagues</div></div><div class="bars">
+   <div class="b"><div class="t"><span>TVL Division 1 T20</span><b>5</b></div><div class="tr"><i style="width:100%"></i></div></div>
+   <div class="b sel"><div class="t"><span>Over 40 League</span><b>3</b></div><div class="tr"><i style="width:60%"></i></div></div>
+   <div class="b"><div class="t"><span>Friendlies</span><b>1</b></div><div class="tr"><i style="width:20%"></i></div></div></div></div><div class="foot"><span>Based on 9 of 9 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Boundaries Hit</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">41</div><div class="cap">boundaries</div></div><div class="bars">
+   <div class="b"><div class="t"><span>Fours</span><b>34</b></div><div class="tr"><i style="width:100%"></i></div></div>
+   <div class="b"><div class="t"><span>Sixes</span><b>7</b></div><div class="tr"><i style="width:21%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Who Hannes Dismisses</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+   <div class="b"><div class="t"><span>Openers</span><b>3</b></div><div class="tr"><i style="width:55%"></i></div></div>
+   <div class="b"><div class="t"><span>Middle order</span><b>4</b></div><div class="tr"><i style="width:75%"></i></div></div>
+   <div class="b"><div class="t"><span>Tail</span><b>2</b></div><div class="tr"><i style="width:35%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div></div>
+
+<h2>2 &middot; Option A: neutral bars, gold only for the answer and the selection</h2>
+<p class="why">Bars become a calm sand at 62%. Gold stays on the big number and on the chosen league (bar and outline). The "Flip" hint goes quiet. Colour now means something.</p>
+<div class="a">
+<div class="row">
+ <div class="card"><h3>Leagues Played</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">3</div><div class="cap">leagues</div></div><div class="bars">
+   <div class="b"><div class="t"><span>TVL Division 1 T20</span><b>5</b></div><div class="tr"><i style="width:100%"></i></div></div>
+   <div class="b sel"><div class="t"><span>Over 40 League</span><b>3</b></div><div class="tr"><i style="width:60%"></i></div></div>
+   <div class="b"><div class="t"><span>Friendlies</span><b>1</b></div><div class="tr"><i style="width:20%"></i></div></div></div></div><div class="foot"><span>Based on 9 of 9 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Boundaries Hit</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">41</div><div class="cap">boundaries</div></div><div class="bars">
+   <div class="b"><div class="t"><span>Fours</span><b>34</b></div><div class="tr"><i style="width:100%"></i></div></div>
+   <div class="b"><div class="t"><span>Sixes</span><b>7</b></div><div class="tr"><i style="width:21%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Who Hannes Dismisses</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+   <div class="b"><div class="t"><span>Openers</span><b>3</b></div><div class="tr"><i style="width:55%"></i></div></div>
+   <div class="b"><div class="t"><span>Middle order</span><b>4</b></div><div class="tr"><i style="width:75%"></i></div></div>
+   <div class="b"><div class="t"><span>Tail</span><b>2</b></div><div class="tr"><i style="width:35%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div></div>
+
+<h2>3 &middot; Option A + B (my pick): neutral single-series bars, legend colours for comparisons</h2>
+<p class="why">Leagues stay neutral with the selection in gold. Cards that compare categories get a small legend and one hue per category (green, blue, sand, soft red), always with the label beside the bar so colour is never the only cue.</p>
+<div class="ab">
+<div class="row">
+ <div class="card"><h3>Leagues Played</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">3</div><div class="cap">leagues</div></div><div class="bars">
+   <div class="b"><div class="t"><span>TVL Division 1 T20</span><b>5</b></div><div class="tr"><i style="width:100%"></i></div></div>
+   <div class="b sel"><div class="t"><span>Over 40 League</span><b>3</b></div><div class="tr"><i style="width:60%"></i></div></div>
+   <div class="b"><div class="t"><span>Friendlies</span><b>1</b></div><div class="tr"><i style="width:20%"></i></div></div></div></div><div class="foot"><span>Based on 9 of 9 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Boundaries Hit</h3><div class="scope">2026/2027</div><div class="leg"><span><i class="c-g"></i>Fours</span><span><i class="c-b"></i>Sixes</span></div><div class="body"><div><div class="big">41</div><div class="cap">boundaries</div></div><div class="bars">
+   <div class="b"><div class="t"><span>Fours</span><b>34</b></div><div class="tr"><i class="c-g" style="width:100%"></i></div></div>
+   <div class="b"><div class="t"><span>Sixes</span><b>7</b></div><div class="tr"><i class="c-b" style="width:21%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Who Hannes Dismisses</h3><div class="scope">2026/2027</div><div class="leg"><span><i class="c-g"></i>Openers</span><span><i class="c-b"></i>Middle</span><span><i class="c-s"></i>Tail</span></div><div class="body"><div class="bars" style="width:100%">
+   <div class="b"><div class="t"><span>Openers</span><b>3</b></div><div class="tr"><i class="c-g" style="width:55%"></i></div></div>
+   <div class="b"><div class="t"><span>Middle order</span><b>4</b></div><div class="tr"><i class="c-b" style="width:75%"></i></div></div>
+   <div class="b"><div class="t"><span>Tail</span><b>2</b></div><div class="tr"><i class="c-s" style="width:35%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div>
+<div class="row">
+ <div class="card"><h3>Bowling Home And Away</h3><div class="scope">2026/2027</div><div class="leg"><span><i class="c-g"></i>Home</span><span><i class="c-b"></i>Away</span></div><div class="body"><div class="pairs">
+   <div><b style="color:var(--win)">0</b><span>Home wickets</span></div><div><b style="color:var(--blue)">1</b><span>Away wickets</span></div>
+   <div><b style="color:var(--win)">-</b><span>Home economy</span></div><div><b style="color:var(--blue)">6.43</b><span>Away economy</span></div></div></div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>How Hannes Gets Out</h3><div class="scope">2026/2027</div><div class="leg"><span><i class="c-g"></i>Not out</span><span><i class="c-b"></i>Caught</span><span><i class="c-r"></i>Bowled</span></div><div class="body"><div class="bars" style="width:100%">
+   <div class="b"><div class="t"><span>Not out</span><b>38%</b></div><div class="tr"><i class="c-g" style="width:38%"></i></div></div>
+   <div class="b"><div class="t"><span>Caught</span><b>25%</b></div><div class="tr"><i class="c-b" style="width:25%"></i></div></div>
+   <div class="b"><div class="t"><span>Bowled</span><b>15%</b></div><div class="tr"><i class="c-r" style="width:15%"></i></div></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Season In A Card</h3><div class="scope">2026/2027</div><div class="body"><div><div class="big">412</div><div class="cap">runs in 7 innings</div></div></div><div class="tag">Gold = the headline number. Everything else is quiet.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div></div>
+
+<h2>The rules in each look</h2>
+<div class="sum"><b>Gold:</b> the headline number, the selected or active thing, the focus ring. Nothing else.<br><b>Neutral sand:</b> any bar that is one series (leagues, teams, matches, runs by season, venues).<br><b>Legend colours:</b> only where categories are compared: Fours v Sixes, Home v Away, Opener v Middle v Tail, dismissal types. Green and blue first, sand and soft red when there are more. Always labelled, so colour never carries meaning alone.<br><b>Muted:</b> section labels, the Flip hint, captions.<br><br><b>Questions:</b> 1) Option A alone, or A plus the legend colours (B)? 2) Is green/blue for Home/Away fine, or should home be gold? 3) Should wins and losses ever use green/red here, or keep red/green for Results only?</div>
+</body></html>

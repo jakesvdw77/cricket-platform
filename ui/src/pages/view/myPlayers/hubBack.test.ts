@@ -93,3 +93,27 @@ describe('hubBack on Schedule > Leagues', () => {
     expect(hubBack(state({ layout: 'phone', ...list, view: 'l1', season: 'a b' })).target).toBe(`${BASE}/schedule/leagues?season=a%20b`)
   })
 })
+
+// docs/specs/147: Stats origins. A result page or the drill opened from a stats page goes back to that page with the same scope.
+describe('hubBack from the Stats pages', () => {
+  const SCOPE = 'season=s1&team=t1'
+
+  it('goes back to Player Stats with the scope from a result opened from My stats, on every layout', () => {
+    for (const layout of ['phone', 'wide'] as const) {
+      expect(hubBack(state({ layout, section: 'results', item: 'm1', origin: 'stats', scope: SCOPE }))).toEqual({ label: 'Back to Player Stats', target: `${BASE}/stats/mine?${SCOPE}` })
+    }
+  })
+
+  it('goes back to Player Stats from the My stats drill, and without a scope the target has no query', () => {
+    expect(hubBack(state({ section: 'stats', item: 'mine', view: 'innings', scope: SCOPE }))).toEqual({ label: 'Back to Player Stats', target: `${BASE}/stats/mine?${SCOPE}` })
+    expect(hubBack(state({ section: 'stats', item: 'mine', view: 'innings' }))?.target).toBe(`${BASE}/stats/mine`)
+  })
+
+  it('goes back to Team Stats from a result opened from Team stats', () => {
+    expect(hubBack(state({ section: 'results', item: 'm1', origin: 'team-stats', scope: SCOPE }))).toEqual({ label: 'Back to Team Stats', target: `${BASE}/stats/teams?${SCOPE}` })
+  })
+
+  it('still goes back to Results for a result page with no stats origin', () => {
+    expect(hubBack(state({ section: 'results', item: 'm1', scope: SCOPE }))).toEqual({ label: 'Back to Results', target: `${BASE}/results?${SCOPE}` })
+  })
+})

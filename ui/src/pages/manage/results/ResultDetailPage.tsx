@@ -6,6 +6,8 @@ import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import UnpublishedOutlinedIcon from '@mui/icons-material/UnpublishedOutlined'
 import { HeaderActions, HeaderShareButton } from '../../../components/HeaderShareButton'
@@ -17,7 +19,7 @@ import type { ManageMenuItem } from '../../../components/ManageMenu'
 import { ShareResultDialog } from '../../../components/ShareResultDialog'
 import { badgeSx } from '../../../components/RecordCard'
 import { getMatch } from '../../../api/matchApi'
-import { deleteResultDraft, getMatchResult, resultKeys, resultsKey, unpublishResult } from '../../../api/matchResultApi'
+import { deleteResultDraft, getMatchResult, hideResultFromPlayers, resultKeys, resultsKey, showResultToPlayers, unpublishResult } from '../../../api/matchResultApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
 import { listLeagues } from '../../../api/leagueApi'
@@ -104,6 +106,12 @@ export default function ResultDetailPage() {
       setConfirm(null)
       setFailed(true)
     },
+  })
+  // docs/specs/145: show or hide a published result in the Player Hub.
+  const visibilityMutation = useMutation({
+    mutationFn: (show: boolean) => (show ? showResultToPlayers(clubId as string, matchId as string) : hideResultFromPlayers(clubId as string, matchId as string)),
+    onSuccess: refresh,
+    onError: () => setFailed(true),
   })
   const deleteMutation = useMutation({
     mutationFn: () => deleteResultDraft(clubId as string, matchId as string),
@@ -197,6 +205,18 @@ export default function ResultDetailPage() {
             setConfirm('unpublish')
           },
         },
+    {
+      id: 'player-hub',
+      title: result.visibleToPlayers ? 'Hide From Player Hub' : 'Show In Player Hub',
+      description: result.visibleToPlayers ? 'Remove this result from the Player Hub' : 'Parents and players can see this result in the Player Hub',
+      icon: result.visibleToPlayers ? <VisibilityOffOutlinedIcon fontSize="small" /> : <GroupsOutlinedIcon fontSize="small" />,
+      onClick: () => {
+        setFailed(false)
+        visibilityMutation.mutate(!result.visibleToPlayers)
+      },
+      disabled: draft,
+      reason: 'Publish the result first',
+    },
     { id: 'match', title: 'View Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: `${MATCHES_PATH}/${match.id}` },
     ...(draft
       ? [{ id: 'delete', title: 'Delete Draft', icon: <DeleteOutlineIcon fontSize="small" />, tone: 'error' as const, onClick: () => setConfirm('delete') }]
@@ -224,6 +244,7 @@ export default function ResultDetailPage() {
               <TeamLogo logo={away.logo} testId="result-logo-away" />
             </Box>
             <Chip size="small" label={statusLabel} variant="filled" sx={badgeSx(draft ? 'warning' : 'active')} data-testid="result-status-chip" />
+            {result.visibleToPlayers && <Chip size="small" label="In Player Hub" variant="filled" sx={badgeSx('positive')} data-testid="result-hub-chip" />}
           </Box>
         }
         subtitle={

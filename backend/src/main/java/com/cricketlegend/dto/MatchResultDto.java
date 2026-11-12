@@ -15,7 +15,7 @@ import java.util.UUID;
  * docs/specs/100-match-results-core.md: a stored result with its innings in sequence order. {@code outcomeType} is
  * null only on a draft. {@code playingAreaName} is the chosen field's name (null with no field). All run, wicket and
  * length figures are balls-based; see {@link InningsDto}. {@code hasScorecard} (docs/specs/101) is true when the
- * scorecard has at least one player; {@code hasOppositionScorecard} when one of them is the opposition's.
+ * scorecard has at least one player ({@code visibleToPlayers}, docs/specs/145: shown in the Player Hub); {@code hasOppositionScorecard} when one of them is the opposition's.
  */
 public record MatchResultDto(
         UUID id,
@@ -41,6 +41,7 @@ public record MatchResultDto(
         String externalId,
         Instant publishedAt,
         UUID publishedBy,
+        boolean visibleToPlayers,
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy,
@@ -53,7 +54,7 @@ public record MatchResultDto(
         return new MatchResultDto(
                 id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
                 dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId, name,
-                note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy, innings, hasScorecard,
+                note, source, externalId, publishedAt, publishedBy, visibleToPlayers, createdAt, updatedAt, updatedBy, innings, hasScorecard,
                 hasOppositionScorecard);
     }
 
@@ -65,7 +66,7 @@ public record MatchResultDto(
         return new MatchResultDto(
                 id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
                 dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId,
-                playingAreaName, note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy,
+                playingAreaName, note, source, externalId, publishedAt, publishedBy, visibleToPlayers, createdAt, updatedAt, updatedBy,
                 innings, scorecardCaptured, oppositionCaptured);
     }
 }

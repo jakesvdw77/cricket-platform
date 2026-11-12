@@ -8,6 +8,7 @@ import MyPlayerPage from './MyPlayerPage'
 import { calls, clearViewport, httpError, renderRoutes, routeApi, setPhone } from '../../test/accountTestUtils'
 import type { ApiMock } from '../../test/accountTestUtils'
 import { agent, makeMyPlayer } from '../../test/myPlayerFixtures'
+import { drillPage, drillRow, makeMyStats, makeResultFilters } from '../../test/statsFixtures'
 import { STREAM, matchDto, matchList, summary as matchSummary } from '../../test/hubMatchFixtures'
 
 vi.mock('../../auth/keycloak', () => ({ keycloak: { tokenParsed: { name: 'Priya Naidoo' }, logout: vi.fn() } }))
@@ -56,7 +57,7 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Updates', 'Schedule', 'Stats', 'Club', 'Profile', 'Account']
+const ROOT_BARS = ['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile']
 
 describe('MyPlayerPage on a desktop', () => {
   it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
@@ -102,7 +103,7 @@ describe('MyPlayerPage on a desktop', () => {
   })
 
   it.each([
-    ['stats', 'My stats', /Personal bests, form and season progress/],
+    ['updates', 'Messages', /Notices from the club to parents and players/],
   ])('%s opens on its first child, a locked panel that says Coming soon', async (path, label, text) => {
     setup(`/account/players/k1/${path}`)
 
@@ -147,14 +148,44 @@ describe('MyPlayerPage on a desktop', () => {
     expect(await screen.findByText(/No open availability polls/)).toBeInTheDocument()
   })
 
-  it('shows the Invitations count under Account, opening the invitations page in the hub', async () => {
-    const user = userEvent.setup()
-    setup('/account/players/k1/availability', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
+  // docs/specs/147: the Stats pages are live under Stats, and the drill's one Back returns to Player Stats with the same scope.
+  it('stats opens on Player Stats, a live page with its sub menu', async () => {
+    setup('/account/players/k1/stats', { extra: { 'GET /me/players/k1/results/filters': makeResultFilters(), 'GET /me/players/k1/stats': makeMyStats() } })
 
-    await user.click(await within(await findMenu()).findByRole('button', { name: /^Account, 2 new/ }))
+    expect(await screen.findByTestId('hub-stats-grid')).toBeInTheDocument()
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
+    expect(within(menu()).getAllByRole('button').map((bar) => bar.textContent)).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
+    expect(within(menu()).getByRole('button', { name: 'Player Stats' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('the Player Stats drill has Back to Player Stats as its one Back, which returns to the stats page with the scope', async () => {
+    const user = userEvent.setup()
+    setup('/account/players/k1/stats/mine/innings?kind=BATTING&filter=BAND_50&season=s1&team=t1', {
+      extra: { 'GET /me/players/k1/stats/innings': drillPage([drillRow(1)], 0, false, 1), 'GET /me/players/k1/results/filters': makeResultFilters(), 'GET /me/players/k1/stats': makeMyStats() },
+    })
+
+    expect(await screen.findByTestId('hub-stats-drill')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Back to Player Stats' }))
+    expect(await screen.findByTestId('hub-stats-grid')).toBeInTheDocument()
+    expect(http.get).toHaveBeenCalledWith('/me/players/k1/stats', { params: { seasonId: 's1', teamId: 't1' } })
+  })
+
+  it('shows the Invitations count on the Invitations page, which is route-only (Account is the corner link)', async () => {
+    setup('/account/players/k1/account', { invitations: [{ linkId: 'l1' }, { linkId: 'l2' }] })
 
     expect(await screen.findByRole('heading', { name: 'Invitations' })).toBeInTheDocument()
-    expect(within(menu()).getByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
+    expect(await within(menu()).findByRole('button', { name: /^Invitations, 2/ })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('has Account as the corner link in the top row, opening the Account page, and not as a menu item', async () => {
+    const user = userEvent.setup()
+    setup('/account/players/k1/availability')
+
+    await within(await findMenu()).findByRole('button', { name: /^Availability/ })
+    expect(within(menu()).queryByRole('button', { name: /^Account/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Account' }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
   })
 
   it('has no Invitations count without invitations', async () => {
@@ -184,15 +215,14 @@ describe('MyPlayerPage on a desktop', () => {
       expect(screen.queryByTestId('hub-profile')).not.toBeInTheDocument()
     })
 
-    it('is hidden for a single player, who links more players from Account', async () => {
+    it('is hidden for a single player, who reaches Account from the corner link', async () => {
       const user = userEvent.setup()
       setup('/account/players/k1/availability', { players: [summary('k1')] })
 
       await within(await findMenu()).findByRole('button', { name: /^Availability/ })
       expect(screen.queryByRole('button', { name: 'Back to players' })).not.toBeInTheDocument()
-      await user.click(within(menu()).getByRole('button', { name: /^Account/ }))
-      await user.click(await within(menu()).findByRole('button', { name: 'Link more players' }))
-      expect(await screen.findByTestId('location')).toHaveTextContent('/welcome')
+      await user.click(screen.getByRole('button', { name: 'Account' }))
+      expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
     })
   })
 
@@ -294,7 +324,7 @@ describe('MyPlayerPage on a phone (menu first, then a page)', () => {
   })
 
   it('a locked section is a full screen too', async () => {
-    setup('/account/players/k1/stats')
+    setup('/account/players/k1/updates')
 
     expect(await screen.findByText('Coming soon')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Back to menu' })).toBeInTheDocument()

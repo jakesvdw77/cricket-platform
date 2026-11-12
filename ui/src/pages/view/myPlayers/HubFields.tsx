@@ -4,7 +4,8 @@ import SearchIcon from '@mui/icons-material/Search'
 import { Button } from '../../../components/Button'
 import { useMyPlayerFields } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
-import { HUB, darkFieldSx, hubPageHeading } from './hubStyle'
+import { HubPageHeader } from './HubPageHeader'
+import { HUB, darkFieldSx } from './hubStyle'
 import { HubFieldCard } from './HubFieldCard'
 import { matchesSearch } from './fieldFormat'
 
@@ -48,9 +49,7 @@ export function HubFields({ playerKey }: { playerKey?: string }) {
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
-      <Typography component="h2" sx={hubPageHeading}>
-        Field Directory
-      </Typography>
+      <HubPageHeader title="Field Directory" />
       <TextField
         value={query}
         onChange={(event) => setQuery(event.target.value)}

@@ -90,3 +90,85 @@ export const blackAlpha = (opacity: number) => alpha('#000000', opacity)
 
 // The gold avatar disc: a radial from the light to the solid gold (avatarSx and the console avatars share it).
 export const GOLD_DISC_GRADIENT = `radial-gradient(circle at 30% 25%, ${BRAND.goldLight}, ${BRAND.gold})`
+
+// docs/specs/146 (Player Hub scoreboard ticker): the type chip tones and the edge fade of the ticker band, from the owner-chosen
+// mockup (docs/mockups/player-hub-ticker-round2-mockup.html). Named here so no ticker file carries a hex literal. Each tone reads at
+// 4.5:1 or better on the dark band (pinned by tickerTokens.test.ts).
+export const TICKER_TONES = {
+  win: '#3FBF7F',
+  live: '#F0675D',
+  next: '#7FB6E8',
+  message: '#C9A7F0',
+  sponsor: BRAND.gold,
+  info: '#9ED3B5',
+} as const
+// The ticker's edge fade: the console ground under the footer band.
+export const TICKER_FADE = '#08271b'
+
+// docs/specs/147 (Player Hub stats, shared flip cards): the data-tag chip tones (HAVE, PARTLY, NOT CAPTURED) and the drawing tones of
+// components/StatsDrawings, named here so no stats file carries a hex literal. They reuse the ticker tones, which read at 4.5:1 or
+// better on the dark console ground; every use also carries a word or a pattern, colour is never the only cue.
+export const STATS_TONES = {
+  have: TICKER_TONES.win,
+  // The quiet warm tone of a partly-captured card (spec 147 colour rule 7): a muted amber, deliberately not the selection gold.
+  partly: '#D9A66B',
+  notCaptured: TICKER_TONES.live,
+  // Drawings: good, poor, the second series and the neutral grid.
+  win: TICKER_TONES.win,
+  loss: TICKER_TONES.live,
+  blue: TICKER_TONES.next,
+  gold: BRAND.gold,
+  violet: TICKER_TONES.message,
+  mint: TICKER_TONES.info,
+  sand: BRAND.sand,
+} as const
+// The order slices and series are coloured in (donut, stacked bars): distinct from one another on the dark ground.
+export const STATS_SERIES = [STATS_TONES.gold, STATS_TONES.blue, STATS_TONES.win, STATS_TONES.loss, STATS_TONES.violet, STATS_TONES.mint, STATS_TONES.sand] as const
+
+// docs/specs/147 Amendment 2 item 16 (the restrained stats colour rule, owner decision 2026-11-07: "not everything gets a colour, only
+// where it makes sense"). Gold is only the headline number, the selected thing and the focus ring. Everything else is neutral sand, one
+// tonal ramp. The one exception is a comparison of exactly two categories (Fours v Sixes, Home v Away): green and blue at full strength.
+// Loss red is not used on these cards (it stays for Results and the W/L/T chips). Every use also carries a label, so colour is never the only cue.
+export const STATS_COLOUR = {
+  // A single-series or ordinal bar or column, and the faint track under it.
+  bar: alpha(BRAND.sand, 0.62),
+  track: alpha(BRAND.cream, 0.1),
+  trackHover: alpha(BRAND.cream, 0.18),
+  // The selected row's bar.
+  selected: BRAND.gold,
+  // The two tones of a comparison of exactly two categories, at full strength so they read at a glance: win green, then the ticker blue.
+  compareFirst: STATS_TONES.win,
+  compareSecond: STATS_TONES.blue,
+  // Three or more parts: sand shades then cool shades, largest first, then a pale cream.
+  ramp: [alpha(BRAND.sand, 1), alpha(BRAND.sand, 0.6), alpha(STATS_TONES.blue, 0.7), alpha(STATS_TONES.blue, 0.4), alpha(BRAND.cream, 0.3)],
+  // Line charts: the data line and markers, the dashed running average, the faint guides and their muted labels.
+  line: alpha(BRAND.sand, 0.8),
+  marker: BRAND.cream,
+  average: alpha(STATS_TONES.blue, 0.8),
+  guide: alpha(BRAND.cream, 0.3),
+  guideLabel: alpha(BRAND.cream, 0.66),
+  valueLabel: alpha(BRAND.cream, 0.8),
+  // Intelligent colour (spec 147 Amendment 2 items 16 and 19): where better or worse is clear, a calm desaturated scale. Soft coral, not a
+  // harsh red (children's stats). Text in good, goodSoft, amber, warm, bad and neutralGrey reads at 4.5:1 or better on the dark card ground;
+  // badDeep and rose are for slices and bars only, never for text. Every use also carries a label and a number.
+  good: '#5DB887',
+  goodSoft: '#8FCF9F',
+  amber: '#D9B563',
+  warm: '#E0875F',
+  bad: '#D9786A',
+  badDeep: '#C45F55',
+  rose: '#C98A9A',
+  roseDeep: '#A8687A',
+  clay: '#B58A6E',
+  neutralGrey: '#8A948C',
+  wicketBlue: STATS_TONES.blue,
+} as const
+
+// docs/specs/145 (Player Hub Results): the loss tones of the result cards and the streak chips (win is gold and tie is sand, both
+// brand tokens). Named here so no Hub file carries a hex literal. Every use also carries a word or a letter, never colour alone.
+export const RESULT_TONES = {
+  // The L chip ground (cream text on it).
+  lossChip: '#7b3a3a',
+  // The tint at the top of a lost result card.
+  lossTint: '#9d4a4a',
+} as const

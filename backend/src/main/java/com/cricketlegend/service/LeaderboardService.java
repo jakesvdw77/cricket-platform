@@ -4,6 +4,12 @@ import com.cricketlegend.dto.AwardsViewDto;
 import com.cricketlegend.dto.LeaderboardCatalogueDto;
 import com.cricketlegend.dto.LeaderboardFilterOptionsDto;
 import com.cricketlegend.dto.LeaderboardTableDto;
+import com.cricketlegend.service.support.HeldLeaderboardTable;
+import com.cricketlegend.service.support.HubLeaderboardReach;
+import com.cricketlegend.service.support.LeaderboardPlayers;
+import com.cricketlegend.service.support.StatsScope;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -60,4 +66,50 @@ public interface LeaderboardService {
 
     /** The seasons, leagues, teams, sections and competition types that have counted data in the club. */
     LeaderboardFilterOptionsDto filterOptions(Authentication authentication, UUID clubId);
+
+    /**
+     * docs/specs/147, the Player Hub: the same table as {@link #table} for the Player Hub scope (only results a manager
+     * switched on for the Player Hub, no section reach, the caller was authorised by {@code MyPlayerAccess}), limited to the
+     * players of the leagues in {@code leagueReach} (an empty set lists nobody), with the held player's own row and its
+     * position in the whole ordered table. Parameter errors are {@link #table}'s; an unknown or other-club season, league
+     * or team is a {@code NotFoundException}.
+     */
+    HeldLeaderboardTable tableForHeldPlayer(
+            UUID clubId,
+            UUID playerId,
+            String group,
+            String sort,
+            String direction,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            Set<UUID> leagueReach,
+            String minimum,
+            Integer page,
+            Integer size);
+
+    /** docs/specs/147: the category leaders of {@link #awards} for the Player Hub scope and league reach (default minimums). */
+    AwardsViewDto awardsForHeldPlayer(UUID clubId, UUID seasonId, UUID leagueId, UUID teamId, Set<UUID> leagueReach);
+
+    /**
+     * docs/specs/147: everyone in a Player Hub scope as ranker candidates, for the held player's standing, the league
+     * batting rank and the team's fielding totals. {@code leagueReach} and {@code teamIds} are null for no restriction (an
+     * empty set lists nobody). Reads the aggregate and the roster, and the number of results behind them only when {@code
+     * countResults} (otherwise {@code resultsCounted} is 0).
+     */
+    LeaderboardPlayers playersForHeldPlayer(
+            UUID clubId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            StatsScope.Competition competition,
+            Set<UUID> leagueReach,
+            Set<UUID> teamIds,
+            boolean countResults);
+
+    /**
+     * docs/specs/147: the distinct (season, league, team) combinations of the flagged, counted appearances of every player
+     * in the leagues the reach names, restricted to the reach's (season, league) pairs: the leaderboard filter options.
+     */
+    List<PlayerStatsService.PlayerStatsCombo> comboOptionsForHeldPlayer(UUID clubId, HubLeaderboardReach reach);
 }

@@ -5,7 +5,9 @@ package com.cricketlegend.repository;
  * PlayerStatsFactsRepository}, so the "counted appearance" rules exist once. Every query that starts with
  * {@link #APPEARANCES} takes the same eight named parameters: {@code clubId}, {@code playerId}, {@code seasonId},
  * {@code leagueId}, {@code teamId}, {@code competition} (each optional, passed as null for "no filter"),
- * {@code sectionRestricted} and {@code sectionTeamIds} (a never-empty list: a sentinel when unrestricted).
+ * {@code sectionRestricted} and {@code sectionTeamIds} (a never-empty list: a sentinel when unrestricted), plus two
+ * Player Hub parameters (docs/specs/145): {@code playerVisibleOnly} (true keeps only results a manager has switched on
+ * for the Player Hub; false is every counted appearance, the manager default) and {@code matchId} (null for any match).
  *
  * <p>Only sums and counts of stored columns happen in SQL (plus the two encoded maxima); a figure is defined by
  * {@code PlayerStatsCalculator} alone.
@@ -19,7 +21,7 @@ final class PlayerStatsSql {
      * played (decision 17), one of our rows, linked to a profile, not a substitute, not an unconfirmed import guess,
      * inside the filters. The row's side picks the team for the Team and Section filters.
      */
-    static final String APPEARANCES = """
+    private static final String APPEARANCES_HEAD = """
             with ap as (
               select rp.id as rpid, rp.player_profile_id as pid, rp.match_result_id as mrid, rp.side as side,
                      r.balls_per_over as bpo, r.outcome_type as outcome, r.winning_side as winning_side,
@@ -51,8 +53,31 @@ final class PlayerStatsSql {
                 and (:sectionRestricted = false
                      or (rp.side = 'HOME' and m.home_team_id in (:sectionTeamIds))
                      or (rp.side = 'AWAY' and m.away_team_id in (:sectionTeamIds)))
+                and (:playerVisibleOnly = false or r.visible_to_players)
+                and (cast(:matchId as uuid) is null or r.match_id = cast(:matchId as uuid))
+            """;
+
+    /**
+     * docs/specs/147 slice 4: the one Player Hub leaderboard reach predicate. When {@code leagueReachRestricted} is true only
+     * appearances in a match of one of {@code leagueReachIds} count (a friendly has no league, so it is outside the reach);
+     * false, which every manager read passes, is no restriction. Only the queries that start with {@link
+     * #APPEARANCES_WITH_REACH} take the two extra parameters; {@code leagueReachIds} is never empty (see {@link #NO_REACH}).
+     */
+    static final String LEAGUE_REACH = """
+                and (:leagueReachRestricted = false or m.league_id in (:leagueReachIds))
+            """;
+
+    private static final String APPEARANCES_TAIL = """
             )
             """;
+
+    /** Native {@code IN} lists may not be empty; this id matches no league. */
+    static final java.util.List<java.util.UUID> NO_REACH = java.util.List.of(new java.util.UUID(0L, 0L));
+
+    static final String APPEARANCES = APPEARANCES_HEAD + APPEARANCES_TAIL;
+
+    /** {@link #APPEARANCES} plus the Hub-only {@link #LEAGUE_REACH} predicate (the leaderboard queries). */
+    static final String APPEARANCES_WITH_REACH = APPEARANCES_HEAD + LEAGUE_REACH + APPEARANCES_TAIL;
 
     /**
      * Whether the card was captured (docs/specs/103, "Card captured"): a batting entry exists in a {@code REGULAR} innings
@@ -95,7 +120,7 @@ final class PlayerStatsSql {
      * (docs/specs/103, "Shape of the read" point 1). Batting figures count only rows that batted ({@code how_out}
      * set and not {@code DID_NOT_BAT}); "valid balls" excludes a 0-ball innings that scored runs (balls not recorded).
      */
-    static final String AGGREGATE = APPEARANCES + """
+    static final String AGGREGATE = APPEARANCES_WITH_REACH + """
             , app as (
               select x.pid as pid,
                      count(distinct x.mrid) as matches,

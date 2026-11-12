@@ -1,22 +1,23 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { Avatar, Box, Button, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Avatar, Badge, Box, ButtonBase, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { useClubHome } from './myPlayers/useClubHome'
-import { ProfileSwitcher } from '../../components/ProfileSwitcher'
 import { BrandMark } from '../../components/BrandMark'
-import { useProfileSwitch } from '../../hooks/useProfileSwitch'
+import { useClubHome } from './myPlayers/useClubHome'
+import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
 import { BACKDROP_COLOURS, PageBackdrop } from '../../components/PageBackdrop'
 import { keycloak } from '../../auth/keycloak'
 import { signOut } from '../../auth/signOut'
-import { creamAlpha, DARK_MENU_BG } from '../../brandTokens'
+import { BRAND, creamAlpha, DARK_MENU_BG, FONT_DISPLAY } from '../../brandTokens'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
 // and Player Hub. The cricket backdrop, a slim header with Sign out and one white card column.
 // `fill` (the Player Hub, docs/specs/121) drops the vertical padding so the console can fill the window height: nothing
 // around it on a phone, 16 px above and 24 px below from sm. `maxWidth` may then be a responsive value.
+const badgeSx = { '& .MuiBadge-badge': { bgcolor: BRAND.gold, color: BRAND.ink, fontWeight: 700 } } as const
+
 export function AccountShell({
   children,
   maxWidth = 592,
@@ -34,25 +35,34 @@ export function AccountShell({
   const backTo = useClubHome()
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
+  // docs/specs/145: Invitations, Link Requests and Link More Players moved here from the Hub menu's Account item; the counts are the
+  // same reads the Hub used for the old Account pills, and the avatar carries the total.
+  const invitations = useMyInvitations().data?.length ?? 0
+  const linkRequests = (useMyLinkRequests().data ?? []).filter((request) => request.status === 'PENDING').length
+  const pending = invitations + linkRequests
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [switchAnchor, setSwitchAnchor] = useState<HTMLElement | null>(null)
-  const profileItems = useProfileSwitch()
   const name = (keycloak.tokenParsed as { name?: string } | undefined)?.name ?? ''
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
-  const outline = { minHeight: 32, color: BACKDROP_COLOURS.cream, borderColor: BACKDROP_COLOURS.cream, bgcolor: 'transparent', '&:hover': { borderColor: BACKDROP_COLOURS.cream, bgcolor: creamAlpha(0.12), backgroundImage: 'none' } }
+  const quietLink = { fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, letterSpacing: '0.14em', textTransform: 'uppercase', color: BACKDROP_COLOURS.cream, py: 0.75, borderBottom: '2px solid transparent', '&:hover': { borderBottomColor: BRAND.gold }, '&.Mui-focusVisible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 2 } } as const
   return (
     <PageBackdrop>
+      {/* The quiet top row (Back to club, Account, Sign out) is on every screen, the Player Hub included (owner, 2026-11-06); Account is not a Hub menu item. */}
       <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <BrandMark size={28} />
-          <Typography fontWeight={700} fontSize={16}>
-            Cricket Legend
-          </Typography>
+        {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {backTo && (
+            <ButtonBase onClick={() => navigate(backTo)} sx={quietLink}>
+              <ArrowBackIcon sx={{ fontSize: 18, mr: 0.75 }} />
+              Back to club
+            </ButtonBase>
+          )}
         </Box>
         {phone ? (
           <>
             <IconButton aria-label="Account menu" onClick={(event) => setAnchor(event.currentTarget)} sx={{ p: 0.5 }}>
-              <Avatar sx={{ width: 32, height: 32, fontSize: 13, fontWeight: 700, bgcolor: creamAlpha(0.2), color: BACKDROP_COLOURS.cream }}>{initials}</Avatar>
+              <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
+                <Avatar sx={{ width: 32, height: 32, fontSize: 13, fontWeight: 700, bgcolor: creamAlpha(0.2), color: BACKDROP_COLOURS.cream }}>{initials}</Avatar>
+              </Badge>
             </IconButton>
             <Menu
               anchorEl={anchor}
@@ -60,26 +70,14 @@ export function AccountShell({
               onClose={() => setAnchor(null)}
               PaperProps={{ sx: { bgcolor: DARK_MENU_BG, color: BACKDROP_COLOURS.cream, border: `1px solid ${creamAlpha(0.28)}` } }}
             >
-              {backTo && (
-                <MenuItem
-                  onClick={() => {
-                    setAnchor(null)
-                    navigate(backTo)
-                  }}
-                >
-                  Back to club
-                </MenuItem>
-              )}
-              {profileItems && (
-                <MenuItem
-                  onClick={() => {
-                    setSwitchAnchor(anchor)
-                    setAnchor(null)
-                  }}
-                >
-                  Switch profile
-                </MenuItem>
-              )}
+              <MenuItem
+                onClick={() => {
+                  setAnchor(null)
+                  navigate('/account/options')
+                }}
+              >
+                {pending > 0 ? `Account (${pending})` : 'Account'}
+              </MenuItem>
               <MenuItem
                 onClick={() => {
                   setAnchor(null)
@@ -92,26 +90,20 @@ export function AccountShell({
             </Menu>
           </>
         ) : (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {backTo && (
-            <Button variant="outlined" size="small" startIcon={<ArrowBackIcon />} sx={outline} onClick={() => navigate(backTo)}>
-              Back to club
-            </Button>
-          )}
-          {profileItems && (
-            <Button variant="outlined" size="small" sx={outline} onClick={(event) => setSwitchAnchor(event.currentTarget)}>
-              Switch profile
-            </Button>
-          )}
-          <Button variant="outlined" size="small" sx={outline} onClick={() => {
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
+            <ButtonBase sx={quietLink} onClick={() => navigate('/account/options')}>
+              Account
+            </ButtonBase>
+          </Badge>
+          <ButtonBase sx={quietLink} onClick={() => {
             forgetProfileChoices()
             signOut()
           }}>
             Sign out
-          </Button>
+          </ButtonBase>
         </Box>
         )}
-        {profileItems && <ProfileSwitcher dark items={profileItems} anchorEl={switchAnchor} onClose={() => setSwitchAnchor(null)} />}
       </Box>
       <Box sx={{ width: '100%', maxWidth, mx: 'auto', boxSizing: 'border-box', ...(fill ? { px: { xs: 0, sm: 2 }, pt: { xs: 0, sm: 2 }, pb: { xs: 0, sm: 3 } } : { px: 2, py: { xs: 2, sm: 4 } }) }}>
         <Box
@@ -121,6 +113,18 @@ export function AccountShell({
           {children}
         </Box>
       </Box>
+      {/* Owner, 2026-11-06: the brand sits bottom left and the copyright bottom right (not on the Player Hub console, which fills the window). */}
+      {!fill && (
+        <Box component="footer" sx={{ mt: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, px: 2, py: 1.5, color: creamAlpha(0.72) }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <BrandMark size={24} />
+            <Typography fontWeight={700} fontSize={14}>
+              Cricket Legend
+            </Typography>
+          </Box>
+          <Typography fontSize={12.5}>&copy; {new Date().getFullYear()} Cricket Legend. All rights reserved.</Typography>
+        </Box>
+      )}
     </PageBackdrop>
   )
 }

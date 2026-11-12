@@ -9,10 +9,11 @@ const byId = (id: string) => HUB_NAV.find((item) => item.id === id) as HubNavIte
 const childLabels = (id: string) => byId(id).children?.map((child) => child.label)
 
 describe('HUB_NAV', () => {
-  it('has exactly the seven main items in order, never more than seven', () => {
-    expect(HUB_NAV.map((item) => item.id)).toEqual(['availability', 'updates', 'schedule', 'stats', 'club', 'profile', 'account'])
-    expect(HUB_NAV.map((item) => item.label)).toEqual(['Availability', 'Updates', 'Schedule', 'Stats', 'Club', 'Profile', 'Account'])
-    expect(HUB_NAV.length).toBeLessThanOrEqual(7)
+  it('has exactly the seven main items in order, never more than seven (Account is route-only)', () => {
+    const menu = HUB_NAV.filter((item) => item.inMenu !== false)
+    expect(menu.map((item) => item.id)).toEqual(['availability', 'results', 'schedule', 'stats', 'updates', 'club', 'profile'])
+    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile'])
+    expect(menu.length).toBeLessThanOrEqual(7)
   })
 
   it('has only two levels: no child has children', () => {
@@ -22,23 +23,38 @@ describe('HUB_NAV', () => {
   it('lists each parent\'s children in the agreed order', () => {
     expect(childLabels('availability')).toBeUndefined()
     expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
-    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Results', 'Team sheets'])
-    expect(childLabels('stats')).toEqual(['My stats', 'Leaderboards', 'Team stats'])
+    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Team sheets'])
+    expect(childLabels('stats')).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
     expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
-    expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Sign out'])
+    expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Switch profile', 'Back to club', 'Sign out'])
   })
 
   it('marks Field Directory as the only live Club item, and the other sections as Soon where they are not built', () => {
     expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Field Directory'])
-    for (const id of ['updates', 'stats']) expect(byId(id).children?.every((child) => child.soon)).toBe(true)
+    expect(byId('updates').children?.every((child) => child.soon)).toBe(true)
+    expect(byId('stats').children?.some((child) => child.soon)).toBe(false)
     expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues'])
     for (const id of ['profile', 'account']) expect(byId(id).children?.some((child) => child.soon)).toBe(false)
   })
 
+  it('has the three Stats pages live (not Soon) and always visible, with no club-switch gate', () => {
+    const stats = byId('stats').children as HubNavItem[]
+    expect(stats.map((child) => child.id)).toEqual(['stats.mine', 'stats.boards', 'stats.teams'])
+    for (const child of stats) {
+      expect(child.soon).toBeFalsy()
+      expect(child.action).toBeUndefined()
+      expect(child.visibleWhen?.(ctx) ?? true).toBe(true)
+    }
+    expect(visibleItems(ctx).find((item) => item.id === 'stats')?.children).toHaveLength(3)
+    expect(resolveRoute('stats', 'teams')).toMatchObject({ section: { id: 'stats' }, item: { id: 'stats.teams' } })
+  })
+
   it('gives the two Account actions an action and no page', () => {
-    const [, , find, signOut] = byId('account').children as HubNavItem[]
+    const [, , find, switchProfile, backToClub, signOut] = byId('account').children as HubNavItem[]
     expect(find.action).toBe('findPlayers')
+    expect(switchProfile.action).toBe('switchProfile')
+    expect(backToClub.action).toBe('backToClub')
     expect(signOut.action).toBe('signOut')
   })
 })
@@ -49,7 +65,7 @@ describe('defaultChild', () => {
     expect(defaultChild(byId('account'))?.label).toBe('Invitations')
     expect(defaultChild(byId('profile'))?.label).toBe('Contact')
     expect(defaultChild(byId('schedule'))?.label).toBe('Matches')
-    expect(defaultChild(byId('stats'))?.label).toBe('My stats')
+    expect(defaultChild(byId('stats'))?.label).toBe('Player Stats')
   })
 
   it('skips an action even when it comes first, and has nothing for a leaf', () => {
@@ -61,7 +77,7 @@ describe('defaultChild', () => {
 
 describe('LEGACY_REDIRECTS', () => {
   it('sends the old requests and matches URLs to their new homes, and nothing else', () => {
-    expect(LEGACY_REDIRECTS).toEqual({ requests: 'account/requests', matches: 'schedule/matches' })
+    expect(LEGACY_REDIRECTS).toEqual({ requests: 'account/requests', matches: 'schedule/matches', 'schedule/results': 'results' })
   })
 })
 
@@ -85,7 +101,7 @@ describe('bubblePill', () => {
 
 describe('visibleItems and resolveRoute', () => {
   it('shows everything when nothing has a gate', () => {
-    expect(visibleItems(ctx).map((item) => item.id)).toEqual(HUB_NAV.map((item) => item.id))
+    expect(visibleItems(ctx).map((item) => item.id)).toEqual(HUB_NAV.filter((item) => item.inMenu !== false).map((item) => item.id))
   })
 
   it('drops a gated item, and a parent whose children are all dropped', () => {

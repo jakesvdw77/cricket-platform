@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hub scoreboard ticker - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --cream:#F7F3E8; --gold:#E8B83D; --sand:#E2D5B0; --ink:#06241A; --g9:#0B3D26; --g8:#0F5132;
+    --muted:rgba(247,243,232,.66); --line:rgba(247,243,232,.28); --soft:rgba(247,243,232,.14);
+    --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
+    --win:#3FBF7F; --loss:#E0674F; --live:#E0453A; --soon:#7FB6E8; --msg:#C9A7F0; --spon:#E8B83D; --fun:#9ED3B5; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--body);color:var(--cream);
+    background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);min-height:100vh;padding:28px 20px 80px}
+  h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+  .lead{color:var(--muted);max-width:900px;margin:0 0 26px;line-height:1.5}
+  h2{font:700 20px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:34px 0 4px}
+  .why{color:var(--muted);font-size:14px;margin:0 0 12px;max-width:900px}
+  /* the console, cut off: a content stub and the footer band that carries the ticker */
+  .console{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:rgba(7,36,26,.82);max-width:1500px}
+  .stub{padding:22px 28px;height:120px;display:flex;gap:14px;align-items:flex-start;opacity:.8}
+  .stub div{flex:1;height:76px;border:1px solid var(--soft);border-radius:4px;background:rgba(0,0,0,.28)}
+  .band{border-top:1px solid var(--line);background:rgba(0,0,0,.42);height:56px;display:flex;align-items:center;position:relative;overflow:hidden}
+  .back{flex:none;padding:0 18px;font:600 15px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--cream);border-right:1px solid var(--soft);height:100%;display:flex;align-items:center;gap:8px}
+  /* chips */
+  .chip{flex:none;font:700 12px var(--disp);letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:3px;border:1px solid currentColor;line-height:1.2}
+  .t-result{color:var(--win)} .t-live{color:var(--live)} .t-next{color:var(--soon)} .t-msg{color:var(--msg)} .t-spon{color:var(--spon)} .t-fun{color:var(--fun)}
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:6px;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+  .txt{font:600 20px var(--disp);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;color:var(--cream)}
+  .txt b{color:var(--gold);font-weight:700} .txt i{font-style:normal;color:var(--muted)}
+  .sep{flex:none;width:6px;height:6px;border-radius:50%;background:var(--gold);opacity:.7;margin:0 26px}
+
+  /* A: continuous marquee */
+  .mq{display:flex;align-items:center;white-space:nowrap;animation:mq var(--dur,90s) linear infinite;will-change:transform}
+  .band:hover .mq{animation-play-state:paused}
+  .mq .item{display:flex;align-items:center;gap:12px}
+  @keyframes mq{to{transform:translateX(-50%)}}
+  .fadeL,.fadeR{position:absolute;top:0;bottom:0;width:70px;pointer-events:none;z-index:2}
+  .fadeL{left:0;background:linear-gradient(90deg,#08271b,transparent)} .fadeR{right:0;background:linear-gradient(270deg,#08271b,transparent)}
+
+  /* B: one headline at a time, rolls up like a scoreboard flap */
+  .roll{flex:1;position:relative;height:100%;overflow:hidden;padding:0 22px}
+  .roll .slide{position:absolute;inset:0 22px;display:flex;align-items:center;gap:14px;opacity:0;transform:translateY(100%);transition:transform .7s cubic-bezier(.4,0,.2,1),opacity .7s}
+  .roll .slide.on{opacity:1;transform:none}
+  .roll .slide.out{opacity:0;transform:translateY(-100%)}
+  .count{flex:none;margin-left:auto;padding-right:18px;color:var(--muted);font:600 13px var(--disp);letter-spacing:.14em}
+  .pips{flex:none;display:flex;gap:5px;padding-right:18px}
+  .pips span{width:6px;height:6px;border-radius:50%;background:var(--soft)} .pips span.on{background:var(--gold)}
+
+  /* C: fixed type tag on the left that flips, text slides in; sponsor gets its own plate */
+  .tag{flex:none;width:150px;height:100%;display:flex;align-items:center;justify-content:center;font:700 16px var(--disp);letter-spacing:.2em;text-transform:uppercase;border-right:1px solid var(--soft);background:rgba(0,0,0,.35);perspective:400px}
+  .tag span{display:block;transition:transform .45s ease,opacity .45s;transform-origin:50% 50%}
+  .tag.flip span{transform:rotateX(90deg);opacity:0}
+  .slide2{flex:1;position:relative;height:100%;overflow:hidden}
+  .slide2 .s{position:absolute;inset:0 0 0 22px;display:flex;align-items:center;gap:12px;transform:translateX(40px);opacity:0;transition:transform .6s ease,opacity .6s}
+  .slide2 .s.on{transform:none;opacity:1}
+  .plate{flex:none;height:34px;padding:0 14px;display:flex;align-items:center;border-radius:3px;background:var(--cream);color:var(--ink);font:700 16px var(--disp);letter-spacing:.12em;text-transform:uppercase}
+
+  /* D: LED matrix */
+  .led{flex:1;height:100%;overflow:hidden;position:relative;background:#050f0a}
+  .led .mq .txt{font:700 26px var(--disp);letter-spacing:.14em;color:#ffb637;text-shadow:0 0 6px rgba(255,182,55,.55)}
+  .led::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle,transparent 45%,rgba(5,15,10,.9) 56%) 0 0/4px 4px}
+  .led .chip{filter:saturate(.8)}
+
+  /* controls and notes */
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0}
+  button{font:600 15px var(--disp);letter-spacing:.08em;text-transform:uppercase;color:var(--cream);background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:4px;height:36px;padding:0 14px;cursor:pointer}
+  button:hover{border-color:var(--sand)}
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;max-width:1500px;margin-top:10px}
+  .card{border:1px solid var(--soft);background:rgba(0,0,0,.28);border-radius:6px;padding:16px 18px}
+  .card h3{font:700 17px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:0 0 8px}
+  .card ul{margin:0;padding-left:18px;line-height:1.55;font-size:14.5px;color:rgba(247,243,232,.86)}
+  .phone{width:390px;max-width:100%}
+  .phone .band{height:64px}
+  .phone .txt{font-size:17px}
+  @media (prefers-reduced-motion:reduce){.mq{animation:none}.roll .slide,.slide2 .s{transition:none}}
+</style>
+</head>
+<body>
+<h1>Scoreboard ticker</h1>
+<p class="lead">A rolling line along the bottom of the Player Hub console, like the strip under a TV scoreboard. It is picked from many kinds of news, in a shuffled order, so every visit to the Hub feels different. Four ways it could move are below, all live. Hover the strip to pause it. Press <b>Shuffle</b> to re-roll the order. All text here is made up.</p>
+<div class="bar"><button id="shuffle">Shuffle order</button><button id="toggleKinds">Only results + live</button></div>
+
+<h2>A &middot; Classic rolling ticker</h2>
+<p class="why">Continuous slow scroll right to left, with a type tag on every item. The most familiar and the calmest; nothing flips or flashes. Pauses on hover or touch.</p>
+<div class="console"><div class="stub"><div></div><div></div><div></div></div>
+  <div class="band"><div class="back">&larr; Back to players</div><div class="fadeL" style="left:190px"></div><div class="fadeR"></div>
+    <div style="flex:1;overflow:hidden"><div class="mq" id="mqA"></div></div></div></div>
+
+<h2>B &middot; Headline roll (one at a time)</h2>
+<p class="why">One headline at a time, rolling up like a scoreboard flap every 6 seconds, with a counter and dots. Bigger and easier to read, good on a phone; slower to get through many items.</p>
+<div class="console"><div class="stub"><div></div><div></div><div></div></div>
+  <div class="band"><div class="roll" id="rollB"></div><div class="pips" id="pipsB"></div></div></div>
+
+<h2>C &middot; Tag plate + sliding text</h2>
+<p class="why">A fixed plate at the left that flips to the kind of news (RESULT, LIVE, NEXT, MESSAGE, SPONSOR), with the text sliding in beside it. A sponsor gets a cream plate for its name or logo. The clearest about what it is looking at, and the best home for a sponsor.</p>
+<div class="console"><div class="stub"><div></div><div></div><div></div></div>
+  <div class="band"><div class="tag" id="tagC"><span>Result</span></div><div class="slide2" id="slideC"></div><div class="pips" id="pipsC"></div></div></div>
+
+<h2>D &middot; LED board</h2>
+<p class="why">Amber dot-matrix on black, as on a ground's own scoreboard. The most striking and the most "game feel", but it is the loudest, and a lot of amber text is harder to read for long.</p>
+<div class="console"><div class="stub"><div></div><div></div><div></div></div>
+  <div class="band"><div class="back">&larr; Back to players</div>
+    <div class="led"><div class="mq" id="mqD" style="--dur:110s"></div></div></div></div>
+
+<h2>On a phone (variant B shrunk)</h2>
+<p class="why">On a narrow screen only one short line shows at a time (B), and the tag becomes a small chip. The ticker sits above the footer bar, never over content.</p>
+<div class="console phone"><div class="stub" style="height:90px"><div></div><div></div></div>
+  <div class="band"><div class="roll" id="rollP" style="padding:0 14px"></div></div></div>
+
+<h2>What could go in it</h2>
+<div class="notes">
+  <div class="card"><h3>From the app today</h3><ul>
+    <li><b>Results:</b> "Villagers beat Rovers by 24 runs" (published results with the Show in Player Hub flag on).</li>
+    <li><b>Live now:</b> a match in progress, with the score once the LiveScore source gives it.</li>
+    <li><b>Upcoming:</b> "Sat 14:00 vs Rovers, Over 40, Main Oval", with a countdown inside 24 hours.</li>
+    <li><b>Poll deadlines:</b> "Availability for Sat closes tonight".</li></ul></div>
+  <div class="card"><h3>Later and free to add</h3><ul>
+    <li><b>Messages</b> from the club (when Updates is live).</li>
+    <li><b>Sponsors</b>, paid by the club, with a plate and a link.</li>
+    <li><b>Milestones</b>: a fifty, a five-for, a hat-trick, a first wicket.</li>
+    <li><b>League:</b> "Division 1: Villagers top on 22 points".</li>
+    <li><b>Birthdays</b> (first name only, with consent).</li>
+    <li><b>Weather</b> for the next match; <b>On this day</b> from the club's history; <b>Fun facts</b>.</li></ul></div>
+  <div class="card"><h3>Rules to decide</h3><ul>
+    <li><b>Weighted shuffle</b>, never the same kind twice in a row; sponsor at most 1 in 5 items.</li>
+    <li><b>Live always wins:</b> a live match is pinned in the mix while it is on.</li>
+    <li><b>Privacy:</b> only what the viewer's own club and held players may already see; juniors by full name as on results; no birthday without a club switch.</li>
+    <li><b>Quiet by choice:</b> reduced motion shows static rotation; a switch in Settings; hidden on small phones if wanted.</li>
+    <li><b>Items link</b> to the page they came from (tap a result, open it).</li></ul></div>
+</div>
+
+<script>
+const KINDS={result:['Result','t-result'],live:['Live','t-live'],next:['Next','t-next'],msg:['Message','t-msg'],spon:['Sponsor','t-spon'],fun:['Did you know','t-fun']};
+const POOL=[
+ {k:'result',h:'<b>Villagers</b> beat <b>Rovers</b> by 24 runs <i>&middot; Over 40 &middot; Sat</i>'},
+ {k:'result',h:'<b>Under 13A</b> lose to <b>Parkview</b> by 3 wickets <i>&middot; Sun</i>'},
+ {k:'result',h:'<b>Jano</b> 47 not out and 2 for 18 <i>&middot; Under 13A</i>'},
+ {k:'live',h:'<span class="live-dot"></span><b>Villagers 142/4</b> <i>(24.3 ov) v Rovers</i>'},
+ {k:'next',h:'Sat 14:00 <b>Villagers v Eagles</b> <i>&middot; Main Oval &middot; starts in 2 days</i>'},
+ {k:'next',h:'Tomorrow 09:00 <b>Under 11 v Kingsmead</b> <i>&middot; Field 2</i>'},
+ {k:'next',h:'Availability for Saturday <b>closes tonight</b> <i>&middot; 3 polls open</i>'},
+ {k:'msg',h:'Nets move to <b>Court 3</b> this week <i>&middot; from the club</i>'},
+ {k:'msg',h:'Prize-giving evening on <b>Friday 28 Nov</b> <i>&middot; all welcome</i>'},
+ {k:'spon',h:'<b>Riverside Motors</b> proudly supports Villagers cricket',plate:'Riverside Motors'},
+ {k:'spon',h:'<b>Hartley &amp; Sons Attorneys</b> back the Under 13 league',plate:'Hartley & Sons'},
+ {k:'fun',h:'Division 1: <b>Villagers top</b> on 22 points <i>&middot; 2 ahead</i>'},
+ {k:'fun',h:'On this day in 2019 <b>Villagers won the Cup</b> at the Main Oval'},
+ {k:'fun',h:'<b>Weather Sat:</b> 24&deg; and sunny <i>&middot; light wind from the west</i>'},
+];
+let only=false;
+function pool(){return POOL.filter(i=>!only||i.k==='result'||i.k==='live')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  // never the same kind twice in a row, sponsor at most 1 in 5
+  for(let i=1;i<a.length;i++){if(a[i].k===a[i-1].k){const j=a.findIndex((x,ix)=>ix>i&&x.k!==a[i-1].k);if(j>0){[a[i],a[j]]=[a[j],a[i]]}}}
+  return a}
+const chip=i=>`<span class="chip ${KINDS[i.k][1]}">${KINDS[i.k][0]}</span>`;
+function fillMq(el){const items=shuffle(pool());const html=items.map(i=>`<div class="item">${chip(i)}<span class="txt">${i.h}</span></div><span class="sep"></span>`).join('');el.innerHTML=html+html;el.style.setProperty('--dur',(items.length*9)+'s')}
+function startRoll(el,pipsEl,mk,ms){
+  let items,idx=-1,timer;
+  function build(){items=shuffle(pool());el.innerHTML=items.map(mk).join('');idx=-1;if(pipsEl)pipsEl.innerHTML=items.map(()=>'<span></span>').join('');next()}
+  function next(){const s=[...el.querySelectorAll('.slide,.s')];const prev=s[idx];idx=(idx+1)%s.length;
+    if(prev){prev.classList.remove('on');prev.classList.add('out');setTimeout(()=>prev.classList.remove('out'),800)}
+    s[idx].classList.add('on');
+    if(pipsEl)[...pipsEl.children].forEach((p,i)=>p.classList.toggle('on',i===idx));
+    if(el.id==='slideC'){const t=document.getElementById('tagC');t.classList.add('flip');setTimeout(()=>{t.firstElementChild.textContent=KINDS[items[idx].k][0];t.firstElementChild.className=KINDS[items[idx].k][1];t.classList.remove('flip')},230)}}
+  build();timer=setInterval(next,ms);
+  return build}
+let rebuilds=[];
+function all(){
+  fillMq(document.getElementById('mqA'));fillMq(document.getElementById('mqD'));
+  rebuilds=[
+   startRoll(document.getElementById('rollB'),document.getElementById('pipsB'),i=>`<div class="slide">${chip(i)}<span class="txt">${i.h}</span></div>`,6000),
+   startRoll(document.getElementById('slideC'),document.getElementById('pipsC'),i=>`<div class="s">${i.plate?`<span class="plate">${i.plate}</span>`:''}<span class="txt">${i.h}</span></div>`,6000),
+   startRoll(document.getElementById('rollP'),null,i=>`<div class="slide">${chip(i)}<span class="txt">${i.h.replace(/<i>.*?<\/i>/g,'')}</span></div>`,6000)];
+}
+all();
+document.getElementById('shuffle').onclick=()=>{fillMq(document.getElementById('mqA'));fillMq(document.getElementById('mqD'));rebuilds.forEach(b=>b())};
+document.getElementById('toggleKinds').onclick=e=>{only=!only;e.target.textContent=only?'All kinds':'Only results + live';document.getElementById('shuffle').click()};
+</script>
+</body>
+</html>

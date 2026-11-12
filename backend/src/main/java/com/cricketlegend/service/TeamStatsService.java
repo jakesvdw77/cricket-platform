@@ -3,6 +3,8 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.TeamStatsDto;
 import com.cricketlegend.dto.TeamStatsFilterOptionsDto;
 import com.cricketlegend.dto.TeamStatsTableDto;
+import com.cricketlegend.service.support.HeldTeamHistory;
+import com.cricketlegend.service.support.StatsScope;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
@@ -49,6 +51,15 @@ public interface TeamStatsService {
      */
     TeamStatsDto team(
             Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, String competition);
+
+    /**
+     * docs/specs/147: one team's page for the Player Hub scope (only published results a manager switched on for the Player
+     * Hub; no section reach, the caller was authorised by {@code MyPlayerAccess}) with the extra facts the Hub's Team stats
+     * cards need. An unknown or other-club team, season or league is a {@code NotFoundException}. A team with no counted
+     * result is a normal read with zero counters and no facts.
+     */
+    HeldTeamHistory historyForHeldPlayer(
+            UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScope.Competition competition);
 
     /**
      * The season, league, section and competition values that have counted team results: club-wide when {@code teamId}

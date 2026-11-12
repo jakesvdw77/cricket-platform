@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Stats summary: type, layout, grow-on-flip, expanded - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--muted:rgba(247,243,232,.7);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--bar:rgba(226,213,176,.62);--win:#3FBF7F;--blue:#7FB6E8;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 100px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:40px 0 4px}
+.lead,.why{color:var(--muted);max-width:980px;line-height:1.5;margin:0 0 12px;font-size:14.5px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(290px,1fr));gap:8px;max-width:1180px;margin-bottom:8px;align-items:start}
+.card{border:1px solid var(--line);border-radius:14px;background:rgba(7,36,26,.92);padding:12px 14px;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:height .35s ease}
+.card h3{margin:0;font:700 16px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand)}
+.scope{font-size:12px;color:var(--muted);margin:2px 0 8px}
+.foot{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:auto;padding-top:8px}.foot em{font-style:normal;font:700 11px var(--disp);letter-spacing:.16em;text-transform:uppercase}
+/* TODAY */
+.today{height:216px}.today .mid{flex:1;display:flex;gap:16px;align-items:center}
+.today .num{font:700 34px var(--disp);color:var(--gold);line-height:1}.today .cap{font:600 10px var(--disp);letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+.today .bars{flex:1;display:grid;gap:8px;font-size:11px}.today .tr{height:8px;border-radius:4px;background:rgba(255,255,255,.1)}.today .tr i{display:block;height:100%;border-radius:4px;background:var(--bar)}
+/* PROPOSED: number top-left big, bars underneath full width, top-aligned, readable type */
+.prop{min-height:236px}
+.prop .num{font:700 52px var(--disp);color:var(--gold);line-height:.95}
+.prop .cap{font:600 13px var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-top:3px}
+.prop .top{display:flex;align-items:baseline;gap:10px}
+.prop .bars{display:grid;gap:9px;margin-top:12px}
+.prop .b{display:grid;grid-template-columns:minmax(80px,38%) 1fr 30px;gap:10px;align-items:center;font-size:14px}
+.prop .b .tr{height:10px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}.prop .b .tr i{display:block;height:100%;border-radius:5px;background:var(--bar)}
+.prop .b b{text-align:right;font-weight:700;font-size:15px}
+.prop .one{margin-top:10px;font-size:14px;color:var(--muted)}
+.cmp i.g{background:var(--win)!important}.cmp i.bl{background:var(--blue)!important}
+/* GROW ON FLIP */
+.grow .front,.grow .back{display:none}.grow.show-front .front{display:block}.grow.show-back .back{display:block}
+.grow table{width:100%;border-collapse:collapse;font-size:13.5px}.grow td,.grow th{padding:5px 4px;border-bottom:1px solid var(--soft);text-align:left}.grow th{color:var(--muted);font:600 11px var(--disp);letter-spacing:.14em;text-transform:uppercase}.grow td.r,.grow th.r{text-align:right}
+/* EXPANDED */
+.exp{max-width:1180px;border:1px solid var(--line);border-radius:22px;background:rgba(7,36,26,.95);padding:22px 26px}
+.exp h3{margin:0;font:700 24px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand)}
+.exp .scope{font-size:14px;margin:2px 0 16px}
+.exp .grid{display:grid;grid-template-columns:240px 1fr;gap:28px;align-items:start}
+.exp .num{font:700 84px var(--disp);color:var(--gold);line-height:.9}.exp .cap{font:600 16px var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+.exp .b{display:grid;grid-template-columns:minmax(140px,30%) 1fr 44px;gap:14px;align-items:center;font-size:18px;margin-bottom:14px}
+.exp .tr{height:16px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden}.exp .tr i{display:block;height:100%;border-radius:8px;background:var(--bar)}
+.exp .b b{font-size:20px;text-align:right}
+.exp table{width:100%;border-collapse:collapse;font-size:16px;margin-top:10px}.exp td,.exp th{padding:8px 6px;border-bottom:1px solid var(--soft);text-align:left}.exp th{color:var(--muted);font:600 13px var(--disp);letter-spacing:.14em;text-transform:uppercase}.exp td.r,.exp th.r{text-align:right}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:980px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+.hint{font-size:12.5px;color:var(--muted);margin:2px 0 10px}
+</style></head><body>
+<h1>Player Stats summary: bigger type, calmer layout</h1>
+<p class="lead">Made-up figures; nothing is built. Three things: (1) the Summary cards with readable type, the big gold number top-left and the bars underneath, (2) cards that grow when they flip instead of reserving the space, (3) the expanded card with real room and the same face as it was opened on.</p>
+
+<h2>1 &middot; Summary cards: today v proposed</h2>
+<p class="why"><b>Today:</b> 34 px number, 10 px captions, 11 px bar labels, content centred in the middle of a fixed card, so it looks empty and small. <b>Proposed:</b> the gold number 52 px at the top left with a 13 px caption beside it, bars underneath at the card's full width with 14 px labels and 15 px values, everything top-aligned, one comfortable line when there is a single item. The card is as tall as its content (about 15 to 16rem), not a fixed box with a void.</p>
+<div class="hint">Today</div>
+<div class="row">
+ <div class="card today"><h3 style="font-size:14px">Leagues Played</h3><div class="scope" style="font-size:11px">2026/2027</div><div class="mid"><div><div class="num">2</div><div class="cap">leagues</div></div><div class="bars"><div>TVL Division 1 T20 <b style="float:right">5</b></div><div class="tr"><i style="width:100%"></i></div><div>Friendlies <b style="float:right">1</b></div><div class="tr"><i style="width:20%"></i></div></div></div><div class="foot"><span>Based on 6 of 6 results</span><em>Flip</em></div></div>
+ <div class="card today"><h3 style="font-size:14px">Matches Played</h3><div class="scope" style="font-size:11px">2026/2027</div><div class="mid"><div><div class="num">3</div><div class="cap">matches played</div></div><div class="bars"><div style="color:var(--muted)">2026/2027 · 3 matches</div></div></div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+ <div class="card today"><h3 style="font-size:14px">Boundaries Hit</h3><div class="scope" style="font-size:11px">2026/2027</div><div class="mid"><div><div class="num">8</div><div class="cap">boundaries</div></div><div class="bars"><div>Fours <b style="float:right">8</b></div><div class="tr"><i style="width:100%;background:var(--win)"></i></div><div>Sixes <b style="float:right">0</b></div><div class="tr"><i style="width:3%;background:var(--blue)"></i></div></div></div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+</div>
+<div class="hint">Proposed</div>
+<div class="row">
+ <div class="card prop"><h3>Leagues Played</h3><div class="scope">2026/2027</div><div class="top"><div class="num">2</div><div class="cap">leagues</div></div><div class="bars"><div class="b"><span>TVL Division 1 T20</span><div class="tr"><i style="width:100%"></i></div><b>5</b></div><div class="b"><span>Friendlies</span><div class="tr"><i style="width:20%"></i></div><b>1</b></div></div><div class="foot"><span>Based on 6 of 6 results</span><em>Flip</em></div></div>
+ <div class="card prop"><h3>Matches Played</h3><div class="scope">2026/2027</div><div class="top"><div class="num">3</div><div class="cap">matches played</div></div><div class="one">All in 2026/2027</div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+ <div class="card prop cmp"><h3>Boundaries Hit</h3><div class="scope">2026/2027</div><div class="top"><div class="num">8</div><div class="cap">boundaries</div></div><div class="bars"><div class="b"><span>Fours</span><div class="tr"><i class="g" style="width:100%"></i></div><b>8</b></div><div class="b"><span>Sixes</span><div class="tr"><i class="bl" style="width:3%"></i></div><b>0</b></div></div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+</div>
+
+<h2>2 &middot; Cards that grow when they flip</h2>
+<p class="why">Instead of reserving the space of the taller face, each card is as tall as the face it shows. Front stays compact; tap and the back grows the card (the row aligns to the top, so only that card gets taller, and the page below moves down smoothly). Try it: tap a card. <b>Trade-off:</b> the grid is no longer even after a flip, which you asked to avoid; so I would grow only the flipped card, keep the rest at their compact height, and let a second tap shrink it back. Rows stay aligned at the top edge.</p>
+<div class="row">
+ <div class="card prop grow show-front" onclick="this.classList.toggle('show-front');this.classList.toggle('show-back')"><h3>Leagues Played</h3><div class="scope">2026/2027</div>
+  <div class="front"><div class="top"><div class="num">2</div><div class="cap">leagues</div></div><div class="bars"><div class="b"><span>TVL Division 1 T20</span><div class="tr"><i style="width:100%"></i></div><b>5</b></div><div class="b"><span>Friendlies</span><div class="tr"><i style="width:20%"></i></div><b>1</b></div></div></div>
+  <div class="back"><table><tr><th>League</th><th class="r">Matches</th><th class="r">Runs</th><th class="r">Avg</th></tr><tr><td>TVL Division 1 T20</td><td class="r">5</td><td class="r">82</td><td class="r">16.4</td></tr><tr><td>Friendlies</td><td class="r">1</td><td class="r">12</td><td class="r">12.0</td></tr><tr><td>Over 40 Cup</td><td class="r">2</td><td class="r">31</td><td class="r">15.5</td></tr></table></div>
+  <div class="foot"><span>Based on 8 of 8 results</span><em>Flip</em></div></div>
+ <div class="card prop grow show-front" onclick="this.classList.toggle('show-front');this.classList.toggle('show-back')"><h3>Runs Scored</h3><div class="scope">2026/2027</div>
+  <div class="front"><div class="top"><div class="num">52</div><div class="cap">runs</div></div><div class="one">3 innings · average 17.3</div></div>
+  <div class="back"><table><tr><th>Season</th><th class="r">Runs</th><th class="r">Innings</th><th class="r">Avg</th></tr><tr><td>2026/2027</td><td class="r">52</td><td class="r">3</td><td class="r">17.3</td></tr><tr><td>2025/2026</td><td class="r">188</td><td class="r">9</td><td class="r">23.5</td></tr><tr><td>2024/2025</td><td class="r">301</td><td class="r">12</td><td class="r">27.4</td></tr><tr><td>2023/2024</td><td class="r">240</td><td class="r">11</td><td class="r">24.0</td></tr></table></div>
+  <div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+ <div class="card prop grow show-front" onclick="this.classList.toggle('show-front');this.classList.toggle('show-back')"><h3>Balls Faced</h3><div class="scope">2026/2027</div>
+  <div class="front"><div class="top"><div class="num">53</div><div class="cap">balls faced</div></div><div class="one">Strike rate 98.1</div></div>
+  <div class="back"><table><tr><th>Figure</th><th class="r">Value</th></tr><tr><td>Strike rate</td><td class="r">98.1</td></tr><tr><td>Fours</td><td class="r">8</td></tr><tr><td>Sixes</td><td class="r">0</td></tr><tr><td>Boundary %</td><td class="r">60.4</td></tr></table></div>
+  <div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+</div>
+
+<h2>3 &middot; Expanded card</h2>
+<p class="why">Opens on the face you were looking at (flip state kept; it no longer resets to the front). Content starts at the top of the area, not the middle. Type steps up: title 24 px, the gold number 84 px, bar labels 18 px, values 20 px, bars 16 px thick and the chart or table uses the full width. A small Flip control sits at the top right beside Close so you can still turn it over. Nothing scrolls unless the table is long.</p>
+<div class="exp">
+ <div style="display:flex;justify-content:space-between;align-items:center"><div><h3>Leagues Played</h3><div class="scope">2026/2027</div></div><div style="font:700 13px var(--disp);letter-spacing:.16em;color:var(--muted);text-transform:uppercase">Flip &nbsp;|&nbsp; Close &#10005;</div></div>
+ <div class="grid"><div><div class="num">2</div><div class="cap">leagues</div></div>
+  <div><div class="b"><span>TVL Division 1 T20</span><div class="tr"><i style="width:100%"></i></div><b>5</b></div><div class="b"><span>Friendlies</span><div class="tr"><i style="width:20%"></i></div><b>1</b></div><div class="b"><span>Over 40 Cup</span><div class="tr"><i style="width:40%"></i></div><b>2</b></div>
+   <table><tr><th>League</th><th class="r">Matches</th><th class="r">Runs</th><th class="r">Average</th></tr><tr><td>TVL Division 1 T20</td><td class="r">5</td><td class="r">82</td><td class="r">16.4</td></tr><tr><td>Friendlies</td><td class="r">1</td><td class="r">12</td><td class="r">12.0</td></tr><tr><td>Over 40 Cup</td><td class="r">2</td><td class="r">31</td><td class="r">15.5</td></tr></table></div></div>
+</div>
+
+<h2>What I propose, in one list</h2>
+<div class="sum"><b>Type floor (all cards):</b> title 16 px, scope 12 px, captions 13 px, bar labels 14 px, values 15 px bold, footer 12 px; nothing below 12 px except tiny tags. <b>Gold number:</b> 52 px (Summary), 44 px elsewhere. <b>Layout:</b> number top-left with its caption beside it, bars underneath at full width, content top-aligned, no vertical centring, the card as tall as its content (about 15 to 16rem for Summary), with one single quiet line when there is only one item. <b>Grow on flip:</b> only the flipped card grows; the rest stay compact; rows align at the top. <b>Expanded:</b> keeps the current face, starts at the top, type steps up (title 24, number 84, labels 18, values 20, bars 16 px) and charts fill the width.<br><br><b>Questions:</b> 1) Is the number-on-top, bars-underneath layout what you meant? 2) Grow-on-flip with a top-aligned ragged row: OK, or keep an even row and just let the back scroll? 3) Expanded: keep a Flip button inside it?</div>
+</body></html>

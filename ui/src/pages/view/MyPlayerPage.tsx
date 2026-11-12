@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Skeleton, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Alert, Box, Skeleton, useMediaQuery, useTheme } from '@mui/material'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { MyLinkRequests } from './MyLinkRequests'
 import { InvitationsList } from './MyInvitationsPage'
@@ -22,11 +22,20 @@ import { HubLeague } from './myPlayers/HubLeague'
 import { HubLeagues } from './myPlayers/HubLeagues'
 import { HubMatch } from './myPlayers/HubMatch'
 import { HubMatches } from './myPlayers/HubMatches'
+import { HubResult } from './myPlayers/HubResult'
+import { HubResults } from './myPlayers/HubResults'
+import { HubMyStats } from './myPlayers/stats/HubMyStats'
+import { HubStatsDrill } from './myPlayers/stats/HubStatsDrill'
+import { HubTeamStats } from './myPlayers/stats/HubTeamStats'
+import { HubLeaderboards } from './myPlayers/stats/HubLeaderboards'
+import { resultsQuery } from './myPlayers/resultsFormat'
 import { HubWatchLive } from './myPlayers/HubWatchLive'
 import { hubLeaguePath, parseLeagueTab } from './myPlayers/leagueFormat'
-import { HUB, hubPageHeading } from './myPlayers/hubStyle'
-import { LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
+import { HubPageHeader } from './myPlayers/HubPageHeader'
+import { HUB_NAV, LEGACY_REDIRECTS, PROFILE_SUBVIEWS, defaultChild, hubBack, hubPath, isLegacyAgentView, isParent, isProfileSubView, legacyProfileTarget, resolveRoute, segmentOf, visibleItems } from './myPlayers/hubNav'
 import type { HubLayout, HubNavContext, HubNavItem, HubPillCounts } from './myPlayers/hubNav'
+import { useProfileSwitch } from '../../hooks/useProfileSwitch'
+import { useClubHome } from './myPlayers/useClubHome'
 import { forgetProfileChoices } from '../../utils/activeProfile'
 import { signOut } from '../../auth/signOut'
 import { creamAlpha } from '../../brandTokens'
@@ -61,15 +70,22 @@ export default function MyPlayerPage() {
   const [focusId, setFocusId] = useState<string | undefined>()
   const { guard, attempt } = useHubLeaveGuardController()
 
-  const ctx = useMemo<HubNavContext>(() => ({ player: player ? { key: player.key, clubId: player.clubId } : null, person: null, clubSwitches: {} }), [player])
+  const clubHome = useClubHome()
+  const hasProfileSwitch = Boolean(useProfileSwitch())
+  const ctx = useMemo<HubNavContext>(
+    () => ({ player: player ? { key: player.key, clubId: player.clubId } : null, person: null, clubSwitches: {}, hasClubHome: Boolean(clubHome), hasProfileSwitch }),
+    [player, clubHome, hasProfileSwitch],
+  )
   const tree = useMemo(() => visibleItems(ctx), [ctx])
+  // docs/specs/145: Account is not in the menu (it moved to the header avatar) but its pages still resolve.
+  const routable = useMemo(() => [...tree, ...HUB_NAV.filter((entry) => entry.inMenu === false)], [tree])
   const counts: HubPillCounts = {
     openPolls: polls.data?.length ?? 0,
     invitations: invitations.data?.length ?? 0,
     linkRequests: (requests.data ?? []).filter((request) => request.status === 'PENDING').length,
   }
 
-  const route = resolveRoute(rawSection, sub, tree)
+  const route = resolveRoute(rawSection, sub, routable)
   const section = route.section
   const parentOpen = !route.root && isParent(section)
   // A URL naming an action (sign out, find players) never runs it: that is a click, not a page.
@@ -84,7 +100,11 @@ export default function MyPlayerPage() {
   const matchPage = rawSection === 'schedule' && sub === 'matches' && Boolean(leaf)
   const from = search.get('from') ?? undefined
   const fromLeague = useMyPlayerMatch(key, matchPage && from?.startsWith('league:') ? leaf : undefined).data?.league?.name
-  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined, extra, from, fromLabel: fromLeague })
+  // docs/specs/147: a result page and the My stats drill carry the scope (and, for a result, where it was opened from) so Back restores them.
+  const statsDrill = rawSection === 'stats' && sub === 'mine' && leaf === 'innings'
+  const resultsScope = rawSection === 'results' || statsDrill ? resultsQuery(search) : undefined
+  const origin = rawSection === 'results' ? (search.get('origin') ?? undefined) : undefined
+  const back = hubBack({ playerKey: key, layout, many, section: rawSection, item: sub, view: leaf, season: search.get('season') ?? undefined, extra, from, fromLabel: fromLeague, scope: resultsScope, origin })
   const goBack = () => {
     if (!back) return
     // A Profile sub view with unsaved input asks first (hubLeaveGuard); a clean one leaves at once.
@@ -114,7 +134,8 @@ export default function MyPlayerPage() {
   // Old Profile links (/profile/edit, /profile/hand-over, /profile/agents/hand-over ...) land on the page that now owns them.
   const profileTarget = rawSection === 'profile' ? (!leaf ? legacyProfileTarget(sub) : isLegacyAgentView(sub, leaf) ? legacyProfileTarget(leaf) : undefined) : undefined
   if (profileTarget) return <Navigate to={`/account/players/${key}/${profileTarget}`} replace />
-  if (LEGACY_REDIRECTS[rawSection ?? '']) return <Navigate to={`/account/players/${key}/${LEGACY_REDIRECTS[rawSection ?? '']}`} replace />
+  const legacyTarget = LEGACY_REDIRECTS[`${rawSection}/${sub}`] ?? LEGACY_REDIRECTS[rawSection ?? '']
+  if (legacyTarget) return <Navigate to={`/account/players/${key}/${legacyTarget}`} replace />
   // Desktop and tablet: the bare player URL means Availability (a phone shows the main menu there).
   if (!phone && !rawSection && key) return <Navigate to={hubPath(key, 'availability')} replace />
 
@@ -124,6 +145,11 @@ export default function MyPlayerPage() {
       signOut()
     } else if (item.action === 'findPlayers') {
       navigate('/welcome')
+    } else if (item.action === 'backToClub') {
+      if (clubHome) navigate(clubHome)
+    } else if (item.action === 'switchProfile') {
+      // Switch profile is the profile chooser page (owner, 2026-11-06), not a pop-up.
+      navigate('/choose-profile')
     } else if (isParent(item)) {
       setFocusId(item.children?.[0]?.id)
       navigate(hubPath(key, segmentOf(item)))
@@ -152,18 +178,14 @@ export default function MyPlayerPage() {
     const cardEdit = leaf === 'edit-card'
     panel = player && (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          {cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`}
-        </Typography>
+        <HubPageHeader title={cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`} />
         <MyPlayerEditForm key={`${player.key}-${leaf}-${sub}`} player={player} dark section={cardEdit ? 'photo' : (sub as EditSection)} onDone={() => navigate(hubPath(key, 'profile', sub))} />
       </Box>
     )
   } else if (section.id === 'availability') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Availability
-        </Typography>
+        <HubPageHeader title="Availability" />
         {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
       </Box>
     )
@@ -199,21 +221,25 @@ export default function MyPlayerPage() {
     ) : (
       <HubMatch playerKey={key} matchId={leaf} from={from} onAnswerAvailability={() => navigate(hubPath(key, 'availability'))} />
     )
+  } else if (section.id === 'results') {
+    panel = sub ? <HubResult playerKey={key} matchId={sub} /> : <HubResults playerKey={key} />
+  } else if (pageItem?.id === 'stats.mine') {
+    panel = statsDrill ? <HubStatsDrill playerKey={key} /> : <HubMyStats playerKey={key} />
+  } else if (pageItem?.id === 'stats.teams') {
+    panel = <HubTeamStats playerKey={key} />
+  } else if (pageItem?.id === 'stats.boards') {
+    panel = <HubLeaderboards playerKey={key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Invitations
-        </Typography>
+        <HubPageHeader title="Invitations" />
         <InvitationsList />
       </Box>
     )
   } else if (pageItem?.id === 'account.requests') {
     panel = (
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <Typography component="h2" sx={hubPageHeading}>
-          Link requests
-        </Typography>
+        <HubPageHeader title="Link requests" />
         <MyLinkRequests dark />
       </Box>
     )
@@ -233,28 +259,18 @@ export default function MyPlayerPage() {
     </>
   )
 
-  const title = subView && leaf ? (
-    PROFILE_SUBVIEWS[leaf]
-  ) : parentOpen ? (
-    <>
-      Player Hub /{' '}
-      <Box component="span" sx={{ color: HUB.gold }}>
-        {section.label}
-      </Box>
-    </>
-  ) : (
-    'Player Hub'
-  )
+  // docs/specs/145 decision 15: the band is the page's header. Pages draw it with HubPageHeader; this is the fallback for a page that
+  // does not (a league, a match, a result), and the phone's main menu screen, which shows the menu rather than a page.
+  const title = subView && leaf ? PROFILE_SUBVIEWS[leaf] : phoneMenuScreen ? 'Menu' : pageLabel
 
   const footer = back ? <HubFooterButton onClick={goBack}>{back.label}</HubFooterButton> : undefined
-  const phonePage = phone && !phoneMenuScreen
 
   return (
     <HubLeaveGuardProvider value={guard}>
     <HubFrame
       fill
+      dense={section.id === 'stats'}
       title={title}
-      phoneTitle={phoneMenuScreen || (parentOpen && !subView) ? 'slim' : 'hidden'}
       stickyTop={phone && parentOpen && !subView ? <HubPillStrip label={`${section.label} pages`} items={section.children ?? []} selectedId={pageItem?.id} onSelect={select} /> : undefined}
       menu={menu}
       hideContent={phoneMenuScreen}
@@ -263,14 +279,6 @@ export default function MyPlayerPage() {
     >
       {playerQuery.isError && <Alert severity="error">We could not load this player. Please try again.</Alert>}
       {!player && !playerQuery.isError && (needsPlayer || subView) && <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(0.12) }} />}
-      {phonePage && !subView && !parentOpen && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44 }}>
-          <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
-            {pageLabel}
-          </Typography>
-          {player && <Typography sx={{ ml: 'auto', color: HUB.muted, fontSize: 14, textAlign: 'right' }}>{player.firstName}</Typography>}
-        </Box>
-      )}
       {panel}
     </HubFrame>
     </HubLeaveGuardProvider>

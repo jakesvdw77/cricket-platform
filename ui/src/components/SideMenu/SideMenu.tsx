@@ -38,6 +38,10 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
       sx={{
         width: collapsed ? 64 : 232,
         flex: 'none',
+        // Owner, 2026-11-06: the menu glides open and closed instead of snapping (a slow, even ease; labels are clipped while the width moves).
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        '@media (prefers-reduced-motion: no-preference)': { transition: 'width 700ms cubic-bezier(0.4, 0, 0.2, 1)' },
         bgcolor: 'chrome.menu',
         color: 'chrome.text',
         borderRight: 1,

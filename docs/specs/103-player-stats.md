@@ -594,3 +594,5 @@ Per `docs/standards/testing.md`. The calculator and ranking tiers carry the bulk
 16. **Server-side ranking and paging:** ranking and slicing happen in the service over one aggregate row per player (bounded by the roster, capped at 5,000), which is a bounded deviation from `backend.md`'s `LIMIT`/`OFFSET` letter, chosen so there is one definition of every figure. Accept, or require per-board SQL ranking with duplicated ordering expressions (guarded by the parity test)?
 17. **Menu and icon:** Leaderboards sits after Results in the Schedule group, with a button on the Results page and a new brand icon (`nav/leaderboard-cricket`). Confirm the placement and that the icon is generated before the build.
 18. **Super-overs:** until `105` decides, they never count. Confirm.
+
+> **Update (spec 147, 2026-11-07):** the player-facing view of these figures, the standings tables and the awards is built by `147` inside the Player Hub (held players only, full names inside the Hub, no export).

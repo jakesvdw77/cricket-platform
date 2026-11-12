@@ -236,13 +236,13 @@ describe('FindYourPlayersPage', () => {
       expect(await screen.findByText('Something went wrong finding your players. Please try again later.')).toBeInTheDocument()
     })
 
-    it('offers Back to players in the footer for a person who has players', async () => {
+    it('offers Back to account in the footer for a person who has players', async () => {
       const user = userEvent.setup()
       setup({ withoutMainAgent: [], withMainAgent: [] }, { 'GET /me/players': [{ key: 'k', firstName: 'A', lastName: 'B', photoUrl: null, clubId: 'c1', clubName: 'X', groupLabel: null, self: false, main: true }] })
 
-      await user.click(await screen.findByRole('button', { name: 'Back to players' }))
+      await user.click(await screen.findByRole('button', { name: 'Back to account' }))
 
-      expect(await screen.findByTestId('location')).toHaveTextContent('/account')
+      expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
     })
 
     it('offers Back to club in the footer for a manager with no players', async () => {

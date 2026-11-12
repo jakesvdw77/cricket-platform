@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Stats colour - round 2, intelligent colour</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);
+ --good:#5DB887;--good2:#8FCF9F;--amber:#D9B563;--warm:#E0875F;--bad:#D96A5C;--bad2:#B9524A;--grey:#8A948C;--blue:#7FB6E8;
+ --disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 90px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:36px 0 4px}
+.lead,.why{color:var(--muted);max-width:960px;line-height:1.5;margin:0 0 12px;font-size:14.5px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(280px,1fr));gap:8px;max-width:1150px;margin-bottom:8px}
+.card{height:272px;border:1px solid var(--line);border-radius:14px;background:rgba(7,36,26,.9);padding:10px 12px;display:flex;flex-direction:column;overflow:hidden}
+.card h3{margin:0;font:700 14px var(--disp);letter-spacing:.1em;text-transform:uppercase}
+.scope{font-size:11px;color:var(--muted);margin:3px 0 8px}
+.body{flex:1;display:flex;gap:14px;align-items:center;min-height:0}
+.bars{flex:1;display:grid;gap:8px;min-width:0}
+.b{display:grid;grid-template-columns:minmax(70px,34%) 1fr 26px;gap:8px;align-items:center;font-size:12.5px}
+.b .tr{height:9px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}.b .tr i{display:block;height:100%;border-radius:5px}
+.b b{text-align:right;font-weight:700}
+.donut{width:104px;height:104px;border-radius:50%;position:relative;flex:none}.donut::after{content:"";position:absolute;inset:26px;border-radius:50%;background:#0b2f21}
+.leg{display:grid;gap:4px;font-size:12px}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.note{font-size:12px;color:var(--muted);margin-top:6px}
+.foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}.foot em{font-style:normal;font:700 10px var(--disp);letter-spacing:.16em;text-transform:uppercase}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.sw span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.sw i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:960px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+</style></head><body>
+<h1>Player Stats: intelligent colour</h1>
+<p class="lead">Colour that means something. Where a number is good or bad for the player, the bar says so, with a calm green-to-red scale instead of one grey. Where there is no good or bad (leagues, seasons, venues), bars stay neutral. Gold stays for the headline number and the selection. Made-up figures; nothing is built.</p>
+
+<h2>The idea in one picture</h2>
+<div class="sw"><span><i style="background:var(--good)"></i>good for the player</span><span><i style="background:var(--good2)"></i>fairly good</span><span><i style="background:var(--amber)"></i>middling / neutral-warm</span><span><i style="background:var(--warm)"></i>weak</span><span><i style="background:var(--bad)"></i>bad for the player</span><span><i style="background:var(--grey)"></i>no judgement (other)</span></div>
+<p class="why">Colours are desaturated so the page stays calm. Every bar still has its label and number beside it, so colour is a second cue and never the only one.</p>
+
+<h2>1 &middot; Scores in bands (batting: more is better)</h2>
+<div class="row">
+ <div class="card"><h3>Scores In Bands</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>0-9</span><div class="tr"><i style="width:100%;background:var(--bad)"></i></div><b>2</b></div>
+  <div class="b"><span>10-29</span><div class="tr"><i style="width:40%;background:var(--amber)"></i></div><b>0</b></div>
+  <div class="b"><span>30-49</span><div class="tr"><i style="width:40%;background:var(--good2)"></i></div><b>0</b></div>
+  <div class="b"><span>50+</span><div class="tr"><i style="width:50%;background:var(--good)"></i></div><b>1</b></div></div></div><div class="note">1 fifty, 0 ducks. A duck would show a deeper red.</div><div class="foot"><span>Based on 3 of 3 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>How Hannes Gets Out (with many methods)</h3><div class="scope">2026/2027</div><div class="body"><div class="donut" style="background:conic-gradient(var(--good) 0 30%,var(--bad) 0 52%,var(--warm) 0 70%,var(--bad2) 0 82%,var(--amber) 0 90%,var(--grey) 0 100%)"></div><div class="leg">
+  <span><i style="background:var(--good)"></i>Not out 30%</span><span><i style="background:var(--bad)"></i>Bowled 22%</span><span><i style="background:var(--warm)"></i>Caught 18%</span><span><i style="background:var(--bad2)"></i>LBW 12%</span><span><i style="background:var(--amber)"></i>Run out 8%</span><span><i style="background:var(--grey)"></i>Other 10%</span></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>How Sam Takes Wickets</h3><div class="scope">2026/2027</div><div class="body"><div class="donut" style="background:conic-gradient(var(--good) 0 40%,var(--good2) 0 70%,var(--blue) 0 85%,var(--amber) 0 100%)"></div><div class="leg">
+  <span><i style="background:var(--good)"></i>Bowled 40%</span><span><i style="background:var(--good2)"></i>Caught 30%</span><span><i style="background:var(--blue)"></i>LBW 15%</span><span><i style="background:var(--amber)"></i>Stumped 15%</span></div></div><div class="note">For a bowler every wicket is good, so these are greens and blue for the variety, not red.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div>
+<p class="why">In the middle card the donut says it directly: not out is the green slice, and the ways of getting out are warm reds and an amber for the run out, with grey for the rest. In the right card the bowler's wickets are all good, so the shades stay green and blue.</p>
+
+<h2>2 &middot; More cards where colour carries meaning</h2>
+<div class="row">
+ <div class="card"><h3>When Sam Fires We Win</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>Scored 30+</span><div class="tr"><i style="width:100%;background:var(--good)"></i></div><b>5/5</b></div>
+  <div class="b"><span>Under 30</span><div class="tr"><i style="width:30%;background:var(--bad)"></i></div><b>0/2</b></div></div></div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Bowling Discipline</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>Wides</span><div class="tr"><i style="width:60%;background:var(--warm)"></i></div><b>7</b></div>
+  <div class="b"><span>No-balls</span><div class="tr"><i style="width:25%;background:var(--bad)"></i></div><b>3</b></div></div></div><div class="note">Extras given away are mistakes, so they lean warm.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Runs At Each Venue</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>Main Oval</span><div class="tr"><i style="width:100%;background:var(--grey)"></i></div><b>71</b></div>
+  <div class="b"><span>Parkview</span><div class="tr"><i style="width:55%;background:var(--grey)"></i></div><b>39</b></div></div></div><div class="note">Venues have no good or bad: stay neutral.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+</div>
+
+
+<div class="row">
+ <div class="card"><h3>Next Milestone</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>500 runs</span><div class="tr"><i style="width:82%;background:var(--good)"></i></div><b style="width:60px;white-space:nowrap">88 to go</b></div>
+  <div class="b"><span>15 wickets</span><div class="tr"><i style="width:60%;background:var(--amber)"></i></div><b style="width:60px;white-space:nowrap">6 to go</b></div>
+  <div class="b"><span>10 catches</span><div class="tr"><i style="width:20%;background:var(--grey)"></i></div><b style="width:60px;white-space:nowrap">8 to go</b></div></div></div><div class="note">Far away stays grey, getting there turns amber, close (80% or more) turns green. A reached milestone fills gold.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card"><h3>Milestone Reached</h3><div class="scope">2026/2027</div><div class="body"><div class="bars" style="width:100%">
+  <div class="b"><span>500 runs</span><div class="tr"><i style="width:100%;background:var(--gold)"></i></div><b style="width:60px;white-space:nowrap;color:var(--gold)">Done</b></div>
+  <div class="b"><span>1000 runs</span><div class="tr"><i style="width:44%;background:var(--grey)"></i></div><b style="width:60px;white-space:nowrap">558 to go</b></div></div></div><div class="note">A reached milestone is the answer, so it is gold, once.</div><div class="foot"><span>Based on 7 of 7 results</span><em>Flip</em></div></div>
+ <div class="card" style="border-style:dashed;justify-content:center;text-align:center;color:var(--muted)"><div style="font:600 13px var(--disp);letter-spacing:.14em;text-transform:uppercase">Room for the next card</div></div>
+</div>
+
+<h2>The rule</h2>
+<div class="sum"><b>Gold:</b> the headline number and the selection. <b>Colour with meaning</b> (green to red, calm): score bands, how a batter gets out, team record when the player scores 30+, discipline (wides and no-balls), anywhere better or worse is obvious. <b>Milestones:</b> far away grey, getting there amber, close (80% or more) green, reached gold. <b>Neutral grey/sand:</b> leagues, teams, seasons, venues, matches, anything that is just a list. <b>Comparisons of two categories</b> that have no good or bad (Fours v Sixes, Home v Away): the two-tone green/blue from before. A bowler's wicket types are all good: greens and blue. A batter's dismissal types: not out green, ways out warm.<br><br><b>Questions:</b> 1) Is this the intelligent colouring you meant? 2) Is a 'bad' red for a duck or a dismissal too harsh for children's stats? A softer coral could replace it. 3) Should Fours v Sixes stay green/blue, or become neutral now that real good/bad colour exists?</div>
+</body></html>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { alpha } from '@mui/material/styles'
 import { Alert, Avatar, Box, Checkbox, Skeleton, Typography } from '@mui/material'
@@ -70,7 +70,9 @@ export default function FindYourPlayersPage() {
   const [linkedNames, setLinkedNames] = useState<string[] | null>(null)
   // docs/specs/119 Part 3 (3B): 'form' is "Ask the club to help" for one matched player, 'sent' the one confirmation shown
   // after every request, 'mine' the requester's own status list.
-  const [view, setView] = useState<'main' | 'form' | 'sent' | 'mine'>('main')
+  // /welcome?view=requests opens straight on the requester's own list (the Account page's Link Requests card).
+  const [searchParams] = useSearchParams()
+  const [view, setView] = useState<'main' | 'form' | 'sent' | 'mine'>(searchParams.get('view') === 'requests' ? 'mine' : 'main')
   const [prefill, setPrefill] = useState<LinkRequestPrefill | undefined>(undefined)
   const askClub = (p: MainAgentMatch) => {
     setPrefill({ firstName: p.firstName, surnameInitial: p.surnameInitial, clubId: p.clubId, clubName: p.clubName, targetPlayerRef: p.ref })
@@ -85,8 +87,6 @@ export default function FindYourPlayersPage() {
   const failure = register.error ?? matches.error
   const notVerified = failure && (errorCode(failure) === 'EMAIL_NOT_VERIFIED' || (isAxiosError(failure) && failure.response?.status === 403))
 
-  // Back from a finished or side view: Player Hub when the person has players, otherwise the previous state.
-  const backToPlayersOr = (previous: () => void) => () => (hasPlayers ? navigate('/account') : previous())
   const toMain = () => {
     setPrefill(undefined)
     setView('main')
@@ -137,7 +137,7 @@ export default function FindYourPlayersPage() {
   } else if (view === 'sent') {
     body = (
       <>
-        <HubBackButton onClick={backToPlayersOr(toMain)}>{hasPlayers ? 'Back to players' : 'Back'}</HubBackButton>
+        {!hasPlayers && <HubBackButton onClick={toMain}>Back</HubBackButton>}
         <CheckCircleOutlineIcon sx={{ fontSize: 40, color: HUB.gold }} />
         <Heading>Thanks, the club will review this</Heading>
         <Lead>We will show the outcome here, and email you when the club has decided.</Lead>
@@ -154,7 +154,7 @@ export default function FindYourPlayersPage() {
   } else if (view === 'mine') {
     body = (
       <>
-        <HubBackButton onClick={backToPlayersOr(toMain)}>{hasPlayers ? 'Back to players' : 'Back'}</HubBackButton>
+        {!hasPlayers && <HubBackButton onClick={toMain}>Back</HubBackButton>}
         <Heading>My requests</Heading>
         <MyLinkRequests dark />
       </>
@@ -298,7 +298,7 @@ export default function FindYourPlayersPage() {
   }
 
   const footer = hasPlayers ? (
-    <HubFooterButton onClick={() => navigate('/account')}>Back to players</HubFooterButton>
+    <HubFooterButton onClick={() => navigate('/account/options')}>Back to account</HubFooterButton>
   ) : clubHome ? (
     <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton>
   ) : undefined

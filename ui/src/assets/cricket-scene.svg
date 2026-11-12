@@ -28,12 +28,12 @@
   <g fill="#E8B83D" opacity="0.85"><rect x="1080" y="488" width="14" height="14"/><rect x="1110" y="488" width="14" height="14"/><rect x="1186" y="488" width="14" height="14"/><rect x="1216" y="488" width="14" height="14"/></g>
   <circle cx="1155" cy="470" r="150" fill="url(#glow)" opacity="0.35"/>
   <g>
-    <circle cx="120" cy="390" r="110" fill="url(#glow)" opacity="0.6"/>
-    <use href="#pylon" x="120" y="400"/>
-    <circle cx="1440" cy="360" r="110" fill="url(#glow)" opacity="0.6"/>
-    <use href="#pylon" x="1440" y="370"/>
-    <circle cx="1530" cy="400" r="90" fill="url(#glow)" opacity="0.5"/>
-    <use href="#pylon" x="1530" y="410"/>
+    <circle cx="40" cy="390" r="110" fill="url(#glow)" opacity="0.6"/>
+    <use href="#pylon" x="40" y="400"/>
+    <circle cx="1520" cy="360" r="110" fill="url(#glow)" opacity="0.6"/>
+    <use href="#pylon" x="1520" y="370"/>
+    <circle cx="1570" cy="400" r="90" fill="url(#glow)" opacity="0.5"/>
+    <use href="#pylon" x="1570" y="410"/>
   </g>
   <path d="M0 560 Q800 520 1600 555 V900 H0z" fill="#14633F"/>
   <path d="M0 640 Q800 590 1600 635 V900 H0z" fill="#0F5132" opacity="0.7"/>

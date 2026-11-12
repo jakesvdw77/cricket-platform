@@ -101,10 +101,10 @@ class TeamStatsServiceImplTest {
     }
 
     private void noAggregate() {
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(List.of());
         TeamStatsBasisView empty = basisView(0, 0, 0, 0);
-        lenient().when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        lenient().when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(empty);
     }
 
@@ -253,7 +253,7 @@ class TeamStatsServiceImplTest {
     void moreThanOneThousandTeamsIsRefusedAndLoggedWithoutNames() {
         inReach();
         TeamStatsAggregateView secret = row(UUID.randomUUID(), "Secret Eagles", 1, 0);
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(Collections.nCopies(1_001, secret));
 
         assertThatThrownBy(() -> table("won", null, null, 0, 10))
@@ -262,17 +262,17 @@ class TeamStatsServiceImplTest {
         assertThat(logs.list).anyMatch(e -> e.getLevel() == Level.WARN);
         assertThat(logs.list).noneMatch(e -> e.getFormattedMessage().contains("Secret Eagles"));
         verify(aggregateRepository, org.mockito.Mockito.never())
-                .basis(any(), any(), any(), any(), any(), anyBoolean(), any());
+                .basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean());
     }
 
     @Test
     void exactlyOneThousandTeamsIsAllowed() {
         inReach();
         TeamStatsAggregateView only = row(UUID.randomUUID(), "T", 1, 0);
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(Collections.nCopies(1_000, only));
         TeamStatsBasisView bv3126 = basisView(1, 0, 0, 0);
-        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(bv3126);
 
         assertThat(table("won", null, null, 0, 10).page().totalElements()).isEqualTo(1_000);
@@ -288,7 +288,7 @@ class TeamStatsServiceImplTest {
 
         service.table(authentication, clubId, "won", null, season, null, null, "LEAGUE", null, 0, 10);
 
-        verify(aggregateRepository).aggregate(eq(clubId), eq(season), any(), eq(null), eq("LEAGUE"), eq(false), any());
+        verify(aggregateRepository).aggregate(eq(clubId), eq(season), any(), eq(null), eq("LEAGUE"), eq(false), any(), eq(false));
     }
 
     @Test
@@ -296,9 +296,9 @@ class TeamStatsServiceImplTest {
         inReach();
         List<TeamStatsAggregateView> rows =
                 List.of(row(UUID.randomUUID(), "A", 3, 0), row(UUID.randomUUID(), "B", 2, 0), row(UUID.randomUUID(), "C", 1, 0));
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(rows);
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(rows);
         TeamStatsBasisView bv2108 = basisView(6, 1, 2, 0);
-        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(bv2108);
 
         var first = table("won", null, null, 0, 2);
@@ -323,9 +323,9 @@ class TeamStatsServiceImplTest {
         inReach();
         List<TeamStatsAggregateView> two =
                 List.of(row(UUID.randomUUID(), "Big", 4, 1), row(UUID.randomUUID(), "Small", 1, 0));
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(two);
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(two);
         TeamStatsBasisView bv3318 = basisView(6, 0, 0, 0);
-        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(bv3318);
 
         var dto = table("winPercent", null, "3", 0, 10);
@@ -388,7 +388,7 @@ class TeamStatsServiceImplTest {
 
         verify(scopeResolver)
                 .resolve(authentication, clubId, season, league, teamId, null, StatsScope.Competition.FRIENDLY);
-        verify(aggregateRepository).aggregate(eq(clubId), eq(season), eq(league), eq(teamId), eq("FRIENDLY"), eq(false), any());
+        verify(aggregateRepository).aggregate(eq(clubId), eq(season), eq(league), eq(teamId), eq("FRIENDLY"), eq(false), any(), eq(false));
     }
 
     @Test
@@ -402,10 +402,10 @@ class TeamStatsServiceImplTest {
     void aTeamWithNoCountedResultIsAZeroCountersReadNotA404() {
         inReach();
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(clubTeam(clubId)));
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(List.of());
         TeamStatsBasisView bv701 = basisView(0, 0, 2, 0);
-        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(bv701);
 
         TeamStatsDto dto = service.team(authentication, clubId, teamId, null, null, null);
@@ -437,16 +437,16 @@ class TeamStatsServiceImplTest {
         inReach();
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(clubTeam(clubId)));
         List<TeamStatsAggregateView> one = List.of(row(teamId, "Eagles", 2, 1));
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(one);
-        when(factsRepository.form(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(List.of());
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(one);
+        when(factsRepository.form(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(List.of());
 
         TeamStatsDto dto = service.team(authentication, clubId, teamId, null, null, null);
 
         assertThat(dto.record().won()).isEqualTo(2);
         assertThat(dto.record().lost()).isEqualTo(1);
-        verify(factsRepository).form(any(), any(), any(), any(), any(), anyBoolean(), any());
+        verify(factsRepository).form(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean());
         verify(factsRepository, org.mockito.Mockito.never())
-                .matchReferences(any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any());
+                .matchReferences(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any(), any(), any());
     }
 
     // ---- filter options ----
@@ -468,7 +468,7 @@ class TeamStatsServiceImplTest {
     @Test
     void aTeamNarrowsTheFilterOptionsQueryToThatTeam() {
         inReach();
-        when(factsRepository.filterOptions(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(factsRepository.filterOptions(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(List.of());
 
         var options = service.filterOptions(authentication, clubId, teamId);
@@ -476,7 +476,7 @@ class TeamStatsServiceImplTest {
         assertThat(options.seasonIds()).isEmpty();
         assertThat(options.competitions()).isEmpty();
         verify(scopeResolver).resolve(authentication, clubId, null, null, teamId, null, null);
-        verify(factsRepository).filterOptions(eq(clubId), eq(null), eq(null), eq(teamId), eq(null), anyBoolean(), any());
+        verify(factsRepository).filterOptions(eq(clubId), eq(null), eq(null), eq(teamId), eq(null), anyBoolean(), any(), anyBoolean());
     }
 
     @Test

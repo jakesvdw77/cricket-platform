@@ -2369,6 +2369,508 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyMatchDto"
+  /api/v1/me/players/{playerKey}/results:
+    get:
+      tags:
+      - me-players-controller
+      description: "The held player counted results shown in the Player Hub (docs/specs/145), newest first: only published results a manager switched on, rows equal the summary matches count. Key not held, malformed or dropped out is 404, a suspended caller 403."
+      operationId: listMyPlayerResults
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based page, default 0."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "Page size, default 20, 1 to 100 (else 400)."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyResultListDto"
+  /api/v1/me/players/{playerKey}/results/summary:
+    get:
+      tags:
+      - me-players-controller
+      description: "The Results hero for the scope (docs/specs/145): totals from the 103 figures over shown results only, and the newest five rows."
+      operationId: getMyPlayerResultsSummary
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyResultSummaryDto"
+  /api/v1/me/players/{playerKey}/results/filters:
+    get:
+      tags:
+      - me-players-controller
+      description: "The seasons, teams and leagues the held player has shown results for (docs/specs/145)."
+      operationId: getMyPlayerResultsFilters
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyResultFiltersDto"
+  /api/v1/me/players/{playerKey}/results/{matchId}:
+    get:
+      tags:
+      - me-players-controller
+      description: "One result with the full scorecard and names in full (docs/specs/145). 404 when the match is not one of the held player counted results, the result is a draft, the Player Hub flag is off, or it is another club."
+      operationId: getMyPlayerResult
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyResultDto"
+  /api/v1/me/players/{playerKey}/stats:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The one payload of the Player Hub My stats page (docs/specs/147): the held player figures, series and cards data for the scope, over published results a manager switched on for the Player Hub only. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season, league or team 404, a competition other than LEAGUE or FRIENDLY 400."
+      operationId: getMyPlayerStats
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404). The seasons block ignores it."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyStatsDto"
+  /api/v1/me/players/{playerKey}/stats/innings:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The My stats match drill (docs/specs/147): one page of the innings, spells or matches behind a figure, newest first, from the held player counted Player Hub results (up to 300 matches). filter must be a token the stats payload advertises for the kind; unknown kind, unknown or inapplicable filter, bad competition, negative page or size outside 1 to 100 is 400. Key not held is 404, a suspended caller 403."
+      operationId: getMyPlayerStatsInnings
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: kind
+        in: query
+        required: true
+        description: "BATTING, BOWLING, FIELDING or MATCHES (else 400)."
+        schema:
+          type: string
+      - name: filter
+        in: query
+        required: false
+        description: "One drill token from the stats payload for this kind (else 400); absent keeps every row of the kind."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only this team of the club (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based page, default 0."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "Page size, default 20, 1 to 100 (else 400)."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyStatsInningsPageDto"
+  /api/v1/me/players/{playerKey}/team-stats:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The one payload of the Player Hub Team stats page (docs/specs/147) for one team of the held player, over published results a manager switched on for the Player Hub only. teamId is required (400 when absent) and must be one of the held player teams, a team in the player results filter options; any other team, including another club team, is 404. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season or league 404, a competition other than LEAGUE or FRIENDLY 400. There is no sectionId."
+      operationId: getMyPlayerTeamStats
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: teamId
+        in: query
+        required: true
+        description: "One of the held player teams (else 404); absent is 400."
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        description: "LEAGUE or FRIENDLY (else 400); absent is both."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyTeamStatsDto"
+  /api/v1/me/players/{playerKey}/leaderboards/{group}:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "One page of a Player Hub standings table (docs/specs/147) for the held player: the manager leaderboard table over published results a manager switched on for the Player Hub only, limited to the players of the leagues the held player teams played in during the chosen season (friendlies are outside the reach). Each column carries more, each row mine, and me is the held player row and place even when it is not on the page. Names are full names; no row carries a player id. Key not held, malformed or dropped out is 404, a suspended caller 403, another club season, league or team 404; group other than batting, bowling or fielding, an unknown sort, a direction other than asc or desc, a bad minimum, a negative page or a size below 1 is 400 (a size above 100 is capped at 100); more than 5000 players in the reach is 400. When HubRankingPolicy does not allow rankings the table is empty."
+      operationId: getMyPlayerLeaderboard
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: group
+        in: path
+        required: true
+        description: "batting, bowling or fielding (else 400)."
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        description: "A column code of the group; absent is the group default (runs, wickets or total). Unknown is 400."
+        schema:
+          type: string
+      - name: direction
+        in: query
+        required: false
+        description: "asc or desc; absent is the column natural direction. Anything else is 400."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: minimum
+        in: query
+        required: false
+        description: "Optional minimum innings or overs, applied to rate sorts only; a bad value is 400."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based page, default 0 (negative is 400)."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "Page size, default 10, minimum 1, capped at 100."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardTableDto"
+  /api/v1/me/players/{playerKey}/leaderboards/standing:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Where Sam stands card payload (docs/specs/147): the held player place in runs, batting average, wickets, economy and catches among the players of the leaderboard reach, each with the number of players listed, the sample and, for the two rate lines, the minimum. Same access and 404 rules as the standings table. With HubRankingPolicy not allowing rankings lines is empty."
+      operationId: getMyPlayerLeaderboardStanding
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardStandingDto"
+  /api/v1/me/players/{playerKey}/leaderboards/awards:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Awards tab (docs/specs/147, Open question 2): the club award category leaders among the players of the leaderboard reach, only for a season that has ended. For a season still running (or not started), or with no season chosen while one is running, revealed is false with reason SEASON_NOT_ENDED, the message and the season end date, and no leaders. With HubRankingPolicy not allowing rankings revealed is false with reason RANKINGS_NOT_SHARED. Same access and 404 rules as the standings table."
+      operationId: getMyPlayerLeaderboardAwards
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "Only this season (another club season is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        description: "Only this league inside the reach (another club league is 404)."
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only players of games of this team (another club team is 404)."
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardAwardsDto"
+  /api/v1/me/players/{playerKey}/leaderboards/filters:
+    get:
+      tags:
+      - me-player-stats-controller
+      description: "The Season, League and Team options inside the held player leaderboard reach (docs/specs/147): only values with flagged, counted results of the players of the leagues the held player teams played in. Key not held is 404, a suspended caller 403. Empty when HubRankingPolicy does not allow rankings."
+      operationId: getMyPlayerLeaderboardFilters
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyLeaderboardFiltersDto"
   /api/v1/me/players/{playerKey}/polls/{pollId}/answers:
     put:
       tags:
@@ -6421,6 +6923,61 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchResultDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/player-visibility:
+    post:
+      tags:
+      - match-result-controller
+      operationId: showResultInPlayerHub
+      description: "Show In Player Hub (docs/specs/145): switches the published result on for the Player Hub, recording who and when. 409 when the result is a draft. Same gate as publish. Unpublishing switches it off again."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
+        "409":
+          description: "The result is not published (InvalidStatusTransitionException)."
+    delete:
+      tags:
+      - match-result-controller
+      operationId: hideResultFromPlayerHub
+      description: "Hide From Player Hub (docs/specs/145): switches the published result off for the Player Hub. 409 when the result is a draft. Same gate as publish."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
+        "409":
+          description: "The result is not published (InvalidStatusTransitionException)."
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/scorecard:
     get:
       tags:
@@ -13887,6 +14444,9 @@ components:
         publishedBy:
           type: string
           format: uuid
+        visibleToPlayers:
+          type: boolean
+          description: "Shown in the Player Hub (docs/specs/145); only ever true on a published result, cleared by unpublish."
         createdAt:
           type: string
           format: date-time
@@ -13995,6 +14555,9 @@ components:
       properties:
         acknowledgedWarnings:
           type: boolean
+        showInPlayerHub:
+          type: boolean
+          description: "docs/specs/145: whether the published result also shows in the Player Hub. Omitted means true; send false to publish without showing it."
     ResultIssueDto:
       type: object
       description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed; docs/specs/113 adds the errors PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE, step TEAMS with the side, one per registered player of our side outside the team's section or outside the league's age rule), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
@@ -16179,6 +16742,2270 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PlayerMatchRowDto"
+    MyResultScopeDto:
+      type: object
+      description: "The filters a Player Hub results read was computed for (null is no filter)."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+    MyResultRowDto:
+      type: object
+      description: "One result as the Player Hub shows it (docs/specs/145): the held player counted match row (as PlayerMatchRowDto, without the result id) with the match header words. result is from the player side; scores and resultLine are words."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        ourTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerMatchTeam"
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        leagueId:
+          type: string
+          format: uuid
+        leagueName:
+          type: string
+        competition:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+        result:
+          type: string
+          enum:
+          - WON
+          - LOST
+          - TIED
+          - DRAWN
+          - NO_RESULT
+          - ABANDONED
+          - INTERNAL
+        homeName:
+          type: string
+        awayName:
+          type: string
+        homeScore:
+          type: string
+        awayScore:
+          type: string
+        resultLine:
+          type: string
+        ballsPerOver:
+          type: integer
+          format: int32
+        hasBattingCard:
+          type: boolean
+        hasBowlingCard:
+          type: boolean
+        batting:
+          $ref: "#/components/schemas/PlayerMatchBatting"
+        bowling:
+          $ref: "#/components/schemas/PlayerMatchBowling"
+        fielding:
+          $ref: "#/components/schemas/PlayerMatchFielding"
+        awards:
+          $ref: "#/components/schemas/PlayerMatchAwards"
+    MyStatsDto:
+      type: object
+      description: "The Player Hub My stats payload (docs/specs/147) for a held player in the Player Hub scope (only published results a manager switched on). Every figure is the calculator output; the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the per-match blocks cover the newest basis.historyCap matches only. Every filter string is a drill token accepted by the stats/innings read for its kind. teamFielding is the catches, run-outs and stumpings of the linked players in the games of the player own team(s) in the scope (null when the player has no team in the scope); teamFieldingRank (rank for catches within those teams) and standing (batting-average rank among the batters of the chosen league, only when a league is chosen) are rankings, null unless HubRankingPolicy allows rankings."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyStatsScope"
+        playerFirstName:
+          type: string
+        ageBand:
+          type: string
+        basis:
+          $ref: "#/components/schemas/MyStatsBasis"
+        batting:
+          $ref: "#/components/schemas/PlayerBatting"
+        bowling:
+          $ref: "#/components/schemas/PlayerBowling"
+        fielding:
+          $ref: "#/components/schemas/PlayerFielding"
+        awards:
+          $ref: "#/components/schemas/PlayerAwards"
+        record:
+          $ref: "#/components/schemas/PlayerRecord"
+        form:
+          $ref: "#/components/schemas/PlayerForm"
+        series:
+          $ref: "#/components/schemas/MyStatsSeries"
+        rolling:
+          $ref: "#/components/schemas/MyStatsRolling"
+        guides:
+          $ref: "#/components/schemas/MyStatsGuides"
+        bands:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBand"
+        byInningsNumber:
+          $ref: "#/components/schemas/MyStatsByInningsNumber"
+        byOpposition:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsOpposition"
+        dismissedBy:
+          $ref: "#/components/schemas/MyStatsDismissedBy"
+        wicketsByPosition:
+          $ref: "#/components/schemas/MyStatsWicketsByPosition"
+        milestones:
+          $ref: "#/components/schemas/MyStatsMilestones"
+        teamRecordWhenScoring:
+          $ref: "#/components/schemas/MyStatsTeamRecordWhenScoring"
+        homeAway:
+          $ref: "#/components/schemas/MyStatsHomeAway"
+        bySeason:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsSeason"
+        bowlingDiscipline:
+          $ref: "#/components/schemas/MyStatsBowlingDiscipline"
+        availability:
+          $ref: "#/components/schemas/MyStatsAvailability"
+        teamFielding:
+          $ref: "#/components/schemas/MyStatsTeamFielding"
+        teamFieldingRank:
+          type: integer
+          format: int32
+        standing:
+          $ref: "#/components/schemas/MyStatsStanding"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerNotCaptured"
+        summary:
+          $ref: "#/components/schemas/MyStatsSummary"
+        battingPositionGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBattingPositionGroup"
+        battingVenues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBattingVenue"
+        bowlingHomeAway:
+          $ref: "#/components/schemas/MyStatsBowlingHomeAway"
+        bowlingVenues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBowlingVenue"
+    MyStatsSummary:
+      type: object
+      description: "Summary group (spec 147 amendment 2). leaguesPlayed (friendlies excluded) and teamsRepresented count distinct counted matches of the capped history, most matches first then name. ballsFaced is null when no innings recorded balls; ballsPerOver is null when the counted spells mix over lengths."
+      properties:
+        leaguesPlayed:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsLeagueMatches"
+        teamsRepresented:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsTeamMatches"
+        matchesPlayed:
+          type: integer
+          format: int64
+        runsScored:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        ballsBowled:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        catchesTaken:
+          type: integer
+          format: int64
+    MyStatsLeagueMatches:
+      type: object
+      properties:
+        leagueId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        matches:
+          type: integer
+          format: int64
+    MyStatsTeamMatches:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        matches:
+          type: integer
+          format: int64
+    MyStatsBattingPositionGroup:
+      type: object
+      description: "key is OPENER (positions 1 and 2) then 3 to 11; positions with no innings are omitted; average and highest are null when unrecorded."
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+        highest:
+          type: integer
+          format: int32
+    MyStatsBattingVenue:
+      type: object
+      description: "Batting at one playing area. venueKey is the area id, unknown (Unknown venue) or other (Other venues); home is null for unknown and other."
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsBowlingHomeAway:
+      type: object
+      properties:
+        home:
+          $ref: "#/components/schemas/MyStatsBowlingSplit"
+        away:
+          $ref: "#/components/schemas/MyStatsBowlingSplit"
+        unknownVenueSpells:
+          type: integer
+          format: int64
+    MyStatsBowlingSplit:
+      type: object
+      properties:
+        spells:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+        average:
+          type: number
+    MyStatsBowlingVenue:
+      type: object
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+        spells:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+    MyStatsScope:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    MyStatsBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        resultsWithBattingCard:
+          type: integer
+          format: int64
+        resultsWithBowlingCard:
+          type: integer
+          format: int64
+        resultsWithFieldingCard:
+          type: integer
+          format: int64
+        fixturesRemaining:
+          type: integer
+          format: int64
+        truncated:
+          type: boolean
+        historyCap:
+          type: integer
+          format: int32
+    MyStatsSeries:
+      type: object
+      properties:
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        battingInnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsSeriesInnings"
+        battingSummary:
+          $ref: "#/components/schemas/PlayerDashboardBattingSummary"
+        dismissals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsDismissal"
+        battingTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsTrendPoint"
+        bowlingMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsBowlingMatch"
+        wicketTypes:
+          $ref: "#/components/schemas/PlayerDashboardWicketTypes"
+        economySummary:
+          $ref: "#/components/schemas/PlayerDashboardEconomySummary"
+    MyStatsSeriesInnings:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        howOut:
+          type: string
+    MyStatsDismissal:
+      type: object
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+        filter:
+          type: string
+    MyStatsTrendPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        cumulativeRuns:
+          type: integer
+          format: int64
+        cumulativeDismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsBowlingMatch:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+    MyStatsRolling:
+      type: object
+      properties:
+        span:
+          type: integer
+          format: int32
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsRollingPoint"
+        hint:
+          $ref: "#/components/schemas/MyStatsTrendHint"
+    MyStatsRollingPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        average:
+          type: number
+    MyStatsTrendHint:
+      type: object
+      properties:
+        recent:
+          type: number
+        earlier:
+          type: number
+        direction:
+          type: string
+    MyStatsGuides:
+      type: object
+      properties:
+        low:
+          type: integer
+          format: int32
+        high:
+          type: integer
+          format: int32
+        basis:
+          type: string
+    MyStatsBand:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        percent:
+          type: number
+        filter:
+          type: string
+    MyStatsByInningsNumber:
+      type: object
+      properties:
+        battingFirst:
+          $ref: "#/components/schemas/MyStatsInningsSplit"
+        chasing:
+          $ref: "#/components/schemas/MyStatsInningsSplit"
+    MyStatsInningsSplit:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        filter:
+          type: string
+    MyStatsOpposition:
+      type: object
+      properties:
+        opponentName:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        scores:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsScore"
+    MyStatsScore:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        runs:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+    MyStatsDismissedBy:
+      type: object
+      properties:
+        bowlers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsNameCount"
+        notRecorded:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    MyStatsNameCount:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int64
+    MyStatsWicketsByPosition:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsPositionGroup"
+        notRecorded:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        caughtBy:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsNameCount"
+    MyStatsPositionGroup:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+    MyStatsMilestones:
+      type: object
+      properties:
+        runs:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        wickets:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        catches:
+          $ref: "#/components/schemas/MyStatsMilestone"
+        personalBests:
+          $ref: "#/components/schemas/MyStatsPersonalBests"
+    MyStatsMilestone:
+      type: object
+      properties:
+        current:
+          type: integer
+          format: int64
+        target:
+          type: integer
+          format: int64
+        toGo:
+          type: integer
+          format: int64
+    MyStatsPersonalBests:
+      type: object
+      properties:
+        highestScore:
+          $ref: "#/components/schemas/MyStatsBestInnings"
+        bestBowling:
+          $ref: "#/components/schemas/MyStatsBestBowling"
+        mostCatches:
+          $ref: "#/components/schemas/MyStatsBestCatches"
+        bestStrikeRate:
+          $ref: "#/components/schemas/MyStatsBestStrikeRate"
+        minimumBalls:
+          type: integer
+          format: int32
+    MyStatsBestInnings:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestBowling:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestCatches:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsBestStrikeRate:
+      type: object
+      properties:
+        strikeRate:
+          type: number
+        runs:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        matchId:
+          type: string
+          format: uuid
+    MyStatsTeamRecordWhenScoring:
+      type: object
+      properties:
+        threshold:
+          type: integer
+          format: int32
+        scored:
+          $ref: "#/components/schemas/MyStatsRecordSplit"
+        notScored:
+          $ref: "#/components/schemas/MyStatsRecordSplit"
+        scoredFilter:
+          type: string
+        notScoredFilter:
+          type: string
+    MyStatsRecordSplit:
+      type: object
+      properties:
+        matches:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        winPercent:
+          type: number
+    MyStatsHomeAway:
+      type: object
+      properties:
+        home:
+          $ref: "#/components/schemas/MyStatsFieldSplit"
+        away:
+          $ref: "#/components/schemas/MyStatsFieldSplit"
+        unknownFieldMatches:
+          type: integer
+          format: int64
+    MyStatsFieldSplit:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+    MyStatsSeason:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        average:
+          type: number
+        wickets:
+          type: integer
+          format: int64
+    MyStatsBowlingDiscipline:
+      type: object
+      properties:
+        wides:
+          type: integer
+          format: int64
+        noBalls:
+          type: integer
+          format: int64
+        widesPerOver:
+          type: number
+        noBallsPerOver:
+          type: number
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+        byInnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsDisciplineSpell"
+    MyStatsDisciplineSpell:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+    MyStatsAvailability:
+      type: object
+      properties:
+        pollsTotal:
+          type: integer
+          format: int64
+        pollsAnswered:
+          type: integer
+          format: int64
+        answeredAvailable:
+          type: integer
+          format: int64
+        matchesSelected:
+          type: integer
+          format: int64
+        matchesPlayed:
+          type: integer
+          format: int64
+    MyStatsTeamFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+    MyStatsStanding:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+        playersRanked:
+          type: integer
+          format: int64
+        average:
+          type: number
+        innings:
+          type: integer
+          format: int64
+    MyTeamStatsDto:
+      type: object
+      description: "The Player Hub Team stats payload (docs/specs/147) for one team of a held player in the Player Hub scope (only published results a manager switched on). It is the manager team page figures for the same scope plus the team Dashboard series plus the Hub blocks; every figure is the calculator output and the client only draws. A figure with no valid denominator is null. No internal id other than matchId and the scope ids leaves. basis.truncated says the result-history blocks (series, battingOrder, tossWon, headToHead, squad, closeGames) cover the newest basis.historyCap results only. chasing is the manager block (highest chase, largest victories); the batting-first v chasing split is battingOrder."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyTeamScope"
+        teamName:
+          type: string
+        basis:
+          $ref: "#/components/schemas/MyTeamBasis"
+        record:
+          $ref: "#/components/schemas/TeamStatsRecord"
+        form:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamFormEntry"
+        batting:
+          $ref: "#/components/schemas/TeamStatsBatting"
+        chasing:
+          $ref: "#/components/schemas/TeamStatsChasing"
+        bowling:
+          $ref: "#/components/schemas/TeamStatsBowling"
+        extras:
+          $ref: "#/components/schemas/TeamStatsExtras"
+        netRunRate:
+          $ref: "#/components/schemas/TeamStatsNetRunRate"
+        series:
+          $ref: "#/components/schemas/MyTeamSeries"
+        contribution:
+          $ref: "#/components/schemas/MyTeamContribution"
+        battingOrder:
+          $ref: "#/components/schemas/MyTeamBattingOrder"
+        tossWon:
+          $ref: "#/components/schemas/MyTeamToss"
+        headToHead:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamHeadToHead"
+        squad:
+          $ref: "#/components/schemas/MyTeamSquad"
+        closeGames:
+          $ref: "#/components/schemas/MyTeamCloseGames"
+        extrasCard:
+          $ref: "#/components/schemas/MyTeamExtrasCard"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStatsNotCaptured"
+        dismissals:
+          $ref: "#/components/schemas/MyTeamDismissals"
+        battingPositionGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamPositionGroup"
+        boundaries:
+          $ref: "#/components/schemas/MyTeamBoundaries"
+        venues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamVenue"
+        wicketTypes:
+          $ref: "#/components/schemas/MyTeamWicketTypes"
+        fielding:
+          $ref: "#/components/schemas/MyTeamFielding"
+        byInningsNumber:
+          $ref: "#/components/schemas/MyTeamInningsSplit"
+    MyTeamScope:
+      type: object
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    MyTeamBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        internalResults:
+          type: integer
+          format: int64
+        resultsNoBallBowled:
+          type: integer
+          format: int64
+        forfeits:
+          $ref: "#/components/schemas/TeamStatsForfeits"
+        resultsWithBothInnings:
+          type: integer
+          format: int64
+        truncated:
+          type: boolean
+        historyCap:
+          type: integer
+          format: int32
+        coverage:
+          $ref: "#/components/schemas/MyTeamCoverage"
+    MyTeamCount:
+      type: object
+      properties:
+        recorded:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    MyTeamCoverage:
+      type: object
+      properties:
+        battingOrder:
+          $ref: "#/components/schemas/MyTeamCount"
+        toss:
+          $ref: "#/components/schemas/MyTeamCount"
+        availability:
+          $ref: "#/components/schemas/MyTeamCount"
+        runCards:
+          $ref: "#/components/schemas/MyTeamCount"
+        wicketCards:
+          $ref: "#/components/schemas/MyTeamCount"
+        closeMargins:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFormEntry:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        result:
+          type: string
+        forfeit:
+          type: boolean
+    MyTeamSeries:
+      type: object
+      properties:
+        window:
+          $ref: "#/components/schemas/DashboardWindowDto"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamResult"
+        resultsSummary:
+          $ref: "#/components/schemas/TeamDashboardResultsSummary"
+        runRateTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamRunRatePoint"
+        netRunRateTrend:
+          $ref: "#/components/schemas/MyTeamNetRunRateTrend"
+        extrasConceded:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamExtrasPoint"
+        extrasSummary:
+          $ref: "#/components/schemas/TeamDashboardExtrasSummary"
+        dotBalls:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamDotBallsPoint"
+        dotBallsSummary:
+          $ref: "#/components/schemas/TeamDashboardDotBallsSummary"
+    MyTeamResult:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        forfeit:
+          type: boolean
+        result:
+          type: string
+        ownRuns:
+          type: integer
+          format: int64
+        ownWickets:
+          type: integer
+          format: int64
+        ownBalls:
+          type: integer
+          format: int64
+        oppRuns:
+          type: integer
+          format: int64
+        oppWickets:
+          type: integer
+          format: int64
+        oppBalls:
+          type: integer
+          format: int64
+        ownRunRate:
+          type: number
+        oppRunRate:
+          type: number
+    MyTeamRunRatePoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        teamRunRate:
+          type: number
+        oppositionRunRate:
+          type: number
+    MyTeamNetRunRateTrend:
+      type: object
+      properties:
+        status:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamNetRunRatePoint"
+    MyTeamNetRunRatePoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        value:
+          type: number
+    MyTeamExtrasPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        itemised:
+          type: boolean
+        notItemised:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+    MyTeamDotBallsPoint:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        ballsBowled:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+        dotPercent:
+          type: number
+    MyTeamContribution:
+      type: object
+      properties:
+        runs:
+          $ref: "#/components/schemas/MyTeamShareBlock"
+        wickets:
+          $ref: "#/components/schemas/MyTeamShareBlock"
+    MyTeamShareBlock:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamShareLine"
+        inningsWithCard:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamShareLine:
+      type: object
+      properties:
+        kind:
+          type: string
+        label:
+          type: string
+        value:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+    MyTeamSplit:
+      type: object
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+    MyTeamBattingOrder:
+      type: object
+      properties:
+        battingFirst:
+          $ref: "#/components/schemas/MyTeamSplit"
+        chasing:
+          $ref: "#/components/schemas/MyTeamSplit"
+        recorded:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    MyTeamToss:
+      type: object
+      properties:
+        won:
+          type: integer
+          format: int64
+        known:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+        partly:
+          type: boolean
+    MyTeamHeadToHead:
+      type: object
+      properties:
+        opponentName:
+          type: string
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        noResult:
+          type: integer
+          format: int64
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamMeeting"
+    MyTeamMeeting:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        result:
+          type: string
+        forfeit:
+          type: boolean
+    MyTeamSquad:
+      type: object
+      properties:
+        playersUsed:
+          type: integer
+          format: int64
+        guestAppearances:
+          type: integer
+          format: int64
+        averageAvailable:
+          type: number
+        matchesWithPoll:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+        partly:
+          type: boolean
+    MyTeamCloseGames:
+      type: object
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        closeRuns:
+          type: integer
+          format: int32
+        closeWickets:
+          type: integer
+          format: int32
+        decided:
+          type: integer
+          format: int64
+        withMargin:
+          type: integer
+          format: int64
+    MyTeamExtrasCard:
+      type: object
+      properties:
+        gaveAway:
+          $ref: "#/components/schemas/MyTeamExtrasSide"
+        received:
+          $ref: "#/components/schemas/MyTeamExtrasSide"
+        partly:
+          type: boolean
+    MyTeamExtrasSide:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+        wides:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        noBalls:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        byes:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        legByes:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        penaltyRuns:
+          $ref: "#/components/schemas/MyTeamExtrasComponent"
+        inningsWithExtras:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamExtrasComponent:
+      type: object
+      properties:
+        value:
+          type: integer
+          format: int64
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamTypeCount:
+      type: object
+      description: "One dismissal or wicket type: type is the DismissalType name; percent is relative to the owning block's total (see the block)."
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        percent:
+          type: number
+          nullable: true
+    MyTeamDismissals:
+      type: object
+      description: "How the team's batters got out over the counted usable innings (capped history). notOut = not out and retired not out; wickets = every other batted type; each percent is the share of notOut + wickets. notRecorded rows are in no percent. coverage: innings with a recorded how-out of the usable innings."
+      properties:
+        notOut:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamTypeCount"
+        notRecorded:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamPositionGroup:
+      type: object
+      description: "Batting by position, 1 and 2 as OPENER then 3 to 11; sharePercent is the group's runs over the runs of all groups."
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        sharePercent:
+          type: number
+          nullable: true
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+          nullable: true
+    MyTeamBoundaries:
+      type: object
+      description: "Fours and sixes of the innings whose every batting row recorded both (inningsRecorded of inningsCounted). boundaryRuns = 4 x fours + 6 x sixes; boundaryPercent over the team runs of those innings. Null when not recorded."
+      properties:
+        fours:
+          type: integer
+          format: int64
+          nullable: true
+        sixes:
+          type: integer
+          format: int64
+          nullable: true
+        boundaryRuns:
+          type: integer
+          format: int64
+          nullable: true
+        boundaryPercent:
+          type: number
+          nullable: true
+        ballsPerBoundary:
+          type: number
+          nullable: true
+        inningsRecorded:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    MyTeamVenue:
+      type: object
+      description: "The team at one playing area (the result's, else the match's); venueKey is the area id, unknown or other. home: one of the club's home fields (null for unknown and other). Totals are null when not recorded."
+      properties:
+        venueKey:
+          type: string
+        name:
+          type: string
+        home:
+          type: boolean
+          nullable: true
+        matches:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        runsScored:
+          type: integer
+          format: int64
+          nullable: true
+        runsConceded:
+          type: integer
+          format: int64
+          nullable: true
+        wicketsTaken:
+          type: integer
+          format: int64
+          nullable: true
+        wicketsLost:
+          type: integer
+          format: int64
+          nullable: true
+    MyTeamWicketTypes:
+      type: object
+      description: "How the team's bowlers took wickets (bowler-credited types; run-outs excluded). total = sum of types + notItemised; each percent is the share of total. coverage: opposition usable innings with a bowling card of those counted."
+      properties:
+        total:
+          type: integer
+          format: int64
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamTypeCount"
+        notItemised:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFielding:
+      type: object
+      description: "The team's fielding credits over the counted non-forfeit results; top eight fielders (guests grouped) and others; dismissalsPerMatch per result with a fielding record; coverage: results with a fielding record of those counted."
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        dismissalsPerMatch:
+          type: number
+          nullable: true
+        byFielder:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeamFielder"
+        others:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/MyTeamCount"
+    MyTeamFielder:
+      type: object
+      properties:
+        name:
+          type: string
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    MyTeamInningsSplit:
+      type: object
+      description: "Batting first (first) v chasing, from the results that recorded the batting order."
+      properties:
+        first:
+          $ref: "#/components/schemas/MyTeamInningsSide"
+        chasing:
+          $ref: "#/components/schemas/MyTeamInningsSide"
+    MyTeamInningsSide:
+      type: object
+      description: "runs is the total of the usable innings (null with none); average is runs per such innings."
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+          nullable: true
+        average:
+          type: number
+          nullable: true
+    MyStatsInningsPageDto:
+      type: object
+      description: "One page of the My stats match drill (docs/specs/147), newest first. kind is BATTING, BOWLING, FIELDING or MATCHES; page.totalElements is the rows after the filter; truncated says the history cap (300 matches) cut the set. Only the block of the row kind is filled; MATCHES rows fill all three where the player took part."
+      properties:
+        kind:
+          type: string
+        filter:
+          type: string
+        title:
+          type: string
+        filterLabel:
+          type: string
+        truncated:
+          type: boolean
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStatsInningsRow"
+    MyStatsInningsRow:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponentName:
+          type: string
+        derby:
+          type: boolean
+        ourTeamName:
+          type: string
+        result:
+          type: string
+        batting:
+          $ref: "#/components/schemas/MyStatsInningsBatting"
+        bowling:
+          $ref: "#/components/schemas/MyStatsInningsBowling"
+        fielding:
+          $ref: "#/components/schemas/MyStatsInningsFielding"
+    MyStatsInningsBatting:
+      type: object
+      properties:
+        inningsNumber:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        fours:
+          type: integer
+          format: int32
+        sixes:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        howOut:
+          type: string
+        bowlerName:
+          type: string
+        strikeRate:
+          type: number
+    MyStatsInningsBowling:
+      type: object
+      properties:
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        economy:
+          type: number
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+    MyStatsInningsFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+    MyResultListDto:
+      type: object
+      description: "One page of the held player results shown in the Player Hub, newest first."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyResultScopeDto"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultRowDto"
+    MyResultSummaryDto:
+      type: object
+      description: "The Results hero for a scope: 103 figures over shown results only; matches equals the list totalElements. highestScore and bestBowling are null when none."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyResultScopeDto"
+        matches:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        internal:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        catches:
+          type: integer
+          format: int64
+        playerOfTheMatch:
+          type: integer
+          format: int64
+        highestScore:
+          $ref: "#/components/schemas/PlayerHighestScore"
+        bestBowling:
+          $ref: "#/components/schemas/PlayerBestBowling"
+        lastFive:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultRowDto"
+    MyResultFiltersDto:
+      type: object
+      description: "The seasons, teams and leagues the held player has shown results for. currentSeasonId is the club current season when listed, else the newest listed season, else null."
+      properties:
+        currentSeasonId:
+          type: string
+          format: uuid
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        combos:
+          type: array
+          description: "The distinct season, league and team combinations of the shown results; leagueId is null for a friendly."
+          items:
+            $ref: "#/components/schemas/MyResultFilterCombo"
+    MyResultFilterCombo:
+      type: object
+      description: "One season, league (null for a friendly) and team that has shown results."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+          nullable: true
+        teamId:
+          type: string
+          format: uuid
+    MyResultFilterOption:
+      type: object
+      description: "An id and display name."
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    MyLeaderboardTableDto:
+      type: object
+      description: "One page of a Player Hub standings table (docs/specs/147): LeaderboardTableDto with the Hub changes. Each column carries more (folded behind More Columns, a server constant), each row mine, me is the held player row and place even when not on the page (null when the player has no listed figure), the scope has no section, and no row carries a player id. Full names, inside the signed-in Hub only."
+      properties:
+        group:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeaderboardColumn"
+        sort:
+          $ref: "#/components/schemas/LeaderboardSort"
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        minimum:
+          $ref: "#/components/schemas/LeaderboardMinimum"
+        basis:
+          $ref: "#/components/schemas/LeaderboardBasis"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyLeaderboardRow"
+        me:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyLeaderboardMe"
+    MyLeaderboardScope:
+      type: object
+      description: "The filters the Hub leaderboard figures were computed for."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+          nullable: true
+        leagueId:
+          type: string
+          format: uuid
+          nullable: true
+        teamId:
+          type: string
+          format: uuid
+          nullable: true
+    MyLeaderboardColumn:
+      type: object
+      description: "A standings column plus more: the column is folded behind More Columns in the Player Hub."
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        longLabel:
+          type: string
+        sortable:
+          type: boolean
+        direction:
+          type: string
+        minimumKind:
+          type: string
+        more:
+          type: boolean
+    MyLeaderboardRow:
+      type: object
+      description: "One player row, no player id. rank is null for the unranked group; mine is true for the held player; values are keyed by column code."
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        mine:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        teamName:
+          type: string
+          nullable: true
+        smallSample:
+          type: boolean
+        values:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/LeaderboardCell"
+    MyLeaderboardMe:
+      type: object
+      description: "The held player row. position is its zero-based place in the whole ordered list, page the page (at the requested size) that holds it."
+      properties:
+        position:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        row:
+          $ref: "#/components/schemas/MyLeaderboardRow"
+    MyLeaderboardStandingDto:
+      type: object
+      description: "Where Sam stands (docs/specs/147): the held player place in five headline figures among the players of the leaderboard reach. lines is empty when HubRankingPolicy does not allow rankings."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        playerFirstName:
+          type: string
+        resultsCounted:
+          type: integer
+          format: int64
+        playersInReach:
+          type: integer
+          format: int64
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyStandingLine"
+    MyStandingLine:
+      type: object
+      description: "One headline. key is runs, average, strikeRate, fours, sixes, wickets, economy or catches; group is batting, bowling or fielding. rank (competition rank) is out of playersRanked; playersListed is everyone the table lists. minimum is set for the rate lines only; belowMinimum says the held player is below it. value is the held player standings cell (null when no figure)."
+      properties:
+        key:
+          type: string
+        group:
+          type: string
+        label:
+          type: string
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        playersListed:
+          type: integer
+          format: int64
+        playersRanked:
+          type: integer
+          format: int64
+        value:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardCell"
+        sample:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyStandingSample"
+        minimum:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/MyStandingMinimum"
+        belowMinimum:
+          type: boolean
+    MyStandingSample:
+      type: object
+      description: "The sample behind a line: matches always; batting lines add innings and ballsFaced; the economy line adds innings, balls, overs (null when over lengths are mixed) and ballsPerOver."
+      properties:
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+          nullable: true
+        ballsFaced:
+          type: integer
+          format: int64
+          nullable: true
+        balls:
+          type: integer
+          format: int64
+          nullable: true
+        overs:
+          type: number
+          nullable: true
+        ballsPerOver:
+          type: integer
+          format: int32
+          nullable: true
+    MyStandingMinimum:
+      type: object
+      properties:
+        unit:
+          type: string
+          description: "INNINGS or OVERS."
+        value:
+          type: integer
+          format: int32
+    MyLeaderboardAwardsDto:
+      type: object
+      description: "The Awards tab (docs/specs/147, Open question 2). revealed false means no leaders: reason is SEASON_NOT_ENDED or RANKINGS_NOT_SHARED, message the sentence to show, seasonEndDate the day the season ends (null when no single season applies). Revealed leaders are every player at rank 1 of a category; no row carries a player id."
+      properties:
+        scope:
+          $ref: "#/components/schemas/MyLeaderboardScope"
+        revealed:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        seasonEndDate:
+          type: string
+          format: date
+          nullable: true
+        basis:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/AwardsBasis"
+        minimums:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/AwardsMinimums"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAwardsCategory"
+        omitted:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsOmittedCategory"
+    MyAwardsCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        leaders:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAwardsLeader"
+    MyAwardsLeader:
+      type: object
+      description: "A category leader, no player id; mine is true for the held player. figure is as on the manager Awards view."
+      properties:
+        rank:
+          type: integer
+          format: int32
+          nullable: true
+        mine:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        figure:
+          description: A number, a wickets/runs object (best bowling), a runs/notOut object (highest score), or null
+          nullable: true
+          oneOf:
+          - type: number
+          - $ref: "#/components/schemas/LeaderboardWicketsRuns"
+          - $ref: "#/components/schemas/LeaderboardRunsNotOut"
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+          nullable: true
+        sample:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardSample"
+        smallSample:
+          type: boolean
+        detail:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/LeaderboardDetail"
+    MyLeaderboardFiltersDto:
+      type: object
+      description: "The Season, League and Team options inside the held player leaderboard reach (docs/specs/147). currentSeasonId is the club current season when listed, else the newest listed season, else null. combos are the distinct season, league and team combinations of the reach; leagues are reach leagues only (no friendlies)."
+      properties:
+        currentSeasonId:
+          type: string
+          format: uuid
+          nullable: true
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterOption"
+        combos:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultFilterCombo"
+    MyResultDto:
+      type: object
+      description: "One result for the Player Hub Result page: the held player own card (mine, also the match header), venue, the full scorecard of both sides with names in full, and awards. No result, entry or player ids."
+      properties:
+        mine:
+          $ref: "#/components/schemas/MyResultRowDto"
+        venue:
+          type: string
+        innings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultInnings"
+        awards:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultAward"
+    MyResultInnings:
+      type: object
+      description: "One regular innings: the batting side card and the other side bowling. overs is e.g. 36.4."
+      properties:
+        sequence:
+          type: integer
+          format: int32
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        battingTeamName:
+          type: string
+        runs:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int32
+        overs:
+          type: string
+        extras:
+          type: integer
+          format: int32
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        batting:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultBatter"
+        didNotBat:
+          type: array
+          items:
+            type: string
+        bowling:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultBowler"
+    MyResultBatter:
+      type: object
+      description: "A batter; howOut is null when not recorded; bowler and fielder are full names or null; mine marks the held player."
+      properties:
+        name:
+          type: string
+        mine:
+          type: boolean
+        position:
+          type: integer
+          format: int32
+        howOut:
+          type: string
+          enum:
+          - NOT_OUT
+          - DID_NOT_BAT
+          - BOWLED
+          - CAUGHT
+          - CAUGHT_AND_BOWLED
+          - LBW
+          - STUMPED
+          - RUN_OUT
+          - HIT_WICKET
+          - HANDLED_BALL
+          - OBSTRUCTING_FIELD
+          - HIT_BALL_TWICE
+          - TIMED_OUT
+          - RETIRED_NOT_OUT
+          - RETIRED_OUT
+        bowler:
+          type: string
+        fielder:
+          type: string
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        fours:
+          type: integer
+          format: int32
+        sixes:
+          type: integer
+          format: int32
+    MyResultBowler:
+      type: object
+      description: "A bowler; overs is the balls shown as overs; optional figures are null when not recorded."
+      properties:
+        name:
+          type: string
+        mine:
+          type: boolean
+        overs:
+          type: string
+        maidens:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int32
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        dots:
+          type: integer
+          format: int32
+    MyResultAward:
+      type: object
+      description: "Player of the match, or the team player of the match."
+      properties:
+        type:
+          type: string
+          enum:
+          - PLAYER_OF_MATCH
+          - TEAM_PLAYER_OF_MATCH
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        playerName:
+          type: string
     PlayerMatchRowDto:
       type: object
       description: "One counted match of one player. A block's figures are present only for the status that has them (BATTED, BOWLED, RECORDED); optional figures are null when not recorded."

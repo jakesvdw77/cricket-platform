@@ -117,6 +117,17 @@ public class MatchResult {
     @Column(name = "published_by")
     private UUID publishedBy;
 
+    /** docs/specs/145: shown in the Player Hub; only ever true on a published result, cleared by unpublish. */
+    @Builder.Default
+    @Column(name = "visible_to_players", nullable = false)
+    private boolean visibleToPlayers = false;
+
+    @Column(name = "visible_to_players_at")
+    private Instant visibleToPlayersAt;
+
+    @Column(name = "visible_to_players_by")
+    private UUID visibleToPlayersBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Person screen header - round 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ink:#06241A;--muted:rgba(247,243,232,.66);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:28px 20px 80px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 20px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:34px 0 2px}
+p{color:var(--muted);max-width:900px;line-height:1.5;margin:0 0 10px}
+.page{max-width:1100px;border:1px solid var(--soft);border-radius:8px;background:linear-gradient(180deg,#134d33,#0b3322);overflow:hidden}
+.top{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:relative}
+.brand{display:flex;align-items:center;gap:8px;font:700 16px var(--body)}.brand i{width:26px;height:26px;border-radius:5px;background:#0F5132;border:1px solid var(--soft)}
+.right{display:flex;align-items:center;gap:8px;position:relative}
+.console{margin:0 18px 18px;border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.8);height:150px}
+.band{height:50px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--line);font:700 22px var(--disp);letter-spacing:.06em;text-transform:uppercase}
+.b{font:600 12px var(--disp);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--cream);border-radius:4px;padding:6px 10px;color:var(--cream)}
+.lnk{font:600 14px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--cream);opacity:.9;padding:6px 4px;border-bottom:2px solid transparent}.lnk.on{border-color:var(--gold);color:var(--gold)}
+.av{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 3px;border:1px solid var(--line);border-radius:22px;background:rgba(0,0,0,.25);font:600 14px var(--body)}
+.av i{width:32px;height:32px;border-radius:50%;background:linear-gradient(180deg,#f4d676,#e8b83d);color:var(--ink);font:700 14px/32px var(--disp);text-align:center;font-style:normal}
+.av .badge{background:var(--gold);color:var(--ink);font:700 11px var(--disp);border-radius:9px;padding:0 6px}
+.ib{width:36px;height:36px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.25);font-size:15px}
+.menu{position:absolute;top:46px;right:0;width:230px;border:1px solid var(--line);border-radius:6px;background:#0a2a1d;box-shadow:0 10px 28px rgba(0,0,0,.45);z-index:3;overflow:hidden}
+.menu div{padding:10px 16px;font:500 15px var(--body);border-bottom:1px solid var(--soft);display:flex;justify-content:space-between}.menu div:last-child{border:0}
+.menu .hd{background:rgba(0,0,0,.3);display:block}.menu .hd small{display:block;color:var(--muted);font-size:12px}.menu .rule{padding:0;height:1px;background:var(--line)}
+.menu .badge{background:var(--gold);color:var(--ink);font:700 11px var(--disp);border-radius:9px;padding:0 6px;align-self:center}
+.pick{font:700 13px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+</style></head><body>
+<h1>Person screen header, alternatives</h1>
+<p>The row of four outlined buttons is heavy: four equal boxes, all shouting, with Sign out as loud as Account. Five calmer ways below, each with the same four things (Account, Back to club, Switch profile, Sign out). Nothing is built.</p>
+
+<h2>1 &middot; Your name, one menu (my pick)</h2>
+<p>One avatar chip with your name. Everything personal is behind it, grouped, with Sign out last and quiet. The standard pattern people already know, and the pending count sits on the chip. Back to club stays visible beside it for managers because it is a navigation, not an account action.</p>
+<div class="page"><div class="top"><div class="brand"><i></i>Cricket Legend</div><div class="right"><span class="b">&larr; Back to club</span><span class="av"><i>JV</i>Jaco <span class="badge">2</span> &#9662;</span>
+ <div class="menu"><div class="hd"><b>Jaco van der Westhuizen</b><small>jakesvdw77@gmail.com</small></div><div>Invitations <span class="badge">2</span></div><div>Link requests</div><div>Link more players</div><div class="rule"></div><div>Preferences</div><div>Switch profile</div><div class="rule"></div><div style="color:#f0a89c">Sign out</div></div></div></div>
+ <div class="console"><div class="band">Player Hub</div></div></div>
+
+<h2>2 &middot; Quiet text links</h2>
+<p>No boxes. Plain small-caps text, the current page underlined in gold. Sign out is the same weight as the rest, so it is easy to hit by mistake; the least protected option.</p>
+<div class="page"><div class="top"><div class="brand"><i></i>Cricket Legend</div><div class="right" style="gap:22px"><span class="lnk">Account</span><span class="lnk">&larr; Back to club</span><span class="lnk">Switch profile</span><span class="lnk">Sign out</span></div></div><div class="console"><div class="band">Player Hub</div></div></div>
+
+<h2>3 &middot; Icons with tooltips</h2>
+<p>Four round icon buttons (person, building, swap arrows, power). The tidiest, but nobody knows what the icons mean until they hover, and there is no hover on a phone.</p>
+<div class="page"><div class="top"><div class="brand"><i></i>Cricket Legend</div><div class="right"><span class="ib">&#9786;</span><span class="ib">&#8962;</span><span class="ib">&#8646;</span><span class="ib">&#9211;</span></div></div><div class="console"><div class="band">Player Hub</div></div></div>
+
+<h2>4 &middot; Account and Sign out only</h2>
+<p>Two controls. Account opens the page of personal things (Invitations, Link requests, Link more players, Switch profile, Preferences). Back to club moves into the footer where it already sits ("Back to club" is there today). Sign out stays as a quiet link.</p>
+<div class="page"><div class="top"><div class="brand"><i></i>Cricket Legend</div><div class="right" style="gap:18px"><span class="b" style="background:rgba(247,243,232,.14)">Account</span><span class="lnk">Sign out</span></div></div><div class="console"><div class="band">Player Hub</div></div></div>
+
+<h2>5 &middot; Into the console band</h2>
+<p>No page header row at all, as you did for the Hub. The console's own title band carries the avatar chip on the right, the same band the Hub uses for its page header and actions. The page is as clean as the Hub.</p>
+<div class="page" style="padding-top:14px"><div class="console" style="height:150px"><div class="band">Player Hub<span style="margin-left:auto" class="av"><i>JV</i>Jaco <span class="badge">2</span> &#9662;</span></div></div></div>
+
+<p style="margin-top:26px"><b class="pick">Which way?</b> My lean is 1 on pages that keep a header row, and 5 if the person screen takes the Hub's header-less look. Either way the list inside the menu is the same: Invitations, Link requests, Link more players, Preferences, Switch profile, Sign out.</p>
+</body></html>

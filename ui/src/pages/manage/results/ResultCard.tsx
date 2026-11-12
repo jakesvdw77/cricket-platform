@@ -64,7 +64,7 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
   }
   // Every card carries a status chip in the same place, so a draft and a published result line up in the grid.
   const statusBadge: RecordCardBadge = draft ? { label: 'Draft', tone: 'warning' } : { label: 'Published', tone: 'positive' }
-  const badges: RecordCardBadge[] = [statusBadge, ...(inactive ? [inactive] : [])]
+  const badges: RecordCardBadge[] = [statusBadge, ...(result.visibleToPlayers ? [{ label: 'In Player Hub', tone: 'positive' as const }] : []), ...(inactive ? [inactive] : [])]
 
   return (
     <RecordCard

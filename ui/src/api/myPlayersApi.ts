@@ -137,8 +137,20 @@ export function useUpdateMyPlayer(key: string) {
   })
 }
 
-export function useMyPlayerPolls(key: string | undefined) {
-  return useQuery({ queryKey: [...myPlayersKey, key, 'polls'], queryFn: () => listMyPlayerPolls(key as string), enabled: Boolean(key), retry: false })
+// docs/specs/146: the scoreboard ticker passes `enabled` and a longer `staleTime`; every other caller passes nothing.
+export interface ReadOptions {
+  enabled?: boolean
+  staleTime?: number
+}
+
+export function useMyPlayerPolls(key: string | undefined, options: ReadOptions = {}) {
+  return useQuery({
+    queryKey: [...myPlayersKey, key, 'polls'],
+    queryFn: () => listMyPlayerPolls(key as string),
+    enabled: Boolean(key) && (options.enabled ?? true),
+    ...(options.staleTime !== undefined && { staleTime: options.staleTime }),
+    retry: false,
+  })
 }
 
 export function useSaveMyPlayerPollAnswers(key: string) {
@@ -460,11 +472,12 @@ export const MATCH_REFRESH_MS = 60_000
 
 export const myPlayerMatchesKey = (key: string | undefined) => [...myPlayersKey, key, 'matches'] as const
 
-export function useMyPlayerMatches(key: string | undefined) {
+export function useMyPlayerMatches(key: string | undefined, options: ReadOptions = {}) {
   return useQuery({
     queryKey: myPlayerMatchesKey(key),
     queryFn: () => getMyPlayerMatches(key as string),
-    enabled: Boolean(key),
+    enabled: Boolean(key) && (options.enabled ?? true),
+    ...(options.staleTime !== undefined && { staleTime: options.staleTime }),
     retry: false,
     refetchInterval: (query) => ((query.state.data?.live.length ?? 0) > 0 ? MATCH_REFRESH_MS : false),
   })

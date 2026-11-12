@@ -5,6 +5,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../../components/Button'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
 import type { MyPlayer } from '../../../api/myPlayersApi'
+import { HubPageHeader } from './HubPageHeader'
 import { HUB, hubGoldButton, hubOutlineButton, hubPageHeading } from './hubStyle'
 import type { MyPlayerAgent } from '../../../api/myPlayersApi'
 import { blackAlpha, GOLD_DISC_GRADIENT } from '../../../brandTokens'
@@ -145,16 +146,16 @@ export function HubProfile({ player, page }: { player: MyPlayer; page: ProfilePa
   const editable = page !== 'agents' || player.canManageAgents
 
   const heading = (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-      <Typography component="h2" sx={hubPageHeading}>
-        {TITLE[page]}
-      </Typography>
-      {editable && (
-        <Button size="compact" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`${base}/${page}/edit`)} sx={hubGoldButton}>
-          Edit
-        </Button>
-      )}
-    </Box>
+    <HubPageHeader
+      title={TITLE[page]}
+      actions={
+        editable ? (
+          <Button size="compact" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`${base}/${page}/edit`)} sx={hubGoldButton}>
+            Edit
+          </Button>
+        ) : undefined
+      }
+    />
   )
 
   let body

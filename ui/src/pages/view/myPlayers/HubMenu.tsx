@@ -80,7 +80,9 @@ const barSx = {
   '@media (prefers-reduced-motion: no-preference)': { transition: 'background-color .15s, color .15s' },
 } as const
 
-export function HubMenu({ items, selectedId, counts, onSelect, levelKey, focusId }: HubMenuProps) {
+export function HubMenu({ items: allItems, selectedId, counts, onSelect, levelKey, focusId }: HubMenuProps) {
+  // docs/specs/145: a route-only item (Account, which moved to the header avatar) is never a row.
+  const items = allItems.filter((item) => item.inMenu !== false)
   const listRef = useRef<HTMLUListElement>(null)
   const [active, setActive] = useState<string | undefined>()
   // Keyed by the level so a stale tab stop from the other list is ignored.

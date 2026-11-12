@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -90,7 +91,7 @@ class PlayerStatsServiceImplTest {
         StatsScope.Competition expected = StatsScope.Competition.valueOf(competition);
         playerInClub();
         resolverReturns(expected, false);
-        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(competition), eq(false), any()))
+        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(competition), eq(false), any(), anyBoolean(), any()))
                 .thenReturn(List.of());
 
         PlayerStatsDto dto = get(competition);
@@ -104,7 +105,7 @@ class PlayerStatsServiceImplTest {
     void blankMeansNoFilter(String competition) {
         playerInClub();
         resolverReturns(null, false);
-        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(null), eq(false), any()))
+        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(null), eq(false), any(), anyBoolean(), any()))
                 .thenReturn(List.of());
 
         assertThat(get(competition).scope().competition()).isNull();
@@ -114,7 +115,7 @@ class PlayerStatsServiceImplTest {
     void nullMeansNoFilter() {
         playerInClub();
         resolverReturns(null, false);
-        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(null), eq(false), any()))
+        when(aggregateRepository.aggregate(eq(clubId), eq(playerId), any(), any(), any(), eq(null), eq(false), any(), anyBoolean(), any()))
                 .thenReturn(List.of());
 
         assertThat(get(null).scope().competition()).isNull();

@@ -165,7 +165,8 @@ public class MatchResultController {
             @PathVariable UUID matchId,
             @RequestBody(required = false) PublishResultRequest request) {
         boolean acknowledged = request != null && request.acknowledgedWarnings();
-        return ResponseEntity.ok(resultService.publish(authentication, clubId, matchId, acknowledged));
+        boolean showInPlayerHub = request == null || request.showInPlayerHubOrDefault();
+        return ResponseEntity.ok(resultService.publish(authentication, clubId, matchId, acknowledged, showInPlayerHub));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -173,6 +174,22 @@ public class MatchResultController {
     public ResponseEntity<MatchResultDto> unpublish(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(resultService.unpublish(authentication, clubId, matchId));
+    }
+
+    /** docs/specs/145: Show In Player Hub. 409 unless the result is published. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/result/player-visibility")
+    public ResponseEntity<MatchResultDto> showInPlayerHub(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        return ResponseEntity.ok(resultService.setPlayerVisibility(authentication, clubId, matchId, true));
+    }
+
+    /** docs/specs/145: Hide From Player Hub. 409 unless the result is published. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @DeleteMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/result/player-visibility")
+    public ResponseEntity<MatchResultDto> hideFromPlayerHub(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        return ResponseEntity.ok(resultService.setPlayerVisibility(authentication, clubId, matchId, false));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

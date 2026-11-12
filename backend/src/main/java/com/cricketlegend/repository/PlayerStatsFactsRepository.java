@@ -43,7 +43,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<InningsView> recentInnings(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return recentInnings(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /** The five most recent bowling spells (a bowler who bowled a ball or conceded a run), newest first. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -69,7 +84,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<SpellView> recentSpells(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return recentSpells(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /** Innings, runs and dismissals per actual batting position (rows without a position are left out). */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -94,7 +124,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<PositionView> positions(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return positions(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /** How the player's own innings ended, as stored ({@code how_out}), with a count each. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -114,7 +159,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<DismissalCountView> batterDismissals(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return batterDismissals(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /** The dismissals that name this player as the bowler ({@code bowler_result_player_id}), by how the batter was out. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -133,13 +193,28 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<DismissalCountView> bowlerDismissals(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return bowlerDismissals(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * The distinct season, league, own-side team (of this club), its section and competition type across the player's
      * counted appearances. Pass null for the four optional filters: the options are never narrowed by them.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct m.season_id as "seasonId",
                    m.league_id as "leagueId",
                    t.id as "teamId",
@@ -158,13 +233,46 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<FilterOptionView> filterOptions(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return filterOptions(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<FilterOptionView> filterOptions(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return filterOptions(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * The number of distinct published results with at least one counted appearance in the scope: the "based on N
      * results" line of the leaderboards. Pass null {@code playerId} for the whole club.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select count(distinct ap.mrid) from ap
             """, nativeQuery = true)
     long countResults(
@@ -175,7 +283,40 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default long countResults(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return countResults(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default long countResults(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return countResults(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * Docs/specs/088: the distinct (player, match) pairs of the club's counted appearances (the same {@link
@@ -195,7 +336,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<PlayerMatchView> countedPlayerMatches(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return countedPlayerMatches(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * Docs/specs/088: the matches of the club that have a published result, whatever its outcome (the result is then
@@ -229,7 +385,7 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
      * aggregate's highest score: more runs, a not-out innings first, then the most recent match), with the match, the
      * opponent and the balls faced when recorded. One row per player; {@code playerIds} must not be empty.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct on (ap.pid)
                    ap.pid as "playerId",
                    ap.match_id as "matchId",
@@ -262,14 +418,49 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("playerIds") Collection<UUID> playerIds);
+            @Param("playerIds") Collection<UUID> playerIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<BestInningsView> bestInnings(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return bestInnings(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<BestInningsView> bestInnings(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds) {
+        return bestInnings(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, false, null);
+    }
 
     /**
      * For each listed player, their best bowling innings in the scope (same key as the aggregate's best bowling: most
      * wickets, fewest runs, most balls, then the most recent match), with the match and the opponent; {@code balls} is
      * the balls bowled. One row per player; {@code playerIds} must not be empty.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select distinct on (ap.pid)
                    ap.pid as "playerId",
                    ap.match_id as "matchId",
@@ -301,14 +492,49 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("playerIds") Collection<UUID> playerIds);
+            @Param("playerIds") Collection<UUID> playerIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<BestInningsView> bestSpells(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return bestSpells(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<BestInningsView> bestSpells(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> playerIds) {
+        return bestSpells(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerIds, false, null);
+    }
 
     /**
      * How many counted matches each player played for each of the club's teams in the scope (the row's side picks the
      * team), so the standings can show the most frequent one as the player's team. Pass null {@code playerId} for the whole
      * club.
      */
-    @Query(value = PlayerStatsSql.APPEARANCES + """
+    @Query(value = PlayerStatsSql.APPEARANCES_WITH_REACH + """
             select ap.pid as "playerId", t.name as "teamName", count(distinct ap.mrid) as "total"
             from ap
             join match m on m.id = ap.match_id
@@ -324,7 +550,40 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId,
+            @Param("leagueReachRestricted") boolean leagueReachRestricted,
+            @Param("leagueReachIds") Collection<UUID> leagueReachIds);
+
+    /** The Player Hub scope without a league reach (docs/specs/145): the reach is unrestricted. */
+    default List<PlayerTeamView> playerTeams(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean playerVisibleOnly,
+            UUID matchId) {
+        return playerTeams(
+                clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, playerVisibleOnly, matchId, false, PlayerStatsSql.NO_REACH);
+    }
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<PlayerTeamView> playerTeams(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return playerTeams(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * docs/specs/115-player-match-list.md: the number of distinct counted matches of the player under the filters (the
@@ -341,7 +600,22 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("teamId") UUID teamId,
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
-            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default long matchCount(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds) {
+        return matchCount(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, false, null);
+    }
 
     /**
      * docs/specs/115: one page of the player's counted matches, one row per match (a derby player on both sides is one
@@ -396,7 +670,25 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("ascending") boolean ascending,
             @Param("limit") int limit,
-            @Param("offset") long offset);
+            @Param("offset") long offset,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<MatchHeaderView> matchPage(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            boolean ascending,
+            int limit,
+            long offset) {
+        return matchPage(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, ascending, limit, offset, false, null);
+    }
 
     /**
      * docs/specs/115: the player's counted batting rows (a batting row with {@code how_out} set and not {@code
@@ -429,7 +721,23 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("resultIds") Collection<UUID> resultIds);
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<MatchBattingView> matchBatting(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> resultIds) {
+        return matchBatting(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, resultIds, false, null);
+    }
 
     /** docs/specs/115: the player's bowling rows (every stored row; the builder decides which are spells) for the listed matches. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -456,7 +764,23 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("resultIds") Collection<UUID> resultIds);
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<MatchBowlingView> matchBowling(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> resultIds) {
+        return matchBowling(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, resultIds, false, null);
+    }
 
     /** docs/specs/115: the player's stored fielding credits, summed per match, for the listed matches. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -479,7 +803,23 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("resultIds") Collection<UUID> resultIds);
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<MatchFieldingView> matchFielding(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> resultIds) {
+        return matchFielding(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, resultIds, false, null);
+    }
 
     /** docs/specs/115: the awards won by the player's counted appearances, counted per match, for the listed matches. */
     @Query(value = PlayerStatsSql.APPEARANCES + """
@@ -500,7 +840,23 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("resultIds") Collection<UUID> resultIds);
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<MatchAwardView> matchAwards(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> resultIds) {
+        return matchAwards(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, resultIds, false, null);
+    }
 
     /**
      * docs/specs/117: for the listed matches, every stored bowling row of the player left-joined to the batting entries of
@@ -533,7 +889,256 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
-            @Param("resultIds") Collection<UUID> resultIds);
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /** The default scope: every counted appearance (no Player Hub flag), any match. */
+    default List<BowlingCreditView> bowlingCredits(
+            UUID clubId,
+            UUID playerId,
+            UUID seasonId,
+            UUID leagueId,
+            UUID teamId,
+            String competition,
+            boolean sectionRestricted,
+            Collection<UUID> sectionTeamIds,
+            Collection<UUID> resultIds) {
+        return bowlingCredits(clubId, playerId, seasonId, leagueId, teamId, competition, sectionRestricted, sectionTeamIds, resultIds, false, null);
+    }
+
+    /**
+     * docs/specs/147: the player's counted batting rows for the listed matches with what the Player Hub stats cards need and
+     * the match list lacks: the innings sequence (1 = first innings), the batting position, the fours and sixes, the bowler
+     * who dismissed the batter as recorded (null when none is named), the season, and the field facts ({@code fieldKnown}:
+     * the result or match names a playing area; {@code clubField}: that area is one of the club's own home fields). Ordered
+     * by match then innings sequence. Only stored columns are selected; every figure is the calculator's.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   i.sequence as "inningsSequence",
+                   be.position as "position",
+                   be.runs as "runs",
+                   case when\s""" + PlayerStatsSql.VALID_BALLS + """
+
+                        then be.balls end as "balls",
+                   be.fours as "fours",
+                   be.sixes as "sixes",
+                   be.how_out as "howOut",
+                   coalesce(nullif(trim(brp.display_name), ''),
+                            nullif(trim(concat_ws(' ', bper.first_name, bper.last_name)), '')) as "bowlerName",
+                   dm.season_id as "seasonId",
+                   (coalesce(dr.playing_area_id, dm.playing_area_id) is not null) as "fieldKnown",
+                   exists (select 1 from club_playing_area cpa
+                           where cpa.club_id = :clubId and cpa.is_home
+                             and cpa.playing_area_id = coalesce(dr.playing_area_id, dm.playing_area_id)) as "clubField",
+                   pa.id as "areaId",
+                   pa.name as "areaName"
+            from ap
+            join match dm on dm.id = ap.match_id
+            join match_result dr on dr.id = ap.mrid
+            left join playing_area pa on pa.id = coalesce(dr.playing_area_id, dm.playing_area_id)
+            join batting_entry be on be.result_player_id = ap.rpid
+            join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
+            left join result_player brp on brp.id = be.bowler_result_player_id
+            left join player_profile bpp on bpp.id = brp.player_profile_id
+            left join person bper on bper.id = bpp.person_id
+            where\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
+              and ap.mrid in (:resultIds)
+            order by ap.mrid, i.sequence, be.id
+            """, nativeQuery = true)
+    List<BattingDetailView> battingDetail(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /**
+     * docs/specs/147 amendment 2: the playing area of each listed counted match (null area when none is recorded) and whether
+     * it is one of the club's own home fields (the same rule as {@code battingDetail}). One row per match.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select distinct ap.mrid as "resultId",
+                   pa.id as "areaId",
+                   pa.name as "areaName",
+                   exists (select 1 from club_playing_area cpa
+                           where cpa.club_id = :clubId and cpa.is_home
+                             and cpa.playing_area_id = pa.id) as "clubField"
+            from ap
+            join match dm on dm.id = ap.match_id
+            join match_result dr on dr.id = ap.mrid
+            left join playing_area pa on pa.id = coalesce(dr.playing_area_id, dm.playing_area_id)
+            where ap.mrid in (:resultIds)
+            """, nativeQuery = true)
+    List<ResultVenueView> resultVenues(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /**
+     * docs/specs/147: the batters the player dismissed (batting rows that name the player as the bowler) in the listed
+     * matches: the batter's position, how the batter was out, and the name of our fielder when one is named (null for an
+     * opposition fielder or none). Which types a bowler is credited with is {@code DismissalType.isBowlerCredited()}, applied
+     * in the calculator.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select ap.mrid as "resultId",
+                   be.position as "position",
+                   be.how_out as "howOut",
+                   case when frp.opposition then null
+                        else coalesce(nullif(trim(frp.display_name), ''),
+                                      nullif(trim(concat_ws(' ', fper.first_name, fper.last_name)), '')) end as "fielderName"
+            from ap
+            join batting_entry be on be.bowler_result_player_id = ap.rpid
+            join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
+            left join result_player frp on frp.id = be.fielder_result_player_id
+            left join player_profile fpp on fpp.id = frp.player_profile_id
+            left join person fper on fper.id = fpp.person_id
+            where be.how_out is not null
+              and ap.mrid in (:resultIds)
+            order by ap.mrid, i.sequence, be.id
+            """, nativeQuery = true)
+    List<WicketDetailView> wicketDetail(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("resultIds") Collection<UUID> resultIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    /**
+     * docs/specs/147: the additive counters of the player per season (matches, batting innings, dismissals, runs, wickets) for
+     * the "Season by season" card. The caller passes a null {@code seasonId} so the Season filter is ignored; every other
+     * filter applies. Same counting rules as the aggregate (counted batting rows, stored wickets); the average is the
+     * calculator's.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            , per as (
+              select ap.mrid as mrid, ap.match_id as match_id,
+                     (select count(*) from batting_entry be
+                        join match_innings binn on binn.id = be.match_innings_id and binn.kind = 'REGULAR'
+                        where be.result_player_id = ap.rpid and\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+) as innings,
+                     (select count(*) from batting_entry be
+                        join match_innings binn on binn.id = be.match_innings_id and binn.kind = 'REGULAR'
+                        where be.result_player_id = ap.rpid and\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+
+                          and be.how_out not in ('NOT_OUT', 'RETIRED_NOT_OUT')) as dismissals,
+                     (select coalesce(sum(be.runs), 0) from batting_entry be
+                        join match_innings binn on binn.id = be.match_innings_id and binn.kind = 'REGULAR'
+                        where be.result_player_id = ap.rpid and\s""" + PlayerStatsSql.COUNTED_BATTING_ROW + """
+) as runs,
+                     (select coalesce(sum(bw.wickets), 0) from bowling_entry bw
+                        join match_innings bwinn on bwinn.id = bw.match_innings_id and bwinn.kind = 'REGULAR'
+                        where bw.result_player_id = ap.rpid) as wickets
+              from ap
+            )
+            select sm.season_id as "seasonId",
+                   count(distinct per.mrid) as "matches",
+                   coalesce(sum(per.innings), 0) as "innings",
+                   coalesce(sum(per.dismissals), 0) as "dismissals",
+                   coalesce(sum(per.runs), 0) as "runs",
+                   coalesce(sum(per.wickets), 0) as "wickets"
+            from per
+            join match sm on sm.id = per.match_id
+            group by sm.season_id
+            """, nativeQuery = true)
+    List<SeasonCountersView> seasonCounters(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerVisibleOnly") boolean playerVisibleOnly,
+            @Param("matchId") UUID matchId);
+
+    interface BattingDetailView {
+        UUID getResultId();
+
+        Integer getInningsSequence();
+
+        Integer getPosition();
+
+        Integer getRuns();
+
+        Integer getBalls();
+
+        Integer getFours();
+
+        Integer getSixes();
+
+        String getHowOut();
+
+        String getBowlerName();
+
+        UUID getSeasonId();
+
+        Boolean getFieldKnown();
+
+        Boolean getClubField();
+
+        UUID getAreaId();
+
+        String getAreaName();
+    }
+
+    interface ResultVenueView {
+        UUID getResultId();
+
+        UUID getAreaId();
+
+        String getAreaName();
+
+        Boolean getClubField();
+    }
+
+    interface WicketDetailView {
+        UUID getResultId();
+
+        Integer getPosition();
+
+        String getHowOut();
+
+        String getFielderName();
+    }
+
+    interface SeasonCountersView {
+        UUID getSeasonId();
+
+        Long getMatches();
+
+        Long getInnings();
+
+        Long getDismissals();
+
+        Long getRuns();
+
+        Long getWickets();
+    }
 
     interface MatchHeaderView {
         UUID getResultId();

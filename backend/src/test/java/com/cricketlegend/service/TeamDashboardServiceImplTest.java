@@ -186,14 +186,14 @@ class TeamDashboardServiceImplTest {
     void aTeamWithNothingCountedIsAnEmptyOkResponseThatStillDisclosesLeftOutResults() {
         inReach();
         teamInClub();
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(List.of());
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(List.of());
         TeamStatsBasisView basis = mock(TeamStatsBasisView.class);
         when(basis.getResultsNoBallBowled()).thenReturn(2L);
-        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(basis);
+        when(aggregateRepository.basis(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(basis);
 
         TeamDashboardDto dto = get(null);
 
-        verify(factsRepository, never()).dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyInt());
+        verify(factsRepository, never()).dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean(), anyInt());
         assertThat(dto.results()).isEmpty();
         assertThat(dto.basis().resultsNoBallBowled()).isEqualTo(2);
     }
@@ -205,15 +205,15 @@ class TeamDashboardServiceImplTest {
         UUID sectionTeam = UUID.randomUUID();
         resolverReturns(new StatsScope(clubId, null, null, teamId, Set.of(sectionTeam), StatsScope.Competition.FRIENDLY), false);
         teamInClub();
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(List.of(mock(TeamStatsAggregateView.class)));
-        when(factsRepository.dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyInt()))
+        when(factsRepository.dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean(), anyInt()))
                 .thenReturn(List.of());
 
         get("FRIENDLY");
 
         verify(factsRepository).dashboardResults(
-                eq(clubId), any(), any(), eq(teamId), eq("FRIENDLY"), eq(true), eq(List.of(sectionTeam)), eq(301));
+                eq(clubId), any(), any(), eq(teamId), eq("FRIENDLY"), eq(true), eq(List.of(sectionTeam)), eq(false), eq(301));
     }
 
     @Test
@@ -246,13 +246,13 @@ class TeamDashboardServiceImplTest {
     private void stubResults(int count) {
         inReach();
         teamInClub();
-        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(aggregateRepository.aggregate(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean()))
                 .thenReturn(List.of(mock(TeamStatsAggregateView.class)));
         List<TeamDashboardResultView> newestFirst = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             newestFirst.add(result(i));
         }
-        when(factsRepository.dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyInt()))
+        when(factsRepository.dashboardResults(any(), any(), any(), any(), any(), anyBoolean(), any(), anyBoolean(), anyInt()))
                 .thenReturn(newestFirst);
     }
 }

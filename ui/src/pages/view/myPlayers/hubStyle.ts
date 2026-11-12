@@ -39,16 +39,25 @@ export const hubGoldButton = {
   '&.Mui-focusVisible, &:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
 } as const
 
+// Secondary buttons on the dark console (owner, 2026-11-06): the same look as the Season dropdown beside them, not a small gold outline:
+// 44 px high, the cream hairline, the dark translucent fill, the display face. Gold stays for the filled primary (hubGoldButton) and for
+// accents such as the active dot.
 export const hubOutlineButton = {
-  color: HUB.gold,
-  borderColor: HUB.gold,
-  // Owner rule 2026-10-30: outlined buttons are white-filled app-wide, EXCEPT on this dark console where they stay transparent.
-  bgcolor: 'transparent',
+  color: HUB.cream,
+  borderColor: HUB.line,
+  bgcolor: blackAlpha(.28),
   borderRadius: '4px',
   alignSelf: 'flex-start',
-  '&:hover': { borderColor: HUB.gold, bgcolor: alpha(HUB.gold, 0.12), backgroundImage: 'none' },
-  '&.Mui-disabled': { bgcolor: 'transparent' },
-  '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
+  height: 44,
+  minHeight: 44,
+  px: 2,
+  fontFamily: HUB.display,
+  fontSize: 17,
+  fontWeight: 600,
+  letterSpacing: '0.06em',
+  '&:hover': { borderColor: HUB.sand, bgcolor: blackAlpha(.4), backgroundImage: 'none' },
+  '&.Mui-disabled': { bgcolor: blackAlpha(.2), borderColor: HUB.lineSoft, color: HUB.muted },
+  '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
 } as const
 
 export const darkFieldSx = {
@@ -68,7 +77,7 @@ export const darkFieldSx = {
   '& .MuiSelect-icon': { color: HUB.cream },
   '& .MuiCheckbox-root': { color: HUB.muted },
   '& .MuiCheckbox-root.Mui-checked': { color: HUB.gold },
-  '& .MuiButton-outlined': { color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', '&:hover': { bgcolor: alpha(HUB.gold, 0.12), backgroundImage: 'none' }, '&.Mui-disabled': { bgcolor: 'transparent' } },
+  '& .MuiButton-outlined': { color: HUB.cream, borderColor: HUB.line, bgcolor: blackAlpha(.28), '&:hover': { borderColor: HUB.sand, bgcolor: blackAlpha(.4), backgroundImage: 'none' }, '&.Mui-disabled': { bgcolor: blackAlpha(.2) } },
   '& .MuiInputBase-input:focus-visible, & .MuiCheckbox-root.Mui-focusVisible': { outline: 'none' },
 } as const
 

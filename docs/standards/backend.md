@@ -7,6 +7,7 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 - Controllers never touch repositories directly; services never return JPA entities across the controller boundary — DTOs only, mapped via MapStruct, never by hand.
 - No `System.out`/`System.err` — use the injected SLF4J `Logger`; enforced by ArchUnit's `NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS` (`LayeringRulesTest.noClassesAccessStandardStreams`).
 - `ddl-auto=validate`, always. Schema changes are a numbered Liquibase migration (`backend/src/main/resources/db/changelog/v1/NNN-description.sql`) in the same PR as the entity change — never split, never Hibernate auto-DDL.
+- **Never edit a migration that has been committed or run anywhere** (the owner's local database applies each one at startup): Liquibase stores a checksum and refuses to start if it changes. A fix or an addition is a NEW numbered migration (spec 145: `062` added the backfill after `061` had already run).
 - Business exceptions live in `com.cricketlegend.exception` and extend a fixed, documented set of HTTP-status base classes — `NotFoundException`, `ConflictException`, `ValidationException` — caught centrally by a `GlobalExceptionHandler` (`@RestControllerAdvice`). Exception → HTTP status matrix:
 
   | Exception | Status |
@@ -160,6 +161,14 @@ Import rules (spec 104):
 - **`PlayerMatchRowBuilder` (`service.support`, pure) is the only place a row's statuses, result and sums are decided.** SQL selects stored columns and `PlayerMatchFactsReader` maps raw rows to builder facts; the service, mapper and client decide nothing. It carries no access information, like `PlayerStatsCalculator`.
 - **The page query is an ordinary `LIMIT`/`OFFSET`, not the leaderboard ranking exception.** The set is bounded by one player, so no whole-set ranking is needed. `size` defaults to 20; above 100 (or below 1), a negative `page` or a `direction` other than `asc`/`desc` is a 400 (`ValidationException`), never clamped. The number of statements per page is fixed (count, page, batting, bowling, fielding, awards, plus the player and scope lookups) and pinned by a query-count test: no N+1.
 - **Parity rule.** The sum of the rows equals the same player's `PlayerStatsDto` totals for the same filters (matches, batting, bowling, fielding, awards, record), enforced by `PlayerMatchListParityIntegrationTest`. A change to a counting rule or to the builder must keep it passing.
+
+## Player Hub stats reads (specs 103, 116, 117 as read by `docs/specs/147-player-hub-stats.md`)
+
+- **Same calculators, held player only.** `MePlayerStatsController` (`/api/v1/me/players/{playerKey}/stats`, `/stats/innings`, `/team-stats`, `/leaderboards/{batting|bowling|fielding|standing|awards|filters}`) resolves the held player with `MyPlayerAccess.resolve` first; club and player come from the link, never the request. Every figure is a `PlayerStatsCalculator` / `TeamStatsCalculator` figure; there is no second copy of a counting rule.
+- **Flagged results only on the team SQL too:** only published results with Show In Player Hub on count, in every Hub read, including the team aggregates and the other players' leaderboard figures.
+- **Leaderboard reach:** `PlayerStatsSql.APPEARANCES_WITH_REACH` is `APPEARANCES` plus the one `LEAGUE_REACH` predicate (`m.league_id in (:leagueReachIds)`, off when `leagueReachRestricted` is false, which every manager read passes). Only the leaderboard queries use it; the empty-reach id is `NO_REACH`.
+- **Drill cap:** history blocks and `stats/innings` cover the newest `HISTORY_CAP` (300) matches and say `truncated`; paging and the cut happen on the server.
+- **`HubRankingPolicy.allowsRankings(clubId)`** (today always true, owner amendment 2026-11-07) is the one place a ranking is switched off; `standing`, `teamFieldingRank`, the standing card, the tables and the awards are all filled through it. With it off the tables are empty and the standing has no lines, never a 404. Awards leaders are returned only for a season that has ended.
 
 ## Leaderboard settings (spec 103)
 

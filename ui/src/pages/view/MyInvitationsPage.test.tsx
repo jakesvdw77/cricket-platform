@@ -93,12 +93,12 @@ describe('MyInvitationsPage', () => {
     expect(await screen.findByText('We could not do that. The invitation may have expired or been cancelled.')).toBeInTheDocument()
   })
 
-  it('shows the empty state and Back to players', async () => {
+  it('shows the empty state and Back to account', async () => {
     setup([])
 
     expect(await screen.findByText('No invitations waiting.')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Back to players' }))
-    expect(await screen.findByTestId('location')).toHaveTextContent('/account')
+    await userEvent.click(screen.getByRole('button', { name: 'Back to account' }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/account/options')
   })
 
   it('shows an error when the invitations cannot be loaded', async () => {

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player Hub results: round 1 (three flip patterns)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g900:#0b2e1d; --g800:#103a26; --g700:#17502f; --g600:#1f6b3f;
+    --cream:#f6f1e3; --sand:#e0d5b4; --gold:#e0b44f; --red:#c8363d; --ink:#0d1f15;
+    --muted:rgba(246,241,227,.66); --line:rgba(246,241,227,.16);
+    --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#1b1f1c; color:var(--cream); font-family:var(--body); }
+  header.page { padding:24px 24px 8px; max-width:1300px; margin:0 auto; }
+  header.page h1 { font-family:var(--disp); font-size:34px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  header.page p { margin:0; color:var(--muted); max-width:900px; line-height:1.5; }
+  .row { display:flex; gap:28px; padding:20px 24px 60px; max-width:1300px; margin:0 auto; flex-wrap:wrap; justify-content:center; }
+  figure { margin:0; width:375px; }
+  figcaption { font-family:var(--disp); font-size:20px; letter-spacing:.06em; text-transform:uppercase; margin:0 0 4px; }
+  figcaption + p { margin:0 0 12px; color:var(--muted); font-size:14px; line-height:1.45; min-height:62px; }
+  .phone { width:375px; height:740px; border-radius:34px; border:8px solid #000; overflow:hidden; position:relative;
+    background:linear-gradient(180deg,var(--g800),var(--g900)); box-shadow:0 20px 60px rgba(0,0,0,.5); display:flex; flex-direction:column; }
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px 10px; border-bottom:1px solid var(--line); flex:none; }
+  .bar b { font-family:var(--disp); font-size:19px; letter-spacing:.08em; text-transform:uppercase; }
+  .bar span { color:var(--muted); font-size:13px; margin-left:auto; }
+  .back { font-size:18px; opacity:.8; }
+  .stage { flex:1; min-height:0; position:relative; }
+  /* ---- A: horizontal snap deck ---- */
+  .stageA { display:flex; flex-direction:column; }
+  .deckbar { flex:none; display:flex; align-items:center; justify-content:space-between; padding:8px 16px 4px; }
+  .count { font-family:var(--disp); font-size:18px; letter-spacing:.1em; color:var(--muted); }
+  .count b { color:var(--cream); font-size:22px; }
+  /* Peek: each card is 88% wide with a gap, so the next card shows at the right edge. */
+  .deck { flex:1; min-height:0; display:flex; gap:12px; padding:6px 6% 34px; scroll-padding:0 6%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; align-items:stretch; }
+  .deck::-webkit-scrollbar { display:none; }
+  .deck .card { flex:0 0 88%; scroll-snap-align:center; background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:22px; overflow:hidden; }
+  /* ---- B: vertical snap ---- */
+  .vsnap { height:100%; overflow-y:auto; scroll-snap-type:y mandatory; scrollbar-width:none; }
+  .vsnap::-webkit-scrollbar { display:none; }
+  .vsnap .card { height:100%; scroll-snap-align:start; }
+  /* ---- C: hero + carousel ---- */
+  .hc { height:100%; overflow-y:auto; scrollbar-width:none; }
+  .hc::-webkit-scrollbar { display:none; }
+  .hc .hero { min-height:430px; }
+  .carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 16px 18px; scrollbar-width:none; }
+  .carousel::-webkit-scrollbar { display:none; }
+  .carousel .card { flex:0 0 82%; scroll-snap-align:center; height:330px; border:1px solid var(--line); border-radius:20px; background:rgba(0,0,0,.22); padding:16px; }
+  .sect { font-family:var(--disp); letter-spacing:.1em; text-transform:uppercase; font-size:15px; color:var(--sand); padding:6px 16px 10px; }
+  /* ---- cards ---- */
+  .card { padding:22px 20px 26px; display:flex; flex-direction:column; }
+  .kick { font-family:var(--disp); font-size:15px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+  .big { font-family:var(--disp); font-weight:700; line-height:.9; letter-spacing:.01em; }
+  .sentence { font-size:17px; line-height:1.35; margin:10px 0 0; }
+  .sentence b { color:var(--gold); font-weight:600; }
+  .muted { color:var(--muted); }
+  .center { align-items:center; text-align:center; }
+  .grow { flex:1; display:flex; align-items:center; justify-content:center; }
+  .chips { display:flex; gap:8px; margin-top:14px; }
+  .chip { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-family:var(--disp); font-size:20px; font-weight:700; color:var(--ink); }
+  .chip.w { background:var(--gold); } .chip.l { background:#7b3a3a; color:var(--cream); } .chip.t { background:var(--sand); }
+  .chipcap { font-size:12px; color:var(--muted); text-align:center; margin-top:4px; width:44px; }
+  .banner { border-radius:18px; padding:14px 16px; background:linear-gradient(135deg,var(--g600),var(--g700)); border:1px solid var(--line); }
+  .banner .t { font-family:var(--disp); font-size:26px; letter-spacing:.03em; text-transform:uppercase; line-height:1; }
+  .score { display:flex; justify-content:space-between; font-size:15px; margin-top:8px; }
+  .score b { font-family:var(--disp); font-size:20px; font-weight:600; }
+  .star { color:var(--gold); }
+  .dots { position:absolute; left:0; right:0; bottom:12px; display:flex; justify-content:center; gap:7px; pointer-events:none; }
+  .dots i { width:7px; height:7px; border-radius:50%; background:var(--line); }
+  .dots i.on { background:var(--gold); width:20px; border-radius:6px; }
+  .arrows button, .jump { background:rgba(0,0,0,.35); color:var(--cream); border:1px solid var(--line); border-radius:12px; width:44px; height:44px; font-size:18px; cursor:pointer; }
+  .jump { width:auto; padding:0 14px; font-family:var(--disp); letter-spacing:.08em; text-transform:uppercase; font-size:15px; }
+  .replay { background:none; border:0; color:var(--gold); text-decoration:underline; cursor:pointer; font:inherit; font-size:13px; padding:0; margin-left:6px; }
+  .hint { position:absolute; left:0; right:0; bottom:34px; text-align:center; font-size:12px; color:var(--muted); pointer-events:none; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .tile { border:1px solid var(--line); border-radius:16px; padding:12px; background:rgba(0,0,0,.2); }
+  .tile .big { font-size:40px; } .tile small { color:var(--muted); display:block; margin-top:4px; }
+  .legend { display:flex; gap:14px; font-size:13px; color:var(--muted); margin-top:8px; justify-content:center; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  svg text { font-family:var(--disp); fill:var(--cream); }
+  .draw { stroke-dasharray:1000; stroke-dashoffset:1000; animation:draw 1.4s ease forwards; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  @media (prefers-reduced-motion:reduce) { .draw { animation:none; stroke-dashoffset:0; } }
+  .index { display:grid; gap:8px; margin-top:12px; }
+  .index button { text-align:left; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:14px; color:var(--cream); padding:12px 14px; font-size:15px; min-height:44px; cursor:pointer; }
+  .notes { max-width:1300px; margin:0 auto; padding:0 24px 40px; color:var(--muted); line-height:1.55; }
+  .notes h2 { font-family:var(--disp); letter-spacing:.06em; text-transform:uppercase; color:var(--cream); font-size:22px; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Player Hub results: round 1</h1>
+  <p>Docs spec 145. The same player (an invented U15 batter) and the same data in three ways to flip. All three are interactive: swipe or scroll inside the phone, or use the arrows. Charts here are hand-drawn SVG (no chart library). Tell me which pattern, or which parts of which, to take into round 2.</p>
+</header>
+
+<div class="row">
+  <figure>
+    <figcaption>A. Swipe deck</figcaption>
+    <p>One idea per card, swipe sideways. Round 1b cues: the next card peeks at the edge, a one-time nudge on first open, and a position counter. <button class="replay" id="replayA">Replay the first-visit nudge</button></p>
+    <div class="phone" id="phoneA"></div>
+  </figure>
+  <figure>
+    <figcaption>B. Vertical snap</figcaption>
+    <p>One idea per screen, scrolling up and down with snapping. The most natural thumb gesture; reads like a story.</p>
+    <div class="phone" id="phoneB"></div>
+  </figure>
+  <figure>
+    <figcaption>C. Hero plus carousel</figcaption>
+    <p>A big hero first, then a row of cards to flip through, then the list of all results. Fewer swipes to get the headline.</p>
+    <div class="phone" id="phoneC"></div>
+  </figure>
+</div>
+
+<section class="notes">
+  <h2>What to look for</h2>
+  <p><b>Same content in each:</b> season hero (the player first), the latest result as a banner with the player's own performance as the one big figure, the last five results as a streak, the season runs as a line that draws itself, the team season as a ring, then older results. The index is how a parent jumps to a match in A and C.</p>
+  <p><b>Not shown yet:</b> desktop layout, motion polish, empty and low-data states, the share-card idea, a table alternative for each chart (all in later rounds).</p>
+</section>
+
+<script>
+const P = { name:'S. Varma', team:'Irene Villagers U15' };
+const results = [
+  { opp:'Pretoria A', when:'Sat 17 Oct', res:'W', line:'Pretoria A won by 8 wickets', ours:'114/9 (30.0)', theirs:'116/2 (17.4)', mine:'46*', story:'46 not out off 68 balls, 7 fours', pom:false, ourWon:false },
+  { opp:'Hillcrest',  when:'Sat 10 Oct', res:'W', line:'Irene Villagers won by 31 runs', ours:'168/6 (30.0)', theirs:'137/9 (30.0)', mine:'52', story:'Top score in the win, a first fifty', pom:true, ourWon:true },
+  { opp:'Eagles',     when:'Sat 3 Oct',  res:'L', line:'Eagles won by 4 wickets', ours:'121/8 (30.0)', theirs:'122/6 (27.1)', mine:'2/21', story:'Two wickets with the new ball', pom:false, ourWon:false },
+  { opp:'Northside',  when:'Sat 26 Sep', res:'W', line:'Irene Villagers won by 6 wickets', ours:'140/4 (24.0)', theirs:'139/10 (29.2)', mine:'31', story:'A steady 31 to settle the chase', pom:false, ourWon:true },
+  { opp:'Pretoria A', when:'Sat 19 Sep', res:'T', line:'Match tied', ours:'150/7 (30.0)', theirs:'150/9 (30.0)', mine:'18', story:'18 and a catch in a tie', pom:false, ourWon:false },
+];
+const runs = [18, 31, 2, 52, 46];   // oldest to newest (illustration)
+const streak = ['W','L','W','W','T'];
+
+/* ---------- tiny SVG chart helpers (this is the whole "library") ---------- */
+function ring(w, l, t, size=190) {
+  const total = w + l + t, r = size/2 - 14, c = 2*Math.PI*r;
+  const seg = (n, off, colour) => `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colour}" stroke-width="16" stroke-linecap="butt"
+    stroke-dasharray="${(n/total)*c - 3} ${c}" stroke-dashoffset="${-off}" transform="rotate(-90 ${size/2} ${size/2})"/>`;
+  return `<svg width="${size}" height="${size}" role="img" aria-label="${w} won, ${l} lost, ${t} tied">
+    ${seg(w, 0, '#e0b44f')}${seg(l, (w/total)*c, '#9d4a4a')}${seg(t, ((w+l)/total)*c, '#e0d5b4')}
+    <text x="50%" y="52%" text-anchor="middle" font-size="58" font-weight="700">${w}</text>
+    <text x="50%" y="68%" text-anchor="middle" font-size="15" style="letter-spacing:.14em;fill:rgba(246,241,227,.66)">WON OF ${total}</text></svg>`;
+}
+function line(vals, w=320, h=170) {
+  const pad = 22, max = Math.max(...vals) * 1.15, step = (w - pad*2) / (vals.length - 1);
+  const pts = vals.map((v, i) => [pad + i*step, h - pad - (v/max)*(h - pad*2)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const area = d + ` L ${pts.at(-1)[0]} ${h-pad} L ${pts[0][0]} ${h-pad} Z`;
+  return `<svg width="${w}" height="${h}" role="img" aria-label="Runs in the last ${vals.length} innings: ${vals.join(', ')}">
+    <path d="${area}" fill="rgba(224,180,79,.16)"/>
+    <path class="draw" d="${d}" fill="none" stroke="#e0b44f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i===pts.length-1?7:4.5}" fill="${i===pts.length-1?'#f6f1e3':'#e0b44f'}"/>
+      <text x="${p[0]}" y="${p[1]-12}" text-anchor="middle" font-size="16" font-weight="600">${vals[i]}</text>`).join('')}</svg>`;
+}
+function bars(items, w=320, h=150) {
+  const max = Math.max(...items.map(i => i.v)), bw = 38, gap = (w - items.length*bw) / (items.length + 1);
+  return `<svg width="${w}" height="${h}" role="img" aria-label="${items.map(i => i.k + ' ' + i.v).join(', ')}">
+    ${items.map((it, i) => { const bh = (it.v/max)*(h-44), x = gap + i*(bw+gap);
+      return `<rect x="${x}" y="${h-28-bh}" width="${bw}" height="${bh}" rx="9" fill="${it.hi?'#e0b44f':'rgba(246,241,227,.28)'}"/>
+      <text x="${x+bw/2}" y="${h-34-bh}" text-anchor="middle" font-size="16" font-weight="600">${it.v}</text>
+      <text x="${x+bw/2}" y="${h-8}" text-anchor="middle" font-size="13" style="fill:rgba(246,241,227,.66)">${it.k}</text>`; }).join('')}</svg>`;
+}
+const streakHtml = () => `<div class="chips">${streak.map((s, i) => `<div><div class="chip ${s.toLowerCase()}">${s}</div><div class="chipcap">${results[streak.length-1-i]?.mine ?? ''}</div></div>`).join('')}</div>`;
+
+/* ---------- cards ---------- */
+const cards = {
+  hero: () => `<div class="card hero">
+    <div class="kick">Season 2026 · ${P.team}</div>
+    <div class="big" style="font-size:104px;margin-top:14px">212</div>
+    <div class="sentence"><b>runs</b> in 7 matches for ${P.name}, 9 wickets and 4 catches.</div>
+    <div class="muted" style="margin-top:6px;font-size:14px">Best: 52 against Hillcrest · average 35.3</div>
+    <div class="kick" style="margin-top:22px">Last five matches</div>${streakHtml()}
+    <div class="muted" style="font-size:12px;margin-top:6px">oldest to newest · the player's score under each</div>
+  </div>`,
+  latest: () => { const r = results[0]; return `<div class="card">
+    <div class="kick">Latest result · ${r.when}</div>
+    <div class="banner" style="margin-top:12px"><div class="t">${r.line}</div>
+      <div class="score"><span>${P.team}</span><b>${r.ours}</b></div>
+      <div class="score"><span>${r.opp}</span><b>${r.theirs}</b></div></div>
+    <div class="kick" style="margin-top:22px">${P.name}</div>
+    <div class="big" style="font-size:92px;margin-top:6px">${r.mine}</div>
+    <div class="sentence">${r.story}.</div>
+    <div class="muted" style="margin-top:auto;font-size:13px">Tap Jump To for the full scorecard.</div>
+  </div>`; },
+  form: () => `<div class="card center">
+    <div class="kick">Runs this season</div>
+    <div class="sentence" style="text-align:center">Up <b>3 innings in a row</b>. Your best run of form this year.</div>
+    <div class="grow">${line(runs)}</div>
+    <div class="legend"><span><i style="background:#e0b44f"></i>runs per innings</span><span>oldest → newest</span></div>
+  </div>`,
+  team: () => `<div class="card center">
+    <div class="kick">The team's season</div>
+    <div class="grow">${ring(4, 2, 1)}</div>
+    <div class="legend"><span><i style="background:#e0b44f"></i>Won 4</span><span><i style="background:#9d4a4a"></i>Lost 2</span><span><i style="background:#e0d5b4"></i>Tied 1</span></div>
+    <div class="sentence" style="text-align:center">Won <b>4 of 7</b>. ${P.name} scored in all four wins.</div>
+  </div>`,
+  bowl: () => `<div class="card center">
+    <div class="kick">Wickets by match</div>
+    <div class="grow">${bars([{k:'Pre',v:0},{k:'Hill',v:3},{k:'Eag',v:2,hi:true},{k:'North',v:1},{k:'Pre',v:3}])}</div>
+    <div class="grid" style="width:100%"><div class="tile"><div class="big">9</div><small>wickets</small></div><div class="tile"><div class="big">4</div><small>catches</small></div></div>
+  </div>`,
+  result: (i) => { const r = results[i]; return `<div class="card">
+    <div class="kick">${r.when} · v ${r.opp}</div>
+    <div class="banner" style="margin-top:12px"><div class="t">${r.line}</div>
+      <div class="score"><span>${P.team}</span><b>${r.ours}</b></div><div class="score"><span>${r.opp}</span><b>${r.theirs}</b></div></div>
+    <div class="kick" style="margin-top:22px">${P.name} ${r.pom ? '<span class="star">★ Player of the match</span>' : ''}</div>
+    <div class="big" style="font-size:84px;margin-top:6px">${r.mine}</div><div class="sentence">${r.story}.</div>
+  </div>`; },
+};
+const order = [cards.hero, cards.latest, cards.form, cards.team, cards.bowl, () => cards.result(1), () => cards.result(2), () => cards.result(3)];
+const names = ['Season','Latest result','Runs this season','Team season','Wickets','v Hillcrest','v Eagles','v Northside'];
+
+const bar = (t) => `<div class="bar"><span class="back">‹</span><b>${t}</b><span>${P.name}</span></div>`;
+const dotsHtml = (n, on) => `<div class="dots">${Array.from({length:n}, (_, i) => `<i class="${i===on?'on':''}"></i>`).join('')}</div>`;
+
+/* ---------- A: swipe deck ---------- */
+function mountA() {
+  const el = document.getElementById('phoneA');
+  const total = order.length;
+  el.innerHTML = bar('Results') + `<div class="stage stageA">
+    <div class="deckbar"><div class="count" id="countA" aria-live="polite"><b>1</b> / ${total}</div><button class="jump" id="jumpA">Jump to</button></div>
+    <div class="deck" id="deckA" role="region" aria-label="Results cards" tabindex="0">${order.map(f => f()).join('')}</div>
+    ${dotsHtml(total, 0)}</div>`;
+  const deck = el.querySelector('#deckA'), dots = el.querySelectorAll('.dots i'), count = el.querySelector('#countA');
+  const step = () => deck.children[0].offsetWidth + 12;
+  const current = () => Math.max(0, Math.min(total - 1, Math.round(deck.scrollLeft / step())));
+  const sync = () => { const i = current(); dots.forEach((d, k) => d.classList.toggle('on', k === i)); count.innerHTML = `<b>${i + 1}</b> / ${total}`; };
+  deck.addEventListener('scroll', sync);
+  deck.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') deck.scrollTo({ left: step() * (current() + 1), behavior:'smooth' }); if (e.key === 'ArrowLeft') deck.scrollTo({ left: step() * (current() - 1), behavior:'smooth' }); });
+  // One-time nudge on first open: the deck slides a little to the left and back, so it is clear there is more. Skipped for reduced motion
+  // and cancelled the moment the user touches it. In the real build it runs once per device (stored), here it also replays on request.
+  let nudging = false;
+  const cancel = () => { nudging = false; };
+  ['pointerdown', 'wheel', 'keydown'].forEach(ev => deck.addEventListener(ev, cancel, { passive: true }));
+  window.nudgeA = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    deck.scrollLeft = 0; nudging = true; deck.style.scrollSnapType = 'none';
+    const start = performance.now(), dur = 1100, amp = 64;
+    const frame = (t) => {
+      if (!nudging) { deck.style.scrollSnapType = 'x mandatory'; return; }
+      const p = Math.min((t - start) / dur, 1);
+      deck.scrollLeft = amp * Math.sin(Math.PI * p) ** 2;
+      if (p < 1) requestAnimationFrame(frame); else { deck.scrollLeft = 0; deck.style.scrollSnapType = 'x mandatory'; nudging = false; }
+    };
+    requestAnimationFrame(frame);
+  };
+  setTimeout(window.nudgeA, 900);
+  document.getElementById('replayA').onclick = window.nudgeA;
+  el.querySelector('#jumpA').onclick = () => {
+    const stage = el.querySelector('.stage');
+    const sheet = document.createElement('div'); sheet.className = 'card'; sheet.style.cssText = 'position:absolute;inset:0;background:var(--g900);z-index:5;overflow:auto';
+    sheet.innerHTML = `<div class="kick">Jump to</div><div class="index">${names.map((n, i) => `<button data-i="${i}">${i+1}. ${n}</button>`).join('')}</div>`;
+    sheet.querySelectorAll('button').forEach(b => b.onclick = () => { deck.scrollTo({ left: step() * b.dataset.i, behavior:'smooth' }); sheet.remove(); });
+    stage.appendChild(sheet);
+  };
+}
+/* ---------- B: vertical snap ---------- */
+function mountB() {
+  const el = document.getElementById('phoneB');
+  el.innerHTML = bar('Results') + `<div class="stage"><div class="vsnap">${order.map(f => f()).join('')}</div><div class="hint">scroll ↑ ↓</div></div>`;
+}
+/* ---------- C: hero + carousel ---------- */
+function mountC() {
+  const el = document.getElementById('phoneC');
+  const small = (i) => { const r = results[i]; return `<div class="card" style="padding:0">
+    <div class="kick">${r.when}</div><div class="t" style="font-family:var(--disp);font-size:22px;text-transform:uppercase;margin-top:6px;line-height:1.05">v ${r.opp}</div>
+    <div class="muted" style="font-size:14px;margin-top:4px">${r.line}</div>
+    <div class="big" style="font-size:64px;margin-top:14px">${r.mine}</div><div class="sentence" style="font-size:15px">${r.story}.</div></div>`; };
+  const chartCard = (inner, t) => `<div class="card center" style="padding:0"><div class="kick">${t}</div><div class="grow">${inner}</div></div>`;
+  el.innerHTML = bar('Results') + `<div class="stage"><div class="hc">
+    ${cards.hero()}
+    <div class="sect">Flip through</div>
+    <div class="carousel">
+      <div class="card">${small(0).replace('class="card" style="padding:0"','style="padding:0"')}</div>
+      <div class="card">${chartCard(line(runs, 250, 150), 'Runs this season')}</div>
+      <div class="card">${chartCard(ring(4, 2, 1, 170), 'Team season')}</div>
+      <div class="card">${small(1).replace('class="card" style="padding:0"','style="padding:0"')}</div>
+    </div>
+    <div class="sect">All results</div>
+    <div class="index" style="padding:0 16px 24px">${results.map(r => `<button>${r.when} · v ${r.opp}<br><span class="muted">${r.line} · ${r.mine}</span></button>`).join('')}</div>
+  </div></div>`;
+}
+mountA(); mountB(); mountC();
+</script>
+</body>
+</html>

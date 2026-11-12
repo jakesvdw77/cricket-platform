@@ -66,7 +66,7 @@ describe('HubMenu', () => {
 
     await user.tab()
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'updates' }))
+    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'results' }))
     await user.click(screen.getByRole('button', { name: /^Profile/ }))
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'profile' }))
   })
@@ -105,8 +105,10 @@ describe('HubMenu', () => {
     const availability = screen.getByRole('button', { name: 'Availability, 2 open' })
     expect(availability).toHaveTextContent('2Availability')
     expect(availability).not.toHaveTextContent('open')
-    const account = screen.getByRole('button', { name: 'Account, 3 new, opens sub menu' })
-    expect(account).toHaveTextContent('3Account')
+    // Account is route-only now (the avatar menu carries its counts); its pages still bubble their own pill.
+    const account = HUB_NAV.find((item) => item.id === 'account') as HubNavItem
+    render(<HubMenu items={account.children as HubNavItem[]} counts={{ openPolls: 2, invitations: 1, linkRequests: 2 }} onSelect={vi.fn()} levelKey="account" />)
+    expect(screen.getByRole('button', { name: 'Invitations, 1' })).toHaveTextContent('1Invitations')
   })
 
   it('shows a dashed Soon pill on a Soon row, and none on a live one', () => {

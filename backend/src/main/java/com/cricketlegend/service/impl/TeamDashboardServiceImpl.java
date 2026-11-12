@@ -68,6 +68,20 @@ public class TeamDashboardServiceImpl implements TeamDashboardService {
         // 404 for an unknown or other-club team, season or league; 403 for a team outside a section-scoped caller's reach.
         StatsScopeResolver.Resolved resolved =
                 scopeResolver.resolve(authentication, clubId, seasonId, leagueId, teamId, null, competitionFilter);
+        return read(clubId, teamId, seasonId, leagueId, resolved);
+    }
+
+    /** docs/specs/147: the same series for the Player Hub scope (only results a manager switched on; no section reach). */
+    @Override
+    @Transactional(readOnly = true)
+    public TeamDashboardDto getForHeldPlayer(
+            UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScope.Competition competition) {
+        StatsScope scope = scopeResolver.resolveForHeldPlayer(clubId, seasonId, leagueId, teamId, null, competition);
+        return read(clubId, teamId, seasonId, leagueId, new StatsScopeResolver.Resolved(scope, false));
+    }
+
+    private TeamDashboardDto read(
+            UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, StatsScopeResolver.Resolved resolved) {
         StatsScope scope = resolved.scope();
         Team team = teamRepository
                 .findById(teamId)
@@ -81,11 +95,12 @@ public class TeamDashboardServiceImpl implements TeamDashboardService {
         if (!resolved.nothingInReach()) {
             List<UUID> sectionTeams = StatsScopeResolver.sectionTeamParameter(scope);
             List<TeamStatsAggregateView> rows = aggregateRepository.aggregate(
-                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams);
+                    clubId, scope.seasonId(), scope.leagueId(), teamId, competition, scope.sectionRestricted(), sectionTeams,
+                    scope.playerVisibleOnly());
             if (rows.isEmpty()) {
                 Long noBall = aggregateRepository
                         .basis(clubId, scope.seasonId(), scope.leagueId(), teamId, competition,
-                                scope.sectionRestricted(), sectionTeams)
+                                scope.sectionRestricted(), sectionTeams, scope.playerVisibleOnly())
                         .getResultsNoBallBowled();
                 counters = TeamStatsCountersReader.empty(noBall == null ? 0L : noBall);
             } else {
@@ -100,6 +115,7 @@ public class TeamDashboardServiceImpl implements TeamDashboardService {
                                 competition,
                                 scope.sectionRestricted(),
                                 sectionTeams,
+                                scope.playerVisibleOnly(),
                                 DashboardLimits.HISTORY_READ)
                         .stream()
                         .map(TeamDashboardFactsReader::toFact)

@@ -1,10 +1,20 @@
 import type { ReactNode } from 'react'
-import { Box, ButtonBase, Typography } from '@mui/material'
+import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import MenuIcon from '@mui/icons-material/Menu'
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
+import { useLocation } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
 import { HUB, HUB_GROUND, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
+import { HubFooter } from './HubFooter'
+import { HubHeaderProvider, bandTitle, useHubHeaderState } from './HubPageHeader'
+import { PEEK_EASE, PEEK_IN_MS, PEEK_OUT_MS, VEIL_IN_MS, VEIL_OUT_MS, useHubMenuAutoCollapse } from './useHubMenuAutoCollapse'
+
+const MENU_WIDTH = 300
 
 // docs/specs/119 3C: the dark console frame shared by the player hub, the picker and Find players: a title bar, an optional
 // menu column on the left (desktop) or above (phone), the panel with the cricket scene, and an optional footer bar.
@@ -16,26 +26,37 @@ export interface HubFrameProps {
   children?: ReactNode
   maxWidth?: number
   testId?: string
-  // Below sm the title bar is slim by default; 'hidden' removes it (the hub shows its own headers there).
+  // Kept for a screen that wants no band on a phone; the Player Hub pages no longer use it (the band is the phone header too).
   phoneTitle?: 'slim' | 'hidden'
   // 'solid' (default) puts a mostly opaque dark ground behind the content so text is not fought by the page backdrop;
   // 'clear' lets the backdrop show through (sparse screens such as the player picker).
   panel?: 'solid' | 'clear'
   // docs/specs/121, opt-in (the Player Hub only; the picker and Find players keep their own height): the console fills the
-  // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1400px, 90vw) wide, the
+  // window (24 px clear at the bottom from sm, the whole screen on a phone, minimum 560 px), is min(1560px, 92vw) wide, the
   // menu column (260 px from sm, 300 px from md) and the content scroll independently, the content ground is the solid
   // HUB_GROUND, and the footer is pinned (56 px high, safe-area padding). With `fill` the caller decides what shows: `menu`
   // and `children` side by side, or `hideContent` to give the whole body to the menu (a phone's menu screens).
+  // Owner, 2026-11-06: 1 is the usual look, lower lets the page backdrop show through (the player picker uses 0.4).
+  glass?: number
   fill?: boolean
   hideContent?: boolean
   // A strip pinned to the top of the scrolling content (the phone's pill row), bleeding to the content edges.
   stickyTop?: ReactNode
+  // Stats pages: a tight content area (16 px 20 px from md) so the first row of cards is on screen without scrolling.
+  dense?: boolean
 }
 
-export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', fill = false, hideContent = false, stickyTop }: HubFrameProps) {
+export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testId, phoneTitle = 'slim', panel = 'solid', glass = 1, fill = false, hideContent = false, stickyTop, dense = false }: HubFrameProps) {
+  const header = useHubHeaderState()
+  const a = (v: number) => (v * glass).toFixed(3)
   const twoColumns = Boolean(menu) && !hideContent
+  // docs/specs/145 decision 12: from md up, on a content page (never the phone's main menu screen), the menu column collapses to an icon rail.
+  const wide = useMediaQuery(useTheme().breakpoints.up('md'))
+  const { pathname } = useLocation()
+  const autoCollapse = useHubMenuAutoCollapse(fill && twoColumns && wide, pathname)
+  const railed = autoCollapse.collapsed
   const columns = fill
-    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? '300px minmax(0, 1fr)' : '1fr' }
+    ? { xs: '1fr', sm: twoColumns ? '260px minmax(0, 1fr)' : '1fr', md: twoColumns ? (railed ? '1fr' : `${MENU_WIDTH}px minmax(0, 1fr)`) : '1fr' }
     : { xs: '1fr', md: menu ? 'minmax(250px, 36%) 1fr' : '1fr' }
   const content = (
     <Box
@@ -45,22 +66,27 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         position: 'relative',
         overflowX: 'hidden',
         overflowY: fill ? 'auto' : 'hidden',
+        // No browser scrollbar on the dark console (owner, 2026-11-06): a bright default track beside dark panels looked wrong. Scrolling by
+        // wheel, trackpad, touch and keyboard is unchanged; the Results page has its own floating section arrows.
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
         minHeight: 0,
-        bgcolor: panel === 'solid' ? (fill ? HUB_GROUND : 'rgba(5, 30, 22, 0.88)') : 'transparent',
-        p: { xs: '16px 16px', md: '36px 40px' },
+        bgcolor: panel === 'solid' ? `rgba(5, 30, 22, ${a(fill ? 0.92 : 0.88)})` : 'transparent',
+        p: { xs: '16px 16px', md: dense ? '16px 20px' : '36px 40px' },
         minWidth: 0,
       }}
     >
       {stickyTop && <Box sx={{ position: 'sticky', top: 0, zIndex: 2, mx: -2, mt: -2, mb: 2, bgcolor: HUB_GROUND }}>{stickyTop}</Box>}
-      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: 3.25 } }}>{children}</Box>
+      <Box sx={{ position: 'relative', display: 'grid', gap: { xs: 2.25, md: dense ? 2 : 3.25 } }}>{children}</Box>
     </Box>
   )
 
   return (
+    <HubHeaderProvider value={header.value}>
     <AccountShell
       bare
       fill={fill}
-      maxWidth={fill ? { xs: '100%', sm: 'min(1400px, 90vw)' } : maxWidth}
+      maxWidth={fill ? { xs: '100%', sm: 'min(1560px, 92vw)' } : maxWidth}
       testId={testId}
     >
       <Box
@@ -69,7 +95,7 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           borderRadius: '6px',
           overflow: 'hidden',
           // Translucent so the page's own cricket-scene backdrop shows through (no scene of its own).
-          background: 'linear-gradient(180deg, rgba(10,51,34,0.78) 0%, rgba(7,42,28,0.82) 55%, rgba(5,32,26,0.88) 100%)',
+          background: `linear-gradient(180deg, rgba(10,51,34,${a(0.78)}) 0%, rgba(7,42,28,${a(0.82)}) 55%, rgba(5,32,26,${a(0.88)}) 100%)`,
           backdropFilter: 'blur(1.5px)',
           display: 'grid',
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
@@ -83,56 +109,132 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
           }),
         }}
       >
-        <Box sx={{ gridRow: 1, px: { xs: 2, md: 2.5 }, py: { xs: 0.75, md: 2.25 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, justifyContent: 'flex-end' }}>
-          <Typography component="h1" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 22, md: 'clamp(24px, 3vw, 32px)' }, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, textAlign: 'right' }}>
-            {title}
-          </Typography>
+        {/* docs/specs/145 decision 15: the fixed page header. A HubPageHeader draws into the slot; `title` is the fallback text. */}
+        <Box sx={{ gridRow: 1, minHeight: { xs: 56, md: 64 }, boxSizing: 'border-box', px: { xs: 2, md: 2.5 }, borderBottom: `1px solid ${HUB.line}`, display: { xs: phoneTitle === 'hidden' ? 'none' : 'flex', sm: 'flex' }, alignItems: 'center', minWidth: 0 }}>
+          {railed && (
+            <ButtonBase
+              aria-label="Open menu"
+              aria-haspopup="true"
+              aria-expanded={autoCollapse.peek}
+              data-testid="hub-menu-button"
+              onMouseEnter={autoCollapse.hoverOpenPeek}
+              onMouseLeave={() => {
+                autoCollapse.cancelHoverOpen()
+                autoCollapse.closePeek()
+              }}
+              onFocus={autoCollapse.openPeek}
+              onClick={autoCollapse.togglePeek}
+              sx={{ flex: 'none', width: 44, height: 44, mr: 1.75, borderRadius: '4px', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.28), color: HUB.cream, '&:hover': { borderColor: HUB.sand, bgcolor: blackAlpha(0.4) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+            >
+              <MenuIcon />
+            </ButtonBase>
+          )}
+          <Box ref={header.setSlot} sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            {!header.claimed && (
+              <Typography component="h1" noWrap sx={bandTitle}>
+                {title}
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {/* Explicit rows: a hidden title bar (phone) must not let the body and the footer slip up a row, or the footer would float. */}
-        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
+        <Box sx={{ gridRow: 2, display: 'grid', gridTemplateColumns: columns, position: 'relative', ...(fill ? { gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 } : { minHeight: { md: 'max(560px, calc(100vh - 450px))' } }), minWidth: 0 }}>
           {fill && menu ? (
             <Box
               data-testid="hub-menu-column"
+              data-collapsed={railed}
+              {...(autoCollapse.active ? autoCollapse.columnProps : {})}
               sx={{
                 minHeight: 0,
-                overflowY: 'auto',
+                minWidth: 0,
+                overflow: 'hidden',
                 borderRight: { xs: 0, sm: `1px solid ${HUB.line}` },
                 display: 'flex',
                 flexDirection: 'column',
-                background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
+                ...(railed
+                  ? {
+                      // Collapsed: the menu is a panel OVER the content (nothing reflows), faded in by the menu button's hover, click or focus.
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: MENU_WIDTH,
+                      zIndex: 7,
+                      bgcolor: 'rgba(5, 30, 22, 0.98)',
+                      boxShadow: '12px 0 32px rgba(0,0,0,0.45)',
+                      // A slide: the panel glides in from the left edge over PEEK_IN_MS with an even ease and slides back out over PEEK_OUT_MS.
+                      opacity: autoCollapse.peek ? 1 : 0,
+                      transform: autoCollapse.peek ? 'translateX(0)' : 'translateX(-100%)',
+                      visibility: autoCollapse.peek ? 'visible' : 'hidden',
+                      '@media (prefers-reduced-motion: no-preference)': {
+                        transition: autoCollapse.peek
+                          ? `transform ${PEEK_IN_MS}ms ${PEEK_EASE}, opacity ${PEEK_IN_MS * 0.7}ms ease`
+                          : `transform ${PEEK_OUT_MS}ms ${PEEK_EASE}, opacity ${PEEK_OUT_MS}ms ease 80ms, visibility 0s linear ${PEEK_OUT_MS + 80}ms`,
+                      },
+                    }
+                  : { position: 'relative' }),
               }}
             >
-              {menu}
-              {/* Flexible space under the menu, as in the mockup. */}
-              <Box aria-hidden sx={{ flex: 1, display: { xs: 'none', sm: 'block' }, borderTop: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.22) }} />
+              <Box
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: `linear-gradient(180deg, transparent, ${blackAlpha(0.18)})`,
+                }}
+              >
+                {menu}
+                {/* Flexible space under the menu, as in the mockup. */}
+                <Box aria-hidden sx={{ flex: 1, display: { xs: 'none', sm: 'block' }, borderTop: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.22) }} />
+              </Box>
+              {autoCollapse.active && (
+                <ButtonBase
+                  aria-label={railed ? 'Keep menu open' : 'Collapse menu'}
+                  title={railed ? 'Keep menu open' : 'Collapse menu'}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (railed) autoCollapse.pin()
+                    else autoCollapse.toggle()
+                  }}
+                  sx={{ position: 'absolute', top: 10, left: 10, zIndex: 2, width: 32, height: 32, borderRadius: '50%', border: `1px solid ${HUB.line}`, bgcolor: blackAlpha(0.4), color: HUB.cream, '&:hover': { bgcolor: blackAlpha(0.6) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
+                >
+                  {railed ? <PushPinOutlinedIcon fontSize="small" /> : <ChevronLeftIcon />}
+                </ButtonBase>
+              )}
             </Box>
           ) : (
             menu
           )}
           {!hideContent && content}
+          {/* docs/specs/145 decision 12: the dissolve that hides the layout swap when the menu opens or closes (see useHubMenuAutoCollapse). */}
+          {autoCollapse.active && (
+            <Box
+              aria-hidden
+              data-testid="hub-menu-veil"
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 6,
+                pointerEvents: autoCollapse.veil === 'idle' ? 'none' : 'auto',
+                bgcolor: HUB_GROUND,
+                opacity: autoCollapse.veil === 'in' ? 1 : 0,
+                transition: autoCollapse.veil === 'in' ? `opacity ${VEIL_IN_MS}ms ease-in` : autoCollapse.veil === 'out' ? `opacity ${VEIL_OUT_MS}ms ease-out` : 'none',
+              }}
+            />
+          )}
         </Box>
 
-        {footer && (
-          <Box
-            component="footer"
-            sx={{
-              gridRow: 3,
-              alignSelf: 'end',
-              borderTop: `1px solid ${HUB.line}`,
-              px: { xs: 2, md: 2.5 },
-              py: 1,
-              bgcolor: blackAlpha(0.35),
-              display: 'flex',
-              alignItems: 'center',
-              ...(fill && { minHeight: 56, pb: 'max(8px, env(safe-area-inset-bottom))' }),
-            }}
-          >
-            {footer}
-          </Box>
-        )}
+        {/* docs/specs/146: the footer band holds the Back slot and, on a Player Hub page with something to show, the scoreboard ticker. */}
+        <HubFooter back={footer} fill={fill} />
       </Box>
     </AccountShell>
+    </HubHeaderProvider>
   )
 }
 

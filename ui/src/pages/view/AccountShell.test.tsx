@@ -53,43 +53,31 @@ describe('AccountShell on a desktop', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Back to club' }))
     expect(await screen.findByTestId('location')).toHaveTextContent('/admin')
   })
-
-  it('shows Switch profile only with more than one profile card', async () => {
-    const several = renderShell(access(), [players, riverside])
-    await userEvent.click(await screen.findByRole('button', { name: 'Switch profile' }))
-    expect(await screen.findByRole('menuitem', { name: /Club manager.*Riverside CC/ })).toBeInTheDocument()
-    several.unmount()
-
-    renderShell(access(), [players])
-    await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
-    expect(screen.queryByRole('button', { name: 'Switch profile' })).not.toBeInTheDocument()
-  })
 })
 
 describe('AccountShell on a phone', () => {
-  it('folds Back to club, Switch profile and Sign out into the Account menu with initials', async () => {
+  it('keeps Back to club as the link at the left and folds Sign out into the Account menu with initials', async () => {
     setPhone(true)
     renderShell(access({ clubAdminClubIds: ['c1'] }), [players, riverside])
 
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
     const trigger = screen.getByRole('button', { name: 'Account menu' })
     expect(trigger).toHaveTextContent('SS')
-    await vi.waitFor(() => expect(http.get).toHaveBeenCalledWith('/me/profiles'))
+    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
     await userEvent.click(trigger)
 
-    expect(await screen.findByRole('menuitem', { name: 'Back to club' })).toBeInTheDocument()
-    expect(await screen.findByRole('menuitem', { name: 'Switch profile' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Switch profile' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
     expect(logout).toHaveBeenCalledOnce()
   })
 
-  it('leaves out Back to club and Switch profile when they do not apply', async () => {
+  it('has Account and Sign out in the avatar menu, and nothing else, when there is no club to go back to', async () => {
     setPhone(true)
     renderShell(access())
     await vi.waitFor(() => expect(http.post).toHaveBeenCalledWith('/me/activate'))
 
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
 
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Sign out'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Account', 'Sign out'])
   })
 })

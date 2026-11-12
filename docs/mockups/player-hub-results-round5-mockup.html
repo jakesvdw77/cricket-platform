@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player Hub results: round 5 (result first, wide grid, menu timer)</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --g900:#0b2e1d; --g800:#103a26; --g700:#17502f; --cream:#f6f1e3; --sand:#e0d5b4; --gold:#e0b44f; --gold2:#f3cf7a; --loss:#9d4a4a; --ink:#0d1f15;
+    --muted:rgba(246,241,227,.66); --line:rgba(246,241,227,.16); --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif; }
+  * { box-sizing:border-box; } body { margin:0; background:#1b1f1c; color:var(--cream); font-family:var(--body); }
+  .page { max-width:1300px; margin:0 auto; padding:24px; } h1 { font-family:var(--disp); font-size:32px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  h2 { font-family:var(--disp); font-size:22px; letter-spacing:.08em; text-transform:uppercase; margin:34px 0 6px; } .lead { color:var(--muted); line-height:1.5; max-width:920px; margin:0 0 8px; }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; } figure { margin:0; min-width:0; } figcaption { font-family:var(--disp); font-size:18px; letter-spacing:.06em; text-transform:uppercase; margin:0 0 4px; }
+  /* hidden scrollbars everywhere in the mockup */
+  .sc { overflow:auto; scrollbar-width:none; } .sc::-webkit-scrollbar { display:none; }
+  .phone { width:min(375px,100%); height:740px; border-radius:34px; border:8px solid #000; overflow:hidden; background:linear-gradient(180deg,var(--g800),var(--g900)); display:flex; flex-direction:column; position:relative; }
+  .desk { width:min(1180px,100%); height:660px; border-radius:16px; border:1px solid var(--line); overflow:hidden; background:linear-gradient(180deg,var(--g800),var(--g900)); display:flex; flex-direction:column; position:relative; }
+  .bar { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); flex:none; } .bar b { font-family:var(--disp); font-size:19px; letter-spacing:.08em; text-transform:uppercase; }
+  .sel { margin-left:auto; height:38px; padding:0 12px; border-radius:12px; border:1px solid var(--gold); background:rgba(0,0,0,.35); color:var(--cream); font-family:var(--disp); font-size:17px; letter-spacing:.06em; }
+  .body { flex:1; min-height:0; display:flex; } .menu { width:260px; flex:none; border-right:1px solid var(--line); transition:width .35s ease; overflow:hidden; position:relative; background:rgba(0,0,0,.18); }
+  .menu.collapsed { width:64px; } .mi { display:flex; align-items:center; gap:12px; min-height:52px; padding:0 18px; border-bottom:1px solid var(--line); font-family:var(--disp); font-size:19px; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+  .mi .ic { width:28px; height:28px; border-radius:8px; background:rgba(246,241,227,.1); display:grid; place-items:center; flex:none; } .mi.on { background:rgba(224,180,79,.14); box-shadow:inset 3px 0 0 var(--gold); color:var(--gold2); }
+  .timer { position:absolute; left:0; bottom:0; height:3px; background:var(--gold); width:100%; transform-origin:left; } .handle { position:absolute; bottom:8px; right:8px; width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:rgba(0,0,0,.4); color:var(--cream); cursor:pointer; }
+  .content { flex:1; min-width:0; padding:18px 22px 40px; } .phone .content { padding:14px 14px 40px; }
+  .chips { display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px 10px; align-items:center; margin:0 0 10px; } .phone .chips { grid-template-columns:minmax(0,1fr); gap:6px; } .cw { display:grid; grid-template-columns:repeat(auto-fill,minmax(176px,1fr)); gap:8px; min-width:0; } .phone .cw { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .lab { font-family:var(--disp); letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--sand); }
+  .chip { height:54px; padding:0 14px; border-radius:16px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--cream); font:inherit; font-size:15px; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; text-align:left; min-width:0; }
+  .chip > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip small { color:var(--muted); font-size:12px; white-space:nowrap; } .chip.on { border-color:var(--gold); background:rgba(224,180,79,.18); color:var(--gold2); }
+  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); margin-top:14px; } /* auto-fit, not auto-fill: empty columns collapse, so one card fills the whole row and two cards share it */ .phone .grid { grid-template-columns:1fr; }
+  .card { border:1px solid var(--line); border-radius:20px; background:rgba(0,0,0,.22); padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card.win { background:linear-gradient(160deg,rgba(224,180,79,.2),rgba(0,0,0,.22) 55%); } .card.loss { background:linear-gradient(160deg,rgba(157,74,74,.28),rgba(0,0,0,.22) 55%); } .card.tie { background:linear-gradient(160deg,rgba(224,213,180,.18),rgba(0,0,0,.22) 55%); }
+  .kick { font-family:var(--disp); font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); } .res { font-family:var(--disp); font-size:26px; letter-spacing:.03em; text-transform:uppercase; line-height:1.05; }
+  .sc2 { display:flex; justify-content:space-between; font-size:15px; margin-top:6px; } .sc2 b { font-family:var(--disp); font-size:21px; font-weight:600; } .lg { font-size:12px; color:var(--muted); }
+  .you { border-top:1px solid var(--line); padding-top:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; } .you .k { font-family:var(--disp); letter-spacing:.12em; text-transform:uppercase; font-size:13px; color:var(--sand); }
+  .fig { font-family:var(--disp); font-size:30px; font-weight:700; line-height:1; } .fig small { font-family:var(--body); font-size:13px; font-weight:400; color:var(--muted); margin-left:6px; }
+  .form { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:4px; } .form .chipw { text-align:center; width:50px; } .fc { width:46px; height:46px; border-radius:14px; display:grid; place-items:center; font-family:var(--disp); font-size:21px; font-weight:700; color:var(--ink); } .fc.win { background:var(--gold); } .fc.loss { background:#7b3a3a; color:var(--cream); } .fc.tie { background:var(--sand); }
+  .form .cap { font-size:12px; color:var(--muted); margin-top:3px; } .form .opp { font-size:11px; color:var(--muted); letter-spacing:.04em; } .form .sum { font-size:15px; } .form .sum b { color:var(--gold2); font-weight:600; }
+  .star { color:var(--gold); } .latest { margin-top:6px; } .latest .res { font-size:36px; } .phone .latest .res { font-size:28px; }
+  .latest .body2 { display:grid; grid-template-columns:1fr; gap:10px; } .desk .latest .body2 { grid-template-columns:1.3fr 1fr; align-items:end; }
+  .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; border:1px solid var(--line); border-radius:8px; padding:2px 7px; color:var(--muted); }
+  .empty { text-align:center; padding:40px 10px; } .linkb { background:none; border:0; color:var(--gold); text-decoration:underline; cursor:pointer; font:inherit; min-height:44px; }
+  .note { color:var(--muted); font-size:13px; max-width:920px; line-height:1.5; margin-top:8px; }
+</style></head>
+<body><div class="page">
+<h1>Player Hub results: round 5</h1>
+<p class="lead">Drawn again from the owner's notes. <b>The result leads</b> (the latest match as a banner), not the player's figures. <b>The leagues played that season, and then the teams in the chosen league, are filters</b> above it. The player's own contribution is a slim strip at the foot of every card. <b>Cards fill the width</b> in a responsive grid (one column on a phone, two or three on a laptop), with <b>no carousel, no arrows, no scrollbar</b>. On the desktop the <b>menu collapses to an icon rail after 10 seconds</b>, and the grid reflows to use the space.</p>
+<h2>Desktop: wait 10 seconds</h2>
+<p class="lead">The menu collapses to the rail with a countdown line along its foot. Hover or click the rail or the round handle to bring it back; the timer starts again when the pointer leaves. Change the Season or the chips to see the grid and the filters respond.</p>
+<div class="row"><div class="desk" id="desk"></div></div>
+<p class="note">The 10 seconds is shortened to a visible countdown line in this mockup; in the product it becomes a preference (on or off) later.</p>
+<h2>Phone</h2>
+<div class="row"><figure><figcaption>Results, full width cards</figcaption><div class="phone" id="phone"></div></figure></div>
+</div>
+<script>
+const M=[
+ {s:'2026',tm:'Irene Villagers 1',lg:'TVL Division 1 T20',opp:'CBCOB Veterans',d:'Sun, 13 Sep',t:'loss',res:'CBCOB Veterans won by 9 wickets',us:'119/8 (20.0)',them:'121/1 (15.5)',you:{k:'bat',fig:'19',sub:'off 15 balls · 4 fours'}},
+ {s:'2026',tm:'Irene Villagers 1',lg:'TVL Division 1 T20',opp:'Hillcrest',d:'Sun, 6 Sep',t:'win',res:'Irene Villagers won by 31 runs',us:'168/6 (30.0)',them:'137/9 (30.0)',you:{k:'bat',fig:'52',sub:'off 61 balls · 6 fours · 1 six',pom:1}},
+ {s:'2026',tm:'Irene Villagers 1',lg:'TVL Division 1 T20',opp:'Eagles',d:'Sun, 30 Aug',t:'loss',res:'Eagles won by 4 wickets',us:'121/8 (30.0)',them:'122/6 (27.1)',you:{k:'bowl',fig:'2/21',sub:'6 overs · economy 3.5'}},
+ {s:'2026',tm:'Irene Villagers 1',lg:'TVL Division 1 T20',opp:'Northside',d:'Sun, 23 Aug',t:'win',res:'Irene Villagers won by 6 wickets',us:'140/4 (24.0)',them:'139/10 (29.2)',you:{k:'dnb',fig:'Did not bat',sub:'1 catch in the field'}},
+ {s:'2026',tm:'Irene Villagers 2',lg:'Friendly',opp:'Lions',d:'Sat, 15 Aug',t:'win',res:'Irene Villagers won by 20 runs',us:'131/7 (25.0)',them:'111/9 (25.0)',you:{k:'bat',fig:'24',sub:'off 29 balls · 3 fours'}},
+ {s:'2026',tm:'Irene Villagers 2',lg:'Friendly',opp:'Tigers',d:'Sat, 8 Aug',t:'loss',res:'Tigers won by 3 wickets',us:'118/9 (25.0)',them:'119/7 (23.2)',you:{k:'bowl',fig:'3/30',sub:'5 overs · economy 6.0'}},
+ {s:'2025',tm:'Irene Villagers 2',lg:'Diamond League U13 T20',opp:'Sharks',d:'Sat, 11 Oct 2025',t:'win',res:'Irene Villagers won by 5 wickets',us:'102/5 (20.0)',them:'101/9 (20.0)',you:{k:'bat',fig:'41*',sub:'off 44 balls · 5 fours'}},
+];
+const mk=()=>({season:'2026',team:'All',league:'All'});
+const pick=S=>M.filter(m=>m.s===S.season&&(S.team==='All'||m.tm===S.team)&&(S.league==='All'||m.lg===S.league));
+const uniq=(S,k)=>[...new Set(M.filter(m=>m.s===S.season&&(k==='lg'||S.league==='All'||m.lg===S.league)).map(m=>m[k]))];
+const rec=(list)=>{const w=list.filter(m=>m.t==='win').length;return `${list.length} played · ${w} won`};
+const inLeague=(S,m)=>S.league==='All'||m.lg===S.league;
+const formHtml=list=>{const last=list.slice(0,5).reverse();const w=last.filter(m=>m.t==='win').length,l=last.filter(m=>m.t==='loss').length,t=last.length-w-l;
+  const fig=m=>m.you.k==='dnb'?'DNB':m.you.fig;
+  return `<section class="card" aria-label="Recent form"><div class="form"><div><div class="kick">Recent form</div><div class="sum" style="margin-top:6px"><b>${w} won</b>${l?`, ${l} lost`:''}${t?`, ${t} tied`:''} in the last ${last.length}</div></div>
+   <div style="display:flex;gap:8px;margin-left:auto">${last.map(m=>`<div class="chipw"><div class="fc ${m.t}" role="img" aria-label="${m.t} v ${m.opp}">${m.t==='win'?'W':m.t==='loss'?'L':'T'}</div><div class="cap">${fig(m)}</div><div class="opp">${m.opp.slice(0,3).toUpperCase()}</div></div>`).join('')}</div></div></section>`;};
+const NAME='Sam'; // the player's first name: the Hub is read by parents, agents and managers, never only by the player, so no 'you'
+const youHtml=y=>`<div class="you"><span class="k">${y.k==='bowl'?NAME+' bowled':y.k==='dnb'?NAME:NAME+' batted'}</span><span class="fig">${y.fig}${y.sub?`<small>${y.sub}</small>`:''}</span>${y.pom?'<span class="star">★ Player of the match</span>':''}</div>`;
+const cardHtml=(m,latest)=>`<article class="card ${m.t} ${latest?'latest':''}"><div class="kick">${latest?'Latest result · ':''}${m.d} · v ${m.opp}</div>
+  <div class="${latest?'body2':''}"><div><div class="res">${m.res}</div><div class="sc2"><span>${m.tm}</span><b>${m.us}</b></div><div class="sc2"><span>${m.opp}</span><b>${m.them}</b></div><div class="lg">${m.lg} · ${m.tm}</div></div>${latest?`<div>${youHtml(m.you)}</div>`:''}</div>${latest?'':youHtml(m.you)}</article>`;
+function page(el,mode){
+  const S=mk(), desk=mode==='desk'; let timer,collapsed=false,t0;
+  const draw=()=>{
+    const list=pick(S), teams=uniq(S,'tm'), leagues=uniq(S,'lg');
+    const chips=(label,arr,key,all)=>`<div class="chips"><span class="lab">${label}</span><div class="cw"><button class="chip ${S[key]==='All'?'on':''}" data-k="${key}" data-v="All"><span>${all}</span><small>${rec(M.filter(m=>m.s===S.season&&(key==='league'||inLeague(S,m))))}</small></button>${arr.map(v=>`<button class="chip ${S[key]===v?'on':''}" data-k="${key}" data-v="${v}"><span>${v}</span><small>${rec(M.filter(m=>m.s===S.season&&m[key==='team'?'tm':'lg']===v&&(key==='league'||inLeague(S,m))))}</small></button>`).join('')}</div></div>`;
+    const main=list.length?`${formHtml(list)}<div class="latest">${cardHtml(list[0],true)}</div>${list.length>1?`<div class="grid">${list.slice(1).map(m=>cardHtml(m)).join('')}</div>`:''}`:
+      `<div class="empty"><div class="res">No matches for this filter</div><p class="lg">${S.season} has no results shared with the Player Hub for this combination.</p><button class="linkb" data-clear>Clear Filters</button></div>`;
+    const sel=`<select class="sel" aria-label="Season">${['2026','2025'].map(y=>`<option ${S.season===y?'selected':''}>${y}</option>`).join('')}</select>`;
+    const content=`<div class="content sc" style="flex:1;min-width:0">${chips('Leagues',leagues,'league','All leagues')}${chips('Teams',teams,'team','All teams')}${main}</div>`;
+    const menu=desk?`<nav class="menu ${collapsed?'collapsed':''}" aria-label="Player Hub"><div class="mi"><span class="ic">✓</span>Availability</div><div class="mi on"><span class="ic">★</span>Results</div><div class="mi"><span class="ic">▦</span>Schedule</div><div class="mi"><span class="ic">▤</span>Stats</div><div class="mi"><span class="ic">✉</span>Updates</div><div class="mi"><span class="ic">⌂</span>Club</div><div class="mi"><span class="ic">☺</span>Profile</div>${collapsed?'':'<div class="timer" id="tm"></div>'}<button class="handle" aria-label="${collapsed?'Expand menu':'Collapse menu'}">${collapsed?'»':'«'}</button></nav>`:'';
+    el.innerHTML=`<div class="bar"><b>Results</b>${sel}</div><div class="body">${menu}${content}</div>`;
+    el.querySelector('select').onchange=e=>{S.season=e.target.value;S.team='All';S.league='All';draw();};
+    el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{S[b.dataset.k]=b.dataset.v;if(b.dataset.k==='league'&&S.team!=='All'&&!M.some(m=>m.s===S.season&&m.tm===S.team&&inLeague(S,m)))S.team='All';draw();});
+    el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{S.team='All';S.league='All';draw();});
+    if(desk){const mn=el.querySelector('.menu');
+      mn.querySelector('.handle').onclick=()=>{collapsed=!collapsed;draw();arm();};
+      mn.onmouseenter=()=>{clearTimeout(timer);if(collapsed){collapsed=false;draw();}};
+      mn.onmouseleave=()=>arm();
+      const tm=el.querySelector('#tm'); if(tm){tm.style.transition='none';tm.style.transform='scaleX(1)';requestAnimationFrame(()=>requestAnimationFrame(()=>{tm.style.transition=`transform ${Math.max(0,(10000-(Date.now()-t0)))}ms linear`;tm.style.transform='scaleX(0)';}));}
+    }
+  };
+  const arm=()=>{clearTimeout(timer);if(collapsed)return;t0=Date.now();timer=setTimeout(()=>{collapsed=true;draw();},10000);const tm=el.querySelector('#tm');if(tm){tm.style.transition='none';tm.style.transform='scaleX(1)';requestAnimationFrame(()=>requestAnimationFrame(()=>{tm.style.transition='transform 10000ms linear';tm.style.transform='scaleX(0)';}));}};
+  draw(); if(desk) arm();
+}
+page(document.getElementById('desk'),'desk'); page(document.getElementById('phone'),'phone');
+</script></body></html>
