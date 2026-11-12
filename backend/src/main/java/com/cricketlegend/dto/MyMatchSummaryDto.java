@@ -8,6 +8,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 /** docs/specs/135: one row of the Player Hub matches list. {@code startedAt} is live only, {@code result} recent only.
+ * {@code availability} is the held player's own squad-poll answer, upcoming rows with a poll only (null otherwise).
  * {@code outcome} (WON, LOST, TIED or null) is the result from the held player's side, recent rows with a result only. */
 public record MyMatchSummaryDto(
         UUID matchId,
@@ -24,4 +25,5 @@ public record MyMatchSummaryDto(
         boolean hasLiveScore,
         boolean hasStream,
         MyMatchResultDto result,
-        String outcome) {}
+        String outcome,
+        MyMatchAvailabilityDto availability) {}

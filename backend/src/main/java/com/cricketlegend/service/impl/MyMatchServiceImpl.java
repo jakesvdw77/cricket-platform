@@ -257,7 +257,8 @@ class MyMatchServiceImpl implements MyMatchService {
                 selection(m, myTeams, profileId, ctx),
                 LiveScoreResolver.resolve(m.getScoringUrl(), phase) != null, hasStream,
                 shown != null ? resultDto(shown, home.name(), away.name()) : null,
-                outcomeFor(shown, m, myTeams));
+                outcomeFor(shown, m, myTeams),
+                phase == MatchPhase.UPCOMING ? availability(m, myTeams, profileId) : null);
     }
 
     /**

@@ -21190,6 +21190,10 @@ components:
           - LOST
           - TIED
           - null
+        availability:
+          oneOf:
+          - type: 'null'
+          - $ref: "#/components/schemas/MyMatchAvailabilityDto"
       required:
       - matchId
       - phase

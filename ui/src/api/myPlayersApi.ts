@@ -384,6 +384,8 @@ export interface MyMatchSummaryDto {
   result?: MyMatchResultDto | null
   // Optional until the server sends the player's side outcome for a recent row; the row only colours itself when it is there.
   outcome?: 'WON' | 'LOST' | 'TIED' | null
+  // The player's own squad-poll answer; upcoming rows with a poll only.
+  availability?: MyMatchAvailabilityDto | null
 }
 
 export interface MyMatchListDto {

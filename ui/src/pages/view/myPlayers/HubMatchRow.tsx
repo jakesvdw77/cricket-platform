@@ -10,6 +10,7 @@ import { HubVenueLine, HubWeatherBadge } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLiveScore } from './HubLiveScore'
 import { LiveBadge } from './LiveBadge'
+import { hubPath } from './hubNav'
 import { timeLabel } from './leagueFormat'
 import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentOutcome, recentResultLine, selectionLabel, watchPath } from './matchFormat'
 
@@ -57,6 +58,26 @@ function Side({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
       <LeagueLogo logoUrl={logoUrl ?? null} size={24} name={name} />
       <Typography component="span" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
+  )
+}
+
+const ANSWER_TAG = {
+  AVAILABLE: { text: 'Available', color: TICKER_TONES.win },
+  UNAVAILABLE: { text: 'Unavailable', color: TICKER_TONES.live },
+  UNSURE: { text: 'Not Sure', color: STATS_TONES.partly },
+} as const
+
+// Upcoming rows only (owner, 2026-11-12): the player's own poll answer. A poll still open links to Availability so it can be answered
+// or changed (the link sits above the row's stretched link); a closed poll is just the answer, or "No Answer" when none was given.
+function AvailabilityTag({ playerKey, availability }: { playerKey: string; availability: NonNullable<MyMatchSummaryDto['availability']> }) {
+  const look = availability.answer ? ANSWER_TAG[availability.answer] : null
+  const text = look ? look.text : availability.pollOpen ? 'Answer Availability' : 'No Answer'
+  const color = look ? look.color : availability.pollOpen ? HUB.gold : HUB.muted
+  const sx = { height: 22, px: 1, display: 'inline-flex', alignItems: 'center', borderRadius: '4px', fontSize: 12, fontWeight: 600, color, border: `1px solid ${color}`, textDecoration: 'none', justifySelf: 'start' } as const
+  return availability.pollOpen ? (
+    <Box component={RouterLink} to={hubPath(playerKey, 'availability')} data-testid="availability-tag" aria-label={`Availability: ${text}`} sx={{ ...inner, ...sx, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>{text}</Box>
+  ) : (
+    <Box component="span" data-testid="availability-tag" sx={sx}>{text}</Box>
   )
 }
 
@@ -153,7 +174,12 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
           </Box>
         </Box>
       )}
-      {kind !== 'recent' && <SelectionTag selection={row.selection} />}
+      {kind !== 'recent' && (
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <SelectionTag selection={row.selection} />
+          {kind === 'upcoming' && row.availability && <AvailabilityTag playerKey={playerKey} availability={row.availability} />}
+        </Box>
+      )}
       {kind === 'live' && (
         <Box sx={{ ...inner, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           {row.hasLiveScore && <LiveRowScore playerKey={playerKey} matchId={row.matchId} />}
