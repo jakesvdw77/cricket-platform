@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub Availability: sub-menus - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--muted:rgba(247,243,232,.68);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#5DB887;--bad:#D9786A;--amber:#D9B563;--blue:#7FB6E8;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 100px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:38px 0 4px}
+.lead,.why{color:var(--muted);max-width:980px;line-height:1.5;margin:0 0 12px;font-size:14.5px}
+.row2{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.console{border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.86);overflow:hidden;width:780px;max-width:100%}
+.console.phone{width:380px}
+.band{min-height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px;flex-wrap:wrap}
+.band h3{margin:0;font:700 26px var(--disp);letter-spacing:.05em;text-transform:uppercase}.band .ctl{margin-left:auto;display:flex;gap:8px}
+.sel{height:36px;border:1px solid var(--line);border-radius:4px;background:rgba(0,0,0,.28);padding:0 12px;display:inline-flex;align-items:center;gap:8px;font:600 14px var(--disp);letter-spacing:.08em;text-transform:uppercase}
+.pills{display:flex;gap:8px;padding:12px 16px 4px;flex-wrap:wrap}
+.pill{height:34px;border:1px solid var(--line);border-radius:17px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:600 15px var(--body)}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#06241A}
+.pill .n{font:700 12px var(--disp);min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:rgba(247,243,232,.16);padding:0 6px}.pill.on .n{background:rgba(6,36,26,.22)}
+.filters{display:flex;gap:6px;padding:8px 16px 0;flex-wrap:wrap;align-items:center}
+.fl{font:600 11px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.f{height:28px;border:1px solid var(--soft);border-radius:14px;padding:0 12px;display:inline-flex;align-items:center;font:500 13px var(--body);color:var(--muted)}
+.f.on{border-color:var(--sand);color:var(--cream);background:rgba(226,213,176,.12)}
+.body{padding:12px 16px 16px;display:grid;gap:8px}
+.card{border:1px solid var(--soft);background:rgba(0,0,0,.3);border-radius:6px;padding:10px 12px;display:grid;gap:6px}
+.ct{display:flex;align-items:center;gap:8px}.ct .t{font:700 17px var(--disp);letter-spacing:.04em;text-transform:uppercase;flex:1}.ct .d{font:600 13px var(--disp);letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.sub{font-size:13px;color:var(--muted)}
+.chip{font:700 11px var(--disp);letter-spacing:.14em;border:1px solid currentColor;border-radius:3px;padding:1px 7px;text-transform:uppercase}
+.a{color:var(--win)}.u{color:var(--bad)}.m{color:var(--amber)}.n0{color:var(--muted)}.cl{color:var(--blue)}
+.btns{display:flex;gap:8px;margin-top:4px}.btn{height:34px;flex:1;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;font:600 13px var(--disp);letter-spacing:.1em;text-transform:uppercase}.btn.on{border-color:var(--win);color:var(--win);background:rgba(93,184,135,.12)}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:980px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}.tbl th{font:600 11px var(--disp);letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}.tbl td{padding:8px 6px;border-bottom:1px solid var(--soft)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{border:1px solid var(--soft);border-radius:6px;padding:8px 10px;background:rgba(0,0,0,.3)}.stat b{font:700 26px var(--disp);display:block;line-height:1}.stat span{font:600 11px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+</style></head><body>
+<h1>Hub Availability: sub-menus</h1>
+<p class="lead">Made-up data; nothing is built. The Availability page gets the same pill row as Stats and Matches: <b>Open Polls</b> (the default, where the player answers), <b>Closed Polls</b> (polls that closed recently) and a third pill that shows the player's answers over time, answered or not. Plus a status filter. Answers are Available, Unavailable and Not Sure; "Not answered" is the fourth state.</p>
+
+<h2>1 &middot; Open Polls (default, as today)</h2>
+<div class="console"><div class="band"><h3>Availability</h3></div>
+ <div class="pills"><span class="pill on">Open Polls <span class="n">2</span></span><span class="pill">Closed Polls <span class="n">4</span></span><span class="pill">My Responses <span class="n">12</span></span></div>
+ <div class="body">
+  <div class="card"><div class="ct"><span class="t">Villagers v Eagles</span><span class="d">Sat 14:00</span></div><div class="sub">Over 40 &middot; Main Oval &middot; closes tonight 20:00</div><div class="btns"><span class="btn on">Available</span><span class="btn">Unavailable</span><span class="btn">Not Sure</span></div></div>
+  <div class="card"><div class="ct"><span class="t">Sunday fixtures</span><span class="d">Sun 8 Nov</span></div><div class="sub">Over 40 &middot; closes in 2 days &middot; <span class="chip n0">Not answered</span></div><div class="btns"><span class="btn">Available</span><span class="btn">Unavailable</span><span class="btn">Not Sure</span></div></div></div></div>
+
+<h2>2 &middot; Closed Polls (closed recently)</h2>
+<p class="why">Polls that closed in the last 30 days, newest first, read only. Each row says what the player answered, or that no answer was given, and what the selection did (selected or not selected, only when the club has announced it). The status filter narrows by the answer.</p>
+<div class="console"><div class="band"><h3>Availability</h3></div>
+ <div class="pills"><span class="pill">Open Polls <span class="n">2</span></span><span class="pill on">Closed Polls <span class="n">4</span></span><span class="pill">My Responses <span class="n">12</span></span></div>
+ <div class="filters"><span class="fl">Status</span><span class="f on">All</span><span class="f">Available</span><span class="f">Unavailable</span><span class="f">Not Sure</span><span class="f">Not Answered</span></div>
+ <div class="body">
+  <div class="card"><div class="ct"><span class="t">Villagers v Parkview</span><span class="d">Sat 1 Nov</span></div><div class="sub">Over 40 &middot; closed Fri 31 Oct</div><div class="ct"><span class="chip a">Available</span><span class="chip cl">Selected</span></div></div>
+  <div class="card"><div class="ct"><span class="t">Villagers v Eagles</span><span class="d">Sat 25 Oct</span></div><div class="sub">Over 40 &middot; closed Fri 24 Oct</div><div class="ct"><span class="chip u">Unavailable</span></div></div>
+  <div class="card"><div class="ct"><span class="t">Friendly v Riverside</span><span class="d">Sat 18 Oct</span></div><div class="sub">Friendly &middot; closed Fri 17 Oct</div><div class="ct"><span class="chip n0">Not answered</span></div></div></div></div>
+
+<h2>3 &middot; The third pill: My Responses (name options below)</h2>
+<p class="why">A record of the player's availability across polls: a short summary (answered, available, unavailable, not answered) and a table of every poll from the season with the answer and the outcome. Where Closed Polls is "what just closed", this is "how reliable has this player been". Open and closed polls both appear, filterable by status.</p>
+<div class="console"><div class="band"><h3>Availability</h3><div class="ctl"><span class="sel">2026/2027 &#9662;</span></div></div>
+ <div class="pills"><span class="pill">Open Polls <span class="n">2</span></span><span class="pill">Closed Polls <span class="n">4</span></span><span class="pill on">My Responses <span class="n">12</span></span></div>
+ <div class="body"><div class="stats"><div class="stat"><b>10/12</b><span>Answered</span></div><div class="stat"><b style="color:var(--win)">8</b><span>Available</span></div><div class="stat"><b style="color:var(--bad)">2</b><span>Unavailable</span></div><div class="stat"><b>2</b><span>Not answered</span></div></div>
+ </div>
+ <div class="filters"><span class="fl">Status</span><span class="f on">All</span><span class="f">Available</span><span class="f">Unavailable</span><span class="f">Not Sure</span><span class="f">Not Answered</span></div>
+ <div class="body"><table class="tbl"><tr><th>Date</th><th>Match</th><th>Answer</th><th>Outcome</th></tr>
+  <tr><td>Sat 8 Nov</td><td>Sunday fixtures</td><td><span class="chip n0">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>Sat 1 Nov</td><td>v Parkview</td><td><span class="chip a">Available</span></td><td><span class="chip cl">Selected</span></td></tr>
+  <tr><td>Sat 25 Oct</td><td>v Eagles</td><td><span class="chip u">Unavailable</span></td><td>&mdash;</td></tr>
+  <tr><td>Sat 18 Oct</td><td>v Riverside</td><td><span class="chip n0">Not answered</span></td><td>&mdash;</td></tr></table></div></div>
+
+<h2>Names for the third pill</h2>
+<div class="sum"><b>My Responses</b> (my pick, plain and clear) &middot; <b>Answer History</b> &middot; <b>Availability Record</b> &middot; <b>Track Record</b> (friendlier, a little ambiguous) &middot; <b>Replies</b> (shortest). The page's pill row would then read: Open Polls, Closed Polls, My Responses. With the player's first name in the heading when a parent has several players: "Hannes's Responses".<br><br><b>Status filter:</b> All, Available, Unavailable, Not Sure, Not Answered (and the filter also applies to Closed Polls). Kept in the URL with the pill, and remembered per player. <b>Counts on the pills:</b> Open (still to answer), Closed (recent), My Responses (this season). <b>Questions:</b> 1) Is "My Responses" the right name? 2) How far back should Closed Polls go: 30 days, or the last 10 polls? 3) Should My Responses show only the current season, with a season dropdown?</div>
+</body></html>
