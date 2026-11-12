@@ -247,6 +247,7 @@ class MyMatchServiceImpl implements MyMatchService {
         LeagueSide away = side(m, false, ctx);
         League league = m.getLeagueId() == null ? null : ctx.leagues().get(m.getLeagueId());
         boolean hasStream = phase == MatchPhase.LIVE && StreamEmbed.of(m.getStreamingUrl()) != null;
+        MatchResultDto shown = phase == MatchPhase.RECENT ? result : null;
         return new MyMatchSummaryDto(
                 m.getId(), phase, ServerClock.localDate(m.getMatchDate()), ServerClock.localTime(m.getMatchDate()),
                 phase == MatchPhase.LIVE ? start : null,
@@ -254,7 +255,29 @@ class MyMatchServiceImpl implements MyMatchService {
                 league == null ? null : league.getName(), MyLeagueServiceImpl.blankToNull(m.getVenue()), true,
                 selection(m, myTeams, profileId, ctx),
                 LiveScoreResolver.resolve(m.getScoringUrl(), phase) != null, hasStream,
-                phase == MatchPhase.RECENT && result != null ? resultDto(result, home.name(), away.name()) : null);
+                shown != null ? resultDto(shown, home.name(), away.name()) : null,
+                outcomeFor(shown, m, myTeams));
+    }
+
+    /**
+     * WON, LOST or TIED from the held player's side; null with no result, a draw, no result, abandoned, an unknown
+     * winner, or when the player's side is not exactly one of the two (internal club-vs-club, or neither).
+     */
+    static String outcomeFor(MatchResultDto result, Match m, Set<UUID> myTeams) {
+        if (result == null || result.outcomeType() == null || myTeams == null) {
+            return null;
+        }
+        boolean homeMine = m.getHomeTeamId() != null && myTeams.contains(m.getHomeTeamId());
+        boolean awayMine = m.getAwayTeamId() != null && myTeams.contains(m.getAwayTeamId());
+        if (homeMine == awayMine) {
+            return null;
+        }
+        ResultSide mine = homeMine ? ResultSide.HOME : ResultSide.AWAY;
+        return switch (result.outcomeType()) {
+            case TIE -> "TIED";
+            case WON, FORFEIT -> result.winningSide() == null ? null : result.winningSide() == mine ? "WON" : "LOST";
+            default -> null;
+        };
     }
 
     // ---- shared reads ----

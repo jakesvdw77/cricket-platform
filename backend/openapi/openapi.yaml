@@ -21107,6 +21107,14 @@ components:
           oneOf:
           - type: 'null'
           - $ref: "#/components/schemas/MyMatchResultDto"
+        outcome:
+          type: [string, 'null']
+          description: "The result from the held player side: WON, LOST or TIED. Null unless a recent row has a result, and null for a draw, no result, abandoned, internal club-vs-club or an undetermined side."
+          enum:
+          - WON
+          - LOST
+          - TIED
+          - null
       required:
       - matchId
       - phase

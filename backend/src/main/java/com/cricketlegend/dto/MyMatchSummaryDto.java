@@ -7,7 +7,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
-/** docs/specs/135: one row of the Player Hub matches list. {@code startedAt} is live only, {@code result} recent only. */
+/** docs/specs/135: one row of the Player Hub matches list. {@code startedAt} is live only, {@code result} recent only.
+ * {@code outcome} (WON, LOST, TIED or null) is the result from the held player's side, recent rows with a result only. */
 public record MyMatchSummaryDto(
         UUID matchId,
         MatchPhase phase,
@@ -22,4 +23,5 @@ public record MyMatchSummaryDto(
         MatchSelectionState selection,
         boolean hasLiveScore,
         boolean hasStream,
-        MyMatchResultDto result) {}
+        MyMatchResultDto result,
+        String outcome) {}

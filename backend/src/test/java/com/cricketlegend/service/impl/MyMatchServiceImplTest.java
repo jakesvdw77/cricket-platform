@@ -18,6 +18,9 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.dto.MyMatchDto;
 import com.cricketlegend.dto.MyMatchListDto;
+import com.cricketlegend.domain.ResultOutcomeType;
+import com.cricketlegend.domain.ResultSide;
+import com.cricketlegend.dto.MatchResultDto;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
@@ -41,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -282,6 +286,34 @@ class MyMatchServiceImplTest {
         assertThatThrownBy(() -> service.list(authentication, "key", 0)).isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> service.list(authentication, "key", 101)).isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> service.list(authentication, "key", -5)).isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void theOutcomeIsFromTheHeldPlayersSideOrNull() {
+        UUID other = UUID.randomUUID();
+        Set<UUID> mine = Set.of(myTeamId);
+        Match home = matchAt(Instant.now());
+        Match away = Match.builder().id(UUID.randomUUID()).homeTeamId(other).awayTeamId(myTeamId).build();
+        Match internal = Match.builder().id(UUID.randomUUID()).homeTeamId(myTeamId).awayTeamId(myTeamId).build();
+        Match foreign = Match.builder().id(UUID.randomUUID()).homeTeamId(other).awayTeamName("X").build();
+
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), home, mine)).isEqualTo("WON");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.AWAY), home, mine)).isEqualTo("LOST");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.AWAY), away, mine)).isEqualTo("WON");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.FORFEIT, ResultSide.HOME), away, mine)).isEqualTo("LOST");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.TIE, null), home, mine)).isEqualTo("TIED");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.DRAW, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.NO_RESULT, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.ABANDONED, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), internal, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), foreign, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(null, home, mine)).isNull();
+    }
+
+    private static MatchResultDto res(ResultOutcomeType type, ResultSide winner) {
+        return new MatchResultDto(null, null, null, null, null, type, null, winner, null, null, null, null, null, 6,
+                null, null, null, null, null, null, null, null, null, true, null, null, null, List.of(), false, false);
     }
 
     private Match matchAt(Instant when) {

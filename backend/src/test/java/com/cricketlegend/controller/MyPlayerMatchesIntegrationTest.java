@@ -341,7 +341,7 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
                 "live", "upcoming", "recent", "upcomingTotal", "recentTotal");
         assertThat(keys(lists.get("live").get(0))).containsExactlyInAnyOrder(
                 "matchId", "phase", "date", "time", "startedAt", "home", "away", "league", "venue", "mine", "selection",
-                "hasLiveScore", "hasStream", "result");
+                "hasLiveScore", "hasStream", "result", "outcome");
     }
 
     private static Set<String> keys(JsonNode node) {
