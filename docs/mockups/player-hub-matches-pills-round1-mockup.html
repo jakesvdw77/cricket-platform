@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub Matches: pills, recent shown at once - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--muted:rgba(247,243,232,.68);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--win:#5DB887;--bad:#D9786A;--live:#F0675D;--blue:#7FB6E8;--amber:#D9B563;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 100px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:38px 0 4px}
+.lead,.why{color:var(--muted);max-width:980px;line-height:1.5;margin:0 0 12px;font-size:14.5px}
+.row2{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.console{border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.86);overflow:hidden;width:760px;max-width:100%}
+.console.phone{width:380px}
+.band{min-height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px;flex-wrap:wrap}
+.band h3{margin:0;font:700 26px var(--disp);letter-spacing:.05em;text-transform:uppercase}
+.pills{display:flex;gap:8px;padding:12px 16px 4px;flex-wrap:wrap}
+.pill{height:34px;border:1px solid var(--line);border-radius:17px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:600 15px var(--body);color:var(--cream);cursor:pointer;background:transparent}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#06241A}
+.pill .n{font:700 12px var(--disp);letter-spacing:.06em;min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:rgba(247,243,232,.16);padding:0 6px}
+.pill.on .n{background:rgba(6,36,26,.22)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--live);animation:p 1.2s infinite}@keyframes p{50%{opacity:.3}}
+.body{padding:12px 16px 16px;display:grid;gap:8px}
+.sec{font:700 14px var(--disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:8px 0 2px;display:flex;align-items:center;gap:8px}
+.match{border:1px solid var(--soft);background:rgba(0,0,0,.3);border-radius:6px;padding:10px 12px;display:grid;gap:4px}
+.match.live{border-color:rgba(240,103,93,.55)}
+.mt{display:flex;align-items:center;gap:8px}
+.mt .teams{font:700 18px var(--disp);letter-spacing:.04em;text-transform:uppercase;flex:1;min-width:0}
+.mt .when{font:600 13px var(--disp);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.sub{font-size:13px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{font:700 11px var(--disp);letter-spacing:.14em;border:1px solid currentColor;border-radius:3px;padding:1px 7px;text-transform:uppercase}
+.c-live{color:var(--live)}.c-win{color:var(--win)}.c-loss{color:var(--bad)}.c-tie{color:var(--amber)}.c-sel{color:var(--blue)}.c-ok{color:var(--win)}.c-q{color:var(--muted)}
+.res{font:600 15px var(--body)}
+.note{color:var(--muted);font-size:12.5px;margin-top:6px}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:980px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+.today{opacity:.92}
+.acc{border:1px solid var(--soft);border-radius:6px;padding:10px 12px;color:var(--muted);font:600 15px var(--disp);letter-spacing:.1em;text-transform:uppercase;display:flex;justify-content:space-between}
+</style></head><body>
+<h1>Hub Matches: pills, and Recent shown at once</h1>
+<p class="lead">Made-up data; nothing is built. Today: Live Now, Upcoming, then <b>Recent Matches</b> collapsed behind a button. Proposed: the same pill row as the Stats pages, with a count on each pill, and Recent open straight away (no collapsed panel). Two layouts to compare.</p>
+
+<h2>Today</h2>
+<div class="console"><div class="band"><h3>Matches</h3></div><div class="body today">
+ <div class="sec"><span class="chip c-live">Live</span>Live Now</div>
+ <div class="match live"><div class="mt"><span class="teams">Villagers v Rovers</span><span class="when">Started 1h 20m ago</span></div><div class="sub">Over 40 &middot; Main Oval</div></div>
+ <div class="sec">Upcoming</div>
+ <div class="match"><div class="mt"><span class="teams">Villagers v Eagles</span><span class="when">Sat 14:00</span></div><div class="sub">Over 40 &middot; Main Oval &middot; in 2 days</div></div>
+ <div class="acc"><span>Recent Matches</span><span>&#9662;</span></div></div></div>
+
+<h2>A &middot; Pills, one list at a time (same as Stats) , my pick</h2>
+<p class="why">Three pills: Live (with a pulsing dot, only when a match is on), Upcoming and Recent, each with its count. The default is Live when something is on, otherwise Upcoming. Recent is a normal list under its pill, shown the moment you tap it (and it can be the landing pill when the player has no upcoming matches). The same pill row and behaviour as the Stats pages, so the Hub feels like one app.</p>
+<div class="row2">
+ <div class="console"><div class="band"><h3>Matches</h3></div>
+  <div class="pills"><span class="pill on"><span class="dot" style="background:#B5342C"></span>Live <span class="n">1</span></span><span class="pill">Upcoming <span class="n">3</span></span><span class="pill">Recent <span class="n">5</span></span></div>
+  <div class="body"><div class="match live"><div class="mt"><span class="teams">Villagers v Rovers</span><span class="chip c-live">Live</span></div><div class="sub"><span>Started 1h 20m ago</span><span>Over 40 &middot; Main Oval</span><span class="chip c-sel">Selected</span></div><div class="note">Tap for the match page and live score.</div></div></div></div>
+ <div class="console"><div class="band"><h3>Matches</h3></div>
+  <div class="pills"><span class="pill">Live <span class="n">1</span></span><span class="pill">Upcoming <span class="n">3</span></span><span class="pill on">Recent <span class="n">5</span></span></div>
+  <div class="body">
+   <div class="match"><div class="mt"><span class="teams">Villagers v Parkview</span><span class="when">Sat 1 Nov</span></div><div class="sub"><span class="res c-win" style="color:var(--win)">Won by 24 runs</span><span>Over 40</span><span class="chip c-win">W</span></div></div>
+   <div class="match"><div class="mt"><span class="teams">Villagers v Eagles</span><span class="when">Sat 25 Oct</span></div><div class="sub"><span class="res" style="color:var(--bad)">Lost by 3 wickets</span><span>Over 40</span><span class="chip c-loss">L</span></div></div>
+   <div class="match"><div class="mt"><span class="teams">Villagers v Riverside</span><span class="when">Sat 18 Oct</span></div><div class="sub"><span class="res" style="color:var(--amber)">Tied</span><span>Friendly</span><span class="chip c-tie">T</span></div></div>
+   <div class="note">Results open the Hub Result page; matches with no result yet show Awaiting result.</div></div></div>
+</div>
+
+<h2>B &middot; All three stacked, Recent open</h2>
+<p class="why">No pills: Live, Upcoming and Recent are headed sections one under the other, Recent expanded with its first five results and a "Show more" at the end. Nothing is hidden, but the page is long and the Recent list sits below the fold on a phone.</p>
+<div class="console"><div class="band"><h3>Matches</h3></div><div class="body">
+ <div class="sec"><span class="chip c-live">Live</span>Live Now</div>
+ <div class="match live"><div class="mt"><span class="teams">Villagers v Rovers</span><span class="when">Started 1h 20m ago</span></div></div>
+ <div class="sec">Upcoming &middot; 3</div>
+ <div class="match"><div class="mt"><span class="teams">Villagers v Eagles</span><span class="when">Sat 14:00</span></div><div class="sub">in 2 days &middot; Main Oval</div></div>
+ <div class="sec">Recent &middot; 5</div>
+ <div class="match"><div class="mt"><span class="teams">Villagers v Parkview</span><span class="when">1 Nov</span></div><div class="sub"><span style="color:var(--win)">Won by 24 runs</span></div></div>
+ <div class="match"><div class="mt"><span class="teams">Villagers v Eagles</span><span class="when">25 Oct</span></div><div class="sub"><span style="color:var(--bad)">Lost by 3 wickets</span></div></div>
+ <div class="note">Show more &darr;</div></div></div>
+
+<h2>Phone (option A)</h2>
+<div class="row2"><div class="console phone"><div class="band" style="min-height:52px"><h3 style="font-size:22px">Matches</h3></div>
+ <div class="pills" style="flex-wrap:nowrap;overflow:hidden"><span class="pill on"><span class="dot" style="background:#B5342C"></span>Live <span class="n">1</span></span><span class="pill">Upcoming <span class="n">3</span></span><span class="pill">Recent <span class="n">5</span></span></div>
+ <div class="body"><div class="match live"><div class="mt"><span class="teams" style="font-size:17px">Villagers v Rovers</span></div><div class="sub"><span>Started 1h 20m ago</span><span class="chip c-live">Live</span></div></div></div></div></div>
+
+<h2>What I propose</h2>
+<div class="sum"><b>Pills:</b> Live (only when on, with a pulsing dot), Upcoming, Recent, each with its count, using the same pill component as the Stats pages. <b>Default pill:</b> Live if a match is on, else Upcoming, else Recent. <b>Recent:</b> no collapsed panel; a plain list under its pill with the result line coloured by outcome (green win, coral loss, amber tie) and a W/L/T chip, then Show more from the server. <b>Rows:</b> teams, date or countdown, league and venue, plus the chips already there (Selected, availability). <b>Empty pills:</b> a pill with zero hides (Live) or shows a quiet "None yet" (Upcoming, Recent).<br><br><b>Questions:</b> 1) A (pills) or B (stacked)? 2) Should Recent be limited to the last 5 with Show more, or 10? 3) Should the Recent rows show the score, or just the result line?</div>
+</body></html>
