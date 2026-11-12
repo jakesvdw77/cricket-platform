@@ -22,6 +22,7 @@ import { HubLeague } from './myPlayers/HubLeague'
 import { HubLeagues } from './myPlayers/HubLeagues'
 import { HubMatch } from './myPlayers/HubMatch'
 import { HubMatches } from './myPlayers/HubMatches'
+import { HubCalendar } from './myPlayers/HubCalendar'
 import { HubResult } from './myPlayers/HubResult'
 import { HubResults } from './myPlayers/HubResults'
 import { HubMyStats } from './myPlayers/stats/HubMyStats'
@@ -210,6 +211,8 @@ export default function MyPlayerPage() {
         onOpen={(leagueId, seasonId) => navigate(hubLeaguePath(key, leagueId, { season: seasonId }))}
       />
     )
+  } else if (pageItem?.id === 'schedule.calendar') {
+    panel = <HubCalendar playerKey={key} playerName={player?.firstName ?? 'this player'} />
   } else if (pageItem?.id === 'schedule.matches') {
     panel = !leaf ? (
       <HubMatches playerKey={key} playerName={player?.firstName ?? 'this player'} />

@@ -53,7 +53,8 @@ export const HUB_NAV: HubNavItem[] = [
       // docs/specs/135: live now (Live Now, Upcoming, Recent), no longer a Soon item.
       { id: 'schedule.matches', label: 'Matches' },
       { id: 'schedule.leagues', label: 'Leagues' },
-      { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
+      // Owner, 2026-11-12: a month calendar of every match replaces the Team sheets placeholder (not wanted).
+      { id: 'schedule.calendar', label: 'Calendar' },
     ],
   },
   {
