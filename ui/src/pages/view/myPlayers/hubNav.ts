@@ -262,7 +262,8 @@ export function hubBack(state: HubBackState): HubBackAction | null {
       const word = origin.tab === 'results' ? 'results' : 'schedule'
       return { label: `Back to ${fromLabel ?? 'League'} ${word}`, target: hubLeaguePath(playerKey, origin.leagueId, { tab: origin.tab }) }
     }
-    return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
+    // The Matches list keeps its pill in the URL (`?tab=`), so Back returns to the same one.
+    return { label: 'Back to Matches', target: `${hubPath(playerKey, 'schedule', 'matches')}${origin.kind === 'matches' && origin.tab ? `?tab=${origin.tab}` : ''}` }
   }
   // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to Player Stats with the same scope.
   if ((route.section.id === 'results' && item && origin === 'stats') || (route.section.id === 'stats' && item === 'mine' && view === 'innings')) {

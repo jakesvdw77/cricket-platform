@@ -3,13 +3,17 @@ import { Box, ButtonBase } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { HubNavItem } from './hubNav'
 import { HUB } from './hubStyle'
-import { blackAlpha } from '../../../brandTokens'
+import { blackAlpha, creamAlpha } from '../../../brandTokens'
+import { PulseDot } from '../../../components/RecordCard/RecordCard'
 
 // Phone only: a parent's sub menu as a horizontally scrollable row of pills under the title. Real buttons, the open page has
 // aria-current="page", a Soon pill is dashed and muted. Scrolls the selected pill into view on mount and on change.
+// A pill may carry a small count badge and the pulsing live dot (the Matches pills).
+export type HubPillItem = HubNavItem & { count?: number; live?: boolean }
+
 export interface HubPillStripProps {
   label: string
-  items: HubNavItem[]
+  items: HubPillItem[]
   selectedId?: string
   onSelect: (item: HubNavItem) => void
   // The stats pages' group row: one slim row (32 px pills), no bar behind it and no rule under it.
@@ -82,7 +86,18 @@ export function HubPillStrip({ label, items, selectedId, onSelect, compact = fal
                 '&.Mui-focusVisible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 },
               }}
             >
+              {item.live && <PulseDot />}
+              {item.live && <Box component="span" sx={{ width: 6 }} />}
               {item.label}
+              {item.count !== undefined && (
+                <Box
+                  component="span"
+                  data-testid="pill-count"
+                  sx={{ ml: 0.75, minWidth: 20, px: 0.5, borderRadius: 999, fontSize: 12, lineHeight: '18px', textAlign: 'center', bgcolor: selected ? alpha(HUB.ink, 0.18) : creamAlpha(0.14) }}
+                >
+                  {item.count}
+                </Box>
+              )}
             </ButtonBase>
           )
         })}

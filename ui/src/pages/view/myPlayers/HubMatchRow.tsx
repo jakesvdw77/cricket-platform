@@ -4,14 +4,14 @@ import { Link as RouterLink } from 'react-router-dom'
 import { compactButtonSx } from '../../../components/Button'
 import type { MyMatchSelection, MyMatchSummaryDto } from '../../../api/myPlayersApi'
 import { useMyPlayerMatch } from '../../../api/myPlayersApi'
-import { creamAlpha } from '../../../brandTokens'
+import { STATS_TONES, TICKER_TONES, creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
 import { HubVenueLine, HubWeatherBadge } from './HubFixtureLocation'
 import { LeagueLogo } from './HubLeagueCard'
 import { HubLiveScore } from './HubLiveScore'
 import { LiveBadge } from './LiveBadge'
 import { timeLabel } from './leagueFormat'
-import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentResultLine, selectionLabel, watchPath } from './matchFormat'
+import { countdownLabel, elapsedLabel, matchPath, matchTitle, recentOutcome, recentResultLine, selectionLabel, watchPath } from './matchFormat'
 
 // docs/specs/135 (Schedule > Matches rows): the whole row is one tap target (the title is a stretched link; inner buttons sit above it),
 // 44 px, hover tint, gold focus ring, no chevron, no kebab. A live row has the gold edge and tint ("Your game" one step stronger).
@@ -91,16 +91,39 @@ function RowVenue({ playerKey, row, withDirections }: { playerKey: string; row: 
   )
 }
 
+// Green win, coral loss, amber tie; each also says its letter, so colour is never the only cue.
+const OUTCOME_LOOK = {
+  WON: { letter: 'W', color: TICKER_TONES.win },
+  LOST: { letter: 'L', color: TICKER_TONES.live },
+  TIED: { letter: 'T', color: STATS_TONES.partly },
+} as const
+
+function OutcomeChip({ outcome }: { outcome: keyof typeof OUTCOME_LOOK }) {
+  const { letter, color } = OUTCOME_LOOK[outcome]
+  return (
+    <Box
+      component="span"
+      data-testid="match-outcome-chip"
+      sx={{ flex: 'none', minWidth: 22, height: 22, px: 0.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: 12, fontWeight: 700, color, border: `1px solid ${color}` }}
+    >
+      {letter}
+    </Box>
+  )
+}
+
 export interface HubMatchRowProps {
   playerKey: string
   row: MyMatchSummaryDto
   now: Date
+  // Where the list was (`matches:recent`), carried to the match page so its Back returns to the same pill.
+  from?: string
 }
 
-export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
+export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
   const kind = row.phase === 'LIVE' ? 'live' : row.phase === 'RECENT' ? 'recent' : 'upcoming'
   const title = matchTitle(row.home.name, row.away.name)
   const time = timeLabel(row.time)
+  const outcome = kind === 'recent' ? recentOutcome(row) : null
   return (
     <Box component="article" data-testid="hub-match-row" data-phase={row.phase} sx={rowSx(kind)}>
       {kind === 'live' && (
@@ -110,7 +133,7 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
         </Box>
       )}
       {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
-      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, 'matches')} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
+      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, from)} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
         <Side name={row.home.name} logoUrl={row.home.logoUrl} />
         <Typography component="span" sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
         <Side name={row.away.name} logoUrl={row.away.logoUrl} />
@@ -124,7 +147,10 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
               {row.home.name} {row.result.homeScore} · {row.away.name} {row.result.awayScore}
             </Typography>
           )}
-          <Typography data-testid="match-result-line" sx={{ fontSize: 15, color: row.result ? HUB.gold : HUB.muted }}>{recentResultLine(row)}</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            {outcome && <OutcomeChip outcome={outcome} />}
+            <Typography data-testid="match-result-line" sx={{ fontSize: 15, minWidth: 0, overflowWrap: 'anywhere', color: outcome ? OUTCOME_LOOK[outcome].color : row.result ? HUB.gold : HUB.muted }}>{recentResultLine(row)}</Typography>
+          </Box>
         </Box>
       )}
       {kind !== 'recent' && <SelectionTag selection={row.selection} />}
@@ -136,7 +162,7 @@ export function HubMatchRow({ playerKey, row, now }: HubMatchRowProps) {
               variant="contained"
               size="small"
               component={RouterLink}
-              to={watchPath(playerKey, row.matchId, 'matches')}
+              to={watchPath(playerKey, row.matchId, from)}
               data-testid="watch-live"
               sx={{ ...compactButtonSx, bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
             >

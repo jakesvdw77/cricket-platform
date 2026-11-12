@@ -1,25 +1,53 @@
 import { useState } from 'react'
-import { Alert, Box, ButtonBase, Skeleton, Typography } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import RemoveIcon from '@mui/icons-material/Remove'
+import { Alert, Box, Skeleton, Typography } from '@mui/material'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { BrandIcon } from '../../../components/BrandIcon'
-import { PulseDot } from '../../../components/RecordCard/RecordCard'
 import { useMyPlayerMatches } from '../../../api/myPlayersApi'
+import type { MyMatchSummaryDto } from '../../../api/myPlayersApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HubPageHeader } from './HubPageHeader'
-import { HUB, hubHeading } from './hubStyle'
+import { HubPillStrip } from './HubPillStrip'
+import type { HubPillItem } from './HubPillStrip'
+import { HUB } from './hubStyle'
 import { HubMatchRow } from './HubMatchRow'
 import { groupByDate, longDate } from './leagueFormat'
+import { MATCHES_TABS } from './matchFormat'
+import type { MatchesTab } from './matchFormat'
 import { useNow } from './useNow'
 
-// docs/specs/135 (Schedule > Matches): Live Now (pinned first, only when a match is on), Upcoming (grouped by date, with a countdown)
-// and Recent (collapsed until asked for). Read only; the footer owns Back. A live match refetches every minute (the hook).
+// docs/specs/135 (Schedule > Matches): a pill row (Live when a match is on, Upcoming, Recent, each with its count) and only the chosen
+// list under it. Upcoming is grouped by date with a countdown; Recent is open, newest first, 10 at a time with Show More. The pill is
+// kept in the URL (`?tab=`) and handed to a match page as `from`, so its Back returns to the same pill. Read only; the footer owns
+// Back. A live match refetches every minute (the hook).
+const PAGE = 10
+const column = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 } as const
+
 export function HubMatches({ playerKey, playerName }: { playerKey?: string; playerName: string }) {
-  const matches = useMyPlayerMatches(playerKey)
-  const [recentOpen, setRecentOpen] = useState(false)
+  const [recentLimit, setRecentLimit] = useState(PAGE)
+  const matches = useMyPlayerMatches(playerKey, { recentLimit })
+  const [search, setSearch] = useSearchParams()
   const now = useNow()
   const data = matches.data
+
+  const upcomingCount = data ? (data.upcomingTotal ?? data.upcoming.length) : 0
+  const recentCount = data ? (data.recentTotal ?? data.recent.length) : 0
+  const liveOn = Boolean(data && data.live.length > 0)
+  const asked = search.get('tab')
+  const requested = MATCHES_TABS.find((tab) => tab === asked)
+  const fallback: MatchesTab = liveOn ? 'live' : upcomingCount > 0 ? 'upcoming' : 'recent'
+  // A Live pill that is no longer shown (the match ended) falls back to the default.
+  const tab: MatchesTab = requested && (requested !== 'live' || liveOn) ? requested : fallback
+
+  const pills: HubPillItem[] = [
+    ...(liveOn ? [{ id: 'live', label: 'Live', live: true, count: data?.live.length }] : []),
+    { id: 'upcoming', label: 'Upcoming', count: upcomingCount },
+    { id: 'recent', label: 'Recent', count: recentCount },
+  ]
+  const from = `matches:${tab}`
+
+  const list = (rows: MyMatchSummaryDto[]) => rows.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey as string} row={row} now={now} from={from} />)
+  const none = <Typography data-testid="matches-none" sx={{ fontSize: 15, color: HUB.muted }}>None yet</Typography>
 
   let body
   if (matches.isLoading) {
@@ -34,7 +62,7 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
         We could not load the matches. Please try again.
       </Alert>
     )
-  } else if (data && data.live.length + data.upcoming.length + data.recent.length === 0) {
+  } else if (data && data.live.length + upcomingCount + recentCount === 0) {
     body = (
       <Box data-testid="hub-matches-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/cricket-leagues" size={64} onDark />
@@ -43,42 +71,29 @@ export function HubMatches({ playerKey, playerName }: { playerKey?: string; play
     )
   } else if (data) {
     body = (
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
-        {data.live.length > 0 && (
-          <Box component="section" aria-labelledby="hub-matches-live" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-            <Typography id="hub-matches-live" component="h3" sx={{ ...hubHeading, fontSize: 17, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <PulseDot />
-              Live Now
-            </Typography>
-            {data.live.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey} row={row} now={now} />)}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
+        <HubPillStrip compact label="Matches" items={pills} selectedId={tab} onSelect={(item) => setSearch({ tab: item.id }, { replace: true })} />
+        {tab === 'live' && <Box data-testid="matches-live" sx={column}>{data.live.length > 0 ? list(data.live) : none}</Box>}
+        {tab === 'upcoming' && (
+          <Box data-testid="matches-upcoming" sx={{ ...column, gap: 2 }}>
+            {data.upcoming.length === 0
+              ? none
+              : groupByDate(data.upcoming).map((group) => (
+                  <Box key={group.date} sx={column}>
+                    <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(group.date)}</Typography>
+                    {list(group.rows)}
+                  </Box>
+                ))}
           </Box>
         )}
-        {data.upcoming.length > 0 && (
-          <Box component="section" aria-labelledby="hub-matches-upcoming" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-            <Typography id="hub-matches-upcoming" component="h3" sx={{ ...hubHeading, fontSize: 17 }}>Upcoming</Typography>
-            {groupByDate(data.upcoming).map((group) => (
-              <Box key={group.date} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-                <Typography component="h4" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(group.date)}</Typography>
-                {group.rows.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey} row={row} now={now} />)}
-              </Box>
-            ))}
-          </Box>
-        )}
-        {data.recent.length > 0 && (
-          <Box component="section" aria-label="Recent Matches" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-            <ButtonBase
-              aria-expanded={recentOpen}
-              aria-controls="hub-matches-recent"
-              onClick={() => setRecentOpen((open) => !open)}
-              data-testid="recent-toggle"
-              sx={{ justifyContent: 'space-between', minHeight: 44, px: 1.5, border: 1, borderColor: HUB.line, borderRadius: '4px', fontSize: 15, fontWeight: 600, color: HUB.cream, '&:hover': { bgcolor: creamAlpha(0.08) }, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
-            >
-              Recent Matches
-              {recentOpen ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-            </ButtonBase>
-            {recentOpen && (
-              <Box id="hub-matches-recent" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-                {data.recent.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey} row={row} now={now} />)}
+        {tab === 'recent' && (
+          <Box data-testid="matches-recent" sx={column}>
+            {data.recent.length === 0 ? none : list(data.recent)}
+            {data.recent.length < recentCount && (
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <Button variant="secondary" size="compact" data-testid="show-more" disabled={matches.isFetching} onClick={() => setRecentLimit((limit) => Math.min(limit + PAGE, 100))}>
+                  Show More
+                </Button>
               </Box>
             )}
           </Box>
