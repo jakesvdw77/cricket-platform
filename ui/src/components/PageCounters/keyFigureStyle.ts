@@ -21,9 +21,10 @@ export const keyFigureCardSx = {
 // baseline aligned, about 44 px tall. Right padding leaves room for the corner marker, which is centred vertically.
 export const compactCardSx = {
   ...keyFigureCardSx,
-  flexDirection: 'row',
-  alignItems: 'baseline',
-  gap: 1,
+  // A phone has no room for value and label on one line (owner, 2026-11-12): they stack and may wrap, so nothing is cut off.
+  flexDirection: { xs: 'column', sm: 'row' },
+  alignItems: { xs: 'flex-start', sm: 'baseline' },
+  gap: { xs: 0.25, sm: 1 },
   minHeight: 44,
   py: 1.25,
   pl: 2,
@@ -34,8 +35,11 @@ export const compactCardSx = {
 export const compactValueSx = (warn: boolean) => ({
   ...keyFigureValueSx(warn),
   fontSize: '1.5rem',
-  lineHeight: 1,
+  lineHeight: { xs: 1.1, sm: 1 },
   flex: '0 0 auto',
+  minWidth: 0,
+  maxWidth: '100%',
+  overflowWrap: 'anywhere',
 })
 
 // docs/specs/120 Decision 8: the numeral is 40 px in the display face (Barlow Condensed 700) in the header green; a warning
