@@ -131,8 +131,11 @@ class MePlayersController {
 
     /** docs/specs/135: the held player's live, upcoming and recent matches, authorised only through MyPlayerAccess. */
     @GetMapping("/{playerKey}/matches")
-    MyMatchListDto matches(Authentication authentication, @PathVariable String playerKey) {
-        return myMatchService.list(authentication, playerKey);
+    MyMatchListDto matches(
+            Authentication authentication,
+            @PathVariable String playerKey,
+            @RequestParam(required = false) Integer recentLimit) {
+        return myMatchService.list(authentication, playerKey, recentLimit);
     }
 
     /** docs/specs/135: one match; a 404 when it is not a match of the held player's teams. */

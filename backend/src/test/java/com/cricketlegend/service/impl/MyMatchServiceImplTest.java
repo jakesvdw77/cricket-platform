@@ -19,6 +19,7 @@ import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.dto.MyMatchDto;
 import com.cricketlegend.dto.MyMatchListDto;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -217,7 +218,7 @@ class MyMatchServiceImplTest {
     void aPlayerWithNoSquadHasNoMatches() {
         when(squadRepository.findByPlayerProfileId(profileId)).thenReturn(List.of());
 
-        MyMatchListDto list = service.list(authentication, "key");
+        MyMatchListDto list = service.list(authentication, "key", null);
 
         assertThat(list.live()).isEmpty();
         assertThat(list.upcoming()).isEmpty();
@@ -239,7 +240,7 @@ class MyMatchServiceImplTest {
         when(matchRepository.findActiveForTeamsFrom(any(), any(), any(), any())).thenReturn(all);
         when(matchRepository.findActiveForTeamsBefore(any(), any(), any(), any())).thenReturn(past);
 
-        MyMatchListDto list = service.list(authentication, "key");
+        MyMatchListDto list = service.list(authentication, "key", null);
 
         assertThat(list.live()).hasSize(1);
         assertThat(list.live().get(0).startedAt()).isNotNull();
@@ -250,6 +251,37 @@ class MyMatchServiceImplTest {
         assertThat(list.upcoming().get(0).hasStream()).isFalse();
         assertThat(list.recent()).hasSize(MyMatchServiceImpl.RECENT_CAP);
         assertThat(list.recent().get(0).date()).isAfter(list.recent().get(1).date());
+        assertThat(list.upcomingTotal()).isEqualTo(25);
+        assertThat(list.recentTotal()).isEqualTo(15);
+    }
+
+    @Test
+    void aLargerRecentLimitReturnsMoreAndTheTotalsAreTheUncappedCounts() {
+        Instant now = Instant.now();
+        List<Match> past = new java.util.ArrayList<>();
+        for (int i = 1; i <= 30; i++) {
+            past.add(matchAt(now.minus(10L + i, ChronoUnit.DAYS)));
+        }
+        when(matchRepository.findActiveForTeamsFrom(any(), any(), any(), any())).thenReturn(List.of());
+        when(matchRepository.findActiveForTeamsBefore(any(), any(), any(), any())).thenReturn(past);
+
+        MyMatchListDto def = service.list(authentication, "key", null);
+        MyMatchListDto more = service.list(authentication, "key", 25);
+        MyMatchListDto all = service.list(authentication, "key", 100);
+
+        assertThat(def.recent()).hasSize(10);
+        assertThat(more.recent()).hasSize(25);
+        assertThat(all.recent()).hasSize(30);
+        assertThat(def.recentTotal()).isEqualTo(30);
+        assertThat(more.recentTotal()).isEqualTo(30);
+        assertThat(def.upcomingTotal()).isZero();
+    }
+
+    @Test
+    void aRecentLimitOutsideOneToAHundredIsRefused() {
+        assertThatThrownBy(() -> service.list(authentication, "key", 0)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.list(authentication, "key", 101)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.list(authentication, "key", -5)).isInstanceOf(ValidationException.class);
     }
 
     private Match matchAt(Instant when) {

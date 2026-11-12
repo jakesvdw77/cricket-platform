@@ -2327,7 +2327,7 @@ paths:
     get:
       tags:
       - me-players-controller
-      description: "The held player matches (docs/specs/135): live now, upcoming (soonest first, current season, at most 20) and recent (newest first, at most 10). Only matches of the teams the player is in the squad of for the match season. Phase is computed on the server clock (live = started, no published result, within 8 hours of the start). Key not held, malformed or dropped out is 404, a suspended caller 403."
+      description: "The held player matches (docs/specs/135): live now, upcoming (soonest first, current season, at most 20) and recent (newest first, recentLimit of them, default 10). upcomingTotal and recentTotal count the matches before the cap. Only matches of the teams the player is in the squad of for the match season. Phase is computed on the server clock (live = started, no published result, within 8 hours of the start). Key not held, malformed or dropped out is 404, a suspended caller 403."
       operationId: listMyPlayerMatches
       parameters:
       - name: playerKey
@@ -2336,6 +2336,13 @@ paths:
         description: "The person link id, or self:<profileId> for the caller own record. A key the caller does not hold is 404."
         schema:
           type: string
+      - name: recentLimit
+        in: query
+        required: false
+        description: "How many recent matches to return, 1 to 100, default 10. Out of range is 400."
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: OK
@@ -21126,10 +21133,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MyMatchSummaryDto"
+        upcomingTotal:
+          type: integer
+          format: int64
+        recentTotal:
+          type: integer
+          format: int64
       required:
       - live
       - upcoming
       - recent
+      - upcomingTotal
+      - recentTotal
     MyMatchDto:
       type: object
       description: "One match for the Player Hub match page (docs/specs/135). Response only. No manager-only data."

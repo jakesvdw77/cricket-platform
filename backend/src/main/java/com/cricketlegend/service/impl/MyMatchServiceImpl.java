@@ -29,6 +29,7 @@ import com.cricketlegend.dto.MyMatchStreamDto;
 import com.cricketlegend.dto.MyMatchSummaryDto;
 import com.cricketlegend.dto.MyMatchTeamDto;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -84,6 +85,7 @@ class MyMatchServiceImpl implements MyMatchService {
 
     static final int UPCOMING_CAP = 20;
     static final int RECENT_CAP = 10;
+    static final int RECENT_MAX = 100;
     private static final int FUTURE_READ = 200;
     private static final int PAST_READ = 50;
     private static final int JUNIOR_LEAGUE_MAX_AGE = 18;
@@ -136,23 +138,27 @@ class MyMatchServiceImpl implements MyMatchService {
 
     @Override
     @Transactional(readOnly = true)
-    public MyMatchListDto list(Authentication authentication, String playerKey) {
+    public MyMatchListDto list(Authentication authentication, String playerKey, Integer recentLimit) {
         HeldPlayer held = access.resolve(authentication, playerKey);
+        int limit = recentLimit == null ? RECENT_CAP : recentLimit;
+        if (limit < 1 || limit > RECENT_MAX) {
+            throw new ValidationException("recentLimit must be between 1 and " + RECENT_MAX + ".");
+        }
         UUID clubId = held.profile().getClubId();
         UUID profileId = held.profile().getId();
         Map<UUID, Set<UUID>> squad = squadTeamsBySeason(profileId);
         Set<UUID> teamIds = squad.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
         if (teamIds.isEmpty()) {
-            return new MyMatchListDto(List.of(), List.of(), List.of());
+            return new MyMatchListDto(List.of(), List.of(), List.of(), 0, 0);
         }
         Instant now = ServerClock.now();
         Instant liveFrom = now.minusSeconds(MatchPhase.LIVE_WINDOW_HOURS * 3600L);
         List<Match> matches = new ArrayList<>(matchRepository.findActiveForTeamsFrom(
                 clubId, teamIds, liveFrom, PageRequest.of(0, FUTURE_READ)));
-        matches.addAll(matchRepository.findActiveForTeamsBefore(clubId, teamIds, liveFrom, PageRequest.of(0, PAST_READ)));
+        matches.addAll(matchRepository.findActiveForTeamsBefore(clubId, teamIds, liveFrom, PageRequest.of(0, Math.max(PAST_READ, limit * 2))));
         matches = matches.stream().filter(m -> isMine(m, squad)).toList();
         if (matches.isEmpty()) {
-            return new MyMatchListDto(List.of(), List.of(), List.of());
+            return new MyMatchListDto(List.of(), List.of(), List.of(), 0, 0);
         }
         MyMatchContext ctx = load(clubId, matches);
         UUID currentSeason = SeasonResolution.currentSeasonId(seasonRepository.findByClubId(clubId));
@@ -177,7 +183,8 @@ class MyMatchServiceImpl implements MyMatchService {
         live.sort(soonest.reversed());
         upcoming.sort(soonest);
         recent.sort(soonest.reversed());
-        return new MyMatchListDto(live, cap(upcoming, UPCOMING_CAP), cap(recent, RECENT_CAP));
+        // The totals are counted over the rows read (at most FUTURE_READ ahead, max(PAST_READ, 2 x limit) behind).
+        return new MyMatchListDto(live, cap(upcoming, UPCOMING_CAP), cap(recent, limit), upcoming.size(), recent.size());
     }
 
     @Override

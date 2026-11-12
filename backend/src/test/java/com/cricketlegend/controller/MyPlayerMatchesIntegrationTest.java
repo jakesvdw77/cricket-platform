@@ -290,6 +290,29 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
                 .andExpect(jsonPath("$.live[0].hasLiveScore").value(false));
     }
 
+    @Test
+    void recentLimitDefaultsToTenGrowsOnRequestAndTheTotalsAreUncapped() throws Exception {
+        for (int i = 1; i <= 12; i++) {
+            match(team, season, hoursFromNow(-24L * i - 12));
+        }
+        match(team, season, hoursFromNow(48));
+        match(team, season, hoursFromNow(72));
+
+        mockMvc.perform(get(LIST, link.getId()).with(as(parent)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recent.length()").value(10))
+                .andExpect(jsonPath("$.recentTotal").value(12))
+                .andExpect(jsonPath("$.upcomingTotal").value(2));
+        mockMvc.perform(get(LIST, link.getId()).param("recentLimit", "25").with(as(parent)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recent.length()").value(12))
+                .andExpect(jsonPath("$.recentTotal").value(12));
+        mockMvc.perform(get(LIST, link.getId()).param("recentLimit", "0").with(as(parent)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get(LIST, link.getId()).param("recentLimit", "101").with(as(parent)))
+                .andExpect(status().isBadRequest());
+    }
+
     // ---- contract ----
 
     @Test
@@ -314,7 +337,8 @@ class MyPlayerMatchesIntegrationTest extends AbstractLinkIntegrationTest {
         String list = mockMvc.perform(get(LIST, link.getId()).with(as(parent)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode lists = objectMapper.readTree(list);
-        assertThat(keys(lists)).containsExactlyInAnyOrder("live", "upcoming", "recent");
+        assertThat(keys(lists)).containsExactlyInAnyOrder(
+                "live", "upcoming", "recent", "upcomingTotal", "recentTotal");
         assertThat(keys(lists.get("live").get(0))).containsExactlyInAnyOrder(
                 "matchId", "phase", "date", "time", "startedAt", "home", "away", "league", "venue", "mine", "selection",
                 "hasLiveScore", "hasStream", "result");
