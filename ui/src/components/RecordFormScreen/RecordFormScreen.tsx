@@ -69,7 +69,7 @@ export function RecordFormScreen({ title, backTo: defaultBackTo, backLabel: defa
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
             gap: compact ? 2 : 3,
           }}
         >

@@ -104,6 +104,7 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
               checked={ownField}
               onChange={setOwnField}
               label="This is one of our fields (we play home games here or manage it)"
+              noWrap={false}
             />
           </Box>
         )}

@@ -127,7 +127,7 @@ export function SponsorForm({ initialValues, onSubmit }: SponsorFormProps) {
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1' }}>
+    <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
       <Tabs
         value={activeTab}
         onChange={(_event, next: number) => setActiveTab(next)}
