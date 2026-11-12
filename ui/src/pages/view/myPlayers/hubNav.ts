@@ -44,8 +44,6 @@ export interface HubNavItem {
 
 export const HUB_NAV: HubNavItem[] = [
   { id: 'availability', label: 'Availability', pill: 'openPolls' },
-  // docs/specs/145: Results is a leaf and the second main item.
-  { id: 'results', label: 'Results' },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -57,6 +55,8 @@ export const HUB_NAV: HubNavItem[] = [
       { id: 'schedule.calendar', label: 'Calendar' },
     ],
   },
+  // docs/specs/145: Results is a leaf. Owner, 2026-11-12: the order is chronological, Availability, Schedule, Results, Stats.
+  { id: 'results', label: 'Results' },
   {
     id: 'stats',
     label: 'Stats',
