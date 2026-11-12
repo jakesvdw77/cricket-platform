@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { alpha } from '@mui/material/styles'
 import { Avatar, Box, Chip, Typography } from '@mui/material'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../../components/Button'

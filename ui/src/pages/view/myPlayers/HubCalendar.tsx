@@ -98,7 +98,7 @@ export function HubCalendar({ playerKey, playerName }: { playerKey?: string; pla
               >
                 <Typography component="span" sx={{ fontSize: 15, fontWeight: key === today ? 700 : 500 }}>{day}</Typography>
                 <Box sx={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center', minHeight: 8 }} aria-hidden="true">
-                  {games.slice(0, 4).map((g, n) => <Box key={n} sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: n < mine ? HUB.gold : HUB.sand }} />)}
+                  {games.slice(0, 4).map((_g, n) => <Box key={n} sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: n < mine ? HUB.gold : HUB.sand }} />)}
                 </Box>
               </Box>
             )
