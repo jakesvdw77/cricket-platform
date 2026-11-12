@@ -97,7 +97,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
       >
         {icon}
       </Box>}
-      <Box component="span" sx={{ display: 'flex', flexDirection: counter ? 'row' : 'column', alignItems: counter ? 'baseline' : undefined, columnGap: counter ? 1 : undefined, minWidth: 0, flex: 1 }}>
+      <Box component="span" sx={{ display: 'flex', flexDirection: counter ? 'row' : 'column', alignItems: counter ? 'baseline' : undefined, flexWrap: counter ? 'wrap' : undefined, columnGap: counter ? 1 : undefined, minWidth: 0, flex: 1 }}>
         <Typography
           component="b"
           data-testid={testId ? `${testId}-value` : undefined}
@@ -109,7 +109,8 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
             ...(!textValue && { fontFamily: (theme: Theme) => theme.typography.fontFamilyDisplay }),
             ...((compact || (counter && emphasis)) && { color: `${emphasis ?? 'primary'}.dark` }),
             fontVariantNumeric: 'tabular-nums',
-            overflowWrap: 'anywhere',
+            // A counter keeps a word whole and wraps the label under it instead (owner sweep, 2026-11-12: "In Progre ss").
+            overflowWrap: counter ? 'break-word' : 'anywhere',
           }}
         >
           {value}
