@@ -38,7 +38,7 @@ function initialAnswers(poll: MyPoll): Answers {
 
 function Options({ label, value, disabled, onChange }: { label: string; value: AvailabilityStatus | undefined; disabled: boolean; onChange: (s: AvailabilityStatus) => void }) {
   return (
-    <Box role="group" aria-label={label} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+    <Box role="group" aria-label={label} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
       {OPTIONS.map((option) => {
         const on = value === option.status
         return (
@@ -57,6 +57,7 @@ function Options({ label, value, disabled, onChange }: { label: string; value: A
               borderRadius: '4px',
               fontWeight: 600,
               fontSize: 14,
+              lineHeight: 1.2,
               '&.Mui-disabled': { opacity: 0.55 },
               '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
             }}
@@ -107,21 +108,21 @@ export function LinkedPollCard({ poll, playerName, saving, error, onSave }: Link
   return (
     <Box
       data-testid="linked-poll-card"
-      sx={{ border: 1, borderColor: HUB.line, bgcolor: HUB.panelDark, borderRadius: '4px', p: { xs: 1.5, sm: 2 }, display: 'grid', gap: 1.25, color: HUB.cream }}
+      sx={{ border: 1, borderColor: HUB.line, bgcolor: HUB.panelDark, borderRadius: '4px', p: { xs: 1.5, sm: 2 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: 1.25, color: HUB.cream }}
     >
       <Box>
         <Typography component="h3" fontWeight={600} fontSize={16} sx={{ overflowWrap: 'anywhere' }}>
           {poll.title}
         </Typography>
         {meta && (
-          <Typography fontSize={13} sx={{ color: HUB.muted }}>
+          <Typography fontSize={13} sx={{ color: HUB.muted, overflowWrap: 'anywhere' }}>
             {meta}
           </Typography>
         )}
       </Box>
 
       {slots.map((slot) => (
-        <Box key={slot.key} sx={{ display: 'grid', gap: 0.75 }}>
+        <Box key={slot.key} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75 }}>
           {slot.label && (
             <Typography fontSize={14} fontWeight={600}>
               {slot.label}
@@ -129,7 +130,7 @@ export function LinkedPollCard({ poll, playerName, saving, error, onSave }: Link
             </Typography>
           )}
           {slot.matches.map((match) => (
-            <Typography key={match} fontSize={13} sx={{ color: HUB.muted }}>
+            <Typography key={match} fontSize={13} sx={{ color: HUB.muted, overflowWrap: 'anywhere' }}>
               {match}
             </Typography>
           ))}

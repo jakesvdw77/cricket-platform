@@ -31,9 +31,9 @@ export function MyPlayerPolls({ playerKey, playerName }: { playerKey: string; pl
     )
   }
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
       {items.map((poll) => (
-        <Box key={poll.pollId} id={`poll-${poll.pollId}`} sx={{ scrollMarginTop: 16 }}>
+        <Box key={poll.pollId} id={`poll-${poll.pollId}`} sx={{ scrollMarginTop: 16, minWidth: 0 }}>
         <LinkedPollCard
           poll={poll}
           playerName={playerName}

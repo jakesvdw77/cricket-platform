@@ -15,7 +15,7 @@ import { competitionText, economy, extrasLine, howOutWords, oversToBalls, result
 // static compact figures), the held player's own card first, then the full scorecard of each innings with names (the player's own
 // row highlighted), the awards. Read only; the footer's Back returns to the list with the same Season, Team and League. A result
 // that is not shown in the Player Hub is a 404, shown as "This result is not available".
-const panelSx = { display: 'grid', gap: 0.75, border: 1, borderColor: HUB.line, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) } as const
+const panelSx = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: 0.75, border: 1, borderColor: HUB.line, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) } as const
 const sectionTitle = { fontFamily: HUB.display, fontWeight: 600, fontSize: 17, letterSpacing: '0.04em', textTransform: 'uppercase', color: HUB.sand } as const
 const cellSx = { color: HUB.cream, borderColor: HUB.lineSoft, px: 0.75, py: 0.75, fontSize: 14, whiteSpace: 'nowrap' } as const
 const headSx = { ...cellSx, color: HUB.muted, fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' } as const
@@ -23,7 +23,7 @@ const mineSx = { bgcolor: alpha(HUB.gold, 0.18), boxShadow: `inset 3px 0 0 ${HUB
 
 function Skeletons() {
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }} aria-busy="true" data-testid="hub-result-loading">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} aria-busy="true" data-testid="hub-result-loading">
       <Skeleton variant="rounded" height={120} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={260} sx={{ bgcolor: creamAlpha(0.12) }} />
       <Skeleton variant="rounded" height={200} sx={{ bgcolor: creamAlpha(0.12) }} />
@@ -33,7 +33,7 @@ function Skeletons() {
 
 function Figure({ name, score }: { name: string; score: string }) {
   return (
-    <Box sx={{ flex: '1 1 150px', minWidth: 0, minHeight: 46, border: 1, borderColor: HUB.line, borderRadius: '6px', px: 1.5, py: 0.75, bgcolor: creamAlpha(0.07), display: 'grid', alignContent: 'center' }}>
+    <Box sx={{ flex: '1 1 150px', minWidth: 0, minHeight: 46, border: 1, borderColor: HUB.line, borderRadius: '6px', px: 1.5, py: 0.75, bgcolor: creamAlpha(0.07), display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'center' }}>
       <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.muted, overflowWrap: 'anywhere' }}>{name}</Typography>
       <Typography component="span" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 19, color: HUB.gold }}>{score || '-'}</Typography>
     </Box>
@@ -43,10 +43,10 @@ function Figure({ name, score }: { name: string; score: string }) {
 function InningsCard({ innings, ballsPerOver }: { innings: MyResultInnings; ballsPerOver: number }) {
   return (
     <Box component="section" aria-label={`${innings.battingTeamName} Innings`} data-testid="hub-result-innings" sx={panelSx}>
-      <Typography component="h3" sx={sectionTitle}>
+      <Typography component="h3" sx={{ ...sectionTitle, overflowWrap: 'anywhere' }}>
         {innings.battingTeamName} · {innings.runs}/{innings.wickets} ({innings.overs} ov)
       </Typography>
-      <Box sx={{ overflowX: 'auto' }}>
+      <Box sx={{ overflowX: 'auto', minWidth: 0, maxWidth: '100%' }}>
         <Table size="small" aria-label={`${innings.battingTeamName} Batting`} sx={{ minWidth: 300 }}>
           <TableHead>
             <TableRow>
@@ -77,7 +77,7 @@ function InningsCard({ innings, ballsPerOver }: { innings: MyResultInnings; ball
       )}
       <Typography sx={{ fontSize: 14 }}>{extrasLine(innings)}</Typography>
       {innings.bowling.length > 0 && (
-        <Box sx={{ overflowX: 'auto', mt: 0.5 }}>
+        <Box sx={{ overflowX: 'auto', mt: 0.5, minWidth: 0, maxWidth: '100%' }}>
           <Table size="small" aria-label={`${innings.battingTeamName} Bowling`} sx={{ minWidth: 300 }}>
             <TableHead>
               <TableRow>
@@ -143,11 +143,11 @@ export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: 
   const { mine } = result
   const meta = [resultDate(mine.matchDate, true), competitionText(mine), result.venue].filter(Boolean).join(' · ')
   return (
-    <Box data-testid="hub-result" sx={{ display: 'grid', gap: 1.5 }}>
+    <Box data-testid="hub-result" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: 1.5 }}>
       <Typography component="h2" sx={{ ...hubPageHeading, fontSize: 24, textTransform: 'none', overflowWrap: 'anywhere' }}>
         {mine.homeName} versus {mine.awayName}
       </Typography>
-      <Typography sx={{ fontSize: 14, color: HUB.muted }}>{meta}</Typography>
+      <Typography sx={{ fontSize: 14, color: HUB.muted, overflowWrap: 'anywhere' }}>{meta}</Typography>
       <Typography data-testid="hub-result-line" sx={{ fontSize: 17, color: HUB.gold, fontWeight: 600 }}>{resultBanner(mine)}</Typography>
       <Box data-testid="hub-result-figures" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         <Figure name={mine.homeName} score={mine.homeScore} />

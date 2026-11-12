@@ -65,11 +65,11 @@ export function HubResultCard({ playerKey, playerName, row, scopeQuery, latest }
       >
         {resultBanner(row)}
       </Typography>
-      <Box sx={{ display: 'grid', gap: 0.25, mt: 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25, mt: 1 }}>
         <Score name={row.homeName} score={row.homeScore} />
         <Score name={row.awayName} score={row.awayScore} />
       </Box>
-      <Typography sx={{ fontSize: 12, color: HUB.muted, mt: 0.75 }}>{league}</Typography>
+      <Typography sx={{ fontSize: 12, color: HUB.muted, mt: 0.75, overflowWrap: 'anywhere' }}>{league}</Typography>
     </Box>
   )
 
@@ -87,7 +87,7 @@ export function HubResultCard({ playerKey, playerName, row, scopeQuery, latest }
 
   return (
     <Box component="article" data-testid={latest ? 'hub-result-latest' : 'hub-result-card'} data-tone={tone} sx={{ ...cardSx(tone), p: 2, gap: 1.5, borderRadius: '20px' }}>
-      <Typography sx={{ ...kickerSx, fontSize: 14 }}>{kicker}</Typography>
+      <Typography sx={{ ...kickerSx, fontSize: 14, overflowWrap: 'anywhere' }}>{kicker}</Typography>
       {latest ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.3fr) minmax(0, 1fr)' }, gap: 1.5, alignItems: 'end' }}>
           {match}
