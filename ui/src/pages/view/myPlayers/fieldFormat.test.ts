@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FieldDto } from '../../../api/myPlayersApi'
-import { isHttpsUrl, joinAddress, matchesSearch } from './fieldFormat'
+import { addressLines, isHttpsUrl, joinAddress, matchesSearch } from './fieldFormat'
 
 const field: FieldDto = {
   id: '1', name: 'Oval Ground', owner: 'City Council', addressLine1: '1 Main Rd', city: 'Paarl', provinceState: 'Western Cape',
@@ -41,5 +41,21 @@ describe('fieldFormat', () => {
   })
   it('joins a full address in order, including the postal code', () => {
     expect(joinAddress({ ...field, postalCode: '7646' })).toBe('1 Main Rd, Paarl, Western Cape, 7646, South Africa')
+  })
+})
+
+describe('addressLines', () => {
+  it('gives the street, then city and province with the postal code, then the country', () => {
+    expect(addressLines({ ...field, postalCode: '7646' })).toEqual(['1 Main Rd', 'Paarl, Western Cape 7646', 'South Africa'])
+  })
+
+  it('leaves out empty and blank parts without stray commas', () => {
+    expect(addressLines({ ...field, addressLine1: null, provinceState: ' ', postalCode: null })).toEqual(['Paarl', 'South Africa'])
+    expect(addressLines({ ...field, city: null, provinceState: null, postalCode: '7646' })).toEqual(['1 Main Rd', '7646', 'South Africa'])
+    expect(addressLines({ ...field, city: null, provinceState: 'Western Cape', postalCode: null })).toEqual(['1 Main Rd', 'Western Cape', 'South Africa'])
+  })
+
+  it('is empty when nothing is known', () => {
+    expect(addressLines({ addressLine1: null, city: null, provinceState: null, postalCode: null, country: '' })).toEqual([])
   })
 })

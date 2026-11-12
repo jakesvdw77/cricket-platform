@@ -72,6 +72,23 @@ describe('HubProfile', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent('/account/players/k1/profile/contact/edit-card')
   })
 
+  it('makes the photo the edit control: one named button with the pencil badge, and only one Edit button in the heading', () => {
+    renderProfile(makeMyPlayer())
+
+    const photo = screen.getByRole('button', { name: 'Edit photo and date of birth' })
+    expect(within(photo).getByTestId('photo-edit-badge')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Edit/ }).map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Edit photo and date of birth', 'Edit'])
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1)
+  })
+
+  it('offers the photo edit on every page, including Agents where a non-manager has no Edit', async () => {
+    renderProfile(makeMyPlayer({ canManageAgents: false }), 'agents')
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Edit photo and date of birth' }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/account/players/k1/profile/agents/edit-card')
+  })
+
   describe('agents', () => {
     const agentsPage = (player: MyPlayer) => renderProfile(player, 'agents')
 

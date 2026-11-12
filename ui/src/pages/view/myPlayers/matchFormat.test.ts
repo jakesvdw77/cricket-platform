@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { hubBack } from './hubNav'
 import type { HubBackState } from './hubNav'
-import { answerLabel, countdownLabel, elapsedLabel, leagueFrom, matchPath, parseFrom, recentResultLine, selectionLabel, statusBadgeLabel, watchPath, withinForecastDays } from './matchFormat'
+import { answerLabel, countdownLabel, elapsedLabel, leagueFrom, matchPath, parseFrom, recentOutcome, recentResultLine, selectionLabel, statusBadgeLabel, watchPath, withinForecastDays } from './matchFormat'
 
 // docs/specs/135: the pure match helpers and the footer Back of the match pages.
 const NOW = new Date('2026-11-01T10:00:00')
@@ -96,5 +96,38 @@ describe('hubBack on the match pages', () => {
 
   it('goes from Watch Live to the match, keeping where it was opened from', () => {
     expect(hubBack(state({ view: 'm1', extra: 'watch', from: 'matches' }))).toEqual({ label: 'Back to Match', target: '/account/players/k1/schedule/matches/m1?from=matches' })
+  })
+})
+
+describe('recentOutcome', () => {
+  const result = (resultLine: string) => ({ homeScore: '1', awayScore: '2', resultLine })
+
+  it('trusts the server\'s outcome for the player\'s side', () => {
+    expect(recentOutcome({ outcome: 'WON', result: result('Match tied') })).toBe('WON')
+    expect(recentOutcome({ outcome: 'LOST', result: null })).toBe('LOST')
+  })
+
+  it('reads a tie from the result line whichever side the player was on', () => {
+    expect(recentOutcome({ result: result('Match tied') })).toBe('TIED')
+    expect(recentOutcome({ outcome: null, result: result('Scores tied') })).toBe('TIED')
+  })
+
+  it('stays null when a win or loss cannot be told, or there is no result', () => {
+    expect(recentOutcome({ result: result('Home won by 4 runs') })).toBeNull()
+    expect(recentOutcome({ result: null })).toBeNull()
+  })
+})
+
+describe('the Matches pill in `from`', () => {
+  it('parses matches:<pill> into the origin with its tab, and ignores an unknown pill', () => {
+    expect(parseFrom('matches:recent')).toEqual({ kind: 'matches', tab: 'recent' })
+    expect(parseFrom('matches:live')).toEqual({ kind: 'matches', tab: 'live' })
+    expect(parseFrom('matches:other')).toEqual({ kind: 'matches' })
+  })
+
+  it('encodes the pill into the match and watch paths', () => {
+    expect(matchPath('k1', 'm1', 'matches:recent')).toBe('/account/players/k1/schedule/matches/m1?from=matches%3Arecent')
+    expect(watchPath('k1', 'm1', 'matches:live')).toBe('/account/players/k1/schedule/matches/m1/watch?from=matches%3Alive')
+    expect(watchPath('k1', 'm1')).toBe('/account/players/k1/schedule/matches/m1/watch')
   })
 })

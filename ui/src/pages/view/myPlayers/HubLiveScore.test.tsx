@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { LiveScoreSource } from '../../../api/myPlayersApi'
-import { HubLiveScore } from './HubLiveScore'
+import { HubLiveScore, hasScoreLink } from './HubLiveScore'
 import { LIVE_SCORE } from '../../../test/hubMatchFixtures'
 
 // docs/specs/135 (The LiveScore seam): the one component that reads the source. EXTERNAL opens a new tab, never framed.
@@ -39,6 +39,36 @@ describe('HubLiveScore', () => {
     expect(container).toBeEmptyDOMElement()
     rerender(<HubLiveScore source={{ ...LIVE_SCORE, url: 'http://scores.example/1' }} variant="card" />)
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('HubLiveScore header and scorecard variants', () => {
+  it('words the header link Live Score and the scorecard link Online Scorecard, both opening in a new tab', () => {
+    for (const [variant, label] of [['header', 'Live Score'], ['scorecard', 'Online Scorecard']] as const) {
+      const { unmount } = render(<HubLiveScore source={LIVE_SCORE} variant={variant} />)
+      const link = screen.getByRole('link', { name: `${label}, opens in a new tab` })
+      expect(link).toHaveTextContent(label)
+      expect(link).toHaveAttribute('href', LIVE_SCORE.url)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link.getAttribute('rel')).toContain('noopener')
+      unmount()
+    }
+  })
+
+  it('hides both variants for a link that is not https', () => {
+    for (const variant of ['header', 'scorecard'] as const) {
+      const { container, unmount } = render(<HubLiveScore source={{ ...LIVE_SCORE, url: 'http://scores.example/1' }} variant={variant} />)
+      expect(container).toBeEmptyDOMElement()
+      unmount()
+    }
+  })
+
+  it('hasScoreLink is true only for an https EXTERNAL source', () => {
+    expect(hasScoreLink(LIVE_SCORE)).toBe(true)
+    expect(hasScoreLink(null)).toBe(false)
+    expect(hasScoreLink(undefined)).toBe(false)
+    expect(hasScoreLink({ ...LIVE_SCORE, url: 'http://scores.example/1' })).toBe(false)
+    expect(hasScoreLink({ kind: 'NATIVE' } as unknown as LiveScoreSource)).toBe(false)
   })
 })
 

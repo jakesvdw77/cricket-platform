@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ResultStepper } from './ResultStepper'
+import { cssRulesFor } from '../../test/emotionCss'
 
 const steps = [
   { id: 'outcome', label: 'Result' },
@@ -34,5 +35,18 @@ describe('ResultStepper', () => {
     expect(screen.getByText(/dashed steps can be skipped/i)).toBeInTheDocument()
     rerender(<ResultStepper steps={steps} activeId="outcome" onSelect={() => undefined} />)
     expect(screen.queryByText(/dashed steps can be skipped/i)).not.toBeInTheDocument()
+  })
+  // Owner sweep, 2026-11-12: on a phone the active step keeps room for its number and short label while the others share the rest.
+  it('gives the active step a minimum width on a phone and lets the others shrink to nothing', () => {
+    render(<ResultStepper steps={steps} activeId="scores" onSelect={() => undefined} />)
+
+    // jsdom has no media queries, so read the written rule: the base (phone) rule carries 76px for the active step only.
+    const rule = (name: string) => cssRulesFor(screen.getByRole('button', { name }))
+    expect(rule('Step 2: Scores')).toMatch(/min-width:76px/)
+    expect(rule('Step 1: Result (done)')).not.toMatch(/min-width:76px/)
+    expect(rule('Step 3: Review')).not.toMatch(/min-width:76px/)
+    // The active step's list item does not flex, the others share the remaining row.
+    expect(cssRulesFor(screen.getByRole('button', { name: 'Step 2: Scores' }).parentElement as HTMLElement)).toMatch(/flex:00auto/)
+    expect(cssRulesFor(screen.getByRole('button', { name: 'Step 3: Review' }).parentElement as HTMLElement)).toMatch(/flex:110/)
   })
 })
