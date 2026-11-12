@@ -238,14 +238,25 @@ export function useMyPlayerResultsSummary(key: string | undefined, scope: MyResu
 // One summary per scope (the record under each filter chip). The same keys as useMyPlayerResultsSummary, so a scope that is also the
 // page's own scope is fetched once.
 export function useMyPlayerResultsSummaries(key: string | undefined, scopes: MyResultScope[], enabled = true) {
-  return useQueries({
-    queries: scopes.map((scope) => ({
+  // Two chips can ask for the same scope (for example "All Leagues" and "All Teams" both mean no filter): ask once per distinct scope, or React
+  // Query logs "Duplicate Queries found". The result keeps one entry per requested scope, in order.
+  const unique: MyResultScope[] = []
+  const at: number[] = scopes.map((scope) => {
+    const id = JSON.stringify(params(scope))
+    const found = unique.findIndex((other) => JSON.stringify(params(other)) === id)
+    if (found >= 0) return found
+    unique.push(scope)
+    return unique.length - 1
+  })
+  const results = useQueries({
+    queries: unique.map((scope) => ({
       queryKey: [...myResultsKey(key), 'summary', params(scope)],
       queryFn: () => getMyPlayerResultsSummary(key as string, scope),
       retry: false,
       enabled: Boolean(key) && enabled,
     })),
   })
+  return at.map((index) => results[index])
 }
 
 export function useMyPlayerResultsFilters(key: string | undefined) {
