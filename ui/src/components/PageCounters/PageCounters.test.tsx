@@ -98,11 +98,10 @@ describe('PageCounters', () => {
   })
 
   describe('compact density (085)', () => {
-    it('renders one-line cards: row direction and a minimum height of 44 px', () => {
+    it('renders compact cards with a minimum height of 44 px (one line from sm up; a phone stacks value over label, see keyFigureStyle)', () => {
       renderCounters(items, false, 'compact')
 
       const card = screen.getByTestId('page-counter-a')
-      expect(getComputedStyle(card).flexDirection).toBe('row')
       expect(getComputedStyle(card).minHeight).toBe('44px')
     })
 

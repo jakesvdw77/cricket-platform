@@ -42,16 +42,16 @@ describe('HubLeagueShare', () => {
   it('shows only Download when the browser cannot share files', () => {
     show()
 
-    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Share/ })).not.toBeInTheDocument()
   })
 
   it('shows Share and Download when the browser can share files', () => {
     setNative(true)
     show()
 
-    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Share/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeInTheDocument()
   })
 
   it('renders nothing when the Poster format is disabled, even with native sharing', () => {
@@ -63,13 +63,13 @@ describe('HubLeagueShare', () => {
 
   it('still shows the buttons when only another format is disabled', () => {
     show(leagueDto({ shareDisabledFormats: ['ICS'] }))
-    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeInTheDocument()
   })
 
   it('Download makes the Schedule poster with team logos and no footer, then downloads a named PNG', async () => {
     show()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Download' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Download/ }))
 
     await waitFor(() => expect(mocks.download).toHaveBeenCalledTimes(1))
     const [model, , options] = mocks.poster.mock.calls[0]
@@ -85,7 +85,7 @@ describe('HubLeagueShare', () => {
     setNative(true)
     show()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Share' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Share/ }))
 
     await waitFor(() => expect(nav.share).toHaveBeenCalledTimes(1))
     const arg = (nav.share as ReturnType<typeof vi.fn>).mock.calls[0][0]
@@ -99,24 +99,24 @@ describe('HubLeagueShare', () => {
     ;(nav.share as ReturnType<typeof vi.fn>).mockRejectedValue(new DOMException('cancelled', 'AbortError'))
     show()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Share' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Share/ }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Share/ })).toBeEnabled())
     expect(screen.queryByText('The poster could not be shared. Please try again.')).not.toBeInTheDocument()
   })
 
-  it('disables both buttons and says Preparing while the poster is made', async () => {
+  it('disables both icon buttons while the poster is made', async () => {
     setNative(true)
     let finish: (url: string) => void = () => undefined
     mocks.poster.mockReturnValue(new Promise<string>((resolve) => { finish = resolve }))
     show()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Share' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Share/ }))
 
-    expect(await screen.findByRole('button', { name: 'Preparing…' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Share/ })).toBeDisabled())
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeDisabled()
     finish('blob:poster')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Share/ })).toBeEnabled())
   })
 
   it('shows an error line when the poster fails, and clears it on the next try', async () => {
@@ -124,11 +124,11 @@ describe('HubLeagueShare', () => {
     mocks.poster.mockRejectedValueOnce(new Error('canvas'))
     show()
 
-    await user.click(screen.getByRole('button', { name: 'Download' }))
+    await user.click(screen.getByRole('button', { name: /^Download/ }))
     expect(await screen.findByText('The poster could not be shared. Please try again.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'Download' }))
+    await user.click(screen.getByRole('button', { name: /^Download/ }))
     await waitFor(() => expect(mocks.download).toHaveBeenCalled())
     expect(screen.queryByText('The poster could not be shared. Please try again.')).not.toBeInTheDocument()
   })

@@ -92,13 +92,13 @@ function ResultRow({ item, teamsById, actions }: { item: ResultListItem; teamsBy
           {logoSide.logo.initials}
         </Avatar>
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-          <Typography variant="body2" fontWeight={600} noWrap component="div">
+          <Typography variant="body2" fontWeight={600} noWrap component="div" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' }, overflowWrap: 'anywhere' }}>
             {/* Stretched link over the whole row (docs/specs/059): the row is position: relative. */}
             <MuiLink component={RouterLink} to={resultViewTo(match.id)} color="inherit" underline="none" sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}>
               {title}
             </MuiLink>
           </Typography>
-          <Typography variant="caption" noWrap sx={{ ...phoneOnly, color: PERSPECTIVE_COLOR[perspective], fontWeight: 600 }}>
+          <Typography variant="caption" noWrap sx={{ ...phoneOnly, whiteSpace: 'normal', color: PERSPECTIVE_COLOR[perspective], fontWeight: 600 }}>
             {line}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap sx={phoneOnly}>

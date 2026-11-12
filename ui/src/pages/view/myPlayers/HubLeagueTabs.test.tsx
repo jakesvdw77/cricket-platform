@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HubLeagueConditions, HubLeagueDetails, HubLeagueFields, HubLeagueSocialLinks, HubLeagueTabBar, HubLeagueTeams } from './HubLeagueTabs'
 import type { LeagueTab } from './leagueFormat'
 import { conditions, hubField, leagueDto } from '../../../test/hubLeagueFixtures'
@@ -18,7 +18,7 @@ describe('HubLeagueTabBar', () => {
   it('has six tabs in order, with no Key dates tab, and selects Details', () => {
     render(<Harness />)
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Playing conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Playing Conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
     expect(screen.queryByRole('tab', { name: 'Key dates' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
   })
@@ -39,14 +39,14 @@ describe('HubLeagueTabBar', () => {
 })
 
 describe('HubLeagueDetails', () => {
-  it('shows the description, age group, format and the key dates as tiles', () => {
+  it('shows the description and the facts card: age group, format and the key dates as label and value pairs', () => {
     render(<HubLeagueDetails dto={leagueDto()} />)
 
     expect(screen.getByText('Weekend cricket for juniors.')).toBeInTheDocument()
     expect(tile('Age group')).toHaveTextContent('Under 15')
     expect(tile('Format')).toHaveTextContent('T20')
-    expect(tile('Season starts')).toHaveTextContent(/Thursday,? 1 October 2026/)
-    expect(tile('Season ends')).toHaveTextContent(/Wednesday,? 31 March 2027/)
+    expect(tile('Season starts')).toHaveTextContent(/Thu 1 Oct 2026/)
+    expect(tile('Season ends')).toHaveTextContent(/Wed 31 Mar 2027/)
     expect(screen.getByText('First match')).toBeInTheDocument()
     expect(screen.getByText('Next match')).toBeInTheDocument()
     expect(screen.getByText('Last match')).toBeInTheDocument()
@@ -189,5 +189,103 @@ describe('HubLeagueSocialLinks', () => {
   it('drops links that are not https and renders nothing when none are left', () => {
     const { container } = render(<HubLeagueSocialLinks league={league('http://league.example', [{ platform: 'facebook', url: 'javascript:alert(1)' }])} />)
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('HubLeagueTabBar counts', () => {
+  it('shows a count badge only on the tabs that are given a count', () => {
+    render(<HubLeagueTabBar value="details" onChange={() => undefined} counts={{ teams: 8, schedule: 0 }} />)
+
+    expect(screen.getByRole('tab', { name: /^Teams/ })).toHaveTextContent('Teams8')
+    expect(screen.getByRole('tab', { name: /^Schedule/ })).toHaveTextContent('Schedule0')
+    expect(screen.getByRole('tab', { name: 'Details' })).toHaveTextContent(/^Details$/)
+    expect(screen.getByRole('tab', { name: 'Results' })).toHaveTextContent(/^Results$/)
+  })
+
+  it('gives only the selected tab a tab stop', () => {
+    render(<HubLeagueTabBar value="teams" onChange={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Teams' })).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('moves focus to the tab the arrow key selects', async () => {
+    function Harness() {
+      const [tab, setTab] = useState<LeagueTab>('details')
+      return <HubLeagueTabBar value={tab} onChange={setTab} />
+    }
+    render(<Harness />)
+    screen.getByRole('tab', { name: 'Details' }).focus()
+
+    await userEvent.setup().keyboard('{ArrowRight}')
+
+    expect(screen.getByRole('tab', { name: 'Playing Conditions' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: 'Playing Conditions' })).toHaveAttribute('aria-selected', 'true')
+  })
+})
+
+describe('HubLeagueDetails facts card and season timeline', () => {
+  afterEach(() => vi.useRealTimers())
+  const on = (y: number, m: number, d: number) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(y, m, d, 10))
+  }
+
+  it('shows short dates, each carrying the long date as its accessible label', () => {
+    render(<HubLeagueDetails dto={leagueDto()} />)
+
+    const facts = screen.getByTestId('league-facts')
+    expect(within(facts).getByRole('heading', { name: 'League facts' })).toBeInTheDocument()
+    const start = tile('Season starts').querySelector('[aria-label]') as HTMLElement
+    expect(start).toHaveAttribute('aria-label', 'Thursday, 1 October 2026')
+    expect(start).toHaveTextContent('Thu 1 Oct 2026')
+  })
+
+  it('shows Next match only when it is set', () => {
+    const dto = leagueDto()
+    const { unmount } = render(<HubLeagueDetails dto={dto} />)
+    expect(tile('Next match')).toHaveTextContent('Sat 7 Nov 2099')
+    unmount()
+
+    render(<HubLeagueDetails dto={{ ...dto, keyDates: { ...dto.keyDates, nextMatchDate: null } }} />)
+    expect(screen.queryByText('Next match')).not.toBeInTheDocument()
+    expect(screen.getByText('Last match')).toBeInTheDocument()
+  })
+
+  it('mid-season the timeline shows the start, Today and the end', () => {
+    on(2026, 11, 25)
+    render(<HubLeagueDetails dto={leagueDto()} />)
+
+    const timeline = screen.getByTestId('season-timeline')
+    expect(timeline).toHaveTextContent('1 Oct 2026Starts')
+    expect(within(timeline).getByText('Today')).toBeInTheDocument()
+    expect(timeline).toHaveTextContent('25 Dec 2026')
+    expect(timeline).toHaveTextContent('31 Mar 2027Ends')
+    expect(screen.queryByTestId('season-ended')).not.toBeInTheDocument()
+  })
+
+  it('before the season starts it says Not started instead of Today', () => {
+    on(2026, 8, 1)
+    render(<HubLeagueDetails dto={leagueDto()} />)
+
+    const timeline = screen.getByTestId('season-timeline')
+    expect(within(timeline).getByText('Not started')).toBeInTheDocument()
+    expect(within(timeline).queryByText('Today')).not.toBeInTheDocument()
+  })
+
+  it('after the season it is one line, Season ended <date>, with no timeline', () => {
+    on(2027, 5, 1)
+    render(<HubLeagueDetails dto={leagueDto()} />)
+
+    expect(screen.getByTestId('season-ended')).toHaveTextContent('Season ended 31 Mar 2027')
+    expect(screen.queryByTestId('season-timeline')).not.toBeInTheDocument()
+  })
+
+  it('draws no timeline when the season has no start or end', () => {
+    const dto = leagueDto()
+    render(<HubLeagueDetails dto={{ ...dto, keyDates: { ...dto.keyDates, seasonStart: null, seasonEnd: null } }} />)
+
+    expect(screen.queryByTestId('season-timeline')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('season-ended')).not.toBeInTheDocument()
+    expect(screen.getByTestId('league-facts')).toBeInTheDocument()
   })
 })

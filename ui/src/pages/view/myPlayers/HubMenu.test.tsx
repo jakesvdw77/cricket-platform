@@ -66,7 +66,7 @@ describe('HubMenu', () => {
 
     await user.tab()
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'results' }))
+    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'schedule' }))
     await user.click(screen.getByRole('button', { name: /^Profile/ }))
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'profile' }))
   })

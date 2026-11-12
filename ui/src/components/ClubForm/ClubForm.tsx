@@ -263,7 +263,7 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1' }}>
+    <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
       <Tabs
         value={activeTab}
         onChange={(_event, next: number) => setActiveTab(next)}

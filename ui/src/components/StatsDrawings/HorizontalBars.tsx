@@ -106,7 +106,7 @@ export function HorizontalBars({ rows, alt, max, dense = false, legend }: Horizo
   const ceiling = max ?? Math.max(0, ...rows.map((row) => row.value))
   const lengths = barLengths(rows.map((row) => row.value), ceiling, 100)
   return (
-    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 'none' : 'calc(520px + (var(--stats-scale, 1) - 1) * 10000px)', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : fluid(5, 14) } : { rowGap: fluid(0, 4) }) }}>
+    <Box role="group" aria-label={alt} data-testid="horizontal-bars" sx={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: dense ? 'none' : 'calc(520px + (var(--stats-scale, 1) - 1) * 10000px)', ...(dense ? { rowGap: rows.some((row) => row.onSelect) ? '2px' : fluid(3, 14) } : { rowGap: fluid(0, 4) }) }}>
       {legend && (
         <Box component="span" data-testid="bars-legend" sx={{ display: 'flex', gap: '12px', fontSize: fluid(11, 14), lineHeight: 1.2, color: alpha(BRAND.cream, 0.8), mb: '2px' }}>
           {legend.map((name, index) => (

@@ -28,7 +28,7 @@ export interface HubFooterProps {
   kinds?: KindRules
 }
 
-const bandSx = { gridRow: 3, alignSelf: 'end', borderTop: `1px solid ${HUB.line}` } as const
+const bandSx = { gridRow: 3, alignSelf: 'end', minWidth: 0, maxWidth: '100%', borderTop: `1px solid ${HUB.line}` } as const
 
 // Today's footer, unchanged.
 function PlainFooter({ back, fill }: { back?: ReactNode; fill?: boolean }) {

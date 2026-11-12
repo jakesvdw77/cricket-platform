@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { RecordFormScreen } from './RecordFormScreen'
 import { baseTheme } from '../../theme'
+import { cssRulesFor } from '../../test/emotionCss'
 
 describe('RecordFormScreen', () => {
   it('renders a Back action, title, fields, and actions', () => {
@@ -252,5 +253,21 @@ describe('RecordFormScreen', () => {
     )
     const card = screen.getByText('Field content').parentElement?.parentElement as HTMLElement
     expect(getComputedStyle(card).boxShadow).toBe('none')
+  })
+  // Owner sweep, 2026-11-12: the form grid's tracks are minmax(0, 1fr), so a long unbroken value cannot push the page wider than the phone.
+  it('lays its fields out on a grid whose columns can shrink (minmax(0, 1fr))', () => {
+    render(
+      <MemoryRouter>
+        <RecordFormScreen title="Edit" backTo="/x" backLabel="Back">
+          <div data-testid="field">Field content</div>
+        </RecordFormScreen>
+      </MemoryRouter>,
+    )
+
+    const rules = cssRulesFor(screen.getByTestId('field').parentElement as HTMLElement)
+    expect(rules).toContain('display:grid')
+    expect(rules).toContain('grid-template-columns:minmax(0,1fr)')
+    expect(rules).toContain('grid-template-columns:minmax(0,1fr)minmax(0,1fr)')
+    expect(rules).not.toMatch(/grid-template-columns:(1fr|repeat\(2,1fr\))/)
   })
 })

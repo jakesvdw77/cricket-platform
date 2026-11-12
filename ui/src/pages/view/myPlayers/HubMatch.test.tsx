@@ -169,35 +169,45 @@ describe('HubMatch upcoming', () => {
 describe('HubMatch live', () => {
   const live = (overrides: Partial<MyMatchDto> = {}) => matchDto({ phase: 'LIVE', startedAt: new Date(Date.now() - 80 * 60_000).toISOString(), liveScore: LIVE_SCORE, stream: STREAM, selection: 'SELECTED', ...overrides })
 
-  it('shows the LIVE badge instead of a status badge, with elapsed time, the LiveScore card and Watch Live', async () => {
+  it('shows the LIVE badge instead of a status badge, with elapsed time and Watch Live and Live Score in the header', async () => {
     renderMatch(live())
 
     expect(await screen.findByTestId('live-badge')).toHaveTextContent('LIVE')
     expect(screen.queryByTestId('match-status-badge')).not.toBeInTheDocument()
     expect(screen.getByTestId('match-figure-when')).toHaveTextContent('Started 1h 20m ago')
-    const card = screen.getByTestId('live-score-card')
-    expect(within(card).getByText('Scores are kept on scores.example. It opens in a new tab.')).toBeInTheDocument()
-    expect(within(card).getByRole('link', { name: 'Follow Live Score' })).toHaveAttribute('href', LIVE_SCORE.url)
-    expect(within(screen.getByTestId('match-watch-card')).getByRole('link', { name: 'Watch Live' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/m1/watch?from=matches')
+    const actions = within(screen.getByTestId('match-header-actions'))
+    expect(actions.getByRole('link', { name: 'Live Score, opens in a new tab' })).toHaveAttribute('href', LIVE_SCORE.url)
+    expect(actions.getByRole('link', { name: 'Watch Live' })).toHaveAttribute('href', '/account/players/k1/schedule/matches/m1/watch?from=matches')
+    expect(screen.queryByTestId('live-score-card')).not.toBeInTheDocument()
   })
 
   it('offers no Watch Live without a stream and no Follow Live Score without a source', async () => {
     renderMatch(live({ stream: null, liveScore: null }))
 
     await screen.findByTestId('live-badge')
-    expect(screen.queryByTestId('match-watch-card')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Follow Live Score' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('watch-live')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('follow-live-score')).not.toBeInTheDocument()
   })
 })
 
 describe('HubMatch played, missing and failing', () => {
-  it('shows Played, the result and no live entries', async () => {
+  it('shows Played, the result, no live entries and the kept links', async () => {
     renderMatch(matchDto({ phase: 'RECENT', status: 'PLAYED', result: { homeScore: '142/6', awayScore: '138/9', resultLine: 'Riverside U15 A won by 4 runs' }, liveScore: LIVE_SCORE }))
 
     expect(await screen.findByTestId('match-status-badge')).toHaveTextContent('Played')
     expect(screen.getByTestId('match-figure-status')).toHaveTextContent('Played')
     expect(screen.getByTestId('match-result')).toHaveTextContent('Riverside U15 A won by 4 runs')
     expect(screen.queryByTestId('live-score-card')).not.toBeInTheDocument()
+    // A finished match keeps its recording and scorecard links (owner, 2026-11-12), each only when the club set it.
+    expect(screen.getByRole('link', { name: 'Online Scorecard, opens in a new tab' })).toHaveAttribute('href', LIVE_SCORE.url)
+    expect(screen.queryByTestId('stream-link')).not.toBeInTheDocument()
+  })
+
+  it('shows Watch Stream on a finished match whose club kept the stream link', async () => {
+    renderMatch(matchDto({ phase: 'RECENT', status: 'PLAYED', stream: STREAM, liveScore: null }))
+
+    expect(await screen.findByRole('link', { name: 'Watch Stream, opens in a new tab' })).toHaveAttribute('href', STREAM.url)
+    expect(screen.queryByTestId('score-link')).not.toBeInTheDocument()
   })
 
   it('says This match is not available for a 404', async () => {

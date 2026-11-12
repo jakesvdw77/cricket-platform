@@ -48,7 +48,8 @@ describe('HubLeague', () => {
     renderLeague(leagueDto(), 'details', onTab)
     await screen.findByTestId('hub-league')
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Playing conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
+    // The pills carry counts (Teams 2): strip the trailing number to compare the labels.
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))).toEqual(['Details', 'Playing Conditions', 'Teams', 'Schedule', 'Results', 'Fields'])
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Results' }))
     expect(onTab).toHaveBeenCalledWith('results')
   })

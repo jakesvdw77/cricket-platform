@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../../../api/axiosConfig'
 import type { MyMatchDto } from '../../../api/myPlayersApi'
 import { HubWatchLive } from './HubWatchLive'
@@ -62,16 +62,16 @@ describe('HubWatchLive', () => {
     expect(screen.queryByTestId('stream-poster')).not.toBeInTheDocument()
   })
 
-  it('puts the LiveScore tv panel under the frame and Open Stream as the always-there fallback', async () => {
+  it('puts Live Score and Open Stream in the theatre bar, as the always-there fallback', async () => {
     renderWatch(live())
 
     await screen.findByTestId('stream-poster')
-    expect(within(screen.getByTestId('live-score-tv')).getByRole('link', { name: 'Follow Live Score' })).toHaveAttribute('target', '_blank')
-    const open = screen.getByTestId('open-stream')
+    const bar = within(screen.getByTestId('watch-scoreboard'))
+    expect(bar.getByRole('link', { name: 'Live Score, opens in a new tab' })).toHaveAttribute('target', '_blank')
+    const open = bar.getByTestId('open-stream')
     expect(open).toHaveAttribute('href', STREAM.url)
     expect(open).toHaveAttribute('target', '_blank')
     expect(open.getAttribute('rel')).toContain('noopener')
-    expect(screen.getByText('Not loading? Open the stream in a new tab.')).toBeInTheDocument()
   })
 
   it('falls back to Open Stream and embeds nothing when there is no embed URL', async () => {
@@ -97,5 +97,58 @@ describe('HubWatchLive', () => {
     renderWatch(httpError(404))
 
     expect(await screen.findByTestId('hub-match-missing')).toBeInTheDocument()
+  })
+})
+
+describe('HubWatchLive theatre', () => {
+  afterEach(() => {
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: undefined })
+  })
+
+  function renderTheatre(props: { onBack?: () => void; backLabel?: string } = {}) {
+    routeApi(http, { 'GET /me/players/k1/matches/m1': live() })
+    return render(
+      <QueryClientProvider client={newQueryClient()}>
+        <MemoryRouter>
+          <HubWatchLive playerKey="k1" matchId="m1" {...props} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('renders as a portal to the document body, not inside the Hub', async () => {
+    const { container } = renderTheatre()
+
+    const theatre = await screen.findByTestId('hub-watch-live')
+    expect(container).not.toContainElement(theatre)
+    expect(theatre.parentElement).toBe(document.body)
+    expect(theatre).toHaveAttribute('aria-label', 'Watch Riverside U15 A versus Coastal U15')
+  })
+
+  it('has a Back button with the given label that calls onBack, and none without onBack', async () => {
+    const onBack = vi.fn()
+    const { unmount } = renderTheatre({ onBack, backLabel: 'Back to Match' })
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Back to Match' }))
+    expect(onBack).toHaveBeenCalledTimes(1)
+    unmount()
+
+    renderTheatre()
+    await screen.findByTestId('watch-scoreboard')
+    expect(screen.queryByTestId('watch-back')).not.toBeInTheDocument()
+  })
+
+  it('shows Full Screen on the picture only when the browser supports it', async () => {
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: false })
+    const { unmount } = renderTheatre()
+    await userEvent.setup().click(await screen.findByTestId('stream-poster'))
+    expect(screen.getByTestId('stream-frame')).toBeInTheDocument()
+    expect(screen.queryByTestId('stream-fullscreen')).not.toBeInTheDocument()
+    unmount()
+
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: true })
+    renderTheatre()
+    await userEvent.setup().click(await screen.findByTestId('stream-poster'))
+    expect(screen.getByRole('button', { name: 'Full screen' })).toHaveTextContent('Full Screen')
   })
 })

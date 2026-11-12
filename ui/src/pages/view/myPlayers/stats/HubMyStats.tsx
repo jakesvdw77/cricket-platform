@@ -26,7 +26,7 @@ import { statsDrillPath, statsResultPath, statsScopeQuery } from './statsRoutes'
 // returns here with the same scope. Read only; the footer owns Back.
 const TEST_PREFIX = 'hub-stats'
 
-const gridCols = { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(310px, 1fr))' } as const
+const gridCols = { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(min(310px, 100%), 1fr))' } as const
 
 function Skeletons() {
   return (
@@ -116,7 +116,7 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
     )
   } else if (stats.basis.resultsCounted === 0) {
     body = (
-      <Box data-testid="hub-stats-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+      <Box data-testid="hub-stats-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/match-results" size={64} onDark />
         <Typography sx={{ fontSize: 18 }}>No stats yet</Typography>
         <Typography sx={{ fontSize: 15 }}>
@@ -130,7 +130,7 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
     )
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 1, minWidth: 0, opacity: statsQuery.isPlaceholderData ? 0.55 : 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, minWidth: 0, opacity: statsQuery.isPlaceholderData ? 0.55 : 1 }}>
         <StatsCardGrid
           payload={stats}
           ctx={ctx}
@@ -147,7 +147,7 @@ export function HubMyStats({ playerKey }: { playerKey: string }) {
 
   return (
     <Box data-testid="hub-stats" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 1, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, minWidth: 0 }}>
         {header}
         {body}
       </Box>

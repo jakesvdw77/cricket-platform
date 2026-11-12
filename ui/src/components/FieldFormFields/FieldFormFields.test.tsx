@@ -8,6 +8,7 @@ import type { FieldFormFieldsProps } from './FieldFormFields'
 import { emptyFieldForm } from '../../utils/fieldForm'
 import type { FieldFormValues } from '../../utils/fieldForm'
 import { fieldPage, makeField } from '../../test/fieldFixtures'
+import { cssRulesFor } from '../../test/emotionCss'
 
 const findSimilarPlayingAreas = vi.fn()
 const getPlayingArea = vi.fn()
@@ -337,6 +338,23 @@ describe('FieldFormFields', () => {
       renderFields({ errors: { latitude: 'Enter the latitude too, or clear the longitude', accessLongitude: 'Longitude must be between -180 and 180' } })
       expect(screen.getByText('Enter the latitude too, or clear the longitude')).toBeInTheDocument()
       expect(screen.getByText('Longitude must be between -180 and 180')).toBeInTheDocument()
+    })
+  })
+  // Owner sweep, 2026-11-12: every track is minmax(0, 1fr), so a long unbroken value cannot widen the form past the phone.
+  describe('the field grid', () => {
+    const gridAround = (label: string) => {
+      let el = screen.getByLabelText(label).parentElement
+      while (el && getComputedStyle(el).display !== 'grid') el = el.parentElement
+      return el as HTMLElement
+    }
+
+    it.each(['page', 'dialog'] as const)('uses shrinkable minmax(0, 1fr) columns in the %s variant', (variant) => {
+      renderFields({ variant })
+
+      const rules = cssRulesFor(gridAround('Name'))
+      expect(rules).toContain('grid-template-columns:minmax(0,1fr)')
+      expect(rules).toContain('repeat(' + (variant === 'dialog' ? '2' : '3') + ',minmax(0,1fr))')
+      expect(rules).not.toMatch(/grid-template-columns:(1fr|repeat\(\d,1fr\))/)
     })
   })
 })

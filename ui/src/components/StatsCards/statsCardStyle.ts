@@ -1,5 +1,5 @@
 import { alpha } from '@mui/material/styles'
-import { BRAND, FONT_DISPLAY, STATS_TONES, blackAlpha } from '../../brandTokens'
+import { BRAND, FONT_DISPLAY, STATS_EXPANDED_GROUND, STATS_TONES, blackAlpha } from '../../brandTokens'
 
 // The dark console look of a stats card, from the brand tokens (components/ may not import the Hub's hubStyle; HUB is built from the
 // same tokens, so the values are identical).
@@ -13,6 +13,8 @@ export const STATS_UI = {
   muted: alpha(BRAND.cream, 0.66),
   display: FONT_DISPLAY,
   faceGround: blackAlpha(0.22),
+  // The expanded card sits over the whole content region and must hide it: a solid dark ground, no transparency.
+  expandedGround: STATS_EXPANDED_GROUND,
   // A card with some or all data missing (Amendment 2 item 8): a very light amber tint over the ground and a 1 px warmer line. Never the only cue.
   lackingTint: alpha(STATS_TONES.partly, 0.05),
   lackingLine: alpha(STATS_TONES.partly, 0.4),
@@ -32,10 +34,10 @@ export const visuallyHiddenSx = {
 } as const
 
 // Card heights (docs/specs/147 Amendment 2, density pass): a card is a FIXED height in rem, so it scales with text zoom and neither face
-// can grow it. A normal card is 17 rem; a tall card spans two normal rows and the gap between them; a compact (tile) card is 15 rem.
+// can grow it. A normal card is 17 rem; a tall card spans two normal rows and the gap between them; a compact (tile) card is 14 rem.
 // The FRONT never scrolls (its content region clips, so an overfull front shows in review); the back scrolls inside the card. The grid sets these as the CSS variable --stats-card-h on each row.
 export const CARD_HEIGHT_REM = 17
-export const CARD_COMPACT_HEIGHT_REM = 15
+export const CARD_COMPACT_HEIGHT_REM = 14
 export const CARD_HEIGHT_VAR = '--stats-card-h'
 
 // The type scale of a normal card, in px (the shell and the shared parts read it; a card file should not hard-code its own). Nothing is

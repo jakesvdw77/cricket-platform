@@ -400,3 +400,11 @@ None, all answered 2026-10-24. The owner accepted every recommended default, rec
 21. **The Field Directory endpoint is unpaged and capped at 200 with a "showing the first 200" note (owner, 2026-10-24).** Searching happens in the browser; a `q` parameter and paging are a later change if a club outgrows it.
 
 > **Update (spec 147, 2026-11-07):** My stats, Team stats and Leaderboards are no longer Soon items; they are built by `147` (Leaderboards is always visible under its amendment, no club switch).
+
+
+## Amendments (2026-11-12, owner polish pass)
+
+- **Menu order** is Availability, Schedule, Results, Stats, Updates, Club, Profile (supersedes the order in Decision 16 and the table above); **Team sheets is removed** from Schedule and replaced by **Calendar** (see `135`, Amendments).
+- **Profile:** the photo is the edit control (a round pencil badge on its corner opens the photo and date of birth form); the heading's gold Edit is the page's only Edit button.
+- **Field Directory card:** **Verified** (or Not Verified) is a chip top right; the address is shown as lines (street; city, province postal code; country); "Away this season" is dropped, a home field shows a gold Home Field tag; the footer line says "the club", not "your club".
+- **League page (`123`):** framed 36 px icon buttons (44 px on a phone) for website, social, Share and Download; sections are the Hub pill row with counts (Teams, Schedule, Results, Fields); Details is one League facts card (two columns, cream values, short dates) with a season timeline (start, today, end; "Season ended" once over).

@@ -6,9 +6,13 @@ import type { LeagueTab } from './leagueFormat'
 // selection and every figure; this only formats (elapsed time, countdown, labels) and builds the Hub URLs.
 
 // Where a match page was opened from (the `from` query parameter): the Matches list, or a league's Schedule or Results tab.
-export type MatchOrigin = { kind: 'matches' } | { kind: 'league'; leagueId: string; tab: LeagueTab }
+export type MatchesTab = 'live' | 'upcoming' | 'recent'
+export const MATCHES_TABS: MatchesTab[] = ['live', 'upcoming', 'recent']
+export type MatchOrigin = { kind: 'matches'; tab?: MatchesTab } | { kind: 'league'; leagueId: string; tab: LeagueTab }
 
 export function parseFrom(value: string | null | undefined): MatchOrigin {
+  const pill = /^matches:(live|upcoming|recent)$/.exec(value ?? '')
+  if (pill) return { kind: 'matches', tab: pill[1] as MatchesTab }
   const found = /^league:([A-Za-z0-9-]+)(?::(schedule|results))?$/.exec(value ?? '')
   return found ? { kind: 'league', leagueId: found[1], tab: found[2] === 'results' ? 'results' : 'schedule' } : { kind: 'matches' }
 }
@@ -86,6 +90,13 @@ export function answerLabel(answer: 'AVAILABLE' | 'UNAVAILABLE' | 'UNSURE' | nul
 
 // A recent row's result: the server's published result, else "Result pending".
 export const recentResultLine = (row: Pick<MyMatchSummaryDto, 'result'>): string => row.result?.resultLine || 'Result pending'
+
+// W, L or T for a recent row: the server's outcome for the player's side when it sends one; a result line that says tied is a tie
+// whichever side the player was on. Anything else (a win or loss needs the side) stays uncoloured rather than guessed.
+export function recentOutcome(row: Pick<MyMatchSummaryDto, 'result' | 'outcome'>): 'WON' | 'LOST' | 'TIED' | null {
+  if (row.outcome) return row.outcome
+  return /\b(match )?tied\b/i.test(row.result?.resultLine ?? '') ? 'TIED' : null
+}
 
 // Forecast and directions are asked for only inside the forecast window (the weather hook allows 6 days ahead).
 export function withinForecastDays(date: string, now: Date, days = 6): boolean {

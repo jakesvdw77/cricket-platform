@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { Box, Fade, useMediaQuery, useTheme } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
@@ -6,7 +7,7 @@ import { usePrefersReducedMotion } from '../FlipCard'
 import { StatsCardShell } from './StatsCardShell'
 import { StatsFaceBoundary } from './StatsFaceBoundary'
 import { layoutRows } from './statsCardOrder'
-import { CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_REM, CARD_HEIGHT_VAR } from './statsCardStyle'
+import { CARD_COMPACT_HEIGHT_REM, CARD_HEIGHT_REM, CARD_HEIGHT_VAR, STATS_UI } from './statsCardStyle'
 import type { CardRow, CardRowKind } from './statsCardOrder'
 import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroupDef } from './statsCardTypes'
 
@@ -16,13 +17,13 @@ import type { CardCtx, CardSize, CardState, StatsBasis, StatsCardDef, StatsGroup
 // A page with a single group shows no pill row.
 // Rows: layoutRows turns the group's cards into rows of three cards, or a tall card beside two stacked ones, with a short last row of
 // equal halves or one capped card, or rows of up to three compact tiles (the Summary, 3 + 3 + 2). Each row is its own CSS grid with FIXED row
-// heights in rem (the variable --stats-card-h: 17rem normal, 15rem compact; a tall card spans two rows and the gap), so every card in
+// heights in rem (the variable --stats-card-h: 17rem normal, 14rem compact; a tall card spans two rows and the gap), so every card in
 // a row has the same height and neither face can make it taller (the front never scrolls, the back scrolls inside the card). Below 600 px of content a card is
 // at least that tall and may grow to fit its face. The rows lay out by the grid's own width (a container query, not the screen's,
 // because the Hub's scope panel narrows the content): 3 columns from 880 px of content, pairs from 600 px, compact tiles 3 across from
 // 880 px and 2 across from 600 px, otherwise one column.
-// Expand: on desktop (md up) a card has an expand button; the card is then drawn a second time in an overlay that covers the grid's
-// own area (not the whole app), with a Close button. The cards underneath are inert and hidden. Escape closes; focus moves into the overlay's
+// Expand: on desktop (md up) a card has an expand button; the card is then drawn a second time in an overlay that covers the whole
+// Hub content region (portalled into the scrolling ancestor), opaque, with a Close button. Everything else in the region is inert and hidden. Escape closes; focus moves into the overlay's
 // Close button and returns to the expand button. The overlay does not flip: it shows the card's Front and Back side by side (or the card's own `Expanded` face) at the expanded scale.
 // The grid imports no card: the page hands it the cards (from the registry's cardsFor).
 export const GROUP_PARAM = 'group'
@@ -39,8 +40,6 @@ function attempt<T>(read: () => T, fallback: T): T {
 }
 // A lone card (or a lone last card) is capped so it never stretches across a desktop.
 const SINGLE_MAX_WIDTH = 560
-// Breathing room kept under an expanded card, in px.
-const EXPANDED_BOTTOM_MARGIN = 8
 
 // The nearest ancestor that scrolls vertically (the Hub content section), or null.
 function scrollParent(node: HTMLElement | null): HTMLElement | null {
@@ -160,33 +159,56 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
     return () => document.removeEventListener('keydown', onKey)
   }, [expandedId])
 
-  // An expanded card fits the visible area exactly: scroll the content region to the top (the grid area then sits at its natural offset
-  // under the header and pills), lock its scrolling while the card is open, and size the overlay to the region's height minus that offset.
-  // Locking also stops the hidden cards from scrolling the page; the scroll position is restored on close.
+  // An expanded card covers the whole visible content region: the overlay is portalled into the nearest scrolling ancestor (the Hub content
+  // section, made position: relative), absolute at inset 0, opaque and above everything. The region is scrolled to the top and its scrolling
+  // locked while the card is open (the scroll position is restored on close), and every other child of the region is made inert and hidden,
+  // so nothing prints through the overlay and nothing behind it takes focus. With no scrolling ancestor (stories, tests) the overlay falls
+  // back to covering the grid's own area.
   const expandedOpen = Boolean(expandedEntry)
-  useEffect(() => {
+  const [overlay, setOverlay] = useState<{ host: HTMLElement | null } | null>(null)
+  useLayoutEffect(() => {
     if (!expandedOpen) return undefined
-    const area = areaRef.current
-    const scroller = scrollParent(area)
-    if (!area || !scroller) return undefined
+    const scroller = scrollParent(areaRef.current)
+    if (!scroller) {
+      setOverlay({ host: null })
+      return () => setOverlay(null)
+    }
     const savedTop = scroller.scrollTop
     const savedOverflow = scroller.style.overflowY
+    const savedPosition = scroller.style.position
+    if (getComputedStyle(scroller).position === 'static') scroller.style.position = 'relative'
     scroller.scrollTop = 0
     scroller.style.overflowY = 'hidden'
-    const measure = () => {
-      const offset = area.getBoundingClientRect().top - scroller.getBoundingClientRect().top
-      setFitHeight(Math.max(240, Math.floor(scroller.clientHeight - offset - EXPANDED_BOTTOM_MARGIN)))
-    }
+    const host = document.createElement('div')
+    host.setAttribute('data-testid', `${testId}-overlay-host`)
+    Object.assign(host.style, { position: 'absolute', top: '0', left: '0', right: '0', bottom: '0', zIndex: '20', boxSizing: 'border-box', padding: '16px 20px', display: 'grid', overflow: 'hidden', background: STATS_UI.expandedGround })
+    scroller.appendChild(host)
+    const hidden: { el: HTMLElement; visibility: string; inert: boolean }[] = []
+    Array.from(scroller.children).forEach((child) => {
+      if (child === host || !(child instanceof HTMLElement)) return
+      hidden.push({ el: child, visibility: child.style.visibility, inert: child.hasAttribute('inert') })
+      child.setAttribute('inert', '')
+      child.style.visibility = 'hidden'
+    })
+    const measure = () => setFitHeight(Math.max(240, Math.floor(host.clientHeight - 32)))
     measure()
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
-    observer?.observe(scroller)
+    observer?.observe(host)
+    setOverlay({ host })
     return () => {
       observer?.disconnect()
+      hidden.forEach(({ el, visibility, inert }) => {
+        el.style.visibility = visibility
+        if (!inert) el.removeAttribute('inert')
+      })
+      host.remove()
       scroller.style.overflowY = savedOverflow
+      scroller.style.position = savedPosition
       scroller.scrollTop = savedTop
       setFitHeight(null)
+      setOverlay(null)
     }
-  }, [expandedOpen])
+  }, [expandedOpen, testId])
 
   // Focus goes back to the expand button that opened the card (the overlay is gone and the cards are no longer inert by now).
   useEffect(() => {
@@ -265,18 +287,32 @@ export function StatsCardGrid<P>({ payload, ctx, cards, groups, basis = null, sc
             </Box>
           ))}
         </Box>
-        {expandedEntry && (
-          <Fade in appear timeout={reduced ? 0 : 220}>
-            <Box
-              role="region"
-              aria-label={`${expandedEntry.def.title(ctx)}, expanded`}
-              data-testid={`${testId}-expanded`}
-              sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: fitHeight ?? '100%', zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden', '--stats-exp-h': fitHeight ? `${fitHeight}px` : '560px' }}
-            >
-              {card(expandedEntry, true)}
-            </Box>
-          </Fade>
-        )}
+        {expandedEntry && overlay && (overlay.host
+          ? createPortal(
+              <Fade in appear timeout={reduced ? 0 : 220}>
+                <Box
+                  role="region"
+                  aria-label={`${expandedEntry.def.title(ctx)}, expanded`}
+                  data-testid={`${testId}-expanded`}
+                  sx={{ height: '100%', minWidth: 0, minHeight: 0, display: 'grid', overflow: 'hidden', '--stats-exp-h': fitHeight ? `${fitHeight}px` : '560px' }}
+                >
+                  {card(expandedEntry, true)}
+                </Box>
+              </Fade>,
+              overlay.host,
+            )
+          : (
+              <Fade in appear timeout={reduced ? 0 : 220}>
+                <Box
+                  role="region"
+                  aria-label={`${expandedEntry.def.title(ctx)}, expanded`}
+                  data-testid={`${testId}-expanded`}
+                  sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', zIndex: 5, minWidth: 0, display: 'grid', overflow: 'hidden', bgcolor: STATS_UI.expandedGround, '--stats-exp-h': '560px' }}
+                >
+                  {card(expandedEntry, true)}
+                </Box>
+              </Fade>
+            ))}
       </Box>
     </Box>
   )

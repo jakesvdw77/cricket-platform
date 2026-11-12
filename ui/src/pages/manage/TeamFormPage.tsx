@@ -778,7 +778,7 @@ export default function TeamFormPage() {
             Contacts/Sponsors/Squad only exist once showContactsAndSponsors is true (edit mode) —
             a brand-new team (create mode, either route) has no id yet to attach them to. */}
         {showContactsAndSponsors && (
-        <Box sx={{ gridColumn: '1 / -1' }}>
+        <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
           <Tabs
             value={activeTab}
             onChange={(_event, next: number) => setActiveTab(next)}

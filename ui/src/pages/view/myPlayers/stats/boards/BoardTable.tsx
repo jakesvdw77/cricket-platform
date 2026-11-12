@@ -132,7 +132,7 @@ export function BoardTable({ playerKey, group, scope, firstName, sort, direction
   }
   if (!first) {
     return (
-      <Box aria-busy="true" data-testid="hub-boards-table-loading" sx={{ display: 'grid', gap: 1 }}>
+      <Box aria-busy="true" data-testid="hub-boards-table-loading" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
         <Skeleton variant="rounded" height={44} sx={{ bgcolor: creamAlpha(0.12) }} />
         {[0, 1, 2, 3, 4].map((index) => (
           <Skeleton key={index} variant="rounded" height={40} sx={{ bgcolor: creamAlpha(0.08) }} />
@@ -161,9 +161,9 @@ export function BoardTable({ playerKey, group, scope, firstName, sort, direction
       : { bgcolor: DARK_MENU_BG }
 
   return (
-    <Box data-testid="hub-boards-table" sx={{ display: 'grid', gap: 1.25, minWidth: 0 }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ ...darkFieldSx, minWidth: { xs: 150, sm: 190 } }}>
+    <Box data-testid="hub-boards-table" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <Box sx={{ ...darkFieldSx, minWidth: { xs: 150, sm: 190 }, maxWidth: '100%' }}>
           <Select
             size="small"
             value={sortOptions.some((column) => column.code === sortCode) ? sortCode : ''}
@@ -220,7 +220,7 @@ export function BoardTable({ playerKey, group, scope, firstName, sort, direction
           Nobody is on this table yet. No player has a figure here for this scope.
         </Typography>
       ) : (
-        <Box tabIndex={0} role="region" aria-label={`${group} leaderboard, scrolls sideways`} sx={{ overflowX: 'auto', border: `1px solid ${HUB.lineSoft}`, borderRadius: '12px', bgcolor: blackAlpha(0.2), opacity: query.isPlaceholderData ? 0.6 : 1, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
+        <Box tabIndex={0} role="region" aria-label={`${group} leaderboard, scrolls sideways`} sx={{ minWidth: 0, maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain', border: `1px solid ${HUB.lineSoft}`, borderRadius: '12px', bgcolor: blackAlpha(0.2), opacity: query.isPlaceholderData ? 0.6 : 1, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
           <Table size="small" aria-label={`${group} leaderboard`} aria-busy={query.isFetching && !query.isFetchingNextPage} sx={{ width: '100%', minWidth: 'max-content', borderCollapse: 'separate' }}>
             <TableHead>
               <TableRow>
@@ -287,7 +287,7 @@ export function BoardTable({ playerKey, group, scope, firstName, sort, direction
         </Box>
       )}
 
-      <Box data-testid="hub-boards-notes" sx={{ display: 'grid', gap: 0.25 }}>
+      <Box data-testid="hub-boards-notes" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25 }}>
         {notes.map((note) => (
           <Typography key={note} sx={{ fontSize: 13, color: HUB.muted }}>
             {note}

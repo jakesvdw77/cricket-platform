@@ -108,7 +108,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPl
       {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Personal
       </Typography>}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: '1fr 1fr' } }}>
         <Input
           label="Date of birth"
           type="date"
@@ -122,7 +122,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPl
         />
       </Box>
       {dobChanged && (
-        <Box role="alert" data-testid="dob-warning" sx={dark ? { border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 0.5, bgcolor: blackAlpha(.3) } : undefined}>
+        <Box role="alert" data-testid="dob-warning" sx={dark ? { border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5, bgcolor: blackAlpha(.3) } : undefined}>
           <Alert severity="warning" sx={dark ? { bgcolor: 'transparent', color: HUB.cream, p: 0, '& .MuiAlert-icon': { color: HUB.gold } } : undefined}>
             Changing the date of birth can change which age group and sections {player.firstName} is eligible for, and it is used to confirm identity on availability links. It applies at every club {player.firstName} plays for.
           </Alert>
@@ -137,7 +137,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPl
       {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Contact
       </Typography>}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: '1fr 1fr' } }}>
         <PhoneInput value={phone} onChange={setPhone} />
         {canEditEmail ? (
           <EmailInput value={email} onChange={setEmail} error={emailError} />
@@ -155,7 +155,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPl
       {!section && <Typography variant="subtitle2" component="h2" fontWeight={700}>
         Cricket
       </Typography>}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: '1fr 1fr' } }}>
         <Input label="Batting stance" SelectProps={dark ? { MenuProps: darkMenuProps } : undefined} select value={battingStance} onChange={select<BattingStance>(setBattingStance)}>
           <MenuItem value="">Not specified</MenuItem>
           <MenuItem value="RIGHT_HANDED">Right-handed</MenuItem>
@@ -189,7 +189,7 @@ export function MyPlayerEditForm({ player, onDone, dark = false, section }: MyPl
           Only the main agent or the player can change medical aid details.
         </Typography>
       )}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: '1fr 1fr' } }}>
         <Input
           label="Medical aid provider"
           value={player.canEditMedical ? medicalAidProvider : (player.medicalAidProvider ?? '')}

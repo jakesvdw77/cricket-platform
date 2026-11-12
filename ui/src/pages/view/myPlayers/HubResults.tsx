@@ -22,7 +22,7 @@ import { chipFigure, formSentence, opponentCode, resultTone, streakLetter, versu
 
 function Skeletons() {
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }} aria-busy="true" data-testid="hub-results-loading">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} aria-busy="true" data-testid="hub-results-loading">
       <Skeleton variant="rounded" height={110} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '20px' }} />
       <Skeleton variant="rounded" height={190} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '20px' }} />
       <Skeleton variant="rounded" height={190} sx={{ bgcolor: creamAlpha(0.12), borderRadius: '20px' }} />
@@ -37,15 +37,15 @@ function RecentForm({ rows }: { rows: MyResultSummary['lastFive'] }) {
   const streak = [...rows].reverse()
   return (
     <Box component="section" aria-label="Recent Form" data-testid="hub-results-form" sx={{ ...cardSx('neutral'), p: 2, borderRadius: '20px', gap: 1.5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', minWidth: 0 }}>
+        <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ ...kickerSx, fontSize: 14 }}>Recent Form</Typography>
           <Typography data-testid="form-sentence" sx={{ fontSize: 15, mt: 0.75 }}>{formSentence(rows)}</Typography>
         </Box>
-        <Box data-testid="form-streak" sx={{ display: 'flex', gap: 1, ml: { sm: 'auto' } }}>
+        <Box data-testid="form-streak" sx={{ display: 'flex', gap: 1, ml: { sm: 'auto' }, minWidth: 0, maxWidth: '100%' }}>
           {streak.map((row) => (
-            <Box key={row.matchId} sx={{ textAlign: 'center', width: 50 }}>
-              <Box aria-label={`${row.result.toLowerCase().replace('_', ' ')} ${versusText(row)}`} role="img" sx={{ ...chipColours(resultTone(row.result)), width: 46, height: 46, mx: 'auto', borderRadius: '14px', display: 'grid', placeItems: 'center', fontFamily: HUB.display, fontSize: 21, fontWeight: 700 }}>
+            <Box key={row.matchId} sx={{ textAlign: 'center', flex: '0 1 50px', minWidth: 0 }}>
+              <Box aria-label={`${row.result.toLowerCase().replace('_', ' ')} ${versusText(row)}`} role="img" sx={{ ...chipColours(resultTone(row.result)), width: '100%', maxWidth: 46, height: 46, mx: 'auto', borderRadius: '14px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', placeItems: 'center', fontFamily: HUB.display, fontSize: 21, fontWeight: 700 }}>
                 {streakLetter(row.result)}
               </Box>
               <Typography sx={{ fontSize: 12, color: HUB.muted, mt: 0.375 }}>{chipFigure(row)}</Typography>
@@ -112,7 +112,7 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     )
   } else if (rows.length === 0) {
     body = (
-      <Box data-testid="hub-results-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+      <Box data-testid="hub-results-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/match-results" size={64} onDark />
         <Typography sx={{ fontSize: 18 }}>No results yet</Typography>
         <Typography sx={{ fontSize: 15 }}>Finished matches will appear here once the club shares them.</Typography>
@@ -120,11 +120,11 @@ export function HubResults({ playerKey }: { playerKey: string }) {
     )
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75, minWidth: 0, opacity: list.isPlaceholderData ? 0.55 : 1 }}>
         {summary.lastFive.length > 0 && <RecentForm rows={summary.lastFive} />}
         <HubResultCard latest playerKey={playerKey} playerName={playerName} row={rows[0]} scopeQuery={query} />
         {rows.length > 1 && (
-          <Box data-testid="hub-results-grid" sx={{ display: 'grid', gap: 1.75, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(310px, 1fr))' } }}>
+          <Box data-testid="hub-results-grid" sx={{ display: 'grid', gap: 1.75, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(auto-fit, minmax(min(310px, 100%), 1fr))' } }}>
             {rows.slice(1).map((row) => (
               <HubResultCard key={row.matchId} playerKey={playerKey} playerName={playerName} row={row} scopeQuery={query} />
             ))}
@@ -143,7 +143,7 @@ export function HubResults({ playerKey }: { playerKey: string }) {
 
   return (
     <Box data-testid="hub-results" sx={{ display: 'grid', gridTemplateColumns: controls.panelOpen ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)', gap: controls.panelOpen ? 2.5 : 0, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 1.75, minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75, minWidth: 0 }}>
         {header}
         {body}
       </Box>

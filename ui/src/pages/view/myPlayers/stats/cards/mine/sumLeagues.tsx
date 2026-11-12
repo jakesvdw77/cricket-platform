@@ -13,7 +13,7 @@ export const mineSumLeagues: StatsCardDef<MyStatsDto> = {
   tag: 'HAVE',
   needs: ['summary', 'basis'],
   order: 10,
-  // Summary tile: a compact (15 rem) card, three to a row.
+  // Summary tile: a compact (14 rem) card, three to a row.
   size: 'compact',
   whenMissing: 'hide',
   emptyText: 'No league matches yet.',

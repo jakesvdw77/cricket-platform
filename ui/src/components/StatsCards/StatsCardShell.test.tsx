@@ -137,3 +137,32 @@ describe('StatsCardShell, expanded', () => {
     expect(screen.queryByTestId('stats-expanded-front')).not.toBeInTheDocument()
   })
 })
+
+// The face gradient (owner, 2026-11-12): a normal card face and a lacking one carry a linear-gradient background; an expanded card does not.
+describe('StatsCardShell, face gradient', () => {
+  const gradientFaces = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>('*')).filter((el) => getComputedStyle(el).backgroundImage.includes('linear-gradient'))
+
+  it('gives a normal card\'s faces the gradient', () => {
+    const { container } = shell()
+    expect(gradientFaces(container).length).toBeGreaterThan(0)
+  })
+
+  it('gives a card that lacks data the gradient too, with the lacking tint layered on top', () => {
+    const { container } = shell({ state: 'partial' })
+    const faces = gradientFaces(container)
+    expect(faces.length).toBeGreaterThan(0)
+    expect(faces.every((el) => (getComputedStyle(el).backgroundImage.match(/linear-gradient/g) ?? []).length >= 1)).toBe(true)
+    expect(faces.some((el) => (getComputedStyle(el).backgroundImage.match(/linear-gradient/g) ?? []).length >= 2)).toBe(true)
+  })
+
+  it('gives an empty card the gradient', () => {
+    const { container } = shell({ state: 'empty' })
+    expect(gradientFaces(container).length).toBeGreaterThan(0)
+  })
+
+  it('leaves an expanded card with no gradient behind it', () => {
+    const { container } = shell({ expanded: true, onClose: () => undefined })
+    expect(gradientFaces(container).filter((el) => el.tagName !== 'BUTTON' && getComputedStyle(el).backgroundImage.startsWith('linear-gradient(160deg'))).toHaveLength(0)
+  })
+})

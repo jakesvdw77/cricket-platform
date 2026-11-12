@@ -33,7 +33,8 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
         const active = index === activeIndex
         const done = index < activeIndex
         return (
-          <Box component="li" key={step.id} sx={{ flex: 1, minWidth: 0 }}>
+          // On a phone the active step keeps room for its number and short label; the others share what is left (owner sweep, 2026-11-12).
+          <Box component="li" key={step.id} sx={{ flex: { xs: active ? '0 0 auto' : '1 1 0', sm: 1 }, minWidth: 0 }}>
             <ButtonBase
               disabled={disabled}
               onClick={() => onSelect(step.id)}
@@ -41,6 +42,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
               aria-label={`Step ${index + 1}: ${step.label}${step.optional ? ' (optional)' : ''}${done ? ' (done)' : ''}`}
               sx={(theme) => ({
                 width: '100%',
+                minWidth: { xs: active ? 76 : 0, sm: 0 },
                 minHeight: 44,
                 gap: 0.75,
                 px: 0.5,

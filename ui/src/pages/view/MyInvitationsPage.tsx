@@ -19,7 +19,7 @@ function InvitationTile({ invitation }: { invitation: MyInvitation }) {
   const failed = accept.isError || decline.isError
 
   return (
-    <Box data-testid="invitation-tile" sx={{ border: 1, borderColor: HUB.line, bgcolor: HUB.panelDark, borderRadius: '4px', p: 2, display: 'grid', gap: 1.25 }}>
+    <Box data-testid="invitation-tile" sx={{ border: 1, borderColor: HUB.line, bgcolor: HUB.panelDark, borderRadius: '4px', p: 2, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25 }}>
       <Box>
         <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 26, letterSpacing: '.02em', textTransform: 'uppercase', lineHeight: 1.1, overflowWrap: 'anywhere' }}>
           {invitation.playerName}
@@ -37,7 +37,7 @@ function InvitationTile({ invitation }: { invitation: MyInvitation }) {
         )}
       </Box>
       {confirming ? (
-        <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1 }}>
+        <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
           <Typography fontSize={14}>
             Accept and become the main agent for {invitation.playerName}? The current main agent stays an agent but can no longer add or remove agents.
           </Typography>
@@ -76,7 +76,7 @@ export function InvitationsList() {
       {invitations.data && list.length === 0 && (
         <Box sx={{ border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 2.5, bgcolor: blackAlpha(.22), color: HUB.muted }}>No invitations waiting.</Box>
       )}
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         {list.map((invitation) => (
           <InvitationTile key={invitation.linkId} invitation={invitation} />
         ))}

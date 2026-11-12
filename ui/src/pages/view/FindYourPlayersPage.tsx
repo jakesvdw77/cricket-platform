@@ -216,7 +216,7 @@ export default function FindYourPlayersPage() {
                   }}
                 >
                   <PlayerAvatar p={p} />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Box sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
                     <Typography variant="body2" fontWeight={700} fontSize={15}>
                       {describe(p)}
                     </Typography>
@@ -268,7 +268,7 @@ export default function FindYourPlayersPage() {
             {taken.map((p) => (
               <Box key={p.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <PlayerAvatar p={p} />
-                <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                   <Typography variant="body2" fontWeight={700} fontSize={15}>
                     {describe(p)}
                   </Typography>

@@ -9,10 +9,10 @@ const byId = (id: string) => HUB_NAV.find((item) => item.id === id) as HubNavIte
 const childLabels = (id: string) => byId(id).children?.map((child) => child.label)
 
 describe('HUB_NAV', () => {
-  it('has exactly the seven main items in order, never more than seven (Account is route-only)', () => {
+  it('has exactly the seven main items in order (Availability, Schedule, Results, Stats: chronological, owner 2026-11-12), never more than seven (Account is route-only)', () => {
     const menu = HUB_NAV.filter((item) => item.inMenu !== false)
-    expect(menu.map((item) => item.id)).toEqual(['availability', 'results', 'schedule', 'stats', 'updates', 'club', 'profile'])
-    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Results', 'Schedule', 'Stats', 'Updates', 'Club', 'Profile'])
+    expect(menu.map((item) => item.id)).toEqual(['availability', 'schedule', 'results', 'stats', 'updates', 'club', 'profile'])
+    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Schedule', 'Results', 'Stats', 'Updates', 'Club', 'Profile'])
     expect(menu.length).toBeLessThanOrEqual(7)
   })
 
@@ -23,8 +23,8 @@ describe('HUB_NAV', () => {
   it('lists each parent\'s children in the agreed order', () => {
     expect(childLabels('availability')).toBeUndefined()
     expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
-    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Team sheets'])
-    expect(childLabels('stats')).toEqual(['Player Stats', 'Leaderboards', 'Team stats'])
+    expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Calendar'])
+    expect(childLabels('stats')).toEqual(['Player Stats', 'Team Stats', 'Leaderboards'])
     expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
     expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Switch profile', 'Back to club', 'Sign out'])
@@ -34,13 +34,13 @@ describe('HUB_NAV', () => {
     expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Field Directory'])
     expect(byId('updates').children?.every((child) => child.soon)).toBe(true)
     expect(byId('stats').children?.some((child) => child.soon)).toBe(false)
-    expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues'])
+    expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues', 'Calendar'])
     for (const id of ['profile', 'account']) expect(byId(id).children?.some((child) => child.soon)).toBe(false)
   })
 
   it('has the three Stats pages live (not Soon) and always visible, with no club-switch gate', () => {
     const stats = byId('stats').children as HubNavItem[]
-    expect(stats.map((child) => child.id)).toEqual(['stats.mine', 'stats.boards', 'stats.teams'])
+    expect(stats.map((child) => child.id)).toEqual(['stats.mine', 'stats.teams', 'stats.boards'])
     for (const child of stats) {
       expect(child.soon).toBeFalsy()
       expect(child.action).toBeUndefined()

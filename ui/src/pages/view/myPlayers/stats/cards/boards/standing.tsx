@@ -63,7 +63,7 @@ export const boardsStanding: StatsCardDef<MyStanding> = {
           data-testid={`standing-${line.key}`}
           title={`${line.label}: ${tileNote(line)}`}
           aria-label={`${line.label}: ${ranked(line) ? ordinal(line.rank) : DASH}, ${tileNote(line)}`}
-          sx={{ display: 'grid', alignContent: 'start', justifyItems: 'center', textAlign: 'center', gap: '2px', minWidth: 0, minHeight: 78, p: '6px 2px', borderRadius: '10px', border: `1px solid ${STATS_UI.lineSoft}` }}
+          sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'start', justifyItems: 'center', textAlign: 'center', gap: '2px', minWidth: 0, minHeight: 78, p: '6px 2px', borderRadius: '10px', border: `1px solid ${STATS_UI.lineSoft}` }}
         >
           <Typography component="span" aria-hidden sx={{ fontFamily: STATS_UI.display, fontWeight: 700, fontSize: 24, lineHeight: 1, color: ranked(line) ? STATS_UI.gold : STATS_UI.muted }}>
             {rankText(line)}

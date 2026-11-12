@@ -114,4 +114,25 @@ describe('KeyFigureTile', () => {
     })
   })
 
+  // Owner sweep, 2026-11-12: a counter keeps one row, and a word is never broken ("In Progre ss"); only the label wraps under it.
+  describe('counter', () => {
+    it('keeps the value and its label on one row, with no icon tile', () => {
+      render(<KeyFigureTile counter testId="tile" icon={<span data-testid="icon" />} value="In Progress" label="Matches" />)
+
+      expect(screen.queryByTestId('icon')).not.toBeInTheDocument()
+      expect(getComputedStyle(screen.getByTestId('tile')).flexDirection).toBe('row')
+      const inner = screen.getByTestId('tile-value').parentElement as HTMLElement
+      expect(getComputedStyle(inner).flexDirection).toBe('row')
+      expect(getComputedStyle(inner).flexWrap).toBe('wrap')
+    })
+
+    it('breaks between words, not inside one, where a plain tile may break anywhere', () => {
+      const { unmount } = render(<KeyFigureTile counter testId="tile" value="In Progress" label="Matches" />)
+      expect(getComputedStyle(screen.getByTestId('tile-value')).overflowWrap).toBe('break-word')
+      unmount()
+
+      render(<KeyFigureTile testId="tile" value="In Progress" label="Matches" />)
+      expect(getComputedStyle(screen.getByTestId('tile-value')).overflowWrap).toBe('anywhere')
+    })
+  })
 })

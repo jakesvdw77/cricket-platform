@@ -63,7 +63,7 @@ export interface CardFaceProps<P> {
 }
 
 // Row layout (docs/specs/147 Amendment 2 item 10): a `normal` card takes one cell of a row of three equal-height cards; a `tall` card
-// followed by two normal cards sits beside them, the two stacked; a `compact` card is a short tile (15 rem, three to a row) for the Summary.
+// followed by two normal cards sits beside them, the two stacked; a `compact` card is a short tile (14 rem, three to a row) for the Summary.
 export type CardSize = 'normal' | 'tall' | 'compact'
 
 // Dotted paths into the payload, to a depth of four levels; an array's elements are reached through the array's own key

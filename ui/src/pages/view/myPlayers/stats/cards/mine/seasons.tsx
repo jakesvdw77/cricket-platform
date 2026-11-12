@@ -32,7 +32,7 @@ function SeasonsFront({ payload: p, ctx }: { payload: MyStatsDto; ctx: { firstNa
   const rows = seasons.map((season) => ({ key: season.seasonId, label: season.label, value: season[active], valueLabel: String(season[active]) }))
   const single = rows.length === 1 ? rows[0] : null
   return (
-    <Box sx={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '4px', minWidth: 0 }}>
       <CardHeaderControls>
         <Box data-flip-interactive onClick={(event: MouseEvent) => event.stopPropagation()} sx={{ display: 'flex', minWidth: 0 }}>
           <CompactToggleGroup<Measure> tone="dark" value={active} onChange={setMeasure} ariaLabel="Measure by season">

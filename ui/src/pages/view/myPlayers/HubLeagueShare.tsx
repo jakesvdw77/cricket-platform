@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import { Button } from '../../../components/Button'
-import { compactButtonSx } from '../../../components/Button/Button'
 import type { MyLeagueDto } from '../../../api/myPlayersApi'
 import { downloadFile } from '../../../utils/share/downloadFile'
 import { generateLeagueSharePoster } from '../../../utils/leagueSchedulePoster'
 import { buildMyLeagueShareModel, leagueShareFileName } from '../../../utils/share/shareLeagueData'
-import { hubOutlineButton } from './hubStyle'
+import { hubFramedIconSx } from './hubStyle'
 
 // docs/specs/123 (Share): one tap makes the standard league Schedule poster (junior leagues on initials) and hands it to the
 // share sheet, or downloads the PNG. No dialog, no choices. Hidden when the club has switched the Poster format off.
@@ -50,18 +48,25 @@ export function HubLeagueShare({ dto, clubName }: { dto: MyLeagueDto; clubName: 
   }
 
   const canShareProbably = typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
-  const btnSx = [compactButtonSx, hubOutlineButton, { minHeight: { xs: 44, md: 36 }, alignSelf: 'center' }] as never
   return (
-    <Box sx={{ display: 'grid', justifyItems: 'end', gap: 0.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'end', gap: 0.5 }}>
       <Box sx={{ display: 'flex', gap: 1 }}>
         {canShareProbably && (
-          <Button variant="secondary" size="compact" startIcon={<ShareOutlinedIcon />} disabled={busy} onClick={() => void run('share')} sx={btnSx}>
-            {busy ? 'Preparing…' : 'Share'}
-          </Button>
+          <Tooltip title={busy ? 'Preparing…' : 'Share'}>
+            <span>
+              <IconButton aria-label="Share the league schedule" disabled={busy} onClick={() => void run('share')} sx={hubFramedIconSx}>
+                <ShareOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
         )}
-        <Button variant="secondary" size="compact" startIcon={<DownloadOutlinedIcon />} disabled={busy} onClick={() => void run('download')} sx={btnSx}>
-          {busy && !canShareProbably ? 'Preparing…' : 'Download'}
-        </Button>
+        <Tooltip title={busy ? 'Preparing…' : 'Download'}>
+          <span>
+            <IconButton aria-label="Download the league schedule poster" disabled={busy} onClick={() => void run('download')} sx={hubFramedIconSx}>
+              <DownloadOutlinedIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Box>
       <Typography role="status" aria-live="polite" variant="caption" color="error" sx={{ minHeight: error ? undefined : 0 }}>
         {error}

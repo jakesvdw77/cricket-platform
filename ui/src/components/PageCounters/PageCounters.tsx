@@ -94,7 +94,7 @@ function CounterBody({ item, interactive, compact, phone }: { item: PageCounterI
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={compact ? { ...counterLabelSx, letterSpacing: '0.06em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : counterLabelSx}
+        sx={compact ? { ...counterLabelSx, letterSpacing: '0.06em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: { xs: 'normal', sm: 'nowrap' }, overflowWrap: 'anywhere' } : counterLabelSx}
         title={compact || label !== item.label ? item.label : undefined}
       >
         {label}

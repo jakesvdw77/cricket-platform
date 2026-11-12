@@ -30,7 +30,7 @@ export function HubGameCard({ playerName, row }: { playerName: string; row: MyRe
       </Typography>
 
       {kind === 'noBat' ? (
-        <Box sx={{ flex: 1, display: 'grid', alignContent: 'center', justifyItems: 'center', textAlign: 'center', gap: 1, py: 2 }}>
+        <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'center', justifyItems: 'center', textAlign: 'center', gap: 1, py: 2 }}>
           <Typography sx={{ ...bigSx, fontSize: 52, color: HUB.muted }}>{row.batting.status === 'DID_NOT_BAT' ? 'Did Not Bat' : 'No Card'}</Typography>
           <Typography sx={{ fontSize: 17, lineHeight: 1.35, maxWidth: 270 }}>{storyLine(row)}</Typography>
           {row.fielding.catches > 0 && (
@@ -41,8 +41,8 @@ export function HubGameCard({ playerName, row }: { playerName: string; row: MyRe
         </Box>
       ) : (
         <>
-          <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1.25 }}>
-            <Typography data-testid="result-figure" sx={{ ...bigSx, fontSize: 92 }}>{kind === 'batting' ? battingFigure(row) : bowlingFigure(row)}</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 1.25, minWidth: 0 }}>
+            <Typography data-testid="result-figure" sx={{ ...bigSx, fontSize: { xs: 72, sm: 92 } }}>{kind === 'batting' ? battingFigure(row) : bowlingFigure(row)}</Typography>
             <Typography component="div" sx={{ color: HUB.muted, fontSize: 15, pb: 1 }}>
               {kind === 'batting' ? (
                 <>

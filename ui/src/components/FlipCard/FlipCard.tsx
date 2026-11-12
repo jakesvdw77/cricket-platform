@@ -95,6 +95,7 @@ export function FlipCard({ label, front, back, flipped, defaultFlipped = false, 
         sx={{
           display: 'grid',
           gridTemplateRows: 'minmax(0, 1fr)',
+          gridTemplateColumns: 'minmax(0, 1fr)',
           minWidth: 0,
           height: '100%',
           position: 'relative',

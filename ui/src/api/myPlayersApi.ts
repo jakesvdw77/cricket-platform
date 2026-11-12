@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from './axiosConfig'
 import type { LeagueFormat } from './leagueApi'
 import type { LeaguePlayingConditions } from './leaguePlayingConditionsApi'
@@ -382,12 +382,19 @@ export interface MyMatchSummaryDto {
   hasLiveScore: boolean
   hasStream: boolean
   result?: MyMatchResultDto | null
+  // Optional until the server sends the player's side outcome for a recent row; the row only colours itself when it is there.
+  outcome?: 'WON' | 'LOST' | 'TIED' | null
+  // The player's own squad-poll answer; upcoming rows with a poll only.
+  availability?: MyMatchAvailabilityDto | null
 }
 
 export interface MyMatchListDto {
   live: MyMatchSummaryDto[]
   upcoming: MyMatchSummaryDto[]
   recent: MyMatchSummaryDto[]
+  // The full counts behind the pills (recent is capped by recentLimit). Optional so an older server does not break the page.
+  upcomingTotal?: number
+  recentTotal?: number
 }
 
 // The LiveScore seam: a discriminated source. Only HubLiveScore reads it; a NATIVE kind joins later.
@@ -457,8 +464,8 @@ export interface MyMatchDto {
   result?: MyMatchResultDto | null
 }
 
-export async function getMyPlayerMatches(key: string): Promise<MyMatchListDto> {
-  const { data } = await api.get<MyMatchListDto>(`/me/players/${key}/matches`)
+export async function getMyPlayerMatches(key: string, recentLimit?: number): Promise<MyMatchListDto> {
+  const { data } = await api.get<MyMatchListDto>(`/me/players/${key}/matches`, { params: recentLimit ? { recentLimit } : undefined })
   return data
 }
 
@@ -472,10 +479,11 @@ export const MATCH_REFRESH_MS = 60_000
 
 export const myPlayerMatchesKey = (key: string | undefined) => [...myPlayersKey, key, 'matches'] as const
 
-export function useMyPlayerMatches(key: string | undefined, options: ReadOptions = {}) {
+export function useMyPlayerMatches(key: string | undefined, options: ReadOptions & { recentLimit?: number } = {}) {
   return useQuery({
-    queryKey: myPlayerMatchesKey(key),
-    queryFn: () => getMyPlayerMatches(key as string),
+    queryKey: [...myPlayerMatchesKey(key), 'list', options.recentLimit ?? 'default'],
+    queryFn: () => getMyPlayerMatches(key as string, options.recentLimit),
+    placeholderData: keepPreviousData,
     enabled: Boolean(key) && (options.enabled ?? true),
     ...(options.staleTime !== undefined && { staleTime: options.staleTime }),
     retry: false,

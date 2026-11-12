@@ -79,7 +79,7 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
 
   const tooMany = isAxiosError(create.error) && create.error.response?.status === 429
   return (
-    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, columnGap: 1.5, rowGap: 1.5, alignItems: 'start', ...(dark ? darkFieldSx : {}) }}>
+    <Box component="form" noValidate onSubmit={submit} aria-label="Ask the club to link a player" data-testid="link-request-form" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, columnGap: 1.5, rowGap: 1.5, alignItems: 'start', ...(dark ? darkFieldSx : {}) }}>
       <Input
         label="First name"
         value={firstName}

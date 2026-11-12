@@ -47,7 +47,7 @@ function PendingRow({ agent }: { agent: MyPlayerAgent }) {
   const remove = useRemoveMyLink()
   const [confirming, setConfirming] = useState(false)
   return (
-    <Box sx={{ display: 'grid', gap: 1 }} data-testid="pending-invitation">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }} data-testid="pending-invitation">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minHeight: 44 }}>
         <Typography fontWeight={600} fontSize={16}>
           {agent.name}
@@ -64,7 +64,7 @@ function PendingRow({ agent }: { agent: MyPlayerAgent }) {
         )}
       </Box>
       {confirming && (
-        <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: blackAlpha(0.3) }}>
+        <Box role="alert" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, bgcolor: blackAlpha(0.3) }}>
           <Typography fontSize={14}>Cancel this invitation? The invited person will no longer be able to accept it.</Typography>
           {remove.isError && <Alert severity="error">We could not do that. Please try again.</Alert>}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -112,7 +112,7 @@ export function EditAgentsView({ player, mode, onModeChange }: { player: MyPlaye
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="agent-change-view">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} data-testid="agent-change-view">
       <HubLeaveConfirm />
       <HubPageHeader title="Edit agents" />
       <ToggleButtonGroup exclusive size="small" aria-label="What to do" value={mode} onChange={(_event, value: AgentMode | null) => value && changeMode(value)} sx={toggleSx}>
@@ -120,7 +120,7 @@ export function EditAgentsView({ player, mode, onModeChange }: { player: MyPlaye
         <ToggleButton value="HANDOVER">Hand over (change primary agent)</ToggleButton>
       </ToggleButtonGroup>
       {step === 'email' && (
-        <Box component="form" noValidate onSubmit={next} sx={{ display: 'grid', gap: 1.5, ...darkFieldSx }}>
+        <Box component="form" noValidate onSubmit={next} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, ...darkFieldSx }}>
           <Typography fontSize={14} sx={{ color: HUB.muted }}>
             {handover
               ? `Enter the email address of the person who will become the primary agent for ${player.firstName}. They accept by signing in with that address.`
@@ -167,7 +167,7 @@ export function EditAgentsView({ player, mode, onModeChange }: { player: MyPlaye
           No pending invitations.
         </Typography>
       ) : (
-        <Box sx={{ display: 'grid', gap: 0.5 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
           {pending.map((agent, index) => (
             <PendingRow key={agent.linkId ?? `${agent.name}-${index}`} agent={agent} />
           ))}
@@ -183,7 +183,7 @@ export function RemoveLinkView({ player, linkId, kind, onDone }: { player: MyPla
   const leaving = kind === 'leave'
   const handOverFirst = isAxiosError(remove.error) && remove.error.response?.status === 409
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="remove-link-view">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} data-testid="remove-link-view">
       <HubPageHeader title={leaving ? `Leave ${player.firstName}` : 'Cancel invitation'} />
       <Confirm>
         {leaving

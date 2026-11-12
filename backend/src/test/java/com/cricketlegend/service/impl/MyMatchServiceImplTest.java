@@ -18,7 +18,11 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.dto.MyMatchDto;
 import com.cricketlegend.dto.MyMatchListDto;
+import com.cricketlegend.domain.ResultOutcomeType;
+import com.cricketlegend.domain.ResultSide;
+import com.cricketlegend.dto.MatchResultDto;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -40,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -183,7 +188,7 @@ class MyMatchServiceImplTest {
     }
 
     @Test
-    void theStreamIsOnlyReturnedWhileTheMatchIsLive() {
+    void theStreamIsReturnedWhileLiveAndAfterwardsButNotBeforeTheMatch() {
         assertThat(service.get(authentication, "key", match.getId()).stream().embedUrl())
                 .isEqualTo("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
         assertThat(service.get(authentication, "key", match.getId()).phase()).isEqualTo(MatchPhase.LIVE);
@@ -197,9 +202,10 @@ class MyMatchServiceImplTest {
 
         match.setMatchDate(Instant.now().minus(30, ChronoUnit.HOURS));
         MyMatchDto old = service.get(authentication, "key", match.getId());
+        // A finished match keeps its recording and scoring links (owner, 2026-11-12).
         assertThat(old.phase()).isEqualTo(MatchPhase.RECENT);
-        assertThat(old.stream()).isNull();
-        assertThat(old.liveScore()).isNull();
+        assertThat(old.stream()).isNotNull();
+        assertThat(old.liveScore()).isNotNull();
     }
 
     @Test
@@ -217,7 +223,7 @@ class MyMatchServiceImplTest {
     void aPlayerWithNoSquadHasNoMatches() {
         when(squadRepository.findByPlayerProfileId(profileId)).thenReturn(List.of());
 
-        MyMatchListDto list = service.list(authentication, "key");
+        MyMatchListDto list = service.list(authentication, "key", null);
 
         assertThat(list.live()).isEmpty();
         assertThat(list.upcoming()).isEmpty();
@@ -239,7 +245,7 @@ class MyMatchServiceImplTest {
         when(matchRepository.findActiveForTeamsFrom(any(), any(), any(), any())).thenReturn(all);
         when(matchRepository.findActiveForTeamsBefore(any(), any(), any(), any())).thenReturn(past);
 
-        MyMatchListDto list = service.list(authentication, "key");
+        MyMatchListDto list = service.list(authentication, "key", null);
 
         assertThat(list.live()).hasSize(1);
         assertThat(list.live().get(0).startedAt()).isNotNull();
@@ -250,6 +256,65 @@ class MyMatchServiceImplTest {
         assertThat(list.upcoming().get(0).hasStream()).isFalse();
         assertThat(list.recent()).hasSize(MyMatchServiceImpl.RECENT_CAP);
         assertThat(list.recent().get(0).date()).isAfter(list.recent().get(1).date());
+        assertThat(list.upcomingTotal()).isEqualTo(25);
+        assertThat(list.recentTotal()).isEqualTo(15);
+    }
+
+    @Test
+    void aLargerRecentLimitReturnsMoreAndTheTotalsAreTheUncappedCounts() {
+        Instant now = Instant.now();
+        List<Match> past = new java.util.ArrayList<>();
+        for (int i = 1; i <= 30; i++) {
+            past.add(matchAt(now.minus(10L + i, ChronoUnit.DAYS)));
+        }
+        when(matchRepository.findActiveForTeamsFrom(any(), any(), any(), any())).thenReturn(List.of());
+        when(matchRepository.findActiveForTeamsBefore(any(), any(), any(), any())).thenReturn(past);
+
+        MyMatchListDto def = service.list(authentication, "key", null);
+        MyMatchListDto more = service.list(authentication, "key", 25);
+        MyMatchListDto all = service.list(authentication, "key", 100);
+
+        assertThat(def.recent()).hasSize(10);
+        assertThat(more.recent()).hasSize(25);
+        assertThat(all.recent()).hasSize(30);
+        assertThat(def.recentTotal()).isEqualTo(30);
+        assertThat(more.recentTotal()).isEqualTo(30);
+        assertThat(def.upcomingTotal()).isZero();
+    }
+
+    @Test
+    void aRecentLimitOutsideOneToAHundredIsRefused() {
+        assertThatThrownBy(() -> service.list(authentication, "key", 0)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.list(authentication, "key", 101)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.list(authentication, "key", -5)).isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void theOutcomeIsFromTheHeldPlayersSideOrNull() {
+        UUID other = UUID.randomUUID();
+        Set<UUID> mine = Set.of(myTeamId);
+        Match home = matchAt(Instant.now());
+        Match away = Match.builder().id(UUID.randomUUID()).homeTeamId(other).awayTeamId(myTeamId).build();
+        Match internal = Match.builder().id(UUID.randomUUID()).homeTeamId(myTeamId).awayTeamId(myTeamId).build();
+        Match foreign = Match.builder().id(UUID.randomUUID()).homeTeamId(other).awayTeamName("X").build();
+
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), home, mine)).isEqualTo("WON");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.AWAY), home, mine)).isEqualTo("LOST");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.AWAY), away, mine)).isEqualTo("WON");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.FORFEIT, ResultSide.HOME), away, mine)).isEqualTo("LOST");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.TIE, null), home, mine)).isEqualTo("TIED");
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.DRAW, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.NO_RESULT, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.ABANDONED, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, null), home, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), internal, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(res(ResultOutcomeType.WON, ResultSide.HOME), foreign, mine)).isNull();
+        assertThat(MyMatchServiceImpl.outcomeFor(null, home, mine)).isNull();
+    }
+
+    private static MatchResultDto res(ResultOutcomeType type, ResultSide winner) {
+        return new MatchResultDto(null, null, null, null, null, type, null, winner, null, null, null, null, null, 6,
+                null, null, null, null, null, null, null, null, null, true, null, null, null, List.of(), false, false);
     }
 
     private Match matchAt(Instant when) {

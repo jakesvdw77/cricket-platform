@@ -193,10 +193,10 @@ export function FieldFormFields({
 }: FieldFormFieldsProps) {
   const dialog = variant === 'dialog'
   const columns = dialog
-    ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }
+    ? { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }
     : compact
-      ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }
-      : { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }
+      ? { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }
+      : { xs: 'minmax(0, 1fr)', md: 'repeat(3, minmax(0, 1fr))' }
   const spanTwo = dialog ? { sm: 'span 2' } : { md: 'span 2' }
   const gridSx = { display: 'grid', gap: 2, gridTemplateColumns: columns, alignItems: 'start', ...(compact && compactFieldSx) } as const
   const wrapFrom = dialog ? 'sm' : 'md'

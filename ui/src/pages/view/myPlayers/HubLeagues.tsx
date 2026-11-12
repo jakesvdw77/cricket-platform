@@ -26,7 +26,7 @@ export function HubLeagues({ playerKey, seasonId, onSeasonChange, onOpen }: HubL
   let body
   if (leagues.isLoading) {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         {[0, 1, 2].map((n) => <Skeleton key={n} variant="rounded" height={96} sx={{ bgcolor: creamAlpha(0.12) }} />)}
       </Box>
     )
@@ -38,21 +38,21 @@ export function HubLeagues({ playerKey, seasonId, onSeasonChange, onOpen }: HubL
     )
   } else if ((data?.leagues ?? []).length === 0) {
     body = (
-      <Box data-testid="hub-leagues-empty" sx={{ display: 'grid', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
+      <Box data-testid="hub-leagues-empty" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', justifyItems: 'center', gap: 1.5, py: 4, color: HUB.muted, textAlign: 'center' }}>
         <BrandIcon name="nav/cricket-leagues" size={64} onDark />
         <Typography sx={{ fontSize: 18 }}>No league available</Typography>
       </Box>
     )
   } else {
     body = (
-      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
         {data?.leagues.map((league) => <HubLeagueCard key={league.id} league={league} seasonName={seasonName} onOpen={() => onOpen(league.id, shownSeason)} />)}
       </Box>
     )
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <HubPageHeader
         title="Leagues"
         actions={

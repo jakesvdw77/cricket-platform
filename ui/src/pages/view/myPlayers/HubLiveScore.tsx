@@ -1,8 +1,8 @@
-import { Box, Button as MuiButton, Typography } from '@mui/material'
-import { compactButtonSx } from '../../../components/Button'
+import { Box, Typography } from '@mui/material'
+import { Button } from '../../../components/Button'
 import type { LiveScoreSource } from '../../../api/myPlayersApi'
 import { blackAlpha } from '../../../brandTokens'
-import { HUB } from './hubStyle'
+import { HUB, hubGoldOutlineButton } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import { isHttps } from './leagueFormat'
 
@@ -12,7 +12,9 @@ import { isHttps } from './leagueFormat'
 //   row  - the button alone, inside a Live Now card;
 //   card - the match page's flat panel with the club's name and logo;
 //   tv   - the Watch Live page's panel, directly under the frame.
-export type LiveScoreVariant = 'row' | 'card' | 'tv'
+//   header - the header action of a live match (match page and live row): "Live Score" (owner, 2026-11-12).
+//   scorecard - a finished match's link to the scoring site: "Online Scorecard" (owner, 2026-11-12).
+export type LiveScoreVariant = 'row' | 'card' | 'tv' | 'header' | 'scorecard'
 
 export interface HubLiveScoreProps {
   source: LiveScoreSource | null | undefined
@@ -21,33 +23,39 @@ export interface HubLiveScoreProps {
   owner?: { name: string; logoUrl?: string | null }
 }
 
-const followSx = { ...compactButtonSx, color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', borderRadius: '4px', '&:hover': { borderColor: HUB.gold, bgcolor: HUB.lineSoft }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } } as const
+const LABELS = { row: 'Follow Live Score', header: 'Live Score', scorecard: 'Online Scorecard' } as const
 
-function FollowButton({ source }: { source: LiveScoreSource }) {
+// The one outlined link to the scoring site; the phone's 44 px target comes from the shared compact Button.
+function FollowButton({ source, kind }: { source: LiveScoreSource; kind: keyof typeof LABELS }) {
   return (
-    <MuiButton
-      variant="outlined"
-      size="small"
+    <Button
+      variant="secondary"
+      size="compact"
       component="a"
       href={source.url}
       target="_blank"
       rel="noopener noreferrer"
-      data-testid="follow-live-score"
-      sx={{ ...followSx, position: 'relative', zIndex: 1, alignSelf: 'flex-start' }}
+      data-testid={kind === 'scorecard' ? 'score-link' : 'follow-live-score'}
+      aria-label={kind === 'row' ? undefined : `${LABELS[kind]}, opens in a new tab`}
+      title={kind === 'row' ? undefined : 'Opens in a new tab'}
+      sx={{ ...hubGoldOutlineButton, position: 'relative', zIndex: 1, alignSelf: 'flex-start' }}
     >
-      Follow Live Score
-    </MuiButton>
+      {LABELS[kind]}
+    </Button>
   )
 }
 
+// Whether a source is something the Hub can link to (EXTERNAL, https): callers use this, never the url itself (the seam test guards it).
+export const hasScoreLink = (source: LiveScoreSource | null | undefined): boolean => Boolean(source && source.kind === 'EXTERNAL' && isHttps(source.url))
+
 export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
   if (!source || source.kind !== 'EXTERNAL' || !isHttps(source.url)) return null
-  if (variant === 'row') return <FollowButton source={source} />
+  if (variant === 'row' || variant === 'header' || variant === 'scorecard') return <FollowButton source={source} kind={variant} />
   const note = variant === 'card' ? `Scores are kept on ${source.host}. It opens in a new tab.` : `Scores are kept on ${source.host}.`
   return (
     <Box
       data-testid={`live-score-${variant}`}
-      sx={{ display: 'grid', gap: 0.75, border: 1, borderColor: HUB.line, borderLeft: variant === 'tv' ? `4px solid ${HUB.gold}` : undefined, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) }}
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75, border: 1, borderColor: HUB.line, borderLeft: variant === 'tv' ? `4px solid ${HUB.gold}` : undefined, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) }}
     >
       {variant === 'card' && owner && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -56,7 +64,7 @@ export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
         </Box>
       )}
       <Typography sx={{ fontSize: 14, color: HUB.muted }}>{note}</Typography>
-      <FollowButton source={source} />
+      <FollowButton source={source} kind="row" />
     </Box>
   )
 }

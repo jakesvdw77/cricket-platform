@@ -90,7 +90,7 @@ export function HubWeatherPanel({ match, format }: { match: FixtureRow & { phase
           data-testid="match-weather-toggle"
           sx={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, textAlign: 'left', p: 1.5, color: 'inherit', '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 } }}
         >
-          <Box component="span" sx={{ display: 'grid', minWidth: 0 }}>
+          <Box component="span" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
             <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.muted }}>Weather Forecast</Typography>
             <Box component="span" data-testid="match-weather-range" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontFamily: HUB.display, fontWeight: 700, fontSize: 19, color: HUB.gold }}>
               <Box component="span" aria-hidden sx={{ display: 'inline-flex', fontSize: 20 }}>
@@ -103,7 +103,7 @@ export function HubWeatherPanel({ match, format }: { match: FixtureRow & { phase
         </ButtonBase>
       </Typography>
       <Collapse in={open} unmountOnExit>
-        <Box id="match-weather-detail" component="ul" sx={{ listStyle: 'none', m: 0, mx: 1.5, mb: 1.5, p: 0, display: 'grid', fontSize: 15 }}>
+        <Box id="match-weather-detail" component="ul" sx={{ listStyle: 'none', m: 0, mx: 1.5, mb: 1.5, p: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', fontSize: 15 }}>
           {lines.map((line) => (
             <Box component="li" key={line} data-testid="match-weather-line" sx={{ py: 0.75, borderTop: 1, borderColor: HUB.lineSoft }}>
               {line}

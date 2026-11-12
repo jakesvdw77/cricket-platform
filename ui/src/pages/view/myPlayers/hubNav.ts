@@ -44,8 +44,6 @@ export interface HubNavItem {
 
 export const HUB_NAV: HubNavItem[] = [
   { id: 'availability', label: 'Availability', pill: 'openPolls' },
-  // docs/specs/145: Results is a leaf and the second main item.
-  { id: 'results', label: 'Results' },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -53,17 +51,20 @@ export const HUB_NAV: HubNavItem[] = [
       // docs/specs/135: live now (Live Now, Upcoming, Recent), no longer a Soon item.
       { id: 'schedule.matches', label: 'Matches' },
       { id: 'schedule.leagues', label: 'Leagues' },
-      { id: 'schedule.sheets', label: 'Team sheets', soon: true, soonCopy: 'The team sheet for each match once it is announced.' },
+      // Owner, 2026-11-12: a month calendar of every match replaces the Team sheets placeholder (not wanted).
+      { id: 'schedule.calendar', label: 'Calendar' },
     ],
   },
+  // docs/specs/145: Results is a leaf. Owner, 2026-11-12: the order is chronological, Availability, Schedule, Results, Stats.
+  { id: 'results', label: 'Results' },
   {
     id: 'stats',
     label: 'Stats',
     children: [
       // docs/specs/147: My stats, Team stats and Leaderboards are live. Leaderboards is always visible (the owner's amendment: no club switch yet).
       { id: 'stats.mine', label: 'Player Stats' },
+      { id: 'stats.teams', label: 'Team Stats' },
       { id: 'stats.boards', label: 'Leaderboards' },
-      { id: 'stats.teams', label: 'Team stats' },
     ],
   },
   {
@@ -262,7 +263,8 @@ export function hubBack(state: HubBackState): HubBackAction | null {
       const word = origin.tab === 'results' ? 'results' : 'schedule'
       return { label: `Back to ${fromLabel ?? 'League'} ${word}`, target: hubLeaguePath(playerKey, origin.leagueId, { tab: origin.tab }) }
     }
-    return { label: 'Back to Matches', target: hubPath(playerKey, 'schedule', 'matches') }
+    // The Matches list keeps its pill in the URL (`?tab=`), so Back returns to the same one.
+    return { label: 'Back to Matches', target: `${hubPath(playerKey, 'schedule', 'matches')}${origin.kind === 'matches' && origin.tab ? `?tab=${origin.tab}` : ''}` }
   }
   // docs/specs/147: a result page opened from My stats, and the My stats match drill (stats/mine/innings), go back to Player Stats with the same scope.
   if ((route.section.id === 'results' && item && origin === 'stats') || (route.section.id === 'stats' && item === 'mine' && view === 'innings')) {

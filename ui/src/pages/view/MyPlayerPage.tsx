@@ -11,7 +11,7 @@ import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
 import type { EditSection } from './myPlayers/MyPlayerEditForm'
 import { HubProfile } from './myPlayers/HubProfile'
 import type { ProfilePage } from './myPlayers/HubProfile'
-import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
+import { HubAvailability } from './myPlayers/HubAvailability'
 import { HubLeaveGuardProvider, useHubLeaveGuardController } from './myPlayers/hubLeaveGuard'
 import { HubMenu } from './myPlayers/HubMenu'
 import { HubPillStrip } from './myPlayers/HubPillStrip'
@@ -22,6 +22,7 @@ import { HubLeague } from './myPlayers/HubLeague'
 import { HubLeagues } from './myPlayers/HubLeagues'
 import { HubMatch } from './myPlayers/HubMatch'
 import { HubMatches } from './myPlayers/HubMatches'
+import { HubCalendar } from './myPlayers/HubCalendar'
 import { HubResult } from './myPlayers/HubResult'
 import { HubResults } from './myPlayers/HubResults'
 import { HubMyStats } from './myPlayers/stats/HubMyStats'
@@ -177,17 +178,14 @@ export default function MyPlayerPage() {
   } else if (subView) {
     const cardEdit = leaf === 'edit-card'
     panel = player && (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title={cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`} />
         <MyPlayerEditForm key={`${player.key}-${leaf}-${sub}`} player={player} dark section={cardEdit ? 'photo' : (sub as EditSection)} onDone={() => navigate(hubPath(key, 'profile', sub))} />
       </Box>
     )
   } else if (section.id === 'availability') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
-        <HubPageHeader title="Availability" />
-        {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
-      </Box>
+      player && <HubAvailability playerKey={player.key} playerName={player.firstName} />
     )
   } else if (section.id === 'profile' && pageItem) {
     panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
@@ -213,11 +211,13 @@ export default function MyPlayerPage() {
         onOpen={(leagueId, seasonId) => navigate(hubLeaguePath(key, leagueId, { season: seasonId }))}
       />
     )
+  } else if (pageItem?.id === 'schedule.calendar') {
+    panel = <HubCalendar playerKey={key} playerName={player?.firstName ?? 'this player'} />
   } else if (pageItem?.id === 'schedule.matches') {
     panel = !leaf ? (
       <HubMatches playerKey={key} playerName={player?.firstName ?? 'this player'} />
     ) : extra === 'watch' ? (
-      <HubWatchLive playerKey={key} matchId={leaf} />
+      <HubWatchLive playerKey={key} matchId={leaf} onBack={back ? goBack : undefined} backLabel={back?.label} />
     ) : (
       <HubMatch playerKey={key} matchId={leaf} from={from} onAnswerAvailability={() => navigate(hubPath(key, 'availability'))} />
     )
@@ -231,14 +231,14 @@ export default function MyPlayerPage() {
     panel = <HubLeaderboards playerKey={key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title="Invitations" />
         <InvitationsList />
       </Box>
     )
   } else if (pageItem?.id === 'account.requests') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title="Link requests" />
         <MyLinkRequests dark />
       </Box>
