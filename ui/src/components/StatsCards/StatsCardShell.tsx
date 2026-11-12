@@ -5,7 +5,7 @@ import { Box, IconButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
-import { STATS_TONES } from '../../brandTokens'
+import { BRAND, STATS_TONES, blackAlpha } from '../../brandTokens'
 import { FlipCard, useFaceActive } from '../FlipCard'
 import { CardHeaderSlotContext, ExpandedContext } from './cardHeaderSlot'
 import { basedOnText } from './statsCardOrder'
@@ -98,7 +98,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         borderRadius: expanded ? '22px' : '14px',
         border: `1px solid ${lacking ? STATS_UI.lackingLine : STATS_UI.lineSoft}`,
         bgcolor: expanded ? STATS_UI.expandedGround : STATS_UI.faceGround,
-        ...(lacking ? { backgroundImage: `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint})` } : {}),
+        ...(lacking ? { backgroundImage: `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint})` } : expanded ? {} : { backgroundImage: FACE_GRADIENT }),
         color: STATS_UI.cream,
         boxSizing: 'border-box',
         overflow: 'hidden',
@@ -208,6 +208,10 @@ export interface StatsCardShellProps {
   expandedBody?: ReactNode
   testId?: string
 }
+
+// TEST (owner, 2026-11-12): the Result card's soft corner glow on the stats cards, to see how it reads. Same recipe as resultCardStyle (160deg,
+// a sand tint fading to the dark by 55 percent). One constant, so taking it out is one line.
+const FACE_GRADIENT = `linear-gradient(160deg, ${alpha(BRAND.sand, 0.18)}, ${blackAlpha(0.22)} 55%)`
 
 export function StatsCardShell({ title, tag, state, whenMissing = 'hide', scopeLabel, basis, partialNote, summary, front, back, emptyText = 'Not enough data yet.', missingText = 'The scorecard does not record this yet.', scopeKey, onExpand, expanded = false, onClose, expandedBody, testId = 'stats-card' }: StatsCardShellProps) {
   const summaryId = useId()
