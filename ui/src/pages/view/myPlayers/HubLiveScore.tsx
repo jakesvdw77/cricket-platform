@@ -12,7 +12,8 @@ import { isHttps } from './leagueFormat'
 //   row  - the button alone, inside a Live Now card;
 //   card - the match page's flat panel with the club's name and logo;
 //   tv   - the Watch Live page's panel, directly under the frame.
-export type LiveScoreVariant = 'row' | 'card' | 'tv'
+//   header - the match page's header action while a game is on: "Live Score", full width and 44 px high on a phone (owner, 2026-11-12).
+export type LiveScoreVariant = 'row' | 'card' | 'tv' | 'header'
 
 export interface HubLiveScoreProps {
   source: LiveScoreSource | null | undefined
@@ -23,7 +24,7 @@ export interface HubLiveScoreProps {
 
 const followSx = { ...compactButtonSx, color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent', borderRadius: '4px', '&:hover': { borderColor: HUB.gold, bgcolor: HUB.lineSoft }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } } as const
 
-function FollowButton({ source }: { source: LiveScoreSource }) {
+function FollowButton({ source, header = false }: { source: LiveScoreSource; header?: boolean }) {
   return (
     <MuiButton
       variant="outlined"
@@ -33,9 +34,11 @@ function FollowButton({ source }: { source: LiveScoreSource }) {
       target="_blank"
       rel="noopener noreferrer"
       data-testid="follow-live-score"
-      sx={{ ...followSx, position: 'relative', zIndex: 1, alignSelf: 'flex-start' }}
+      aria-label={header ? 'Live Score, opens in a new tab' : undefined}
+      title={header ? 'Opens in a new tab' : undefined}
+      sx={{ ...followSx, position: 'relative', zIndex: 1, alignSelf: 'flex-start', ...(header && { alignSelf: 'stretch', minHeight: { xs: 44, sm: 32 }, flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap' }) }}
     >
-      Follow Live Score
+      {header ? 'Live Score' : 'Follow Live Score'}
     </MuiButton>
   )
 }
@@ -43,6 +46,7 @@ function FollowButton({ source }: { source: LiveScoreSource }) {
 export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
   if (!source || source.kind !== 'EXTERNAL' || !isHttps(source.url)) return null
   if (variant === 'row') return <FollowButton source={source} />
+  if (variant === 'header') return <FollowButton source={source} header />
   const note = variant === 'card' ? `Scores are kept on ${source.host}. It opens in a new tab.` : `Scores are kept on ${source.host}.`
   return (
     <Box

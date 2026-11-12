@@ -8,6 +8,7 @@ import type { MyMatchDto } from '../../../api/myPlayersApi'
 import { blackAlpha, creamAlpha } from '../../../brandTokens'
 import { HUB } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { HubLiveScore } from './HubLiveScore'
 import { HubWeatherPanel } from './HubFixtureLocation'
 import { HubMatchFigures } from './HubMatchFigures'
@@ -91,33 +92,39 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
             <span>{match.away.name}</span>
           </Box>
         </Typography>
-        <Box sx={{ flex: 'none' }}>
-          {live ? (
-            <LiveBadge />
-          ) : (
-            <Chip size="small" variant="outlined" label={statusBadgeLabel(match)} data-testid="match-status-badge" sx={{ height: 24, borderRadius: '12px', fontSize: 13, fontWeight: 600, color: HUB.sand, borderColor: HUB.line, bgcolor: 'transparent' }} />
+        {/* Owner, 2026-11-12 (option 3): while a game is on, Watch Live and Live Score sit beside the LIVE badge in the header. A phone puts the
+            two on a row of their own, equal width and 44 px high. Each shows only when it applies. */}
+        <Box data-testid="match-header-actions" sx={{ flex: 'none', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+          {live && (match.stream || match.liveScore) && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {match.stream && (
+                <MuiButton
+                  variant="contained"
+                  size="small"
+                  component={RouterLink}
+                  to={watchPath(playerKey, match.matchId, from)}
+                  data-testid="watch-live"
+                  startIcon={<PlayArrowIcon />}
+                  sx={{ ...compactButtonSx, minHeight: { xs: 44, sm: 32 }, flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap', bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
+                >
+                  Watch Live
+                </MuiButton>
+              )}
+              <HubLiveScore source={match.liveScore} variant="header" />
+            </Box>
           )}
+          <Box sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+            {live ? (
+              <LiveBadge />
+            ) : (
+              <Chip size="small" variant="outlined" label={statusBadgeLabel(match)} data-testid="match-status-badge" sx={{ height: 24, borderRadius: '12px', fontSize: 13, fontWeight: 600, color: HUB.sand, borderColor: HUB.line, bgcolor: 'transparent' }} />
+            )}
+          </Box>
         </Box>
       </Box>
       <HubMatchFigures match={match} now={now} />
       <HubWeatherPanel match={match} />
-      {(live || match.phase === 'UPCOMING') && <HubLiveScore source={match.liveScore} variant="card" owner={{ name: mine.name, logoUrl: mine.logoUrl }} />}
-      {live && match.stream && (
-        <Box data-testid="match-watch-card" sx={panelSx}>
-          <Typography component="h3" sx={sectionTitle}>Watch Live</Typography>
-          <Typography sx={{ fontSize: 14, color: HUB.muted }}>The club is streaming this match.</Typography>
-          <MuiButton
-            variant="contained"
-            size="small"
-            component={RouterLink}
-            to={watchPath(playerKey, match.matchId, from)}
-            data-testid="watch-live"
-            sx={{ ...compactButtonSx, alignSelf: 'flex-start', bgcolor: HUB.gold, color: HUB.ink, borderRadius: '4px', '&:hover': { bgcolor: alpha(HUB.gold, 0.85) }, '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-          >
-            Watch Live
-          </MuiButton>
-        </Box>
-      )}
+      {match.phase === 'UPCOMING' && <HubLiveScore source={match.liveScore} variant="card" owner={{ name: mine.name, logoUrl: mine.logoUrl }} />}
       <Availability match={match} onAnswer={onAnswerAvailability} />
       <HubMatchSide side={match.home} />
       <HubMatchSide side={match.away} />
