@@ -597,6 +597,10 @@ Slice 4
 
 **Conflicts with earlier specs, resolved by this one:** `002` "External identity providers" (Part 2); `016` non-goal "self-serve signup" (Part 3); `016`'s `bridgeByEmail` (amended by Decision 16); `016`'s `PersonStatus.SUSPENDED` flag (the new `/me/**` surface honours it; the manager gate is unchanged); `088`'s self-registration (a manager creating a player is `VERIFIED`; a registering agent never creates a player without the club's approval, so no `UNVERIFIED` profile is created by this spec); `079`'s Club-menu item "Managers" (renamed "Access", Decision 26); the roadmap's silent email reuse (scenario 14). The `015`/`020`/`035` "no grant/revoke UI" non-goals are addressed by slice 3b once detailed.
 
+## Amendment 2026-11-12: Hub Availability sub-menus
+
+The Hub Availability page gained a pill row (mockup `docs/mockups/player-hub-availability-pills-round1-mockup.html`): **Open Polls** (the default, the answering cards as before), **Closed Polls** (polls closed in the last 30 days, read only, the player's answer plus a Selected / Not Selected chip when the club has announced it) and **My Responses** (the current season's polls, answered or not, with summary tiles and a Season dropdown in the title band). Each pill carries a count; Closed Polls and My Responses have Status chips (All, Available, Unavailable, Not Sure, Not Answered). State is in the address: `?tab=open|closed|responses`, `?status=`, `?season=` (all `replace`). Reads: `GET /me/players/{key}/polls/closed` and `/polls/responses` (`api/meAvailabilityApi.ts`); screen `pages/view/myPlayers/HubAvailability.tsx`.
+
 ## Open questions
 
 None open.

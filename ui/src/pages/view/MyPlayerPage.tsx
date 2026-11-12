@@ -11,7 +11,7 @@ import { MyPlayerEditForm } from './myPlayers/MyPlayerEditForm'
 import type { EditSection } from './myPlayers/MyPlayerEditForm'
 import { HubProfile } from './myPlayers/HubProfile'
 import type { ProfilePage } from './myPlayers/HubProfile'
-import { MyPlayerPolls } from './myPlayers/MyPlayerPolls'
+import { HubAvailability } from './myPlayers/HubAvailability'
 import { HubLeaveGuardProvider, useHubLeaveGuardController } from './myPlayers/hubLeaveGuard'
 import { HubMenu } from './myPlayers/HubMenu'
 import { HubPillStrip } from './myPlayers/HubPillStrip'
@@ -184,10 +184,7 @@ export default function MyPlayerPage() {
     )
   } else if (section.id === 'availability') {
     panel = (
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
-        <HubPageHeader title="Availability" />
-        {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
-      </Box>
+      player && <HubAvailability playerKey={player.key} playerName={player.firstName} />
     )
   } else if (section.id === 'profile' && pageItem) {
     panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
