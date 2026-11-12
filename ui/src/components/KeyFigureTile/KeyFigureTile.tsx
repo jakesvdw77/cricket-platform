@@ -77,7 +77,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         boxShadow: 1,
         px: compact ? 1.5 : { xs: 1.5, md: 2 },
         py: compact ? 1.25 : { xs: 1.25, md: 1.75 },
-        ...(counter && { ...compactCardSx, alignItems: 'center', borderRadius: 1 }),
+        ...(counter && { ...compactCardSx, flexDirection: 'row', alignItems: 'center', gap: 1.25, borderRadius: 1 }),
       }}
     >
       {!counter && <Box
