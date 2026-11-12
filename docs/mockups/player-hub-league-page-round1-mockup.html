@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Hub league page: header, pills and facts - round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--muted:rgba(247,243,232,.68);--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--ink:#06241A;--disp:"Barlow Condensed",sans-serif;--body:"Barlow",sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--body);color:var(--cream);background:linear-gradient(180deg,#0e4a30,#0a3322 60%,#072419);padding:26px 20px 100px}
+h1{font:700 30px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+h2{font:700 21px var(--disp);letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:38px 0 4px}
+.lead,.why{color:var(--muted);max-width:980px;line-height:1.5;margin:0 0 12px;font-size:14.5px}.why b,.lead b{color:var(--gold)}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.console{border:1px solid var(--line);border-radius:6px;background:rgba(7,36,26,.92);width:860px;max-width:100%;padding:18px;display:grid;gap:14px}
+.console.phone{width:370px;padding:14px}
+.head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:54px;height:54px;border-radius:50%;background:var(--cream);display:grid;place-items:center;color:var(--ink);font:700 18px var(--disp);flex:none}
+.ttl h3{margin:0;font:700 28px var(--disp);letter-spacing:.06em;text-transform:uppercase;color:var(--sand)}
+.chips{display:flex;gap:6px;margin-top:4px}.chip{height:24px;padding:0 10px;border:1px solid var(--line);border-radius:4px;display:inline-flex;align-items:center;font:600 13px var(--body)}.chip.g{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.acts{margin-left:auto;display:flex;gap:8px;align-items:center}
+.ib{width:36px;height:36px;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;color:var(--cream);font-size:16px}
+.bt{height:36px;padding:0 14px;border:1px solid var(--line);border-radius:4px;display:inline-flex;align-items:center;gap:8px;font:600 14px var(--disp);letter-spacing:.1em;text-transform:uppercase}
+.old .ib{border:0;color:var(--gold);width:auto;height:auto;font-size:24px;padding:0 8px}
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);padding:0 4px}.tab{padding:12px 6px;font:500 16px var(--body)}.tab.on{color:var(--gold);border-bottom:3px solid var(--gold)}
+.pills{display:flex;gap:8px;overflow:hidden;flex-wrap:wrap}.phone .pills{flex-wrap:nowrap}.pill{height:34px;border:1px solid var(--line);border-radius:17px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:600 15px var(--body);white-space:nowrap}.pill.on{background:var(--gold);border-color:var(--gold);color:var(--ink)}.pill .n{font:700 12px var(--disp);min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:rgba(247,243,232,.16);padding:0 6px}.pill.on .n{background:rgba(6,36,26,.22)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.tile{border:1px solid var(--soft);background:rgba(255,255,255,.05);border-radius:6px;padding:14px 16px}.tile small{display:block;color:var(--muted);font-size:14px}.tile b{font:600 24px var(--body)}.tile b.gd{color:var(--gold)}
+.facts{border:1px solid var(--soft);background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden}
+.fh{padding:10px 16px;border-bottom:1px solid var(--soft);font:600 12px var(--disp);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.fg{display:grid;grid-template-columns:1fr 1fr}.phone .fg{grid-template-columns:1fr}
+.f{padding:12px 16px;border-bottom:1px solid var(--soft)}.f:nth-child(odd){border-right:1px solid var(--soft)}.phone .f:nth-child(odd){border-right:0}
+.f small{display:block;color:var(--muted);font-size:13px}.f b{font:600 19px var(--body)}
+.f.last{border-bottom:0}
+.tl{display:flex;align-items:center;gap:0;padding:14px 16px;border-top:1px solid var(--soft)}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--sand);flex:none;background:var(--ink)}.dot.f1{background:var(--gold);border-color:var(--gold)}
+.bar{flex:1;height:2px;background:var(--line)}
+.tlabels{display:flex;justify-content:space-between;padding:0 16px 14px;font-size:13px;color:var(--muted)}.tlabels b{display:block;color:var(--cream);font:600 14px var(--body)}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:14px 16px;background:rgba(0,0,0,.25);max-width:980px;line-height:1.55;font-size:14.5px}.sum b{color:var(--gold)}
+</style></head><body>
+<h1>League page: header, pills and facts</h1>
+<p class="lead">Made-up data; nothing is built. <b>Today</b> versus <b>proposed</b>, desktop and phone. The changes: the four header controls share one framed look; the section tabs become the same pill row as the rest of the Hub; the loose tiles become one facts card with no gaps, all values cream, and a small season timeline.</p>
+
+<h2>Today</h2>
+<div class="row"><div class="console old">
+ <div class="head"><div class="logo">TV</div><div class="ttl"><h3>TVL Division 1 T20</h3><div class="chips"><span class="chip">2026/2027</span><span class="chip g">Irene Villagers 1</span></div></div>
+  <div class="acts"><span class="ib">&#9737;</span><span class="ib">f</span><span class="bt">&#8645; Share</span><span class="bt">&#8681; Download</span></div></div>
+ <div class="tabs"><span class="tab on">Details</span><span class="tab">Playing conditions</span><span class="tab">Teams</span><span class="tab">Schedule</span><span class="tab">Results</span><span class="tab">Fields</span></div>
+ <div class="tiles"><div class="tile"><small>Age group</small><b>40 and over</b></div><div class="tile"><small>Format</small><b>T20</b></div><span></span>
+ <div class="tile"><small>Season starts</small><b class="gd">Sunday 13 September 2026</b></div><div class="tile"><small>Season ends</small><b class="gd">Saturday 26 December 2026</b></div><div class="tile"><small>First match</small><b class="gd">Sunday 13 September 2026</b></div>
+ <div class="tile"><small>Last match</small><b class="gd">Thursday 12 November 2026</b></div></div>
+</div></div>
+
+<h2>Proposed</h2>
+<p class="why">One framed icon style (36 px, same border and radius) for website, Facebook, Share and Download. The pill strip replaces the tabs and carries counts where they help. Details is one card: two columns of label and value, all cream, no gaps; the season dates sit on a timeline in date order.</p>
+<div class="row">
+<div class="console">
+ <div class="head"><div class="logo">TV</div><div class="ttl"><h3>TVL Division 1 T20</h3><div class="chips"><span class="chip">2026/2027</span><span class="chip g">Irene Villagers 1</span></div></div>
+  <div class="acts"><span class="ib" title="Website">&#9737;</span><span class="ib" title="Facebook">f</span><span class="ib" title="Share">&#8645;</span><span class="ib" title="Download">&#8681;</span></div></div>
+ <div class="pills"><span class="pill on">Details</span><span class="pill">Playing Conditions</span><span class="pill">Teams <span class="n">8</span></span><span class="pill">Schedule <span class="n">14</span></span><span class="pill">Results <span class="n">6</span></span><span class="pill">Fields <span class="n">5</span></span></div>
+ <div class="facts"><div class="fh">League facts</div>
+  <div class="fg"><div class="f"><small>Age group</small><b>40 and over</b></div><div class="f"><small>Format</small><b>T20</b></div>
+  <div class="f"><small>Season starts</small><b>Sun 13 Sep 2026</b></div><div class="f"><small>Season ends</small><b>Sat 26 Dec 2026</b></div>
+  <div class="f last"><small>First match</small><b>Sun 13 Sep 2026</b></div><div class="f last"><small>Last match</small><b>Thu 12 Nov 2026</b></div></div>
+  <div class="tl"><span class="dot f1"></span><span class="bar"></span><span class="dot"></span><span class="bar"></span><span class="dot"></span></div>
+  <div class="tlabels"><span><b>13 Sep</b>Season and first match start</span><span style="text-align:center"><b>Today</b>12 Nov</span><span style="text-align:right"><b>26 Dec</b>Season ends</span></div>
+ </div></div>
+<div class="console phone">
+ <div class="head"><div class="logo">TV</div><div class="ttl"><h3 style="font-size:24px">TVL Division 1 T20</h3><div class="chips"><span class="chip">2026/2027</span><span class="chip g">Irene Villagers 1</span></div></div></div>
+ <div class="acts" style="margin:0"><span class="ib">&#9737;</span><span class="ib">f</span><span class="ib">&#8645;</span><span class="ib">&#8681;</span></div>
+ <div class="pills"><span class="pill on">Details</span><span class="pill">Playing Conditions</span><span class="pill">Teams <span class="n">8</span></span><span class="pill">Schedule</span></div>
+ <div class="facts"><div class="fh">League facts</div><div class="fg">
+  <div class="f"><small>Age group</small><b>40 and over</b></div><div class="f"><small>Format</small><b>T20</b></div>
+  <div class="f"><small>Season starts</small><b>Sun 13 Sep 2026</b></div><div class="f"><small>Season ends</small><b>Sat 26 Dec 2026</b></div>
+  <div class="f"><small>First match</small><b>Sun 13 Sep 2026</b></div><div class="f last"><small>Last match</small><b>Thu 12 Nov 2026</b></div></div></div>
+</div></div>
+
+<h2>Notes</h2>
+<div class="sum"><b>Dates:</b> shortened to "Sun 13 Sep 2026" so two fit per row; the full date stays in the accessible label. <b>Timeline:</b> optional, three points (start, today, end); it hides once the season is over and shows "Ended 26 Dec" instead. <b>Counts on pills:</b> Teams, Schedule, Results and Fields only where the number is known. <b>Gold:</b> only the selected pill and the first-match dot; everything else is cream or sand.</div>
+</body></html>
