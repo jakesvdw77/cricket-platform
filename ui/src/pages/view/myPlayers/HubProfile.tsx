@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { alpha } from '@mui/material/styles'
-import { Avatar, Box, Chip, IconButton, Typography } from '@mui/material'
+import { Avatar, Box, Chip, Typography } from '@mui/material'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../../components/Button'
 import { BOWLING_TYPE_OPTIONS } from '../../../components/PlayerForm/PlayerForm'
@@ -97,20 +97,38 @@ function AgentRow({ agent }: { agent: MyPlayerAgent }) {
 }
 
 // The player card at the top of every Profile page (docs/specs/121): avatar, name, club and group, the jersey tile, then date
-// of birth with age, club, sections and teams. Its one control is the pencil that opens the photo and date of birth edit view.
+// of birth with age, club, sections and teams. Its one control is the pencil badge on the photo, which opens the photo and date of birth edit view.
 // Any linked person may change the photo, so the pencil is always offered (date of birth follows canEditDateOfBirth in the form).
 function ProfileCard({ player, onEdit }: { player: MyPlayer; onEdit: () => void }) {
   const initials = `${player.firstName[0] ?? ''}${player.lastName[0] ?? ''}`.toUpperCase()
   return (
     <Box data-testid="profile-card" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75 }}>
       <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Avatar
-          src={player.photoUrl ?? undefined}
-          alt=""
-          sx={{ width: { xs: 72, md: 112 }, height: { xs: 72, md: 112 }, border: `3px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 28, md: 44 }, letterSpacing: '.04em', color: HUB.ink, background: GOLD_DISC_GRADIENT }}
+        {/* Owner, 2026-11-12: the photo is the control. A round pencil badge on its corner opens the photo and date of birth edit view, so
+            the page has one Edit button (the heading's) and no second, look-alike one. */}
+        <Box
+          component="button"
+          type="button"
+          aria-label="Edit photo and date of birth"
+          onClick={onEdit}
+          sx={{ position: 'relative', flex: 'none', p: 0, m: 0, border: 0, bgcolor: 'transparent', borderRadius: '50%', cursor: 'pointer', font: 'inherit', '&:focus-visible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 3 } }}
         >
-          {initials}
-        </Avatar>
+          <Avatar
+            src={player.photoUrl ?? undefined}
+            alt=""
+            sx={{ width: { xs: 72, md: 112 }, height: { xs: 72, md: 112 }, border: `3px solid ${HUB.cream}`, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 28, md: 44 }, letterSpacing: '.04em', color: HUB.ink, background: GOLD_DISC_GRADIENT }}
+          >
+            {initials}
+          </Avatar>
+          <Box
+            component="span"
+            aria-hidden
+            data-testid="photo-edit-badge"
+            sx={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: '50%', bgcolor: HUB.gold, color: HUB.ink, border: `2px solid ${HUB.ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <EditOutlinedIcon sx={{ fontSize: 16 }} />
+          </Box>
+        </Box>
         <Box sx={{ minWidth: 0, flex: '1 1 200px' }}>
           <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 26, md: 'clamp(26px, 3vw, 36px)' }, lineHeight: 1, letterSpacing: '0.02em', textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
             {player.firstName} {player.lastName}
@@ -121,13 +139,6 @@ function ProfileCard({ player, onEdit }: { player: MyPlayer; onEdit: () => void 
         </Box>
         <Box sx={{ ml: { md: 'auto' }, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
           {player.jerseyNumber !== null && <JerseyTile number={player.jerseyNumber} />}
-          <IconButton
-            aria-label="Edit photo and date of birth"
-            onClick={onEdit}
-            sx={{ width: 44, height: 44, border: `1px solid ${HUB.gold}`, borderRadius: '4px', color: HUB.gold, '&:hover': { bgcolor: alpha(HUB.gold, 0.12) }, '&.Mui-focusVisible': { outline: `2px solid ${HUB.cream}`, outlineOffset: 2 } }}
-          >
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
         </Box>
       </Box>
       <Facts fields={[['Date of birth', dobText(player.dateOfBirth)], ['Club', player.clubName], ['Sections', player.sectionNames.join(', ')], ['Teams', player.teamNames.join(', ')]]} />
