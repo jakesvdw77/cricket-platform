@@ -43,7 +43,6 @@ const BASELINE_RAW_BUTTONS: string[] = [
   "pages/manage/results/steps/TeamsStep.tsx",
   "pages/manage/teamSelection/BattingOrderView.tsx",
   "pages/view/LandingPage/LandingPage.tsx",
-  "pages/view/myPlayers/HubLiveScore.tsx",
 ]
 
 describe('page anatomy guard: compact buttons', () => {
