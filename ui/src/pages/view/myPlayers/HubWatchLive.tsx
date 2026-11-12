@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
 import { Alert, Box, ButtonBase, Button as MuiButton, Skeleton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
 import { isAxiosError } from 'axios'
@@ -21,20 +23,20 @@ import { providerName, streamFrame, streamHost } from './streamFrame'
 // right now". A dark surround with a thin gold top rule, the scoreboard strip, a 16:9 frame (click to play first: no third party is
 // contacted before the tap), the LiveScore slot (tv variant) under it and Open Stream as the fallback. This is the only file in the
 // Hub that renders an iframe; the footer owns Back.
-const surroundSx = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, border: 1, borderColor: HUB.line, borderTop: `3px solid ${HUB.gold}`, borderRadius: '4px', p: { xs: 1, md: 1.5 }, bgcolor: BRAND.menu } as const
-// Owner, 2026-11-12: the picture takes as much room as the window gives it, never wider than the height allows, so the whole frame is
-// in view without scrolling (340 px is measured: the Hub's outer bars, the page title band, the scoreboard row and the paddings). Full Screen fills the whole display.
+// Owner, 2026-11-12: Watch Live is a theatre page, not a panel inside the Hub. It covers the whole window (a portal to the body, because
+// the Hub frame blurs its backdrop and so would trap a fixed child): a slim bar with Back, the match, the actions and LIVE, and the picture
+// filling everything else, as large as 16:9 allows. The browser's own Full Screen (the button on the picture) removes the bar as well.
+const BAR_PX = 52
+const theatreSx = { position: 'fixed', inset: 0, zIndex: 1400, display: 'flex', flexDirection: 'column', bgcolor: '#000', color: HUB.cream } as const
+const barSx = { flex: 'none', height: BAR_PX, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 1.5, px: { xs: 1, md: 2 }, bgcolor: BRAND.menu, borderBottom: `2px solid ${HUB.gold}` } as const
+const stageSx = { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#000' } as const
 const screenSx = {
   aspectRatio: '16 / 9',
-  width: 'min(100%, calc((100dvh - 340px) * 16 / 9))',
-  minWidth: { xs: '100%', md: 0 },
-  justifySelf: 'center',
+  width: `min(100vw, calc((100dvh - ${BAR_PX}px) * 16 / 9))`,
+  maxHeight: '100%',
   position: 'relative',
-  '&:fullscreen': { width: '100vw', height: '100vh', aspectRatio: 'auto', border: 0, borderRadius: 0, bgcolor: '#000' },
-  bgcolor: blackAlpha(1),
-  border: `6px solid ${HUB.ink}`,
-  borderRadius: '6px',
-  boxSizing: 'border-box',
+  '&:fullscreen': { width: '100vw', height: '100vh', aspectRatio: 'auto', maxHeight: 'none' },
+  bgcolor: '#000',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -93,7 +95,7 @@ function FullScreenButton({ target }: { target: RefObject<HTMLElement | null> })
   )
 }
 
-export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchId: string }) {
+export function HubWatchLive({ playerKey, matchId, onBack, backLabel = 'Back' }: { playerKey: string; matchId: string; onBack?: () => void; backLabel?: string }) {
   const query = useMyPlayerMatch(playerKey, matchId)
   const [playing, setPlaying] = useState(false)
   const screenRef = useRef<HTMLDivElement>(null)
@@ -124,52 +126,55 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
   const frame = streamFrame(stream, title)
   const host = streamHost(stream.url)
   const facts = [match.league?.name, match.playingAreaName || match.venue].filter(Boolean).join(' · ')
-  return (
-    <Box data-testid="hub-watch-live" sx={surroundSx}>
-      <Box data-testid="watch-scoreboard" sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}>
-        <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontFamily: HUB.display, fontWeight: 700, fontSize: 22, lineHeight: 1.15, overflowWrap: 'anywhere', minWidth: 0 }}>
-            <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={24} />
-            <span>{match.home.name}</span>
-            <Box component="span" sx={{ color: HUB.muted, fontFamily: 'inherit', fontSize: 14, fontWeight: 400 }}>versus</Box>
-            <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={24} />
-            <span>{match.away.name}</span>
-          </Box>
-          {facts && <Typography sx={{ fontSize: 14, color: HUB.sand }}>{facts}</Typography>}
+  const picture =
+    frame && playing ? (
+      <Box ref={screenRef} data-testid="stream-screen" sx={{ ...screenSx, display: 'block' }}>
+        <FullScreenButton target={screenRef} />
+        <Box component="iframe" data-testid="stream-frame" {...frame} allowFullScreen sx={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
+      </Box>
+    ) : frame ? (
+      <ButtonBase
+        onClick={() => setPlaying(true)}
+        aria-label={`Tap to watch ${title}`}
+        data-testid="stream-poster"
+        sx={{ ...screenSx, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -4 } }}
+      >
+        <Box sx={{ width: 72, height: 72, borderRadius: '50%', border: `2px solid ${HUB.gold}`, color: HUB.gold, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <PlayArrowIcon fontSize="large" />
         </Box>
-        {/* Owner, 2026-11-12: Live Score is a header action beside the LIVE badge, as on the match page, not a full-width bar under the picture. */}
-        <Box sx={{ flex: 'none', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, alignItems: { xs: 'flex-end', sm: 'center' }, gap: 1 }}>
-          {frame && <OpenStream url={stream.url} />}
+        <Typography component="span" sx={{ fontWeight: 600, fontSize: 18 }}>Tap To Watch</Typography>
+        <Typography component="span" sx={{ fontSize: 14, color: HUB.muted }}>{providerName(stream.provider)}, loads only after you tap</Typography>
+      </ButtonBase>
+    ) : (
+      <Box data-testid="stream-fallback" sx={screenSx}>
+        <Typography component="span" sx={{ fontSize: 18 }}>{host ? `This stream opens on ${host}` : 'This stream opens in a new tab'}</Typography>
+        <OpenStream url={stream.url} gold />
+      </Box>
+    )
+  return createPortal(
+    <Box data-testid="hub-watch-live" role="region" aria-label={`Watch ${title}`} sx={theatreSx}>
+      <Box data-testid="watch-scoreboard" sx={barSx}>
+        {onBack && (
+          <MuiButton onClick={onBack} startIcon={<ArrowBackIcon />} data-testid="watch-back" sx={{ ...compactButtonSx, flex: 'none', color: HUB.cream, minHeight: 40, '&:hover': { bgcolor: HUB.lineSoft }, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
+            {backLabel}
+          </MuiButton>
+        )}
+        <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 1, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 16, md: 20 }, lineHeight: 1.1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={22} />
+          <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{match.home.name}</Box>
+          <Box component="span" sx={{ color: HUB.muted, fontFamily: 'inherit', fontSize: 13, fontWeight: 400 }}>versus</Box>
+          <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={22} />
+          <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{match.away.name}</Box>
+          {facts && <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, ml: 1, fontFamily: 'Barlow, sans-serif', fontWeight: 400, fontSize: 14, color: HUB.sand }}>{facts}</Box>}
+        </Box>
+        <Box sx={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 1 }}>
+          {frame && <Box sx={{ display: { xs: 'none', sm: 'block' } }}><OpenStream url={stream.url} /></Box>}
           <HubLiveScore source={match.liveScore} variant="header" />
           <LiveBadge />
         </Box>
       </Box>
-
-      {frame && playing ? (
-        <Box ref={screenRef} data-testid="stream-screen" sx={{ ...screenSx, display: 'block', p: 0 }}>
-          <FullScreenButton target={screenRef} />
-          <Box component="iframe" data-testid="stream-frame" {...frame} allowFullScreen sx={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
-        </Box>
-      ) : frame ? (
-        <ButtonBase
-          onClick={() => setPlaying(true)}
-          aria-label={`Tap to watch ${title}`}
-          data-testid="stream-poster"
-          sx={{ ...screenSx, '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
-        >
-          <Box sx={{ width: 56, height: 56, borderRadius: '50%', border: `2px solid ${HUB.gold}`, color: HUB.gold, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <PlayArrowIcon fontSize="large" />
-          </Box>
-          <Typography component="span" sx={{ fontWeight: 600, fontSize: 16 }}>Tap To Watch</Typography>
-          <Typography component="span" sx={{ fontSize: 14, color: HUB.muted }}>{providerName(stream.provider)}, loads only after you tap</Typography>
-        </ButtonBase>
-      ) : (
-        <Box data-testid="stream-fallback" sx={screenSx}>
-          <Typography component="span" sx={{ fontSize: 16 }}>{host ? `This stream opens on ${host}` : 'This stream opens in a new tab'}</Typography>
-          <OpenStream url={stream.url} gold />
-        </Box>
-      )}
-
-    </Box>
+      <Box sx={stageSx}>{picture}</Box>
+    </Box>,
+    document.body,
   )
 }

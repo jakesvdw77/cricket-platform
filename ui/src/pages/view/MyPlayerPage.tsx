@@ -217,7 +217,7 @@ export default function MyPlayerPage() {
     panel = !leaf ? (
       <HubMatches playerKey={key} playerName={player?.firstName ?? 'this player'} />
     ) : extra === 'watch' ? (
-      <HubWatchLive playerKey={key} matchId={leaf} />
+      <HubWatchLive playerKey={key} matchId={leaf} onBack={back ? goBack : undefined} backLabel={back?.label} />
     ) : (
       <HubMatch playerKey={key} matchId={leaf} from={from} onAnswerAvailability={() => navigate(hubPath(key, 'availability'))} />
     )
