@@ -1,5 +1,5 @@
 import { alpha } from '@mui/material/styles'
-import { BRAND, FONT_DISPLAY, STATS_TONES, blackAlpha } from '../../brandTokens'
+import { BRAND, FONT_DISPLAY, STATS_EXPANDED_GROUND, STATS_TONES, blackAlpha } from '../../brandTokens'
 
 // The dark console look of a stats card, from the brand tokens (components/ may not import the Hub's hubStyle; HUB is built from the
 // same tokens, so the values are identical).
@@ -14,7 +14,7 @@ export const STATS_UI = {
   display: FONT_DISPLAY,
   faceGround: blackAlpha(0.22),
   // The expanded card sits over the whole content region and must hide it: a solid dark ground, no transparency.
-  expandedGround: '#051E16',
+  expandedGround: STATS_EXPANDED_GROUND,
   // A card with some or all data missing (Amendment 2 item 8): a very light amber tint over the ground and a 1 px warmer line. Never the only cue.
   lackingTint: alpha(STATS_TONES.partly, 0.05),
   lackingLine: alpha(STATS_TONES.partly, 0.4),

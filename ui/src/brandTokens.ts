@@ -129,6 +129,9 @@ export const STATS_SERIES = [STATS_TONES.gold, STATS_TONES.blue, STATS_TONES.win
 // where it makes sense"). Gold is only the headline number, the selected thing and the focus ring. Everything else is neutral sand, one
 // tonal ramp. The one exception is a comparison of exactly two categories (Fours v Sixes, Home v Away): green and blue at full strength.
 // Loss red is not used on these cards (it stays for Results and the W/L/T chips). Every use also carries a label, so colour is never the only cue.
+// The solid ground of an expanded stats card: darker than the card so nothing behind it shows through (owner polish, 2026-11-12).
+export const STATS_EXPANDED_GROUND = '#051E16'
+
 export const STATS_COLOUR = {
   // A single-series or ordinal bar or column, and the faint track under it.
   bar: alpha(BRAND.sand, 0.62),
