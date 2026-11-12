@@ -98,7 +98,7 @@ function Face({ title, scopeLabel, heading, hint, basis, note, lacking, empty = 
         borderRadius: expanded ? '22px' : '14px',
         border: `1px solid ${lacking ? STATS_UI.lackingLine : STATS_UI.lineSoft}`,
         bgcolor: expanded ? STATS_UI.expandedGround : STATS_UI.faceGround,
-        ...(lacking ? { backgroundImage: `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint})` } : expanded ? {} : { backgroundImage: FACE_GRADIENT }),
+        ...(expanded ? {} : { backgroundImage: lacking ? `linear-gradient(${STATS_UI.lackingTint}, ${STATS_UI.lackingTint}), ${FACE_GRADIENT}` : FACE_GRADIENT }),
         color: STATS_UI.cream,
         boxSizing: 'border-box',
         overflow: 'hidden',
