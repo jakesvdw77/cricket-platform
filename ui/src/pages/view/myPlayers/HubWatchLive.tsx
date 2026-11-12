@@ -23,10 +23,10 @@ import { providerName, streamFrame, streamHost } from './streamFrame'
 // Hub that renders an iframe; the footer owns Back.
 const surroundSx = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, border: 1, borderColor: HUB.line, borderTop: `3px solid ${HUB.gold}`, borderRadius: '4px', p: { xs: 1, md: 1.5 }, bgcolor: BRAND.menu } as const
 // Owner, 2026-11-12: the picture takes as much room as the window gives it, never wider than the height allows, so the whole frame is
-// in view without scrolling (230 px is the header band, scoreboard strip and padding). Full Screen fills the whole display.
+// in view without scrolling (340 px is measured: the Hub's outer bars, the page title band, the scoreboard row and the paddings). Full Screen fills the whole display.
 const screenSx = {
   aspectRatio: '16 / 9',
-  width: 'min(100%, calc((100dvh - 230px) * 16 / 9))',
+  width: 'min(100%, calc((100dvh - 340px) * 16 / 9))',
   minWidth: { xs: '100%', md: 0 },
   justifySelf: 'center',
   position: 'relative',
@@ -139,6 +139,7 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
         </Box>
         {/* Owner, 2026-11-12: Live Score is a header action beside the LIVE badge, as on the match page, not a full-width bar under the picture. */}
         <Box sx={{ flex: 'none', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, alignItems: { xs: 'flex-end', sm: 'center' }, gap: 1 }}>
+          {frame && <OpenStream url={stream.url} />}
           <HubLiveScore source={match.liveScore} variant="header" />
           <LiveBadge />
         </Box>
@@ -169,12 +170,6 @@ export function HubWatchLive({ playerKey, matchId }: { playerKey: string; matchI
         </Box>
       )}
 
-      {frame && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <OpenStream url={stream.url} />
-          <Typography sx={{ fontSize: 14, color: HUB.muted }}>Not loading? Open the stream in a new tab.</Typography>
-        </Box>
-      )}
     </Box>
   )
 }
