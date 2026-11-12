@@ -10,6 +10,7 @@ import { HUB } from './hubStyle'
 import { LeagueLogo } from './HubLeagueCard'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { HubLiveScore } from './HubLiveScore'
+import { HubMatchLinks } from './HubMatchLinks'
 import { HubWeatherPanel } from './HubFixtureLocation'
 import { HubMatchFigures } from './HubMatchFigures'
 import { HubMatchSide } from './HubMatchSide'
@@ -122,6 +123,7 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
           </Box>
         </Box>
       </Box>
+      {match.phase === 'RECENT' && <HubMatchLinks stream={match.stream} liveScore={match.liveScore} />}
       <HubMatchFigures match={match} now={now} />
       <HubWeatherPanel match={match} />
       {match.phase === 'UPCOMING' && <HubLiveScore source={match.liveScore} variant="card" owner={{ name: mine.name, logoUrl: mine.logoUrl }} />}

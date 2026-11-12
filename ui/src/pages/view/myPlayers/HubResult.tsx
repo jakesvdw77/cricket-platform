@@ -3,8 +3,9 @@ import { Alert, Box, Skeleton, Table, TableBody, TableCell, TableHead, TableRow,
 import { alpha } from '@mui/material/styles'
 import StarIcon from '@mui/icons-material/Star'
 import { Button } from '../../../components/Button'
-import { useMyPlayer } from '../../../api/myPlayersApi'
+import { useMyPlayer, useMyPlayerMatch } from '../../../api/myPlayersApi'
 import { useMyPlayerResult } from '../../../api/meResultsApi'
+import { HubMatchLinks } from './HubMatchLinks'
 import type { MyResultDetail, MyResultInnings } from '../../../api/meResultsApi'
 import { blackAlpha, creamAlpha } from '../../../brandTokens'
 import { HUB, hubPageHeading } from './hubStyle'
@@ -126,6 +127,8 @@ function Awards({ result }: { result: MyResultDetail }) {
 export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: string }) {
   const query = useMyPlayerResult(playerKey, matchId)
   const player = useMyPlayer(playerKey).data
+  // The links come from the match read (the same cached one the match page uses); the result read carries none.
+  const match = useMyPlayerMatch(playerKey, matchId).data
   const result = query.data
 
   if (query.isError) {
@@ -149,6 +152,7 @@ export function HubResult({ playerKey, matchId }: { playerKey: string; matchId: 
       </Typography>
       <Typography sx={{ fontSize: 14, color: HUB.muted, overflowWrap: 'anywhere' }}>{meta}</Typography>
       <Typography data-testid="hub-result-line" sx={{ fontSize: 17, color: HUB.gold, fontWeight: 600 }}>{resultBanner(mine)}</Typography>
+      <HubMatchLinks stream={match?.stream} liveScore={match?.liveScore} />
       <Box data-testid="hub-result-figures" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         <Figure name={mine.homeName} score={mine.homeScore} />
         <Figure name={mine.awayName} score={mine.awayScore} />

@@ -219,8 +219,9 @@ class MyMatchServiceImpl implements MyMatchService {
 
         MyFieldDto field = m.getPlayingAreaId() == null ? null
                 : fieldService.describe(clubId, Set.of(m.getPlayingAreaId())).stream().findFirst().orElse(null);
-        MyMatchStreamDto stream = phase == MatchPhase.LIVE ? StreamEmbed.of(m.getStreamingUrl()) : null;
-        LiveScoreSource liveScore = LiveScoreResolver.resolve(m.getScoringUrl(), phase);
+        // A finished match keeps its stream link (a recording) and its scoring link (owner, 2026-11-12); upcoming ones have no stream yet.
+        MyMatchStreamDto stream = phase == MatchPhase.LIVE || phase == MatchPhase.RECENT ? StreamEmbed.of(m.getStreamingUrl()) : null;
+        LiveScoreSource liveScore = phase == MatchPhase.RECENT ? LiveScoreResolver.link(m.getScoringUrl()) : LiveScoreResolver.resolve(m.getScoringUrl(), phase);
         MyMatchStatus status = result != null ? MyMatchStatus.PLAYED : !m.isActive() ? MyMatchStatus.CANCELLED : MyMatchStatus.UPCOMING;
 
         return new MyMatchDto(
