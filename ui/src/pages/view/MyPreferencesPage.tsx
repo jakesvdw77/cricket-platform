@@ -50,7 +50,7 @@ export default function MyPreferencesPage() {
       footer={<HubFooterButton onClick={() => navigate('/account/options')}>Back to account</HubFooterButton>}
     >
       <Typography sx={{ color: HUB.muted }}>These are kept on this device. Signing in on another device starts with the defaults.</Typography>
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <PreferenceRow
           id="pref-ticker"
           title="Scoreboard ticker"

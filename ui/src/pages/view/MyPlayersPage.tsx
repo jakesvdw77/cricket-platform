@@ -65,7 +65,7 @@ export default function MyPlayersPage() {
   if (list.length === 1 && !invitations.isLoading && invitationCount === 0) return <Navigate to={playerPath(list[0].key)} replace />
 
   const open = (requests.data ?? []).some((r) => r.status === 'PENDING' || r.status === 'DECLINED')
-  const grid = { display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }
+  const grid = { display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }
 
   let body
   if (players.isLoading) {
@@ -163,7 +163,7 @@ export default function MyPlayersPage() {
         </Box>
       )}
       {open && (
-        <Box sx={{ display: 'grid', gap: 1.5 }} data-testid="my-requests">
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }} data-testid="my-requests">
           <Typography component="h2" sx={hubHeading}>
             My requests
           </Typography>

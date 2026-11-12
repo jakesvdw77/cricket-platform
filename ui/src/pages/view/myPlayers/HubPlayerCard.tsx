@@ -14,7 +14,7 @@ export function HubPlayerCard({ player }: { player: CardPlayer }) {
         <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 24, lineHeight: 1, letterSpacing: '0.02em', textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
           {player.firstName} {player.lastName}
         </Typography>
-        <Typography fontSize={14} sx={{ color: HUB.muted, mt: 0.5 }}>
+        <Typography fontSize={14} sx={{ color: HUB.muted, mt: 0.5, overflowWrap: 'anywhere' }}>
           {[player.clubName, player.groupLabel].filter(Boolean).join(' · ')}
         </Typography>
       </Box>

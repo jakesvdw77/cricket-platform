@@ -37,7 +37,7 @@ function Facts({ fields }: { fields: Array<[string, FieldValue]> }) {
   const shown = fields.filter(([, value]) => has(value))
   if (shown.length === 0) return null
   return (
-    <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+    <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))' }}>
       {shown.map(([label, value]) => (
         <Box key={label} sx={{ border: 1, borderColor: HUB.lineSoft, bgcolor: blackAlpha(0.28), borderRadius: '4px', px: 1.5, py: 1.25, minWidth: 0 }}>
           <Typography component="small" sx={{ display: 'block', color: HUB.muted, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase' }}>
@@ -102,7 +102,7 @@ function AgentRow({ agent }: { agent: MyPlayerAgent }) {
 function ProfileCard({ player, onEdit }: { player: MyPlayer; onEdit: () => void }) {
   const initials = `${player.firstName[0] ?? ''}${player.lastName[0] ?? ''}`.toUpperCase()
   return (
-    <Box data-testid="profile-card" sx={{ display: 'grid', gap: 1.75 }}>
+    <Box data-testid="profile-card" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75 }}>
       <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flexWrap: 'wrap' }}>
         <Avatar
           src={player.photoUrl ?? undefined}
@@ -166,7 +166,7 @@ export function HubProfile({ player, page }: { player: MyPlayer; page: ProfilePa
     const agentLine = player.agentCount === 1 ? '1 agent manages this player.' : `${player.agentCount} agents manage this player.`
     body = (
       <>
-        <Box sx={{ display: 'grid', gap: 0.5 }} data-testid="my-player-agents">
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }} data-testid="my-player-agents">
           {agents.length > 0 ? (
             agents.map((agent, index) => (
               <AgentRow key={agent.linkId ?? `${agent.name}-${index}`} agent={agent} />
@@ -196,7 +196,7 @@ export function HubProfile({ player, page }: { player: MyPlayer; page: ProfilePa
       <>
         {anyField && <Facts fields={fields} />}
         {anyMedical && (
-          <Box sx={{ display: 'grid', gap: 1 }} data-testid="medical-group">
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }} data-testid="medical-group">
             <Typography component="h3" sx={{ ...hubPageHeading, fontSize: 16, color: HUB.muted }}>
               Medical aid
             </Typography>
@@ -209,7 +209,7 @@ export function HubProfile({ player, page }: { player: MyPlayer; page: ProfilePa
   }
 
   return (
-    <Box data-testid="hub-profile" sx={{ display: 'grid', gap: 1.75 }}>
+    <Box data-testid="hub-profile" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.75 }}>
       <ProfileCard player={player} onEdit={() => navigate(`${base}/${page}/edit-card`)} />
       {heading}
       {body}

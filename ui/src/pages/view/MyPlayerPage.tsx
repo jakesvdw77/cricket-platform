@@ -177,14 +177,14 @@ export default function MyPlayerPage() {
   } else if (subView) {
     const cardEdit = leaf === 'edit-card'
     panel = player && (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title={cardEdit ? 'Edit photo and date of birth' : `Edit ${section.children?.find((child) => segmentOf(child) === sub)?.label.toLowerCase()}`} />
         <MyPlayerEditForm key={`${player.key}-${leaf}-${sub}`} player={player} dark section={cardEdit ? 'photo' : (sub as EditSection)} onDone={() => navigate(hubPath(key, 'profile', sub))} />
       </Box>
     )
   } else if (section.id === 'availability') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title="Availability" />
         {player && <MyPlayerPolls playerKey={player.key} playerName={player.firstName} />}
       </Box>
@@ -231,14 +231,14 @@ export default function MyPlayerPage() {
     panel = <HubLeaderboards playerKey={key} />
   } else if (pageItem?.id === 'account.invitations') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title="Invitations" />
         <InvitationsList />
       </Box>
     )
   } else if (pageItem?.id === 'account.requests') {
     panel = (
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <HubPageHeader title="Link requests" />
         <MyLinkRequests dark />
       </Box>

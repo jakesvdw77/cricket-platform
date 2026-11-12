@@ -62,7 +62,7 @@ export function HubLeaveConfirm() {
   const guard = useContext(GuardContext)
   if (!guard?.confirming) return null
   return (
-    <Box role="alert" data-testid="hub-leave-confirm" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gap: 1, bgcolor: blackAlpha(0.3) }}>
+    <Box role="alert" data-testid="hub-leave-confirm" sx={{ border: 1, borderColor: HUB.gold, borderRadius: '4px', p: 1.5, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, bgcolor: blackAlpha(0.3) }}>
       <Typography fontSize={14}>Discard your changes?</Typography>
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <Button variant="secondary" size="compact" onClick={guard.discard} sx={hubOutlineButton}>

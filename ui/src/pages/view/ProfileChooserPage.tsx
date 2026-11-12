@@ -69,7 +69,7 @@ export default function ProfileChooserPage() {
   return (
     <HubFrame title="Choose Profile" maxWidth={720} testId="profile-chooser">
       {profiles.isLoading && (
-        <Box aria-busy="true" aria-label="Loading your profiles" sx={{ display: 'grid', gap: 1.5 }}>
+        <Box aria-busy="true" aria-label="Loading your profiles" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
           <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(.12) }} />
           <Skeleton variant="rounded" height={112} sx={{ bgcolor: creamAlpha(.12) }} />
         </Box>
@@ -78,7 +78,7 @@ export default function ProfileChooserPage() {
       {profiles.data && (
         <>
           <Typography sx={{ color: HUB.muted }}>How would you like to use Cricket Legend today?</Typography>
-          <Box role="list" aria-label="Profiles" sx={{ display: 'grid', gap: 1.5 }}>
+          <Box role="list" aria-label="Profiles" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
             {list.map((profile) => (
               <Box key={`${profile.kind}:${profile.clubId ?? ''}`} role="listitem" sx={{ display: 'flex' }}>
                 <ProfileCard profile={profile} onChoose={() => openProfile(profile, navigate, remember)} />

@@ -70,7 +70,7 @@ export default function MyAccountPage() {
       testId="my-account-page"
       footer={<HubFooterButton onClick={() => navigate('/account')}>Back to players</HubFooterButton>}
     >
-      <Box role="list" aria-label="Account" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }, gap: 1.5 }}>
+      <Box role="list" aria-label="Account" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }, gap: 1.5 }}>
         {options.map((option) => (
           <Box key={option.id} role="listitem" sx={{ display: 'flex' }}>
             <OptionCard option={option} />
