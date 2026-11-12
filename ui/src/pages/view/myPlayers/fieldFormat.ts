@@ -20,6 +20,12 @@ export function joinAddress(field: Pick<FieldDto, 'addressLine1' | 'city' | 'pro
   return [field.addressLine1, field.city, field.provinceState, field.postalCode, countryName(field.country)].map(clean).filter(Boolean).join(', ')
 }
 
+// The address as lines for the card (owner, 2026-11-12): street, then "city, province postal code", then the country; empty parts are left out.
+export function addressLines(field: Pick<FieldDto, 'addressLine1' | 'city' | 'provinceState' | 'postalCode' | 'country'>): string[] {
+  const region = [clean(field.city), [clean(field.provinceState), clean(field.postalCode)].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  return [clean(field.addressLine1), region, clean(countryName(field.country))].filter(Boolean)
+}
+
 export { countryName }
 
 // Case-insensitive match over name, address and owner; a blank query matches everything.

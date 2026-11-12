@@ -38,7 +38,7 @@ export function HubFields({ playerKey }: { playerKey?: string }) {
   } else if ((list ?? []).length === 0) {
     body = <Box sx={empty}>No fields yet. Fields appear here once your club adds them or links them to a match.</Box>
   } else if (shown.length === 0) {
-    body = <Box sx={empty}>No fields match your search.</Box>
+    body = <Box sx={empty}>No fields match that search.</Box>
   } else {
     body = (
       <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
@@ -67,7 +67,7 @@ export function HubFields({ playerKey }: { playerKey?: string }) {
         fullWidth
       />
       {body}
-      <Typography sx={{ fontSize: 14, color: HUB.muted }}>Away fields appear once your club links a field to a match.</Typography>
+      <Typography sx={{ fontSize: 14, color: HUB.muted }}>Away fields appear once the club links a field to a match.</Typography>
       {list && list.length === CAP && <Typography sx={{ fontSize: 14, color: HUB.muted }}>Showing the first 200 fields.</Typography>}
     </Box>
   )
