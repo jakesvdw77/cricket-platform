@@ -35,9 +35,10 @@ const NOT_ON_FILE = '–'
 const cardSx = { border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 0, overflow: 'clip' } as const
 
 // Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, kebab. A phone keeps Player (the
-// status badge moves under the name), Season, Phone and the button, in that order (see `phoneOrder`).
+// status badge and the phone number move under the name), Season and the buttons, in that order (see `phoneOrder`).
+// A 390 px phone has no room for a Phone column of its own (owner sweep, 2026-11-12).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 104px 44px 44px',
+  xs: 'minmax(0, 1fr) 54px 44px 44px',
   sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 112px 44px',
 }
 
@@ -142,8 +143,9 @@ function PlayerRow({
             </MuiLink>
           </Typography>
           {/* On a phone the status badge sits under the name (the Status column is dropped) */}
-          <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+          <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Chip size="small" label={badge.label} sx={{ ...badgeSx(badge.tone), height: 20, fontSize: '0.6875rem' }} data-testid="player-status-badge" />
+            <Typography variant="caption" color="text.secondary" data-testid="player-phone-phone">{player.phone || NOT_ON_FILE}</Typography>
           </Box>
         </Box>
       </Box>
@@ -158,13 +160,13 @@ function PlayerRow({
         {sections.length > 0 ? `${sections[0]}${sections.length > 1 ? ` +${sections.length - 1}` : ''}` : 'No section'}
       </Cell>
       <Cell hiddenOnPhone value={player.jerseyNumber != null ? `#${player.jerseyNumber}` : NOT_ON_FILE} />
-      <Cell value={player.phone || NOT_ON_FILE} sx={{ ...phoneOrder(2), fontSize: { xs: '0.8125rem', sm: '0.875rem' } }} />
+      <Cell hiddenOnPhone value={player.phone || NOT_ON_FILE} sx={{ fontSize: '0.875rem' }} />
       <Cell hiddenOnPhone value={player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : NOT_ON_FILE} />
       <Cell hiddenOnPhone value={bowlingText(player)} />
       <Cell sx={{ ...phoneOrder(1), textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesThisSeason}</Cell>
       {/* Overall is a desktop column; a phone shows the phone number instead */}
       <Cell hiddenOnPhone sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesOverall}</Cell>
-      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(3) }}>
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(2) }}>
         {statsTo && (
           <>
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
@@ -180,7 +182,7 @@ function PlayerRow({
           </>
         )}
       </Box>
-      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(4) }}>
+      <Box role="cell" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, ...phoneOrder(3) }}>
         {actions}
       </Box>
     </Box>
@@ -216,13 +218,13 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, statsTo, renderA
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Status</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Section</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>No.</Box>
-        <Box role="columnheader" sx={phoneOrder(2)}>Phone</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Phone</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bat</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bowl</Box>
         <Box role="columnheader" sx={{ ...phoneOrder(1), textAlign: 'right' }}>Season</Box>
         <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Overall</Box>
-        <Box role="columnheader" aria-label="Stats" sx={phoneOrder(3)} />
-        <Box role="columnheader" aria-label="Actions" sx={phoneOrder(4)} />
+        <Box role="columnheader" aria-label="Stats" sx={phoneOrder(2)} />
+        <Box role="columnheader" aria-label="Actions" sx={phoneOrder(3)} />
       </Box>
       <Box role="rowgroup">
         {players.map((player) => (
