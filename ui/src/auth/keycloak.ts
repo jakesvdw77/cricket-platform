@@ -19,7 +19,7 @@ export const keycloak = new Keycloak({
 // measurable delay to the landing page too, from the iframe below hanging until its own internal
 // timeout — broke unrelated, timing-sensitive e2e assertions there.
 //
-// Deliberately just /admin, not /login or /post-login too:
+// Deliberately not /login or /post-login (but /register is allowed, see below):
 // - /login never needs it — Login.tsx fires an explicit keycloak.login() redirect immediately on
 //   mount, without waiting for keycloakInitPromise at all, so a resolved session here is never
 //   even read.
@@ -32,7 +32,11 @@ export const keycloak = new Keycloak({
 //   only ever loaded fresh via a direct navigation/refresh/bookmark — never via a pending OAuth
 //   callback (Login.tsx's redirectUri points at /post-login, never straight to /admin) — so it's
 //   the one path that's actually safe to run check-sso on.
-export const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage', '/welcome', '/account', '/choose-profile']
+// - /register IS allowed (docs/specs/149, Decision 6): like /admin it is only ever opened fresh (a link, a button, a bookmark), never as
+//   the target of a pending OAuth callback, so there is no code+state for check-sso to race. Register.tsx awaits the init so a person who
+//   already has a session is carried on to /post-login instead of being shown Keycloak's registration form. The cost is one extra
+//   redirect round trip to Keycloak and back (prompt=none) for every signed-out visitor before keycloak.register() runs.
+export const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage', '/welcome', '/account', '/choose-profile', '/register']
 const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix))
 
 // Fires once, automatically, the first time anything imports this module

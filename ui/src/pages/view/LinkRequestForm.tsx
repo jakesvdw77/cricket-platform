@@ -24,13 +24,16 @@ export interface LinkRequestFormProps {
   onBack?: () => void
   // The hub's dark field look (inside the console panel).
   dark?: boolean
+  // docs/specs/149: the club to start on (the club of the address, or the remembered one) when the prefill names none. Preselection
+  // only: the order stays prefill club, name match, this club, the only club.
+  initialClubId?: string
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
 // docs/specs/119 Part 3: "No player found" and "Ask the club to help". It always ends in the same confirmation whether
 // or not the club has such a player (the server answers identically), so the form never reveals who is on file.
-export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkRequestFormProps) {
+export function LinkRequestForm({ prefill, onSent, onBack, dark = false, initialClubId }: LinkRequestFormProps) {
   const clubs = useMyClubs()
   const create = useCreateLinkRequest()
   const [firstName, setFirstName] = useState(prefill?.firstName ?? '')
@@ -47,10 +50,11 @@ export function LinkRequestForm({ prefill, onSent, onBack, dark = false }: LinkR
     if (clubId || !clubs.data) return
     const byId = prefill?.clubId ? clubs.data.find((club) => club.id === prefill.clubId) : undefined
     const byName = prefill?.clubName ? clubs.data.find((club) => club.name === prefill.clubName) : undefined
+    const initial = initialClubId ? clubs.data.find((club) => club.id === initialClubId) : undefined
     const only = clubs.data.length === 1 ? clubs.data[0] : undefined
-    const chosen = byId ?? byName ?? only
+    const chosen = byId ?? byName ?? initial ?? only
     if (chosen) setClubId(chosen.id)
-  }, [clubs.data, clubId, prefill?.clubName, prefill?.clubId])
+  }, [clubs.data, clubId, prefill?.clubName, prefill?.clubId, initialClubId])
 
   const sections = useClubSections(clubId || undefined)
   const sectionList = sections.data ?? []

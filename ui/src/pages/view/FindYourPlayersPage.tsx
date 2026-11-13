@@ -8,6 +8,8 @@ import { Button } from '../../components/Button'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import { keycloak } from '../../auth/keycloak'
+import { StatusScreen } from '../../components/StatusScreen'
+import { useVisitedClub } from '../../hooks/useClubFromHost'
 import { useMyPlayers } from '../../api/myPlayersApi'
 import { useConfirmLinks, usePlayerMatches, useRegisterAccount } from '../../api/meApi'
 import type { MainAgentMatch, PlayerMatch } from '../../api/meApi'
@@ -26,6 +28,31 @@ const describe = (p: PlayerMatch) => `${p.firstName} ${p.surnameInitial}.`
 
 function errorCode(error: unknown): string | undefined {
   return isAxiosError(error) ? (error.response?.data as { code?: string } | undefined)?.code : undefined
+}
+
+// The API's own sentence for a problem response (Spring ProblemDetail: `detail`).
+function errorDetail(error: unknown): string | undefined {
+  return isAxiosError(error) ? (error.response?.data as { detail?: string } | undefined)?.detail : undefined
+}
+
+// docs/specs/149: failures are told apart by CODE, never by status alone. A 403 without EMAIL_NOT_VERIFIED is a disabled account.
+type Failure = 'not-verified' | 'suspended' | 'email-on-record' | 'other'
+function classify(error: unknown): Failure {
+  const code = errorCode(error)
+  if (code === 'EMAIL_NOT_VERIFIED') return 'not-verified'
+  if (code === 'EMAIL_ON_PLAYER_RECORD') return 'email-on-record'
+  if (isAxiosError(error) && error.response?.status === 403) return 'suspended'
+  return 'other'
+}
+
+// Sign out and come back to sign in with another address.
+const signOutToLogin = () => keycloak.logout({ redirectUri: `${window.location.origin}/login` })
+
+// The visited club first, nothing hidden and nothing added (the server response is untouched).
+function visitedFirst<T extends PlayerMatch>(list: T[], club: { id: string; name: string } | null): T[] {
+  if (!club) return list
+  const visited = (p: T) => (p.clubId ? p.clubId === club.id : p.clubName.toLowerCase() === club.name.toLowerCase())
+  return [...list.filter(visited), ...list.filter((p) => !visited(p))]
 }
 
 const detail = (p: PlayerMatch) => [p.clubName, p.groupLabel, p.birthYear ? `Born ${p.birthYear}` : null].filter(Boolean).join(' · ')
@@ -78,6 +105,7 @@ export default function FindYourPlayersPage() {
     setPrefill({ firstName: p.firstName, surnameInitial: p.surnameInitial, clubId: p.clubId, clubName: p.clubName, targetPlayerRef: p.ref })
     setView('form')
   }
+  const visited = useVisitedClub()
   const email = (keycloak.tokenParsed as { email?: string } | undefined)?.email
 
   useEffect(() => {
@@ -85,7 +113,7 @@ export default function FindYourPlayersPage() {
   }, [registerMutate])
 
   const failure = register.error ?? matches.error
-  const notVerified = failure && (errorCode(failure) === 'EMAIL_NOT_VERIFIED' || (isAxiosError(failure) && failure.response?.status === 403))
+  const failureKind = failure ? classify(failure) : undefined
 
   const toMain = () => {
     setPrefill(undefined)
@@ -106,15 +134,38 @@ export default function FindYourPlayersPage() {
         </Box>
       </>
     )
+  } else if (failure && failureKind === 'email-on-record' && view === 'form') {
+    body = (
+      <>
+        <HubBackButton onClick={() => setView('main')} />
+        <Heading>Ask the club to correct it</Heading>
+        <Lead>Tell the club who you are. A club manager will check it before anything is changed.</Lead>
+        <LinkRequestForm dark initialClubId={visited.club?.id} onSent={() => setView('sent')} />
+      </>
+    )
   } else if (failure) {
     body = (
       <>
         <Heading>Find your players</Heading>
-        <Alert severity={notVerified ? 'warning' : 'error'}>
-          {notVerified
-            ? 'Please verify your email address first. Check your inbox for the verification email, then sign in again.'
-            : 'Something went wrong finding your players. Please try again later.'}
-        </Alert>
+        {failureKind === 'email-on-record' ? (
+          <Alert severity="warning">
+            <Box component="span" sx={{ display: 'block', mb: 1 }}>{errorDetail(failure) ?? 'This email address is already on record for someone else at your club. Ask your club to correct the email, then try again.'}</Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button variant="secondary" size="compact" onClick={signOutToLogin}>
+                Use A Different Account
+              </Button>
+              <Button variant="secondary" size="compact" onClick={() => setView('form')}>
+                Ask The Club To Correct It
+              </Button>
+            </Box>
+          </Alert>
+        ) : (
+          <Alert severity={failureKind === 'not-verified' ? 'warning' : 'error'}>
+            {failureKind === 'not-verified'
+              ? 'Please verify your email address first. Check your inbox for the verification email, then sign in again.'
+              : 'Something went wrong finding your players. Please try again later.'}
+          </Alert>
+        )}
       </>
     )
   } else if (!matches.data) {
@@ -131,7 +182,7 @@ export default function FindYourPlayersPage() {
         <HubBackButton onClick={() => setView('main')} />
         <Heading>Ask the club to help</Heading>
         <Lead>Tell the club who you are and which player you manage. A club manager will check it before anyone is linked.</Lead>
-        <LinkRequestForm dark prefill={prefill} onSent={() => setView('sent')} />
+        <LinkRequestForm dark prefill={prefill} initialClubId={visited.club?.id} onSent={() => setView('sent')} />
       </>
     )
   } else if (view === 'sent') {
@@ -160,7 +211,8 @@ export default function FindYourPlayersPage() {
       </>
     )
   } else {
-    const { withoutMainAgent: free, withMainAgent: taken } = matches.data
+    const free = visitedFirst(matches.data.withoutMainAgent, visited.club)
+    const taken = visitedFirst(matches.data.withMainAgent, visited.club)
     const all = [...free, ...taken]
     const single = all.length === 1 ? all[0] : null
     const title = all.length === 0 ? 'No player found' : free.length === 0 ? 'Contact the main agent' : single?.adult ? 'Is this you?' : 'Are these your players?'
@@ -186,7 +238,12 @@ export default function FindYourPlayersPage() {
               We could not find a player with <Box component="b" sx={{ color: HUB.gold, fontWeight: 600, overflowWrap: 'anywhere' }}>{email ?? 'your email address'}</Box> at any club. Tell the club who you are and which player you manage. A club
               manager will check it before anyone is linked.
             </Lead>
-            <LinkRequestForm dark onSent={() => setView('sent')} />
+            <LinkRequestForm dark initialClubId={visited.club?.id} onSent={() => setView('sent')} />
+            <Box>
+              <Button variant="ghost" size="compact" onClick={signOutToLogin} sx={{ color: HUB.muted }}>
+                Use A Different Account
+              </Button>
+            </Box>
           </>
         ) : (
           free.length > 0 && <Lead>We found these on record for {email ?? 'your email address'}. Untick any that are not yours.</Lead>
@@ -303,8 +360,15 @@ export default function FindYourPlayersPage() {
     <HubFooterButton onClick={() => navigate(clubHome)}>Back to club</HubFooterButton>
   ) : undefined
 
+  if (failureKind === 'suspended') return <StatusScreen kind="suspended" />
+
   return (
     <HubFrame title="Find Players" maxWidth={960} testId="welcome-page" footer={footer}>
+      {visited.fromHost && visited.club && (
+        <Typography noWrap data-testid="club-welcome" sx={{ ...hubHeading, fontSize: { xs: 16, md: 18 }, color: HUB.gold, letterSpacing: '0.06em' }}>
+          Welcome to {visited.club.name}
+        </Typography>
+      )}
       {body}
     </HubFrame>
   )

@@ -5,45 +5,17 @@ import { alpha } from '@mui/material/styles'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { Button as CompactButton } from '../../../components/Button'
 import { searchClubs } from '../../../api/leadApi'
 import type { ClubSummary } from '../../../api/leadApi'
 import { BRAND, FONT_DISPLAY, GOLD_DISC_GRADIENT } from '../../../brandTokens'
+import { clubAddress, rootDomain } from '../../../utils/clubFromHost'
+import { forgetClub, readLastClub, rememberClub } from '../../../utils/lastClub'
+import type { LastClub } from '../../../utils/lastClub'
 import { HUB, darkFieldSx, hubGoldButton, hubOutlineButton } from '../myPlayers/hubStyle'
 
-const ROOT_DOMAIN = import.meta.env.VITE_ROOT_DOMAIN ?? 'localhost:5173'
-const LAST_CLUB_KEY = 'login:lastClub'
 const MIN_LETTERS = 2
 const DEBOUNCE_MS = 250
-
-interface LastClub {
-  slug: string
-  name: string
-}
-
-function goToClubLogin(slug: string) {
-  // Same scheme as the current page, HTTPS in prod, HTTP for local dev, since
-  // Vite's dev server doesn't serve HTTPS on :5173.
-  window.location.href = `${window.location.protocol}//${slug}.${ROOT_DOMAIN}/login`
-}
-
-function readLastClub(): LastClub | null {
-  try {
-    const raw = window.localStorage.getItem(LAST_CLUB_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<LastClub> | null
-    return parsed && typeof parsed.slug === 'string' && typeof parsed.name === 'string' ? { slug: parsed.slug, name: parsed.name } : null
-  } catch {
-    return null
-  }
-}
-
-function rememberClub(club: LastClub) {
-  try {
-    window.localStorage.setItem(LAST_CLUB_KEY, JSON.stringify({ slug: club.slug, name: club.name }))
-  } catch {
-    // Storage unavailable or full: the memory is a convenience, never a requirement.
-  }
-}
 
 function initials(name: string) {
   const letters = name
@@ -72,7 +44,7 @@ export default function FindYourClubLogin({ onNavigate }: { onNavigate?: () => v
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [lastClub] = useState<LastClub | null>(readLastClub)
+  const [lastClub, setLastClub] = useState<LastClub | null>(readLastClub)
   const trimmed = query.trim()
 
   useEffect(() => {
@@ -97,7 +69,7 @@ export default function FindYourClubLogin({ onNavigate }: { onNavigate?: () => v
 
   function openClub(club: ClubSummary) {
     rememberClub({ slug: club.slug, name: club.name })
-    goToClubLogin(club.slug)
+    window.location.href = clubAddress(club.slug, '/login')
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -204,7 +176,7 @@ export default function FindYourClubLogin({ onNavigate }: { onNavigate?: () => v
                     {club.name}
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 13, color: HUB.muted, lineHeight: 1.25 }}>
-                    {club.slug}.{ROOT_DOMAIN}
+                    {club.slug}.{rootDomain}
                   </Typography>
                 </Box>
                 <ArrowForwardIcon aria-hidden sx={{ color: HUB.gold }} fontSize="small" />
@@ -229,16 +201,43 @@ export default function FindYourClubLogin({ onNavigate }: { onNavigate?: () => v
       {/* Platform admins aren't a member of any club (docs/specs/005-admin-login.md): the club-free path straight to
           Keycloak login, kept apart from the club search. */}
       <Divider sx={{ borderColor: HUB.lineSoft }} />
-      {/* Owner, 2026-11-13: a parent, guardian or adult player with no account yet creates one here (no club needed). */}
+      {/* Owner, 2026-11-13: a parent, guardian or adult player with no account yet creates one here. docs/specs/149 Decision 9: with a
+          remembered club the buttons go to that club's own address (the host carries the club), with none they stay club-free. */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
-        <Typography sx={{ color: HUB.muted, fontSize: 14 }}>New here? Parents and players can make an account first.</Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="outlined" size="small" onClick={() => navigate('/register')} data-testid="create-account" sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+        <Typography sx={{ color: HUB.muted, fontSize: 14 }}>{lastClub ? `New to ${lastClub.name}?` : 'New here? Parents and players can make an account first.'}</Typography>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => (lastClub ? (window.location.href = clubAddress(lastClub.slug, '/register')) : navigate('/register'))}
+            data-testid="create-account"
+            sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}
+          >
             Create Account
           </Button>
-          <Button variant="outlined" size="small" onClick={() => navigate('/login?idp=google')} data-testid="continue-with-google" sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => (lastClub ? (window.location.href = clubAddress(lastClub.slug, '/login?idp=google')) : navigate('/login?idp=google'))}
+            data-testid="continue-with-google"
+            sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}
+          >
             Continue With Google
           </Button>
+          {lastClub && (
+            <CompactButton
+              variant="ghost"
+              size="compact"
+              data-testid="not-this-club"
+              onClick={() => {
+                forgetClub()
+                setLastClub(null)
+              }}
+              sx={{ color: HUB.muted, '&:hover': { color: HUB.cream, backgroundColor: 'transparent' } }}
+            >
+              Not {lastClub.name}? Search Above
+            </CompactButton>
+          )}
         </Box>
       </Box>
       <Button variant="outlined" size="small" onClick={() => navigate('/login')} sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}>

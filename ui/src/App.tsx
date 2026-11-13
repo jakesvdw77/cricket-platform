@@ -103,13 +103,12 @@ import SectionAvailabilityRedirect from './pages/manage/SectionAvailabilityRedir
 import AvailabilityHubLayout from './pages/manage/availability/AvailabilityHubLayout'
 import AvailabilityCoveragePage from './pages/manage/availability/coverage/AvailabilityCoveragePage'
 import PlayerAvailabilityRedirect from './pages/manage/availability/PlayerAvailabilityRedirect'
+import { isRootDomain } from './utils/clubFromHost'
 
 const queryClient = new QueryClient()
 
-// Root domain (vendor marketing site, docs/specs/004-landing-page.md) vs. a
-// club subdomain (e.g. riverside.localhost) — window.location.hostname already
-// excludes the port, so this compares cleanly against VITE_ROOT_DOMAIN.
-const isRootDomain = window.location.hostname === (import.meta.env.VITE_ROOT_DOMAIN?.split(':')[0] ?? 'localhost')
+// Root domain (vendor marketing site, docs/specs/004-landing-page.md) vs. a club subdomain (e.g. riverside.localhost): see utils/clubFromHost.
+const onRootDomain = isRootDomain()
 
 function App() {
   const signingOut = useSigningOut()
@@ -124,7 +123,7 @@ function App() {
           <Routes>
             {/* A club address has no public home page yet (the old UpcomingMatches placeholder never loaded for a signed-out
                 visitor), so it goes to sign-in; a signed-in person is carried on by /post-login. */}
-            <Route path="/" element={isRootDomain ? <LandingPage /> : <Navigate to="/login" replace />} />
+            <Route path="/" element={onRootDomain ? <LandingPage /> : <Navigate to="/login" replace />} />
             {/* /login, /post-login, and /admin are club-agnostic — a platform admin's (and,
                 as of docs/specs/016, a CLUB_ADMIN's) RoleAssignment has no club scope resolved
                 from the URL (docs/specs/001), so these run on the root domain directly as well

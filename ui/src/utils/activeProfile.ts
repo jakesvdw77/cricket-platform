@@ -1,10 +1,10 @@
 import type { Profile } from '../api/meApi'
+import { clubAddress, clubSlugFromHost } from './clubFromHost'
 
 // docs/specs/119 slice 4 (Decisions 7, 25 and 29): which profile card is loaded, the optional "remember my choice on this
 // device" and how a card is opened. The hat is not a permission: the server never reads it, it only decides what the UI shows.
 const REMEMBER_KEY = 'profile:remembered'
 const ACTIVE_CLUB_KEY = 'profile:activeClub'
-const ROOT_DOMAIN = import.meta.env.VITE_ROOT_DOMAIN ?? 'localhost:5173'
 
 export const profileKey = (p: Pick<Profile, 'kind' | 'clubId'>) => `${p.kind}:${p.clubId ?? ''}`
 
@@ -35,12 +35,8 @@ export function forgetProfileChoices() {
   write(ACTIVE_CLUB_KEY, null)
 }
 
-// The club slug in the current address, or null on the root domain.
-export function currentClubSlug(): string | null {
-  const root = ROOT_DOMAIN.split(':')[0]
-  const host = window.location.hostname
-  return host.endsWith(`.${root}`) ? host.slice(0, -(root.length + 1)) : null
-}
+// The club slug in the current address, or null on the root domain (docs/specs/149: the logic lives in clubFromHost).
+export const currentClubSlug = clubSlugFromHost
 
 // Which club the manager shell loads: the club of the address, else the last chosen manager card, else the first one.
 export function resolveManagerClubId(profiles: Profile[] | undefined, clubAdminClubIds: string[] | undefined): string | undefined {
@@ -71,7 +67,7 @@ export function openProfile(profile: Profile, navigate: (to: string) => void, re
   if (remember) setRememberedProfileKey(profileKey(profile))
   const slug = currentClubSlug()
   if (profile.kind === 'MANAGER' && profile.clubSlug && slug && slug !== profile.clubSlug) {
-    window.location.assign(`${window.location.protocol}//${profile.clubSlug}.${ROOT_DOMAIN}${profile.landing}`)
+    window.location.assign(clubAddress(profile.clubSlug, profile.landing))
     return
   }
   navigate(profile.landing)

@@ -1,21 +1,39 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { StatusScreen } from '../../components/StatusScreen'
 import { FullPageLoader } from '../../components/CricketBallLoader'
+import { keycloak, keycloakInitPromise } from '../../auth/keycloak'
 import { activateSession } from '../../api/meApi'
 import { useMyPlayers } from '../../api/myPlayersApi'
 import { getRememberedProfileKey, openProfile, profileKey } from '../../utils/activeProfile'
 
 export default function PostLoginRedirect() {
   const navigate = useNavigate()
-  const { data, isError, error } = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
+  // docs/specs/149 Decision 7: opening /post-login with no session and no pending callback used to 401 and fall to /admin. Wait for
+  // keycloak-js to finish processing any callback first; if there is still no session, start a sign-in and never call /me/activate.
+  const [authenticated, setAuthenticated] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    keycloakInitPromise
+      .catch(() => false)
+      .then(() => {
+        if (cancelled) return
+        if (keycloak.authenticated) setAuthenticated(true)
+        else keycloak.login({ redirectUri: `${window.location.origin}/post-login` })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const { data, isError, error } = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession, enabled: authenticated })
 
   // docs/specs/119 3C: a person with no manager or admin access but with players (their own record or linked ones)
   // goes to Player Hub. Only asked for exactly that caller, so everyone else keeps today's routing untouched.
   const profiles = data?.profiles && data.profiles.length > 0 ? data.profiles : undefined
-  const noManagerAccess = Boolean(data) && !profiles && !data?.platformAdmin && data?.clubAdminClubIds.length === 0 && data?.personId !== null
+  const hasProfilesField = Array.isArray(data?.profiles)
+  const noManagerAccess = Boolean(data) && !hasProfilesField && !data?.platformAdmin && data?.clubAdminClubIds.length === 0 && data?.personId !== null
   const players = useMyPlayers(noManagerAccess)
 
   useEffect(() => {
@@ -38,14 +56,20 @@ export default function PostLoginRedirect() {
       else navigate('/choose-profile', { replace: true })
       return
     }
+    // docs/specs/149 Decision 8: a response WITH a profiles field that is empty (no platform admin, no club-admin grant) is a verified
+    // account with nothing linked yet, whether or not a Person exists: /welcome. Every real manager has a profile card (a section-scoped
+    // manager holds CLUB_ADMIN at section scope), so none of them lands here.
+    // A held player (own record or linked) already produces the Player Hub card, so an empty list means no players either.
+    if (hasProfilesField && !data.platformAdmin && data.clubAdminClubIds.length === 0) {
+      navigate('/welcome', { replace: true })
+      return
+    }
     if (data.platformAdmin) {
       navigate('/admin', { replace: true })
     } else if (data.clubAdminClubIds.length > 0) {
       navigate('/manage', { replace: true })
     } else if (data.personId === null) {
-      // Signed in but no Person resolved (e.g. a first-time Google user): spec 119 Part 2.
-      // A caller WITH a Person but no club-admin grant (e.g. a section-scoped manager, whom
-      // MeAccess cannot distinguish further) keeps the existing /admin fallback below.
+      // An older response (no profiles field), signed in but no Person resolved: spec 119 Part 2.
       navigate('/welcome', { replace: true })
     } else if (players.isLoading) {
       // Waiting for the players check; this effect runs again when it settles.
