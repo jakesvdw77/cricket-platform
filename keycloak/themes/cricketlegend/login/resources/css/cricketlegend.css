@@ -775,6 +775,14 @@ ul#kc-totp-supported-apps { margin: 8px 0; padding-left: 20px; }
 }
 
 @media (min-width: 768px) {
+  /* The page centres its content, so centre the two ovals on it too (owner, 2026-11-13: the pitch must sit inside the inner oval). On a
+     phone the content is top aligned and the ovals stay near the top (above). */
+  html.login-pf body::before {
+    background:
+      radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 50%, var(--cl-green-700) calc(55% - 1px), transparent 55%),
+      radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 50%, var(--cl-green-800) calc(100% - 1px), transparent 100%);
+    background-repeat: no-repeat;
+  }
   .login-pf-page { gap: 24px; padding: 48px 0; justify-content: center; }
   #kc-header-wrapper { font-size: 30px; }
   #kc-header-wrapper::before { width: 60px; height: 60px; }
