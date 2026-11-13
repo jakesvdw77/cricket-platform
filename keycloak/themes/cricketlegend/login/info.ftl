@@ -12,16 +12,12 @@
     <#elseif section = "form">
     <div id="kc-info-message">
         <p class="instruction">${message.summary}<#if requiredActions??><#list requiredActions>: <b><#items as reqActionItem>${kcSanitize(msg("requiredAction.${reqActionItem}"))?no_esc}<#sep>, </#items></b></#list><#else></#if></p>
-        <#-- The stock link rules (skipLink hides them), then the theme appUrl as a last resort that is NOT hidden by skipLink, so a person who
-             is already signed in always has a way back (owner, 2026-11-13: "stuck on this page"). -->
+        <#-- The stock page-redirect and pending-action links (skipLink hides them). The way back to the app is the Back To Cricket Legend link
+             that template.ftl draws under every card (theme property homeUrl), so a person who is already signed in is never stuck. -->
         <#if !skipLink?? && pageRedirectUri?has_content>
             <p><a href="${pageRedirectUri}">${kcSanitize(msg("backToApplication"))?no_esc}</a></p>
         <#elseif !skipLink?? && actionUri?has_content>
             <p><a href="${actionUri}">${kcSanitize(msg("proceedWithAction"))?no_esc}</a></p>
-        <#elseif !skipLink?? && (client.baseUrl)?has_content>
-            <p><a href="${client.baseUrl}">${kcSanitize(msg("backToApplication"))?no_esc}</a></p>
-        <#elseif (properties.appUrl)?has_content>
-            <p><a href="${properties.appUrl}">${kcSanitize(msg("backToApplication"))?no_esc}</a></p>
         </#if>
     </div>
     </#if>
