@@ -54,6 +54,9 @@ abstract class AbstractClubInfoIntegrationTest extends AbstractLinkIntegrationTe
         for (UUID id : clubIds) {
             jdbc.update("delete from team_contact where club_contact_id in (select id from club_contact where club_id = ?)", id);
             jdbc.update("delete from club_contact where club_id = ?", id);
+            // club_profile rows too: ClubProfileControllerIntegrationTest counts the whole table.
+            jdbc.update("delete from club_profile_social_link where club_id = ?", id);
+            jdbc.update("delete from club_profile where club_id = ?", id);
         }
         clubIds.clear();
     }

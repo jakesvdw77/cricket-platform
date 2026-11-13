@@ -59,9 +59,22 @@ class ClubHubSettingsControllerIntegrationTest {
     @Autowired private PersonRepository personRepository;
     @Autowired private RoleAssignmentRepository roleAssignmentRepository;
 
+    private final java.util.List<UUID> createdClubs = new java.util.ArrayList<>();
+
+    // The settings PUT creates a club_profile row; leave none behind (ClubProfileControllerIntegrationTest counts the whole table).
+    @org.junit.jupiter.api.AfterEach
+    void removeProfileRows() {
+        for (UUID id : createdClubs) {
+            clubProfileRepository.deleteById(id);
+        }
+        createdClubs.clear();
+    }
+
     private Club newClub(String slug) {
-        return clubRepository.save(Club.builder().name(slug).slug(slug + "-" + UUID.randomUUID().toString().substring(0, 6))
+        Club created = clubRepository.save(Club.builder().name(slug).slug(slug + "-" + UUID.randomUUID().toString().substring(0, 6))
                 .status(ClubStatus.ACTIVE).build());
+        createdClubs.add(created.getId());
+        return created;
     }
 
     private JwtRequestPostProcessor grant(RoleAssignmentRole role, ScopeType scopeType, UUID scopeId) {
