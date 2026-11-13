@@ -21,7 +21,16 @@ Everything below was discovered by hand while building and locally testing
 version-specific claims as verified against 24.0.3 specifically, not assumed to hold on a newer
 server without re-checking.
 
-### Realm & client naming — open decision, not yet made
+### Realm & client naming — decided 2026-11-13 for production
+
+**Production: realm `platform`, public SPA client `platform-web`** (spec 002's original naming; the
+client `platform-provisioning` is unchanged). Local dev keeps `cricketlegend`/`cricketlegend`, which
+is why the backend defaults and `ui/src/auth/keycloak.ts` still show those: production sets
+`KEYCLOAK_REALM`, `KEYCLOAK_PUBLIC_CLIENT_ID` (backend) and `VITE_KEYCLOAK_REALM`,
+`VITE_KEYCLOAK_CLIENT_ID` (UI build). Google redirect URI for production:
+`https://auth.cricketlegend.co.za/realms/platform/broker/google/endpoint`.
+
+The paragraph below is the original open-decision note, kept for history.
 
 Locally, the realm and the public SPA client are both literally named `cricketlegend` — a
 pragmatic local choice, not what `002-realm-subdomain-auth.md` originally specified
@@ -252,9 +261,82 @@ A real server deployment should use a proper persistent Keycloak install (or rea
 as part of provisioning) — worth deciding how before the first real server realm is created, not
 after.
 
-## Next up (not written yet)
+## Production rollout
 
-Backend/frontend hosting, database provisioning, environment variable inventory per environment
-(`KEYCLOAK_ADMIN_SERVER_URL`/`KEYCLOAK_ADMIN_CLIENT_SECRET`/`VITE_ROOT_DOMAIN`/etc.), DNS and TLS
-for `cricketlegend.co.za` and its club subdomains, and CI/CD deploy steps. Add sections here as
-each gets figured out — don't let this doc imply a section is done just because its heading exists.
+Decisions (owner, 2026-11-13): v2 **replaces** the legacy app (legacy data is not migrated; take a
+final backup first). One shared Keycloak with separate realms (v2, `quizmaster`). **Caddy** is the
+front door (certificates per hostname, no wildcard DNS). Images live on `ghcr.io`. The beta club is
+`irene` (Irene limited section, Veterans): `irene.cricketlegend.co.za`.
+
+### The server as found (2026-11-13, read-only inspection of 102.210.146.217)
+
+Ubuntu 24.04, **1 CPU, 1.9 GB RAM** (about 470 MB free, swap in use), 48 GB disk. Running: legacy
+backend and Postgres 16, Keycloak 24.0.3 in `start-dev` on 8443 (own Postgres; realms `master`,
+`cricketlegend`, `quizmaster`; `/opt/keycloak`), QuizMaster backend and UI at
+`quiz.cricketlegend.co.za` (database `quizmaster` inside the legacy Postgres; compose in
+`/root/cricketlegend/quizmaster/quizmaster`), and `edge-proxy`, an nginx passing port 443 through by
+hostname (`/opt/edge-proxy`). The legacy UI container has been stopped since 2026-11-11.
+
+Found while looking, to fix as part of the rollout:
+- **Keycloak's HTTPS certificate (`/opt/keycloak/certs`) expired 2026-06-21** and nothing renews it.
+  QuizMaster logins are probably broken today. The certbot certificates (root, `quiz`) renew by
+  timer and are valid to 2026-12-14.
+- QuizMaster's backend expects tokens from `https://cricketlegend.co.za:8443/realms/quizmaster`
+  and its UI has the Keycloak address baked in. Moving Keycloak to `auth.cricketlegend.co.za`
+  means changing both.
+- Legacy compose files and shell history hold plaintext passwords: **rotate after cutover**.
+- **Memory is the risk.** Upgrade to 4 GB RAM and 2 CPU before cutover (keep the same IP).
+
+### Files in this repo
+
+`backend/Dockerfile`, `ui/Dockerfile` + `ui/nginx.conf`, `deploy/Caddyfile`,
+`deploy/docker-compose.prod.yml`, `deploy/postgres-init.sh`, `deploy/.env.example`,
+`.github/workflows/publish-images.yml` (builds and pushes both images to `ghcr.io`).
+None of this has been run on the server yet; the compose file assumes a fresh stack and must be
+adapted to the existing Keycloak and QuizMaster during step 5.
+
+### DNS (AfriHost, nameservers `ns1/ns2.host-ww.net`)
+
+Done 2026-11-13: `irene`, `www` and `auth` are CNAMEs to `cricketlegend.co.za` (A `102.210.146.217`);
+no wildcard. Each new club needs its own record (or one `*` record) plus its hostname added to
+`CLUB_HOSTS` in the server's `.env`. Email DNS (SPF, DKIM, DMARC) comes with the email provider.
+
+### Order of work
+
+1. **Back up first** (on the server, before touching anything): dump the databases
+   (`cricketlegend`, `quizmaster` from `cricketlegend-db`; `keycloak` from `keycloak-postgres`, which
+   holds every realm with its users and passwords), copy `/root/cricketlegend/*/uploads`,
+   `/opt/keycloak`, `/opt/edge-proxy` and the compose files, and take a provider snapshot. Download
+   the dumps off the server. **Done 2026-11-13** in `/root/backups/20261113-1137/` (restore tested
+   into throwaway databases: `quizmaster` 21 tables, `keycloak` 3 realms). The database dump is the
+   real safety net. Optional extra, by hand in the admin console (it needs the admin login): a
+   **Partial export** JSON of the `quizmaster` realm (Realm settings, Action, Partial export, include
+   clients, groups and roles). It is portable but does not include user passwords.
+2. **Resize the server** (4 GB RAM, 2 CPU, same IP). Confirm with `nproc` and `free -h`.
+3. **Names (decided):** realm `platform`, client `platform-web`. Set the four `VITE_*` repository
+   variables for the image build: `VITE_ROOT_DOMAIN=cricketlegend.co.za`,
+   `VITE_KEYCLOAK_URL=https://auth.cricketlegend.co.za`, `VITE_KEYCLOAK_REALM=platform`,
+   `VITE_KEYCLOAK_CLIENT_ID=platform-web`.
+4. **Publish images:** run "Publish images" in GitHub Actions; check both appear under the
+   repository's Packages. Make the packages readable by the server (a deploy token, or public).
+5. **Stand v2 up** on the emptied server (2026-11-13: all old containers stopped by the owner's
+   decision, nothing removed; legacy is retired and QuizMaster, a family hobby app, is paused and can
+   return later against the new Keycloak address). A clean Keycloak in production `start` mode behind
+   Caddy (`KC_PROXY=edge`, `KC_HOSTNAME=auth.…`) with only the `platform` realm; create the v2 realm, the public client, and `platform-provisioning` with
+   `manage-users` and `manage-clients`; complete the realm checklist table above.
+6. **Media folder:** create `/srv/cricketlegend/media` and `chown 10001:10001` it (the backend runs
+   as user 10001; a root-owned folder is why uploads fail).
+7. **Cutover:** stop `edge-proxy`, start Caddy on 80/443, point QuizMaster at the new Keycloak
+   address and rebuild its UI, retire the legacy backend and database, create the Irene club and
+   its manager invite, run the smoke test (sign-up, sign-in, upload a logo, email).
+8. **After:** rotate every password that sat in the old compose files, remove the deploy SSH key,
+   schedule backups (database dumps and the media folder), move email off Google SMTP, and add
+   a health check for the backend (there is no actuator endpoint yet).
+
+**Rollback:** until step 7, the old stack is untouched. At step 7 keep the old compose files and
+backups; to roll back stop Caddy, start `edge-proxy` again, and restore the old containers.
+
+### Environment variables
+
+The full list, with where each comes from, is `deploy/.env.example`; it is copied to
+`deploy/.env` on the server only and never committed.
