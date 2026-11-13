@@ -2316,6 +2316,81 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyPollResponsesDto"
+  /api/v1/me/players/{playerKey}/club-info:
+    get:
+      tags:
+      - me-player-club-info-controller
+      description: "Hub Club info (docs/specs/148): the club of the held player. A block the club switched off or has no data for is null. Cache-Control is private, no-store. 404 for a key the caller does not hold; a suspended caller is 403."
+      operationId: getMyClubInfo
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyClubInfoDto"
+  /api/v1/me/players/{playerKey}/club-info/contacts:
+    get:
+      tags:
+      - me-player-club-info-controller
+      description: "Hub Club info contact directory (docs/specs/148): one page of the club's active contacts (club contacts only, never a player or a player's manager). Phone and email are present only when the club switched that column on. Cache-Control is private, no-store. 404 for a key the caller does not hold, for a junior's own login and for a directory that is switched off; 400 for size above 50 or below 1, a negative page, a query over 60 characters, a letter that is not A to Z or #, or a sort other than name or role."
+      operationId: listMyClubContacts
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: query
+        in: query
+        required: false
+        description: "Case-insensitive match on first name, last name or role, at most 60 characters."
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        description: "name (last name, first name; default) or role (role, then last name, first name)."
+        schema:
+          type: string
+          enum:
+          - name
+          - role
+      - name: letter
+        in: query
+        required: false
+        description: "Narrows to last names starting with this letter; # means any other first character."
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: "Zero-based, default 0."
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "1 to 50, default 25."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyClubContactPageDto"
   /api/v1/me/players/{playerKey}/fields:
     get:
       tags:
@@ -8106,6 +8181,53 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ShareSettingsDto"
+  /api/v1/manage/clubs/{clubId}/hub-settings:
+    get:
+      tags:
+      - club-hub-settings-controller
+      description: "docs/specs/148: the club's Player Hub Club info switches; a club with no profile row reads as the defaults (identity, contact, links and logos on, the rest off). Club administrators only."
+      operationId: getHubSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubHubSettingsDto"
+    put:
+      tags:
+      - club-hub-settings-controller
+      description: "docs/specs/148: replaces the switches. 400 when directoryPhoneShown or directoryEmailShown is true while directoryShown is false. Club administrators only."
+      operationId: updateHubSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClubHubSettingsDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubHubSettingsDto"
+        "400":
+          description: Directory phone or email on while the directory is off
   /api/v1/manage/clubs/{clubId}/link-requests:
     get:
       tags:
@@ -16171,6 +16293,176 @@ components:
         last:
           type: boolean
         empty:
+          type: boolean
+    ClubHubSettingsDto:
+      type: object
+      description: "docs/specs/148: what the club shows on the Player Hub Club info page. The directory phone and email switches can only be on while the directory switch is on."
+      properties:
+        identityShown:
+          type: boolean
+        contactShown:
+          type: boolean
+        linksShown:
+          type: boolean
+        logosShown:
+          type: boolean
+        logoDownloadAllowed:
+          type: boolean
+        directoryShown:
+          type: boolean
+        directoryPhoneShown:
+          type: boolean
+        directoryEmailShown:
+          type: boolean
+    MyClubTabDto:
+      type: object
+      description: "docs/specs/148: one visible pill; id is about, contacts or links, count is null when not known."
+      properties:
+        id:
+          type: string
+        count:
+          type: integer
+          format: int32
+          nullable: true
+    MyClubAddressDto:
+      type: object
+      properties:
+        number:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        provinceState:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
+    MyClubAboutDto:
+      type: object
+      description: "docs/specs/148: the About facts; each part is null when its switch is off or the club set no value."
+      properties:
+        type:
+          type: string
+          nullable: true
+        address:
+          $ref: "#/components/schemas/MyClubAddressDto"
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+    MyClubSocialLinkDto:
+      type: object
+      properties:
+        platform:
+          type: string
+          nullable: true
+        url:
+          type: string
+    MyClubLinksDto:
+      type: object
+      description: "docs/specs/148: https links only."
+      properties:
+        website:
+          type: string
+          nullable: true
+        social:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyClubSocialLinkDto"
+    MyClubLogosDto:
+      type: object
+      properties:
+        logoUrl:
+          type: string
+          nullable: true
+        bannerUrl:
+          type: string
+          nullable: true
+        downloadable:
+          type: boolean
+    MyClubDirectoryDto:
+      type: object
+      description: "docs/specs/148: present only when the directory is on, the caller may see it and at least one active contact exists."
+      properties:
+        total:
+          type: integer
+          format: int64
+        phoneShown:
+          type: boolean
+        emailShown:
+          type: boolean
+    MyClubInfoDto:
+      type: object
+      description: "docs/specs/148: the Club info page minus the directory rows. about, links, logos and directory are null when the block is switched off or has no data."
+      properties:
+        clubName:
+          type: string
+          nullable: true
+        tabs:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyClubTabDto"
+        about:
+          $ref: "#/components/schemas/MyClubAboutDto"
+        links:
+          $ref: "#/components/schemas/MyClubLinksDto"
+        logos:
+          $ref: "#/components/schemas/MyClubLogosDto"
+        directory:
+          $ref: "#/components/schemas/MyClubDirectoryDto"
+    MyClubContactDto:
+      type: object
+      description: "docs/specs/148: phone and email are null unless the club switched that column on and the contact has a value."
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        primary:
+          type: boolean
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+    MyClubContactPageDto:
+      type: object
+      description: "docs/specs/148: letters are the distinct first letters of last names (# for others) of the searched set, A to Z then #."
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyClubContactDto"
+        letters:
+          type: array
+          items:
+            type: string
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        hasMore:
           type: boolean
     ShareSettingsDto:
       type: object

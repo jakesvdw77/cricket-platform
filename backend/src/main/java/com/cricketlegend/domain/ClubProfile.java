@@ -84,6 +84,46 @@ public class ClubProfile {
     @Builder.Default
     private String shareDisabledFormats = "{}";
 
+    /** docs/specs/148-player-hub-club-info.md: what the Player Hub Club info shows; written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_identity", nullable = false)
+    @Builder.Default
+    private boolean hubInfoIdentity = true;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_contact", nullable = false)
+    @Builder.Default
+    private boolean hubInfoContact = true;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_links", nullable = false)
+    @Builder.Default
+    private boolean hubInfoLinks = true;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_logos", nullable = false)
+    @Builder.Default
+    private boolean hubInfoLogos = true;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_logo_download", nullable = false)
+    @Builder.Default
+    private boolean hubInfoLogoDownload = false;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_directory", nullable = false)
+    @Builder.Default
+    private boolean hubInfoDirectory = false;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_directory_phone", nullable = false)
+    @Builder.Default
+    private boolean hubInfoDirectoryPhone = false;
+
+    /** Written only by ClubHubSettingsService. */
+    @Column(name = "hub_info_directory_email", nullable = false)
+    @Builder.Default
+    private boolean hubInfoDirectoryEmail = false;
+
     /**
      * docs/specs/103-player-stats.md, decision 18: the LeaderboardBoard codes shown on the Awards view; null means the
      * nine defaults. Not part of the profile form (written only by the leaderboard settings service).
