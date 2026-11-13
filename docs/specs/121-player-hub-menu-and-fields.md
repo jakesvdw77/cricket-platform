@@ -412,4 +412,4 @@ None, all answered 2026-10-24. The owner accepted every recommended default, rec
 ## Amendment (2026-11-13, spec 148)
 
 - **Club info is built** by `docs/specs/148-player-hub-club-info.md` (pills About, Contacts, Links; logos on About; the contact directory of all active club contacts, never players or their managers). It is the first Hub item with **club settings**: the switches are eight columns on `club_profile`, written only by `ClubHubSettingsService` (`/api/v1/manage/clubs/{clubId}/hub-settings`), which closes Decision 13's "the first Soon item that needs a switch specifies where it lives".
-- **Decision 16 changes:** with `club.info` live, **Club opens on Club info** (the first live child), not on Field Directory. The Club group is Club info, Bookings (Soon), Field Directory, Other Services (Soon).
+- **Decision 16 changes:** with `club.info` live, **Club opens on Club info** (the first live child), not on Field Directory. The Club group is **Club info, Field Directory, Bookings (Soon), Other Services (Soon)** (owner, 2026-11-13: Field Directory before Bookings).
