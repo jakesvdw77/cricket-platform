@@ -26,7 +26,7 @@ describe('HubMenu', () => {
     first.unmount()
 
     renderMenu({ items: club.children, levelKey: 'club' })
-    expect(rows().map((row) => row.getAttribute('data-hub-item'))).toEqual(['club.info', 'club.bookings', 'club.fields', 'club.services'])
+    expect(rows().map((row) => row.getAttribute('data-hub-item'))).toEqual(['club.info', 'club.fields', 'club.bookings', 'club.services'])
     expect(screen.queryByRole('button', { name: /^Availability/ })).not.toBeInTheDocument()
   })
 

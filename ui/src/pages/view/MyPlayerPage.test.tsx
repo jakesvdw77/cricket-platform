@@ -113,6 +113,17 @@ describe('MyPlayerPage on a desktop', () => {
     expect(within(menu()).getByRole('button', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page')
   })
 
+  // docs/specs/148: Club opens on Club info, a live page (not a Coming soon panel).
+  it('club opens on Club info, the live page with its tabs', async () => {
+    const info = { clubName: 'Riverside CC', tabs: [{ id: 'about', count: null }], about: null, links: null, logos: null, directory: null }
+    setup('/account/players/k1/club', { extra: { 'GET /me/players/k1/club-info': info } })
+
+    expect(await screen.findByTestId('hub-club-info')).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'About' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
+    expect(within(menu()).getByRole('button', { name: /^Club info/ })).toHaveAttribute('aria-current', 'page')
+  })
+
   // docs/specs/135: Schedule > Matches is live, and the match and Watch Live pages sit under it with the footer's one Back.
   it('schedule/matches is the live matches list, not a Coming soon panel', async () => {
     setup('/account/players/k1/schedule/matches', { extra: { 'GET /me/players/k1/matches': matchList({ upcoming: [matchSummary()] }) } })

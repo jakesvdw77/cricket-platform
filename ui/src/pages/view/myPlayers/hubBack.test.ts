@@ -117,3 +117,16 @@ describe('hubBack from the Stats pages', () => {
     expect(hubBack(state({ section: 'results', item: 'm1', scope: SCOPE }))).toEqual({ label: 'Back to Results', target: `${BASE}/results?${SCOPE}` })
   })
 })
+
+// docs/specs/148: Club > Club info is an ordinary page of its parent; the footer Back goes up one level.
+describe('hubBack on Club > Club info', () => {
+  const info = { section: 'club', item: 'info' } as const
+
+  it('is Back to menu on a phone, whatever the player count', () => {
+    for (const many of [true, false]) expect(hubBack(state({ layout: 'phone', many, ...info }))).toEqual({ label: 'Back to menu', target: BASE })
+  })
+
+  it('is Back to menu on a wide screen, going up to the main menu', () => {
+    for (const many of [true, false]) expect(hubBack(state({ many, ...info }))).toEqual({ label: 'Back to menu', target: `${BASE}/availability` })
+  })
+})
