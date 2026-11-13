@@ -9,6 +9,14 @@ services:
     environment:
       ROOT_DOMAIN: ${ROOT_DOMAIN}
       CLUB_HOSTS: ${CLUB_HOSTS}
+    networks:
+      default:
+        # The backend validates login tokens by calling https://auth.<domain>. Inside Docker that
+        # name resolved to 127.0.1.1 (the server's hosts file maps its hostname there), i.e.
+        # the backend itself. This alias makes the name resolve to Caddy, which proxies Keycloak
+        # with the real certificate.
+        aliases:
+          - auth.${ROOT_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data        # holds the certificates: keep this volume
@@ -52,7 +60,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.3
     restart: unless-stopped
-    command: start --optimized=false
+    command: start
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/${KC_DB_NAME}
