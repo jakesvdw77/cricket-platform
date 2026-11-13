@@ -1,0 +1,27 @@
+# Caddy = the front door. It gets and renews HTTPS certificates by itself and sends each
+# request to the right container. Hostnames come from .env (see .env.example).
+#
+# To add a club: add its hostname to CLUB_HOSTS in .env, make sure DNS points it at this
+# server, then run:  docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+# Keycloak (login pages)
+auth.{$ROOT_DOMAIN} {
+	reverse_proxy keycloak:8080
+}
+
+# The app: marketing root, www, and each club subdomain
+{$ROOT_DOMAIN}, www.{$ROOT_DOMAIN}, {$CLUB_HOSTS} {
+	encode zstd gzip
+	request_body {
+		max_size 10MB
+	}
+	handle /api/* {
+		reverse_proxy backend:9082
+	}
+	handle /media/* {
+		reverse_proxy backend:9082
+	}
+	handle {
+		reverse_proxy ui:80
+	}
+}

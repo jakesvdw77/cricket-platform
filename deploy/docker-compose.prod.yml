@@ -1,0 +1,96 @@
+# Production stack: Caddy + UI + backend + Keycloak + ONE Postgres (separate databases inside).
+# Run from the deploy/ folder on the server:  docker compose -f docker-compose.prod.yml up -d
+# Secrets live in deploy/.env on the server only (copy .env.example), never in git.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      ROOT_DOMAIN: ${ROOT_DOMAIN}
+      CLUB_HOSTS: ${CLUB_HOSTS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # holds the certificates: keep this volume
+      - caddy_config:/config
+    depends_on: [ui, backend, keycloak]
+
+  ui:
+    image: ghcr.io/${GHCR_OWNER}/cricketlegend-ui:${TAG:-latest}
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER}/cricketlegend-backend:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${APP_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${APP_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${APP_DB_PASSWORD}
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      KEYCLOAK_ISSUER_URI: https://auth.${ROOT_DOMAIN}/realms/${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      KEYCLOAK_PUBLIC_CLIENT_ID: ${KEYCLOAK_PUBLIC_CLIENT_ID}
+      FRONTEND_BASE_URL: https://${ROOT_DOMAIN}
+      MEDIA_STORAGE_PATH: /data/media
+      PUBLIC_AVAILABILITY_TOKEN_SECRET: ${PUBLIC_AVAILABILITY_TOKEN_SECRET}
+      IMPORT_TOKEN_SECRET: ${IMPORT_TOKEN_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_AUTH: "true"
+      SMTP_STARTTLS: "true"
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      JAVA_TOOL_OPTIONS: -Xmx512m
+    volumes:
+      - ${MEDIA_HOST_DIR}:/data/media   # uploaded logos/photos: a real folder on the server, backed up
+    depends_on:
+      db: { condition: service_healthy }
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    restart: unless-stopped
+    command: start --optimized=false
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${KC_DB_NAME}
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: auth.${ROOT_DOMAIN}
+      KC_PROXY: edge              # Caddy terminates HTTPS in front of Keycloak
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      JAVA_OPTS_KC_HEAP: -Xms256m -Xmx512m
+    volumes:
+      - ../keycloak/themes/cricketlegend:/opt/keycloak/themes/cricketlegend:ro
+    depends_on:
+      db: { condition: service_healthy }
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_SUPERUSER}
+      POSTGRES_PASSWORD: ${PG_SUPERUSER_PASSWORD}
+      APP_DB_NAME: ${APP_DB_NAME}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      KC_DB_NAME: ${KC_DB_NAME}
+      KC_DB_USER: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_SUPERUSER}"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:
