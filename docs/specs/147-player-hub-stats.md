@@ -362,3 +362,5 @@ New backend blocks on `MyTeamStatsDto` (additive): `dismissals`, `battingPositio
 
 - **Stats menu order:** Player Stats, Team Stats, Leaderboards.
 - **Gradient trial:** every normal stats card face (including "Some data missing") carries the Result card's soft corner glow (160 degrees, a sand tint fading to the dark by 55 percent), one constant `FACE_GRADIENT` in `StatsCardShell.tsx`; the expanded card is unchanged. A trial: the owner decides whether it stays.
+
+- **`hub-settings` (2026-11-13):** the `hub-settings` endpoint, `ClubHubSettingsDto` and manager card that this spec's amendment cancelled for the leaderboard switch are built by `148` for the Club info switches, with no leaderboard field (that item stays open pending legal advice).

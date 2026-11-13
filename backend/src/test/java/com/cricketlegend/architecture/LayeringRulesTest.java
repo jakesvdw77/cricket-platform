@@ -204,4 +204,38 @@ class LayeringRulesTest {
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
         org.assertj.core.api.Assertions.assertThat(count).isEqualTo(144);
     }
+
+    @Test
+    void theClubContactDirectoryQueriesAreCalledOnlyByTheClubInfoService() {
+        ArchRule rule = noClasses().that(DescribedPredicate.not(HasName.Predicates.nameMatching(
+                        "com\\.cricketlegend\\.service\\.impl\\.MyClubInfoServiceImpl(\\$.*)?")))
+                .should().callMethodWhere(new DescribedPredicate<JavaCall<?>>("target a ClubContactRepository directory query") {
+                    @Override
+                    public boolean test(JavaCall<?> call) {
+                        return call.getTargetOwner().getName().equals("com.cricketlegend.repository.ClubContactRepository")
+                                && java.util.Set.of("directoryByName", "directoryByRole", "countDirectory", "directoryLetters")
+                                        .contains(call.getName());
+                    }
+                })
+                .because("the directory queries read club contacts for the Player Hub only, behind the access rules of spec 148")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+        // not vacuous: the service really does call them
+        org.assertj.core.api.Assertions.assertThat(CLASSES.get("com.cricketlegend.service.impl.MyClubInfoServiceImpl")
+                .getMethodCallsFromSelf().stream().map(JavaCall::getName))
+                .contains("directoryByName", "directoryByRole", "countDirectory", "directoryLetters");
+    }
+
+    @Test
+    void theClubInfoServiceReachesLinksAndPlayersOnlyThroughMyPlayerAccess() {
+        ArchRule rule = noClasses().that().haveNameMatching("com\\.cricketlegend\\.service\\.(MyClubInfoService|impl\\.MyClubInfoServiceImpl)(\\$.*)?")
+                .should().dependOnClassesThat().haveNameMatching(
+                        "com\\.cricketlegend\\.repository\\.(PersonLinkRepository|PlayerProfileRepository|PersonRepository)")
+                .because("who may read a player's club is decided by MyPlayerAccess alone (spec 148)")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+        org.assertj.core.api.Assertions.assertThat(CLASSES.get("com.cricketlegend.service.impl.MyClubInfoServiceImpl")
+                .getDirectDependenciesFromSelf().stream().map(d -> d.getTargetClass().getSimpleName()))
+                .contains("MyPlayerAccess");
+    }
 }

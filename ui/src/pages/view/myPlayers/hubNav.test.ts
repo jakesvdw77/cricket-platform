@@ -25,13 +25,13 @@ describe('HUB_NAV', () => {
     expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
     expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Calendar'])
     expect(childLabels('stats')).toEqual(['Player Stats', 'Team Stats', 'Leaderboards'])
-    expect(childLabels('club')).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
+    expect(childLabels('club')).toEqual(['Club info', 'Field Directory', 'Bookings', 'Other Services'])
     expect(childLabels('profile')).toEqual(['Contact', 'Cricket', 'Agents'])
     expect(childLabels('account')).toEqual(['Invitations', 'Link requests', 'Link more players', 'Switch profile', 'Back to club', 'Sign out'])
   })
 
-  it('marks Field Directory as the only live Club item, and the other sections as Soon where they are not built', () => {
-    expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Field Directory'])
+  it('marks Club info and Field Directory as the only live Club items, and the other sections as Soon where they are not built', () => {
+    expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Club info', 'Field Directory'])
     expect(byId('updates').children?.every((child) => child.soon)).toBe(true)
     expect(byId('stats').children?.some((child) => child.soon)).toBe(false)
     expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues', 'Calendar'])
@@ -61,7 +61,7 @@ describe('HUB_NAV', () => {
 
 describe('defaultChild', () => {
   it('opens on the first child that is a page and not Soon, else the first child', () => {
-    expect(defaultChild(byId('club'))?.label).toBe('Field Directory')
+    expect(defaultChild(byId('club'))?.label).toBe('Club info')
     expect(defaultChild(byId('account'))?.label).toBe('Invitations')
     expect(defaultChild(byId('profile'))?.label).toBe('Contact')
     expect(defaultChild(byId('schedule'))?.label).toBe('Matches')

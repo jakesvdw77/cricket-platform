@@ -198,7 +198,7 @@ interface HubNavItem {
 | 2 | `stats.teams` | Team stats | Soon |
 | 1 | `club` | Club | Sub menu; opens on Field Directory (Decision 16) |
 | 2 | `club.messages` | Messages | Soon |
-| 2 | `club.info` | Club info | Soon |
+| 2 | `club.info` | Club info | Built by `148` (2026-11-13) |
 | 2 | `club.gallery` | Gallery | Soon |
 | 2 | `club.bookings` | Bookings | Soon |
 | 2 | `club.fields` | Field Directory | **Built here** (checkpoint B); last in the Club sub menu |
@@ -408,3 +408,8 @@ None, all answered 2026-10-24. The owner accepted every recommended default, rec
 - **Profile:** the photo is the edit control (a round pencil badge on its corner opens the photo and date of birth form); the heading's gold Edit is the page's only Edit button.
 - **Field Directory card:** **Verified** (or Not Verified) is a chip top right; the address is shown as lines (street; city, province postal code; country); "Away this season" is dropped, a home field shows a gold Home Field tag; the footer line says "the club", not "your club".
 - **League page (`123`):** framed 36 px icon buttons (44 px on a phone) for website, social, Share and Download; sections are the Hub pill row with counts (Teams, Schedule, Results, Fields); Details is one League facts card (two columns, cream values, short dates) with a season timeline (start, today, end; "Season ended" once over).
+
+## Amendment (2026-11-13, spec 148)
+
+- **Club info is built** by `docs/specs/148-player-hub-club-info.md` (pills About, Contacts, Links; logos on About; the contact directory of all active club contacts, never players or their managers). It is the first Hub item with **club settings**: the switches are eight columns on `club_profile`, written only by `ClubHubSettingsService` (`/api/v1/manage/clubs/{clubId}/hub-settings`), which closes Decision 13's "the first Soon item that needs a switch specifies where it lives".
+- **Decision 16 changes:** with `club.info` live, **Club opens on Club info** (the first live child), not on Field Directory. The Club group is **Club info, Field Directory, Bookings (Soon), Other Services (Soon)** (owner, 2026-11-13: Field Directory before Bookings).

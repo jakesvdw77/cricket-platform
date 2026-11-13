@@ -12,11 +12,14 @@ import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
 import { ShareFormatsSettings } from '../../components/ShareFormatsSettings'
 import { activateSession } from '../../api/meApi'
 import { useShareSettings } from '../../hooks/useShareSettings'
+import { useHubSettings } from '../../hooks/useHubSettings'
+import { HubSettingsCard } from '../../components/HubSettingsCard'
 import { InfoCard } from '../../components/InfoCard'
 import { Button } from '../../components/Button'
 import { LogoAvatar } from '../../components/LogoAvatar'
@@ -124,6 +127,7 @@ export default function ClubOverviewPage() {
   const { data: access } = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
   const isClubAdmin = Boolean(clubId && access?.clubAdminClubIds.includes(clubId))
   const shareSettings = useShareSettings(clubId, isClubAdmin)
+  const hubSettings = useHubSettings(clubId, isClubAdmin)
 
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
@@ -415,6 +419,17 @@ export default function ClubOverviewPage() {
             onChange={shareSettings.setDisabledFormats}
             disabled={shareSettings.isLoading || shareSettings.isSaving}
             error={shareSettings.saveFailed ? shareSettings.saveError : undefined}
+          />
+        </InfoCard>
+      )}
+
+      {isClubAdmin && (
+        <InfoCard flat title="Player Hub" icon={<SportsCricketOutlinedIcon />} testId="hub-settings-card">
+          <HubSettingsCard
+            settings={hubSettings.settings}
+            onChange={hubSettings.setSettings}
+            disabled={hubSettings.isLoading || hubSettings.isSaving}
+            error={hubSettings.saveFailed ? hubSettings.saveError : undefined}
           />
         </InfoCard>
       )}

@@ -18,6 +18,7 @@ import { HubPillStrip } from './myPlayers/HubPillStrip'
 import { HubPlayerCard } from './myPlayers/HubPlayerCard'
 import { HubSoonPanel } from './myPlayers/HubSoonPanel'
 import { HubFields } from './myPlayers/HubFields'
+import { HubClubInfo } from './myPlayers/HubClubInfo'
 import { HubLeague } from './myPlayers/HubLeague'
 import { HubLeagues } from './myPlayers/HubLeagues'
 import { HubMatch } from './myPlayers/HubMatch'
@@ -189,6 +190,8 @@ export default function MyPlayerPage() {
     )
   } else if (section.id === 'profile' && pageItem) {
     panel = player && <HubProfile player={player} page={segmentOf(pageItem) as ProfilePage} />
+  } else if (pageItem?.id === 'club.info') {
+    panel = <HubClubInfo playerKey={player?.key} />
   } else if (pageItem?.id === 'club.fields') {
     panel = <HubFields playerKey={player?.key} />
   } else if (pageItem?.id === 'schedule.leagues') {

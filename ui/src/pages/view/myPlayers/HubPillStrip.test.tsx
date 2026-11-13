@@ -15,7 +15,7 @@ describe('HubPillStrip', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Club pages' })
     const pills = nav.querySelectorAll('button')
-    expect(Array.from(pills).map((pill) => pill.textContent)).toEqual(['Club info', 'Bookings', 'Field Directory', 'Other Services'])
+    expect(Array.from(pills).map((pill) => pill.textContent)).toEqual(['Club info', 'Field Directory', 'Bookings', 'Other Services'])
     expect(screen.getByRole('button', { name: 'Field Directory' })).toHaveAttribute('aria-current', 'page')
     expect(Array.from(pills).filter((pill) => pill.hasAttribute('aria-current'))).toHaveLength(1)
   })

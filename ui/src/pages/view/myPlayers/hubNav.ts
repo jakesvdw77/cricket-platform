@@ -80,10 +80,10 @@ export const HUB_NAV: HubNavItem[] = [
     id: 'club',
     label: 'Club',
     children: [
-      { id: 'club.info', label: 'Club info', soon: true, soonCopy: "Contacts, the club's places and links." },
-      { id: 'club.bookings', label: 'Bookings', soon: true, soonCopy: 'Nets and facility bookings.' },
-      // The one live item (so Club opens on it).
+      { id: 'club.info', label: 'Club info' },
+      // Club info and Field Directory are live; Club opens on the first, Club info.
       { id: 'club.fields', label: 'Field Directory' },
+      { id: 'club.bookings', label: 'Bookings', soon: true, soonCopy: 'Nets and facility bookings.' },
       { id: 'club.services', label: 'Other Services', soon: true, soonCopy: 'Other services the club offers, once the club adds them.' },
     ],
   },

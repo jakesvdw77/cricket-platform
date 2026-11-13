@@ -67,5 +67,6 @@
     <include file="db/changelog/v1/060-playing-area-coordinates.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/061-result-visible-to-players.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/062-result-visible-to-players-backfill.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/063-hub-club-info.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

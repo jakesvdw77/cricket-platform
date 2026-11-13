@@ -37,6 +37,19 @@ public record HeldPlayer(String key, Person caller, Person subject, PlayerProfil
         if (link != null) {
             return link.isMain();
         }
+        return subjectIsAdult();
+    }
+
+    /**
+     * docs/specs/148 Decision 2: the club contact directory is for an adult player (their own record) and for any linked
+     * account, main or not. A junior's own login (self under 18) never sees it.
+     */
+    public boolean canSeeClubDirectory() {
+        return link != null || subjectIsAdult();
+    }
+
+    /** The one adult rule: 18 or more, a missing date of birth counts as adult. */
+    private boolean subjectIsAdult() {
         LocalDate dob = subject.getDateOfBirth();
         return dob == null || Period.between(dob, LocalDate.now()).getYears() >= ADULT_AGE;
     }
