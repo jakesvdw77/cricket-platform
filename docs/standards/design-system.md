@@ -393,6 +393,7 @@ A standing rule for the whole app.
 - **Links:** framed icon buttons through `HubSocialLinks` (accessible names "<Club> on Facebook"), then labelled rows (platform, host) as the text list.
 - **Directory row anatomy:** name (cream, bold), role (muted), a gold Main Contact tag, then a phone and an email column drawn only when the club allows them; each value is text plus framed **Call** or **Email** and **Copy** buttons (36 px, 44 px on a phone); a missing value reads "Not shared" (muted, no button). One line from `sm`, stacked on a phone. A letter strip (a rail from `md`) and an A To Z | By Role dark `CompactToggleGroup`.
 - **No export:** no Share, Print, Download, CSV, vCard or Copy All; the directory hides itself in print. Copy writes one value and says so politely.
+- **Letter strip (deliberate exception, 2026-11-13):** the directory's letters are raw MUI `ToggleButton`s with a 44 px target (a phone) and 36 px (a rail), because a 26-letter jump strip is not a segmented switch and `CompactToggleGroup` is built for two to four choices.
 - **Manager card:** a flat `InfoCard` "Player Hub" with toggle chips (`HubSettingsCard`, the `ShareFormatsSettings` look); the directory's phone and email chips are blocked until the directory is on.
 
 ## Button size rule (owner, 2026-11-04)

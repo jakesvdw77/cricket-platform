@@ -1,23 +1,18 @@
-import { Box, IconButton, Tooltip, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import DownloadIcon from '@mui/icons-material/FileDownloadOutlined'
 import type { ReactNode } from 'react'
 import { LogoAvatar } from '../../../components/LogoAvatar'
 import { initialsFromName } from '../../../utils/initials'
 import type { MyClubLogos } from '../../../api/meClubInfoApi'
 import { blackAlpha } from '../../../brandTokens'
-import { HUB, hubFramedIconSx } from './hubStyle'
+import { HUB } from './hubStyle'
+import { HubIconLink } from './HubSocialLinks'
 import { logoFileName } from './clubInfo/clubInfoFormat'
 
 // docs/specs/148 (Logos on About, Decision 8): the banner as a wide band and the logo as the large avatar beside the club name. The
 // Download link is offered per file only when the club allows it. It is the one `download` attribute in the Club info feature.
 function DownloadLink({ href, name, label, offset = 8 }: { href: string; name: string; label: string; offset?: number }) {
-  return (
-    <Tooltip title={label}>
-      <IconButton component="a" href={href} download={name} aria-label={label} sx={{ ...hubFramedIconSx, position: 'absolute', right: offset, bottom: offset }}>
-        <DownloadIcon />
-      </IconButton>
-    </Tooltip>
-  )
+  return <HubIconLink href={href} download={name} label={label} icon={<DownloadIcon />} sx={{ position: 'absolute', right: offset, bottom: offset }} />
 }
 
 export function HubClubBanner({ clubName, url, downloadable }: { clubName: string; url: string; downloadable: boolean }) {

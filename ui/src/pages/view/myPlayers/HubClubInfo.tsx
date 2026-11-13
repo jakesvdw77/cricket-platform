@@ -1,5 +1,4 @@
 import { Alert, Box, Skeleton, Typography } from '@mui/material'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { useMyClubInfo } from '../../../api/meClubInfoApi'
@@ -7,6 +6,7 @@ import type { ClubInfoTabId } from '../../../api/meClubInfoApi'
 import { creamAlpha } from '../../../brandTokens'
 import { HubPageHeader } from './HubPageHeader'
 import { HubTabBar, hubPanelId, hubTabId } from './HubTabBar'
+import { HubClubEmptyState } from './HubClubEmptyState'
 import { HubClubAbout } from './HubClubAbout'
 import { HubClubLinks } from './HubClubLinks'
 import { HubClubDirectory } from './clubInfo/HubClubDirectory'
@@ -39,11 +39,7 @@ export function HubClubInfo({ playerKey }: { playerKey?: string }) {
     )
   } else if (info.tabs.length === 0) {
     body = (
-      <Box data-testid="club-info-empty" sx={{ display: 'grid', justifyItems: 'center', textAlign: 'center', gap: 1, border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 3 }}>
-        <InfoOutlinedIcon aria-hidden sx={{ fontSize: 40, color: HUB.muted }} />
-        <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 22, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.sand }}>Nothing to Show Yet</Typography>
-        <Typography sx={{ color: HUB.muted }}>The club has not shared its details here yet. Check back soon.</Typography>
-      </Box>
+      <HubClubEmptyState testId="club-info-empty" icon="nav/club-profile" title="Nothing to Show Yet" line="The club has not shared its details here yet. Check back soon." />
     )
   } else {
     const wanted = search.get('tab')
@@ -64,7 +60,7 @@ export function HubClubInfo({ playerKey }: { playerKey?: string }) {
         </Box>
         <Box role="tabpanel" id={hubPanelId(PREFIX, tab)} aria-labelledby={hubTabId(PREFIX, tab)} tabIndex={0} sx={{ outline: 'none', '&:focus-visible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}>
           {tab === 'about' && <HubClubAbout info={info} />}
-          {tab === 'contacts' && <HubClubDirectory playerKey={playerKey} directory={info.directory} />}
+          {tab === 'contacts' && <HubClubDirectory key={playerKey} playerKey={playerKey} directory={info.directory} />}
           {tab === 'links' && <HubClubLinks info={info} />}
         </Box>
       </>

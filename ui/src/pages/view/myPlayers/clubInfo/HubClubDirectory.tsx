@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Alert, Box, IconButton, InputAdornment, Link, Skeleton, TextField, ToggleButton, Typography } from '@mui/material'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Alert, Box, IconButton, InputAdornment, Skeleton, TextField, ToggleButton, Typography } from '@mui/material'
 import ClearIcon from '@mui/icons-material/Clear'
-import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import SearchIcon from '@mui/icons-material/Search'
-import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import { alpha } from '@mui/material/styles'
 import { isNotFound } from '../../../../utils/errorDetail'
 import { Button } from '../../../../components/Button'
@@ -13,6 +11,7 @@ import { useMyClubContacts } from '../../../../api/meClubInfoApi'
 import type { ClubContactSort, MyClubContact, MyClubDirectory } from '../../../../api/meClubInfoApi'
 import { creamAlpha } from '../../../../brandTokens'
 import { HUB, darkFieldSx } from '../hubStyle'
+import { HubClubEmptyState } from '../HubClubEmptyState'
 import { ClubContactRow } from './ClubContactRow'
 import { letterOf } from './clubInfoFormat'
 
@@ -38,28 +37,20 @@ function groupContacts(items: MyClubContact[], sort: ClubContactSort): Group[] {
   return groups
 }
 
-function EmptyBlock({ icon, title, line, children }: { icon: React.ReactNode; title: string; line: string; children?: React.ReactNode }) {
-  return (
-    <Box data-testid="club-contacts-empty" sx={{ display: 'grid', justifyItems: 'center', textAlign: 'center', gap: 1, border: 1, borderStyle: 'dashed', borderColor: HUB.line, borderRadius: '4px', p: 3 }}>
-      {icon}
-      <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 22, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.sand }}>{title}</Typography>
-      <Typography sx={{ color: HUB.muted }}>{line}</Typography>
-      {children}
-    </Box>
-  )
-}
-
 export function HubClubDirectory({ playerKey, directory }: { playerKey?: string; directory: MyClubDirectory | null }) {
   const [text, setText] = useState(NONE.query)
   const [sort, setSort] = useState<ClubContactSort>(NONE.sort)
   const [letter, setLetter] = useState<string | null>(NONE.letter)
   const query = useDebouncedValue(text, 300)
-  // A different player may belong to another club: start fresh.
-  useEffect(() => {
-    setText(NONE.query)
-    setSort(NONE.sort)
-    setLetter(NONE.letter)
-  }, [playerKey])
+  // One polite live region for every row's copy feedback; the parent keys this component on the player, so state starts fresh per player.
+  const [notice, setNotice] = useState('')
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (noticeTimer.current) clearTimeout(noticeTimer.current) }, [])
+  const onCopied = useCallback((message: string) => {
+    setNotice(message)
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(''), 2000)
+  }, [])
 
   const contacts = useMyClubContacts(playerKey, { query, sort, letter }, directory !== null)
   const phoneShown = directory?.phoneShown ?? false
@@ -73,7 +64,7 @@ export function HubClubDirectory({ playerKey, directory }: { playerKey?: string;
 
   let body
   if (notFound || (!filtered && !contacts.isLoading && !contacts.isError && contacts.items.length === 0 && !contacts.isFetching)) {
-    body = <EmptyBlock icon={<ContactsOutlinedIcon aria-hidden sx={{ fontSize: 40, color: HUB.muted }} />} title="No Contacts Yet" line="The club has not added any contacts yet." />
+    body = <HubClubEmptyState testId="club-contacts-empty" icon="nav/communication" title="No Contacts Yet" line="The club has not added any contacts yet." />
   } else if (contacts.isError) {
     body = (
       <Alert severity="error" action={<Button variant="secondary" size="compact" onClick={() => contacts.refetch()}>Retry</Button>}>
@@ -88,9 +79,9 @@ export function HubClubDirectory({ playerKey, directory }: { playerKey?: string;
     )
   } else if (contacts.items.length === 0) {
     body = (
-      <EmptyBlock icon={<SearchOffOutlinedIcon aria-hidden sx={{ fontSize: 40, color: HUB.muted }} />} title="No Contacts Match" line="Nothing matches that search. Try a different name or role.">
-        <Link component="button" type="button" underline="always" onClick={clearSearch} sx={{ color: HUB.cream, fontSize: 16, minHeight: 44 }}>Clear Search</Link>
-      </EmptyBlock>
+      <HubClubEmptyState testId="club-contacts-empty" icon="nav/communication" title="No Contacts Match" line="Nothing matches that search. Try a different name or role.">
+        <Button variant="ghost" size="compact" onClick={clearSearch} sx={{ color: HUB.cream, textDecoration: 'underline', minHeight: 44 }}>Clear Search</Button>
+      </HubClubEmptyState>
     )
   } else {
     body = (
@@ -100,7 +91,7 @@ export function HubClubDirectory({ playerKey, directory }: { playerKey?: string;
             <Box component="li" key={group.heading} sx={{ listStyle: 'none' }}>
               <Typography component="h3" id={`club-contacts-group-${index}`} sx={headingSx}>{group.heading}</Typography>
               <Box component="ul" aria-labelledby={`club-contacts-group-${index}`} sx={{ m: 0, p: 0 }}>
-                {group.contacts.map((contact) => <ClubContactRow key={contact.id} contact={contact} phoneShown={phoneShown} emailShown={emailShown} />)}
+                {group.contacts.map((contact) => <ClubContactRow key={contact.id} contact={contact} phoneShown={phoneShown} emailShown={emailShown} onCopied={onCopied} />)}
               </Box>
             </Box>
           ))}
@@ -160,6 +151,8 @@ export function HubClubDirectory({ playerKey, directory }: { playerKey?: string;
           <ToggleButton value="role">By Role</ToggleButton>
         </CompactToggleGroup>
       </Box>
+
+      <Box aria-live="polite" role="status" sx={{ color: HUB.muted, fontSize: 13, ...(notice ? {} : { display: 'none' }) }}>{notice}</Box>
 
       {letters.length > 0 && (
         <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 0.5, overflowX: 'auto', pb: 0.5 }} role="group" aria-label="Jump to letter">

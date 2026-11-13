@@ -73,7 +73,7 @@ describe('HubClubInfo states', () => {
     expect(empty).toHaveTextContent('The club has not shared its details here yet. Check back soon.')
     expect(empty).not.toHaveTextContent(/none yet/i)
     expect(empty).not.toHaveTextContent(/\byou(r)?\b/i)
-    expect(empty.querySelector('svg')).not.toBeNull()
+    expect(empty.querySelector('img')).not.toBeNull()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import CallOutlinedIcon from '@mui/icons-material/CallOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
@@ -5,6 +6,7 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import type { MyClubContact } from '../../../../api/meClubInfoApi'
 import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
 import { HUB, hubFramedIconSx } from '../hubStyle'
+import { HubIconLink } from '../HubSocialLinks'
 import { emailHref, phoneHref } from './clubInfoFormat'
 
 // docs/specs/148 (Contacts): one phone book row. Read only; a value is only drawn when the page says its column is shown, and a
@@ -13,6 +15,8 @@ export interface ClubContactRowProps {
   contact: MyClubContact
   phoneShown: boolean
   emailShown: boolean
+  // Called with the feedback line ("Number copied") so the directory can announce it in its one live region.
+  onCopied?: (message: string) => void
 }
 
 function Value({ kind, value, copiedKey, onCopy }: { kind: 'phone' | 'email'; value: string | null; copiedKey: string | null; onCopy: (text: string, key: string) => void }) {
@@ -23,11 +27,7 @@ function Value({ kind, value, copiedKey, onCopy }: { kind: 'phone' | 'email'; va
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
       <Typography sx={{ color: HUB.cream, fontSize: 15, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere' }}>{value}</Typography>
       {href && (
-        <Tooltip title={kind === 'phone' ? 'Call' : 'Email'}>
-          <IconButton component="a" href={href} aria-label={kind === 'phone' ? 'Call' : 'Email'} sx={hubFramedIconSx}>
-            {kind === 'phone' ? <CallOutlinedIcon /> : <MailOutlineIcon />}
-          </IconButton>
-        </Tooltip>
+        <HubIconLink href={href} label={kind === 'phone' ? 'Call' : 'Email'} icon={kind === 'phone' ? <CallOutlinedIcon /> : <MailOutlineIcon />} />
       )}
       <Tooltip title={copiedKey === kind ? 'Copied' : 'Copy'}>
         <IconButton aria-label={`Copy ${noun}`} onClick={() => onCopy(value, kind)} sx={hubFramedIconSx}>
@@ -38,10 +38,13 @@ function Value({ kind, value, copiedKey, onCopy }: { kind: 'phone' | 'email'; va
   )
 }
 
-export function ClubContactRow({ contact, phoneShown, emailShown }: ClubContactRowProps) {
+export function ClubContactRow({ contact, phoneShown, emailShown, onCopied }: ClubContactRowProps) {
   const { copy, copiedKey, failed } = useCopyToClipboard()
   const columns = ['minmax(0, 1.2fr)', ...(phoneShown ? ['minmax(0, 1fr)'] : []), ...(emailShown ? ['minmax(0, 1.4fr)'] : [])].join(' ')
   const status = failed ? 'Could not copy. Please copy it by hand.' : copiedKey === 'phone' ? 'Number copied' : copiedKey === 'email' ? 'Address copied' : ''
+  useEffect(() => {
+    if (status) onCopied?.(status)
+  }, [status, onCopied])
   return (
     <Box
       component="li"
@@ -73,9 +76,6 @@ export function ClubContactRow({ contact, phoneShown, emailShown }: ClubContactR
       </Box>
       {phoneShown && <Value kind="phone" value={contact.phone} copiedKey={copiedKey} onCopy={copy} />}
       {emailShown && <Value kind="email" value={contact.email} copiedKey={copiedKey} onCopy={copy} />}
-      <Box aria-live="polite" role="status" sx={{ gridColumn: '1 / -1', color: HUB.muted, fontSize: 13, ...(status ? {} : { display: 'none' }) }}>
-        {status}
-      </Box>
     </Box>
   )
 }

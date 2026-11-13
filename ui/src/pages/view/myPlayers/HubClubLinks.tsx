@@ -21,7 +21,7 @@ export function HubClubLinks({ info }: { info: MyClubInfo }) {
   return (
     <Box data-testid="hub-club-links" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <HubSocialIconRow links={links} ownerLabel={info.clubName} justify="flex-end" />
-      <FactsCard title="Club links" single>
+      <FactsCard title="Club Links" single>
         <Box role="list" sx={{ display: 'contents' }}>
           {links.map((link, index) => (
             <Box key={`${link.platform}-${link.url}`} role="listitem" sx={{ minWidth: 0 }}>
