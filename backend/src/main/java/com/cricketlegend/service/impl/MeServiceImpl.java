@@ -2,7 +2,7 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
-import com.cricketlegend.exception.ConflictException;
+import com.cricketlegend.exception.EmailOnPlayerRecordException;
 import com.cricketlegend.domain.PersonOrigin;
 import com.cricketlegend.domain.PersonStatus;
 import com.cricketlegend.service.support.ProfileResolver;
@@ -86,8 +86,7 @@ public class MeServiceImpl implements MeService {
             // plain insert would be a 500, so say what to do instead
             if (personRepository.findByEmailIgnoreCase(email).isPresent()) {
                 log.warn("Registration refused: email already held by another person");
-                throw new ConflictException("This email address is already on record for someone else at your club. "
-                        + "Ask your club to correct the email, then try again.");
+                throw new EmailOnPlayerRecordException();
             }
             String firstName = claim(jwt, "given_name");
             String lastName = claim(jwt, "family_name");

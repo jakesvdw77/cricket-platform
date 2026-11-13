@@ -342,7 +342,7 @@ class MeServiceImplTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> meService.register(authentication,
                         jwtWithName(subject, "shared@example.com", true, "Parent", "Of")))
                 .isInstanceOf(com.cricketlegend.exception.ConflictException.class)
-                .hasMessageContaining("Ask your club to correct the email");
+                .hasMessageContaining("Ask the club to correct it");
         verify(personRepository, never()).save(any());
     }
 

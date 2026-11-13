@@ -156,6 +156,14 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /** docs/specs/149: 409 with the stable {@code code} EMAIL_ON_PLAYER_RECORD. Wins over the generic ConflictException handler. */
+    @ExceptionHandler(EmailOnPlayerRecordException.class)
+    ProblemDetail handleEmailOnPlayerRecord(EmailOnPlayerRecordException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("code", EmailOnPlayerRecordException.CODE);
+        return problem;
+    }
+
     @ExceptionHandler(InvalidPublicTokenException.class)
     ProblemDetail handleInvalidPublicToken(InvalidPublicTokenException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());

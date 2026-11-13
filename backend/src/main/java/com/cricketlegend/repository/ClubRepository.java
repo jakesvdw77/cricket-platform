@@ -2,6 +2,7 @@ package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.Club;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,18 @@ public interface ClubRepository extends JpaRepository<Club, UUID> {
             + "AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :query, '%')) "
             + "OR LOWER(c.slug) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Club> searchActiveByNameOrSlug(@Param("query") String query);
+
+    /**
+     * The public landing search (docs/specs/149): same match as {@link #searchActiveByNameOrSlug}, ordered by
+     * name so the caller can bound it with a {@link Pageable}.
+     */
+    @Query("SELECT c FROM Club c WHERE c.status = com.cricketlegend.domain.ClubStatus.ACTIVE "
+            + "AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :query, '%')) "
+            + "OR LOWER(c.slug) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY c.name ASC, c.id ASC")
+    List<Club> searchActiveByNameOrSlugOrdered(@Param("query") String query, Pageable pageable);
+
+    /** One club by slug (case-insensitive) in the given status, for the public by-slug lookup (docs/specs/149). */
+    Optional<Club> findBySlugIgnoreCaseAndStatus(String slug, com.cricketlegend.domain.ClubStatus status);
 
     /** ACTIVE clubs by name, for the link request club picker (docs/specs/119). */
     List<Club> findByStatusOrderByNameAsc(com.cricketlegend.domain.ClubStatus status);

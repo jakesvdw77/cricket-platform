@@ -2043,6 +2043,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MeAccessDto"
+        "409":
+          description: The verified email is already held by another person (an under-18 player's record). Problem property code is EMAIL_ON_PLAYER_RECORD.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/me/links:
     post:
       tags:
@@ -5742,6 +5748,7 @@ paths:
       tags:
       - public-club-controller
       operationId: search
+      summary: Typeahead over ACTIVE clubs. A query under 2 characters (trimmed) returns an empty list; at most 20 clubs, ordered by name.
       parameters:
       - name: query
         in: query
@@ -5758,6 +5765,37 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ClubSummaryDto"
+  /api/v1/public/clubs/by-slug/{slug}:
+    get:
+      tags:
+      - public-club-controller
+      operationId: findBySlug
+      summary: One ACTIVE club by slug (case-insensitive). Unknown, inactive and malformed slugs are the same 404.
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubSummaryDto"
+        "404":
+          description: Club not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Too many calls from this address, property retryAfterSeconds (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/platform/persons:
     get:
       tags:

@@ -14,6 +14,7 @@
         <p class="instruction">${msg("emailVerifyInstruction1")}</p>
         <div class="cl-chip">${(user.email!'')}</div>
         <p class="instruction">${msg("emailVerifyInstruction2")}</p>
+        <p class="instruction">${msg("emailVerifyDevice")}</p>
         <a class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}" href="${url.loginAction}">${msg("doResendEmail")}</a>
         <#if url.loginRestartFlowUrl?has_content>
             <p class="cl-center"><a href="${url.loginRestartFlowUrl}">${msg("doUseDifferentAccount")}</a></p>
