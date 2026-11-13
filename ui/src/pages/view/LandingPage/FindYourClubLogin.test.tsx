@@ -208,4 +208,14 @@ describe('FindYourClubLogin', () => {
     await waitFor(() => expect(screen.getByText('Register route')).toBeInTheDocument())
     expect(searchClubs).not.toHaveBeenCalled()
   })
+
+  it('offers Continue With Google (it also creates an account the first time), going to /login with the Google hint', async () => {
+    const user = userEvent.setup()
+    renderFindYourClubLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Continue With Google' }))
+
+    await waitFor(() => expect(screen.getByText('Login route')).toBeInTheDocument())
+    expect(searchClubs).not.toHaveBeenCalled()
+  })
 })
