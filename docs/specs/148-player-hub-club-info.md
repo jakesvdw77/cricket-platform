@@ -41,6 +41,7 @@ The owner asked for Club info "in a familiar way based on the other screens" and
 - **Logos are part of the screen (owner, 2026-11-12, after the first mockup):** the club logo and banner are shown on About itself, not behind a Logos pill. The pills are About, Contacts, Links.
 - **Club contacts only (owner, 2026-11-12):** the directory and its search contain the club's own contacts (`ClubContact`) and nothing else. **No player, and no player's manager (parent or agent), has their contact information searchable or shown from the Player Hub**, whatever the viewer: the search runs over club contacts only, never over `person`, `player_profile` or `person_link`. This closes open question 3 (adult players seeing each other's numbers: no).
 - **Existing clubs start visible (owner, 2026-11-12):** the organisation facts a club has already entered (name, address, club phone and email, website, socials, logos) show to linked accounts from release, switchable off per block. The release notes tell administrators this on the day (Rollout Notes).
+- **Team managers and coaches appear (owner, 2026-11-12):** they are club contacts and show in the directory with their role, each only when listed by the club and with the person's own flags for phone and email.
 
 ## Decisions
 
@@ -265,7 +266,7 @@ Tiers per `docs/standards/testing.md`; targeted tests per step, one full run at 
 
 Each carries the default that applies if the owner does not answer.
 
-1. **Do team managers and coaches appear in the directory?** They are `ClubContact` rows linked through `TeamContact`/`SectionContact`. *Default:* they appear only if listed like any other contact; there is no automatic inclusion and no "contact for Under 13s" line. Alternative: show a team or section line for a listed contact linked to the held player's team (needs a join and a small DTO addition).
+1. **Do team managers and coaches appear in the directory?** **Resolved (owner, 2026-11-12): yes.** They are `ClubContact` rows linked through `TeamContact`/`SectionContact`, and they appear in the directory like any other club contact, with their role as the role line (for example "Team manager, U15", "Coach, Over 40") and under their own heading in the By Role view. **Consent is unchanged:** each still appears only when the club has listed them (`hub_listed`) and shows a phone or email only with their own flags; there is no automatic publishing of every team manager and coach. Still open: whether the directory should also show a team or section line for a contact linked to the held player's team (needs a join and a small DTO addition); *default:* no.
 2. **Which viewers may see the directory?** *Default:* adult players and every linked account (parent or agent); a junior's own login does not. Alternative: only the main parent and the adult player, not other agents.
 3. **May adult players see each other's numbers?** **Resolved (owner, 2026-11-12): no.** The directory is club contacts only; no player, parent or agent contact information is searchable or shown from the Player Hub.
 4. **Logo download formats.** *Default:* the stored file only (PNG, JPEG or WebP, as uploaded), one logo and one banner. Alternative: a later spec adds a brand-asset set (SVG, PNG sizes, a guidelines PDF) managed by the club.
