@@ -242,3 +242,18 @@ flowchart LR
 - **Validation issues** carry a stable `code`, the wizard `step`, the `side` and a `severity`, built on `ResultValidator.WarningCode`/`ErrorCode`.
 - **Capture picker gaps:** the awaiting-match picker lacks the team's section on each row and a "show all seasons" toggle.
 - Open review questions are listed in `100`'s and `101`'s Rollout Notes.
+
+## Player Hub Club info read path (spec 148)
+
+```mermaid
+flowchart LR
+    A[Club administrator] -->|PUT hub-settings| B[ClubHubSettingsService]
+    B --> C[(club_profile hub_info_* switches)]
+    P[Linked parent / adult player] -->|GET club-info, contacts| M[MyClubInfoService]
+    M -->|MyPlayerAccess.resolve first| H[HeldPlayer]
+    M --> C
+    M --> K[(club_contact, active only)]
+    M --> S[(club_profile_social_link)]
+```
+
+The directory reads `club_contact` only. It never touches `person`, `player_profile` or `person_link`, so players and their parents or agents are never returned.

@@ -210,3 +210,10 @@ The Hub console footer (`pages/view/myPlayers/HubFooter`, rendered by `HubFrame`
 - **Ranking helper.** A ranking line is drawn only when the payload field is non-null AND `stats/statsRankingPolicy.ts` `allowsRankings()` is true (the mirror of the server's `HubRankingPolicy`).
 - **`HubScopeControls`** (`pages/view/myPlayers/HubScopeControls.tsx`, extracted from `HubResults`) is the one Season dropdown, Filters button, filter tags and League then Team chips (docked panel from `lg`, bottom sheet below) for every Hub page with a scope. A page passes its option payload (the Results filters, or `useMyBoardsFilters` for Leaderboards with `chipRecords: false`) and its own storage key; the scope lives in the address with the saved value as fallback.
 - **Tables, not cards, for standings** (`103` decision 26): sort and paging are the server's (`useMyLeaderboard` is an infinite query), headings are buttons with `aria-sort`, rows are never sliced in the browser.
+
+## Player Hub Club info (`docs/specs/148-player-hub-club-info.md`)
+
+- Route `/account/players/:key/club/info`, `?tab=about|contacts|links`; the page and its files live in `pages/view/myPlayers/` and `pages/view/myPlayers/clubInfo/` (the directory row and the format helpers).
+- **Shared pieces extracted from the league page** (no visual change): `HubFacts`, `HubSocialLinks`, the generic `HubTabBar<T>`; the league tab bar and social links are thin wrappers.
+- **No export:** the directory folder imports no `utils/share/**`, `jspdf` or `WhatsAppSendActions`, uses no `navigator.share`, `window.print`, `Blob` or `createObjectURL`, and draws no Share, Print, Download, CSV or Copy All; the only `download` attribute is on the logo and banner in `HubClubImages`. Copy uses the existing `hooks/useCopyToClipboard` (allowed in the directory row only), with its own polite status line.
+- Hooks: `useMyClubInfo` and `useMyClubContacts` (infinite, server paging, never a client slice) in `api/meClubInfoApi.ts`; the manager side is `api/hubSettingsApi.ts`, `hooks/useHubSettings.ts` and `components/HubSettingsCard`.

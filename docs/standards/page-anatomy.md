@@ -157,6 +157,7 @@ Update the status as each page is brought in line. "Reviewed" means differences 
 
 | Page | Status | Notes |
 |---|---|---|
+| Player Hub: Club Info | Built, owner hand-check pending | Spec `148`: pills About, Contacts, Links; logos on About; framed Call, Email and Copy buttons; the manager Player Hub card on Club profile (toggle chips). |
 | League page (Schedule, Teams, Conditions) | In progress | Decisions in section 8 applied (title, rhythm, badges, counter cards, one Add button, round social buttons, Season pill beside the title); icons middle path proposed (the comparison switch is removed); the icon rule is still open; return navigation (section 7a) on every link that leaves the page; table rows have no chevron; kebab Actions menus on Schedule rows (Open Match, Edit Match, Share Match last: our matches only, as the Matches list has no row menu; Share Match opens `ShareMatchDialog`, `docs/specs/131`) and Teams tiles (our team: Open Team, Remove from League; league team: Edit League Team, Deactivate or Reactivate, Remove) |
 | League edit | In progress | Revamped per `docs/specs/128` (built, pending the owner's browser check): four tabs (Details, Branding, Playing Conditions, Contacts), Season pill on Details and Playing Conditions only, season dates row at the top of Details, 36 px compact fields, tidy Playing Conditions grid; Back, Cancel and Save honour `returnTo` (2026-10-31) |
 | Leagues list | In progress | Applied: FILTER tag removed app-wide (pointer, hover lift, green ring instead); flat filter bar (`bare` + `viewControlsInline`, no floating labels in the flat bar); flat table and flat cards (hairline, hover lift); toolbar fused into the table card (standalone toolbar card over Cards and empty states); no count text; return navigation (section 7a): every destination carries the list as `returnTo`; table rows have no chevron; one kebab Actions menu per row and card (Open League, Open Schedule, Open Teams, Open Conditions, Edit League Details, Add Match, Import Schedule, Share League, Duplicate League); the old Share icon and the card footer bar are gone; dynamic Cards grid with a dashed Add League card |
@@ -193,6 +194,7 @@ Recorded here so no Hub page invents a one-off layout; the specs (`121`, `135`, 
 - **Gold means one thing:** the selected pill, the primary button, a headline number. Facts are cream.
 - **Phone (390 px).** Compact counters stack value over label and wrap; tables keep the name column and move secondary values under the name; a grid track is `minmax(0, 1fr)` (a bare `1fr` lets one wide child push the page past the screen).
 - **Watch Live** is a full-window theatre page (a portal), not a panel.
+- **Club info (spec 148):** framed icon buttons also carry Call, Email and Copy; the Hub contact directory is read-only and never exported; logos are shown on About itself (no pill); a missing value in a drawn column reads "Not shared".
 
 ## 10. Per-page review checklist
 Copy into the PR description for each page.

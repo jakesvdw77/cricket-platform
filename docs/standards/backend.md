@@ -216,3 +216,9 @@ A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `Security
 
 - **Unit** — JUnit 5, pure logic, no Spring context.
 - **Integration** — `@SpringBootTest` + Testcontainers Postgres via `AbstractIntegrationTest` (`@ServiceConnection`-based, no local Postgres required to run).
+
+## Player Hub Club info (spec 148)
+
+- The club switches are eight columns on `club_profile` (`hub_info_*`), read and written **only** by `ClubHubSettingsService` (`/api/v1/manage/clubs/{clubId}/hub-settings`, club administrator only); the club profile `PUT` never resets them; a club with no profile row reads the defaults (organisation facts on, logo download and the directory off).
+- The two Hub reads (`MePlayerClubInfoController`) authorise with `MyPlayerAccess.resolve` first; the directory is club contacts only (`ClubContact`), never joined to `person`, `player_profile` or `person_link`, so a player, parent or agent can never be returned or searched; a junior's own login gets 404 on the directory (`HeldPlayer.canSeeClubDirectory()`).
+- Responses carry `Cache-Control: private, no-store`; a directory read writes one INFO line with ids and counts and never a name, number or email; the number of SQL statements per read is fixed regardless of the number of contacts; paging is server side (size 25, at most 50).
