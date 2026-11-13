@@ -340,6 +340,23 @@ class LinkedAccountCannotReachManagerSurfaceIntegrationTest extends AbstractLink
     }
 
     @Test
+    void aPersonWithOnlyPersonLinksIsForbiddenOnHubSettingsGetAndPut() throws Exception {
+        Club club = club("Hillcrest");
+        Person kid = playerPerson("Sam", "Smith", CHILD_DOB);
+        profile(club, kid, null);
+        Person linkOnly = account("Pat", "Parent");
+        link(linkOnly, kid, club, true);
+        String all = "{\"identityShown\":true,\"contactShown\":true,\"linksShown\":true,\"logosShown\":true,"
+                + "\"logoDownloadAllowed\":false,\"directoryShown\":true,\"directoryPhoneShown\":true,\"directoryEmailShown\":true}";
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{id}/hub-settings", club.getId()).with(as(linkOnly)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/manage/clubs/{id}/hub-settings", club.getId()).with(as(linkOnly))
+                        .contentType(MediaType.APPLICATION_JSON).content(all))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void theSweepCoversTheLinkFeatureOperationsAndTheCheckedInSchemaDocumentsThem() throws Exception {
         Map<String, Object> root = load();
         @SuppressWarnings("unchecked")
@@ -350,6 +367,8 @@ class LinkedAccountCannotReachManagerSurfaceIntegrationTest extends AbstractLink
                 "/api/v1/me/invitations", "/api/v1/me/profiles", "/api/v1/me/register", "/api/v1/me/players",
                 "/api/v1/me/players/{playerKey}", "/api/v1/me/players/{playerKey}/agents",
                 "/api/v1/me/players/{playerKey}/polls", "/api/v1/me/players/{playerKey}/polls/{pollId}/answers",
+                "/api/v1/me/players/{playerKey}/club-info", "/api/v1/me/players/{playerKey}/club-info/contacts",
+                "/api/v1/manage/clubs/{clubId}/hub-settings",
                 "/api/v1/manage/clubs/{clubId}/link-requests", "/api/v1/manage/clubs/{clubId}/link-requests/summary",
                 "/api/v1/manage/clubs/{clubId}/player-accounts", "/api/v1/manage/clubs/{clubId}/players/{playerId}/links",
                 "/api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}/make-main");
@@ -358,7 +377,9 @@ class LinkedAccountCannotReachManagerSurfaceIntegrationTest extends AbstractLink
                 "GET /api/v1/manage/clubs/{clubId}/link-requests",
                 "POST /api/v1/manage/clubs/{clubId}/link-requests/{requestId}/approve",
                 "GET /api/v1/manage/clubs/{clubId}/player-accounts",
-                "DELETE /api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}");
+                "DELETE /api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}",
+                "GET /api/v1/manage/clubs/{clubId}/hub-settings",
+                "PUT /api/v1/manage/clubs/{clubId}/hub-settings");
         @SuppressWarnings("unchecked")
         Map<String, Object> schemas = (Map<String, Object>) ((Map<String, Object>) root.get("components")).get("schemas");
         @SuppressWarnings("unchecked")
