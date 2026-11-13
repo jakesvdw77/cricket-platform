@@ -147,6 +147,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
         preferredOurs,
         side: chosenSide,
         layout,
+        lineupOrder: choices.match.lineupOrder,
         initialsOnly: initials.value,
         leagueName,
         seasonLabel,
@@ -155,7 +156,7 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
         directions: directionsTarget,
         facts: tickedFacts,
       }),
-    [chosenContent, match, sides, ownKeys, preferredOurs, chosenSide, layout, initials.value, leagueName, seasonLabel, data.clubProfile?.name, weather.summary, directionsTarget, tickedFacts],
+    [chosenContent, match, sides, ownKeys, preferredOurs, chosenSide, layout, choices.match.lineupOrder, initials.value, leagueName, seasonLabel, data.clubProfile?.name, weather.summary, directionsTarget, tickedFacts],
   )
 
   const weatherReason = weather.summary
@@ -198,6 +199,8 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
       setLayout(value)
       updateChoices({ match: { layout: value } })
     },
+    lineupOrder: choices.match.lineupOrder,
+    onLineupOrderChange: (value) => updateChoices({ match: { lineupOrder: value } }),
     weatherReason,
     directionsReason,
     facts: data.facts,

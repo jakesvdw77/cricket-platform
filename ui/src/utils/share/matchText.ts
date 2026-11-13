@@ -48,7 +48,7 @@ function lineupLines(lineup: MatchShareLineup, options: MatchTextOptions, headin
   let position = 0
   lineup.players.forEach((player: MatchSharePlayer) => {
     const marks = `${player.captain ? ' (C)' : ''}${player.keeper ? ' (WK)' : ''}`
-    const number = player.order != null ? `${(position += 1)}. ` : ''
+    const number = lineup.numbered && player.order != null ? `${(position += 1)}. ` : ''
     const emoji = options.emoji ? `${ROLE_EMOJI[player.role]}${player.keeper ? '🧤' : ''} ` : ''
     lines.push(`${emoji}${number}${player.name}${marks}`)
   })

@@ -5,7 +5,7 @@ import type { WeatherSummary } from '../weather/wmo'
 import { daysUntil } from '../weather/forecastWindow'
 import { shareName } from './shareName'
 import { countdownWording, usesLineup } from './matchShareFormats'
-import type { MatchContent, MatchLayout, MatchSideChoice } from './matchShareFormats'
+import type { MatchContent, MatchLayout, MatchLineupOrder, MatchSideChoice } from './matchShareFormats'
 import type { FunFact } from './matchFunFacts'
 import { googleMapsDirectionsUrl } from '../directions'
 import type { DirectionsTarget } from '../fieldLocation'
@@ -31,6 +31,8 @@ export interface MatchShareLineup {
   own: boolean
   players: MatchSharePlayer[]
   twelfthMan: string | null
+  // docs/specs/144: true when the list is in batting order, so the generators draw the position numbers; false for an alphabetical list.
+  numbered: boolean
 }
 
 // docs/specs/133 (Match share): the Directions line. Field name, a Google Maps link and the access note when set. Never a person.
@@ -87,6 +89,8 @@ export interface BuildMatchShareInput {
   preferredOurs?: 'home' | 'away' | null
   side: MatchSideChoice
   layout: MatchLayout
+  // docs/specs/144: how the lineups are listed; omitted means batting order (every existing caller is unchanged).
+  lineupOrder?: MatchLineupOrder
   initialsOnly: boolean
   leagueName: string | null
   seasonLabel: string | null
@@ -113,28 +117,38 @@ export function matchDateParts(matchDate: string): { dateIso: string; dayLabel: 
   }
 }
 
-// The selected XI of a side in batting order (players without a position after the numbered ones; the 12th man is separate).
-export function lineupOf(side: TeamSheetSide, own: boolean, logoUrl: string | null, initialsOnly: boolean): MatchShareLineup {
+// Surname then first name, ignoring case and accents (the same collation as the availability responses list).
+const byName = (a: { lastName: string; firstName: string }, b: { lastName: string; firstName: string }): number =>
+  a.lastName.localeCompare(b.lastName, undefined, { sensitivity: 'base' }) || a.firstName.localeCompare(b.firstName, undefined, { sensitivity: 'base' })
+
+// The selected XI of a side, in batting order (players without a position after the numbered ones) or alphabetical (docs/specs/144);
+// the 12th man is always separate and last.
+export function lineupOf(side: TeamSheetSide, own: boolean, logoUrl: string | null, initialsOnly: boolean, order: MatchLineupOrder = 'BATTING'): MatchShareLineup {
   const squadById = new Map(side.squad.map((member) => [member.playerProfileId, member]))
   const players = side.side?.players ?? []
   const twelfthId = side.side?.twelfthManPlayerId ?? null
-  const nameOf = (playerProfileId: string): string => {
+  // The real name of a player, before shareName turns it into initials, so an alphabetical list never reorders when the initials switch flips.
+  const personOf = (playerProfileId: string) => {
     const member = squadById.get(playerProfileId)
     const entry = players.find((player) => player.playerProfileId === playerProfileId)
-    const person = member
+    return member
       ? { id: playerProfileId, firstName: member.firstName, lastName: member.lastName }
       : { id: playerProfileId, firstName: entry?.firstName ?? '', lastName: entry?.lastName ?? '' }
-    return shareName(person, initialsOnly) || 'Unknown player'
   }
+  const nameOf = (playerProfileId: string): string => shareName(personOf(playerProfileId), initialsOnly) || 'Unknown player'
   const rows = players.filter((player) => player.playerProfileId !== twelfthId)
   const positioned = rows.filter((row) => row.battingOrder != null).sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
   const waiting = rows.filter((row) => row.battingOrder == null)
+  const batting = order === 'BATTING'
+  // Batting order: the numbered players first, then the ones still waiting for a position. Alphabetical: everyone by name.
+  const listed = batting ? [...positioned, ...waiting] : [...rows].sort((a, b) => byName(personOf(a.playerProfileId), personOf(b.playerProfileId)))
   return {
     teamName: side.teamName,
     logoUrl,
     own,
     twelfthMan: twelfthId ? nameOf(twelfthId) : null,
-    players: [...positioned, ...waiting].map((row) => ({
+    numbered: batting,
+    players: listed.map((row) => ({
       order: row.battingOrder ?? null,
       name: nameOf(row.playerProfileId),
       captain: side.side?.captainPlayerId === row.playerProfileId,
@@ -159,7 +173,7 @@ export function buildMatchShareModel(input: BuildMatchShareInput): MatchShareMod
   const { ours, opposition } = sideRoles(ownKeys, input.preferredOurs)
   const sideOf = (key: 'home' | 'away') => (key === 'home' ? sides[0] : sides[1])
   const logoOf = (key: 'home' | 'away') => (key === 'home' ? input.logos.home : input.logos.away)
-  const lineupFor = (key: 'home' | 'away') => lineupOf(sideOf(key), ownKeys.includes(key), logoOf(key), input.initialsOnly)
+  const lineupFor = (key: 'home' | 'away') => lineupOf(sideOf(key), ownKeys.includes(key), logoOf(key), input.initialsOnly, input.lineupOrder)
 
   const keys: ('home' | 'away')[] = []
   if (usesLineup(input.content)) {
