@@ -58,13 +58,12 @@ export function HubClubAbout({ info }: { info: MyClubInfo }) {
   const socials = [...(links?.website ? [{ platform: 'Website', url: links.website }] : []), ...(links?.social ?? [])]
   return (
     <Box data-testid="hub-club-about" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
-      <HubClubImages clubName={info.clubName} logos={logos} />
+      <HubClubImages clubName={info.clubName} logos={logos} trailing={<HubSocialIconRow links={socials} ownerLabel={info.clubName} justify="flex-end" />} />
       {facts.length > 0 && (
         <FactsCard title="Club details" testId="club-facts">
           {facts.map((fact, index) => <Fact key={fact.label} label={fact.label} value={fact.value} action={fact.action} last={index >= facts.length - (facts.length % 2 === 0 ? 2 : 1)} />)}
         </FactsCard>
       )}
-      <HubSocialIconRow links={socials} ownerLabel={info.clubName} justify="flex-start" />
     </Box>
   )
 }

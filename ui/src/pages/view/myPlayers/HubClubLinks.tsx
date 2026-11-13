@@ -20,7 +20,7 @@ export function HubClubLinks({ info }: { info: MyClubInfo }) {
   if (links.length === 0) return null
   return (
     <Box data-testid="hub-club-links" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
-      <HubSocialIconRow links={links} ownerLabel={info.clubName} justify="flex-start" />
+      <HubSocialIconRow links={links} ownerLabel={info.clubName} justify="flex-end" />
       <FactsCard title="Club links" single>
         <Box role="list" sx={{ display: 'contents' }}>
           {links.map((link, index) => (

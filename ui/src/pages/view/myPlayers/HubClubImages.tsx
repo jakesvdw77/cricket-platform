@@ -50,12 +50,13 @@ export function HubClubLogo({ clubName, url, downloadable }: { clubName: string;
 }
 
 // The top of About: the banner (when there is one), then the logo beside the club name.
-export function HubClubImages({ clubName, logos, children }: { clubName: string; logos: MyClubLogos | null; children?: ReactNode }) {
+// `trailing` sits at the right end of the logo and name row (owner, 2026-11-13: the social icons are right aligned in the header row).
+export function HubClubImages({ clubName, logos, children, trailing }: { clubName: string; logos: MyClubLogos | null; children?: ReactNode; trailing?: ReactNode }) {
   const downloadable = Boolean(logos?.downloadable)
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       {logos?.bannerUrl && <HubClubBanner clubName={clubName} url={logos.bannerUrl} downloadable={downloadable} />}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
         <HubClubLogo clubName={clubName} url={logos?.logoUrl ?? null} downloadable={downloadable} />
         <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
           <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 28, lineHeight: 1.1, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.sand, overflowWrap: 'anywhere' }}>
@@ -63,6 +64,7 @@ export function HubClubImages({ clubName, logos, children }: { clubName: string;
           </Typography>
           {children}
         </Box>
+        {trailing && <Box sx={{ ml: 'auto', flex: 'none', display: 'flex', justifyContent: 'flex-end' }}>{trailing}</Box>}
       </Box>
     </Box>
   )

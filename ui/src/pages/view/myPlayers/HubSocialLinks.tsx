@@ -6,6 +6,8 @@ import LanguageIcon from '@mui/icons-material/Language'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import XIcon from '@mui/icons-material/X'
 import YouTubeIcon from '@mui/icons-material/YouTube'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp'
+import PinterestIcon from '@mui/icons-material/Pinterest'
 import { Button } from '../../../components/Button'
 import { hubFramedIconSx, hubOutlineButton } from './hubStyle'
 import { isHttps } from './leagueFormat'
@@ -27,6 +29,19 @@ export const SOCIAL_HOSTS: [RegExp, string, ReactNode][] = [
   [/(^|\.)linkedin\.com$/, 'LinkedIn', <LinkedInIcon key="l" />],
 ]
 
+// The network a link is for is the stored `platform` first (the club picked it, and its URL may be a short link such as fb.me or a
+// vanity host), then the URL's host. Owner, 2026-11-13: every icon showed as a globe because only the host was read.
+const PLATFORM_ICONS: Record<string, { name: string; icon: ReactNode }> = {
+  facebook: { name: 'Facebook', icon: <FacebookIcon /> },
+  instagram: { name: 'Instagram', icon: <InstagramIcon /> },
+  x: { name: 'X', icon: <XIcon /> },
+  twitter: { name: 'X', icon: <XIcon /> },
+  youtube: { name: 'YouTube', icon: <YouTubeIcon /> },
+  linkedin: { name: 'LinkedIn', icon: <LinkedInIcon /> },
+  whatsapp: { name: 'WhatsApp', icon: <WhatsAppIcon /> },
+  pinterest: { name: 'Pinterest', icon: <PinterestIcon /> },
+}
+
 export function socialFor(url: string, fallback: string): { name: string; icon: ReactNode } {
   let host = ''
   try {
@@ -45,7 +60,9 @@ export interface HubLink {
 
 // The name a link is shown under: "Website" for the website, else the known network or the capitalised platform text.
 export function describeLink(link: HubLink): { name: string; icon: ReactNode } {
-  return link.platform === 'Website' ? { name: 'Website', icon: <LanguageIcon /> } : socialFor(link.url, link.platform.charAt(0).toUpperCase() + link.platform.slice(1))
+  if (link.platform === 'Website' || link.platform.toLowerCase() === 'website') return { name: 'Website', icon: <LanguageIcon /> }
+  const byPlatform = PLATFORM_ICONS[link.platform.trim().toLowerCase()]
+  return byPlatform ?? socialFor(link.url, link.platform.charAt(0).toUpperCase() + link.platform.slice(1))
 }
 
 // A row of framed icon buttons (https links only). Without `ownerLabel` the accessible name is "Facebook (opens in a new tab)";
