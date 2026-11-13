@@ -22,6 +22,7 @@ function renderFindYourClubLogin() {
         <Routes>
           <Route path="/" element={<FindYourClubLogin />} />
           <Route path="/login" element={<div>Login route</div>} />
+          <Route path="/register" element={<div>Register route</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -195,6 +196,16 @@ describe('FindYourClubLogin', () => {
     await user.click(screen.getByRole('button', { name: 'Platform admin? Log in here' }))
 
     await waitFor(() => expect(screen.getByText('Login route')).toBeInTheDocument())
+    expect(searchClubs).not.toHaveBeenCalled()
+  })
+
+  it('offers Create Account for a visitor with no account, going to /register without searching', async () => {
+    const user = userEvent.setup()
+    renderFindYourClubLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+
+    await waitFor(() => expect(screen.getByText('Register route')).toBeInTheDocument())
     expect(searchClubs).not.toHaveBeenCalled()
   })
 })

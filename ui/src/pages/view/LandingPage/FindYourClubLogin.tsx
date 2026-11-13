@@ -229,6 +229,13 @@ export default function FindYourClubLogin({ onNavigate }: { onNavigate?: () => v
       {/* Platform admins aren't a member of any club (docs/specs/005-admin-login.md): the club-free path straight to
           Keycloak login, kept apart from the club search. */}
       <Divider sx={{ borderColor: HUB.lineSoft }} />
+      {/* Owner, 2026-11-13: a parent, guardian or adult player with no account yet creates one here (no club needed). */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+        <Typography sx={{ color: HUB.muted, fontSize: 14 }}>New here? Parents and players can make an account first.</Typography>
+        <Button variant="outlined" size="small" onClick={() => navigate('/register')} data-testid="create-account" sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+          Create Account
+        </Button>
+      </Box>
       <Button variant="outlined" size="small" onClick={() => navigate('/login')} sx={{ ...hubOutlineButton, minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
         Platform admin? Log in here
       </Button>
