@@ -259,12 +259,27 @@ describe('LeagueTeamsView', () => {
 
     expect(await screen.findByText('No teams in this league yet for 2026.')).toBeInTheDocument()
     expect(screen.queryByTestId('league-teams-own')).not.toBeInTheDocument()
-    const addTeam = screen.getByRole('button', { name: 'Add Team' })
+    // docs/specs/151: Add Team is its own button on the tab row as well as in the empty state; the menu only holds Copy and Share.
+    const tabActions = screen.getByTestId('league-tab-actions')
+    expect(within(tabActions).getByRole('button', { name: 'Add Team' })).toHaveClass('MuiButton-contained')
+    expect(within(tabActions).getByRole('button', { name: 'Manage Teams' })).toBeInTheDocument()
+    const addTeam = screen.getAllByRole('button', { name: 'Add Team' }).find((button) => !tabActions.contains(button)) as HTMLElement
     expect(addTeam).toHaveClass('MuiButton-contained')
-    // The tab row still carries the Manage Teams menu (its Add Team is a menu item, not a button).
-    expect(within(screen.getByTestId('league-tab-actions')).getByRole('button', { name: 'Manage Teams' })).toBeInTheDocument()
     await user.click(addTeam)
     expect(await screen.findByRole('dialog', { name: 'Add a team' })).toBeInTheDocument()
+  })
+
+  it('shows a short line of a league team\'s notes under its name, and nothing for a team without notes', async () => {
+    mocks.listLeagueTeams.mockResolvedValue([
+      makeLeagueTeam({ id: 'lt-a', name: 'Riverside Occasionals', notes: 'Captain: Sam, 082 555 0100' }),
+      makeLeagueTeam({ id: 'lt-b', name: 'Police', notes: null }),
+    ])
+
+    renderLeagueView(TEAMS_PATH)
+
+    const notes = await screen.findAllByTestId('league-team-note')
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toHaveTextContent('Captain: Sam, 082 555 0100')
   })
 
   it('does not show the empty copy while the teams are still loading', async () => {
@@ -301,6 +316,11 @@ describe('LeagueTeamsView', () => {
   describe('add actions', () => {
     // The tab row's Manage Teams menu, then one of its items.
     async function openManageTeams(user: ReturnType<typeof userEvent.setup>, item: string) {
+      // docs/specs/151: Add Team is a button of its own beside the menu, no longer one of its items.
+      if (item === 'Add Team') {
+        await user.click(await within(await screen.findByTestId('league-tab-actions')).findByRole('button', { name: 'Add Team' }))
+        return
+      }
       await user.click(await screen.findByRole('button', { name: 'Manage Teams' }))
       await user.click(await screen.findByRole('menuitem', { name: new RegExp(item) }))
     }
@@ -309,7 +329,7 @@ describe('LeagueTeamsView', () => {
       return new AxiosError('failed', undefined, undefined, undefined, { status, data: { detail } } as AxiosResponse)
     }
 
-    it('puts one white Manage Teams menu in the tab actions (Add Team, Copy Teams, Share Teams), and no buttons in the panel headers', async () => {
+    it('puts a filled Add Team button and one white Manage Teams menu (Copy Teams, Share Teams) in the tab actions, and no buttons in the panel headers', async () => {
       const user = userEvent.setup()
       renderLeagueView(TEAMS_PATH)
 
@@ -323,10 +343,11 @@ describe('LeagueTeamsView', () => {
       const actions = screen.getByTestId('league-tab-actions')
       const trigger = within(actions).getByRole('button', { name: 'Manage Teams' })
       expect(trigger).toHaveClass('MuiButton-outlined')
-      expect(within(actions).getAllByRole('button')).toHaveLength(1)
+      expect(within(actions).getAllByRole('button')).toHaveLength(2)
+      expect(within(actions).getByRole('button', { name: 'Add Team' })).toHaveClass('MuiButton-contained')
       await user.click(trigger)
       const items = (await screen.findAllByRole('menuitem')).map((item) => item.querySelector('span')?.textContent)
-      expect(items).toEqual(['Add Team', 'Copy Teams', 'Share Teams'])
+      expect(items).toEqual(['Copy Teams', 'Share Teams'])
     })
 
     it('Copy Teams opens the Copy league teams dialog directly', async () => {
@@ -377,10 +398,12 @@ describe('LeagueTeamsView', () => {
       expect(screen.queryByRole('option', { name: '1st XI' })).not.toBeInTheDocument()
       expect(screen.queryByRole('option', { name: 'Old XI' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('option', { name: '2nd XI' }))
-
+      // docs/specs/151: the dialog stays open after a link so the next team can be added, and closes with Done
+      expect(await screen.findByText(/2nd XI was added to this season\. Add the next team, or press Done\./)).toBeInTheDocument()
       expect(mocks.createLeagueAffiliation).toHaveBeenCalledWith('test-club-id', 'league-1', 'team-2', 'season-1')
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(await screen.findByRole('link', { name: '2nd XI' })).toBeInTheDocument()
-      expect(await screen.findByText('2nd XI was added to this season.')).toBeInTheDocument()
     })
 
     it('creates a league team through the form, refreshes the list and shows the outcome', async () => {
@@ -404,6 +427,42 @@ describe('LeagueTeamsView', () => {
       )
       expect(await screen.findByText('Police was added.')).toBeInTheDocument()
       expect(await screen.findByRole('heading', { name: 'League teams · 2' })).toBeInTheDocument()
+    })
+
+    // docs/specs/151, slice D
+    it('Save And Add Another keeps the form open and empty, and says what was added', async () => {
+      const user = userEvent.setup()
+      mocks.createLeagueTeam.mockResolvedValue(makeLeagueTeam({ id: 'lt-new', name: 'Police' }))
+
+      renderLeagueView(TEAMS_PATH)
+      await screen.findByText('Riverside Occasionals')
+      await openManageTeams(user, 'Add Team')
+      await user.click(await screen.findByRole('button', { name: /Opponent Team/ }))
+      await user.type(await screen.findByLabelText(/Team name/), 'Police')
+      await user.click(screen.getByRole('button', { name: 'Save And Add Another' }))
+
+      await waitFor(() => expect(mocks.createLeagueTeam).toHaveBeenCalledTimes(1))
+      expect(await screen.findByText('Police was added. Add the next team.')).toBeInTheDocument()
+      // the dialog is still there, with a fresh empty form
+      expect(screen.getByRole('dialog', { name: 'Add league team' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByLabelText(/Team name/)).toHaveValue(''))
+    })
+
+    it('saves the notes with a new league team', async () => {
+      const user = userEvent.setup()
+      mocks.createLeagueTeam.mockResolvedValue(makeLeagueTeam({ id: 'lt-new', name: 'Police' }))
+
+      renderLeagueView(TEAMS_PATH)
+      await screen.findByText('Riverside Occasionals')
+      await openManageTeams(user, 'Add Team')
+      await user.click(await screen.findByRole('button', { name: /Opponent Team/ }))
+      await user.type(await screen.findByLabelText(/Team name/), 'Police')
+      await user.type(screen.getByLabelText('Notes'), 'Home ground is the school')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() =>
+        expect(mocks.createLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', expect.objectContaining({ name: 'Police', notes: 'Home ground is the school' })),
+      )
     })
 
     it('shows a 409 duplicate name against the Name field', async () => {

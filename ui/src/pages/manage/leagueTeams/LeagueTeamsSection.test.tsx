@@ -103,7 +103,7 @@ describe('LeagueTeamsSection', () => {
     await user.type(screen.getByLabelText(/Team name/), 'Police')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() =>
-      expect(createLeagueTeam).toHaveBeenCalledWith('club-1', 'league-1', 'season-2', { name: 'Police', abbreviation: null, logoUrl: null }),
+      expect(createLeagueTeam).toHaveBeenCalledWith('club-1', 'league-1', 'season-2', { name: 'Police', abbreviation: null, logoUrl: null, notes: null }),
     )
   })
 

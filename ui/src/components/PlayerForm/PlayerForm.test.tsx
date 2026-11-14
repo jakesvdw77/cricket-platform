@@ -184,6 +184,8 @@ describe('PlayerForm', () => {
       bowlingArm: null,
       bowlingType: null,
       isWicketKeeper: false,
+      battingPosition: null,
+      isPartTimeBowler: false,
     })
   })
 
@@ -219,12 +221,18 @@ describe('PlayerForm', () => {
     await user.click(screen.getByLabelText('Bowling type'))
     await user.click(await screen.findByRole('option', { name: 'Off break' }))
 
+    await user.click(screen.getByLabelText('Batting position'))
+    await user.click(await screen.findByRole('option', { name: 'Middle Order' }))
+
+    await user.click(screen.getByLabelText('Part-time bowler'))
     await user.click(screen.getByLabelText('Wicketkeeper'))
 
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as PlayerFormValues
+    expect(payload.battingPosition).toBe('MIDDLE_ORDER')
+    expect(payload.isPartTimeBowler).toBe(true)
     expect(payload.gender).toBe('MALE')
     expect(payload.jerseyNumber).toBe(7)
     expect(payload.battingStance).toBe('RIGHT_HANDED')

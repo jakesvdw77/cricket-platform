@@ -291,7 +291,7 @@ class TeamSquadServiceImplTest {
         stubPlayerLookup(profile);
         when(playerMapper.toSquadMemberDto(any(), any(), any(), any())).thenReturn(new TeamSquadMemberDto(
                 memberId, playerId, profile.getPersonId(), clubId, "Joe", "Bloggs", null, Gender.MALE,
-                null, null, null, null, null, null, null, null, null, null, null, false, true,
+                null, null, null, null, null, null, null, null, null, null, null, false, null, false, true,
                 List.of(), null, 9, false));
 
         var dto = service.update(authentication, clubId, teamId, seasonId, playerId, 9, false);

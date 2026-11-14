@@ -47,7 +47,44 @@ class PlayingAreaWriterTest {
     private static PlayingAreaRequest request(AddressDto address, String mapUrl) {
         return new PlayingAreaRequest(
                 "  Irene Oval ", PlayingAreaCategory.CLUB, PlayingAreaOwnerType.CLUB, " Irene CC ", address, mapUrl, "  gate B ",
-                null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
+    }
+
+    @Test
+    void applyTrimsTheContactAndPhotoAndTurnsBlanksIntoNull() {
+        PlayingArea area = new PlayingArea();
+        PlayingAreaRequest base = request(address("1 Main Rd", "Pretoria", "ZA"), null);
+
+        writer().apply(area, new PlayingAreaRequest(
+                base.name(), base.category(), base.ownerType(), base.ownerName(), base.address(), base.mapUrl(), base.locationNotes(),
+                null, null, null, null, null, "  Sam Smith ", " 082 123 4567 ", " /media/oval.jpg "));
+
+        assertThat(area.getContactName()).isEqualTo("Sam Smith");
+        assertThat(area.getContactPhone()).isEqualTo("082 123 4567");
+        assertThat(area.getPhotoUrl()).isEqualTo("/media/oval.jpg");
+
+        writer().apply(area, new PlayingAreaRequest(
+                base.name(), base.category(), base.ownerType(), base.ownerName(), base.address(), base.mapUrl(), base.locationNotes(),
+                null, null, null, null, null, "  ", "", null));
+
+        assertThat(area.getContactName()).isNull();
+        assertThat(area.getContactPhone()).isNull();
+        assertThat(area.getPhotoUrl()).isNull();
+    }
+
+    @Test
+    void applyRefusesAContactNameOrNumberThatIsTooLong() {
+        PlayingArea area = new PlayingArea();
+        PlayingAreaRequest base = request(address("1 Main Rd", "Pretoria", "ZA"), null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> writer().apply(area, new PlayingAreaRequest(
+                        base.name(), base.category(), base.ownerType(), base.ownerName(), base.address(), base.mapUrl(), base.locationNotes(),
+                        null, null, null, null, null, "x".repeat(101), null, null)))
+                .isInstanceOf(com.cricketlegend.exception.ValidationException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> writer().apply(area, new PlayingAreaRequest(
+                        base.name(), base.category(), base.ownerType(), base.ownerName(), base.address(), base.mapUrl(), base.locationNotes(),
+                        null, null, null, null, null, null, "9".repeat(31), null)))
+                .isInstanceOf(com.cricketlegend.exception.ValidationException.class);
     }
 
     @Test
@@ -70,7 +107,7 @@ class PlayingAreaWriterTest {
             BigDecimal lat, BigDecimal lng, BigDecimal accessLat, BigDecimal accessLng, String note) {
         return new PlayingAreaRequest(
                 "Irene Oval", PlayingAreaCategory.CLUB, PlayingAreaOwnerType.CLUB, "Irene CC",
-                address("1 Main Rd", "Pretoria", "ZA"), null, null, lat, lng, accessLat, accessLng, note);
+                address("1 Main Rd", "Pretoria", "ZA"), null, null, lat, lng, accessLat, accessLng, note, null, null, null);
     }
 
     private static BigDecimal bd(String value) {

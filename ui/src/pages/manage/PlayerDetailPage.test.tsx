@@ -354,14 +354,14 @@ describe('PlayerDetailPage', () => {
     expect(within(card).getAllByTestId('player-info-field').every((field) => field.textContent?.includes('–'))).toBe(true)
   })
 
-  it('keeps the three chips inside the Cricket card while the statistics load or fail, and puts them first', async () => {
+  it('keeps the five chips inside the Cricket card while the statistics load or fail, and puts them first', async () => {
     listPlayers.mockResolvedValue([makePlayer({ id: 'player-1' })])
     usePlayerStats.mockReturnValue({ data: undefined, isPending: true, refetch: vi.fn() })
     const { unmount } = renderPage('/manage/players/player-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     let card = screen.getByTestId('player-stats-card')
-    expect(within(card).getAllByTestId('player-info-chip')).toHaveLength(3)
+    expect(within(card).getAllByTestId('player-info-chip')).toHaveLength(5)
     expect(within(card).getByLabelText('Loading statistics')).toBeInTheDocument()
     unmount()
 
@@ -370,9 +370,9 @@ describe('PlayerDetailPage', () => {
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     card = screen.getByTestId('player-stats-card')
     const chips = within(card).getAllByTestId('player-info-chip')
-    expect(chips).toHaveLength(3)
+    expect(chips).toHaveLength(5)
     const firstField = within(card).getAllByTestId('player-info-field')[0]
-    expect(chips[2].compareDocumentPosition(firstField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(chips[4].compareDocumentPosition(firstField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('offers Call and Email links for a phone number and an email, and omits them when there are none', async () => {
@@ -392,7 +392,7 @@ describe('PlayerDetailPage', () => {
     expect(screen.queryByRole('link', { name: 'Email' })).not.toBeInTheDocument()
   })
 
-  it('draws cricket info that is not on file as dashed chips, so the card keeps its three chips', async () => {
+  it('draws cricket info that is not on file as dashed chips, so the card keeps its five chips', async () => {
     listPlayers.mockResolvedValueOnce([
       makePlayer({ id: 'player-1', battingStance: null, bowlingArm: null, bowlingType: null, isWicketKeeper: false }),
     ])
@@ -401,8 +401,8 @@ describe('PlayerDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     const chips = screen.getAllByTestId('player-info-chip')
-    expect(chips.map((chip) => chip.textContent)).toEqual(['Batting: –', 'Bowling: –', 'Wicketkeeper: No'])
-    expect(chips.map((chip) => chip.getAttribute('data-on'))).toEqual(['false', 'false', 'false'])
+    expect(chips.map((chip) => chip.textContent)).toEqual(['Batting: –', 'Bowling: –', 'Bats: –', 'Part-time bowler: No', 'Wicketkeeper: No'])
+    expect(chips.map((chip) => chip.getAttribute('data-on'))).toEqual(['false', 'false', 'false', 'false', 'false'])
   })
 
   it('renders the full page with no error and no section chip when the player has no tagged sections', async () => {

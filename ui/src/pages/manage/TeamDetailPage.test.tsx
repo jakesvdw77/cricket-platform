@@ -272,6 +272,7 @@ function renderPage(initialPath: string, clubId?: string) {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="teams" element={<div>Team Directory Page</div>} />
             <Route path="teams/:teamId/stats" element={<StatsPageProbe />} />
+            <Route path="teams/:teamId/analysis" element={<div>Squad Analysis Page<LocationProbe /></div>} />
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page<LocationProbe /></div>} />
@@ -551,6 +552,22 @@ describe('TeamDetailPage', () => {
     renderPage('/manage/sections/section-1/teams/team-1?returnTo=%2F%2Fevil.example', 'test-club-id')
 
     expect(await screen.findByRole('link', { name: /Back to Teams/ })).toHaveAttribute('href', '/manage/teams')
+  })
+
+  // docs/specs/151, slice B
+  it('Squad Analysis is an outlined compact button beside View Stats and opens the analysis page with the season', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1', label: '2026' }), makeSeason({ id: 'season-2', label: '2025', active: false })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    const button = await screen.findByTestId('team-analysis')
+    expect(button).toHaveTextContent('Squad Analysis')
+    expect(button.className).toMatch(/MuiButton-outlined/)
+    expect(getComputedStyle(button).minHeight).toBe('32px')
+    await userEvent.click(button)
+    await screen.findByText('Squad Analysis Page')
+    expect(screen.getByTestId('probe-address').textContent ?? '').toContain('seasonId=season-2')
   })
 
   it('has ONE Manage Team menu holding Edit Team and View Stats, each carrying returnTo', async () => {

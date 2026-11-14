@@ -52,6 +52,35 @@ const SIMILAR = makeField({ id: 'field-9', name: 'Riverside Oval Ground', verifi
 
 // docs/specs/099-fields-directory.md
 describe('FieldFormFields', () => {
+  // docs/specs/151, slice C
+  describe('contact and photo', () => {
+    it('has a Contact and photo section with a person, a number and a quiet photo upload', () => {
+      render(<Harness />)
+
+      expect(screen.getByText('Contact and photo')).toBeInTheDocument()
+      expect(screen.getByLabelText('Contact person (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Contact number (optional)')).toHaveAttribute('type', 'tel')
+      // the form's one filled button is Save, so the upload is the white secondary button
+      expect(screen.getByRole('button', { name: /Upload Photo of the field/ }).className).toContain('MuiButton-outlined')
+    })
+
+    it('reports typing as patches and shows an existing contact', async () => {
+      let latest: FieldFormValues | undefined
+      render(<Harness initial={{ contactName: 'Sam Smith' }} onValues={(values) => (latest = values)} />)
+
+      expect(screen.getByLabelText('Contact person (optional)')).toHaveValue('Sam Smith')
+      await userEvent.type(screen.getByLabelText('Contact number (optional)'), '0825550100')
+      expect(latest?.contactPhone).toBe('0825550100')
+    })
+
+    it('shows the contact errors under the fields', () => {
+      render(<Harness errors={{ contactName: 'Contact person must be 100 characters or fewer', contactPhone: 'Contact number must be 30 characters or fewer' }} />)
+
+      expect(screen.getByText('Contact person must be 100 characters or fewer')).toBeInTheDocument()
+      expect(screen.getByText('Contact number must be 30 characters or fewer')).toBeInTheDocument()
+    })
+  })
+
   describe('the add-field dialog body', () => {
     it('asks for name, type, owner, address (city and country at minimum) and an optional map link only', () => {
       renderFields({ variant: 'dialog' })

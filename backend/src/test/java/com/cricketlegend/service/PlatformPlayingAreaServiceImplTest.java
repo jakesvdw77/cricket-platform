@@ -187,7 +187,7 @@ class PlatformPlayingAreaServiceImplTest {
         merged.setMergedIntoId(UUID.randomUUID());
         PlayingAreaRequest request = new PlayingAreaRequest(
                 "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
-                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null);
+                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null, null, null, null);
 
         org.mockito.Mockito.lenient()
                 .when(playingAreaRepository.findAll(
@@ -209,7 +209,7 @@ class PlatformPlayingAreaServiceImplTest {
         PlayingAreaRequest request = new PlayingAreaRequest(
                 "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
                 new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null,
-                new java.math.BigDecimal("-33.9"), new java.math.BigDecimal("18.4"), null, null, null);
+                new java.math.BigDecimal("-33.9"), new java.math.BigDecimal("18.4"), null, null, null, null, null, null);
         org.mockito.Mockito.lenient()
                 .when(playingAreaRepository.findAll(
                         any(org.springframework.data.jpa.domain.Specification.class),
@@ -229,7 +229,7 @@ class PlatformPlayingAreaServiceImplTest {
         PlayingArea unverified = stored(PlayingAreaVerificationStatus.UNVERIFIED);
         PlayingAreaRequest request = new PlayingAreaRequest(
                 "Renamed", PlayingAreaCategory.SCHOOL, PlayingAreaOwnerType.SCHOOL, "School",
-                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null);
+                new AddressDto(null, null, "Cape Town", null, "ZA", null), null, null, null, null, null, null, null, null, null, null);
         org.mockito.Mockito.lenient()
                 .when(playingAreaRepository.findAll(
                         any(org.springframework.data.jpa.domain.Specification.class),

@@ -248,3 +248,71 @@ describe('format screen', () => {
     expect(within(screen.getByRole('dialog')).getByText('Always on for junior leagues')).toBeInTheDocument()
   })
 })
+
+// docs/specs/151, slice D: share one team's schedule.
+describe('one team\'s share', () => {
+  function seededWithTwoTeamsPlaying(): QueryClient {
+    const client = seeded()
+    client.setQueryData([...leagueTeamsQueryKey('club-1', 'league-1', 's1'), 'active'], [
+      { id: 'lt1', name: 'Hilltop', abbreviation: null, logoUrl: null, active: true },
+      { id: 'lt2', name: 'Valley', abbreviation: null, logoUrl: null, active: true },
+    ])
+    client.setQueryData(['managed-club', 'club-1', 'leagues', 'league-1', 'matches', 's1'], [
+      { id: 'm1', homeTeamId: 't1', homeTeamName: 'Riverside 1', awayTeamId: null, awayLeagueTeamId: 'lt1', awayTeamName: 'Hilltop', matchDate: '2026-11-14T14:00:00', venue: 'Main oval', active: true },
+      { id: 'm2', homeTeamId: null, homeLeagueTeamId: 'lt2', homeTeamName: 'Valley', awayTeamId: null, awayLeagueTeamId: 'lt3', awayTeamName: 'Elsewhere', matchDate: '2026-11-15T14:00:00', venue: 'Far oval', active: true },
+    ])
+    return client
+  }
+
+  async function toWhatsApp(client: QueryClient) {
+    render(<Harness client={client} preselected={['SCHEDULE']} onClose={() => {}} />)
+    await screen.findByText('1 selected')
+  }
+
+  it('offers All Teams, our teams and the league teams in step 1', async () => {
+    await toWhatsApp(seededWithTwoTeamsPlaying())
+
+    await userEvent.click(screen.getByLabelText('Team'))
+    const options = (await screen.findAllByRole('option')).map((option) => option.textContent)
+    expect(options).toEqual(['All Teams', 'Riverside 1', 'Hilltop', 'Valley'])
+  })
+
+  it('shares every fixture by default', async () => {
+    await toWhatsApp(seededWithTwoTeamsPlaying())
+    await next()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await next()
+
+    const message = (await screen.findByRole('textbox', { name: 'Message text' })) as HTMLTextAreaElement
+    expect(message.value).toContain('Riverside 1')
+    expect(message.value).toContain('Valley')
+  })
+
+  it('narrows the schedule to the matches the chosen team plays and names the team', async () => {
+    await toWhatsApp(seededWithTwoTeamsPlaying())
+    await userEvent.click(screen.getByLabelText('Team'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Hilltop' }))
+    await next()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await next()
+
+    const message = (await screen.findByRole('textbox', { name: 'Message text' })) as HTMLTextAreaElement
+    expect(message.value).toContain('Riverside 1')
+    expect(message.value).not.toContain('Valley')
+    expect(message.value).not.toContain('Elsewhere')
+    expect(message.value).toContain('Hilltop')
+  })
+
+  it('finds an own team\'s matches by its team id', async () => {
+    await toWhatsApp(seededWithTwoTeamsPlaying())
+    await userEvent.click(screen.getByLabelText('Team'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Riverside 1' }))
+    await next()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await next()
+
+    const message = (await screen.findByRole('textbox', { name: 'Message text' })) as HTMLTextAreaElement
+    expect(message.value).toContain('Hilltop')
+    expect(message.value).not.toContain('Valley')
+  })
+})

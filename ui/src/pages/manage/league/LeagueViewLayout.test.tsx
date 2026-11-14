@@ -390,7 +390,9 @@ describe('LeagueViewLayout', () => {
 
       const actions = await screen.findByTestId('league-tab-actions')
       await waitFor(() => expect(actions).not.toBeEmptyDOMElement())
-      expect(within(actions).getAllByRole('button')).toHaveLength(1)
+      // docs/specs/151: the filled Add Team button sits beside the white Manage Teams menu.
+      expect(within(actions).getAllByRole('button')).toHaveLength(2)
+      expect(within(actions).getByRole('button', { name: 'Add Team' }).className).toContain('MuiButton-contained')
       expect(within(actions).getByRole('button', { name: 'Manage Teams' }).className).toContain('MuiButton-outlined')
       expect(screen.queryByRole('link', { name: 'Add match' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Edit conditions' })).not.toBeInTheDocument()
@@ -398,7 +400,7 @@ describe('LeagueViewLayout', () => {
 
     it.each([
       ['schedule', 'Manage Schedule', ['Create New Match', 'Import Schedule', 'Share Schedule']],
-      ['teams', 'Manage Teams', ['Add Team', 'Copy Teams', 'Share Teams']],
+      ['teams', 'Manage Teams', ['Copy Teams', 'Share Teams']],
       ['conditions', 'Manage Playing Conditions', ['Edit Playing Conditions', 'Share Playing Conditions', 'View Document']],
     ])('the %s tab menu "%s" lists its items in order, Share never first', async (tab, label, expected) => {
       const user = userEvent.setup()
@@ -564,12 +566,15 @@ describe('LeagueViewLayout', () => {
       expect(item).toHaveTextContent('League is inactive')
     })
 
-    it('opens the Add Team chooser from Manage Teams', async () => {
+    it('opens the Add Team chooser from the Add Team button', async () => {
       const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
 
-      await user.click(await screen.findByRole('button', { name: 'Manage Teams' }))
-      await user.click(screen.getByRole('menuitem', { name: /Add Team/ }))
+      // The tab row's own button (the empty state carries a second Add Team).
+      const addTeam = await within(await screen.findByTestId('league-tab-actions')).findByRole('button', { name: 'Add Team' })
+      // The button waits for the season to be known (it is disabled until then).
+      await waitFor(() => expect(addTeam).toBeEnabled())
+      await user.click(addTeam)
 
       expect(await screen.findByRole('dialog', { name: 'Add a team' })).toBeInTheDocument()
     })

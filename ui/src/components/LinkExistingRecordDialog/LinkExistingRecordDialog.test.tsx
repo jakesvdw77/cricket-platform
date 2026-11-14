@@ -75,6 +75,28 @@ describe('LinkExistingRecordDialog', () => {
       expect(onLink).toHaveBeenCalledTimes(1)
     })
 
+    // docs/specs/151: a dialog that stays open after each link closes with "Done"
+    it('labels the close button with cancelLabel when one is given', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      render(
+        <LinkExistingRecordDialog<Candidate>
+          open
+          onClose={onClose}
+          title="Link an existing thing"
+          candidates={CANDIDATES}
+          getOptionLabel={(option) => option.name}
+          onLink={vi.fn()}
+          cancelLabel="Done"
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('calls onClose when Cancel is clicked', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()

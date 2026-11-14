@@ -73,6 +73,48 @@ describe('FieldFormPage', { timeout: 20000 }, () => {
       expect(screen.getByText('Chosen from your browser. Change it if it is wrong.')).toBeInTheDocument()
     })
 
+    // docs/specs/151, Duplicate Field
+    it('opens a copy of the field with everything copied and the name moved to the next letter, and says so', async () => {
+      getPlayingArea.mockResolvedValue(makeField({ id: 'field-9', name: 'Irene Oval A', ownerName: 'Irene CC', contactName: 'Sam Smith', contactPhone: '082 555 0100', photoUrl: '/media/oval.jpg', linkedHome: true }))
+      renderPage('/manage/fixtures/fields/new?duplicateOf=field-9')
+
+      expect(await screen.findByRole('heading', { name: 'Add Field' })).toBeInTheDocument()
+      expect(getPlayingArea).toHaveBeenCalledWith('club-1', 'field-9')
+      expect(screen.getByLabelText('Name')).toHaveValue('Irene Oval B')
+      expect(screen.getByLabelText('Owner')).toHaveValue('Irene CC')
+      expect(screen.getByLabelText('City')).toHaveValue('Hilton')
+      expect(screen.getByLabelText('Contact person (optional)')).toHaveValue('Sam Smith')
+      expect(screen.getByLabelText('Contact number (optional)')).toHaveValue('082 555 0100')
+      expect(screen.getByTestId('field-copy-note')).toHaveTextContent('Copied from Irene Oval A')
+      // a copy of one of our fields starts as one of our fields
+      expect(screen.getByRole('checkbox', { name: /This is one of our fields/ })).toBeChecked()
+    })
+
+    it('saves the copy as a new field with the copied details', async () => {
+      const user = userEvent.setup()
+      getPlayingArea.mockResolvedValue(makeField({ id: 'field-9', name: 'Irene Oval A', ownerName: 'Irene CC', contactName: 'Sam Smith', photoUrl: '/media/oval.jpg' }))
+      createPlayingArea.mockResolvedValue(makeField({ id: 'new-2' }))
+      renderPage('/manage/fixtures/fields/new?duplicateOf=field-9')
+      await screen.findByTestId('field-copy-note')
+
+      await user.click(screen.getByRole('button', { name: 'Create Field' }))
+
+      await waitFor(() => expect(createPlayingArea).toHaveBeenCalledTimes(1))
+      expect(createPlayingArea).toHaveBeenCalledWith(
+        'club-1',
+        expect.objectContaining({ name: 'Irene Oval B', ownerName: 'Irene CC', contactName: 'Sam Smith', photoUrl: '/media/oval.jpg' }),
+        false,
+      )
+    })
+
+    it('has no copy note on an ordinary new field', async () => {
+      renderPage('/manage/fixtures/fields/new')
+
+      await screen.findByRole('heading', { name: 'Add Field' })
+      expect(screen.queryByTestId('field-copy-note')).not.toBeInTheDocument()
+      expect(getPlayingArea).not.toHaveBeenCalled()
+    })
+
     it('has the "one of our fields" switch off by default, and a new field is created without linking it home', async () => {
       const user = userEvent.setup()
       createPlayingArea.mockResolvedValue(makeField({ id: 'new-1' }))

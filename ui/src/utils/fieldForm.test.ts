@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  duplicateFieldForm,
   duplicateFieldId,
   effectiveOwnerType,
   emptyFieldForm,
   fieldFormFromField,
   fieldFormToPayload,
+  nextFieldName,
   validateFieldForm,
   validateMapUrl,
 } from './fieldForm'
@@ -147,5 +149,60 @@ describe('coordinates and the access point', () => {
     const values = fieldFormFromField(makeField({ latitude: -26.1325, longitude: 28.0567, accessLatitude: -26.2, accessLongitude: 28.1, accessNote: 'Gate 2' }))
     expect(values).toMatchObject({ latitude: '-26.1325', longitude: '28.0567', accessLatitude: '-26.2', accessLongitude: '28.1', accessNote: 'Gate 2' })
     expect(fieldFormToPayload(values)).toMatchObject({ latitude: -26.1325, accessLongitude: 28.1, accessNote: 'Gate 2' })
+  })
+})
+
+// docs/specs/151, slice C
+describe('nextFieldName', () => {
+  it.each([
+    ['Oval A', 'Oval B'],
+    ['Carltonville CC (A)', 'Carltonville CC (B)'],
+    ['Carltonville CC (Y)', 'Carltonville CC (Z)'],
+    ['Hilton College', 'Hilton College B'],
+    ['Oval Z', 'Oval Z B'],
+    ['  Riverside Oval  ', 'Riverside Oval B'],
+    ['A', 'A B'],
+  ])('moves "%s" on to "%s"', (name, expected) => {
+    expect(nextFieldName(name)).toBe(expected)
+  })
+})
+
+describe('duplicateFieldForm', () => {
+  it('copies everything of a field and moves only the name on', () => {
+    const field = makeField({ name: 'Irene Oval A', contactName: 'Sam Smith', contactPhone: '082 555 0100', photoUrl: '/media/oval.jpg', locationNotes: 'Gate B' })
+
+    const form = duplicateFieldForm(field)
+
+    expect(form.name).toBe('Irene Oval B')
+    expect(form.ownerName).toBe(field.ownerName)
+    expect(form.address).toEqual(expect.objectContaining({ street: 'River Road', city: 'Hilton', country: 'ZA' }))
+    expect(form.mapUrl).toBe(field.mapUrl)
+    expect(form.locationNotes).toBe('Gate B')
+    expect(form.contactName).toBe('Sam Smith')
+    expect(form.contactPhone).toBe('082 555 0100')
+    expect(form.photoUrl).toBe('/media/oval.jpg')
+  })
+})
+
+describe('field contact and photo', () => {
+  it('starts empty, is read from a field and goes into the payload trimmed, with blanks as null', () => {
+    expect(emptyFieldForm('ZA')).toEqual(expect.objectContaining({ contactName: '', contactPhone: '', photoUrl: '' }))
+    expect(fieldFormFromField(makeField({ contactName: 'Sam', contactPhone: '082', photoUrl: '/p.jpg' }))).toEqual(
+      expect.objectContaining({ contactName: 'Sam', contactPhone: '082', photoUrl: '/p.jpg' }),
+    )
+    expect(fieldFormFromField(makeField())).toEqual(expect.objectContaining({ contactName: '', contactPhone: '', photoUrl: '' }))
+
+    expect(fieldFormToPayload(valid({ contactName: '  Sam Smith ', contactPhone: ' 082 555 0100 ', photoUrl: ' /p.jpg ' }))).toEqual(
+      expect.objectContaining({ contactName: 'Sam Smith', contactPhone: '082 555 0100', photoUrl: '/p.jpg' }),
+    )
+    expect(fieldFormToPayload(valid({ contactName: '  ', contactPhone: '', photoUrl: '' }))).toEqual(
+      expect.objectContaining({ contactName: null, contactPhone: null, photoUrl: null }),
+    )
+  })
+
+  it('refuses a contact person over 100 characters and a number over 30', () => {
+    expect(validateFieldForm(valid({ contactName: 'x'.repeat(101) })).contactName).toBe('Contact person must be 100 characters or fewer')
+    expect(validateFieldForm(valid({ contactPhone: '9'.repeat(31) })).contactPhone).toBe('Contact number must be 30 characters or fewer')
+    expect(validateFieldForm(valid({ contactName: 'x'.repeat(100), contactPhone: '9'.repeat(30) }))).toEqual({})
   })
 })

@@ -9,6 +9,7 @@ export function makeLeagueTeam(overrides: Partial<LeagueTeam> = {}): LeagueTeam 
     name: 'Centurion Brits CC',
     abbreviation: 'CBC',
     logoUrl: null,
+    notes: null,
     active: true,
     referencedByMatchCount: 0,
     ...overrides,

@@ -55,7 +55,7 @@ class MePlayersFieldsIntegrationTest extends AbstractLinkIntegrationTest {
 
     private static final Set<String> KEYS = Set.of("id", "name", "owner", "addressLine1", "city", "provinceState",
             "postalCode", "country", "mapUrl", "latitude", "longitude", "accessLatitude", "accessLongitude", "accessNote",
-            "verified", "home");
+            "photoUrl", "verified", "home");
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PlayingAreaRepository playingAreaRepository;

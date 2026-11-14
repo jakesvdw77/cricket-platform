@@ -127,12 +127,37 @@ describe('FieldDetailPage', () => {
 
     await openManage(user)
 
-    expect(screen.getAllByRole('menuitem').map((item) => within(item).getByText(/^(Edit Field|Add To Our Fields|Remove From Our Fields|Open In Maps)$/).textContent)).toEqual([
+    expect(screen.getAllByRole('menuitem').map((item) => within(item).getByText(/^(Edit Field|Duplicate Field|Add To Our Fields|Remove From Our Fields|Open In Maps)$/).textContent)).toEqual([
       'Edit Field',
+      'Duplicate Field',
       'Add To Our Fields',
       'Open In Maps',
     ])
     expect(screen.queryByRole('menuitem', { name: /Share/ })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/151, slice C
+  it('shows the contact person and number on the Details card, and the photo across the top', async () => {
+    await renderLoaded(makeField({ contactName: 'Sam Smith', contactPhone: '082 555 0100', photoUrl: '/media/oval.jpg' }))
+
+    expect(screen.getByText('Sam Smith')).toBeInTheDocument()
+    expect(screen.getByText('082 555 0100')).toBeInTheDocument()
+    expect(screen.getByTestId('field-photo')).toHaveAttribute('src', '/media/oval.jpg')
+  })
+
+  it('shows no photo block when the field has none', async () => {
+    await renderLoaded(makeField({ photoUrl: null }))
+
+    expect(screen.queryByTestId('field-photo')).not.toBeInTheDocument()
+  })
+
+  it('offers Duplicate Field in Manage Field, opening the add form for a copy', async () => {
+    const user = userEvent.setup()
+    await renderLoaded(makeField({ id: 'field-9', createdByClubId: 'club-1' }))
+
+    await openManage(user)
+
+    expect(screen.getByRole('menuitem', { name: /Duplicate Field/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/fields/new?duplicateOf=field-9'))
   })
 
   it('opens the map in a new tab from the menu', async () => {

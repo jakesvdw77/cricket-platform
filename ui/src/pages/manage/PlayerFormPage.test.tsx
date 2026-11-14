@@ -37,6 +37,7 @@ vi.mock('../../api/sectionApi', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   listSections.mockResolvedValue([])
   listPlayerSections.mockResolvedValue([])
 })
@@ -73,6 +74,13 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     gamesOverall: 0,
     ...overrides,
   }
+}
+
+// docs/specs/151: a new player is always given a section; the last one used is remembered per club, so a test that is not about the
+// section starts with one chosen.
+function rememberSection(id = 'section-1') {
+  listSections.mockResolvedValue([makeSection({ id })])
+  localStorage.setItem('playerForm:lastSection:test-club-id', id)
 }
 
 function makeSection(overrides: Partial<Section> = {}): Section {
@@ -127,6 +135,8 @@ describe('PlayerFormPage', () => {
     it('renders three tabs only (no Sections tab), and submit calls createPlayer then navigates to the list', async () => {
       const user = userEvent.setup()
       createPlayer.mockResolvedValueOnce(makePlayer())
+      linkPlayerSection.mockResolvedValueOnce(undefined)
+      rememberSection()
 
       renderPage('/manage/players/new', 'test-club-id')
 
@@ -151,6 +161,55 @@ describe('PlayerFormPage', () => {
         expect.objectContaining({ firstName: 'Sipho', lastName: 'Ndlovu', dateOfBirth: '2010-04-12' }),
       )
       expect(await screen.findByText('Player List Page')).toBeInTheDocument()
+      // The player is tagged to the chosen section in the same step.
+      expect(linkPlayerSection).toHaveBeenCalledWith('test-club-id', 'player-1', 'section-1')
+    })
+
+    it('asks for a section first and never creates the player without one', async () => {
+      const user = userEvent.setup()
+      listSections.mockResolvedValue([makeSection()])
+      renderPage('/manage/players/new', 'test-club-id')
+
+      expect(screen.getByTestId('player-section-picker')).toBeInTheDocument()
+      expect(screen.getByText('Which section does this player belong to?')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('First name'), 'Sipho')
+      await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
+
+      expect(await screen.findByText('Choose a section before adding the player.')).toBeInTheDocument()
+      expect(createPlayer).not.toHaveBeenCalled()
+    })
+
+    it('drops a remembered section that no longer exists, so the picker asks again', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('playerForm:lastSection:test-club-id', 'deleted-section')
+      listSections.mockResolvedValue([makeSection({ id: 'section-1' })])
+      renderPage('/manage/players/new', 'test-club-id')
+
+      await user.type(screen.getByLabelText('First name'), 'Sipho')
+      await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
+
+      expect(await screen.findByText('Choose a section before adding the player.')).toBeInTheDocument()
+      expect(createPlayer).not.toHaveBeenCalled()
+    })
+
+    it('remembers the section just used for the next new player', async () => {
+      const user = userEvent.setup()
+      createPlayer.mockResolvedValueOnce(makePlayer())
+      linkPlayerSection.mockResolvedValueOnce(undefined)
+      rememberSection('section-1')
+      renderPage('/manage/players/new', 'test-club-id')
+
+      await user.type(screen.getByLabelText('First name'), 'Sipho')
+      await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Add Player' }))
+
+      await screen.findByText('Player List Page')
+      expect(localStorage.getItem('playerForm:lastSection:test-club-id')).toBe('section-1')
     })
 
     it('blocks create without a date of birth and never calls createPlayer', async () => {
@@ -173,6 +232,7 @@ describe('PlayerFormPage', () => {
         data: { detail: 'Date of birth must not be before 1900-01-01' },
       } as AxiosError['response']
       createPlayer.mockRejectedValueOnce(error)
+      rememberSection()
       renderPage('/manage/players/new', 'test-club-id')
 
       await user.type(screen.getByLabelText('First name'), 'Sipho')
