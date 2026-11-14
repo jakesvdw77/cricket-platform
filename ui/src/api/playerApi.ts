@@ -21,6 +21,9 @@ export type BowlingType =
   | 'WRIST_SPIN'
   | 'GOOGLY'
 
+// docs/specs/151: where a player usually bats, as a group.
+export type BattingPosition = 'OPENER' | 'TOP_ORDER' | 'MIDDLE_ORDER' | 'LOWER_ORDER'
+
 export interface Player {
   id: string
   personId: string
@@ -41,6 +44,9 @@ export interface Player {
   bowlingArm: BowlingArm | null
   bowlingType: BowlingType | null
   isWicketKeeper: boolean
+  // docs/specs/151: optional on the type so older fixtures still fit; the server always sends both.
+  battingPosition?: BattingPosition | null
+  isPartTimeBowler?: boolean
   active: boolean
   sectionIds: string[]
   // docs/specs/031-jersey-numbers.md: the player's own "usual"/standing number, independent of any
@@ -83,6 +89,8 @@ export interface PlayerPayload {
   bowlingArm: BowlingArm | null
   bowlingType: BowlingType | null
   isWicketKeeper: boolean
+  battingPosition?: BattingPosition | null
+  isPartTimeBowler?: boolean
   // docs/specs/031-jersey-numbers.md, nullable, no uniqueness enforced against it.
   jerseyNumber: number | null
 }

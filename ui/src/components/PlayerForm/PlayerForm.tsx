@@ -3,7 +3,8 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { Box, Checkbox, FormControlLabel, MenuItem } from '@mui/material'
 import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
-import type { PlayerPayload, Gender, BattingStance, BowlingArm, BowlingType } from '../../api/playerApi'
+import type { PlayerPayload, Gender, BattingStance, BattingPosition, BowlingArm, BowlingType } from '../../api/playerApi'
+import { BATTING_POSITION_LABEL, BATTING_POSITION_ORDER } from '../../utils/playerLabels'
 import { numberToInput, inputToNumber } from '../../utils/numberInput'
 import { MIN_DATE_OF_BIRTH, todayIso, validatePlayerBasics } from '../../utils/playerValidation'
 import type { PlayerBasicsErrors } from '../../utils/playerValidation'
@@ -54,6 +55,8 @@ interface FormState {
   bowlingArm: '' | BowlingArm
   bowlingType: '' | BowlingType
   isWicketKeeper: boolean
+  battingPosition: '' | BattingPosition
+  isPartTimeBowler: boolean
 }
 
 type TextField =
@@ -104,6 +107,8 @@ function toFormState(initialValues?: PlayerFormInitialValues): FormState {
     bowlingArm: initialValues?.bowlingArm ?? '',
     bowlingType: initialValues?.bowlingType ?? '',
     isWicketKeeper: initialValues?.isWicketKeeper ?? false,
+    battingPosition: initialValues?.battingPosition ?? '',
+    isPartTimeBowler: initialValues?.isPartTimeBowler ?? false,
   }
 }
 
@@ -149,6 +154,15 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
     setValues((prev) => ({ ...prev, isWicketKeeper: event.target.checked }))
   }
 
+  const handleBattingPositionChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    setValues((prev) => ({ ...prev, battingPosition: value === '' ? '' : (value as BattingPosition) }))
+  }
+
+  const handlePartTimeBowlerChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setValues((prev) => ({ ...prev, isPartTimeBowler: event.target.checked }))
+  }
+
   const handlePhotoUploaded = (photoUrl: string) => setValues((prev) => ({ ...prev, photoUrl }))
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -178,6 +192,8 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
       bowlingArm: values.bowlingArm === '' ? null : values.bowlingArm,
       bowlingType: values.bowlingType === '' ? null : values.bowlingType,
       isWicketKeeper: values.isWicketKeeper,
+      battingPosition: values.battingPosition === '' ? null : values.battingPosition,
+      isPartTimeBowler: values.isPartTimeBowler,
     }
 
     onSubmit(payload)
@@ -278,6 +294,14 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
             <MenuItem value="RIGHT_HANDED">Right-handed</MenuItem>
             <MenuItem value="LEFT_HANDED">Left-handed</MenuItem>
           </Input>
+          <Input label="Batting position" select value={values.battingPosition} onChange={handleBattingPositionChange}>
+            <MenuItem value="">Not specified</MenuItem>
+            {BATTING_POSITION_ORDER.map((position) => (
+              <MenuItem key={position} value={position}>
+                {BATTING_POSITION_LABEL[position]}
+              </MenuItem>
+            ))}
+          </Input>
           <Input label="Bowling arm" select value={values.bowlingArm} onChange={handleBowlingArmChange}>
             <MenuItem value="">Not specified</MenuItem>
             <MenuItem value="RIGHT_ARM">Right-arm</MenuItem>
@@ -296,6 +320,10 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
             <FormControlLabel
               control={<Checkbox checked={values.isWicketKeeper} onChange={handleWicketKeeperChange} />}
               label="Wicketkeeper"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={values.isPartTimeBowler} onChange={handlePartTimeBowlerChange} />}
+              label="Part-time bowler"
             />
           </Box>
         </>

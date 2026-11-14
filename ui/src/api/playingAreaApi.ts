@@ -36,6 +36,10 @@ export interface PlayingArea {
   accessLatitude?: number | null
   accessLongitude?: number | null
   accessNote?: string | null
+  // docs/specs/151: who to ask at the ground, and a picture of it.
+  contactName?: string | null
+  contactPhone?: string | null
+  photoUrl?: string | null
   verificationStatus: FieldVerificationStatus
   verifiedAt?: string | null
   rejectionReason?: string | null
@@ -70,6 +74,9 @@ export interface PlayingAreaPayload {
   accessLatitude?: number | null
   accessLongitude?: number | null
   accessNote?: string | null
+  contactName?: string | null
+  contactPhone?: string | null
+  photoUrl?: string | null
 }
 
 export interface ListPlayingAreasParams {

@@ -123,6 +123,8 @@ export interface LeagueShareModel {
   schedule: LeagueShareFixture[]
   results: LeagueShareResult[]
   keyDates: LeagueShareKeyDate[]
+  // docs/specs/151: set when the share is for one team's fixtures and results only; a team's name is not a person's name.
+  teamName?: string | null
   // League, season and club names only: never a person's name.
   title: string
 }
@@ -148,6 +150,8 @@ export interface BuildLeagueShareInput {
   includeContact: boolean
   // The club's flat section list; undefined (not readable) fails safe to junior when the league has no maxAge.
   sections: Pick<Section, 'id' | 'parentSectionId' | 'name' | 'maxAge'>[] | undefined
+  // docs/specs/151: the one team the schedule and results were narrowed to (the caller filters matches and results).
+  teamName?: string | null
   now?: Date
 }
 
@@ -349,7 +353,8 @@ export function buildLeagueShareModel(input: BuildLeagueShareInput): LeagueShare
     schedule,
     results,
     keyDates,
-    title: [league.name, seasonLabel].filter(Boolean).join(' '),
+    teamName: input.teamName ?? null,
+    title: [league.name, input.teamName, seasonLabel].filter(Boolean).join(' '),
   }
 }
 

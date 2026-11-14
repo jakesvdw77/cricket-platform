@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { Box, MenuItem } from '@mui/material'
 import { Input } from '../Input'
 import type { Address } from '../../api/clubApi'
-import { countryOptions, provinceLabel } from '../../utils/countries'
+import { countryOptions, isSouthAfrica, provinceLabel, SOUTH_AFRICAN_PROVINCES } from '../../utils/countries'
 
 // Grouped field set for a postal address — number/street/city/province-state/country/postal
 // code — modeled after ClubNameSlugFields' "props in, callbacks out, no internal fetching"
@@ -91,6 +91,20 @@ export function AddressFields({
               {countryOptions().map((option) => (
                 <MenuItem key={option.code} value={option.code}>
                   {option.name}
+                </MenuItem>
+              ))}
+            </Input>
+          ) : key === 'provinceState' && isSouthAfrica(value.country) ? (
+            // docs/specs/151: South Africa has nine provinces, so the manager chooses one. An older free-text value that is not
+            // one of them stays selectable so it is never silently lost.
+            <Input {...common} select value={value.provinceState ?? ''} onChange={(event) => onChange({ ...value, provinceState: event.target.value })}>
+              <MenuItem value="">Not specified</MenuItem>
+              {value.provinceState && !(SOUTH_AFRICAN_PROVINCES as readonly string[]).includes(value.provinceState) && (
+                <MenuItem value={value.provinceState}>{value.provinceState}</MenuItem>
+              )}
+              {SOUTH_AFRICAN_PROVINCES.map((province) => (
+                <MenuItem key={province} value={province}>
+                  {province}
                 </MenuItem>
               ))}
             </Input>

@@ -99,3 +99,22 @@ export const DEFAULT_PROVINCE_LABEL = 'Province/County/State'
 export function provinceLabel(countryCode: string | null | undefined): string {
   return PROVINCE_LABELS[(countryCode ?? '').toUpperCase()] ?? DEFAULT_PROVINCE_LABEL
 }
+
+// docs/specs/151: when the country is South Africa the province is chosen from the nine provinces, not typed.
+export const SOUTH_AFRICAN_PROVINCES = [
+  'Eastern Cape',
+  'Free State',
+  'Gauteng',
+  'KwaZulu-Natal',
+  'Limpopo',
+  'Mpumalanga',
+  'North West',
+  'Northern Cape',
+  'Western Cape',
+] as const
+
+/** True for the ISO code `ZA` or the name "South Africa" (a form that keeps the country as text). */
+export function isSouthAfrica(country: string | null | undefined): boolean {
+  const value = (country ?? '').trim().toLowerCase()
+  return value === 'za' || value === 'south africa'
+}

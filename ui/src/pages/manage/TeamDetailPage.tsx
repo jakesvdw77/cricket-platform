@@ -21,6 +21,8 @@ import { Button } from '../../components/Button'
 import { HeaderActions } from '../../components/HeaderShareButton'
 import { TeamActionsMenu } from '../../components/TeamActionsMenu'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
+import { usePermissions } from '../../auth/permissions'
 import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
@@ -122,6 +124,9 @@ export default function TeamDetailPage() {
   const fromSection = searchParams.get('from') === 'section'
   // docs/specs/127: a returnTo in the address overrides the default Back.
   const back = useBackLink(fromSection ? `/manage/sections/${sectionId}/teams` : '/manage/teams', 'Back to Teams')
+  // docs/specs/151: the Analysis page reads the squad and each player's cricket information.
+  const permissions = usePermissions()
+  const canAnalyse = permissions.can('TEAMS_VIEW') && permissions.can('PLAYERS_VIEW')
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
 
@@ -239,6 +244,7 @@ export default function TeamDetailPage() {
   const backLabel = back.label
   const editTo = `/manage/sections/${sectionId}/teams/${team.id}/edit`
   const statsPath = `/manage/teams/${team.id}/stats?seasonId=${encodeURIComponent(selectedSeasonId)}`
+  const analysisPath = `/manage/teams/${team.id}/analysis?seasonId=${encodeURIComponent(selectedSeasonId)}`
 
   // Sorted by name regardless of the server's own row order, so the grid does not visibly reshuffle.
   const squad = [...(squadQuery.data ?? [])].sort((a, b) =>
@@ -298,9 +304,16 @@ export default function TeamDetailPage() {
         action={
           <HeaderActions
             beside={
-              <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(withReturnTo(statsPath, currentOrigin(location), 'Team'))} data-testid="team-view-stats">
-                View Stats
-              </Button>
+              <>
+                <Button size="compact" variant="secondary" startIcon={<EqualizerOutlinedIcon />} onClick={() => navigate(withReturnTo(statsPath, currentOrigin(location), 'Team'))} data-testid="team-view-stats">
+                  View Stats
+                </Button>
+                {canAnalyse && (
+                  <Button size="compact" variant="secondary" startIcon={<InsightsOutlinedIcon />} onClick={() => navigate(withReturnTo(analysisPath, currentOrigin(location), 'Team'))} data-testid="team-analysis">
+                    Analysis
+                  </Button>
+                )}
+              </>
             }
           >
             <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" />

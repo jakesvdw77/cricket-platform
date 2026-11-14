@@ -51,6 +51,7 @@ import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { fullName as contactFullName } from './ClubContactList'
 import { usePermissions } from '../../auth/permissions'
+import { OurFieldsCard } from './OurFieldsCard'
 
 const CLUB_TYPE_LABELS: Record<ClubProfileType, string> = {
   CLUB: 'Club',
@@ -375,6 +376,9 @@ export default function ClubOverviewPage() {
             </Stack>
           )}
         </InfoCard>
+
+        {/* docs/specs/151, slice F: the club's own fields, with a way to link another from the directory. */}
+        <OurFieldsCard clubId={clubId} leaveTo={leaveTo} />
       </Box>
 
       <InfoCard

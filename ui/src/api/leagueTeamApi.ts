@@ -9,6 +9,8 @@ export interface LeagueTeam {
   name: string
   abbreviation: string | null
   logoUrl: string | null
+  // docs/specs/151: open-ended notes
+  notes?: string | null
   active: boolean
   // Matches using this league team on either side; 0 outside the list endpoint.
   referencedByMatchCount: number
@@ -18,6 +20,7 @@ export interface LeagueTeamPayload {
   name: string
   abbreviation?: string | null
   logoUrl?: string | null
+  notes?: string | null
 }
 
 export interface CopyLeagueTeamsPayload {

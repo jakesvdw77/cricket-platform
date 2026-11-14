@@ -1,4 +1,5 @@
-import { Box, Checkbox, Typography } from '@mui/material'
+import { Box, Checkbox, MenuItem, Typography } from '@mui/material'
+import { Input } from '../Input'
 import { alpha } from '@mui/material/styles'
 import { LEAGUE_CONTENTS, LEAGUE_CONTENT_LABELS } from '../../utils/share/leagueShareFormats'
 import type { LeagueContent } from '../../utils/share/leagueShareFormats'
@@ -18,11 +19,15 @@ export interface LeagueContentStepProps {
   // The reason a content cannot be shared yet (greyed, not ticked); absent means it can.
   gaps: Partial<Record<LeagueContent, string>>
   loading: boolean
+  // docs/specs/151: share one team's fixtures and results only. Absent or empty, the picker is not shown.
+  teamOptions?: { value: string; label: string }[]
+  teamValue?: string
+  onTeamChange?: (value: string) => void
 }
 
 // docs/specs/122-league-sharing.md (Step 1, What to share): a checkbox row per content. A content with nothing to share stays
 // listed but disabled with its reason.
-export function LeagueContentStep({ ticked, onToggle, gaps, loading }: LeagueContentStepProps) {
+export function LeagueContentStep({ ticked, onToggle, gaps, loading, teamOptions = [], teamValue = '', onTeamChange }: LeagueContentStepProps) {
   return (
     <Box role="group" aria-label="What to share" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {LEAGUE_CONTENTS.map((content) => {
@@ -67,6 +72,23 @@ export function LeagueContentStep({ ticked, onToggle, gaps, loading }: LeagueCon
           </Box>
         )
       })}
+      {teamOptions.length > 0 && onTeamChange && (
+        <Input
+          label="Team"
+          select
+          value={teamValue}
+          onChange={(event) => onTeamChange(event.target.value)}
+          helperText="The schedule and results then show only this team's matches."
+          sx={{ mt: 1 }}
+        >
+          <MenuItem value="">All Teams</MenuItem>
+          {teamOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Input>
+      )}
     </Box>
   )
 }

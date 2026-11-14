@@ -43,6 +43,17 @@ export function FieldInfoCards({ field, extraDetails = [], extraCards }: FieldIn
 
   return (
     <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
+      {field.photoUrl && (
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Box
+            component="img"
+            src={field.photoUrl}
+            alt={`${field.name}`}
+            data-testid="field-photo"
+            sx={{ display: 'block', width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 1.5, border: 1, borderColor: 'divider' }}
+          />
+        </Box>
+      )}
       <InfoCard
         flat
         title="Address"
@@ -74,6 +85,8 @@ export function FieldInfoCards({ field, extraDetails = [], extraCards }: FieldIn
           { label: 'Type', value: FIELD_CATEGORY_LABEL[field.category] },
           { label: 'Owner type', value: FIELD_OWNER_TYPE_LABEL[field.ownerType] },
           { label: 'Owner', value: field.ownerName },
+          { label: 'Contact person', value: field.contactName },
+          { label: 'Contact number', value: field.contactPhone },
           { label: 'Captured by', value: field.createdByClubName },
           { label: 'Captured on', value: formatDate(field.createdAt) },
           { label: 'Clubs using it', value: field.linkedClubCount !== undefined ? String(field.linkedClubCount) : null },

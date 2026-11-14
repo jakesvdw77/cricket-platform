@@ -54,6 +54,8 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
   const [picked, setPicked] = useState<LeagueShareFormat | null>(null)
   const [chosenSeasonId, setChosenSeasonId] = useState<string>(seasonId ?? '')
   const [includeContact, setIncludeContact] = useState(false)
+  // docs/specs/151: '' = every team, else 'own:<id>' or 'league:<id>'.
+  const [teamKey, setTeamKey] = useState('')
   const [footer, setFooter] = useState<HTMLElement | null>(null)
   const [choices, updateChoices] = useShareChoices(clubId)
   const settings = useShareSettings(clubId, open)
@@ -74,6 +76,7 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
       setPicked(null)
       setChosenSeasonId(seasonId ?? '')
       setIncludeContact(false)
+      setTeamKey('')
     }
     // Only the moment of opening matters; later prop changes must not reset what the manager has ticked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,6 +88,22 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
       setChosenSeasonId(pickDefaultSeasonId(seasons) ?? '')
     }
   }, [open, chosenSeasonId, seasons])
+
+  // One team's share: the schedule and results are narrowed to the matches that team plays.
+  const teamOptions = useMemo(
+    () => [
+      ...data.ownTeams.map((team) => ({ value: `own:${team.id}`, label: team.name })),
+      ...data.leagueTeams.filter((team) => team.active).map((team) => ({ value: `league:${team.id}`, label: team.name })),
+    ],
+    [data.ownTeams, data.leagueTeams],
+  )
+  const focusTeam = teamOptions.find((option) => option.value === teamKey) ?? null
+  const playedBy = (match: { homeTeamId?: string | null; awayTeamId?: string | null; homeLeagueTeamId?: string | null; awayLeagueTeamId?: string | null }) => {
+    const [kind, id] = teamKey.split(':')
+    return kind === 'own' ? match.homeTeamId === id || match.awayTeamId === id : match.homeLeagueTeamId === id || match.awayLeagueTeamId === id
+  }
+  const focusMatches = useMemo(() => (focusTeam ? data.matches.filter(playedBy) : data.matches), [focusTeam, data.matches, teamKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const focusResults = useMemo(() => (focusTeam ? data.results.filter((item) => playedBy(item.match)) : data.results), [focusTeam, data.results, teamKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const noSeason = !chosenSeasonId
   const gaps = useMemo(() => {
@@ -127,8 +146,9 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
         ownTeams: data.ownTeams,
         leagueTeams: data.leagueTeams,
         teamsById: data.teamsById,
-        matches: data.matches,
-        results: data.results,
+        matches: focusMatches,
+        results: focusResults,
+        teamName: focusTeam?.label ?? null,
         seasonDates: data.seasonDates,
         initialsOnly: initials.value,
         includeContact,
@@ -144,8 +164,9 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
       data.ownTeams,
       data.leagueTeams,
       data.teamsById,
-      data.matches,
-      data.results,
+      focusMatches,
+      focusResults,
+      focusTeam,
       data.seasonDates,
       data.sections,
       initials.value,
@@ -241,7 +262,7 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
                 />
               </Box>
             )}
-            <LeagueContentStep ticked={ticked} onToggle={toggle} gaps={gaps} loading={data.isLoading} />
+            <LeagueContentStep ticked={ticked} onToggle={toggle} gaps={gaps} loading={data.isLoading} teamOptions={teamOptions} teamValue={teamKey} onTeamChange={setTeamKey} />
           </>
         )}
 

@@ -5,6 +5,7 @@ import { alpha } from '@mui/material/styles'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
+import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined'
 import { useQuery } from '@tanstack/react-query'
 import { AddressFields } from '../AddressFields'
 import { Button } from '../Button'
@@ -12,6 +13,7 @@ import { FieldLocationSection } from './FieldLocationSection'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
+import { MediaUpload } from '../MediaUpload'
 import { badgeSx } from '../RecordCard'
 import { findSimilarPlayingAreas, getPlayingArea, playingAreasKey } from '../../api/playingAreaApi'
 import type { FieldCategory, FieldOwnerType, PlayingArea } from '../../api/playingAreaApi'
@@ -19,7 +21,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { countryName } from '../../utils/countries'
 import { FIELD_CATEGORIES, FIELD_CATEGORY_LABEL, FIELD_OWNER_TYPES, FIELD_OWNER_TYPE_LABEL } from '../../utils/fieldLabels'
 import { compactFieldSx } from '../../utils/compactFieldSx'
-import { effectiveOwnerType, MAX_MAP_URL_LENGTH, MAX_NAME_LENGTH, MAX_NOTES_LENGTH } from '../../utils/fieldForm'
+import { effectiveOwnerType, MAX_CONTACT_NAME_LENGTH, MAX_CONTACT_PHONE_LENGTH, MAX_MAP_URL_LENGTH, MAX_NAME_LENGTH, MAX_NOTES_LENGTH } from '../../utils/fieldForm'
 import type { FieldFormErrors, FieldFormValues } from '../../utils/fieldForm'
 import { fieldStatusBadge, fieldStatusOf } from '../../utils/fieldStatus'
 
@@ -351,6 +353,32 @@ export function FieldFormFields({
           inputProps={{ maxLength: MAX_NOTES_LENGTH }}
           InputLabelProps={{ shrink: true }}
         />
+      </Box>
+
+      <FormSectionHeading compact={compact} icon={<ContactPhoneOutlinedIcon />} title="Contact and photo" />
+      <Box sx={gridSx}>
+        <Input
+          label="Contact person (optional)"
+          value={values.contactName}
+          onChange={(event) => onChange({ contactName: event.target.value })}
+          error={Boolean(errors.contactName)}
+          helperText={errors.contactName}
+          disabled={disabled}
+          inputProps={{ maxLength: MAX_CONTACT_NAME_LENGTH }}
+        />
+        <Input
+          label="Contact number (optional)"
+          type="tel"
+          value={values.contactPhone}
+          onChange={(event) => onChange({ contactPhone: event.target.value })}
+          error={Boolean(errors.contactPhone)}
+          helperText={errors.contactPhone}
+          disabled={disabled}
+          inputProps={{ maxLength: MAX_CONTACT_PHONE_LENGTH }}
+        />
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <MediaUpload label="Photo of the field" value={values.photoUrl || null} onUploaded={(photoUrl) => onChange({ photoUrl })} variant="banner" namespace="manage" />
+        </Box>
       </Box>
 
       <FieldLocationSection values={values} onChange={onChange} errors={errors} disabled={disabled} compact={compact} gridSx={gridSx} />

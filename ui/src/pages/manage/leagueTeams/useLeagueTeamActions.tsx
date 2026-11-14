@@ -33,6 +33,8 @@ const isDuplicateName = (error: unknown) => isAxiosError(error) && error.respons
 // The caller renders `dialogs` once and `feedbackAlert` where the outcome should show.
 export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel, targetTeams, announceAdded = false }: UseLeagueTeamActionsOptions) {
   const [editing, setEditing] = useState<LeagueTeam | 'new' | null>(null)
+  // Bumped after Save And Add Another so the dialog starts a fresh, empty form.
+  const [formKey, setFormKey] = useState(0)
   const [copyOpen, setCopyOpen] = useState(false)
   const [removing, setRemoving] = useState<LeagueTeam | null>(null)
   const [feedback, setFeedback] = useState<LeagueTeamFeedback | null>(null)
@@ -93,12 +95,19 @@ export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel,
     setEditing(null)
   }
 
-  const handleSave = (payload: { name: string; abbreviation?: string | null; logoUrl?: string | null }) => {
+  const handleSave = (payload: { name: string; abbreviation?: string | null; logoUrl?: string | null; notes?: string | null }, options?: { another?: boolean }) => {
     if (editing && editing !== 'new') {
       update.mutate({ id: editing.id, payload }, { onSuccess: closeForm })
     } else {
       create.mutate(payload, {
         onSuccess: (created) => {
+          if (options?.another) {
+            // Stay in the dialog: a fresh form, and say what was added.
+            create.reset()
+            setFormKey((key) => key + 1)
+            setFeedback({ severity: 'success', message: `${created?.name ?? payload.name} was added. Add the next team.` })
+            return
+          }
           closeForm()
           if (announceAdded) {
             setFeedback({ severity: 'success', message: `${created?.name ?? payload.name} was added.` })
@@ -123,6 +132,7 @@ export function useLeagueTeamActions({ clubId, leagueId, seasonId, contextLabel,
       />
       {editing && (
         <LeagueTeamFormDialog
+          key={formKey}
           open
           leagueTeam={editing === 'new' ? undefined : editing}
           contextLabel={contextLabel}

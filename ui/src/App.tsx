@@ -49,6 +49,7 @@ import PlayerDetailPage from './pages/manage/PlayerDetailPage'
 import LeaderboardsPage from './pages/manage/leaderboards/LeaderboardsPage'
 import PlayerStatsPage from './pages/manage/playerStats/PlayerStatsPage'
 import TeamStatsPage from './pages/manage/teamStats/TeamStatsPage'
+import TeamAnalysisPage from './pages/manage/teamAnalysis/TeamAnalysisPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
 import { LeagueEditRoute } from './pages/manage/LeagueEditRoute'
@@ -248,6 +249,8 @@ function App() {
               <Route path="players/:playerId/stats" element={<PlayerStatsPage />} />
               {/* docs/specs/116-team-stats.md: one team's statistics page (opened from the Teams tab and the Team detail Statistics card) */}
               <Route path="teams/:teamId/stats" element={<TeamStatsPage />} />
+              {/* docs/specs/151: the shape of a team's squad for a season (bowlers, batters, keepers, batting order, gaps) */}
+              <Route path="teams/:teamId/analysis" element={<TeamAnalysisPage />} />
               {/* docs/specs/029-league-management.md: League/Season/Match administration and
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
                   nav cards finally get real screens. docs/specs/056-club-profile-overview.md

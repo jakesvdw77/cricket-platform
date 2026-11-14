@@ -1,4 +1,4 @@
-import type { Gender, BattingStance, BowlingArm, BowlingType } from '../api/playerApi'
+import type { Gender, BattingStance, BattingPosition, BowlingArm, BowlingType } from '../api/playerApi'
 
 // Extracted from PlayerDetailPage.tsx (docs/specs/060-player-detail-redesign.md) once PlayerCard
 // (docs/specs/061-player-card-avatar-redesign.md) needed the same Batting/Bowling label lookups
@@ -30,3 +30,13 @@ export const BOWLING_TYPE_LABEL: Record<BowlingType, string> = {
   WRIST_SPIN: 'Wrist spin / Chinaman',
   GOOGLY: 'Googly',
 }
+
+// docs/specs/151: Title Case, listed in batting order.
+export const BATTING_POSITION_LABEL: Record<BattingPosition, string> = {
+  OPENER: 'Opener',
+  TOP_ORDER: 'Top Order',
+  MIDDLE_ORDER: 'Middle Order',
+  LOWER_ORDER: 'Lower Order',
+}
+
+export const BATTING_POSITION_ORDER: BattingPosition[] = ['OPENER', 'TOP_ORDER', 'MIDDLE_ORDER', 'LOWER_ORDER']

@@ -3,6 +3,7 @@ import { Box, Link as MuiLink, Stack } from '@mui/material'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
@@ -13,7 +14,7 @@ import { RecordCard } from '../RecordCard'
 import type { RecordCardBadge } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 import { countryName } from '../../utils/countries'
-import { cityLine, FIELD_CATEGORY_LABEL } from '../../utils/fieldLabels'
+import { cityLine, FIELD_CATEGORY_LABEL, streetLine } from '../../utils/fieldLabels'
 import { fieldStatusBadge, fieldStatusOf } from '../../utils/fieldStatus'
 import { NOT_ON_FILE } from '../../utils/playerFormat'
 import { zebraTint } from '../../utils/zebraTint'
@@ -51,6 +52,7 @@ function DetailRow({ icon, label, value, muted = false }: { icon: ReactNode; lab
 export function FieldCard({ field, viewTo, admin = false, actions }: FieldCardProps) {
   const status = fieldStatusOf(field)
   const city = cityLine(field)
+  const street = streetLine(field)
   const country = countryName(field.address.country)
   const linkedHome = Boolean(field.linkedHome)
   const similar = (field.possibleDuplicates ?? []).map((duplicate) => duplicate.name).join(', ')
@@ -76,6 +78,7 @@ export function FieldCard({ field, viewTo, admin = false, actions }: FieldCardPr
       {/* The same rows on every card; the margin lets the zebra tint bleed to the card padding's edge. */}
       <Stack sx={{ mx: -1 }}>
         <DetailRow icon={<StorefrontOutlinedIcon fontSize="small" />} label="Owner" value={field.ownerName || NOT_ON_FILE} muted={!field.ownerName} />
+        <DetailRow icon={<HomeOutlinedIcon fontSize="small" />} label="Address" value={street || NOT_ON_FILE} muted={!street} />
         <DetailRow icon={<PlaceOutlinedIcon fontSize="small" />} label="City" value={city || NOT_ON_FILE} muted={!city} />
         <DetailRow icon={<LanguageOutlinedIcon fontSize="small" />} label="Country" value={country || NOT_ON_FILE} muted={!country} />
         {admin ? (

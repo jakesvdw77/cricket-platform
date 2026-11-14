@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, compactButtonSx } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
@@ -12,7 +12,8 @@ import { createPlayingArea, getPlayingArea, playingAreasKey, updatePlayingArea }
 import type { PlayingArea, PlayingAreaPayload } from '../../../api/playingAreaApi'
 import { useFieldForm } from '../../../hooks/useFieldForm'
 import { useBackLink, useReturnTo } from '../../../hooks/useReturnTo'
-import { duplicateFieldId } from '../../../utils/fieldForm'
+import { duplicateFieldForm, duplicateFieldId } from '../../../utils/fieldForm'
+import type { FieldFormValues } from '../../../utils/fieldForm'
 import { errorDetail } from '../../../utils/errorDetail'
 import { fieldEditState } from '../../../utils/fieldStatus'
 import { afterSaveTarget } from '../../../utils/returnTo'
@@ -21,14 +22,16 @@ export const FIELD_FORM_ID = 'field-form'
 
 const LIST_PATH = '/manage/fixtures/fields'
 
-function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea | null }) {
+function FieldFormScreen({ clubId, field, copyOf }: { clubId: string; field: PlayingArea | null; copyOf?: PlayingArea | null }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isEdit = field !== null
-  const form = useFieldForm(field, clubId)
+  // docs/specs/151: Duplicate Field opens the add form with everything copied and the name moved on to the next letter.
+  const seed: Partial<FieldFormValues> | undefined = copyOf ? duplicateFieldForm(copyOf) : undefined
+  const form = useFieldForm(field, clubId, seed)
   const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null)
   // Never automatic: a club records away fields here too, so it says whether this one is its own.
-  const [ownField, setOwnField] = useState(false)
+  const [ownField, setOwnField] = useState(Boolean(copyOf?.linkedHome))
   const edit = field ? fieldEditState(field, clubId) : { editable: true, reason: null }
   const backTo = field ? `${LIST_PATH}/${field.id}` : LIST_PATH
   // docs/specs/127 and 134: Back, Cancel and Save go to the origin when there is one; otherwise Back and Cancel go to `backTo`
@@ -86,6 +89,11 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
             {edit.reason}
           </Alert>
         )}
+        {copyOf && !isEdit && (
+          <Alert severity="info" sx={{ gridColumn: '1 / -1' }} data-testid="field-copy-note">
+            Copied from {copyOf.name}. Check the name, which has moved on to the next letter; everything else was copied, so change only what differs.
+          </Alert>
+        )}
         <FieldFormFields
           values={form.values}
           onChange={form.update}
@@ -121,6 +129,14 @@ export default function FieldFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { fieldId } = useParams<{ fieldId?: string }>()
   const isEdit = Boolean(fieldId)
+  const [searchParams] = useSearchParams()
+  const duplicateOf = !isEdit ? searchParams.get('duplicateOf') : null
+
+  const copyQuery = useQuery({
+    queryKey: [...playingAreasKey(clubId ?? ''), 'detail', duplicateOf],
+    queryFn: () => getPlayingArea(clubId as string, duplicateOf as string),
+    enabled: Boolean(clubId) && Boolean(duplicateOf),
+  })
 
   const fieldQuery = useQuery({
     queryKey: [...playingAreasKey(clubId ?? ''), 'detail', fieldId],
@@ -132,7 +148,7 @@ export default function FieldFormPage() {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  if (isEdit && fieldQuery.isPending) {
+  if ((isEdit && fieldQuery.isPending) || (duplicateOf && copyQuery.isPending)) {
     return null
   }
 
@@ -140,5 +156,5 @@ export default function FieldFormPage() {
     return <EmptyState title="Couldn't load this field" description="Something went wrong loading this field. Please try again." />
   }
 
-  return <FieldFormScreen key={fieldId ?? 'new'} clubId={clubId} field={fieldQuery.data ?? null} />
+  return <FieldFormScreen key={fieldId ?? duplicateOf ?? 'new'} clubId={clubId} field={fieldQuery.data ?? null} copyOf={copyQuery.data ?? null} />
 }

@@ -19,16 +19,22 @@ export interface FieldFormValues {
   accessLatitude: string
   accessLongitude: string
   accessNote: string
+  // docs/specs/151
+  contactName: string
+  contactPhone: string
+  photoUrl: string
 }
 
 export type FieldFormErrors = Partial<
-  Record<'name' | 'ownerName' | 'street' | 'city' | 'country' | 'mapUrl' | 'locationNotes' | 'latitude' | 'longitude' | 'accessLatitude' | 'accessLongitude' | 'accessNote', string>
+  Record<'name' | 'ownerName' | 'street' | 'city' | 'country' | 'mapUrl' | 'locationNotes' | 'latitude' | 'longitude' | 'accessLatitude' | 'accessLongitude' | 'accessNote' | 'contactName' | 'contactPhone', string>
 >
 
 export const MAX_NAME_LENGTH = 200
 export const MAX_MAP_URL_LENGTH = 500
 export const MAX_NOTES_LENGTH = 500
 export const MAX_ACCESS_NOTE_LENGTH = 200
+export const MAX_CONTACT_NAME_LENGTH = 100
+export const MAX_CONTACT_PHONE_LENGTH = 30
 
 export function emptyFieldForm(country = ''): FieldFormValues {
   return {
@@ -44,6 +50,9 @@ export function emptyFieldForm(country = ''): FieldFormValues {
     accessLatitude: '',
     accessLongitude: '',
     accessNote: '',
+    contactName: '',
+    contactPhone: '',
+    photoUrl: '',
   }
 }
 
@@ -104,6 +113,9 @@ export function fieldFormFromField(field: PlayingArea): FieldFormValues {
     accessLatitude: coordinateText(field.accessLatitude),
     accessLongitude: coordinateText(field.accessLongitude),
     accessNote: field.accessNote ?? '',
+    contactName: field.contactName ?? '',
+    contactPhone: field.contactPhone ?? '',
+    photoUrl: field.photoUrl ?? '',
   }
 }
 
@@ -139,6 +151,8 @@ export function validateFieldForm(values: FieldFormValues): FieldFormErrors {
   const note = values.accessNote.trim()
   if (note.length > MAX_ACCESS_NOTE_LENGTH) errors.accessNote = 'Note must be 200 characters or fewer'
   else if (note && !values.accessLatitude.trim() && !values.accessLongitude.trim()) errors.accessNote = 'Add the entrance or parking position for this note'
+  if (values.contactName.trim().length > MAX_CONTACT_NAME_LENGTH) errors.contactName = 'Contact person must be 100 characters or fewer'
+  if (values.contactPhone.trim().length > MAX_CONTACT_PHONE_LENGTH) errors.contactPhone = 'Contact number must be 30 characters or fewer'
   return errors
 }
 
@@ -165,6 +179,9 @@ export function fieldFormToPayload(values: FieldFormValues): PlayingAreaPayload 
     accessLatitude: parseCoordinate(values.accessLatitude),
     accessLongitude: parseCoordinate(values.accessLongitude),
     accessNote: orNull(values.accessNote),
+    contactName: orNull(values.contactName),
+    contactPhone: orNull(values.contactPhone),
+    photoUrl: orNull(values.photoUrl),
   }
 }
 
@@ -173,4 +190,20 @@ export function duplicateFieldId(error: unknown): string | null {
   const data = (error as { response?: { status?: number; data?: { existingPlayingAreaId?: unknown } } })?.response
   if (data?.status === 409 && typeof data.data?.existingPlayingAreaId === 'string') return data.data.existingPlayingAreaId
   return null
+}
+
+// docs/specs/151, Duplicate Field: the name a copy starts with. A trailing single capital letter (optionally in brackets) goes to the
+// next letter ("Carltonville CC (A)" becomes "Carltonville CC (B)", "Oval A" becomes "Oval B"); any other name gets " B".
+export function nextFieldName(name: string): string {
+  const trimmed = name.trim()
+  const match = /^(.*\s)(\(?)([A-Y])(\)?)$/.exec(trimmed)
+  if (match) {
+    return `${match[1]}${match[2]}${String.fromCharCode(match[3].charCodeAt(0) + 1)}${match[4]}`
+  }
+  return `${trimmed} B`
+}
+
+/** The values a copy of `field` starts with: everything copied, the name moved on to the next letter. */
+export function duplicateFieldForm(field: PlayingArea): FieldFormValues {
+  return { ...fieldFormFromField(field), name: nextFieldName(field.name) }
 }

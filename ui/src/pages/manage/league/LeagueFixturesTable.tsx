@@ -174,28 +174,28 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
         {ours && <Chip size="small" label="Our match" sx={{ ...badgeSx('positive'), height: 22, fontSize: '0.75rem' }} />}
       </Box>
       <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
-        {ours && (
-          // Page-anatomy section 6: the row's one Actions button. Same set as the Matches list offers a row (it has no menu, so Open
-          // and Edit); only our matches have a page to open or edit.
-          <ManageMenu
-            trigger="kebab"
-            dense
-            label={`Actions for ${title}`}
-            testId={`fixture-row-actions-${match.id}`}
-            groups={[
-              {
-                id: 'actions',
-                heading: 'Actions',
-                items: [
-                  { id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) },
-                  { id: 'edit', requires: 'MATCHES_EDIT', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
-                  // Share is always last (page-anatomy section 8); it opens the Share Match dialog (docs/specs/131).
-                  { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare?.(match), disabled: !onShare, reason: 'Sharing is not available here' },
-                ],
-              },
-            ]}
-          />
-        )}
+        {/* Page-anatomy section 6: the row's one Actions button. docs/specs/151: every match in the league has it, not only ours, so a wrong
+            date or time can be corrected and any match shared. Only our matches have a page to open. */}
+        <ManageMenu
+          trigger="kebab"
+          dense
+          label={`Actions for ${title}`}
+          testId={`fixture-row-actions-${match.id}`}
+          groups={[
+            {
+              id: 'actions',
+              heading: 'Actions',
+              items: [
+                ...(ours
+                  ? [{ id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) }]
+                  : []),
+                { id: 'edit', requires: 'MATCHES_EDIT' as const, title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
+                // Share is always last (page-anatomy section 8); it opens the Share Match dialog (docs/specs/131).
+                { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare?.(match), disabled: !onShare, reason: 'Sharing is not available here' },
+              ],
+            },
+          ]}
+        />
       </Box>
     </Box>
   )
