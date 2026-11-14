@@ -200,21 +200,21 @@ export default function LeagueTeamsView() {
   const ownTeamActions = (affiliationId: string, team: Team) => {
     const items: ManageMenuItem[] = [
       { id: 'open', title: 'Open Team', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: teamPath(team) },
-      { id: 'remove', title: 'Remove from League', icon: <LinkOffOutlinedIcon fontSize="small" />, onClick: () => setUnaffiliating({ affiliationId, team }), disabled: unaffiliateMutation.isPending },
+      { id: 'remove', requires: 'LEAGUES_EDIT', title: 'Remove from League', icon: <LinkOffOutlinedIcon fontSize="small" />, onClick: () => setUnaffiliating({ affiliationId, team }), disabled: unaffiliateMutation.isPending },
     ]
     return <ManageMenu trigger="kebab" dense label={`Actions for ${team.name}`} testId={`league-team-actions-${team.id}`} groups={[{ id: 'actions', heading: 'Actions', items }]} />
   }
   const leagueTeamMenu = (leagueTeam: LeagueTeam) => {
     const items: ManageMenuItem[] = [
-      { id: 'edit', title: 'Edit League Team', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => leagueTeamActions.openEdit(leagueTeam) },
+      { id: 'edit', requires: 'LEAGUES_EDIT', title: 'Edit League Team', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => leagueTeamActions.openEdit(leagueTeam) },
       {
-        id: 'toggle',
+        id: 'toggle', requires: 'LEAGUES_EDIT',
         title: leagueTeam.active ? 'Deactivate' : 'Reactivate',
         icon: leagueTeam.active ? <BlockOutlinedIcon fontSize="small" /> : <ReplayOutlinedIcon fontSize="small" />,
         onClick: () => leagueTeamActions.toggleActive(leagueTeam),
         disabled: leagueTeamActions.togglePending,
       },
-      { id: 'remove', title: 'Remove', icon: <DeleteOutlineIcon fontSize="small" />, onClick: () => leagueTeamActions.askRemove(leagueTeam) },
+      { id: 'remove', requires: 'LEAGUES_EDIT', title: 'Remove', icon: <DeleteOutlineIcon fontSize="small" />, onClick: () => leagueTeamActions.askRemove(leagueTeam) },
     ]
     return <ManageMenu trigger="kebab" dense label={`Actions for ${leagueTeam.name}`} testId={`league-team-actions-${leagueTeam.id}`} groups={[{ id: 'actions', heading: 'Actions', items }]} />
   }
@@ -278,7 +278,7 @@ export default function LeagueTeamsView() {
         testId="manage-teams"
         items={[
           {
-            id: 'add-team',
+            id: 'add-team', requires: 'LEAGUES_EDIT',
             title: 'Add Team',
             description: 'Link one of your teams, add an opponent, or copy teams from another season.',
             icon: <GroupAddOutlinedIcon fontSize="small" />,
@@ -287,7 +287,7 @@ export default function LeagueTeamsView() {
             reason: 'Create a season first',
           },
           {
-            id: 'copy-teams',
+            id: 'copy-teams', requires: 'LEAGUES_EDIT',
             title: 'Copy Teams',
             description: 'Copy the league teams from another season.',
             icon: <ContentCopyOutlinedIcon fontSize="small" />,

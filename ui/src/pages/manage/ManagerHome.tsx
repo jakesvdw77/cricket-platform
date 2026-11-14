@@ -7,6 +7,7 @@ import { ManagerShell } from '../../components/ManagerShell'
 import { keycloak } from '../../auth/keycloak'
 import { StatusScreen } from '../../components/StatusScreen'
 import { FullPageLoader } from '../../components/CricketBallLoader'
+import { PermissionsProvider } from '../../auth/permissions'
 import { signOut } from '../../auth/signOut'
 import { useKeycloakSettled } from '../../auth/sessionExpiry'
 import { useProfileSwitch } from '../../hooks/useProfileSwitch'
@@ -52,7 +53,9 @@ export default function ManagerHome() {
     return <Navigate to="/" replace />
   }
 
-  if (isError || (data && !data.platformAdmin && data.clubAdminClubIds.length === 0)) {
+  // A manager card (any grant, club-wide or one section) opens the area; clubAdminClubIds alone misses section grants.
+  const hasManagerCard = data?.profiles?.some((profile) => profile.kind === 'MANAGER') ?? false
+  if (isError || (data && !data.platformAdmin && data.clubAdminClubIds.length === 0 && !hasManagerCard)) {
     return (
       <StatusScreen kind="not-authorised" message="You do not have access to the club manager area." secondaryAction={{ label: 'Sign out', onClick: signOut }} />
     )
@@ -63,6 +66,7 @@ export default function ManagerHome() {
   }
 
   return (
+    <PermissionsProvider access={data} clubId={clubId}>
     <ManagerShell
       brand={clubProfile?.name ?? 'Cricket Legend Platform'}
       logoUrl={clubProfile ? clubProfile.logoUrl : undefined}
@@ -78,5 +82,6 @@ export default function ManagerHome() {
     >
       <Outlet context={{ clubId }} />
     </ManagerShell>
+    </PermissionsProvider>
   )
 }

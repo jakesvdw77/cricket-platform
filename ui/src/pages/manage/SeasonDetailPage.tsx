@@ -107,7 +107,7 @@ export default function SeasonDetailPage() {
           id: 'season',
           heading: 'Season',
           items: [
-            { id: 'edit-season', title: 'Edit Season', description: 'Label, start and end dates, and status.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
+            { id: 'edit-season', requires: 'LEAGUES_EDIT', title: 'Edit Season', description: 'Label, start and end dates, and status.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
             { id: 'view-leagues', title: 'View Leagues', description: 'Open the Leagues list.', icon: <EmojiEventsOutlinedIcon fontSize="small" />, to: leaguesPath },
             { id: 'view-matches', title: 'View Matches', description: 'Open the Matches list.', icon: <EventOutlinedIcon fontSize="small" />, to: matchesPath },
           ],

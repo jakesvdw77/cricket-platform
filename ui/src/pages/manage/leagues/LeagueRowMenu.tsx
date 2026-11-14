@@ -35,12 +35,12 @@ export function LeagueRowMenu({ league, seasonId, onShare, onDuplicate, testId =
   const importReason = importScheduleDisabledReason({ hasSeason: Boolean(seasonId), leagueActive: league.active })
   const items: ManageMenuItem[] = [
     { id: 'open', title: 'Open League', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/schedule${search}`) },
-    { id: 'edit', title: 'Edit League Details', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit${search}`) },
+    { id: 'edit', requires: 'LEAGUES_EDIT', title: 'Edit League Details', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit${search}`) },
     { id: 'open-schedule', title: 'Open Schedule', icon: <EventOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/schedule${search}`) },
     { id: 'open-teams', title: 'Open Teams', icon: <GroupsOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/teams${search}`) },
     { id: 'open-conditions', title: 'Open Playing Conditions', icon: <DescriptionOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/conditions${search}`) },
     {
-      id: 'add-match',
+      id: 'add-match', requires: 'MATCHES_EDIT',
       title: 'Create New Match',
       icon: <AddOutlinedIcon fontSize="small" />,
       to: seasonId ? leaveTo(leagueAddMatchPath(league.id, seasonId)) : undefined,
@@ -48,7 +48,7 @@ export function LeagueRowMenu({ league, seasonId, onShare, onDuplicate, testId =
       reason: 'Create a season first',
     },
     {
-      id: 'import-schedule',
+      id: 'import-schedule', requires: 'IMPORTS_RUN',
       title: 'Import Schedule',
       icon: <UploadFileOutlinedIcon fontSize="small" />,
       to: seasonId ? leaveTo(leagueScheduleImportPath(league.id, seasonId, 'view')) : undefined,
@@ -56,7 +56,7 @@ export function LeagueRowMenu({ league, seasonId, onShare, onDuplicate, testId =
       reason: importReason ?? undefined,
     },
     ...(onShare ? [{ id: 'share', title: 'Share League', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare(league) }] : []),
-    ...(onDuplicate ? [{ id: 'duplicate', title: 'Duplicate League', icon: <ContentCopyOutlinedIcon fontSize="small" />, onClick: () => onDuplicate(league) }] : []),
+    ...(onDuplicate ? [{ id: 'duplicate', requires: 'LEAGUES_EDIT', title: 'Duplicate League', icon: <ContentCopyOutlinedIcon fontSize="small" />, onClick: () => onDuplicate(league) }] : []),
   ]
   return (
     <ManageMenu

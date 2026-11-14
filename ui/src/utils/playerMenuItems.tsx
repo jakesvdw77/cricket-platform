@@ -42,10 +42,11 @@ const CAUTIOUS: PlayerStatusAction[] = ['reject', 'suspend']
 export function playerMenuItems({ status, openTo, editTo, statsTo, onStatusAction }: PlayerMenuOptions): ManageMenuItem[] {
   return [
     ...(openTo ? [{ id: 'open', title: 'Open Player', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: openTo }] : []),
-    { id: 'edit', title: 'Edit Player', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+    { id: 'edit', requires: 'PLAYERS_EDIT', title: 'Edit Player', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
     { id: 'stats', title: 'View Stats', icon: <EqualizerOutlinedIcon fontSize="small" />, to: statsTo },
     ...PLAYER_STATUS_ACTIONS[status].map((action) => ({
       id: action,
+      requires: 'PLAYERS_EDIT' as const,
       title: STATUS_ITEM_TITLE[action],
       icon: STATUS_ITEM_ICON[action],
       onClick: () => onStatusAction(action),

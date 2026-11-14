@@ -16,7 +16,7 @@ export interface TeamMenuOptions {
 export function teamMenuItems({ openTo, editTo, statsTo }: TeamMenuOptions): ManageMenuItem[] {
   return [
     ...(openTo ? [{ id: 'open', title: 'Open Team', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: openTo }] : []),
-    { id: 'edit', title: 'Edit Team', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+    { id: 'edit', requires: 'TEAMS_EDIT', title: 'Edit Team', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
     { id: 'stats', title: 'View Stats', icon: <EqualizerOutlinedIcon fontSize="small" />, to: statsTo },
     ...(openTo ? [{ id: 'squad', title: 'View Squad', icon: <GroupsOutlinedIcon fontSize="small" />, to: `${openTo}#squad` }] : []),
   ]

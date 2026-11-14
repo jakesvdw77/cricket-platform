@@ -188,7 +188,7 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
                 heading: 'Actions',
                 items: [
                   { id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) },
-                  { id: 'edit', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
+                  { id: 'edit', requires: 'MATCHES_EDIT', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
                   // Share is always last (page-anatomy section 8); it opens the Share Match dialog (docs/specs/131).
                   { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare?.(match), disabled: !onShare, reason: 'Sharing is not available here' },
                 ],

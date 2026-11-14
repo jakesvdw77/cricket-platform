@@ -58,7 +58,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
 
   const open: ManageMenuItem = { id: 'open', title: 'Open Field', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/${field.id}`) }
   const editItem: ManageMenuItem = {
-    id: 'edit',
+    id: 'edit', requires: 'MATCHES_EDIT',
     title: 'Edit Field',
     description: 'Name, type, owner, address and map link.',
     icon: <EditOutlinedIcon fontSize="small" />,
@@ -84,7 +84,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       ? [
           field.linkedHome
             ? {
-                id: 'home',
+                id: 'home', requires: 'MATCHES_EDIT',
                 title: 'Remove From Our Fields',
                 description: 'Take this field off your club shortlist; matches keep it.',
                 icon: <LinkOffIcon fontSize="small" />,
@@ -92,7 +92,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
                 disabled: homePending,
               }
             : {
-                id: 'home',
+                id: 'home', requires: 'MATCHES_EDIT',
                 title: 'Add To Our Fields',
                 description: 'Put this field on your club shortlist.',
                 icon: <LinkIcon fontSize="small" />,
@@ -107,7 +107,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       ? statusActions.length === 0
         ? [
             {
-              id: 'status',
+              id: 'status', requires: 'MATCHES_EDIT',
               title: 'Change Status',
               icon: <ManageAccountsOutlinedIcon fontSize="small" />,
               disabled: true,
@@ -124,7 +124,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       : []
   const merge: ManageMenuItem[] =
     admin && !row && onMerge
-      ? [{ id: 'merge', title: 'Merge Into...', description: 'Fold this field into another and move its matches.', icon: <CallMergeIcon fontSize="small" />, onClick: onMerge }]
+      ? [{ id: 'merge', requires: 'MATCHES_EDIT', title: 'Merge Into...', description: 'Fold this field into another and move its matches.', icon: <CallMergeIcon fontSize="small" />, onClick: onMerge }]
       : []
 
   // Row: Open, Edit, the field's own opens (maps), then record actions. Page: Edit, Get Directions, record actions, Merge, links.

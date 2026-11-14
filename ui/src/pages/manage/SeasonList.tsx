@@ -7,6 +7,7 @@ import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
+import { usePermissions } from '../../auth/permissions'
 import { AddCard } from '../../components/AddCard'
 import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
@@ -68,6 +69,7 @@ function compareSeasons(sort: SeasonSort): (a: Season, b: Season) => number {
 export default function SeasonList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const canAdd = usePermissions().can('LEAGUES_EDIT')
   const location = useLocation()
   // docs/specs/127: Add Season returns to this list.
   const addSeasonPath = withReturnTo('/manage/fixtures/seasons/new', currentOrigin(location), 'Seasons')
@@ -176,7 +178,7 @@ export default function SeasonList() {
           icon={icon}
           title="No seasons yet"
           description="Create your club's first season to get started."
-          action={<EmptyStateLink onClick={() => navigate(addSeasonPath)}>Create New Season</EmptyStateLink>}
+          action={canAdd ? <EmptyStateLink onClick={() => navigate(addSeasonPath)}>Create New Season</EmptyStateLink> : undefined}
         />
     }
     if (isSearching) {
@@ -248,7 +250,7 @@ export default function SeasonList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
-      <ManageScreenHeader title="Seasons" action={<Button size="compact" onClick={() => navigate(addSeasonPath)} sx={{ flex: 'none' }}>Create New Season</Button>} />
+      <ManageScreenHeader title="Seasons" action={canAdd ? <Button size="compact" onClick={() => navigate(addSeasonPath)} sx={{ flex: 'none' }}>Create New Season</Button> : undefined} />
 
       <PageCounters density="compact" items={counterItems} />
 
@@ -265,7 +267,7 @@ export default function SeasonList() {
               <SeasonCard key={season.id} season={season} summary={summaries?.[season.id] ?? null} today={today} />
             ))}
             {/* The grid ends with a dashed Add card (same route as the page's Add Season button); with no cards it is not shown (the empty message carries the quick-action button). */}
-            {visibleSeasons.length > 0 && <AddCard label="Create New Season" to={addSeasonPath} testId="add-season-card" />}
+            {canAdd && visibleSeasons.length > 0 && <AddCard label="Create New Season" to={addSeasonPath} testId="add-season-card" />}
           </Box>
         )}
       </Box>

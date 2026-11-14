@@ -276,7 +276,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
           id: 'match',
           heading: 'Match',
           items: [
-            { id: 'edit-match', title: 'Edit Match', description: 'Teams, league, season, date, venue and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
+            { id: 'edit-match', requires: 'MATCHES_EDIT', title: 'Edit Match', description: 'Teams, league, season, date, venue and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
             ...(resultAction
               ? [{ id: 'result', title: titleCase(resultAction.label), description: 'The scorecard and result.', icon: <SportsScoreOutlinedIcon fontSize="small" />, to: leaveTo(resultAction.to) }]
               : []),

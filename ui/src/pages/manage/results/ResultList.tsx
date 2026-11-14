@@ -47,6 +47,7 @@ import { resultImportTo, resultTitle } from './resultListHelpers'
 import { ResultCard } from './ResultCard'
 import { ResultTable } from './ResultTable'
 import { usePublishResult } from './usePublishResult'
+import { usePermissions } from '../../../auth/permissions'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -81,6 +82,7 @@ const STATUS_OPTIONS: { value: ResultStatus; label: string }[] = [
 // counters, FilterBar (plus Outcome and Status), content line, then result cards or the list view. Every filter is a
 // backend parameter; the counters come from GET /results/summary for the same filters.
 export default function ResultList() {
+  const canCapture = usePermissions().can('RESULTS_EDIT')
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
@@ -391,7 +393,7 @@ export default function ResultList() {
           ? `${awaitingCount} ${awaitingCount === 1 ? 'match is' : 'matches are'} waiting for a result.`
           : 'Results you capture for your matches will appear here.'
       }
-      action={<EmptyStateLink onClick={openCreate}>Capture New Result</EmptyStateLink>}
+      action={canCapture ? <EmptyStateLink onClick={openCreate}>Capture New Result</EmptyStateLink> : undefined}
     />
   )
   // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
@@ -410,7 +412,7 @@ export default function ResultList() {
         }
         // ONE filled button on the title row (page-anatomy section 1). It opens the capture picker, which also offers Import (docs/specs/104).
         action={
-          <SplitButton
+          !canCapture ? undefined : <SplitButton
             label="Capture New Result"
             onClick={openCreate}
             testId="capture-result"
@@ -453,7 +455,7 @@ export default function ResultList() {
             />
           ))}
           {/* The grid ends with a dashed Create card (same action as the title-row button); with no cards it is not shown (the empty message carries the link). */}
-          <AddCard label="Capture New Result" onClick={openCreate} testId="add-result-card" />
+          {canCapture && <AddCard label="Capture New Result" onClick={openCreate} testId="add-result-card" />}
         </Box>
       )}
 

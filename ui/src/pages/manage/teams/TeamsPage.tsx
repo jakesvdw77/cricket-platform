@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { SortMenu } from '../../../components/ContentControlsLine'
+import { usePermissions } from '../../../auth/permissions'
 import { AddCard } from '../../../components/AddCard'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
@@ -59,6 +60,7 @@ const NOT_ON_FILE = '–'
 // teams are a small, bounded list (docs/specs/026-teams.md), fetched whole and filtered client-side.
 export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   const navigate = useNavigate()
+  const canAdd = usePermissions().can('TEAMS_EDIT')
   const location = useLocation()
   const sectionScopeId = scope.kind === 'section' ? scope.sectionId : undefined
   const [search, setSearch] = useState('')
@@ -299,7 +301,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
         icon={icon}
         title="No teams yet"
         description={scope.kind === 'section' ? "Add this section's first team to get started." : "Add your club's first team to get started."}
-        action={<EmptyStateLink onClick={openCreate}>Add New Team</EmptyStateLink>}
+        action={canAdd ? <EmptyStateLink onClick={openCreate}>Add New Team</EmptyStateLink> : undefined}
       />
     ) : (
       <EmptyState icon={icon} title="No matching teams" description={emptyDescription} />
@@ -327,7 +329,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
         // The section scope is a plain sub-header path, not part of the title (docs/specs/142).
         subtitle={scopeSection ? [...breadcrumb, scopeSection.name].join(' › ') : undefined}
         // ONE filled button on the title row (page-anatomy section 1); the owner's wording is Add New ... (2026-11-05).
-        action={<Button size="compact" onClick={openCreate}>Add New Team</Button>}
+        action={canAdd ? <Button size="compact" onClick={openCreate}>Add New Team</Button> : undefined}
       />
 
       <PageCounters density="compact" items={counterItems} />
@@ -378,7 +380,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
             )
           })}
           {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
-          <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />
+          canAdd && <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />
         </Box>
       )}
     </Box>

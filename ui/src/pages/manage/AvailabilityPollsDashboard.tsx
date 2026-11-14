@@ -27,6 +27,7 @@ import { dynamicCardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
 import { groupPollRow, squadPollRow } from './availability/pollPanelRows'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
+import { usePermissions } from '../../auth/permissions'
 
 // One entry of the merged list - sortDate is the soonest match the poll covers (a squad poll's
 // own match, a group poll's firstMatchDate).
@@ -50,6 +51,7 @@ type PollListItem =
 // shared, persisted filter (replacing 043's per-view key). Search is a non-persisted useState and is
 // deliberately not sent to the counters (083 lists only the shared filters, type and Show closed as counter inputs).
 export default function AvailabilityPollsDashboard() {
+  const canAdd = usePermissions().can('AVAILABILITY_MANAGE')
   const {
     clubId, filters, seasonId, seasonsLoading, teams: teamOptions, validTeamId: teamId, teamsLoading, teamsError,
     showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed, setPollRows,
@@ -289,7 +291,7 @@ export default function AvailabilityPollsDashboard() {
   )
 
   // Empty states (docs/specs/136, page-anatomy section 5): the section's BrandIcon and, where nothing exists yet, a quick-action Add Poll.
-  const addPollAction = <EmptyStateLink onClick={() => setChooserOpen(true)}>Create New Poll</EmptyStateLink>
+  const addPollAction = canAdd ? <EmptyStateLink onClick={() => setChooserOpen(true)}>Create New Poll</EmptyStateLink> : undefined
   const icon = <BrandIcon name="nav/availability-polls" size={48} />
   const emptyState =
     visibleItems.length > 0 ? null : isFiltering ? (
@@ -356,7 +358,7 @@ export default function AvailabilityPollsDashboard() {
             ),
           )}
           {/* The grid ends with a dashed Add card (same route as Add Poll); with no cards it is not shown (the empty message carries the quick-action button). */}
-          {visibleItems.length > 0 && <AddCard label="Create New Poll" onClick={() => setChooserOpen(true)} testId="add-poll-card" />}
+          {canAdd && visibleItems.length > 0 && <AddCard label="Create New Poll" onClick={() => setChooserOpen(true)} testId="add-poll-card" />}
         </Box>
       )}
     </Box>

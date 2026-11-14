@@ -12,6 +12,7 @@ import { CompactSwitch } from '../../components/CompactSwitch'
 import { ToolbarCard, ToolbarSortButton, ToolbarToggleChip } from '../../components/ToolbarCard'
 import { SortMenu } from '../../components/ContentControlsLine'
 import type { SortMenuOption } from '../../components/ContentControlsLine'
+import { usePermissions } from '../../auth/permissions'
 import { AddCard } from '../../components/AddCard'
 import { BrandIcon } from '../../components/BrandIcon'
 import { EmptyState, EmptyStateLink } from '../../components/EmptyState'
@@ -79,6 +80,7 @@ function comparePlayers(sort: PlayerSort): (a: Player, b: Player) => number {
 export default function PlayerList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const canAdd = usePermissions().can('PLAYERS_EDIT')
   const location = useLocation()
   const [search, setSearch] = useState('')
   // docs/specs/141: the sort, the quick filter and Show Inactive live in the address, so Back from a player restores them
@@ -334,7 +336,7 @@ export default function PlayerList() {
       icon={icon}
       title="No players yet"
       description="Add your club's first player to get started."
-      action={<EmptyStateLink onClick={openCreate}>Add New Player</EmptyStateLink>}
+      action={canAdd ? <EmptyStateLink onClick={openCreate}>Add New Player</EmptyStateLink> : undefined}
     />
   )
   // List view: the bar is fused into the table's card in every state. Cards view: a standalone toolbar card.
@@ -345,7 +347,7 @@ export default function PlayerList() {
       <ManageScreenHeader
         title="Players"
         // ONE filled button on the title row (page-anatomy section 1); the owner's wording is Add New Player (2026-11-04).
-        action={<Button size="compact" onClick={openCreate}>Add New Player</Button>}
+        action={canAdd ? <Button size="compact" onClick={openCreate}>Add New Player</Button> : undefined}
       />
 
       <LinkRequestsWaitingCard waiting={linkRequestsWaiting} />
@@ -381,7 +383,7 @@ export default function PlayerList() {
             />
           ))}
           {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
-          <AddCard label="Add New Player" onClick={openCreate} testId="add-player-card" />
+          canAdd && <AddCard label="Add New Player" onClick={openCreate} testId="add-player-card" />
         </Box>
       )}
 

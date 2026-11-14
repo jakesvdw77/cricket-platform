@@ -22,7 +22,7 @@ export interface MeAccess {
   clubAdminClubIds: string[]
   // Absent from an older backend; callers fall back to the previous routing then.
   profiles?: Profile[]
-  // docs/specs/150: what the caller may do per club; nothing reads it yet. sectionIds null means club-wide.
+  // docs/specs/150: what the caller may do per club; read by auth/permissions to hide actions (the server checks again). sectionIds null means club-wide.
   permissions?: { clubId: string; clubWide: boolean; items: { key: string; sectionIds: string[] | null }[] }[]
 }
 

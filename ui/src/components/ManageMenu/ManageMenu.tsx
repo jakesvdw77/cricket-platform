@@ -6,6 +6,8 @@ import { alpha, useTheme } from '@mui/material/styles'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import { BottomSheet } from '../BottomSheet'
+import { usePermissions } from '../../auth/permissions'
+import type { PermissionKey } from '../../auth/permissions'
 import { Button } from '../Button'
 
 export interface ManageMenuItem {
@@ -23,6 +25,8 @@ export interface ManageMenuItem {
   // Optional: 'error' draws the title and icon in the error colour (a destructive item such as Delete Poll).
   // docs/specs/136: an error tone for a destructive item (Delete Poll): red icon and text.
   tone?: 'error'
+  // docs/specs/150: shown only to a caller who holds this permission (the server checks again). Omitted: always shown.
+  requires?: PermissionKey
 }
 
 export interface ManageMenuGroup {
@@ -78,6 +82,7 @@ function GroupHeading({ first, children }: { first: boolean; children: ReactNode
 // the item opens returns focus there.
 export function ManageMenu({ label, groups, openFirstGroupId, testId = 'manage-menu', trigger = 'button', dense = false, buttonVariant = 'primary', fixedWidth = false }: ManageMenuProps) {
   const kebab = trigger === 'kebab'
+  const { can } = usePermissions()
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'))
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -94,7 +99,9 @@ export function ManageMenu({ label, groups, openFirstGroupId, testId = 'manage-m
   const ordered = openFirstGroupId
     ? [...groups.filter((group) => group.id === openFirstGroupId), ...groups.filter((group) => group.id !== openFirstGroupId)]
     : groups
-  const visibleGroups = ordered.filter((group) => group.items.length > 0)
+  const visibleGroups = ordered
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.requires || can(item.requires)) }))
+    .filter((group) => group.items.length > 0)
 
   const list = (
     <MenuList
@@ -230,6 +237,9 @@ export function ManageMenu({ label, groups, openFirstGroupId, testId = 'manage-m
       {list}
     </Popover>
   )
+
+  // docs/specs/150: nothing in the menu is allowed for this caller (a Viewer's Manage button), so there is no menu.
+  if (visibleGroups.length === 0) return null
 
   if (kebab) {
     // The menu is portalled but React events still bubble to the row or card that holds it: a click or key here must never reach it.
