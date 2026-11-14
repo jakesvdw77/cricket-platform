@@ -237,7 +237,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         }
         PlayerDto created = playerService.create(clubId, new CreatePlayerRequest(
                 np.firstName().trim(), np.lastName().trim(), np.dateOfBirth(), null, null, null, null, null, null,
-                null, null, null, null, null, null, false, null));
+                null, null, null, null, null, null, false, null, false, null));
         if (sectionId != null) {
             playerSectionService.link(clubId, created.id(), sectionId);
         }

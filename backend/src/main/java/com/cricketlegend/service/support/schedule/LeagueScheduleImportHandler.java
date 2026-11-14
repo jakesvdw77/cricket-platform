@@ -833,7 +833,7 @@ public class LeagueScheduleImportHandler implements ImportTypeHandler {
         List<TeamPlan> fresh = plan.teams().stream().filter(t -> !t.copy()).toList();
         if (!fresh.isEmpty()) {
             List<LeagueTeamDto> created = leagueTeamService.createAll(clubId, leagueId, seasonId, fresh.stream()
-                    .map(t -> new CreateLeagueTeamRequest(t.side().name(), t.abbreviation(), null)).toList());
+                    .map(t -> new CreateLeagueTeamRequest(t.side().name(), t.abbreviation(), null, null)).toList());
             for (int i = 0; i < fresh.size(); i++) {
                 teamIds.put(fresh.get(i).identity(), created.get(i).id());
                 entities.add(teamEntity(created.get(i), null));

@@ -91,6 +91,14 @@ public class PlayerProfile {
     @Column(name = "is_wicket_keeper", nullable = false)
     private boolean wicketKeeper;
 
+    // docs/specs/151: where the player usually bats (null = not recorded) and whether they bowl a little.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "batting_position")
+    private BattingPosition battingPosition;
+
+    @Column(name = "is_part_time_bowler", nullable = false)
+    private boolean partTimeBowler;
+
     @Column(name = "jersey_number")
     private Integer jerseyNumber;
 

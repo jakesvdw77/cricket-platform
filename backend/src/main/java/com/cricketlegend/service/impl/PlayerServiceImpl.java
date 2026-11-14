@@ -328,6 +328,8 @@ public class PlayerServiceImpl implements PlayerService {
                 .bowlingArm(request.bowlingArm())
                 .bowlingType(request.bowlingType())
                 .wicketKeeper(request.isWicketKeeper())
+                .battingPosition(request.battingPosition())
+                .partTimeBowler(request.isPartTimeBowler())
                 .jerseyNumber(request.jerseyNumber())
                 .active(true)
                 .build();
@@ -363,6 +365,8 @@ public class PlayerServiceImpl implements PlayerService {
         profile.setBowlingArm(request.bowlingArm());
         profile.setBowlingType(request.bowlingType());
         profile.setWicketKeeper(request.isWicketKeeper());
+        profile.setBattingPosition(request.battingPosition());
+        profile.setPartTimeBowler(request.isPartTimeBowler());
         profile.setJerseyNumber(request.jerseyNumber());
         profile = playerProfileRepository.save(profile);
 

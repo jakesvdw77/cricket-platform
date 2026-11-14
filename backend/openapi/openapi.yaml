@@ -10860,6 +10860,15 @@ components:
           - GOOGLY
         isWicketKeeper:
           type: boolean
+        battingPosition:
+          type: string
+          enum:
+          - OPENER
+          - TOP_ORDER
+          - MIDDLE_ORDER
+          - LOWER_ORDER
+        isPartTimeBowler:
+          type: boolean
         active:
           type: boolean
         sectionIds:
@@ -11295,6 +11304,15 @@ components:
           - GOOGLY
         isWicketKeeper:
           type: boolean
+        battingPosition:
+          type: string
+          enum:
+          - OPENER
+          - TOP_ORDER
+          - MIDDLE_ORDER
+          - LOWER_ORDER
+        isPartTimeBowler:
+          type: boolean
         jerseyNumber:
           type: integer
           format: int32
@@ -11364,6 +11382,15 @@ components:
           - WRIST_SPIN
           - GOOGLY
         isWicketKeeper:
+          type: boolean
+        battingPosition:
+          type: string
+          enum:
+          - OPENER
+          - TOP_ORDER
+          - MIDDLE_ORDER
+          - LOWER_ORDER
+        isPartTimeBowler:
           type: boolean
         active:
           type: boolean
@@ -13587,6 +13614,15 @@ components:
           - GOOGLY
         isWicketKeeper:
           type: boolean
+        battingPosition:
+          type: string
+          enum:
+          - OPENER
+          - TOP_ORDER
+          - MIDDLE_ORDER
+          - LOWER_ORDER
+        isPartTimeBowler:
+          type: boolean
         jerseyNumber:
           type: integer
           format: int32
@@ -14611,6 +14647,8 @@ components:
           type: string
         logoUrl:
           type: string
+        notes:
+          type: string
         active:
           type: boolean
         referencedByMatchCount:
@@ -14631,6 +14669,9 @@ components:
           type: string
           maxLength: 1024
           minLength: 0
+        notes:
+          type: string
+          maxLength: 2000
       required:
       - name
     UpdateLeagueTeamRequest:
@@ -14648,6 +14689,9 @@ components:
           type: string
           maxLength: 1024
           minLength: 0
+        notes:
+          type: string
+          maxLength: 2000
       required:
       - name
     RemoveLeagueTeamResponse:
@@ -16311,6 +16355,12 @@ components:
           type: [string, 'null']
           maxLength: 200
           description: "Only allowed with an access point."
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        photoUrl:
+          type: string
         locationNotes:
           type: string
           maxLength: 500
@@ -16367,6 +16417,12 @@ components:
           description: "-180..180."
         accessNote:
           type: [string, 'null']
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        photoUrl:
+          type: string
         locationNotes:
           type: string
         verificationStatus:
@@ -16495,6 +16551,12 @@ components:
           description: "-180..180."
         accessNote:
           type: [string, 'null']
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        photoUrl:
+          type: string
         locationNotes:
           type: string
         verificationStatus:
@@ -21403,6 +21465,8 @@ components:
           description: "-180..180."
         accessNote:
           type: [string, 'null']
+        photoUrl:
+          type: string
         verified:
           type: boolean
         home:

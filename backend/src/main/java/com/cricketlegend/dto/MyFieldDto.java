@@ -24,6 +24,7 @@ public record MyFieldDto(
         BigDecimal accessLatitude,
         BigDecimal accessLongitude,
         String accessNote,
+        String photoUrl,
         boolean verified,
         boolean home) {
 }

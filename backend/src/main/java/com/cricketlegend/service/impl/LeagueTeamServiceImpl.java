@@ -101,6 +101,7 @@ public class LeagueTeamServiceImpl implements LeagueTeamService {
                 .name(name)
                 .abbreviation(blankToNull(request.abbreviation()))
                 .logoUrl(blankToNull(request.logoUrl()))
+                .notes(blankToNull(request.notes()))
                 .active(true)
                 .build());
         return toDto(saved, 0L);
@@ -130,6 +131,7 @@ public class LeagueTeamServiceImpl implements LeagueTeamService {
                     .name(name)
                     .abbreviation(blankToNull(request.abbreviation()))
                     .logoUrl(blankToNull(request.logoUrl()))
+                    .notes(blankToNull(request.notes()))
                     .active(true)
                     .build());
         }
@@ -153,6 +155,7 @@ public class LeagueTeamServiceImpl implements LeagueTeamService {
         team.setName(name);
         team.setAbbreviation(blankToNull(request.abbreviation()));
         team.setLogoUrl(logoUrl);
+        team.setNotes(blankToNull(request.notes()));
         LeagueTeam saved = leagueTeamRepository.save(team);
 
         if (nameOrLogoChanged) {
@@ -246,6 +249,7 @@ public class LeagueTeamServiceImpl implements LeagueTeamService {
                     .name(source.getName())
                     .abbreviation(source.getAbbreviation())
                     .logoUrl(source.getLogoUrl())
+                    .notes(source.getNotes())
                     .active(true)
                     .build());
         }

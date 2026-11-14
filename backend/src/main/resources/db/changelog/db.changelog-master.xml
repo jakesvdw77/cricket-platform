@@ -70,5 +70,8 @@
     <include file="db/changelog/v1/063-hub-club-info.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/064-access-roles.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/065-role-assignment-roles.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/066-player-batting-position.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/067-league-team-notes.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/068-field-contact-photo.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
