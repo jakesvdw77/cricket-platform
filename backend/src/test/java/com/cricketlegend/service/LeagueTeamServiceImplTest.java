@@ -171,7 +171,7 @@ class LeagueTeamServiceImplTest {
         when(leagueTeamRepository.save(captor.capture())).thenAnswer(i -> captor.getValue());
 
         LeagueTeamDto dto =
-                service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("  Riverside CC  ", " RCC ", ""));
+                service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("  Riverside CC  ", " RCC ", "", null));
 
         LeagueTeam saved = captor.getValue();
         assertThat(saved.getName()).isEqualTo("Riverside CC");
@@ -185,10 +185,38 @@ class LeagueTeamServiceImplTest {
     }
 
     @Test
+    void createSavesTrimmedNotesAndTurnsBlankNotesIntoNull() {
+        stubLeagueAndSeasonOfThisClub();
+        when(leagueTeamRepository.existsByLeagueIdAndSeasonIdAndNameIgnoreCase(leagueId, seasonId, "Riverside CC"))
+                .thenReturn(false);
+        ArgumentCaptor<LeagueTeam> captor = ArgumentCaptor.forClass(LeagueTeam.class);
+        when(leagueTeamRepository.save(captor.capture())).thenAnswer(i -> captor.getValue());
+
+        service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("Riverside CC", null, null, "  Plays at the school ground.  "));
+        assertThat(captor.getValue().getNotes()).isEqualTo("Plays at the school ground.");
+
+        service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("Riverside CC", null, null, "   "));
+        assertThat(captor.getValue().getNotes()).isNull();
+    }
+
+    @Test
+    void createWithNoNotesLeavesThemNull() {
+        stubLeagueAndSeasonOfThisClub();
+        when(leagueTeamRepository.existsByLeagueIdAndSeasonIdAndNameIgnoreCase(leagueId, seasonId, "Riverside CC"))
+                .thenReturn(false);
+        ArgumentCaptor<LeagueTeam> captor = ArgumentCaptor.forClass(LeagueTeam.class);
+        when(leagueTeamRepository.save(captor.capture())).thenAnswer(i -> captor.getValue());
+
+        service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("Riverside CC", null, null, null));
+
+        assertThat(captor.getValue().getNotes()).isNull();
+    }
+
+    @Test
     void createWithABlankNameThrowsValidationException() {
         stubLeagueAndSeasonOfThisClub();
 
-        assertThatThrownBy(() -> service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("   ", null, null)))
+        assertThatThrownBy(() -> service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("   ", null, null, null)))
                 .isInstanceOf(ValidationException.class);
         verify(leagueTeamRepository, never()).save(any());
     }
@@ -201,7 +229,7 @@ class LeagueTeamServiceImplTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> service.create(
-                        clubId, leagueId, seasonId, new CreateLeagueTeamRequest("riverside cc", null, null)))
+                        clubId, leagueId, seasonId, new CreateLeagueTeamRequest("riverside cc", null, null, null)))
                 .isInstanceOf(DuplicateLeagueTeamNameException.class);
         verify(leagueTeamRepository, never()).save(any());
     }
@@ -210,7 +238,7 @@ class LeagueTeamServiceImplTest {
     void createThrowsNotFoundWhenTheLeagueBelongsToAnotherClub() {
         stubLeague(leagueId, UUID.randomUUID());
 
-        assertThatThrownBy(() -> service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("X", null, null)))
+        assertThatThrownBy(() -> service.create(clubId, leagueId, seasonId, new CreateLeagueTeamRequest("X", null, null, null)))
                 .isInstanceOf(NotFoundException.class);
         verify(leagueTeamRepository, never()).save(any());
     }
@@ -231,7 +259,7 @@ class LeagueTeamServiceImplTest {
 
         LeagueTeamDto dto = service.update(
                 clubId, leagueId, seasonId, id,
-                new UpdateLeagueTeamRequest("Riverside CC", "RCC", "/media/Riversde CC.png"));
+                new UpdateLeagueTeamRequest("Riverside CC", "RCC", "/media/Riversde CC.png", null));
 
         assertThat(existing.getName()).isEqualTo("Riverside CC");
         assertThat(dto.referencedByMatchCount()).isEqualTo(2L);
@@ -249,7 +277,7 @@ class LeagueTeamServiceImplTest {
         when(leagueTeamRepository.findById(id)).thenReturn(Optional.of(existing));
         when(leagueTeamRepository.save(existing)).thenReturn(existing);
 
-        service.update(clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("Riverside CC", "RCC", null));
+        service.update(clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("Riverside CC", "RCC", null, null));
 
         verify(matchRepository).propagateLeagueTeamToHomeSide(eq(id), eq("Riverside CC"), eq(null), any(Instant.class));
         verify(matchRepository).propagateLeagueTeamToAwaySide(eq(id), eq("Riverside CC"), eq(null), any(Instant.class));
@@ -265,7 +293,7 @@ class LeagueTeamServiceImplTest {
 
         service.update(
                 clubId, leagueId, seasonId, id,
-                new UpdateLeagueTeamRequest("Riverside CC", "NEW", "/media/Riverside CC.png"));
+                new UpdateLeagueTeamRequest("Riverside CC", "NEW", "/media/Riverside CC.png", null));
 
         assertThat(existing.getAbbreviation()).isEqualTo("NEW");
         verify(matchRepository, never()).propagateLeagueTeamToHomeSide(any(), any(), any(), any());
@@ -281,7 +309,7 @@ class LeagueTeamServiceImplTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> service.update(
-                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("B", null, null)))
+                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("B", null, null, null)))
                 .isInstanceOf(DuplicateLeagueTeamNameException.class);
         verify(leagueTeamRepository, never()).save(any());
         verify(matchRepository, never()).propagateLeagueTeamToHomeSide(any(), any(), any(), any());
@@ -294,7 +322,7 @@ class LeagueTeamServiceImplTest {
         when(leagueTeamRepository.findById(id)).thenReturn(Optional.of(team(id, leagueId, seasonId, "A", true)));
 
         assertThatThrownBy(() -> service.update(
-                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest(" ", null, null)))
+                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest(" ", null, null, null)))
                 .isInstanceOf(ValidationException.class);
     }
 
@@ -306,7 +334,7 @@ class LeagueTeamServiceImplTest {
                 .thenReturn(Optional.of(team(id, leagueId, UUID.randomUUID(), "A", true)));
 
         assertThatThrownBy(() -> service.update(
-                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("A", null, null)))
+                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("A", null, null, null)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -317,7 +345,7 @@ class LeagueTeamServiceImplTest {
         when(leagueTeamRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.update(
-                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("A", null, null)))
+                        clubId, leagueId, seasonId, id, new UpdateLeagueTeamRequest("A", null, null, null)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -327,7 +355,7 @@ class LeagueTeamServiceImplTest {
         stubSeason(seasonId, UUID.randomUUID());
 
         assertThatThrownBy(() -> service.update(
-                        clubId, leagueId, seasonId, UUID.randomUUID(), new UpdateLeagueTeamRequest("A", null, null)))
+                        clubId, leagueId, seasonId, UUID.randomUUID(), new UpdateLeagueTeamRequest("A", null, null, null)))
                 .isInstanceOf(NotFoundException.class);
         verify(leagueTeamRepository, never()).findById(any());
     }

@@ -50,6 +50,8 @@ import { initialsFromName } from '../../utils/initials'
 import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { fullName as contactFullName } from './ClubContactList'
+import { usePermissions } from '../../auth/permissions'
+import { OurFieldsCard } from './OurFieldsCard'
 
 const CLUB_TYPE_LABELS: Record<ClubProfileType, string> = {
   CLUB: 'Club',
@@ -86,6 +88,8 @@ function formatAddress(address: Address): string {
 // error shape as every other /manage page, gated on the profile fetch; every other query is independent and never blocks.
 export default function ClubOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
+  // docs/specs/150: club setup is edited only by a club-wide grant that carries Club Setup Edit; everyone else reads. (A hook, so it stays above the early returns.)
+  const canSetup = usePermissions().can('CLUB_SETUP_EDIT')
   const theme = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
@@ -202,11 +206,13 @@ export default function ClubOverviewPage() {
   const clearSelection = () => setSelectedId(null)
   // docs/specs/127: every link that leaves this page carries it as the origin, so Back returns here.
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Club Profile')
-  const manageButton = (label: string, to: string) => (
-    <Button size="compact" variant="secondary" onClick={() => navigate(leaveTo(to))}>
-      {label}
-    </Button>
-  )
+  // docs/specs/150: club setup is edited only by a club-wide grant that carries Club Setup Edit; everyone else reads.
+  const manageButton = (label: string, to: string) =>
+    canSetup ? (
+      <Button size="compact" variant="secondary" onClick={() => navigate(leaveTo(to))}>
+        {label}
+      </Button>
+    ) : null
 
   const panelFor = (section: Section) => (
     <SectionInfoPanel
@@ -258,10 +264,10 @@ export default function ClubOverviewPage() {
                 id: 'club',
                 heading: 'Club',
                 items: [
-                  { id: 'edit', title: 'Edit Club Profile', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-profile/edit') },
-                  { id: 'contacts', title: 'Manage Contacts', icon: <ContactsOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-contacts') },
-                  { id: 'sponsors', title: 'Manage Sponsors', icon: <HandshakeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sponsors') },
-                  { id: 'structure', title: 'Manage Structure', icon: <AccountTreeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sections') },
+                  { id: 'edit', requires: 'CLUB_SETUP_EDIT', title: 'Edit Club Profile', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-profile/edit') },
+                  { id: 'contacts', requires: 'CLUB_SETUP_EDIT', title: 'Manage Contacts', icon: <ContactsOutlinedIcon fontSize="small" />, to: leaveTo('/manage/club-contacts') },
+                  { id: 'sponsors', requires: 'CLUB_SETUP_EDIT', title: 'Manage Sponsors', icon: <HandshakeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sponsors') },
+                  { id: 'structure', requires: 'CLUB_SETUP_EDIT', title: 'Manage Structure', icon: <AccountTreeOutlinedIcon fontSize="small" />, to: leaveTo('/manage/sections') },
                 ],
               },
             ]}
@@ -371,6 +377,9 @@ export default function ClubOverviewPage() {
             </Stack>
           )}
         </InfoCard>
+
+        {/* docs/specs/151, slice F: the club's own fields, with a way to link another from the directory. */}
+        <OurFieldsCard clubId={clubId} leaveTo={leaveTo} />
       </Box>
 
       <InfoCard

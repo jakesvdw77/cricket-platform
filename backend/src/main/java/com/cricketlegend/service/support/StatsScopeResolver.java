@@ -1,5 +1,6 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
@@ -70,7 +71,7 @@ public class StatsScopeResolver {
                     .orElseThrow(() -> new NotFoundException("League not found: " + leagueId));
         }
         // 404 for another club's section or team, 403 outside a section-scoped caller's reach (ClubMatchScope).
-        ClubMatchScope.Scope reach = clubMatchScope.resolve(authentication, clubId, sectionId, teamId);
+        ClubMatchScope.Scope reach = clubMatchScope.resolve(authentication, clubId, Permission.STATS_VIEW, sectionId, teamId);
         Set<UUID> sectionTeamIds = reach.sectionIds() == null ? null : teamIdsInSections(clubId, reach.sectionIds());
         boolean nothingInReach = reach.empty() || (sectionTeamIds != null && sectionTeamIds.isEmpty());
         return new Resolved(

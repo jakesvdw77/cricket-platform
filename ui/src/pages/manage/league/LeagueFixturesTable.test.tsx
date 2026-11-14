@@ -75,17 +75,30 @@ describe('LeagueFixturesTable', () => {
     expect(within(theirs).queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('gives only our matches an Actions kebab: Open Match and Edit Match as links, then Share Match, disabled only without a handler', async () => {
+  it('gives every match an Actions kebab: Open Match (ours only), Edit Match, then Share Match, disabled only without a handler', async () => {
     renderTable([match({ id: 'ours', homeTeamId: 't1', homeTeamName: null }), match({ id: 'theirs' })])
 
     const [ours, theirs] = screen.getAllByTestId('fixture-row')
-    expect(within(theirs).queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument()
+    // docs/specs/151: a match between other clubs is editable and shareable too, but has no page of ours to open.
+    expect(within(theirs).getByRole('button', { name: /^Actions for / })).toBeInTheDocument()
     await userEvent.click(within(ours).getByRole('button', { name: 'Actions for Villagers 1 vs Eagles' }))
     const items = screen.getAllByRole('menuitem')
     expect(items.map((item) => item.textContent)).toEqual(['Open Match', 'Edit Match', expect.stringContaining('Share Match')])
     expect(items[0]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours'))
     expect(items[1]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/ours/edit'))
     expect(items[2]).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it("lets a match that is not ours be edited and shared, with no Open Match", async () => {
+    const onShare = vi.fn()
+    renderTable([match({ id: 'theirs' })], '/', undefined, onShare)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Actions for / }))
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Edit Match', expect.stringContaining('Share Match')])
+    expect(items[0]).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/theirs/edit'))
+    await userEvent.click(items[1])
+    expect(onShare).toHaveBeenCalledWith(expect.objectContaining({ id: 'theirs' }))
   })
 
   it('Share Match is enabled with a handler and calls it with the match', async () => {

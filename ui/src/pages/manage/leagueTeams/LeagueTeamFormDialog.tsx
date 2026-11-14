@@ -17,11 +17,12 @@ export interface LeagueTeamFormDialogProps {
   nameError?: string | null
   // Any other failed-save message (network, other 400): a dialog-level Alert.
   errorMessage?: string | null
-  onSubmit: (payload: LeagueTeamPayload) => void
+  // `another` (Save And Add Another, add mode only): the dialog stays open and starts a fresh form after the save.
+  onSubmit: (payload: LeagueTeamPayload, options?: { another?: boolean }) => void
   onClose: () => void
 }
 
-// docs/specs/070-league-teams.md: a three-field form (name, abbreviation, logo) in a dialog.
+// docs/specs/070-league-teams.md: a small form (name, abbreviation, logo, and notes from spec 151) in a dialog.
 // Mounted only while open (the parent keys it), so each opening starts from the record's values.
 export function LeagueTeamFormDialog({
   open,
@@ -36,16 +37,23 @@ export function LeagueTeamFormDialog({
   const [name, setName] = useState(leagueTeam?.name ?? '')
   const [abbreviation, setAbbreviation] = useState(leagueTeam?.abbreviation ?? '')
   const [logoUrl, setLogoUrl] = useState(leagueTeam?.logoUrl ?? '')
+  const [notes, setNotes] = useState(leagueTeam?.notes ?? '')
   const [nameError, setNameError] = useState<string | null>(null)
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const save = (another: boolean) => {
     if (!name.trim()) {
       setNameError('Enter the team name')
       return
     }
     setNameError(null)
-    onSubmit({ name: name.trim(), abbreviation: abbreviation.trim() || null, logoUrl: logoUrl || null })
+    onSubmit(
+      { name: name.trim(), abbreviation: abbreviation.trim() || null, logoUrl: logoUrl || null, notes: notes.trim() || null },
+      another ? { another: true } : undefined,
+    )
+  }
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    save(false)
   }
 
   const shownNameError = nameError ?? serverNameError ?? undefined
@@ -84,12 +92,26 @@ export function LeagueTeamFormDialog({
               helperText="Optional"
             />
             <MediaUpload label="Logo" value={logoUrl || null} onUploaded={setLogoUrl} variant="logo" namespace="manage" />
+            <Input
+              label="Notes"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              multiline
+              minRows={3}
+              inputProps={{ maxLength: 2000 }}
+              helperText="Optional. Anything worth keeping about this team: a contact, their ground, travel."
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button size="compact" variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
+          {!leagueTeam && (
+            <Button size="compact" variant="secondary" onClick={() => save(true)} disabled={pending}>
+              Save And Add Another
+            </Button>
+          )}
           <Button size="compact" type="submit" disabled={pending}>
             {pending ? 'Saving…' : 'Save'}
           </Button>

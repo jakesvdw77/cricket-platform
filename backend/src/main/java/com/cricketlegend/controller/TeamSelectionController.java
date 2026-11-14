@@ -25,7 +25,7 @@ public class TeamSelectionController {
         this.teamSelectionService = teamSelectionService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/team-selection")
     public ResponseEntity<TeamSelectionOverviewDto> overview(
             Authentication authentication,

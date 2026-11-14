@@ -18,6 +18,7 @@ import { PlayersPanel } from './PlayersPanel'
 import { PollsPanel } from './PollsPanel'
 import type { PollsPanelKind } from './PollsPanel'
 import type { PlayersPanelTab } from './PlayersPanel'
+import { usePermissions } from '../../../auth/permissions'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
@@ -93,6 +94,7 @@ function counterItems(
 // through its own Outlet context. docs/specs/083: it also owns the shared League/Section/Team filters and the
 // default season (saved per club, mirrored in the address) and hands them to the three views through that context.
 export default function AvailabilityHubLayout() {
+  const canAdd = usePermissions().can('AVAILABILITY_MANAGE')
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const location = useLocation()
   const { pathname } = location
@@ -149,9 +151,11 @@ export default function AvailabilityHubLayout() {
       <ManageScreenHeader
         title="Availability"
         action={
-          <Button size="compact" onClick={() => setChooserOpen(true)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            Create New Poll
-          </Button>
+          canAdd ? (
+            <Button size="compact" onClick={() => setChooserOpen(true)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Create New Poll
+            </Button>
+          ) : undefined
         }
       />
 

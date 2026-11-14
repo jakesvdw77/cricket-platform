@@ -18,6 +18,7 @@ const listSeasons = vi.fn()
 const getSectionsSummary = vi.fn()
 const listSectionContacts = vi.fn()
 const listTeamsForSection = vi.fn()
+const listPlayingAreas = vi.fn()
 
 vi.mock('../../api/clubApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/clubApi')>()
@@ -49,6 +50,11 @@ vi.mock('../../api/teamApi', async (importOriginal) => {
   return { ...actual, listTeamsForSection: (clubId: string, sectionId: string) => listTeamsForSection(clubId, sectionId) }
 })
 
+vi.mock('../../api/playingAreaApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/playingAreaApi')>()
+  return { ...actual, listPlayingAreas: (clubId: string, params: unknown) => listPlayingAreas(clubId, params) }
+})
+
 vi.mock('../../api/seasonApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/seasonApi')>()
   return { ...actual, listSeasons: (clubId: string) => listSeasons(clubId) }
@@ -56,6 +62,7 @@ vi.mock('../../api/seasonApi', async (importOriginal) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  listPlayingAreas.mockResolvedValue({ content: [], totalElements: 0, totalPages: 1, number: 0, size: 100 })
 })
 
 function makeProfile(overrides: Partial<ClubProfile> = {}): ClubProfile {
@@ -285,6 +292,28 @@ describe('ClubOverviewPage', () => {
       }
       await user.click(screen.getByText('Edit Club Profile'))
       expect(await screen.findByText('Edit Club Profile Page')).toBeInTheDocument()
+    })
+
+    // docs/specs/151, slice F
+    it('shows an Our Fields card with the club\'s own fields beside Contacts and Sponsors', async () => {
+      getManagedClubProfile.mockResolvedValue(makeProfile())
+      listClubContacts.mockResolvedValue([])
+      listSponsors.mockResolvedValue([])
+      listSections.mockResolvedValue([])
+      listPlayingAreas.mockResolvedValue({
+        content: [{ id: 'f1', name: 'Irene Oval A', category: 'CLUB', ownerType: 'CLUB', ownerName: 'Irene CC', address: { number: '12', street: 'River Road', city: 'Irene', provinceState: 'Gauteng', country: 'ZA', postalCode: null }, mapUrl: null, locationNotes: null, verificationStatus: 'VERIFIED', linkedHome: true }],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 100,
+      })
+
+      renderPage('test-club-id')
+
+      const card = await screen.findByTestId('our-fields-card')
+      expect(await within(card).findByText('Irene Oval A')).toBeInTheDocument()
+      expect(within(card).getByText('Our Fields')).toBeInTheDocument()
+      expect(listPlayingAreas).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ mine: true }))
     })
 
     it('falls back to initials in the avatar when logoUrl is unset', async () => {

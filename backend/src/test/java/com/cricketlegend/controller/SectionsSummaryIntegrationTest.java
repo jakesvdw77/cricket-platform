@@ -230,13 +230,14 @@ class SectionsSummaryIntegrationTest {
     }
 
     @Test
-    void nonAdminsAreForbidden() throws Exception {
+    void aCallerWithNoGrantHereIsForbiddenAndAnyGrantMayRead() throws Exception {
         World w = fixtures.world();
         World other = fixtures.world();
 
         mockMvc.perform(get(SUMMARY, w.club().getId()).with(fixtures.clubAdmin(other))).andExpect(status().isForbidden());
+        // docs/specs/150: the section tree is reference data, readable by any grant at the club.
         mockMvc.perform(get(SUMMARY, w.club().getId()).with(fixtures.sectionManager(w.seniors())))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
         mockMvc.perform(get(SUMMARY, w.club().getId()).with(fixtures.nobody())).andExpect(status().isForbidden());
     }
 }

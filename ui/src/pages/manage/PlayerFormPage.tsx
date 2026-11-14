@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,6 +11,7 @@ import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { SectionTree } from '../../components/SectionTree'
+import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import {
   listPlayers,
   createPlayer,
@@ -51,6 +52,17 @@ export default function PlayerFormPage() {
 
   const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0)
   const [sectionLinkOpen, setSectionLinkOpen] = useState(false)
+  // docs/specs/151 slice E: a new player is always asked for a section, here above the tabs so it cannot be missed. The last choice is
+  // remembered per club so a whole squad can be entered quickly.
+  const sectionStorageKey = `playerForm:lastSection:${clubId}`
+  const [createSectionId, setCreateSectionId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(sectionStorageKey)
+    } catch {
+      return null
+    }
+  })
+  const [sectionMissing, setSectionMissing] = useState(false)
 
   const {
     data: player,
@@ -68,9 +80,20 @@ export default function PlayerFormPage() {
       if (isEdit && playerId) {
         return updatePlayer(clubId as string, playerId, payload)
       }
-      return createPlayer(clubId as string, payload)
+      return createPlayer(clubId as string, payload).then(async (created) => {
+        // The section is chosen on this page, so the player is tagged in the same step.
+        if (createSectionId) await linkPlayerSection(clubId as string, created.id, createSectionId)
+        return created
+      })
     },
     onSuccess: () => {
+      if (!isEdit && createSectionId) {
+        try {
+          localStorage.setItem(sectionStorageKey, createSectionId)
+        } catch {
+          // a remembered section is a convenience only
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players'] })
       afterSave()
     },
@@ -107,8 +130,16 @@ export default function PlayerFormPage() {
   const clubSectionsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'sections'],
     queryFn: () => listSections(clubId as string),
-    enabled: Boolean(clubId) && isEdit,
+    enabled: Boolean(clubId),
   })
+
+  // A remembered section that no longer exists (or never belonged to this club) is dropped, so the picker asks again.
+  useEffect(() => {
+    const sections = clubSectionsQuery.data
+    if (!isEdit && createSectionId && sections && !sections.some((section) => section.id === createSectionId)) {
+      setCreateSectionId(null)
+    }
+  }, [clubSectionsQuery.data, createSectionId, isEdit])
 
   const invalidatePlayerSections = () =>
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players', playerId, 'sections'] })
@@ -192,6 +223,32 @@ export default function PlayerFormPage() {
           </Stack>
         }
       >
+        {!isEdit && (
+          <Box
+            id="player-section-picker"
+            data-testid="player-section-picker"
+            sx={{ gridColumn: '1 / -1', minWidth: 0, p: 2, borderRadius: 1.5, border: 2, borderColor: sectionMissing && !createSectionId ? 'error.main' : 'primary.main', bgcolor: 'rgba(20, 99, 63, 0.05)' }}
+          >
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+              Which section does this player belong to?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Required. The player can only be picked for teams and matches in this section.
+            </Typography>
+            <SectionTreeSelect
+              label="Section"
+              sections={clubSectionsQuery.data ?? []}
+              value={createSectionId}
+              onChange={(next) => {
+                setCreateSectionId(next)
+                if (next) setSectionMissing(false)
+              }}
+              error={sectionMissing && !createSectionId}
+              helperText={sectionMissing && !createSectionId ? 'Choose a section before adding the player.' : undefined}
+            />
+          </Box>
+        )}
+
         <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
           <Tabs
             value={activeTab}
@@ -230,10 +287,19 @@ export default function PlayerFormPage() {
                     bowlingArm: player.bowlingArm,
                     bowlingType: player.bowlingType,
                     isWicketKeeper: player.isWicketKeeper,
+                    battingPosition: player.battingPosition ?? null,
+                    isPartTimeBowler: player.isPartTimeBowler ?? false,
                   }
                 : undefined
             }
-            onSubmit={(payload) => saveMutation.mutate(payload)}
+            onSubmit={(payload) => {
+              if (!isEdit && !createSectionId) {
+                setSectionMissing(true)
+                document.getElementById('player-section-picker')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                return
+              }
+              saveMutation.mutate(payload)
+            }}
           />
         )}
 

@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -290,7 +291,7 @@ class TeamSquadServiceImplTest {
         stubPlayerLookup(profile);
         when(playerMapper.toSquadMemberDto(any(), any(), any(), any())).thenReturn(new TeamSquadMemberDto(
                 memberId, playerId, profile.getPersonId(), clubId, "Joe", "Bloggs", null, Gender.MALE,
-                null, null, null, null, null, null, null, null, null, null, null, false, true,
+                null, null, null, null, null, null, null, null, null, null, null, false, null, false, true,
                 List.of(), null, 9, false));
 
         var dto = service.update(authentication, clubId, teamId, seasonId, playerId, 9, false);
@@ -568,7 +569,7 @@ class TeamSquadServiceImplTest {
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerSection(authentication, clubId, team.getSectionId());
+                .assertCan(eq(authentication), eq(clubId), any(), eq(team.getSectionId()));
 
         assertThatThrownBy(() -> service.add(authentication, clubId, teamId, seasonId, UUID.randomUUID()))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);

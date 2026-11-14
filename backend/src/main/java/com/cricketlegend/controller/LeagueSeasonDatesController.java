@@ -31,14 +31,14 @@ public class LeagueSeasonDatesController {
         this.accessService = accessService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates")
     public ResponseEntity<LeagueSeasonDatesDto> get(
             @PathVariable UUID clubId, @PathVariable UUID leagueId, @PathVariable UUID seasonId) {
         return ResponseEntity.ok(leagueSeasonDatesService.get(clubId, leagueId, seasonId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates")
     public ResponseEntity<LeagueSeasonDatesDto> update(
             Authentication authentication,

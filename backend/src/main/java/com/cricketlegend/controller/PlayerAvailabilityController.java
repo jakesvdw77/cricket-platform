@@ -25,7 +25,7 @@ public class PlayerAvailabilityController {
         this.playerAvailabilityService = playerAvailabilityService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/player-availability")
     public ResponseEntity<PlayerAvailabilityDto> listPlayerAvailability(
             Authentication authentication,

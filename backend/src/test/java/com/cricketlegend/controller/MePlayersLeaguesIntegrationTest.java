@@ -97,7 +97,7 @@ class MePlayersLeaguesIntegrationTest extends AbstractLinkIntegrationTest {
             "bonusPointsEnabled", "bonusBattingOversThreshold", "bonusBowlingRestrictionPercentage", "additionalNotes");
     private static final Set<String> FIELD_KEYS = Set.of("id", "name", "owner", "addressLine1", "city", "provinceState",
             "postalCode", "country", "mapUrl", "latitude", "longitude", "accessLatitude", "accessLongitude", "accessNote",
-            "verified", "home");
+            "photoUrl", "verified", "home");
     private static final List<String> BANNED = List.of("contact", "phone", "email", "0821234567", "league@secret.example",
             "\"active\"", "clubId", "createdAt", "updatedAt", "updatedBy", "uploadedBy", "uploadedAt", "affiliation",
             "children", "scorecard", "innings", "DRAFT");

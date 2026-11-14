@@ -31,6 +31,11 @@ export const OWNER_TYPE_FOR_CATEGORY: Record<FieldCategory, FieldOwnerType> = {
 }
 
 // "Hilton, KwaZulu-Natal": the city and the province/county/state when there is one.
+/** The street address line of a field: number and street, empty when neither is on file (docs/specs/151). */
+export function streetLine(field: Pick<PlayingArea, 'address'>): string {
+  return [field.address.number, field.address.street].filter((part) => part && String(part).trim()).join(' ')
+}
+
 export function cityLine(field: Pick<PlayingArea, 'address'>): string {
   return [field.address.city, field.address.provinceState].filter(Boolean).join(', ')
 }

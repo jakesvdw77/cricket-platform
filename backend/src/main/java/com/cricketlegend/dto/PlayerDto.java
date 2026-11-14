@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import com.cricketlegend.domain.BattingPosition;
 import com.cricketlegend.domain.BattingStance;
 import com.cricketlegend.domain.BowlingArm;
 import com.cricketlegend.domain.BowlingType;
@@ -40,6 +41,8 @@ public record PlayerDto(
         BowlingArm bowlingArm,
         BowlingType bowlingType,
         boolean isWicketKeeper,
+        BattingPosition battingPosition,
+        boolean isPartTimeBowler,
         boolean active,
         List<UUID> sectionIds,
         Integer jerseyNumber,

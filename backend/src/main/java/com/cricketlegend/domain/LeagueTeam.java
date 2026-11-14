@@ -51,6 +51,10 @@ public class LeagueTeam {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    // docs/specs/151: open-ended notes (null when empty).
+    @Column(length = 2000)
+    private String notes;
+
     @Column(nullable = false)
     private boolean active;
 

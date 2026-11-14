@@ -182,6 +182,8 @@ Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(
 @PreAuthorize("@access.canAdminister(authentication, #teamId)")
 ```
 
+**Permissions (spec 150, 2026-11-14).** A grant is a person, a role and a place; a role is a bundle of `Permission`s (`domain/Permission`, bundles in `access_role_permission`). New endpoints guard with `@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).X)` (or the section form, or `sectionIdsFor` to narrow a list), never with `canAccessClub`, `canAdministerClub` or `canAdministerSection` (deprecated, no caller left; deleted with the test pass). Reference data every grant may read (club profile, sections, leagues, seasons, grounds, sponsors, contacts) guards with `@access.hasAnyGrant(authentication, #clubId)`; a section named in the URL guards with `@access.canInSection(authentication, #clubId, Permission.X, #sectionId)` (404 for another club's section). In a service, narrow a list with `sectionIdsFor(auth, clubId, Permission.X)` and check a loaded resource with `assertCan(...)` or `assertCanAnySection(...)`; View for reads, the Edit or Manage permission for writes.
+
 Don't reintroduce flat role checks for anything club/section/team-scoped — that's the exact pattern this project moved away from.
 
 A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `SecurityConfig`) record who acted as the Keycloak subject, `authentication.getName()`, not a `Person` id, because a `platform_admin` may have no `Person` row (`MeAccessDto`): see `verified_by_subject` on a field (spec 099).

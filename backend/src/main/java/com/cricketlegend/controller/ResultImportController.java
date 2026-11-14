@@ -36,7 +36,7 @@ public class ResultImportController {
     }
 
     /** The registered adaptors and the import limits. Reads no data of the club; the club id is the access check. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).RESULTS_EDIT)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/results/import/adaptors")
     public ResponseEntity<AdaptorCatalogueDto> adaptors(@PathVariable UUID clubId) {
         return ResponseEntity.ok(resultImportService.listAdaptors());
@@ -46,7 +46,7 @@ public class ResultImportController {
      * Multipart: the JSON part {@code request} and an optional {@code file} part (exactly one of the file and the
      * request's pasted {@code content}). Reads and proposes; writes nothing.
      */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).RESULTS_EDIT)")
     @PostMapping(
             value = "/api/v1/manage/clubs/{clubId}/results/import/preview",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -69,7 +69,7 @@ public class ResultImportController {
     }
 
     /** The explicit confirm: saves one DRAFT result for the chosen match. Never publishes. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).RESULTS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/results/import/resolve")
     public ResponseEntity<ImportResolveDto> resolve(
             Authentication authentication,

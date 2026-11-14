@@ -33,20 +33,20 @@ public class SeasonController {
         this.seasonService = seasonService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/seasons")
     public ResponseEntity<List<SeasonDto>> list(@PathVariable UUID clubId) {
         return ResponseEntity.ok(seasonService.list(clubId));
     }
 
     /** docs/specs/094-club-structure-and-seasons.md: every season's league, team and active-match counts. */
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/seasons/summary")
     public ResponseEntity<SeasonsSummaryDto> summary(Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(seasonService.summary(authentication, clubId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/seasons")
     @ApiResponse(responseCode = "201", description = "Season created")
     public ResponseEntity<SeasonDto> create(
@@ -54,7 +54,7 @@ public class SeasonController {
         return ResponseEntity.status(HttpStatus.CREATED).body(seasonService.create(clubId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/seasons/{seasonId}")
     public ResponseEntity<SeasonDto> update(
             @PathVariable UUID clubId,
@@ -63,14 +63,14 @@ public class SeasonController {
         return ResponseEntity.ok(seasonService.update(clubId, seasonId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/seasons/{seasonId}/deactivate")
     public ResponseEntity<SeasonDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID seasonId) {
         return ResponseEntity.ok(seasonService.deactivate(clubId, seasonId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/seasons/{seasonId}/reactivate")
     public ResponseEntity<SeasonDto> reactivate(
             @PathVariable UUID clubId, @PathVariable UUID seasonId) {

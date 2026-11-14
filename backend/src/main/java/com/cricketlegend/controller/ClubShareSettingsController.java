@@ -1,6 +1,7 @@
 package com.cricketlegend.controller;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.dto.ShareSettingsDto;
 import com.cricketlegend.service.ClubShareSettingsService;
 import java.util.UUID;
@@ -32,17 +33,17 @@ public class ClubShareSettingsController {
         this.accessService = accessService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).RESULTS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/share-settings")
     public ResponseEntity<ShareSettingsDto> getShareSettings(@PathVariable UUID clubId) {
         return ResponseEntity.ok(clubShareSettingsService.get(clubId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).RESULTS_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/share-settings")
     public ResponseEntity<ShareSettingsDto> updateShareSettings(
             @PathVariable UUID clubId, @RequestBody ShareSettingsDto request, Authentication authentication) {
         return ResponseEntity.ok(clubShareSettingsService.put(
-                clubId, request, accessService.canAdministerClub(authentication, clubId)));
+                clubId, request, accessService.can(authentication, clubId, Permission.CLUB_SETUP_EDIT)));
     }
 }

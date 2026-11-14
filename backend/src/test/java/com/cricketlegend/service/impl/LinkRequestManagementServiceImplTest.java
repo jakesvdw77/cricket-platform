@@ -103,7 +103,7 @@ class LinkRequestManagementServiceImplTest {
         requester = person("Pat", "Parent");
         request = pending(requester);
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(actorId);
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.empty());
         when(linkRequestRepository.findByIdAndClubId(request.getId(), clubId)).thenReturn(Optional.of(request));
         when(linkRequestRepository.findByClubIdAndStatusOrderByCreatedAtAsc(any(), any())).thenReturn(List.of(request));
         when(linkRequestRepository.claim(any(), any(), any(), any(), any())).thenReturn(1);
@@ -283,7 +283,7 @@ class LinkRequestManagementServiceImplTest {
         assertThat(body.getValue().lastName()).isEqualTo("Smith");
         assertThat(body.getValue().dateOfBirth()).isEqualTo(LocalDate.of(2012, 6, 15));
         verify(playerSectionService).link(clubId, created.id(), sectionId);
-        verify(accessService).assertCanAdministerSection(auth, clubId, sectionId);
+        verify(accessService).assertCan(eq(auth), eq(clubId), any(), eq(sectionId));
         ArgumentCaptor<PersonLink> link = ArgumentCaptor.forClass(PersonLink.class);
         verify(personLinkRepository).saveAndFlush(link.capture());
         assertThat(link.getValue().getSubjectPersonId()).isEqualTo(newPersonId);
@@ -386,7 +386,7 @@ class LinkRequestManagementServiceImplTest {
     @Test
     void aSectionScopedManagerCannotDecideARequestWithNoSuggestionInTheirSections() {
         UUID mySection = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mySection)));
         when(suggester.suggest(eq(clubId), any(), any())).thenReturn(Map.of()); // unresolved or out of section
 
         assertThatThrownBy(() -> service.decline(auth, clubId, request.getId(), null))
@@ -404,7 +404,7 @@ class LinkRequestManagementServiceImplTest {
         UUID mySection = UUID.randomUUID();
         Person kid = person("Sam", "Smith");
         PlayerProfile profile = existingPlayer(kid);
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mySection)));
         when(suggester.suggest(eq(clubId), any(), any())).thenReturn(
                 Map.of(request.getId(), new Suggestion(profile, kid, Set.of(mySection), true)));
 
@@ -430,7 +430,7 @@ class LinkRequestManagementServiceImplTest {
         assertThat(service.list(auth, clubId)).hasSize(2);
 
         // section scoped: only the one resolved inside their section
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mySection)));
         assertThat(service.summary(auth, clubId).waiting()).isEqualTo(1);
         List<LinkRequestDto> visible = service.list(auth, clubId);
         assertThat(visible).extracting(LinkRequestDto::id).containsExactly(request.getId());
@@ -445,7 +445,7 @@ class LinkRequestManagementServiceImplTest {
     void aRequestWithASectionIsVisibleToAScopedManagerOfThatSectionEvenWithNoSuggestion() {
         UUID mySection = UUID.randomUUID();
         request.setSectionId(mySection);
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mySection)));
 
         assertThat(service.summary(auth, clubId).waiting()).isEqualTo(1);
         assertThat(service.list(auth, clubId)).extracting(LinkRequestDto::id).containsExactly(request.getId());
@@ -460,7 +460,7 @@ class LinkRequestManagementServiceImplTest {
         request.setSectionId(requestSection);
         Person kid = person("Sam", "Smith");
         PlayerProfile profile = existingPlayer(kid);
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mySection)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mySection)));
         when(suggester.suggest(any(), any(), any())).thenReturn(
                 Map.of(request.getId(), new Suggestion(profile, kid, Set.of(mySection), true)));
 
@@ -506,7 +506,7 @@ class LinkRequestManagementServiceImplTest {
         service.approve(auth, clubId, request.getId(), new ApproveLinkRequestRequest(
                 null, new NewLinkedPlayerRequest("Sam", "Smith", LocalDate.of(2012, 6, 15), null), MainAgentMode.ADD, true));
 
-        verify(accessService).assertCanAdministerSection(auth, clubId, requestSection);
+        verify(accessService).assertCan(eq(auth), eq(clubId), any(), eq(requestSection));
         verify(playerSectionService).link(clubId, created.id(), requestSection);
 
         LinkRequest second = pending(person("Tina", "Third"));
@@ -527,7 +527,7 @@ class LinkRequestManagementServiceImplTest {
         service.approve(auth, clubId, request.getId(), new ApproveLinkRequestRequest(
                 null, new NewLinkedPlayerRequest("Sam", "Smith", LocalDate.of(2012, 6, 15), null), MainAgentMode.ADD, true));
 
-        verify(accessService).assertCanAdministerAnySection(auth, clubId, Set.of());
+        verify(accessService).assertCanAnySection(eq(auth), eq(clubId), any(), eq(Set.of()));
         verify(playerSectionService, never()).link(any(), any(), any());
     }
 }

@@ -33,6 +33,7 @@ import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { dynamicCardGridSx } from '../../utils/cardGrid'
 import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { announcedBadges, badgeFor, sideName } from './matches/matchCardHelpers'
+import { usePermissions } from '../../auth/permissions'
 
 // docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first. docs/specs/130: the order is the toolbar's
 // Sort button (a menu on a phone), as on the Seasons page.
@@ -83,6 +84,7 @@ export default function MatchList({
   viewTo = (matchId: string) => `/manage/fixtures/matches/${matchId}`,
   onCreate,
 }: MatchListProps) {
+  const canAdd = usePermissions().can('MATCHES_EDIT')
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   // docs/specs/109-delete-empty-match.md: the success notice a navigation carries in router state (same convention as the
@@ -425,7 +427,7 @@ export default function MatchList({
             ? 'Nothing scheduled ahead. Turn on "View Entire Season" to see earlier fixtures, or schedule a new one.'
             : "Schedule your club's first match to get started."
         }
-        action={<EmptyStateLink onClick={onCreate ?? (() => navigate(addMatchPath))}>{createLabel}</EmptyStateLink>}
+        action={canAdd ? <EmptyStateLink onClick={onCreate ?? (() => navigate(addMatchPath))}>{createLabel}</EmptyStateLink> : undefined}
       />
     )
   })()
@@ -524,7 +526,7 @@ export default function MatchList({
           />
         }
         action={
-          <Button size="compact" onClick={onCreate ?? (() => navigate(addMatchPath))} sx={{ flex: 'none' }}>{createLabel}</Button>
+          canAdd ? <Button size="compact" onClick={onCreate ?? (() => navigate(addMatchPath))} sx={{ flex: 'none' }}>{createLabel}</Button> : undefined
         }
       />
 
@@ -568,7 +570,7 @@ export default function MatchList({
               />
             ))}
             {/* The grid ends with a dashed Add card (same route as the page's Add Match button); with no cards it is not shown (the empty message carries the quick-action button). */}
-            {data.content.length > 0 && <AddCard label="Create New Match" to={onCreate ? undefined : addMatchPath} onClick={onCreate} testId="add-match-card" />}
+            {canAdd && data.content.length > 0 && <AddCard label="Create New Match" to={onCreate ? undefined : addMatchPath} onClick={onCreate} testId="add-match-card" />}
           </Box>
         )}
       </Box>

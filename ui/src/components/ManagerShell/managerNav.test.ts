@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import appSource from '../../App.tsx?raw'
 import { BRAND_ICON_NAMES } from '../BrandIcon/brandIcons'
-import { MANAGER_NAV, activeNavId, activeTabId, flatNavItems, isNavGlyph, isNavItemActive, managerTabs } from './managerNav'
+import type { PermissionKey } from '../../auth/permissions'
+import { MANAGER_NAV, activeNavId, activeTabId, flatNavItems, isNavGlyph, isNavItemActive, managerTabs, visibleNavGroups } from './managerNav'
 
 const items = flatNavItems(MANAGER_NAV)
 
@@ -136,5 +137,42 @@ describe('managerNav', () => {
 
   it('highlights nothing for an unknown route', () => {
     expect(activeNavId(MANAGER_NAV, '/manage/profile')).toBeUndefined()
+  })
+
+  describe('visibleNavGroups (docs/specs/150)', () => {
+    const holding = (...keys: PermissionKey[]) => (needed: readonly PermissionKey[]) => needed.some((key) => keys.includes(key))
+    const ids = (canAny: (needed: readonly PermissionKey[]) => boolean) => flatNavItems(visibleNavGroups(MANAGER_NAV, canAny)).map((item) => item.id)
+
+    it('keeps every item for a caller who holds everything', () => {
+      expect(ids(() => true)).toEqual(items.map((item) => item.id))
+    })
+
+    it('keeps reference pages and Overview for a caller who holds nothing, and drops the rest', () => {
+      const visible = ids(() => false)
+      expect(visible).toContain('overview')
+      expect(visible).toContain('leagues')
+      expect(visible).toContain('seasons')
+      expect(visible).not.toContain('players')
+      expect(visible).not.toContain('results')
+      expect(visible).not.toContain('access')
+    })
+
+    it('shows a Scorer the results and matches pages but not Access or Communication', () => {
+      const visible = ids(holding('MATCHES_VIEW', 'RESULTS_VIEW', 'RESULTS_EDIT', 'PLAYERS_VIEW', 'TEAMS_VIEW', 'STATS_VIEW'))
+      expect(visible).toEqual(expect.arrayContaining(['matches', 'results', 'players', 'teams', 'leaderboards']))
+      expect(visible).not.toContain('access')
+      expect(visible).not.toContain('communication')
+      expect(visible).not.toContain('squads')
+    })
+
+    it('drops a group that has no item left', () => {
+      const groups = visibleNavGroups(MANAGER_NAV, () => false)
+      expect(groups.every((group) => group.items.length > 0)).toBe(true)
+    })
+
+    it('leaves the bottom bar without tabs the caller cannot open', () => {
+      const tabs = managerTabs(visibleNavGroups(MANAGER_NAV, () => false)).map((tab) => tab.id)
+      expect(tabs).toEqual(['overview'])
+    })
   })
 })

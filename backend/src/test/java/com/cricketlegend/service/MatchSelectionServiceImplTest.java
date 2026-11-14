@@ -371,7 +371,7 @@ class MatchSelectionServiceImplTest {
                 Instant.now(), "Sat 6 Jun (morning)", UUID.randomUUID(), false, true);
         rejections.put(busy, new SelectionRejection(busy, "Busy Smith", SelectionRejectionReason.TAKEN_FOR_SLOT,
                 "m", holder));
-        when(accessService.canAdministerSection(authentication, clubId, holderSection)).thenReturn(true);
+        when(accessService.canInSection(eq(authentication), eq(clubId), any(), eq(holderSection))).thenReturn(true);
 
         assertThatThrownBy(() -> apply(entry(busy))).isInstanceOfSatisfying(SelectionRejectedException.class, ex -> {
             var taken = ex.getRejections().get(0).taken();
@@ -513,7 +513,7 @@ class MatchSelectionServiceImplTest {
     @Test
     void applyByACallerWhoCannotAdministerTheMatchsSectionsIsDeniedBeforeAnyWork() {
         org.mockito.Mockito.doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerAnySection(any(), eq(clubId), any());
+                .assertCanAnySection(any(), eq(clubId), any(), any());
 
         assertThatThrownBy(() -> apply(entry(player("Ann")))).isInstanceOf(AccessDeniedException.class);
         assertNothingWritten();
@@ -721,8 +721,8 @@ class MatchSelectionServiceImplTest {
         taken.put(ids.get(1), heldBy(clubId, notManageable));
         block(ids.get(0), SelectionRejectionReason.TAKEN_FOR_SLOT);
         block(ids.get(1), SelectionRejectionReason.TAKEN_FOR_SLOT);
-        when(accessService.canAdministerSection(authentication, clubId, manageable)).thenReturn(true);
-        when(accessService.canAdministerSection(authentication, clubId, notManageable)).thenReturn(false);
+        when(accessService.canInSection(eq(authentication), eq(clubId), any(), eq(manageable))).thenReturn(true);
+        when(accessService.canInSection(eq(authentication), eq(clubId), any(), eq(notManageable))).thenReturn(false);
 
         SelectionPoolDto pool = pool(false, null);
 
@@ -736,10 +736,10 @@ class MatchSelectionServiceImplTest {
         UUID foreignSection = UUID.randomUUID();
         taken.put(ids.get(0), heldBy(UUID.randomUUID(), foreignSection));
         block(ids.get(0), SelectionRejectionReason.TAKEN_FOR_SLOT);
-        when(accessService.canAdministerSection(any(), any(), any())).thenReturn(true);
+        when(accessService.canInSection(any(), any(), any(), any())).thenReturn(true);
 
         assertThat(pool(false, null).entries().get(0).taken().canRelease()).isFalse();
-        verify(accessService, never()).canAdministerSection(any(), any(), eq(foreignSection));
+        verify(accessService, never()).canInSection(any(), any(), any(), eq(foreignSection));
     }
 
     @Test
@@ -765,7 +765,7 @@ class MatchSelectionServiceImplTest {
         assertThatThrownBy(() -> service.pool(authentication, UUID.randomUUID(), match.getId(), team.getId(), false, null))
                 .isInstanceOf(NotFoundException.class);
         org.mockito.Mockito.doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerAnySection(any(), eq(clubId), any());
+                .assertCanAnySection(any(), eq(clubId), any(), any());
 
         assertThatThrownBy(() -> pool(false, null)).isInstanceOf(AccessDeniedException.class);
         verify(selectionRules, never()).evaluate(any(), any(), anyList(), any(), any());

@@ -273,7 +273,7 @@ const CONTENT_BOTTOM = POSTER_SIZE - 96
 // docs/specs/122-league-sharing.md (Poster): the square poster for the Teams, Schedule and Key dates contents of a
 // LeagueShareModel (the contents the Poster format supports; others ticked are ignored here, the dialog never offers the
 // Poster for them). The same background, fonts and avatar tiles as the schedule poster above. Names come from the model
-// only. As many rows as fit are drawn; the rest is counted ("and 4 more"). Drawn with fillRect/fillText/drawImage only.
+// only. As many rows as fit are drawn; a schedule that does not all fit is headed "Next N Matches" (spec 151), the other lists count the rest ("and 4 more"). Drawn with fillRect/fillText/drawImage only.
 export async function generateLeagueSharePoster(
   model: LeagueShareModel,
   primaryColorHex: string,
@@ -313,7 +313,7 @@ export async function generateLeagueSharePoster(
   ctx.fillText(model.league.name, CONTENT_LEFT, 130, CONTENT_WIDTH)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.82)'
   ctx.font = `28px ${FONT_STACK}`
-  ctx.fillText([model.season?.label, model.clubName].filter(Boolean).join(' — '), CONTENT_LEFT, 172, CONTENT_WIDTH)
+  ctx.fillText([model.teamName, model.season?.label, model.clubName].filter(Boolean).join(' — '), CONTENT_LEFT, 172, CONTENT_WIDTH)
 
   // The room is shared between the ticked contents: each heading, then rows while they fit its share.
   const sections = [wantTeams, wantSchedule, wantKeyDates].filter(Boolean).length || 1
@@ -361,9 +361,11 @@ export async function generateLeagueSharePoster(
   }
 
   if (wantSchedule) {
-    heading('Schedule')
     const rowH = 84
     const fit = rowsThatFit(rowH, fixtures.length)
+    // docs/specs/151: a poster is a snapshot, so when the fixtures do not all fit it says what it shows ("Next 8 Matches"), never
+    // "and 12 more". The PDF and the texts carry the whole schedule.
+    heading(fit < fixtures.length ? `Next ${fit} ${fit === 1 ? 'Match' : 'Matches'}` : 'Schedule')
     fixtures.slice(0, fit).forEach((fixture, index) => {
       const y = top + 44 + index * rowH
       ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
@@ -380,7 +382,6 @@ export async function generateLeagueSharePoster(
       ctx.fillText(`${fixture.dateLabel}${fixture.timeLabel ? ` · ${fixture.timeLabel}` : ''}${where}`, CONTENT_LEFT + CONTENT_WIDTH / 2, y + 62, CONTENT_WIDTH - 200)
       ctx.textAlign = 'left'
     })
-    if (fit < fixtures.length) more(fixtures.length - fit, top + 44 + fit * rowH)
     top += share
   }
 

@@ -1,5 +1,6 @@
 import CallMergeIcon from '@mui/icons-material/CallMerge'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import HighlightOffIcon from '@mui/icons-material/HighlightOff'
 import LinkIcon from '@mui/icons-material/Link'
@@ -58,7 +59,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
 
   const open: ManageMenuItem = { id: 'open', title: 'Open Field', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/${field.id}`) }
   const editItem: ManageMenuItem = {
-    id: 'edit',
+    id: 'edit', requires: 'MATCHES_EDIT',
     title: 'Edit Field',
     description: 'Name, type, owner, address and map link.',
     icon: <EditOutlinedIcon fontSize="small" />,
@@ -66,6 +67,19 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
     disabled: !edit.editable,
     reason: edit.reason ?? undefined,
   }
+  // docs/specs/151: a venue with an A and a B field at one location is entered once and copied, not typed twice.
+  const duplicate: ManageMenuItem[] = admin
+    ? []
+    : [
+        {
+          id: 'duplicate',
+          requires: 'MATCHES_EDIT',
+          title: 'Duplicate Field',
+          description: 'Copy everything to a new field and give it its own name, such as the next letter.',
+          icon: <ContentCopyOutlinedIcon fontSize="small" />,
+          to: leaveTo(`${base}/new?duplicateOf=${field.id}`),
+        },
+      ]
   const maps: ManageMenuItem[] = field.mapUrl
     ? [
         {
@@ -84,7 +98,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       ? [
           field.linkedHome
             ? {
-                id: 'home',
+                id: 'home', requires: 'MATCHES_EDIT',
                 title: 'Remove From Our Fields',
                 description: 'Take this field off your club shortlist; matches keep it.',
                 icon: <LinkOffIcon fontSize="small" />,
@@ -92,7 +106,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
                 disabled: homePending,
               }
             : {
-                id: 'home',
+                id: 'home', requires: 'MATCHES_EDIT',
                 title: 'Add To Our Fields',
                 description: 'Put this field on your club shortlist.',
                 icon: <LinkIcon fontSize="small" />,
@@ -107,7 +121,7 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       ? statusActions.length === 0
         ? [
             {
-              id: 'status',
+              id: 'status', requires: 'MATCHES_EDIT',
               title: 'Change Status',
               icon: <ManageAccountsOutlinedIcon fontSize="small" />,
               disabled: true,
@@ -124,9 +138,9 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       : []
   const merge: ManageMenuItem[] =
     admin && !row && onMerge
-      ? [{ id: 'merge', title: 'Merge Into...', description: 'Fold this field into another and move its matches.', icon: <CallMergeIcon fontSize="small" />, onClick: onMerge }]
+      ? [{ id: 'merge', requires: 'MATCHES_EDIT', title: 'Merge Into...', description: 'Fold this field into another and move its matches.', icon: <CallMergeIcon fontSize="small" />, onClick: onMerge }]
       : []
 
   // Row: Open, Edit, the field's own opens (maps), then record actions. Page: Edit, Get Directions, record actions, Merge, links.
-  return row ? [open, editItem, ...maps, ...home, ...statuses] : [editItem, ...directions, ...home, ...statuses, ...merge, ...maps]
+  return row ? [open, editItem, ...duplicate, ...maps, ...home, ...statuses] : [editItem, ...directions, ...duplicate, ...home, ...statuses, ...merge, ...maps]
 }

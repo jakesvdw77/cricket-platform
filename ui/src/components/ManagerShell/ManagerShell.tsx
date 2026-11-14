@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, useMediaQuery, useTheme } from '@mui/material'
 import { BottomTabBar } from '../BottomTabBar'
@@ -8,7 +8,8 @@ import { ShellHeader } from '../ShellHeader'
 import type { ProfileSwitchItem } from '../ProfileSwitcher'
 import { SideMenu } from '../SideMenu'
 import { useSideMenuCollapsed } from '../../hooks/useSideMenuCollapsed'
-import { MANAGER_NAV, managerTabs } from './managerNav'
+import { usePermissions } from '../../auth/permissions'
+import { MANAGER_NAV, managerTabs, visibleNavGroups } from './managerNav'
 import { pageBackgroundGradient } from '../../theme'
 
 export interface ManagerShellProps {
@@ -34,6 +35,8 @@ export interface ManagerShellProps {
 // ManagerHome used. Only the layout that fits the viewport is rendered, so there is one nav landmark.
 export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl, badges, myPlayersTo, profileItems, children }: ManagerShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { canAny } = usePermissions()
+  const navGroups = useMemo(() => visibleNavGroups(MANAGER_NAV, canAny), [canAny])
   const theme = useTheme()
   const showSide = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const fullSide = useMediaQuery(theme.breakpoints.up('lg'), { noSsr: true })
@@ -55,7 +58,7 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
       />
 
       <Box sx={{ flex: 1, display: 'flex', minWidth: 0 }}>
-        {showSide && <SideMenu groups={MANAGER_NAV} collapsed={!fullSide || userCollapsed} badges={badges} onToggleCollapsed={fullSide ? toggleCollapsed : undefined} />}
+        {showSide && <SideMenu groups={navGroups} collapsed={!fullSide || userCollapsed} badges={badges} onToggleCollapsed={fullSide ? toggleCollapsed : undefined} />}
         <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 }, backgroundImage: pageBackgroundGradient }}>
           {children}
         </Box>
@@ -66,8 +69,8 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
       {!showSide && (
         <>
           <BottomTabBar
-            tabs={managerTabs()}
-            groups={MANAGER_NAV}
+            tabs={managerTabs(navGroups)}
+            groups={navGroups}
             menuOpen={menuOpen}
             onMenuClick={() => setMenuOpen(true)}
             badges={badges}
@@ -76,7 +79,7 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
             open={menuOpen}
             onOpen={() => setMenuOpen(true)}
             onClose={() => setMenuOpen(false)}
-            groups={MANAGER_NAV}
+            groups={navGroups}
             badges={badges}
           />
         </>

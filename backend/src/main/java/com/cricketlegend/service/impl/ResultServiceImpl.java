@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchInnings;
@@ -227,7 +228,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional(readOnly = true)
     public MatchResultDto get(Authentication authentication, UUID clubId, UUID matchId) {
-        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_VIEW);
         return toDto(findResultOrThrow(matchId));
     }
 
@@ -249,7 +250,7 @@ public class ResultServiceImpl implements ResultService {
     /** The one save path: {@code origin} is null for a manual save and set only by {@link #saveImportedDraft}. */
     private MatchResultDto doUpsert(
             Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft, ImportOrigin origin) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         assertCapturable(match);
         Map<UUID, Team> sideTeams = teamsOf(match);
         List<ResultIssueDto> structural = validator.structuralIssueList(
@@ -394,7 +395,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional(readOnly = true)
     public ResultValidationDto validate(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         ResultDraft subject = draft != null ? draft : storedDraft(findResultOrThrow(matchId), match);
         return validateAgainst(match, subject);
     }
@@ -402,7 +403,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional
     public MatchResultDto publish(Authentication authentication, UUID clubId, UUID matchId, boolean acknowledgedWarnings, boolean showInPlayerHub) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         assertCapturable(match);
         MatchResult result = findResultOrThrow(matchId);
         if (result.getStatus() == ResultStatus.PUBLISHED) {
@@ -435,7 +436,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional
     public MatchResultDto unpublish(Authentication authentication, UUID clubId, UUID matchId) {
-        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         MatchResult result = findResultOrThrow(matchId);
         if (result.getStatus() != ResultStatus.PUBLISHED) {
             throw new InvalidStatusTransitionException("Result is not published: " + matchId);
@@ -454,7 +455,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional
     public MatchResultDto setPlayerVisibility(Authentication authentication, UUID clubId, UUID matchId, boolean visible) {
-        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         MatchResult result = findResultOrThrow(matchId);
         if (result.getStatus() != ResultStatus.PUBLISHED) {
             throw new InvalidStatusTransitionException("Only a published result can be shown in the Player Hub: " + matchId);
@@ -481,7 +482,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional
     public void deleteDraft(Authentication authentication, UUID clubId, UUID matchId) {
-        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         MatchResult result = findResultOrThrow(matchId);
         if (result.getStatus() == ResultStatus.PUBLISHED) {
             throw new ResultPublishedException("This result is published: unpublish it before deleting it.");

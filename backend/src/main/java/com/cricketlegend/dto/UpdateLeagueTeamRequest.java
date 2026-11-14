@@ -11,5 +11,6 @@ import jakarta.validation.constraints.Size;
 public record UpdateLeagueTeamRequest(
         @NotBlank @Size(max = 255) String name,
         @Size(max = 16) String abbreviation,
-        @Size(max = 1024) String logoUrl) {
+        @Size(max = 1024) String logoUrl,
+        @Size(max = 2000) String notes) {
 }

@@ -143,7 +143,7 @@ class PlayerServiceImplTest {
                 BattingStance.RIGHT_HANDED,
                 BowlingArm.RIGHT_ARM,
                 BowlingType.MEDIUM,
-                false,
+                false, null, false,
                 jerseyNumber);
     }
 
@@ -168,7 +168,7 @@ class PlayerServiceImplTest {
                 null,
                 null,
                 null,
-                true,
+                true, null, false,
                 jerseyNumber);
     }
 
@@ -339,6 +339,90 @@ class PlayerServiceImplTest {
         assertThat(dto.firstName()).isEqualTo("Janet");
         assertThat(dto.clubMembershipNumber()).isEqualTo("M-999");
         assertThat(dto.isWicketKeeper()).isTrue();
+    }
+
+    @Test
+    void createPersistsBattingPositionAndPartTimeBowler() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> {
+                    PlayerProfile p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        CreatePlayerRequest base = createRequest();
+        CreatePlayerRequest request = new CreatePlayerRequest(
+                base.firstName(), base.lastName(), base.dateOfBirth(), base.gender(), base.photoUrl(), base.clubMembershipNumber(),
+                base.medicalAidProvider(), base.medicalAidMemberNumber(), base.phone(), base.email(), base.altContactName(),
+                base.altContactPhone(), base.battingStance(), base.bowlingArm(), base.bowlingType(), false,
+                com.cricketlegend.domain.BattingPosition.OPENER, true, null);
+
+        var dto = playerService.create(clubId, request);
+
+        assertThat(dto.battingPosition()).isEqualTo(com.cricketlegend.domain.BattingPosition.OPENER);
+        assertThat(dto.isPartTimeBowler()).isTrue();
+        org.mockito.ArgumentCaptor<PlayerProfile> profile = org.mockito.ArgumentCaptor.forClass(PlayerProfile.class);
+        verify(playerProfileRepository).save(profile.capture());
+        assertThat(profile.getValue().getBattingPosition()).isEqualTo(com.cricketlegend.domain.BattingPosition.OPENER);
+        assertThat(profile.getValue().isPartTimeBowler()).isTrue();
+    }
+
+    @Test
+    void createWithNoBattingPositionAndNoPartTimeTickKeepsTheDefaults() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> {
+                    PlayerProfile p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+
+        var dto = playerService.create(clubId, createRequest());
+
+        assertThat(dto.battingPosition()).isNull();
+        assertThat(dto.isPartTimeBowler()).isFalse();
+    }
+
+    @Test
+    void updateChangesBattingPositionAndPartTimeBowlerAndCanClearThem() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
+        existingProfile.setBattingPosition(com.cricketlegend.domain.BattingPosition.LOWER_ORDER);
+        existingProfile.setPartTimeBowler(true);
+        Person existingPerson = person(personId, personId);
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(existingProfile));
+        when(personRepository.findById(personId)).thenReturn(Optional.of(existingPerson));
+        when(personRepository.save(existingPerson)).thenReturn(existingPerson);
+        when(playerProfileRepository.save(existingProfile)).thenReturn(existingProfile);
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+
+        // updateRequest() carries no position and no part-time tick: both are cleared.
+        var dto = playerService.update(authentication, clubId, playerId, updateRequest());
+
+        assertThat(dto.battingPosition()).isNull();
+        assertThat(dto.isPartTimeBowler()).isFalse();
+        assertThat(existingProfile.getBattingPosition()).isNull();
+        assertThat(existingProfile.isPartTimeBowler()).isFalse();
     }
 
     @Test
@@ -531,7 +615,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
         when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         var result = playerService.list(authentication, clubId, null, false, true, null, null);
 
@@ -551,7 +635,7 @@ class PlayerServiceImplTest {
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of(
                 com.cricketlegend.domain.PlayerSection.builder()
                         .playerProfileId(playerId).sectionId(taggedSectionId).build()));
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
         var result = playerService.list(authentication, clubId, null, false, true, null, null);
@@ -568,7 +652,7 @@ class PlayerServiceImplTest {
                 .thenReturn(List.of(profile(playerId, personId, clubId, true)));
         when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         var result = playerService.list(authentication, clubId, null, true, true, null, null);
 
@@ -586,7 +670,7 @@ class PlayerServiceImplTest {
     private void stubClubRoster(UUID clubId, PlayerProfile... profiles) {
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(profiles));
         when(playerSectionRepository.findByPlayerProfileIdIn(any())).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -795,9 +879,9 @@ class PlayerServiceImplTest {
                 profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
                 com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
         stubSingleProfile(own);
-        verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+        verify(accessService, never()).assertCanAnySection(any(), any(), any(), any());
         playerService.reject(authentication, clubId, own.getId());
-        verify(accessService).assertCanAdministerAnySection(any(), any(), any());
+        verify(accessService).assertCanAnySection(any(), any(), any(), any());
     }
 
     // --- date of birth rule (077) ---
@@ -805,13 +889,13 @@ class PlayerServiceImplTest {
     private CreatePlayerRequest createRequestWithDob(LocalDate dateOfBirth) {
         CreatePlayerRequest base = createRequest();
         return new CreatePlayerRequest(base.firstName(), base.lastName(), dateOfBirth, base.gender(),
-                null, null, null, null, null, null, null, null, null, null, null, false, null);
+                null, null, null, null, null, null, null, null, null, null, null, false, null, false, null);
     }
 
     private UpdatePlayerRequest updateRequestWithDob(LocalDate dateOfBirth) {
         UpdatePlayerRequest base = updateRequest();
         return new UpdatePlayerRequest(base.firstName(), base.lastName(), dateOfBirth, base.gender(),
-                null, null, null, null, null, null, null, null, null, null, null, false, null);
+                null, null, null, null, null, null, null, null, null, null, null, false, null, false, null);
     }
 
     @Test

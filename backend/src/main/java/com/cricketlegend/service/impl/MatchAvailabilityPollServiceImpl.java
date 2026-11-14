@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
@@ -115,7 +116,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Transactional(readOnly = true)
     public List<MatchAvailabilityPollDto> list(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_VIEW);
         return matchAvailabilityPollRepository.findByMatchId(matchId).stream()
                 .map(poll -> toDto(poll, match))
                 .toList();
@@ -129,7 +130,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             UUID matchId,
             CreateMatchAvailabilityPollRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         UUID teamId = request.teamId();
 
         boolean isHome = teamId.equals(match.getHomeTeamId());
@@ -171,7 +172,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             UUID pollId,
             UpdatePollCloseTimeRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         Instant validated = AutoCloseSchedule.validateCloseTime(
                 request.autoClose(), request.scheduledCloseAt(), match.getMatchDate(), Instant.now());
@@ -186,7 +187,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Transactional
     public MatchAvailabilityPollDto open(Authentication authentication, UUID clubId, UUID matchId, UUID pollId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         if (poll.isOpen()) {
             throw new InvalidStatusTransitionException("Poll is already open: " + pollId);
@@ -210,7 +211,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Transactional
     public MatchAvailabilityPollDto close(Authentication authentication, UUID clubId, UUID matchId, UUID pollId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         if (!poll.isOpen()) {
             throw new InvalidStatusTransitionException("Poll is already closed: " + pollId);
@@ -224,7 +225,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Transactional
     public void delete(Authentication authentication, UUID clubId, UUID matchId, UUID pollId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         // No ON DELETE CASCADE on these tables: responses first, then the poll.
         playerAvailabilityRepository.deleteByPollId(poll.getId());
@@ -252,7 +253,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     public MatchAvailabilityPollResponsesDto getResponses(
             Authentication authentication, UUID clubId, UUID matchId, UUID pollId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_VIEW);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         return buildResponsesDto(poll, match.getSeasonId());
     }
@@ -267,7 +268,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             UUID playerProfileId,
             AvailabilityStatus status) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.AVAILABILITY_MANAGE);
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
 
         List<PlayerAvailabilityRowDto> squadRows =
@@ -353,7 +354,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 .collect(Collectors.toMap(Match::getId, match -> match));
 
         // Optional.empty() = unrestricted (club-wide/platform_admin) caller — no filtering at all.
-        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessibleSectionIds = accessService.sectionIdsFor(authentication, clubId, Permission.AVAILABILITY_VIEW);
         // Validates section/league/team (403/404) and builds the shared narrowing (docs/specs/083).
         AvailabilityPollFilter filter = pollFilters.resolve(
                 authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false, seasonId);
@@ -426,10 +427,11 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
      * club's team — is reachable only by a {@code CLUB}-scope admin, the same conservative
      * fallback {@code MatchServiceImpl} applies).
      */
-    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+    private void assertCanAdministerMatch(
+            Authentication authentication, UUID clubId, Match match, Permission permission) {
         Set<UUID> matchSectionIds =
                 accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
-        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
+        accessService.assertCanAnySection(authentication, clubId, permission, matchSectionIds);
     }
 
     private MatchAvailabilityPollResponsesDto buildResponsesDto(MatchAvailabilityPoll poll, UUID seasonId) {

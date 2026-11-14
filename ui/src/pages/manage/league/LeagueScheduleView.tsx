@@ -140,7 +140,7 @@ export default function LeagueScheduleView() {
         testId="manage-schedule"
         items={[
           {
-            id: 'add-match',
+            id: 'add-match', requires: 'MATCHES_EDIT',
             title: 'Create New Match',
             description: 'Create one fixture for this league and season.',
             icon: <AddOutlinedIcon fontSize="small" />,
@@ -149,7 +149,7 @@ export default function LeagueScheduleView() {
             reason: 'Create a season first',
           },
           {
-            id: 'import-schedule',
+            id: 'import-schedule', requires: 'IMPORTS_RUN',
             title: 'Import Schedule',
             description: 'Upload an Excel or CSV file, or type the fixtures into the import table.',
             icon: <UploadFileOutlinedIcon fontSize="small" />,

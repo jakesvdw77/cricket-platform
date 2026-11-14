@@ -36,13 +36,13 @@ public class ClubContactController {
         this.clubContactService = clubContactService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/contacts")
     public ResponseEntity<List<ClubContactDto>> list(@PathVariable UUID clubId) {
         return ResponseEntity.ok(clubContactService.list(clubId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/contacts")
     @ApiResponse(responseCode = "201", description = "Club contact created")
     public ResponseEntity<ClubContactDto> create(
@@ -50,7 +50,7 @@ public class ClubContactController {
         return ResponseEntity.status(HttpStatus.CREATED).body(clubContactService.create(clubId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/contacts/{contactId}")
     public ResponseEntity<ClubContactDto> update(
             @PathVariable UUID clubId,
@@ -59,14 +59,14 @@ public class ClubContactController {
         return ResponseEntity.ok(clubContactService.update(clubId, contactId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/contacts/{contactId}/deactivate")
     public ResponseEntity<ClubContactDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID contactId) {
         return ResponseEntity.ok(clubContactService.deactivate(clubId, contactId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/contacts/{contactId}/reactivate")
     public ResponseEntity<ClubContactDto> reactivate(
             @PathVariable UUID clubId, @PathVariable UUID contactId) {

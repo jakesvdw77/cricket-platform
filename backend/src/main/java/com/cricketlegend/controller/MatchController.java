@@ -42,7 +42,7 @@ public class MatchController {
         this.matchService = matchService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches")
     public ResponseEntity<Page<MatchDto>> list(
             Authentication authentication,
@@ -66,7 +66,7 @@ public class MatchController {
      * Per docs/specs/087-matches-polls-alignment.md: the Matches page counters for the same filters the list uses
      * ({@code includePast} is the inverse of the list's {@code upcomingOnly}).
      */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/summary")
     public ResponseEntity<MatchesSummaryDto> summary(
             Authentication authentication,
@@ -90,7 +90,7 @@ public class MatchController {
      * active, so {@code MatchList}'s three filter dropdowns can narrow each other's own option
      * lists rather than ever offering a combination with zero possible matches.
      */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/filter-options")
     public ResponseEntity<MatchFilterOptionsDto> filterOptions(
             Authentication authentication,
@@ -105,14 +105,14 @@ public class MatchController {
                 authentication, clubId, sectionId, leagueId, seasonId, teamId, search, upcomingOnly));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}")
     public ResponseEntity<MatchDto> get(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(matchService.get(authentication, clubId, matchId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches")
     @ApiResponse(responseCode = "201", description = "Match created")
     public ResponseEntity<MatchDto> create(
@@ -122,7 +122,7 @@ public class MatchController {
         return ResponseEntity.status(HttpStatus.CREATED).body(matchService.create(authentication, clubId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}")
     public ResponseEntity<MatchDto> update(
             Authentication authentication,
@@ -133,7 +133,7 @@ public class MatchController {
     }
 
     /** docs/specs/118: changes only the match's date and time (allowed while a result is published). */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PatchMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/date-time")
     public ResponseEntity<MatchDto> updateDateTime(
             Authentication authentication,
@@ -143,14 +143,14 @@ public class MatchController {
         return ResponseEntity.ok(matchService.updateDateTime(authentication, clubId, matchId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/deactivate")
     public ResponseEntity<MatchDto> deactivate(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(matchService.deactivate(authentication, clubId, matchId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/reactivate")
     public ResponseEntity<MatchDto> reactivate(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
@@ -158,7 +158,7 @@ public class MatchController {
     }
 
     /** docs/specs/109-delete-empty-match.md: deletes a match with nothing recorded against it. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @DeleteMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}")
     @ApiResponse(responseCode = "204", description = "Match deleted")
     @ApiResponse(responseCode = "404", description = "Not this club's match")

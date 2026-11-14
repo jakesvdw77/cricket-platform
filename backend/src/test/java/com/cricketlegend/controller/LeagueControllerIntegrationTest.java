@@ -669,12 +669,16 @@ class LeagueControllerIntegrationTest {
      * clean 403, unchanged from before that spec.
      */
     @Test
-    void aPureSectionScopedCallerWithNoClubScopeGrantStillGets403() throws Exception {
+    void aPureSectionScopedCallerMayReadLeaguesButNotChangeThem() throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section section = sectionRepository.save(newSection(club.getId(), "Juniors"));
         JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", section.getId());
 
+        // docs/specs/150: reference data is readable by every grant; changing it needs a club-wide Leagues Edit.
         mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(sectionAdmin))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/leagues/{id}/deactivate", club.getId(), UUID.randomUUID())
+                        .with(sectionAdmin))
                 .andExpect(status().isForbidden());
     }
 

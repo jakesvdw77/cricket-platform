@@ -40,7 +40,7 @@ public class LeagueTeamController {
         this.leagueTeamService = leagueTeamService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping(BASE)
     public ResponseEntity<List<LeagueTeamDto>> listLeagueTeams(
             @PathVariable UUID clubId,
@@ -50,7 +50,7 @@ public class LeagueTeamController {
         return ResponseEntity.ok(leagueTeamService.list(clubId, leagueId, seasonId, activeOnly));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(BASE)
     @ApiResponse(responseCode = "201", description = "League team created")
     public ResponseEntity<LeagueTeamDto> createLeagueTeam(
@@ -62,7 +62,7 @@ public class LeagueTeamController {
                 .body(leagueTeamService.create(clubId, leagueId, seasonId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PutMapping(BASE + "/{leagueTeamId}")
     public ResponseEntity<LeagueTeamDto> updateLeagueTeam(
             @PathVariable UUID clubId,
@@ -73,7 +73,7 @@ public class LeagueTeamController {
         return ResponseEntity.ok(leagueTeamService.update(clubId, leagueId, seasonId, leagueTeamId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(BASE + "/{leagueTeamId}/deactivate")
     public ResponseEntity<LeagueTeamDto> deactivateLeagueTeam(
             @PathVariable UUID clubId,
@@ -83,7 +83,7 @@ public class LeagueTeamController {
         return ResponseEntity.ok(leagueTeamService.deactivate(clubId, leagueId, seasonId, leagueTeamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(BASE + "/{leagueTeamId}/reactivate")
     public ResponseEntity<LeagueTeamDto> reactivateLeagueTeam(
             @PathVariable UUID clubId,
@@ -93,7 +93,7 @@ public class LeagueTeamController {
         return ResponseEntity.ok(leagueTeamService.reactivate(clubId, leagueId, seasonId, leagueTeamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(BASE + "/{leagueTeamId}/remove")
     public ResponseEntity<RemoveLeagueTeamResponse> removeLeagueTeam(
             @PathVariable UUID clubId,
@@ -103,7 +103,7 @@ public class LeagueTeamController {
         return ResponseEntity.ok(leagueTeamService.remove(clubId, leagueId, seasonId, leagueTeamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(BASE + "/copy")
     public ResponseEntity<CopyLeagueTeamsResponse> copyLeagueTeams(
             @PathVariable UUID clubId,

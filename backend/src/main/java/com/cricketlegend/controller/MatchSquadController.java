@@ -33,7 +33,7 @@ public class MatchSquadController {
         this.matchSquadService = matchSquadService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad")
     public ResponseEntity<MatchSquadDto> get(
             Authentication authentication,
@@ -43,7 +43,7 @@ public class MatchSquadController {
         return ResponseEntity.ok(matchSquadService.get(authentication, clubId, matchId, teamId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}/add")
     public ResponseEntity<MatchSquadMemberDto> add(
             Authentication authentication,
@@ -54,7 +54,7 @@ public class MatchSquadController {
         return ResponseEntity.ok(matchSquadService.add(authentication, clubId, matchId, teamId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}/remove")
     public ResponseEntity<Void> remove(
             Authentication authentication,
@@ -66,7 +66,7 @@ public class MatchSquadController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}")
     public ResponseEntity<MatchSquadMemberDto> updateJerseyNumber(
             Authentication authentication,

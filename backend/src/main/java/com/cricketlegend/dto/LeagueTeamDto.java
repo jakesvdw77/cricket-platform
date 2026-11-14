@@ -16,6 +16,7 @@ public record LeagueTeamDto(
         String name,
         String abbreviation,
         String logoUrl,
+        String notes,
         boolean active,
         long referencedByMatchCount) {
 }

@@ -173,6 +173,17 @@ describe('ManagerHome', () => {
     expect(screen.queryByText(/Club context/)).not.toBeInTheDocument()
   })
 
+  it('lets in a section-only manager: no club-wide grant, but a Manager card (docs/specs/150)', async () => {
+    activateSession.mockResolvedValueOnce(
+      meAccess({ platformAdmin: false, clubAdminClubIds: [], profiles: [managerProfile('club-1', 'Riverside CC')] }),
+    )
+
+    renderManagerHome()
+
+    expect(await screen.findByText(/Club context/)).toBeInTheDocument()
+    expect(screen.queryByText('You do not have access to the club manager area.')).not.toBeInTheDocument()
+  })
+
   it('renders ManagerShell driven by the real activateSession result, not a hardcoded mock user, and threads clubAdminClubIds[0] through the Outlet context', async () => {
     const user = userEvent.setup()
     activateSession.mockResolvedValueOnce(meAccess({ platformAdmin: false, clubAdminClubIds: ['club-1'] }))

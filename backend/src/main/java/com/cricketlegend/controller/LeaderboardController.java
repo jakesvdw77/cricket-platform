@@ -29,13 +29,13 @@ public class LeaderboardController {
         this.leaderboardService = leaderboardService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards")
     public ResponseEntity<LeaderboardCatalogueDto> getLeaderboardCatalogue(@PathVariable UUID clubId) {
         return ResponseEntity.ok(leaderboardService.catalogue());
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards/awards")
     public ResponseEntity<AwardsViewDto> getAwardsView(
             Authentication authentication,
@@ -50,14 +50,14 @@ public class LeaderboardController {
                 authentication, clubId, seasonId, leagueId, teamId, sectionId, minimumInnings, minimumOvers));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards/filter-options")
     public ResponseEntity<LeaderboardFilterOptionsDto> getLeaderboardFilterOptions(
             Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(leaderboardService.filterOptions(authentication, clubId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboards/{group}")
     public ResponseEntity<LeaderboardTableDto> getLeaderboardTable(
             Authentication authentication,

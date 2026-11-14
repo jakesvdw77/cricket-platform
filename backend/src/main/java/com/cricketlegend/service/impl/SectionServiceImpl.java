@@ -74,6 +74,9 @@ public class SectionServiceImpl implements SectionService {
     private final PlayerProfileRepository playerProfileRepository;
     private final PlayerSectionRepository playerSectionRepository;
     private final LeagueAffiliationRepository leagueAffiliationRepository;
+    // docs/specs/150 rule 9: a section that still has manager grants cannot be removed.
+    private final com.cricketlegend.repository.RoleAssignmentRepository roleAssignmentRepository;
+    private final com.cricketlegend.repository.PersonRepository personRepository;
 
     public SectionServiceImpl(
             SectionRepository sectionRepository,
@@ -85,7 +88,9 @@ public class SectionServiceImpl implements SectionService {
             TeamRepository teamRepository,
             PlayerProfileRepository playerProfileRepository,
             PlayerSectionRepository playerSectionRepository,
-            LeagueAffiliationRepository leagueAffiliationRepository) {
+            LeagueAffiliationRepository leagueAffiliationRepository,
+            com.cricketlegend.repository.RoleAssignmentRepository roleAssignmentRepository,
+            com.cricketlegend.repository.PersonRepository personRepository) {
         this.sectionRepository = sectionRepository;
         this.sectionContactRepository = sectionContactRepository;
         this.clubContactRepository = clubContactRepository;
@@ -96,6 +101,8 @@ public class SectionServiceImpl implements SectionService {
         this.playerProfileRepository = playerProfileRepository;
         this.playerSectionRepository = playerSectionRepository;
         this.leagueAffiliationRepository = leagueAffiliationRepository;
+        this.roleAssignmentRepository = roleAssignmentRepository;
+        this.personRepository = personRepository;
     }
 
     @Override
@@ -212,6 +219,7 @@ public class SectionServiceImpl implements SectionService {
         if (!section.isActive()) {
             throw new InvalidStatusTransitionException("Section is already inactive: " + sectionId);
         }
+        assertNoAccessGrants(sectionId);
         List<Section> activeChildren = sectionRepository.findByParentSectionIdAndActiveTrue(sectionId);
         if (!activeChildren.isEmpty()) {
             throw new InvalidStatusTransitionException(
@@ -225,6 +233,26 @@ public class SectionServiceImpl implements SectionService {
 
         section.setActive(false);
         return Optional.of(sectionMapper.toDto(sectionRepository.save(section)));
+    }
+
+    /**
+     * docs/specs/150-managers-and-access-grants.md rule 9: access is never lost silently, so a section that people still hold
+     * access on is refused with their names (up to five) until that access is removed on the Access page.
+     */
+    private void assertNoAccessGrants(UUID sectionId) {
+        List<com.cricketlegend.domain.RoleAssignment> grants = roleAssignmentRepository.findByScopeTypeAndScopeId(
+                com.cricketlegend.domain.ScopeType.SECTION, sectionId);
+        if (grants.isEmpty()) {
+            return;
+        }
+        List<String> names = personRepository.findAllById(
+                        grants.stream().map(com.cricketlegend.domain.RoleAssignment::getPersonId).toList())
+                .stream()
+                .limit(5)
+                .map(com.cricketlegend.mapper.LinkRequestMapper::fullName)
+                .toList();
+        throw new ConflictException("This section still has access given to " + String.join(", ", names)
+                + ". Remove that access on the Access page first.");
     }
 
     /**

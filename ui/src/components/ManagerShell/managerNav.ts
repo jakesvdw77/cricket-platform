@@ -1,4 +1,5 @@
 import type { BrandIconName } from '../BrandIcon'
+import type { PermissionKey } from '../../auth/permissions'
 import { NAV_GLYPH_NAMES } from '../NavItemIcon'
 import type { NavGlyphName } from '../NavItemIcon'
 
@@ -28,6 +29,8 @@ export interface NavItem {
   exact?: boolean
   // The bottom-bar tab this item lights when it is active, if not its own id (the hub is one page).
   tabId?: string
+  // docs/specs/150: shown only to a caller who holds at least one of these (reference pages carry none, every grant reads them).
+  needs?: readonly PermissionKey[]
 }
 
 export interface NavGroup {
@@ -60,6 +63,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'matches',
+        needs: ['MATCHES_VIEW'],
         label: 'Matches',
         description: 'Schedule fixtures and build playing XIs',
         to: '/manage/fixtures/matches',
@@ -67,6 +71,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'availability',
+        needs: ['AVAILABILITY_VIEW'],
         label: 'Availability',
         description: 'Polls, player availability and match-day cover',
         to: '/manage/availability',
@@ -75,9 +80,10 @@ export const MANAGER_NAV: NavGroup[] = [
         // response and new-poll pages) keeps it highlighted.
         match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability', '/manage/player-availability'],
       },
-      { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads' },
+      { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads', needs: ['SELECTION_VIEW'] },
       {
         id: 'results',
+        needs: ['RESULTS_VIEW'],
         label: 'Results',
         description: 'Capture and review match results',
         to: '/manage/results',
@@ -85,6 +91,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'leaderboards',
+        needs: ['STATS_VIEW'],
         label: 'Leaderboards',
         description: 'Standings tables and awards',
         to: '/manage/leaderboards',
@@ -97,6 +104,7 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [
       {
         id: 'teams',
+        needs: ['TEAMS_VIEW'],
         label: 'Teams',
         description: 'Register teams',
         to: '/manage/teams',
@@ -106,6 +114,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'players',
+        needs: ['PLAYERS_VIEW'],
         label: 'Players',
         description: 'Manage the player roster',
         to: '/manage/players',
@@ -113,6 +122,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'communication',
+        needs: ['AVAILABILITY_MANAGE'],
         label: 'Communication',
         description: 'Message the squad',
         to: '/manage/communication',
@@ -142,6 +152,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'gallery',
+        needs: ['CLUB_SETUP_EDIT'],
         label: 'Gallery',
         description: 'Share photos and highlights from your club',
         to: '/manage/gallery',
@@ -149,11 +160,12 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'access',
+        needs: ['ACCESS_VIEW'],
         label: 'Access',
         tileTitle: 'Access',
-        description: 'Managers and player accounts',
+        description: 'People, roles and player accounts',
         to: '/manage/permissions',
-        match: ['/manage/permissions/player-accounts'],
+        match: ['/manage/permissions/roles', '/manage/permissions/player-accounts'],
         icon: 'nav/roles-permissions',
       },
     ],
@@ -163,6 +175,13 @@ export const MANAGER_NAV: NavGroup[] = [
 // The phone bottom bar: Home, Matches, Availability, Players, then a Menu button that opens the sheet.
 export const MANAGER_TAB_IDS = ['overview', 'matches', 'availability', 'players'] as const
 export const MANAGER_TAB_LABELS: Record<string, string> = { overview: 'Home' }
+
+// docs/specs/150: the menu a caller may use. A group left empty disappears; `canAny` answers "holds one of these".
+export function visibleNavGroups(groups: NavGroup[], canAny: (keys: readonly PermissionKey[]) => boolean): NavGroup[] {
+  return groups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.needs || canAny(item.needs)) }))
+    .filter((group) => group.items.length > 0)
+}
 
 export function flatNavItems(groups: NavGroup[] = MANAGER_NAV): NavItem[] {
   return groups.flatMap((group) => group.items)

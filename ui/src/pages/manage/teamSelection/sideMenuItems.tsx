@@ -42,12 +42,12 @@ export function sideMenuItems({ side, selectTo, onSelectPlayers, selectDisabled,
   }
   if (side.announced) {
     if (onUnannounce) {
-      items.push({ id: 'unannounce', title: 'Un-announce Team', description: 'Take the team back to selection.', icon: <UndoOutlinedIcon fontSize="small" />, onClick: onUnannounce })
+      items.push({ id: 'unannounce', requires: 'SELECTION_MANAGE', title: 'Un-announce Team', description: 'Take the team back to selection.', icon: <UndoOutlinedIcon fontSize="small" />, onClick: onUnannounce })
     }
   } else if (onAnnounce || announceBlockedReason) {
     const ready = side.status === 'READY_TO_ANNOUNCE' && side.sideId !== null && !announceBlockedReason
     items.push({
-      id: 'announce',
+      id: 'announce', requires: 'SELECTION_MANAGE',
       title: 'Announce Team',
       description: 'Tell the players the team.',
       icon: <CampaignOutlinedIcon fontSize="small" />,

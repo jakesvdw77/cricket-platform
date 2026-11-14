@@ -17,7 +17,7 @@ function renderCard(props: Partial<FieldCardProps> = {}) {
   )
 }
 
-const ROWS = ['Owner', 'City', 'Country', 'Matches', 'Map']
+const ROWS = ['Owner', 'Address', 'City', 'Country', 'Matches', 'Map']
 const EMPTY = makeField({
   ownerName: '',
   address: { number: null, street: null, city: null, provinceState: null, country: null, postalCode: null },
@@ -86,7 +86,7 @@ describe('FieldCard', () => {
 
     const rows = screen.getAllByTestId('field-detail-row')
     expect(rows).toHaveLength(ROWS.length)
-    expect(rows.map((row) => row.textContent)).toEqual(['Owner–', 'City–', 'Country–', 'Matches0', 'Map–'])
+    expect(rows.map((row) => row.textContent)).toEqual(['Owner–', 'Address–', 'City–', 'Country–', 'Matches0', 'Map–'])
     expect(screen.queryByRole('link', { name: 'Open in maps' })).not.toBeInTheDocument()
   })
 

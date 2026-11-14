@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
 import com.cricketlegend.domain.Section;
@@ -54,7 +55,7 @@ public class PlayerSectionServiceImpl implements PlayerSectionService {
     @Transactional(readOnly = true)
     public List<SectionDto> list(Authentication authentication, UUID clubId, UUID playerId) {
         findPlayerOrThrowForClub(clubId, playerId);
-        accessService.assertCanAdministerAnySection(authentication, clubId, taggedSectionIds(playerId));
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYERS_VIEW, taggedSectionIds(playerId));
 
         return playerSectionRepository.findByPlayerProfileId(playerId).stream()
                 .map(link -> sectionRepository

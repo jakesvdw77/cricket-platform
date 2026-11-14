@@ -36,14 +36,14 @@ public class MatchSideController {
         this.matchSideService = matchSideService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides")
     public ResponseEntity<List<MatchSideDto>> list(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(matchSideService.list(authentication, clubId, matchId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides")
     @ApiResponse(responseCode = "201", description = "Match side created")
     public ResponseEntity<MatchSideDto> createSide(
@@ -55,7 +55,7 @@ public class MatchSideController {
                 .body(matchSideService.createSide(authentication, clubId, matchId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}")
     public ResponseEntity<MatchSideDto> updateSide(
             Authentication authentication,
@@ -66,7 +66,7 @@ public class MatchSideController {
         return ResponseEntity.ok(matchSideService.updateSide(authentication, clubId, matchId, sideId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players")
     @ApiResponse(responseCode = "201", description = "Player added to match side")
     public ResponseEntity<MatchSideDto> addPlayer(
@@ -79,7 +79,7 @@ public class MatchSideController {
                 .body(matchSideService.addPlayer(authentication, clubId, matchId, sideId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}")
     public ResponseEntity<MatchSideDto> updatePlayerRole(
             Authentication authentication,
@@ -92,7 +92,7 @@ public class MatchSideController {
                 authentication, clubId, matchId, sideId, playerProfileId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping(
             "/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}/remove")
     public ResponseEntity<MatchSideDto> removePlayer(
@@ -106,7 +106,7 @@ public class MatchSideController {
                 authentication, clubId, matchId, sideId, playerProfileId, keepAnnounced));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/reorder")
     public ResponseEntity<MatchSideDto> reorderPlayers(
             Authentication authentication,
@@ -117,14 +117,14 @@ public class MatchSideController {
         return ResponseEntity.ok(matchSideService.reorderPlayers(authentication, clubId, matchId, sideId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/announce")
     public ResponseEntity<MatchSideDto> announce(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId, @PathVariable UUID sideId) {
         return ResponseEntity.ok(matchSideService.announce(authentication, clubId, matchId, sideId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/unannounce")
     public ResponseEntity<MatchSideDto> unannounce(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId, @PathVariable UUID sideId) {

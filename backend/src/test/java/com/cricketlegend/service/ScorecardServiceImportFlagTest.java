@@ -111,7 +111,7 @@ class ScorecardServiceImportFlagTest {
                 abelId, new PlayerInfo(abelId, clubId, true, "Abel", "Nazar", null, null),
                 ceesId, new PlayerInfo(ceesId, clubId, true, "Cees", "Meyer", null, null)));
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(personId);
-        when(matchService.requireAdministrableMatch(any(), any(), any())).thenReturn(match);
+        when(matchService.requireAdministrableMatch(any(), any(), any(), any())).thenReturn(match);
     }
 
     private static ResultPlayerDto dto(UUID id, UUID profile, String displayName, ImportMatchLevel flag) {

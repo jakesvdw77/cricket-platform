@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import com.cricketlegend.domain.BattingPosition;
 import com.cricketlegend.domain.BattingStance;
 import com.cricketlegend.domain.BowlingArm;
 import com.cricketlegend.domain.BowlingType;
@@ -32,5 +33,7 @@ public record CreatePlayerRequest(
         BowlingArm bowlingArm,
         BowlingType bowlingType,
         boolean isWicketKeeper,
+        BattingPosition battingPosition,
+        boolean isPartTimeBowler,
         Integer jerseyNumber) {
 }

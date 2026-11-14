@@ -117,6 +117,7 @@ abstract class AbstractPublicAvailabilityIntegrationTest {
     @AfterEach
     void cleanUp() {
         jdbcTemplate.execute("TRUNCATE TABLE club, person, public_availability_attempt CASCADE");
+        com.cricketlegend.support.AccessRoleSeed.restore(jdbcTemplate);
     }
 
     protected UUID newProfile(UUID clubId, String first, String last, LocalDate dob, boolean active) {

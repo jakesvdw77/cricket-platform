@@ -54,7 +54,7 @@ public class PlayerController {
         this.playerSectionService = playerSectionService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players")
     public ResponseEntity<List<PlayerDto>> list(
             Authentication authentication,
@@ -71,7 +71,7 @@ public class PlayerController {
     }
 
     /** docs/specs/088-players-polls-alignment.md: the Players page counters for the same filters the list uses. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/summary")
     public ResponseEntity<PlayersSummaryDto> summary(
             Authentication authentication,
@@ -85,7 +85,7 @@ public class PlayerController {
     }
 
     /** docs/specs/088: accept a player request (or undo a reject). */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/verify")
     public ResponseEntity<PlayerDto> verify(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
@@ -93,14 +93,14 @@ public class PlayerController {
     }
 
     /** docs/specs/088: reject an unverified player request; the player is kept but hidden. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/reject")
     public ResponseEntity<PlayerDto> reject(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerService.reject(authentication, clubId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players")
     @ApiResponse(responseCode = "201", description = "Player created")
     public ResponseEntity<PlayerDto> create(
@@ -108,7 +108,7 @@ public class PlayerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(playerService.create(clubId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}")
     public ResponseEntity<PlayerDto> update(
             Authentication authentication,
@@ -118,28 +118,28 @@ public class PlayerController {
         return ResponseEntity.ok(playerService.update(authentication, clubId, playerId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/deactivate")
     public ResponseEntity<PlayerDto> deactivate(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerService.deactivate(authentication, clubId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/reactivate")
     public ResponseEntity<PlayerDto> reactivate(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerService.reactivate(authentication, clubId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/sections")
     public ResponseEntity<List<SectionDto>> listSections(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerSectionService.list(authentication, clubId, playerId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link")
     public ResponseEntity<Void> linkSection(
             @PathVariable UUID clubId, @PathVariable UUID playerId, @PathVariable UUID sectionId) {
@@ -147,7 +147,7 @@ public class PlayerController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYERS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/unlink")
     public ResponseEntity<Void> unlinkSection(
             @PathVariable UUID clubId, @PathVariable UUID playerId, @PathVariable UUID sectionId) {

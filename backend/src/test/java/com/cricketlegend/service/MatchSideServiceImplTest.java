@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -958,7 +959,7 @@ class MatchSideServiceImplTest {
                 .thenReturn(resolvedSections);
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+                .assertCanAnySection(eq(authentication), eq(clubId), any(), eq(resolvedSections));
 
         assertThatThrownBy(() -> service.createSide(
                         authentication, clubId, matchId, new CreateMatchSideRequest(homeTeamId)))

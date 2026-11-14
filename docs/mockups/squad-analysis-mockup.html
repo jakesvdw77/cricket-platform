@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 151 Squad Analysis mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--gold:#E8B83D;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;--ink900:#10231a;--inkMuted:#55665c;--warning:#b7791f;--error:#b0402e;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,#e9efe6,#f4f1e6 55%,#f7f4ea);padding:24px 28px 60px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:24px;margin:36px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:880px;font-size:14px;margin:0 0 14px}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden}
+.frame.d{width:1100px;padding:18px 24px}
+.frame.p{width:375px;padding:14px}
+.back{font-size:13px;color:var(--green700);margin-bottom:6px}
+.title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.title b{font-family:var(--display);font-size:32px;color:var(--green900)}
+.pill{border:1px solid var(--cardLine);background:#fff;border-radius:16px;padding:3px 12px;font-size:13px}
+.badge{background:#e4efe7;color:var(--green800);border-radius:12px;padding:2px 10px;font-size:12px;font-weight:600}
+.push{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:4px;font-size:13px;font-weight:600;border:1px solid var(--green700);color:var(--green700);background:#fff}
+.btn.f{background:var(--green700);color:#fff}
+.btn.hl{box-shadow:0 0 0 3px rgba(232,184,61,.55)}
+.figs{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.fig{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:8px 14px;min-width:118px}
+.fig b{display:block;font-family:var(--display);font-size:28px;color:var(--green900);line-height:1}
+.fig span{font-size:12px;color:var(--inkMuted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.p .grid{grid-template-columns:1fr}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:12px 14px}
+.card.wide{grid-column:1/-1}
+.card h3{font-family:var(--display);font-size:20px;margin:0 0 8px;color:var(--green900)}
+.gap{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin:6px 0;color:var(--ink900)}
+.gap i{flex:none;width:18px;height:18px;border-radius:50%;background:#fbefd2;color:var(--warning);text-align:center;font-style:normal;font-weight:700;font-size:12px;line-height:18px;margin-top:1px}
+.gap.ok i{background:#e4efe7;color:var(--green700)}
+.cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.p .cols{grid-template-columns:1fr 1fr}
+.col h4{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--green800);display:flex;justify-content:space-between;border-bottom:2px solid var(--gold);padding-bottom:4px}
+.col ul{list-style:none;margin:0;padding:0;font-size:13px}
+.col li{padding:3px 0;border-bottom:1px solid #eef1ea}
+.col li.none{color:var(--inkMuted);font-style:italic}
+.bar{display:flex;align-items:center;gap:8px;font-size:13px;margin:5px 0}
+.bar span.l{width:110px;color:var(--inkMuted)}
+.bar .t{flex:1;background:#eef1ea;border-radius:4px;height:10px}
+.bar .t i{display:block;height:10px;border-radius:4px;background:var(--green700)}
+.bar b{width:22px;text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--cardLine);border-radius:14px;padding:2px 10px;font-size:12px;background:#fff}
+.chip.m{border-color:var(--warning);color:var(--warning)}
+.small{font-size:13px;color:var(--inkMuted);margin:2px 0}
+.kv{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px solid #eef1ea}
+.kv b{font-weight:600}
+</style></head><body>
+<h1>Squad Analysis</h1>
+<p class="lede">Spec 151, slice B. A new secondary <b>Analysis</b> button on the Team page opens this page. Everything is worked out in the browser from the squad and the player's cricket information. Names are made up.</p>
+
+<h2>1. The button on the Team page</h2>
+<p class="note">Analysis sits beside View Stats, before the filled Manage Team menu (the highlighted ring is only to show it here).</p>
+<div class="frame d"><div class="back">‹ Back to Teams</div>
+<div class="title"><b>Irene Veterans</b><span class="badge">Active</span><span class="pill">2026/2027</span>
+<div class="push"><span class="btn">View Stats</span><span class="btn hl">Analysis</span><span class="btn f">Manage Team ▾</span></div></div></div>
+
+<h2>2. The Analysis page, desktop</h2>
+<p class="note">Counters first, then "Things To Check" so the gaps are the first thing you read, then the detail cards. A player appears in every group that applies.</p>
+<div class="frame d">
+<div class="back">‹ Back to Irene Veterans</div>
+<div class="title"><b>Irene Veterans Analysis</b><span class="pill">2026/2027</span></div>
+<div class="figs">
+<div class="fig"><b>12</b><span>Players</span></div><div class="fig"><b>11</b><span>Batters</span></div><div class="fig"><b>6</b><span>Main Bowlers</span></div>
+<div class="fig"><b>1</b><span>Part-Time Bowlers</span></div><div class="fig"><b>4</b><span>All-Rounders</span></div><div class="fig"><b>1</b><span>Wicketkeepers</span></div></div>
+<div class="grid">
+<div class="card wide"><h3>Things To Check</h3>
+<div class="gap"><i>!</i><span>No left-arm spinner, and only 2 spin bowlers.</span></div>
+<div class="gap"><i>!</i><span>2 players have no batting position set (Frans Kruger, Tiaan Engelbrecht).</span></div>
+<div class="gap"><i>!</i><span>Only 1 wicketkeeper. Nobody else has the gloves if he is unavailable.</span></div>
+<div class="gap ok"><i>✓</i><span>7 bowling options (6 main and 1 part-time), enough to share the overs.</span></div>
+<div class="gap ok"><i>✓</i><span>Both openers are set, and one is left-handed.</span></div></div>
+<div class="card wide"><h3>Batting Order</h3><div class="cols"><div class="col"><h4>Opener <b>2</b></h4><ul><li>Dewald Botha</li><li>Pieter Smit</li></ul></div><div class="col"><h4>Top Order <b>2</b></h4><ul><li>Hennie Coetzee</li><li>Andre Louw</li></ul></div><div class="col"><h4>Middle Order <b>3</b></h4><ul><li>Johan Visser</li><li>Riaan Fourie</li><li>Kobus Naude</li></ul></div><div class="col"><h4>Lower Order <b>3</b></h4><ul><li>Marius Pretorius</li><li>Wikus Steyn</li><li>Gerrit Jacobs</li></ul></div></div>
+<p class="small">Not set: Frans Kruger, Tiaan Engelbrecht</p></div>
+<div class="card"><h3>Bowling</h3>
+<div class="bar"><span class="l">Pace</span><div class="t"><i style="width:80%"></i></div><b>4</b></div>
+<div class="bar"><span class="l">Medium</span><div class="t"><i style="width:40%"></i></div><b>2</b></div>
+<div class="bar"><span class="l">Spin</span><div class="t"><i style="width:40%"></i></div><b>2</b></div>
+<div class="bar"><span class="l">Part-time</span><div class="t"><i style="width:20%"></i></div><b>1</b></div>
+<p class="small">Right-arm 6, left-arm 2, arm not set 0</p></div>
+<div class="card"><h3>Hands</h3>
+<div class="kv"><span>Right-hand batters</span><b>9</b></div><div class="kv"><span>Left-hand batters</span><b>3</b></div>
+<div class="kv"><span>Right-arm bowlers</span><b>6</b></div><div class="kv"><span>Left-arm bowlers</span><b>2</b></div>
+<p class="small">A left and right pair at the crease is easy to arrange: yes.</p></div>
+<div class="card"><h3>Experience</h3>
+<div class="kv"><span>Average age</span><b>42</b></div><div class="kv"><span>Youngest</span><b>31</b></div><div class="kv"><span>Oldest</span><b>55</b></div>
+<div class="kv"><span>Squad size</span><b>12 of 11 needed</b></div></div>
+<div class="card wide"><h3>Information Missing</h3><p class="small">These players are not counted in some groups. Open the player to fill in the gaps.</p>
+<div class="chips"><span class="chip m">Frans Kruger: batting position, bowling</span><span class="chip m">Tiaan Engelbrecht: batting position</span></div></div>
+</div></div>
+
+<h2>3. The Analysis page, phone</h2>
+<p class="note">One column. The same order, so the gaps come first.</p>
+<div class="row"><div class="frame p">
+<div class="back">‹ Back to Irene Veterans</div>
+<div class="title"><b>Analysis</b><span class="pill">2026/2027</span></div>
+<div class="figs"><div class="fig"><b>12</b><span>Players</span></div><div class="fig"><b>6</b><span>Main Bowlers</span></div><div class="fig"><b>4</b><span>All-Rounders</span></div><div class="fig"><b>1</b><span>Wicketkeepers</span></div></div>
+<div class="grid"><div class="card"><h3>Things To Check</h3>
+<div class="gap"><i>!</i><span>No left-arm spinner.</span></div><div class="gap"><i>!</i><span>2 players have no batting position.</span></div><div class="gap"><i>!</i><span>Only 1 wicketkeeper.</span></div></div>
+<div class="card"><h3>Batting Order</h3><div class="cols"><div class="col"><h4>Opener <b>2</b></h4><ul><li>Dewald Botha</li><li>Pieter Smit</li></ul></div><div class="col"><h4>Top Order <b>2</b></h4><ul><li>Hennie Coetzee</li><li>Andre Louw</li></ul></div><div class="col"><h4>Middle Order <b>3</b></h4><ul><li>Johan Visser</li><li>Riaan Fourie</li><li>Kobus Naude</li></ul></div><div class="col"><h4>Lower Order <b>3</b></h4><ul><li>Marius Pretorius</li><li>Wikus Steyn</li><li>Gerrit Jacobs</li></ul></div></div></div></div></div></div>
+
+<h2>How each figure is worked out</h2>
+<p class="note"><b>Main bowler:</b> has a bowling type and is not ticked part-time. <b>Part-time bowler:</b> ticked part-time. <b>All-rounder:</b> a main bowler who bats Opener, Top Order or Middle Order. <b>Batter:</b> anyone who is not a main bowler. <b>Pace:</b> Fast, Fast-medium, Medium-fast. <b>Spin:</b> Off break, Leg break, Orthodox, Wrist spin, Googly. <b>Gaps shown only when true:</b> no wicketkeeper, only one wicketkeeper, no opener set, fewer than 5 bowling options, no spin, no left-hand batter, fewer than 11 players, players without a batting position.</p>
+</body></html>

@@ -355,7 +355,7 @@ describe('FieldsPage', () => {
 
         await openMenu(user, 'Riverside Oval')
 
-        expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Field', 'Edit Field', 'Open In Maps', 'Remove From Our Fields'])
+        expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Open Field', 'Edit Field', 'Duplicate Field', 'Open In Maps', 'Remove From Our Fields'])
       })
 
       it('keeps Edit Field disabled, with its reason, when the club cannot edit the field', async () => {

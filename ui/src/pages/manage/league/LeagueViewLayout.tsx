@@ -272,10 +272,10 @@ export default function LeagueViewLayout() {
     id: 'league',
     heading: 'League',
     items: [
-      { id: 'edit-league', title: 'Edit League Details', description: 'Name, format, age rules, contacts and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
-      { id: 'duplicate', title: 'Duplicate League', description: "Start next season from this league's setup.", icon: <ContentCopyOutlinedIcon fontSize="small" />, onClick: () => setDuplicateOpen(true) },
+      { id: 'edit-league', requires: 'LEAGUES_EDIT', title: 'Edit League Details', description: 'Name, format, age rules, contacts and links.', icon: <EditOutlinedIcon fontSize="small" />, to: editPath },
+      { id: 'duplicate', requires: 'LEAGUES_EDIT', title: 'Duplicate League', description: "Start next season from this league's setup.", icon: <ContentCopyOutlinedIcon fontSize="small" />, onClick: () => setDuplicateOpen(true) },
       {
-        id: 'import-history',
+        id: 'import-history', requires: 'IMPORTS_RUN',
         title: importHistory.label,
         description: 'See, resume or delete earlier imports.',
         icon: <HistoryOutlinedIcon fontSize="small" />,

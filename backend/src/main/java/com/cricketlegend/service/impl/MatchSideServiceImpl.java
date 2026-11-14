@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
@@ -84,7 +85,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     @Transactional(readOnly = true)
     public List<MatchSideDto> list(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_VIEW);
         SelectionLimitsDto limits = selectionRules.limits(match);
         List<MatchSide> sides = matchSideRepository.findByMatchId(matchId);
         Map<UUID, List<MatchSidePlayer>> rowsBySide = new java.util.HashMap<>();
@@ -105,7 +106,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     public MatchSideDto createSide(
             Authentication authentication, UUID clubId, UUID matchId, CreateMatchSideRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         UUID teamId = request.teamId();
 
         boolean isHome = teamId.equals(match.getHomeTeamId());
@@ -129,7 +130,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     public MatchSideDto updateSide(
             Authentication authentication, UUID clubId, UUID matchId, UUID sideId, UpdateMatchSideRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         UUID captainId = request.captainPlayerId();
@@ -183,7 +184,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     public MatchSideDto addPlayer(
             Authentication authentication, UUID clubId, UUID matchId, UUID sideId, AddMatchSidePlayerRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         UUID playerId = request.playerProfileId();
 
@@ -220,7 +221,7 @@ public class MatchSideServiceImpl implements MatchSideService {
             UUID playerProfileId,
             UpdateMatchSidePlayerRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         MatchSidePlayer player = matchSidePlayerRepository
@@ -248,7 +249,7 @@ public class MatchSideServiceImpl implements MatchSideService {
             UUID playerProfileId,
             boolean keepAnnounced) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         matchSidePlayerRepository
@@ -284,7 +285,7 @@ public class MatchSideServiceImpl implements MatchSideService {
             UUID sideId,
             ReorderMatchSidePlayersRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         SelectionLimitsDto limits = selectionRules.limits(match);
 
@@ -323,7 +324,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     @Transactional
     public MatchSideDto announce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         SelectionLimitsDto limits = selectionRules.limits(match);
 
@@ -343,7 +344,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     @Transactional
     public MatchSideDto unannounce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         side.setAnnounced(false);
@@ -408,10 +409,11 @@ public class MatchSideServiceImpl implements MatchSideService {
      * AccessService#resolveMatchSectionIds} helper (the side's own {@code teamId} is already
      * constrained to equal one of the match's own team ids per 029).
      */
-    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+    private void assertCanAdministerMatch(
+            Authentication authentication, UUID clubId, Match match, Permission permission) {
         Set<UUID> matchSectionIds =
                 accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
-        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
+        accessService.assertCanAnySection(authentication, clubId, permission, matchSectionIds);
     }
 
     private Match findMatchOrThrowForClub(UUID clubId, UUID matchId) {

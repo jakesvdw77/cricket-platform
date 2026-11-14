@@ -84,6 +84,16 @@ public class PlayingArea {
     @Column(name = "location_notes")
     private String locationNotes;
 
+    // docs/specs/151: who to ask at the ground, and a picture of it.
+    @Column(name = "contact_name", length = 100)
+    private String contactName;
+
+    @Column(name = "contact_phone", length = 30)
+    private String contactPhone;
+
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", nullable = false)
     private PlayingAreaVerificationStatus verificationStatus;

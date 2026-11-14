@@ -58,6 +58,17 @@ public class RoleAssignment {
     @Column(name = "scope_id")
     private UUID scopeId;
 
+    // docs/specs/150-managers-and-access-grants.md: the role (a bundle of permissions) this grant carries. Null only on a
+    // legacy row nothing has backfilled; AccessService reads a null on a CLUB_ADMIN row as the Manager role.
+    @Column(name = "access_role_id")
+    private UUID accessRoleId;
+
+    @Column(name = "granted_by_person_id")
+    private UUID grantedByPersonId;
+
+    @Column(name = "invitation_sent_at")
+    private Instant invitationSentAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

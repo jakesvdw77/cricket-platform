@@ -26,5 +26,8 @@ public record PlayingAreaRequest(
         BigDecimal longitude,
         BigDecimal accessLatitude,
         BigDecimal accessLongitude,
-        @Size(max = 200) String accessNote) {
+        @Size(max = 200) String accessNote,
+        @Size(max = 100) String contactName,
+        @Size(max = 30) String contactPhone,
+        @Size(max = 500) String photoUrl) {
 }

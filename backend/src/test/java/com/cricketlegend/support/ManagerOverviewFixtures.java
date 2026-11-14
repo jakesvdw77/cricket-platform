@@ -361,6 +361,17 @@ public final class ManagerOverviewFixtures {
         return grant(ScopeType.SECTION, section.getId());
     }
 
+    /** A signed-in person holding the given built-in access role (docs/specs/150) at a club or one section. */
+    public JwtRequestPostProcessor withRole(UUID accessRoleId, ScopeType scopeType, UUID scopeId) {
+        String subject = "sub-" + UUID.randomUUID();
+        Person person = personRepository.save(Person.builder().firstName("Casey").lastName("Role")
+                .email(subject + "@example.com").keycloakUserId(subject).build());
+        personIds.add(person.getId());
+        roleAssignmentRepository.save(RoleAssignment.builder().personId(person.getId())
+                .role(RoleAssignmentRole.CLUB_ADMIN).accessRoleId(accessRoleId).scopeType(scopeType).scopeId(scopeId).build());
+        return withSubject(subject);
+    }
+
     /** A signed-in person with no role assignment at all. */
     public JwtRequestPostProcessor nobody() {
         return withSubject(createPerson(null, null).getKeycloakUserId());

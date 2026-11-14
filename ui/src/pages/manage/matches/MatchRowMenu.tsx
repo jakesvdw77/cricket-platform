@@ -82,9 +82,9 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
 
   const items: ManageMenuItem[] = [
     { id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(base) },
-    { id: 'edit', title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit`) },
+    { id: 'edit', requires: 'MATCHES_EDIT' as const, title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit`) },
     {
-      id: 'select-team',
+      id: 'select-team', requires: 'SELECTION_VIEW' as const,
       title: 'Select Team',
       icon: <GroupsOutlinedIcon fontSize="small" />,
       to: hasOwnTeam ? leaveTo(selectTeamPath(match.id, null, Boolean(match.homeTeamId))) : undefined,
@@ -93,7 +93,7 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
     },
     ...availabilityMenuItems(pollDestination(match, teamsById), leaveTo, noTeamReason),
     ...(resultAction ? [{ id: 'result', title: titleCase(resultAction.label), icon: <SportsScoreOutlinedIcon fontSize="small" />, to: leaveTo(resultAction.to) }] : []),
-    ...(importAction ? [{ id: 'import-result', title: titleCase(importAction.label), icon: <UploadFileOutlinedIcon fontSize="small" />, to: leaveTo(importAction.to) }] : []),
+    ...(importAction ? [{ id: 'import-result', requires: 'RESULTS_EDIT' as const, title: titleCase(importAction.label), icon: <UploadFileOutlinedIcon fontSize="small" />, to: leaveTo(importAction.to) }] : []),
     ...(match.scoringUrl
       ? [{ id: 'scoring', title: 'Scoring', icon: <ScoreboardOutlinedIcon fontSize="small" />, onClick: () => window.open(match.scoringUrl as string, '_blank', 'noopener,noreferrer') }]
       : []),

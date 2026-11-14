@@ -189,6 +189,8 @@ export interface FieldDto {
   postalCode: string | null
   country: string
   mapUrl: string | null
+  // docs/specs/151: a picture of the field when the club added one.
+  photoUrl?: string | null
   verified: boolean
   home: boolean
 }

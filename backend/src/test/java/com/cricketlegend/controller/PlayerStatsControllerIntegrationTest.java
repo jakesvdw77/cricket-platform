@@ -424,11 +424,14 @@ class PlayerStatsControllerIntegrationTest {
     }
 
     @Test
-    void aSectionScopedManagerMayChangeTheSettingsLikeAnyClubManager() throws Exception {
+    void leaderboardSettingsAreChangedOnlyByAClubWideSetupEditor() throws Exception {
+        // docs/specs/150: the settings are club-wide setup, so a section grant may read them but not change them.
         JwtRequestPostProcessor juniors = seed.fixtures.sectionManager(seed.w.juniors());
+        String body = "{\"awardCategories\":[\"MOST_RUNS\",\"MOST_WICKETS\"]}";
 
-        mockMvc.perform(put(SETTINGS, clubId).with(juniors).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"awardCategories\":[\"MOST_RUNS\",\"MOST_WICKETS\"]}"))
+        mockMvc.perform(put(SETTINGS, clubId).with(juniors).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put(SETTINGS, clubId).with(admin).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
         assertThat(json(getAs(admin, SETTINGS)).path("awardCategories")).hasSize(2);
     }

@@ -55,7 +55,7 @@ export default function LeagueConditionsView() {
         testId="manage-conditions"
         items={[
           {
-            id: 'edit-conditions',
+            id: 'edit-conditions', requires: 'LEAGUES_EDIT',
             title: 'Edit Playing Conditions',
             description: 'Overs, points, bonus points and notes for this league and season.',
             icon: <EditOutlinedIcon fontSize="small" />,

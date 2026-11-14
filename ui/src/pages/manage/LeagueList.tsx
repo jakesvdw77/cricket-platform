@@ -22,6 +22,7 @@ import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { dynamicCardGridSx } from '../../utils/cardGrid'
 import { currentOrigin, withReturnTo } from '../../utils/returnTo'
+import { usePermissions } from '../../auth/permissions'
 import { AddCard } from '../../components/AddCard'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { ShareLeagueDialog } from '../../components/ShareLeagueDialog'
@@ -58,12 +59,13 @@ function noMatchDescription(term: string, format: string): string {
 export default function LeagueList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  const canAdd = usePermissions().can('LEAGUES_EDIT')
   const location = useLocation()
   // docs/specs/127: Add League returns to this list.
   const addLeaguePath = withReturnTo('/manage/fixtures/leagues/new', currentOrigin(location), 'Leagues')
-  const addLeagueAction = (
+  const addLeagueAction = canAdd ? (
     <EmptyStateLink onClick={() => navigate(addLeaguePath)}>Create New League</EmptyStateLink>
-  )
+  ) : undefined
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [search, setSearch] = useState('')
@@ -296,7 +298,7 @@ export default function LeagueList() {
             />
           ) : undefined
         }
-        action={<Button size="compact" onClick={() => navigate(addLeaguePath)} sx={{ flex: 'none' }}>Create New League</Button>}
+        action={canAdd ? <Button size="compact" onClick={() => navigate(addLeaguePath)} sx={{ flex: 'none' }}>Create New League</Button> : undefined}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
@@ -314,7 +316,7 @@ export default function LeagueList() {
             <LeagueCard key={league.id} league={league} seasonId={seasonId || undefined} onShare={setShareLeague} onDuplicate={setDuplicateLeague} />
           ))}
           {/* The grid ends with a dashed Add card (same route as the page's Add League button); with no cards it is not shown (the empty message carries the quick-action button). */}
-          {visibleLeagues.length > 0 && <AddCard label="Create New League" to={addLeaguePath} testId="add-league-card" />}
+          {canAdd && visibleLeagues.length > 0 && <AddCard label="Create New League" to={addLeaguePath} testId="add-league-card" />}
         </Box>
       )}
 

@@ -79,6 +79,9 @@ public class PlayingAreaWriter {
         target.setAccessLatitude(access == null ? null : access[0]);
         target.setAccessLongitude(access == null ? null : access[1]);
         target.setAccessNote(accessNote);
+        target.setContactName(optionalText(request.contactName(), "contactName", 100));
+        target.setContactPhone(optionalText(request.contactPhone(), "contactPhone", 30));
+        target.setPhotoUrl(optionalText(request.photoUrl(), "photoUrl", 500));
     }
 
     /**

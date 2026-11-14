@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSquadMember;
@@ -112,7 +113,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
     public MatchSquadDto get(Authentication authentication, UUID clubId, UUID matchId, UUID teamId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.MATCHES_VIEW, team.getSectionId());
 
         return buildSquadDto(team, match);
     }
@@ -122,7 +123,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
     public MatchSquadMemberDto add(Authentication authentication, UUID clubId, UUID matchId, UUID teamId, UUID playerId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.SELECTION_MANAGE, team.getSectionId());
 
         SectionAvailabilityWindow window = findWindowOrThrowRequired(team, match);
         PlayerProfile profile = findActivePlayerOrThrowForClub(clubId, playerId);
@@ -159,7 +160,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
     public void remove(Authentication authentication, UUID clubId, UUID matchId, UUID teamId, UUID playerId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.SELECTION_MANAGE, team.getSectionId());
 
         matchSquadMemberRepository
                 .findByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId)
@@ -174,7 +175,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
             Authentication authentication, UUID clubId, UUID matchId, UUID teamId, UUID playerId, Integer jerseyNumber) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.SELECTION_MANAGE, team.getSectionId());
 
         MatchSquadMember member = matchSquadMemberRepository
                 .findByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId)

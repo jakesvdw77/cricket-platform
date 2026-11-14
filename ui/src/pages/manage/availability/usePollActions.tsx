@@ -97,13 +97,13 @@ export function usePollActions({
     ? [{ id: 'open-match', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: openMatchTo }]
     : []
   const descriptionItem: ManageMenuItem[] = description
-    ? [{ id: 'edit-description', title: 'Edit Description', icon: <EditOutlinedIcon fontSize="small" />, onClick: pollDescription.openEditor }]
+    ? [{ id: 'edit-description', requires: 'AVAILABILITY_MANAGE', title: 'Edit Description', icon: <EditOutlinedIcon fontSize="small" />, onClick: pollDescription.openEditor }]
     : []
   // An open poll edits its close time; a closed one reopens (disabled with its reason when every match is in the past).
   const closeTimeItem: ManageMenuItem = open
-    ? { id: 'edit-close-time', title: 'Edit Close Time', icon: <EditCalendarOutlinedIcon fontSize="small" />, onClick: () => setCloseTimeOpen(true) }
+    ? { id: 'edit-close-time', requires: 'AVAILABILITY_MANAGE', title: 'Edit Close Time', icon: <EditCalendarOutlinedIcon fontSize="small" />, onClick: () => setCloseTimeOpen(true) }
     : {
-        id: 'reopen',
+        id: 'reopen', requires: 'AVAILABILITY_MANAGE',
         title: 'Reopen Poll',
         icon: <LockOpenOutlinedIcon fontSize="small" />,
         onClick: () => setCloseTimeOpen(true),
@@ -114,10 +114,10 @@ export function usePollActions({
     ? [{ id: 'matches', title: 'Matches Covered', icon: <EventNoteOutlinedIcon fontSize="small" />, onClick: () => setMatchesOpen(true) }]
     : []
   const closeItem: ManageMenuItem[] = open
-    ? [{ id: 'close', title: 'Close Poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: pollClose.requestClose, disabled: pollClose.closing }]
+    ? [{ id: 'close', requires: 'AVAILABILITY_MANAGE', title: 'Close Poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: pollClose.requestClose, disabled: pollClose.closing }]
     : []
   const deleteItem: ManageMenuItem = {
-    id: 'delete',
+    id: 'delete', requires: 'AVAILABILITY_MANAGE',
     title: 'Delete Poll',
     icon: <DeleteOutlineIcon fontSize="small" />,
     onClick: pollDelete.requestDelete,
@@ -125,7 +125,7 @@ export function usePollActions({
     tone: 'error',
   }
   const shareItem: ManageMenuItem = {
-    id: 'share',
+    id: 'share', requires: 'AVAILABILITY_MANAGE',
     title: 'Share Invite',
     icon: <ShareOutlinedIcon fontSize="small" />,
     onClick: () => setShareOpen(true),

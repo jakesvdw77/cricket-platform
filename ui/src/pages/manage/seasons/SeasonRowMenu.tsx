@@ -25,7 +25,7 @@ export function SeasonRowMenu({ season, testId = 'season-actions' }: SeasonRowMe
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Seasons')
   const items: ManageMenuItem[] = [
     { id: 'open', title: 'Open Season', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(base) },
-    { id: 'edit', title: 'Edit Season', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit`) },
+    { id: 'edit', requires: 'LEAGUES_EDIT', title: 'Edit Season', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`${base}/edit`) },
     { id: 'open-leagues', title: 'Open Leagues', icon: <EmojiEventsOutlinedIcon fontSize="small" />, to: leaveTo('/manage/fixtures/leagues') },
     { id: 'open-matches', title: 'Open Matches', icon: <EventOutlinedIcon fontSize="small" />, to: leaveTo('/manage/fixtures/matches') },
   ]

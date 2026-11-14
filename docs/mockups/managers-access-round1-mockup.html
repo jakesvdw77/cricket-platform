@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 150 Roles, permissions and access mockup</title>
+<style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:500;src:url(../../ui/public/fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;src:url(../../ui/public/fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--menu:#0a2e1d;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --sand:#E2D5B0;--cream:#F7F3E8;--groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;--info:#2563ac;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop) 0%,var(--groundMid) 55%,var(--groundEnd) 100%);padding:24px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:40px 0 4px;color:var(--green800)}
+.lede{color:var(--inkMuted);max-width:860px;margin:0 0 20px;font-size:15px}
+.note{color:var(--inkMuted);font-size:13px;margin:0 0 12px;max-width:900px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--inkMuted);margin:0 0 6px}
+.frame{background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;position:relative;overflow:hidden;display:flex}
+.frame.d{width:1280px;height:700px;zoom:.62}
+.frame.p{width:375px;height:720px;zoom:.9;flex-direction:column}
+.menu{width:210px;background:var(--menu);color:#cfe0d6;padding:14px 0;font-size:14px;flex:none}
+.menu .brand{font-family:var(--display);font-size:22px;font-weight:700;color:var(--sand);padding:0 16px 14px}
+.menu div.i{padding:8px 16px;color:#a9c2b4}
+.menu div.on{color:#fff;border-left:3px solid var(--gold);background:#0f3a26;padding-left:13px}
+.main{flex:1;padding:18px 24px;overflow:hidden;position:relative}
+.p .main{padding:14px}
+.back{font-size:13px;color:var(--green700);margin-bottom:6px}
+.title{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.title b{font-family:var(--display);font-size:32px;color:var(--green900);font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;background:#fff}
+.seg span{padding:0 12px;height:32px;line-height:32px;font-size:13px;font-weight:600;color:var(--inkMuted)}
+.seg span.on{background:var(--green700);color:#fff}
+.btn{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:4px;font-size:13px;font-weight:600;border:1px solid var(--green700);color:var(--green700);background:#fff}
+.btn.f{background:var(--green700);color:#fff}
+.btn.dis{opacity:.45}
+.push{margin-left:auto}
+.figs{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.fig{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:8px 14px;min-width:120px}
+.fig b{display:block;font-family:var(--display);font-size:26px;color:var(--green900);line-height:1}
+.fig span{font-size:12px;color:var(--inkMuted)}
+.fig.sel{border-color:var(--green700);box-shadow:inset 0 0 0 1px var(--green700)}
+.tool{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.in{height:32px;border:1px solid var(--cardLine);border-radius:4px;background:#fff;padding:0 10px;line-height:30px;font-size:13px;color:var(--inkMuted);min-width:180px}
+.chip{height:28px;line-height:26px;border:1px solid var(--cardLine);border-radius:14px;padding:0 12px;font-size:12px;background:#fff;color:var(--inkMuted)}
+.chip.on{background:var(--green700);color:#fff;border-color:var(--green700)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.p .cards{grid-template-columns:1fr}
+.card{background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:12px 14px;position:relative}
+.card .n{font-weight:600;font-size:16px}
+.card .e{font-size:13px;color:var(--inkMuted);margin-top:1px}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.tag{font-size:12px;border-radius:4px;padding:2px 8px;background:#eaf1e6;color:var(--green800);font-weight:600}
+.tag.role{background:#14633F;color:#fff}.tag.gold{background:#f6ecc9;color:#7a5a08}
+.tag.inv{background:#e5eef9;color:var(--info)}
+.tag.act{background:#e6f1e9;color:var(--green800)}
+.small{font-size:12px;color:var(--inkMuted)}
+.kebab{position:absolute;right:10px;top:8px;color:var(--inkMuted);font-size:20px;line-height:1}
+.menuPop{position:absolute;right:10px;top:34px;background:#fff;border:1px solid var(--cardLine);border-radius:6px;box-shadow:0 6px 20px #0003;min-width:190px;padding:4px 0;z-index:3}
+.menuPop div{padding:8px 14px;font-size:13px}
+.menuPop div.off{color:#9aa79f}
+.tip{position:absolute;right:210px;top:70px;background:#222;color:#fff;font-size:12px;padding:6px 10px;border-radius:4px;z-index:4;max-width:260px}
+.lock{font-size:12px;color:var(--inkMuted);margin-top:8px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center;z-index:5}
+.dlg{background:#fff;border-radius:6px;display:flex;flex-direction:column;width:560px;max-height:94%;box-shadow:0 8px 32px color-mix(in srgb,var(--ink) 35%,transparent)}
+.p .scrim{align-items:stretch}.p .dlg{width:100%;max-height:none;border-radius:0}
+.dh{padding:14px 20px;border-bottom:1px solid var(--cardLine);font-family:var(--display);font-size:24px;font-weight:700;color:var(--green900);display:flex;justify-content:space-between}
+.db{padding:16px 20px;display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1}
+.df{padding:12px 20px;border-top:1px solid var(--cardLine);display:flex;gap:8px;justify-content:flex-end}
+.fld label{font-size:12px;font-weight:600;color:var(--inkMuted);display:block;margin-bottom:3px}
+.fld .in{width:100%;display:block}
+.fld .in.lockd{background:#f0f2ee;color:#6f7d74}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tree{border:1px solid var(--cardLine);border-radius:4px;padding:6px 10px;font-size:13px;background:#fff}
+.tree div{padding:4px 0}
+.tree .ind{padding-left:18px}.tree .ind2{padding-left:36px}
+.tree .g{color:#a2ada6}
+.tree .sel{background:#e6f1e9;border-radius:3px;font-weight:600;color:var(--green800)}
+.roles{display:flex;flex-direction:column;gap:5px}.role{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--cardLine);border-radius:5px;padding:7px 10px;background:#fff}.role i{width:14px;height:14px;border-radius:50%;border:2px solid var(--cardLine);margin-top:3px;flex:none}.role b{display:block;font-size:14px}.role span{font-size:12px;color:var(--inkMuted)}.role.on{border-color:var(--green700);background:#eef5ea}.role.on i{border-color:var(--green700);background:radial-gradient(var(--green700) 45%,#fff 50%)}.role.dis{opacity:.5}.grid{border-collapse:collapse;background:#fff;font-size:13px;width:100%}.grid th,.grid td{border:1px solid var(--cardLine);padding:6px 10px;text-align:center}.grid th{font-family:var(--display);font-size:16px;color:var(--green900);background:#f1f5ee}.grid td:first-child,.grid th:first-child{text-align:left}.grid tr.grp td{background:#f7f4ea;font-weight:600;color:var(--green800);text-align:left}.grid .ck{color:var(--green700);font-weight:700}.grid .vw{color:var(--inkMuted)}.grid .inert{font-size:11px;color:var(--warning)}.help{font-size:12px;color:var(--green800);background:#eef5ea;border-radius:4px;padding:6px 10px}
+.warn{font-size:12px;color:#7a5a08;background:#f9f1d6;border-radius:4px;padding:6px 10px}
+.empty{background:#fff;border:1px dashed var(--cardLine);border-radius:6px;padding:28px;text-align:center;color:var(--inkMuted)}
+.empty b{display:block;font-family:var(--display);font-size:22px;color:var(--green900);margin-bottom:4px}
+.empty u{color:var(--green700);font-weight:600}
+.snack{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;background:#222;color:#fff;font-size:13px;padding:9px 16px;border-radius:4px;z-index:6;white-space:nowrap}
+.snack.er{background:#7a2e22}
+.ruleList{max-width:900px;font-size:14px}
+.ruleList li{margin:3px 0}
+</style>
+</head>
+<body>
+<h1>Spec 150: Roles, permissions and access (Access page)</h1>
+<p class="lede">Round 2 mockup: a grant is now <b>person + role + place</b>. The role says what the person can do; the place says where. Shown for a club-wide Manager and for a Juniors Coordinator, who sees less and can grant less. Custom roles are not in this round; the five built-in roles are. Emails are invented; the first card uses the owner as the example.</p>
+<ul class="ruleList">
+  <li><b>Role:</b> Manager (all), Coordinator, Team Manager, Scorer, Viewer. A role is a fixed bundle of permissions (see the Roles tab, section 6).</li>
+  <li><b>Place:</b> the whole club, or one section and everything beneath it. Club-wide permissions (leagues, club setup, imports, player accounts) only count on a whole-club grant.</li>
+  <li><b>You can only give what you hold:</b> a role is offered only if you hold every permission it carries at that place; sections above yours never appear.</li>
+  <li><b>Safety:</b> nobody changes or removes their own access; the last club-wide Manager cannot be removed or changed.</li>
+</ul>
+
+<h2>1. Club-wide manager, desktop</h2>
+<p class="note">Sees everyone. Figures filter the list. Cards follow the Players page pattern. The kebab on Sam's card is open: Resend appears only while someone has not signed in yet.</p>
+<div class="cap">Desktop 1280</div>
+<div class="frame d">
+  <div class="menu"><div class="brand">Irene Villagers</div><div class="i">Overview</div><div class="i">Players</div><div class="i">Teams</div><div class="i">Fixtures</div><div class="i">Results</div><div class="i">Club</div><div class="i on">Access</div></div>
+  <div class="main">
+    <div class="back">&#8592; Back to Overview</div>
+    <div class="title"><b>Access</b><div class="seg"><span class="on">People</span><span>Roles</span><span>Player accounts</span></div><span class="push btn f">Add Person</span></div>
+    <div class="figs">
+      <div class="fig sel"><b>6</b><span>People</span></div>
+      <div class="fig"><b>2</b><span>Invited</span></div>
+      <div class="fig"><b>2</b><span>Club-wide</span></div>
+      <div class="fig"><b>3</b><span>Sections covered</span></div>
+    </div>
+    <div class="tool"><span class="in">Search name or email</span><span class="in">All sections</span><span class="in" style="min-width:120px">All roles</span><span class="chip on">All</span><span class="chip">Active</span><span class="chip">Invited</span><span class="push seg"><span class="on">Cards</span><span>List</span></span></div>
+    <div class="cards">
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Jaco van der Westhuizen</div><div class="e">owner@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag gold">Whole club</span><span class="tag act">Active</span></div><div class="lock">Your access</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Irene Manager</div><div class="e">manager@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag gold">Whole club</span><span class="tag act">Active</span></div><div class="small" style="margin-top:6px">Added by Platform</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Thandi Mokoena</div><div class="e">thandi@example.org</div><div class="meta"><span class="tag role">Coordinator</span><span class="tag">Veterans</span><span class="tag act">Active</span></div><div class="small" style="margin-top:6px">Added by Jaco</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="menuPop"><div>Change Role</div><div>Resend Invitation</div><div>Remove Access</div></div><div class="n">Sam Naidoo</div><div class="e">sam@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag">Juniors</span><span class="tag inv">Invited</span></div><div class="small" style="margin-top:6px">Invited 2 days ago, added by Jaco</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Pieter Botha</div><div class="e">pieter@example.org</div><div class="meta"><span class="tag role">Scorer</span><span class="tag">Juniors &#8250; U13</span><span class="tag inv">Invited</span></div><div class="small" style="margin-top:6px">Invited today, added by Sam</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Lerato Dlamini</div><div class="e">lerato@example.org</div><div class="meta"><span class="tag role">Team Manager</span><span class="tag">Juniors &#8250; U15</span><span class="tag act">Active</span></div><div class="small" style="margin-top:6px">Added by Sam</div></div>
+    </div>
+  </div>
+</div>
+
+<h2>2. Juniors Manager (section Manager), desktop</h2>
+<p class="note">Sam is a Manager of Juniors only. Same page, narrower: only people inside Juniors and beneath, club-wide people shown as a count, no Whole Club anywhere. Sam can add and change people but only with roles Sam holds at that place. Sam\'s own card has no kebab. The kebab on Lerato\'s card is open: Change Role and Remove Access are allowed because Lerato is inside Sam\'s reach.</p>
+<div class="cap">Desktop 1280, signed in as Sam (Juniors)</div>
+<div class="frame d">
+  <div class="menu"><div class="brand">Irene Villagers</div><div class="i">Overview</div><div class="i">Players</div><div class="i">Teams</div><div class="i">Fixtures</div><div class="i">Results</div><div class="i on">Access</div></div>
+  <div class="main">
+    <div class="back">&#8592; Back to Overview</div>
+    <div class="title"><b>Access</b><div class="seg"><span class="on">People</span><span>Roles</span><span>Player accounts</span></div><span class="push btn f">Add Person</span></div>
+    <div class="figs">
+      <div class="fig sel"><b>3</b><span>People</span></div>
+      <div class="fig"><b>1</b><span>Invited</span></div>
+      <div class="fig"><b>2</b><span>Club-wide (not shown)</span></div>
+    </div>
+    <div class="tool"><span class="in">Search name or email</span><span class="in">Juniors and beneath</span><span class="in" style="min-width:120px">All roles</span><span class="chip on">All</span><span class="chip">Active</span><span class="chip">Invited</span><span class="push seg"><span class="on">Cards</span><span>List</span></span></div>
+    <div class="cards">
+      <div class="card"><div class="n">Sam Naidoo</div><div class="e">sam@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag">Juniors</span><span class="tag act">Active</span></div><div class="lock">Your access</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="n">Pieter Botha</div><div class="e">pieter@example.org</div><div class="meta"><span class="tag role">Scorer</span><span class="tag">Juniors &#8250; U13</span><span class="tag inv">Invited</span></div><div class="small" style="margin-top:6px">Invited today, added by Sam</div></div>
+      <div class="card"><span class="kebab">&#8942;</span><div class="menuPop"><div>Change Role</div><div class="off">Resend Invitation</div><div>Remove Access</div></div><div class="n">Lerato Dlamini</div><div class="e">lerato@example.org</div><div class="meta"><span class="tag role">Team Manager</span><span class="tag">Juniors &#8250; U15</span><span class="tag act">Active</span></div><div class="small" style="margin-top:6px">Added by Sam</div></div>
+    </div>
+    <p class="small" style="margin-top:14px">2 club-wide managers also have access to everything here.</p>
+  </div>
+</div>
+
+<h2>3. Add Person dialog (place, then role)</h2>
+<p class="note">Left: club-wide Manager adding a Scorer for U15. Right (phone): Sam, a Juniors Manager, adding someone who already has an account. Roles Sam cannot give are shown disabled with the reason. The helper line states exactly where the person can act and what stays out of reach.</p>
+<div class="row">
+  <div>
+    <div class="cap">Desktop, club-wide Manager, a new person</div>
+    <div class="frame d" style="height:760px">
+      <div class="menu" style="opacity:.5"><div class="brand">Irene Villagers</div></div>
+      <div class="main"><div class="title"><b>Access</b></div>
+        <div class="scrim"><div class="dlg" style="width:600px">
+          <div class="dh"><span>Add Person</span><span class="small">&#10005;</span></div>
+          <div class="db">
+            <div class="fld"><label>Email</label><span class="in">newperson@example.org</span></div>
+            <div class="two"><div class="fld"><label>First name</label><span class="in">Nomsa</span></div><div class="fld"><label>Last name</label><span class="in">Khumalo</span></div></div>
+            <div class="fld"><label>Place</label><div class="seg"><span>Whole Club</span><span class="on">One Section</span></div></div>
+            <div class="fld"><div class="tree"><div class="g">Irene Limited</div><div class="ind">Juniors</div><div class="ind2">U13</div><div class="ind2 sel">U15</div><div class="ind">Veterans</div></div></div>
+            <div class="fld"><label>Role</label>
+              <div class="roles">
+                <div class="role"><i></i><div><b>Manager</b><span>Everything in the place, including who has access</span></div></div>
+                <div class="role"><i></i><div><b>Coordinator</b><span>Runs day-to-day: players, teams, matches, results</span></div></div>
+                <div class="role"><i></i><div><b>Team Manager</b><span>Looks after one side: squad, matches, selection, availability</span></div></div>
+                <div class="role on"><i></i><div><b>Scorer</b><span>Enters and corrects results; can see players, teams, matches</span></div></div>
+                <div class="role"><i></i><div><b>Viewer</b><span>Sees everything in the place; changes nothing</span></div></div>
+              </div>
+              <div class="small" style="margin-top:4px">&#9656; What a Scorer can do: see players, teams and matches; capture and correct results; see stats</div>
+            </div>
+            <div class="help">U15 and everything beneath it. Leagues and club setup need a whole-club grant. No account exists yet: an email will be sent to set a password.</div>
+          </div>
+          <div class="df"><span class="btn">Cancel</span><span class="btn f">Add Person</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Phone 375, Juniors Manager, a known account</div>
+    <div class="frame p"><div class="main" style="padding:0"><div class="scrim"><div class="dlg">
+      <div class="dh"><span>Add Person</span><span class="small">&#10005;</span></div>
+      <div class="db">
+        <div class="fld"><label>Email</label><span class="in">lerato@example.org</span></div>
+        <div class="two"><div class="fld"><label>First name</label><span class="in lockd">Lerato</span></div><div class="fld"><label>Last name</label><span class="in lockd">Dlamini</span></div></div>
+        <div class="fld"><label>Section</label><div class="tree"><div class="sel">Juniors</div><div class="ind">U13</div><div class="ind">U15</div></div></div>
+        <div class="fld"><label>Role</label>
+          <div class="roles">
+            <div class="role"><i></i><div><b>Manager</b><span>Everything in Juniors</span></div></div>
+            <div class="role on"><i></i><div><b>Team Manager</b><span>Squad, matches, selection</span></div></div>
+            <div class="role dis"><i></i><div><b>Viewer</b><span>You do not hold some of its permissions here</span></div></div>
+          </div>
+        </div>
+        <div class="help">Juniors and beneath. She already has an account, so no password email is sent.</div>
+      </div>
+      <div class="df"><span class="btn">Cancel</span><span class="btn f">Add Person</span></div>
+    </div></div></div></div>
+  </div>
+</div>
+
+<h2>4. Refusals and removal</h2>
+<p class="note">Items that cannot be used are disabled with the reason on hover (the server refuses them too). Remove is always a confirm that says the account stays.</p>
+<div class="row">
+  <div>
+    <div class="cap">Blocked: last club-wide manager</div>
+    <div class="frame d" style="width:760px;height:380px;zoom:.9">
+      <div class="main"><div class="cards" style="grid-template-columns:1fr 1fr">
+        <div class="card"><span class="kebab">&#8942;</span><div class="menuPop" style="right:10px"><div class="off">Remove Access</div></div><div class="n">Irene Manager</div><div class="e">manager@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag gold">Whole club</span><span class="tag act">Active</span></div></div>
+      </div><div class="tip" style="right:230px;top:100px">The club must keep at least one club-wide manager.</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Remove Access confirm</div>
+    <div class="frame d" style="width:760px;height:380px;zoom:.9">
+      <div class="main"><div class="scrim"><div class="dlg" style="width:460px">
+        <div class="dh"><span>Remove Access</span><span class="small">&#10005;</span></div>
+        <div class="db"><div>Remove <b>Lerato Dlamini</b> as manager of <b>Juniors &#8250; U15</b>?</div><div class="small">She keeps her account and any other access. She loses this access the next time she opens the app.</div></div>
+        <div class="df"><span class="btn">Cancel</span><span class="btn f" style="background:var(--error);border-color:var(--error)">Remove Access</span></div>
+      </div></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>5. Phone, empty and error states</h2>
+<div class="row">
+  <div>
+    <div class="cap">Phone 375, list (club-wide viewer)</div>
+    <div class="frame p"><div class="main">
+      <div class="back">&#8592; Back</div>
+      <div class="title"><b>Access</b></div>
+      <div style="margin:8px 0"><div class="seg"><span class="on">People</span><span>Roles</span><span>Player accounts</span></div></div>
+      <span class="btn f">Add Person</span>
+      <div class="figs"><div class="fig sel" style="min-width:90px"><b>6</b><span>People</span></div><div class="fig" style="min-width:90px"><b>2</b><span>Invited</span></div></div>
+      <div class="tool"><span class="in" style="min-width:0;flex:1">Search</span><span class="chip on">All</span><span class="chip">Invited</span></div>
+      <div class="cards">
+        <div class="card"><span class="kebab">&#8942;</span><div class="n">Thandi Mokoena</div><div class="e">thandi@example.org</div><div class="meta"><span class="tag role">Coordinator</span><span class="tag">Veterans</span><span class="tag act">Active</span></div></div>
+        <div class="card"><span class="kebab">&#8942;</span><div class="n">Sam Naidoo</div><div class="e">sam@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag">Juniors</span><span class="tag inv">Invited</span></div></div>
+      </div>
+      <div class="snack">Access given. Invitation sent to sam@example.org</div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Phone 375, only manager (empty)</div>
+    <div class="frame p"><div class="main">
+      <div class="title"><b>Access</b></div>
+      <div style="margin:8px 0"><div class="seg"><span class="on">People</span><span>Roles</span><span>Player accounts</span></div></div>
+      <span class="btn f">Add Person</span>
+      <div class="cards" style="margin-top:14px"><div class="card"><div class="n">Jaco van der Westhuizen</div><div class="e">owner@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag gold">Whole club</span><span class="tag act">Active</span></div><div class="lock">Your access</div></div></div>
+      <div class="empty" style="margin-top:14px"><b>You are the only manager</b>Share the work: <u>Add Person</u> for the whole club or for one section.</div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Phone 375, email could not be sent</div>
+    <div class="frame p"><div class="main">
+      <div class="title"><b>Access</b></div>
+      <div class="cards" style="margin-top:14px"><div class="card"><span class="kebab">&#8942;</span><div class="menuPop"><div>Change Role</div><div>Resend Invitation</div><div>Remove Access</div></div><div class="n">Sam Naidoo</div><div class="e">sam@example.org</div><div class="meta"><span class="tag role">Manager</span><span class="tag">Juniors</span><span class="tag inv">Invited</span></div><div class="small" style="margin-top:6px">Invitation not sent. Use Resend.</div></div></div>
+      <div class="snack er" style="white-space:normal;width:320px;text-align:center">Access given, but the invitation email could not be sent. Resend it from the card.</div>
+    </div></div>
+  </div>
+</div>
+
+<h2>6. Roles tab (read-only)</h2>
+<p class="note">One grid so people know what each role means before they give it. Rows marked "whole-club grant only" have no section, so they only count when the role is given for the whole club. Everyone with any role can read leagues, the section tree and club details. No Add button: custom roles come later.</p>
+<div class="cap">Desktop 1280</div>
+<div class="frame d" style="height:820px">
+  <div class="menu"><div class="brand">Irene Villagers</div><div class="i">Overview</div><div class="i">Players</div><div class="i">Teams</div><div class="i">Fixtures</div><div class="i">Results</div><div class="i">Club</div><div class="i on">Access</div></div>
+  <div class="main">
+    <div class="back">&#8592; Back to Overview</div>
+    <div class="title"><b>Access</b><div class="seg"><span>People</span><span class="on">Roles</span><span>Player accounts</span></div></div>
+    <div style="margin-top:14px"><table class="grid"><tr><th>What it allows</th><th>Manager</th><th>Coordinator</th><th>Team Manager</th><th>Scorer</th><th>Viewer</th></tr><tr class="grp"><td colspan="6">People and teams</td></tr><tr><td>Players</td><td class="ck">edit</td><td class="ck">edit</td><td class="vw">view</td><td class="vw">view</td><td class="vw">view</td></tr><tr><td>Teams and squads</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td class="vw">view</td><td class="vw">view</td></tr><tr><td>Player accounts and link requests<div class="inert">whole-club grant only</div></td><td class="ck">edit</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr class="grp"><td colspan="6">Matches and results</td></tr><tr><td>Matches</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td class="vw">view</td><td class="vw">view</td></tr><tr><td>Results and scorecards</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td class="vw">view</td></tr><tr><td>Stats and leaderboards</td><td class="vw">view</td><td class="vw">view</td><td class="vw">view</td><td class="vw">view</td><td class="vw">view</td></tr><tr class="grp"><td colspan="6">Selection and availability</td></tr><tr><td>Team selection and playing XI</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td>&nbsp;</td><td class="vw">view</td></tr><tr><td>Availability polls and rounds</td><td class="ck">edit</td><td class="ck">edit</td><td class="ck">edit</td><td>&nbsp;</td><td class="vw">view</td></tr><tr class="grp"><td colspan="6">Club setup</td></tr><tr><td>Leagues and seasons<div class="inert">whole-club grant only</div></td><td class="ck">edit</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>Club profile, structure, sponsors, contacts<div class="inert">whole-club grant only</div></td><td class="ck">edit</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>Imports<div class="inert">whole-club grant only</div></td><td class="ck">edit</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr class="grp"><td colspan="6">Access</td></tr><tr><td>See who has access</td><td class="vw">view</td><td class="vw">view</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>Add, change and remove access</td><td class="ck">edit</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table></div>
+    <div class="small" style="margin-top:8px">Edit includes view. Permissions only add up: someone with two roles has both.</div>
+  </div>
+</div>
+
+<h2>7. A Coordinator looks at Access (permission, not just place)</h2>
+<p class="note">Thandi is a Coordinator of Veterans. The role includes Access View but not Access Manage, so she sees the people in her section and nothing else: no Add Person, no kebabs, no Roles edit. The same idea applies to every screen: a button the person cannot use is simply not there.</p>
+<div class="row">
+  <div>
+    <div class="cap">Desktop, Coordinator</div>
+    <div class="frame d" style="width:900px;height:380px;zoom:.85">
+      <div class="main">
+        <div class="title"><b>Access</b><div class="seg"><span class="on">People</span><span>Roles</span></div></div>
+        <div class="figs"><div class="fig sel"><b>1</b><span>People</span></div></div>
+        <div class="cards" style="grid-template-columns:repeat(2,1fr)">
+          <div class="card"><div class="n">Thandi Mokoena</div><div class="e">thandi@example.org</div><div class="meta"><span class="tag role">Coordinator</span><span class="tag">Veterans</span><span class="tag act">Active</span></div><div class="lock">Your access</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Change Role dialog (Manager changing Pieter)</div>
+    <div class="frame d" style="width:700px;height:380px;zoom:.85">
+      <div class="main"><div class="scrim"><div class="dlg" style="width:480px">
+        <div class="dh"><span>Change Role</span><span class="small">&#10005;</span></div>
+        <div class="db"><div class="small">Pieter Botha, Juniors &#8250; U13</div>
+          <div class="roles">
+            <div class="role"><i></i><div><b>Coordinator</b><span>Runs day-to-day: players, teams, matches, results</span></div></div>
+            <div class="role"><i></i><div><b>Team Manager</b><span>Squad, matches, selection, availability</span></div></div>
+            <div class="role on"><i></i><div><b>Scorer</b><span>Enters and corrects results</span></div></div>
+          </div></div>
+        <div class="df"><span class="btn">Cancel</span><span class="btn f">Save Role</span></div>
+      </div></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>Questions for the owner</h2>
+<ol class="ruleList">
+  <li>Are the five built-in roles right (Manager, Coordinator, Team Manager, Scorer, Viewer), and is each row of the grid in section 6 as you want it? Anything to move between roles?</li>
+  <li>May someone change or remove a grant with the same permissions as theirs (a peer), except their own? Mockup assumes yes, never a bigger role.</li>
+  <li>Refuse a grant that adds nothing because the person already covers it?</li>
+  <li>Should a section Manager see club-wide people by name, or only a count (as drawn)?</li>
+  <li>Deleting a section that still has grants: refuse and name them (recommended), or remove the access silently?</li>
+</ol>
+</body>
+</html>

@@ -29,7 +29,7 @@ import { initialsFromName } from '../../utils/initials'
 import { ageFromDateOfBirth, formatDateOfBirth } from '../../utils/playerFormat'
 import { playerStatusBadge, playerStatusOf } from '../../utils/playerStatus'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
-import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
+import { GENDER_LABEL, BATTING_STANCE_LABEL, BATTING_POSITION_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
 import { fullName } from './PlayerList'
 import { PlayerKeyFigures } from './playerDetail/PlayerKeyFigures'
 import { PlayerStatsCard } from './playerDetail/PlayerStatsCard'
@@ -116,13 +116,15 @@ export default function PlayerDetailPage() {
     player.bowlingArm ? BOWLING_ARM_LABEL[player.bowlingArm] : null,
     player.bowlingType ? BOWLING_TYPE_LABEL[player.bowlingType] : null,
   ].filter((part): part is string => Boolean(part))
-  // All three always show, so the card keeps its shape; one with nothing on file is drawn dashed and muted.
+  // All always show, so the card keeps its shape; one with nothing on file is drawn dashed and muted.
   const cricketChips: InfoCardChip[] = [
     {
       label: `Batting: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
       on: Boolean(player.battingStance),
     },
     { label: `Bowling: ${bowling.length > 0 ? bowling.join(', ') : '–'}`, on: bowling.length > 0 },
+    { label: `Bats: ${player.battingPosition ? BATTING_POSITION_LABEL[player.battingPosition] : '–'}`, on: Boolean(player.battingPosition) },
+    { label: `Part-time bowler: ${player.isPartTimeBowler ? 'Yes' : 'No'}`, on: Boolean(player.isPartTimeBowler) },
     { label: `Wicketkeeper: ${player.isWicketKeeper ? 'Yes' : 'No'}`, on: player.isWicketKeeper },
   ]
 

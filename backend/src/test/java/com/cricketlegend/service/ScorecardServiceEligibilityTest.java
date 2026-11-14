@@ -98,7 +98,7 @@ class ScorecardServiceEligibilityTest {
         MatchResult result = MatchResult.builder().id(resultId).clubId(clubId).matchId(matchId).source("MANUAL").build();
         when(resultRepository.findById(resultId)).thenReturn(Optional.of(result));
         when(resultRepository.findByMatchId(matchId)).thenReturn(Optional.of(result));
-        when(matchService.requireAdministrableMatch(any(), any(), any())).thenReturn(match);
+        when(matchService.requireAdministrableMatch(any(), any(), any(), any())).thenReturn(match);
         when(inningsRepository.findByMatchResultIdOrderBySequence(resultId)).thenReturn(List.of());
         when(playerRepository.findByMatchResultIdOrderByCreatedAtAscIdAsc(resultId)).thenReturn(List.of());
         when(playerRepository.saveAll(anyCollection())).thenAnswer(inv -> {

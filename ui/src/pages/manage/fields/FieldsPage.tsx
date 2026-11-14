@@ -37,6 +37,7 @@ import { FIELD_CATEGORIES, FIELD_CATEGORY_LABEL } from '../../../utils/fieldLabe
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { MANAGER_FIELDS_PATH } from './fieldMenuItems'
 import { FieldRowMenu } from './FieldRowMenu'
+import { usePermissions } from '../../../auth/permissions'
 
 const SEARCH_DEBOUNCE_MS = 300
 const UNVERIFIED_LABEL = 'Unverified Fields'
@@ -64,6 +65,7 @@ function withCurrent(values: string[] | undefined, current: string, label: (valu
 // (never sliced here). Type, Country, Province, City and Our Fields Only are saved per club; the search and the quick filter
 // are per visit.
 export default function FieldsPage() {
+  const canAdd = usePermissions().can('MATCHES_EDIT')
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -242,7 +244,7 @@ export default function FieldsPage() {
           icon={icon}
           title="No fields of your own yet"
           description="Add the first field you play on, or turn off Our Fields Only to browse every club's fields."
-          action={<EmptyStateLink onClick={() => navigate(addFieldPath)}>Create New Field</EmptyStateLink>}
+          action={canAdd ? <EmptyStateLink onClick={() => navigate(addFieldPath)}>Create New Field</EmptyStateLink> : undefined}
         />
       )
     }
@@ -301,9 +303,11 @@ export default function FieldsPage() {
       <ManageScreenHeader
         title="Fields"
         action={
-          <Button size="compact" onClick={() => navigate(addFieldPath)} sx={{ flex: 'none' }}>
-            Create New Field
-          </Button>
+          canAdd ? (
+            <Button size="compact" onClick={() => navigate(addFieldPath)} sx={{ flex: 'none' }}>
+              Create New Field
+            </Button>
+          ) : undefined
         }
       />
 
@@ -330,7 +334,7 @@ export default function FieldsPage() {
               <FieldCard key={field.id} field={field} viewTo={leaveTo(`${MANAGER_FIELDS_PATH}/${field.id}`)} actions={rowMenu(field, 'field-card-actions')} />
             ))}
             {/* The grid ends with a dashed Add card (same route as the page's Add Field button); with no cards it is not shown (the empty message carries the quick-action button). */}
-            {data.content.length > 0 && <AddCard label="Create New Field" to={addFieldPath} testId="add-field-card" />}
+            {canAdd && data.content.length > 0 && <AddCard label="Create New Field" to={addFieldPath} testId="add-field-card" />}
           </Box>
         )}
 

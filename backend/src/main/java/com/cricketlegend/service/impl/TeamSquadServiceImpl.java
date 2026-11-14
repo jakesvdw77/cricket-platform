@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
@@ -91,7 +92,7 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     @Transactional(readOnly = true)
     public List<TeamSquadMemberDto> list(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.TEAMS_VIEW, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         return teamSquadMemberRepository.findByTeamIdAndSeasonId(teamId, seasonId).stream()
@@ -103,7 +104,7 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     @Transactional
     public TeamSquadMemberDto add(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.TEAMS_EDIT, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
         PlayerProfile profile = findPlayerOrThrowForClub(clubId, playerId);
 
@@ -140,7 +141,7 @@ public class TeamSquadServiceImpl implements TeamSquadService {
             Integer jerseyNumber,
             boolean isCaptain) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.TEAMS_EDIT, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         TeamSquadMember member = teamSquadMemberRepository
@@ -176,7 +177,7 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     @Transactional
     public void remove(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.TEAMS_EDIT, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         teamSquadMemberRepository

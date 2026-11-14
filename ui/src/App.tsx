@@ -21,6 +21,8 @@ import MyPreferencesPage from './pages/view/MyPreferencesPage'
 import MyPlayerPage, { LegacyDetailsRedirect } from './pages/view/MyPlayerPage'
 import AccessPage from './pages/manage/access/AccessPage'
 import PlayerAccountsTab from './pages/manage/access/PlayerAccountsTab'
+import PeopleTab from './pages/manage/access/PeopleTab'
+import RolesTab from './pages/manage/access/RolesTab'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
@@ -47,6 +49,7 @@ import PlayerDetailPage from './pages/manage/PlayerDetailPage'
 import LeaderboardsPage from './pages/manage/leaderboards/LeaderboardsPage'
 import PlayerStatsPage from './pages/manage/playerStats/PlayerStatsPage'
 import TeamStatsPage from './pages/manage/teamStats/TeamStatsPage'
+import TeamAnalysisPage from './pages/manage/teamAnalysis/TeamAnalysisPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
 import { LeagueEditRoute } from './pages/manage/LeagueEditRoute'
@@ -246,6 +249,8 @@ function App() {
               <Route path="players/:playerId/stats" element={<PlayerStatsPage />} />
               {/* docs/specs/116-team-stats.md: one team's statistics page (opened from the Teams tab and the Team detail Statistics card) */}
               <Route path="teams/:teamId/stats" element={<TeamStatsPage />} />
+              {/* docs/specs/151: the shape of a team's squad for a season (bowlers, batters, keepers, batting order, gaps) */}
+              <Route path="teams/:teamId/analysis" element={<TeamAnalysisPage />} />
               {/* docs/specs/029-league-management.md: League/Season/Match administration and
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
                   nav cards finally get real screens. docs/specs/056-club-profile-overview.md
@@ -300,9 +305,10 @@ function App() {
               <Route path="imports/:batchId" element={<ImportResumePage />} />
               {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
               <Route path="leaderboards" element={<LeaderboardsPage />} />
-              {/* docs/specs/119 Part 3: Access - Managers tab (placeholder) and Player accounts tab. */}
+              {/* docs/specs/119 Part 3 and docs/specs/150: Access - People, Roles and Player accounts tabs. */}
               <Route path="permissions" element={<AccessPage />}>
-                <Route index element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />} />
+                <Route index element={<PeopleTab />} />
+                <Route path="roles" element={<RolesTab />} />
                 <Route path="player-accounts" element={<PlayerAccountsTab />} />
               </Route>
               {/* docs/specs/056-club-profile-overview.md: two new dashboard placeholders, same

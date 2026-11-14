@@ -179,7 +179,7 @@ export default function ResultDetailPage() {
   // logos, the result and the status beside it, the date, league and field as the sub-header, ONE filled Manage Result menu with Share last.
   const manageItems: ManageMenuItem[] = [
     {
-      id: 'edit',
+      id: 'edit', requires: 'RESULTS_EDIT',
       title: 'Edit Result',
       icon: <EditOutlinedIcon fontSize="small" />,
       to: draft ? resultEditTo(match.id) : undefined,
@@ -188,7 +188,7 @@ export default function ResultDetailPage() {
     },
     draft
       ? {
-          id: 'publish',
+          id: 'publish', requires: 'RESULTS_EDIT',
           title: 'Publish Result',
           icon: <CloudUploadOutlinedIcon fontSize="small" />,
           onClick: () => {
@@ -197,7 +197,7 @@ export default function ResultDetailPage() {
           },
         }
       : {
-          id: 'unpublish',
+          id: 'unpublish', requires: 'RESULTS_EDIT',
           title: 'Unpublish Result',
           icon: <UnpublishedOutlinedIcon fontSize="small" />,
           onClick: () => {
@@ -222,7 +222,7 @@ export default function ResultDetailPage() {
       ? [{ id: 'delete', title: 'Delete Draft', icon: <DeleteOutlineIcon fontSize="small" />, tone: 'error' as const, onClick: () => setConfirm('delete') }]
       : []),
     {
-      id: 'share',
+      id: 'share', requires: 'RESULTS_EDIT',
       title: 'Share Result',
       icon: <ShareOutlinedIcon fontSize="small" />,
       onClick: () => setShareOpen(true),

@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
@@ -106,7 +107,7 @@ public class TeamSelectionServiceImpl implements TeamSelectionService {
             UUID sectionId,
             UUID teamId,
             boolean includePast) {
-        ClubMatchScope.Scope scope = clubMatchScope.resolve(authentication, clubId, sectionId, teamId);
+        ClubMatchScope.Scope scope = clubMatchScope.resolve(authentication, clubId, Permission.SELECTION_VIEW, sectionId, teamId);
         if (scope.empty()) {
             return empty();
         }

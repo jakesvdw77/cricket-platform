@@ -37,6 +37,8 @@ export interface LinkExistingRecordDialogProps<T> {
   // trimmed value as a second argument — once the admin confirms the link.
   onLink: (option: T, extraValue?: string) => void
   extraField?: LinkExistingRecordDialogExtraField
+  // The close button's text; "Done" where the dialog stays open after each link (docs/specs/151).
+  cancelLabel?: string
 }
 
 // Generic "search an existing record and link it" dialog — extracted from ClubStructure.tsx's
@@ -59,6 +61,7 @@ export function LinkExistingRecordDialog<T>({
   searchLabel = 'Search',
   searchPlaceholder,
   onLink,
+  cancelLabel = 'Cancel',
   extraField,
 }: LinkExistingRecordDialogProps<T>) {
   const [selected, setSelected] = useState<T | null>(null)
@@ -142,7 +145,7 @@ export function LinkExistingRecordDialog<T>({
       </DialogContent>
       <DialogActions>
         <Button size="compact" variant="ghost" onClick={onClose}>
-          Cancel
+          {cancelLabel}
         </Button>
         {extraField && (
           <Button size="compact" onClick={handleConfirm} disabled={confirmDisabled}>

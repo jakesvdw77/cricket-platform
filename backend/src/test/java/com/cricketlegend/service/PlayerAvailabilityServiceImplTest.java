@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -116,7 +117,7 @@ class PlayerAvailabilityServiceImplTest {
                 matchSideRepository, matchSidePlayerRepository,
                 teamSquadMemberRepository, playerSectionRepository, playerProfileRepository, personRepository,
                 accessService, matchResolver);
-        when(accessService.accessibleSectionIds(any(), any())).thenReturn(Optional.of(Set.of(sectionId)));
+        when(accessService.sectionIdsFor(any(), any(), any())).thenReturn(Optional.of(Set.of(sectionId)));
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(Set.of(sectionId));
         when(teamRepository.findAllById(any())).thenReturn(List.of(team));
         when(matchResolver.dayPartOf(any())).thenReturn(DayPart.AFTERNOON);
@@ -357,7 +358,7 @@ class PlayerAvailabilityServiceImplTest {
         PlayerAvailabilityDto dto = service.getGrid(auth, clubId, null, null, null, team.getId(), false);
 
         assertThat(dto.players()).extracting(PlayerRowDto::playerProfileId).containsExactly(inSquad);
-        verify(accessService).assertCanAdministerSection(auth, clubId, sectionId);
+        verify(accessService).assertCan(eq(auth), eq(clubId), any(), eq(sectionId));
     }
 
     @Test
@@ -372,7 +373,7 @@ class PlayerAvailabilityServiceImplTest {
 
         when(teamRepository.findById(team.getId())).thenReturn(Optional.of(team));
         doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerSection(auth, clubId, sectionId);
+                .assertCan(eq(auth), eq(clubId), any(), eq(sectionId));
         assertThatThrownBy(() -> service.getGrid(auth, clubId, null, null, null, team.getId(), false))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -381,17 +382,17 @@ class PlayerAvailabilityServiceImplTest {
     void sectionParamIsAssertedAndAnOutOfScopeOneIsForbidden() {
         games(match());
         service.getGrid(auth, clubId, null, null, sectionId, null, false);
-        verify(accessService).assertCanAdministerSection(auth, clubId, sectionId);
+        verify(accessService).assertCan(eq(auth), eq(clubId), any(), eq(sectionId));
 
         doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerSection(auth, clubId, sectionId);
+                .assertCan(eq(auth), eq(clubId), any(), eq(sectionId));
         assertThatThrownBy(() -> service.getGrid(auth, clubId, null, null, sectionId, null, false))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void unrestrictedCallerWithoutSectionUsesEveryClubSectionForRows() {
-        when(accessService.accessibleSectionIds(any(), any())).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(any(), any(), any())).thenReturn(Optional.empty());
         when(sectionRepository.findByClubId(clubId)).thenReturn(
                 List.of(Section.builder().id(sectionId).clubId(clubId).name("Men").build()));
         games(match());
@@ -522,7 +523,7 @@ class PlayerAvailabilityServiceImplTest {
     @Test
     void teamFilterWithASectionThatDoesNotContainTheTeamReturnsAnEmptyGrid() {
         UUID otherSection = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(any(), any()))
+        when(accessService.sectionIdsFor(any(), any(), any()))
                 .thenReturn(Optional.of(Set.of(sectionId, otherSection)));
         when(accessService.sectionAndDescendantIds(clubId, otherSection)).thenReturn(Set.of(otherSection));
         when(teamRepository.findById(team.getId())).thenReturn(Optional.of(team));
@@ -538,7 +539,7 @@ class PlayerAvailabilityServiceImplTest {
 
     @Test
     void teamFilterDerivesTheScopeFromTheTeamsSectionEvenForAnUnrestrictedCaller() {
-        when(accessService.accessibleSectionIds(any(), any())).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(any(), any(), any())).thenReturn(Optional.empty());
         when(teamRepository.findById(team.getId())).thenReturn(Optional.of(team));
         games(match());
 
@@ -597,7 +598,7 @@ class PlayerAvailabilityServiceImplTest {
         games(m);
         groupWindow(m);
         UUID childSection = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(any(), any()))
+        when(accessService.sectionIdsFor(any(), any(), any()))
                 .thenReturn(Optional.of(Set.of(sectionId, childSection)));
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(Set.of(sectionId, childSection));
         UUID childPlayer = player("Anton", "Aaa", true, false);

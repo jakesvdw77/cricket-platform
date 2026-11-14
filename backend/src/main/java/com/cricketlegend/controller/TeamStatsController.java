@@ -32,7 +32,7 @@ public class TeamStatsController {
         this.teamDashboardService = teamDashboardService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/team-stats")
     public ResponseEntity<TeamStatsTableDto> getTeamStatsTable(
             Authentication authentication,
@@ -50,14 +50,14 @@ public class TeamStatsController {
                 authentication, clubId, sort, direction, seasonId, leagueId, sectionId, competition, minimum, page, size));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/team-stats/filter-options")
     public ResponseEntity<TeamStatsFilterOptionsDto> getTeamStatsFilterOptions(
             Authentication authentication, @PathVariable UUID clubId, @RequestParam(required = false) UUID teamId) {
         return ResponseEntity.ok(teamStatsService.filterOptions(authentication, clubId, teamId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/stats")
     public ResponseEntity<TeamStatsDto> getTeamStats(
             Authentication authentication,
@@ -70,7 +70,7 @@ public class TeamStatsController {
     }
 
     /** docs/specs/117-stats-dashboard.md: every series of the team Dashboard, for the filters the page holds. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/stats/dashboard")
     public ResponseEntity<TeamDashboardDto> getTeamDashboard(
             Authentication authentication,

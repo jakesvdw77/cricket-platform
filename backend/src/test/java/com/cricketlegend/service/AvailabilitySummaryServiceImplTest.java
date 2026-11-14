@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -102,7 +103,7 @@ class AvailabilitySummaryServiceImplTest {
     }
 
     private void unrestrictedWith(OpenPoll... polls) {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), AvailabilityPollFilter.OPEN_ONLY))
@@ -193,7 +194,7 @@ class AvailabilitySummaryServiceImplTest {
         OpenPoll closedPoll = closed(NOW.plus(Duration.ofHours(5)), Set.of(a), Set.of());
         AvailabilityPollFilter filter =
                 new AvailabilityPollFilter(null, null, null, AvailabilityPollTypeFilter.ALL, true);
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, true, null)).thenReturn(filter);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter))
                 .thenReturn(List.of(closedPoll, squad(NOW.plus(Duration.ofHours(6)), none, none)));
@@ -213,7 +214,7 @@ class AvailabilitySummaryServiceImplTest {
         AvailabilityPollFilter filter =
                 new AvailabilityPollFilter(league, Set.of(section), team, AvailabilityPollTypeFilter.SQUAD, false);
         UUID a = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(
                         caller, CLUB_ID, Optional.empty(), league, section, team, AvailabilityPollTypeFilter.SQUAD, false, null))
                 .thenReturn(filter);
@@ -232,7 +233,7 @@ class AvailabilitySummaryServiceImplTest {
         UUID a = UUID.randomUUID();
         AvailabilityPollFilter filter = new AvailabilityPollFilter(
                 null, null, null, AvailabilityPollTypeFilter.ALL, false, season);
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, AvailabilityPollTypeFilter.ALL,
                         false, season))
                 .thenReturn(filter);
@@ -253,7 +254,7 @@ class AvailabilitySummaryServiceImplTest {
     @Test
     void anInvalidFilterIdPropagatesAndNothingIsLoaded() {
         UUID league = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
                 .thenThrow(new NotFoundException("League not found: " + league));
 
@@ -296,7 +297,7 @@ class AvailabilitySummaryServiceImplTest {
         UUID section = UUID.randomUUID();
         Optional<Set<UUID>> scope = Optional.of(Set.of(section));
         UUID a = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(scope);
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(scope);
         when(pollFilters.resolve(caller, CLUB_ID, scope, null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, scope, AvailabilityPollFilter.OPEN_ONLY))
@@ -308,7 +309,7 @@ class AvailabilitySummaryServiceImplTest {
 
     @Test
     void aCallerWithNoAccessibleSectionsGetsZerosWithoutLoadingPolls() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.of(Set.of()));
         when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
 
@@ -480,7 +481,7 @@ class AvailabilitySummaryServiceImplTest {
 
     @Test
     void aCallerWithNoAccessibleSectionsGetsAnEmptyPageWithoutLoadingPolls() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.of(Set.of()));
         when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
 
@@ -493,7 +494,7 @@ class AvailabilitySummaryServiceImplTest {
 
     @Test
     void anInvalidFilterIdPropagatesFromThePlayersListToo() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
         when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
                 .thenThrow(new NotFoundException("League not found"));
 

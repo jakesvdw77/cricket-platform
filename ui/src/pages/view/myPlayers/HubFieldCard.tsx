@@ -21,6 +21,15 @@ export function HubFieldCard({ field }: { field: FieldDto }) {
       data-testid="hub-field-card"
       sx={{ border: 1, borderColor: HUB.line, bgcolor: creamAlpha(0.07), borderRadius: '4px', p: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}
     >
+      {field.photoUrl && (
+        <Box
+          component="img"
+          src={field.photoUrl}
+          alt={`${field.name}`}
+          data-testid="hub-field-photo"
+          sx={{ display: 'block', width: '100%', height: 150, objectFit: 'cover', borderRadius: '4px', border: 1, borderColor: HUB.lineSoft }}
+        />
+      )}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
         <Typography component="h3" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 26, lineHeight: 1.1, letterSpacing: '0.04em', textTransform: 'uppercase', color: HUB.cream, overflowWrap: 'anywhere', minWidth: 0 }}>
           {field.name}

@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.DayPart;
@@ -416,10 +417,10 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
      * means unrestricted.
      */
     private Set<UUID> resolveScope(Authentication authentication, UUID clubId, UUID sectionId) {
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.AVAILABILITY_VIEW);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, sectionId);
             narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
         }
         if (accessible.isEmpty()) {
@@ -442,7 +443,7 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
                 .findById(teamId)
                 .filter(candidate -> clubId.equals(candidate.getClubId()))
                 .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, team.getSectionId());
         return team;
     }
 

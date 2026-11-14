@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.ClubMembership;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonStatus;
@@ -178,10 +179,10 @@ public class PlayerServiceImpl implements PlayerService {
             UUID sectionId,
             boolean missingDateOfBirth,
             boolean includeInactive) {
-        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessibleSectionIds = accessService.sectionIdsFor(authentication, clubId, Permission.PLAYERS_VIEW);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.PLAYERS_VIEW, sectionId);
             narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
         }
         final Set<UUID> narrowToFinal = narrowTo;
@@ -270,7 +271,7 @@ public class PlayerServiceImpl implements PlayerService {
     private PlayerDto changeVerificationStatus(
             Authentication authentication, UUID clubId, UUID playerId, PlayerVerificationStatus target) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
-        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYERS_EDIT, sectionIds(profile.getId()));
         PlayerVerificationStatus current = profile.getVerificationStatus();
         boolean allowed = target == PlayerVerificationStatus.VERIFIED
                 ? current != PlayerVerificationStatus.VERIFIED
@@ -327,6 +328,8 @@ public class PlayerServiceImpl implements PlayerService {
                 .bowlingArm(request.bowlingArm())
                 .bowlingType(request.bowlingType())
                 .wicketKeeper(request.isWicketKeeper())
+                .battingPosition(request.battingPosition())
+                .partTimeBowler(request.isPartTimeBowler())
                 .jerseyNumber(request.jerseyNumber())
                 .active(true)
                 .build();
@@ -339,7 +342,7 @@ public class PlayerServiceImpl implements PlayerService {
     @Transactional
     public PlayerDto update(Authentication authentication, UUID clubId, UUID playerId, UpdatePlayerRequest request) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
-        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYERS_EDIT, sectionIds(profile.getId()));
         requireNonNegativeJerseyNumber(request.jerseyNumber());
         requireValidDateOfBirth(request.dateOfBirth());
         Person person = findPersonOrThrow(profile.getPersonId());
@@ -362,6 +365,8 @@ public class PlayerServiceImpl implements PlayerService {
         profile.setBowlingArm(request.bowlingArm());
         profile.setBowlingType(request.bowlingType());
         profile.setWicketKeeper(request.isWicketKeeper());
+        profile.setBattingPosition(request.battingPosition());
+        profile.setPartTimeBowler(request.isPartTimeBowler());
         profile.setJerseyNumber(request.jerseyNumber());
         profile = playerProfileRepository.save(profile);
 
@@ -372,7 +377,7 @@ public class PlayerServiceImpl implements PlayerService {
     @Transactional
     public PlayerDto deactivate(Authentication authentication, UUID clubId, UUID playerId) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
-        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYERS_EDIT, sectionIds(profile.getId()));
         if (!profile.isActive()) {
             throw new InvalidStatusTransitionException("Player is already inactive: " + playerId);
         }
@@ -396,7 +401,7 @@ public class PlayerServiceImpl implements PlayerService {
     @Transactional
     public PlayerDto reactivate(Authentication authentication, UUID clubId, UUID playerId) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
-        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYERS_EDIT, sectionIds(profile.getId()));
         if (profile.isActive()) {
             throw new InvalidStatusTransitionException("Player is already active: " + playerId);
         }

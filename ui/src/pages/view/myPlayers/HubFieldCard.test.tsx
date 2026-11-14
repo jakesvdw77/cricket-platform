@@ -21,6 +21,24 @@ describe('HubFieldCard', () => {
     expect(screen.queryByText(/Owner:/)).not.toBeInTheDocument()
   })
 
+  // docs/specs/151: a picture of the field, when the club added one.
+  it('shows the field photo when there is one, and nothing when there is not', () => {
+    const { unmount } = render(<HubFieldCard field={hubField({ photoUrl: '/media/oval.jpg' })} />)
+    const photo = screen.getByTestId('hub-field-photo')
+    expect(photo).toHaveAttribute('src', '/media/oval.jpg')
+    expect(photo).toHaveAttribute('alt', 'Riverside Oval')
+    unmount()
+
+    render(<HubFieldCard field={hubField({ photoUrl: null })} />)
+    expect(screen.queryByTestId('hub-field-photo')).not.toBeInTheDocument()
+  })
+
+  it('never shows a contact person or number to a player', () => {
+    render(<HubFieldCard field={{ ...hubField(), contactName: 'Sam Smith', contactPhone: '082 555 0100' } as never} />)
+    expect(screen.queryByText(/Sam Smith/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/082 555 0100/)).not.toBeInTheDocument()
+  })
+
   it('shows a Verified chip for a verified field and Not Verified otherwise', () => {
     const { unmount } = render(<HubFieldCard field={hubField({ verified: true })} />)
     expect(screen.getByTestId('field-verified')).toHaveTextContent(/^Verified$/)

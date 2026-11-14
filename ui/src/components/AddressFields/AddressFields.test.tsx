@@ -113,6 +113,38 @@ describe('AddressFields', () => {
         expect(screen.getByLabelText(label)).toBeInTheDocument()
       })
 
+      // docs/specs/151: South Africa has nine provinces, so the province is chosen, not typed.
+      it('offers the nine South African provinces as a dropdown when the country is ZA, and reports the choice', async () => {
+        const onChange = vi.fn()
+        render(<AddressFields value={{ ...emptyAddress(), country: 'ZA' }} onChange={onChange} isoCountry />)
+
+        await userEvent.click(screen.getByLabelText('Province'))
+        const options = (await screen.findAllByRole('option')).map((option) => option.textContent)
+        expect(options).toEqual(['Not specified', 'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'])
+        await userEvent.click(screen.getByRole('option', { name: 'Gauteng' }))
+
+        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ country: 'ZA', provinceState: 'Gauteng' }))
+      })
+
+      it('keeps an older typed province selectable so it is never lost', async () => {
+        render(<AddressFields value={{ ...emptyAddress(), country: 'ZA', provinceState: 'Gauteng Province' }} onChange={vi.fn()} isoCountry />)
+
+        await userEvent.click(screen.getByLabelText('Province'))
+        expect(await screen.findByRole('option', { name: 'Gauteng Province' })).toBeInTheDocument()
+      })
+
+      it('keeps a free-text province for any other country', () => {
+        render(<AddressFields value={{ ...emptyAddress(), country: 'GB' }} onChange={vi.fn()} isoCountry />)
+
+        expect(screen.getByLabelText('County').tagName).toBe('INPUT')
+      })
+
+      it('also uses the dropdown where the country is kept as the name "South Africa" (a form without the ISO country select)', () => {
+        render(<AddressFields value={{ ...emptyAddress(), country: 'South Africa' }} onChange={vi.fn()} />)
+
+        expect(screen.getByLabelText('Province/State').getAttribute('role')).toBe('combobox')
+      })
+
       it('keeps the free-text Province/State label and Country input without it (ClubForm)', () => {
         render(<AddressFields value={emptyAddress()} onChange={vi.fn()} />)
         expect(screen.getByLabelText('Province/State')).toBeInTheDocument()
