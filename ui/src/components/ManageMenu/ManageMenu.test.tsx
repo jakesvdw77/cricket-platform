@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ManageMenu, MANAGE_BUTTON_WIDTH } from './ManageMenu'
 import type { ManageMenuGroup } from './ManageMenu'
+import { PermissionsProvider } from '../../auth/permissions'
 import { clearViewport, setPhone } from '../../test/accountTestUtils'
 
 function makeGroups(onShare: () => void = vi.fn()): ManageMenuGroup[] {
@@ -209,6 +210,60 @@ describe('ManageMenu', () => {
       expect(document.querySelector('.MuiDrawer-paper')).toHaveAttribute('aria-label', 'Actions for TVL Division 1 T20')
       await userEvent.click(screen.getByRole('menuitem', { name: /Share League/ }))
       await vi.waitFor(() => expect(onShare).toHaveBeenCalledTimes(1))
+    })
+  })
+
+  describe('requires (docs/specs/150)', () => {
+    const groups: ManageMenuGroup[] = [
+      {
+        id: 'league',
+        heading: 'League',
+        items: [
+          { id: 'open', title: 'Open League', to: '/there' },
+          { id: 'edit', title: 'Edit League', to: '/there', requires: 'LEAGUES_EDIT' },
+        ],
+      },
+    ]
+    const asViewer = { personId: 'p', personStatus: 'ACTIVE' as const, platformAdmin: false, clubAdminClubIds: ['c'], permissions: [{ clubId: 'c', clubWide: true, items: [{ key: 'PLAYERS_VIEW', sectionIds: null }] }] }
+    const asEditor = { ...asViewer, permissions: [{ clubId: 'c', clubWide: true, items: [{ key: 'LEAGUES_EDIT', sectionIds: null }] }] }
+
+    it('leaves out an item the caller does not hold and keeps the others', async () => {
+      render(
+        <MemoryRouter>
+          <PermissionsProvider access={asViewer} clubId="c">
+            <ManageMenu label="Manage League" groups={groups} />
+          </PermissionsProvider>
+        </MemoryRouter>,
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'Manage League' }))
+
+      expect(screen.getByRole('menuitem', { name: /Open League/ })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /Edit League/ })).not.toBeInTheDocument()
+    })
+
+    it('shows the item to a caller who holds it', async () => {
+      render(
+        <MemoryRouter>
+          <PermissionsProvider access={asEditor} clubId="c">
+            <ManageMenu label="Manage League" groups={groups} />
+          </PermissionsProvider>
+        </MemoryRouter>,
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'Manage League' }))
+
+      expect(screen.getByRole('menuitem', { name: /Edit League/ })).toBeInTheDocument()
+    })
+
+    it('renders no menu at all when nothing in it is allowed', () => {
+      render(
+        <MemoryRouter>
+          <PermissionsProvider access={asViewer} clubId="c">
+            <ManageMenu label="Manage League" groups={[{ id: 'g', heading: 'G', items: [{ id: 'edit', title: 'Edit League', to: '/there', requires: 'LEAGUES_EDIT' }] }]} />
+          </PermissionsProvider>
+        </MemoryRouter>,
+      )
+
+      expect(screen.queryByRole('button', { name: 'Manage League' })).not.toBeInTheDocument()
     })
   })
 })
