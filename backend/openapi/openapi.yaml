@@ -12665,6 +12665,32 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProfileDto"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MePermissionsDto"
+    MePermissionsDto:
+      type: object
+      properties:
+        clubId:
+          type: string
+          format: uuid
+        clubWide:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MePermissionItemDto"
+    MePermissionItemDto:
+      type: object
+      properties:
+        key:
+          type: string
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
     ConfirmLinksRequest:
       type: object
       properties:

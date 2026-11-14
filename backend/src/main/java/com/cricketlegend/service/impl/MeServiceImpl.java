@@ -148,7 +148,8 @@ public class MeServiceImpl implements MeService {
                 person == null ? null : person.getStatus(),
                 platformAdmin,
                 clubAdminClubIds,
-                profileResolver.resolve(authentication, jwt, person));
+                profileResolver.resolve(authentication, jwt, person),
+                accessService.permissionsFor(authentication));
     }
 
     // Requires email_verified on the JWT before binding keycloakUserId to a Person by email —

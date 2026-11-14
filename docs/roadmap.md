@@ -552,6 +552,13 @@ Found by the standards and code review of the built feature; none blocks the mer
 - **Consolidating `063`'s own plain count-summary row with `034`'s `AvailabilityRespondentAvatars` component.** Both `034` and that component already exist; `063` still ships a simpler, `032`-style summary instead as a deliberate scope choice, not because either was unavailable. A real, small follow-up once picked up, per `063`'s own Rollout Notes.
 - **This section's own "Blocked on the full tenancy model" entry above still describes `035-section-scoped-access.md` as drafted/not-yet-built.** That's stale independent of `063` — `035` is built and already backs every current admin endpoint's section-scoped access. Worth a human correcting that entry (and moving it to a "Resolved by `035`" note) separately from this spec.
 
+## Roles and permissions (spec 150)
+
+- **Release 1 (foundation, no visible change):** built on `feat/150-roles-permissions`; plan `docs/plans/150-managers-and-access-grants.md`.
+- **Release 2:** Access screens (People, Roles, Add Person, Change Role), invitations. Open questions in the spec (peer changes, redundant grants, count-only visibility, deleting a section with grants).
+- **Release 3:** move every manager endpoint from `canAccessClub`/`canAdministerClub`/`canAdministerSection` to `Permission` checks, area by area; then delete the old checks, switch the other roles on, hide actions in the UI.
+- **Later:** custom roles, `TEAM` scope, audit-log screen, dropping the legacy `role_assignment.role` for manager grants.
+
 ## Known tech debt (unscheduled, no owning spec)
 
 - **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.

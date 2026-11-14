@@ -142,6 +142,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             roleAssignmentRepository.save(RoleAssignment.builder()
                     .personId(person.getId())
                     .role(RoleAssignmentRole.CLUB_ADMIN)
+                    .accessRoleId(com.cricketlegend.domain.AccessRole.MANAGER_ID)
                     .scopeType(ScopeType.CLUB)
                     .scopeId(clubId)
                     .build());

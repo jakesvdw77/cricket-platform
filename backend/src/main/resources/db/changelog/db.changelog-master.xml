@@ -68,5 +68,7 @@
     <include file="db/changelog/v1/061-result-visible-to-players.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/062-result-visible-to-players-backfill.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/063-hub-club-info.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/064-access-roles.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/065-role-assignment-roles.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

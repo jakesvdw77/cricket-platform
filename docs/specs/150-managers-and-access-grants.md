@@ -28,7 +28,7 @@ A grant today says only **where** (a club or a section). Everyone who can reach 
 
 ### Permissions (fixed list, an enum in code, `Permission`)
 
-Each permission has a **key**, a plain label, a **level** (View or Edit), and a **reach**: `SECTION` (applies to data tied to sections, narrowed by the grant's place) or `CLUB` (applies only when the role is granted club-wide, because the data has no section: `035`'s Leagues decision). An Edit permission **implies** its View permission.
+Each permission has a **key**, a plain label, a **level** (View or Edit), and a **reach**: `SECTION` (applies to data tied to sections, narrowed by the grant's place) or `CLUB` (applies only when the role is granted club-wide, because the data has no section: `035`'s Leagues decision). An Edit (or Manage) permission **implies** its View permission. (Amended 2026-11-14 during the Release 1 build: the first draft listed 16 keys and no View key for Results, Selection or Availability, which the Viewer role needs; there are now 19.)
 
 | Key | What it allows | Reach |
 |---|---|---|
@@ -38,8 +38,11 @@ Each permission has a **key**, a plain label, a **level** (View or Edit), and a 
 | `TEAMS_EDIT` | Add and edit teams and squads | Section |
 | `MATCHES_VIEW` | See fixtures and matches | Section |
 | `MATCHES_EDIT` | Create, edit and delete matches | Section |
+| `RESULTS_VIEW` | See results and scorecards | Section |
 | `RESULTS_EDIT` | Capture and correct results and scorecards, share results | Section |
+| `SELECTION_VIEW` | See team selection and the playing XI | Section |
 | `SELECTION_MANAGE` | Team selection and the playing XI | Section |
+| `AVAILABILITY_VIEW` | See availability polls and rounds | Section |
 | `AVAILABILITY_MANAGE` | Availability polls and rounds | Section |
 | `STATS_VIEW` | Stats, leaderboards, form | Section |
 | `ACCESS_VIEW` | See who has access (this screen) | Section |

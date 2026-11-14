@@ -1,6 +1,11 @@
 package com.cricketlegend.config;
 
+import com.cricketlegend.domain.AccessRole;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.dto.MePermissionItemDto;
+import com.cricketlegend.dto.MePermissionsDto;
+import com.cricketlegend.repository.AccessRoleRepository;
 import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
@@ -14,6 +19,7 @@ import com.cricketlegend.repository.TeamRepository;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,6 +28,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -65,17 +74,204 @@ public class AccessService {
     private final RoleAssignmentRepository roleAssignmentRepository;
     private final SectionRepository sectionRepository;
     private final TeamRepository teamRepository;
+    // docs/specs/150: only the permission checks below (can, sectionIdsFor, permissionsFor) use these two.
+    private final AccessRoleRepository accessRoleRepository;
+    private final ObjectProvider<CallerGrants> callerGrants;
 
+    @Autowired
+    public AccessService(
+            PersonRepository personRepository,
+            RoleAssignmentRepository roleAssignmentRepository,
+            SectionRepository sectionRepository,
+            TeamRepository teamRepository,
+            AccessRoleRepository accessRoleRepository,
+            ObjectProvider<CallerGrants> callerGrants) {
+        this.personRepository = personRepository;
+        this.roleAssignmentRepository = roleAssignmentRepository;
+        this.sectionRepository = sectionRepository;
+        this.teamRepository = teamRepository;
+        this.accessRoleRepository = accessRoleRepository;
+        this.callerGrants = callerGrants;
+    }
+
+    /**
+     * The four-argument form every check before docs/specs/150 needs; the permission checks added by 150 are not
+     * available on an instance built this way (they throw {@link IllegalStateException}).
+     */
     public AccessService(
             PersonRepository personRepository,
             RoleAssignmentRepository roleAssignmentRepository,
             SectionRepository sectionRepository,
             TeamRepository teamRepository) {
-        this.personRepository = personRepository;
-        this.roleAssignmentRepository = roleAssignmentRepository;
-        this.sectionRepository = sectionRepository;
-        this.teamRepository = teamRepository;
+        this(personRepository, roleAssignmentRepository, sectionRepository, teamRepository, null, null);
     }
+
+    // --- docs/specs/150-managers-and-access-grants.md: permission checks (the old checks below are untouched) ---
+
+    /** Does the caller hold {@code permission} anywhere in this club. Platform admin always does. */
+    public boolean can(Authentication authentication, UUID clubId, Permission permission) {
+        if (isPlatformAdmin(authentication)) {
+            return true;
+        }
+        return effective(authentication, clubId).holds(permission);
+    }
+
+    /**
+     * Does the caller hold {@code permission} for data in {@code sectionId} (a section of this club). A club reach
+     * permission ignores the section and needs a club-wide grant. Platform admin always does.
+     */
+    public boolean can(Authentication authentication, UUID clubId, Permission permission, UUID sectionId) {
+        if (isPlatformAdmin(authentication)) {
+            return true;
+        }
+        return effective(authentication, clubId).holds(permission, sectionId);
+    }
+
+    /**
+     * The sections {@code permission} applies to, for narrowing a list; {@code Optional.empty()} means unrestricted
+     * (platform admin, or a club-wide grant carrying it), as {@link #accessibleSectionIds} does.
+     */
+    public Optional<Set<UUID>> sectionIdsFor(Authentication authentication, UUID clubId, Permission permission) {
+        if (isPlatformAdmin(authentication)) {
+            return Optional.empty();
+        }
+        return effective(authentication, clubId).sectionIdsFor(permission);
+    }
+
+    /**
+     * What the caller may do in every club where they hold a grant, for {@code GET /api/v1/me/access}. The UI uses it
+     * only to hide actions; every endpoint checks again. Platform admin holds no grants and gets an empty list (the
+     * response's own {@code platformAdmin} flag means "everything").
+     */
+    public List<MePermissionsDto> permissionsFor(Authentication authentication) {
+        if (authentication == null) {
+            return List.of();
+        }
+        Optional<Person> person = personRepository.findByKeycloakUserId(authentication.getName());
+        if (person.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> clubIds = new LinkedHashSet<>();
+        for (RoleAssignment grant : roleAssignmentRepository.findByPersonId(person.get().getId())) {
+            if (grant.getScopeType() == ScopeType.CLUB && grant.getScopeId() != null) {
+                clubIds.add(grant.getScopeId());
+            } else if (grant.getScopeType() == ScopeType.SECTION && grant.getScopeId() != null) {
+                sectionRepository.findById(grant.getScopeId()).ifPresent(section -> clubIds.add(section.getClubId()));
+            }
+        }
+        List<MePermissionsDto> result = new ArrayList<>();
+        for (UUID clubId : clubIds) {
+            EffectivePermissions effective = effective(authentication, clubId);
+            if (effective.isEmpty()) {
+                continue;
+            }
+            List<MePermissionItemDto> items = new ArrayList<>();
+            for (Permission permission : effective.held()) {
+                Optional<Set<UUID>> sections = effective.sectionIdsFor(permission);
+                items.add(new MePermissionItemDto(
+                        permission.name(),
+                        sections.map(set -> (List<UUID>) new ArrayList<>(set)).orElse(null)));
+            }
+            result.add(new MePermissionsDto(clubId, effective.hasClubWideGrant(), items));
+        }
+        return result;
+    }
+
+    private EffectivePermissions effective(Authentication authentication, UUID clubId) {
+        if (authentication == null) {
+            return EffectivePermissions.NONE;
+        }
+        if (accessRoleRepository == null) {
+            throw new IllegalStateException("Permission checks need the six-argument AccessService");
+        }
+        Map<UUID, EffectivePermissions> memory = requestMemory(authentication.getName());
+        if (memory == null) {
+            return resolveEffective(authentication, clubId);
+        }
+        EffectivePermissions known = memory.get(clubId);
+        if (known == null) {
+            known = resolveEffective(authentication, clubId);
+            memory.put(clubId, known);
+        }
+        return known;
+    }
+
+    // The request-scoped memory, or null when no web request is active (tests, jobs).
+    private Map<UUID, EffectivePermissions> requestMemory(String callerName) {
+        if (callerGrants == null) {
+            return null;
+        }
+        try {
+            CallerGrants grants = callerGrants.getIfAvailable();
+            return grants == null ? null : grants.forCaller(callerName);
+        } catch (BeanCreationException | IllegalStateException noActiveRequest) {
+            return null;
+        }
+    }
+
+    private EffectivePermissions resolveEffective(Authentication authentication, UUID clubId) {
+        Optional<Person> person = personRepository.findByKeycloakUserId(authentication.getName());
+        if (person.isEmpty()) {
+            return EffectivePermissions.NONE;
+        }
+        List<RoleAssignment> grants = roleAssignmentRepository.findByPersonId(person.get().getId());
+        Map<UUID, AccessRole> roles = new HashMap<>();
+        accessRoleRepository.findAllById(roleIdsOf(grants)).forEach(role -> roles.put(role.getId(), role));
+
+        List<Section> clubSections = null;
+        Map<UUID, List<UUID>> childrenByParent = null;
+        Set<UUID> clubSectionIds = null;
+        List<EffectivePermissions.ResolvedGrant> resolved = new ArrayList<>();
+        for (RoleAssignment grant : grants) {
+            AccessRole role = roles.get(roleIdOf(grant));
+            if (role == null || grant.getScopeId() == null) {
+                continue; // a PLAYER row, a platform row, or a role this code cannot find
+            }
+            if (grant.getScopeType() == ScopeType.CLUB) {
+                if (grant.getScopeId().equals(clubId)) {
+                    resolved.add(new EffectivePermissions.ResolvedGrant(role.permissions(), null));
+                }
+            } else if (grant.getScopeType() == ScopeType.SECTION) {
+                if (clubSections == null) {
+                    clubSections = sectionRepository.findByClubId(clubId);
+                    childrenByParent = buildChildrenByParent(clubSections);
+                    clubSectionIds = new HashSet<>();
+                    for (Section section : clubSections) {
+                        clubSectionIds.add(section.getId());
+                    }
+                }
+                // A grant rooted at another club's section never widens this club (same rule as accessibleSectionIds).
+                if (clubSectionIds.contains(grant.getScopeId())) {
+                    Set<UUID> closure = new HashSet<>();
+                    collectSelfAndDescendants(grant.getScopeId(), childrenByParent, closure);
+                    resolved.add(new EffectivePermissions.ResolvedGrant(role.permissions(), closure));
+                }
+            }
+        }
+        return new EffectivePermissions(resolved);
+    }
+
+    // A legacy CLUB_ADMIN row nothing has backfilled (for example one inserted by hand) is the Manager role, so it can
+    // never lock anyone out. Any other row without a role carries no permissions.
+    private static UUID roleIdOf(RoleAssignment grant) {
+        if (grant.getAccessRoleId() != null) {
+            return grant.getAccessRoleId();
+        }
+        return grant.getRole() == RoleAssignmentRole.CLUB_ADMIN ? AccessRole.MANAGER_ID : null;
+    }
+
+    private static Set<UUID> roleIdsOf(List<RoleAssignment> grants) {
+        Set<UUID> ids = new HashSet<>();
+        for (RoleAssignment grant : grants) {
+            UUID id = roleIdOf(grant);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    // --- the checks that existed before docs/specs/150 ---
 
     /**
      * Resolves the calling {@link Person}'s own {@code id} from {@code authentication} (via the

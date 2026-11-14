@@ -11,4 +11,5 @@ public record MeAccessDto(
         PersonStatus personStatus, // null iff personId is null
         boolean platformAdmin,
         List<UUID> clubAdminClubIds,
-        List<ProfileDto> profiles) {} // docs/specs/119: the chooser cards, additive
+        List<ProfileDto> profiles, // docs/specs/119: the chooser cards, additive
+        List<MePermissionsDto> permissions) {} // docs/specs/150: what the caller may do per club, additive
