@@ -21,6 +21,8 @@ import MyPreferencesPage from './pages/view/MyPreferencesPage'
 import MyPlayerPage, { LegacyDetailsRedirect } from './pages/view/MyPlayerPage'
 import AccessPage from './pages/manage/access/AccessPage'
 import PlayerAccountsTab from './pages/manage/access/PlayerAccountsTab'
+import PeopleTab from './pages/manage/access/PeopleTab'
+import RolesTab from './pages/manage/access/RolesTab'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
@@ -300,9 +302,10 @@ function App() {
               <Route path="imports/:batchId" element={<ImportResumePage />} />
               {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
               <Route path="leaderboards" element={<LeaderboardsPage />} />
-              {/* docs/specs/119 Part 3: Access - Managers tab (placeholder) and Player accounts tab. */}
+              {/* docs/specs/119 Part 3 and docs/specs/150: Access - People, Roles and Player accounts tabs. */}
               <Route path="permissions" element={<AccessPage />}>
-                <Route index element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />} />
+                <Route index element={<PeopleTab />} />
+                <Route path="roles" element={<RolesTab />} />
                 <Route path="player-accounts" element={<PlayerAccountsTab />} />
               </Route>
               {/* docs/specs/056-club-profile-overview.md: two new dashboard placeholders, same

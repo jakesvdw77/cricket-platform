@@ -72,6 +72,11 @@ public final class EffectivePermissions {
         return false;
     }
 
+    /** Does a club-wide grant carry {@code permission}. Used when a club-wide grant is being made (docs/specs/150 rule 2). */
+    public boolean holdsClubWide(Permission permission) {
+        return grants.stream().anyMatch(g -> g.clubWide() && g.permissions().contains(permission));
+    }
+
     /**
      * The sections {@code permission} applies to, for narrowing a list. {@code Optional.empty()} is the unrestricted
      * sentinel (a club-wide grant carries it), the same convention as {@link AccessService#accessibleSectionIds}; a

@@ -127,6 +127,14 @@ public class AccessService {
         return effective(authentication, clubId).holds(permission, sectionId);
     }
 
+    /** Does the caller hold {@code permission} through a club-wide grant. Platform admin always does. */
+    public boolean canClubWide(Authentication authentication, UUID clubId, Permission permission) {
+        if (isPlatformAdmin(authentication)) {
+            return true;
+        }
+        return effective(authentication, clubId).holdsClubWide(permission);
+    }
+
     /**
      * The sections {@code permission} applies to, for narrowing a list; {@code Optional.empty()} means unrestricted
      * (platform admin, or a club-wide grant carrying it), as {@link #accessibleSectionIds} does.

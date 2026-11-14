@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+    <p style="margin:0 0 16px;">Hi,</p>
+    <p style="margin:0 0 20px;">
+        <strong th:text="${senderName}">Piet Botha</strong> gave you access to
+        <strong th:text="${clubName}">Riverside CC</strong> as
+        <strong th:text="${roleName}">Manager</strong> for
+        <strong th:text="${place}">Juniors</strong>.
+    </p>
+    <p style="margin:0 0 20px;">
+        Sign in with this email address and choose the club to start.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="border-radius:8px; background-color:#2f6e4f;">
+                <a th:href="${clubUrl}" href="#"
+                   style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:15px;
+                          font-weight:600; text-decoration:none;">
+                    Open the Club
+                </a>
+            </td>
+        </tr>
+    </table>
+    <p style="margin:24px 0 0; color:#52655c; font-size:13px;">
+        Not expecting this? You can ignore the email. Questions? Write to
+        <a th:href="'mailto:' + ${supportAddress}" th:text="${supportAddress}"
+           style="color:#2f6e4f;">support@cricketlegend.co.za</a>.
+    </p>
+</div>
+</body>
+</html>

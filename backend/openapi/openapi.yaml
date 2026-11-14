@@ -8228,6 +8228,148 @@ paths:
                 $ref: "#/components/schemas/ClubHubSettingsDto"
         "400":
           description: Directory phone or email on while the directory is off
+  /api/v1/manage/clubs/{clubId}/access/roles:
+    get:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: the built-in roles with their permissions. assignable is false until the areas a role covers are enforced."
+      operationId: listAccessRoles
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessRoleDto"
+  /api/v1/manage/clubs/{clubId}/access/grants:
+    get:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: the people list shaped for the caller. A section viewer gets club-wide holders only as clubWideCount."
+      operationId: listAccessGrants
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AccessGrantListDto"
+    post:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: 403 above the caller's reach or for a role they do not fully hold, 404 for a section of another club, 409 when the person already has this access, 429 over the daily invitation limit. The grant is kept if the invitation cannot be sent (invitationFailed)."
+      operationId: addAccessGrant
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAccessGrantRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AddAccessGrantResultDto"
+  /api/v1/manage/clubs/{clubId}/access/grants/{grantId}:
+    delete:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: 403 for the caller's own grant or one outside their reach, 409 for the last club-wide Manager, 404 when it does not exist in this club. The person's account is never touched."
+      operationId: removeAccessGrant
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+    patch:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: changes the role of a grant in place, never its place. Same refusals as delete, plus 403 for a role carrying permissions the caller does not hold."
+      operationId: changeAccessGrantRole
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeAccessGrantRoleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AccessGrantDto"
+  /api/v1/manage/clubs/{clubId}/access/grants/{grantId}/resend:
+    post:
+      tags:
+      - access-grant-controller
+      description: "docs/specs/150: sends the invitation again while the person has never signed in; 409 once they have."
+      operationId: resendAccessInvitation
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/manage/clubs/{clubId}/link-requests:
     get:
       tags:
@@ -12642,6 +12784,172 @@ components:
       required:
       - name
       - slug
+    AccessRolePermissionDto:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        level:
+          type: string
+        reach:
+          type: string
+    AccessRoleDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        assignable:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessRolePermissionDto"
+    AccessGrantDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        roleId:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        scopeType:
+          type: string
+          enum:
+          - PLATFORM
+          - CLUB
+          - SECTION
+          - TEAM
+        sectionId:
+          type: string
+          format: uuid
+        sectionName:
+          type: string
+        status:
+          type: string
+        addedByName:
+          type: string
+        invitationSentAt:
+          type: string
+          format: date-time
+        self:
+          type: boolean
+        canChange:
+          type: boolean
+        canRemove:
+          type: boolean
+        canResend:
+          type: boolean
+    RoleGrantabilityDto:
+      type: object
+      properties:
+        roleId:
+          type: string
+          format: uuid
+        clubWide:
+          type: boolean
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    AccessGrantListDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessGrantDto"
+        clubWideCount:
+          type: integer
+          format: int32
+        canManage:
+          type: boolean
+        canGrantClubWide:
+          type: boolean
+        grantableSectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleGrantabilityDto"
+    AddAccessGrantRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          minLength: 1
+        firstName:
+          type: string
+          maxLength: 100
+          minLength: 1
+        lastName:
+          type: string
+          maxLength: 100
+          minLength: 1
+        roleId:
+          type: string
+          format: uuid
+        scope:
+          type: string
+          enum:
+          - PLATFORM
+          - CLUB
+          - SECTION
+          - TEAM
+        sectionId:
+          type: string
+          format: uuid
+      required:
+      - email
+      - firstName
+      - lastName
+      - roleId
+      - scope
+    ChangeAccessGrantRoleRequest:
+      type: object
+      properties:
+        roleId:
+          type: string
+          format: uuid
+      required:
+      - roleId
+    AddAccessGrantResultDto:
+      type: object
+      properties:
+        grant:
+          $ref: "#/components/schemas/AccessGrantDto"
+        accountExisted:
+          type: boolean
+        invitationSent:
+          type: boolean
+        invitationFailed:
+          type: boolean
     MeAccessDto:
       type: object
       properties:

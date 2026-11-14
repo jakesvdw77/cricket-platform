@@ -89,6 +89,29 @@ public class KeycloakProvisioningServiceImpl implements KeycloakProvisioningServ
         // Non-goals. Person.keycloakUserId is set only at first login, from the JWT's own sub.
     }
 
+    @Override
+    public void resendInvitation(Person person) {
+        List<UserRepresentation> found;
+        try {
+            found = keycloakAdminClient.realm(realm).users().searchByEmail(person.getEmail(), true);
+        } catch (Exception e) {
+            throw new KeycloakProvisioningException("Keycloak user lookup failed for person " + person.getId(), e);
+        }
+        if (found == null || found.isEmpty()) {
+            provisionAccount(person);
+            return;
+        }
+        try {
+            keycloakAdminClient
+                    .realm(realm)
+                    .users()
+                    .get(found.get(0).getId())
+                    .executeActionsEmail(publicClientId, resetRedirectUri, List.of("VERIFY_EMAIL", "UPDATE_PASSWORD"));
+        } catch (Exception e) {
+            throw new KeycloakProvisioningException("execute-actions-email failed for person " + person.getId(), e);
+        }
+    }
+
     // Guards the fetch-modify-update below — Keycloak's Admin API has no optimistic locking on a
     // ClientRepresentation PUT, so two of these racing (e.g. two clubs created/renamed close
     // together) can silently clobber each other: the second PUT, built from a representation
