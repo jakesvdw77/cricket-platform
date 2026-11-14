@@ -88,6 +88,8 @@ function formatAddress(address: Address): string {
 // error shape as every other /manage page, gated on the profile fetch; every other query is independent and never blocks.
 export default function ClubOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
+  // docs/specs/150: club setup is edited only by a club-wide grant that carries Club Setup Edit; everyone else reads. (A hook, so it stays above the early returns.)
+  const canSetup = usePermissions().can('CLUB_SETUP_EDIT')
   const theme = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
@@ -205,7 +207,6 @@ export default function ClubOverviewPage() {
   // docs/specs/127: every link that leaves this page carries it as the origin, so Back returns here.
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Club Profile')
   // docs/specs/150: club setup is edited only by a club-wide grant that carries Club Setup Edit; everyone else reads.
-  const canSetup = usePermissions().can('CLUB_SETUP_EDIT')
   const manageButton = (label: string, to: string) =>
     canSetup ? (
       <Button size="compact" variant="secondary" onClick={() => navigate(leaveTo(to))}>

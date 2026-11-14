@@ -143,7 +143,6 @@ describe('generateLeagueSharePoster', () => {
   })
 
   it('counts team rows that do not fit instead of drawing them', async () => {
-    const matches = Array.from({ length: 40 }, (_, index) => ({ ...leagueInput(false).matches[0], id: `m${index}`, active: true, matchDate: `2026-11-${String((index % 28) + 1).padStart(2, '0')}T10:00:00` })) as Match[]
     await generateLeagueSharePoster(model(['TEAMS'], { leagueTeams: Array.from({ length: 40 }, (_, i) => ({ id: `lt${i}`, leagueId: 'l1', seasonId: 's1', name: `Team ${i}`, abbreviation: null, logoUrl: null, active: true, referencedByMatchCount: 0 })) }), colour.main, { teamLogos: false, now: new Date('2026-10-18T00:00:00') })
     expect(texts.some((t) => /^and \d+ more/.test(t))).toBe(true)
   })

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactElement } from 'react'
 import { Alert, Box, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -33,7 +34,7 @@ import { useEditableShareText } from '../ShareCore'
 
 type AnalysisFormat = 'WHATSAPP' | 'FACEBOOK' | 'PDF'
 
-const FORMATS: { value: AnalysisFormat; label: string; subtitle: string; icon: JSX.Element }[] = [
+const FORMATS: { value: AnalysisFormat; label: string; subtitle: string; icon: ReactElement }[] = [
   { value: 'WHATSAPP', label: 'WhatsApp', subtitle: 'Message text to edit and send', icon: <WhatsAppIcon /> },
   { value: 'FACEBOOK', label: 'Facebook', subtitle: 'Post text to copy', icon: <FacebookIcon /> },
   { value: 'PDF', label: 'PDF', subtitle: 'A4 document to print or send', icon: <PictureAsPdfOutlinedIcon /> },

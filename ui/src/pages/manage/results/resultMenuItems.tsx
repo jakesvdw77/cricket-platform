@@ -21,16 +21,16 @@ export function resultMenuItems({ draft, openTo, editTo, onPublish, onShare }: R
   return [
     { id: 'open', title: 'Open Result', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: openTo },
     {
-      id: 'edit', requires: 'RESULTS_EDIT',
+      id: 'edit', requires: 'RESULTS_EDIT' as const,
       title: 'Edit Result',
       icon: <EditOutlinedIcon fontSize="small" />,
       to: draft ? editTo : undefined,
       disabled: !draft,
       reason: UNPUBLISH_TO_EDIT_REASON,
     },
-    ...(draft ? [{ id: 'publish', requires: 'RESULTS_EDIT', title: 'Publish Result', icon: <CloudUploadOutlinedIcon fontSize="small" />, onClick: onPublish }] : []),
+    ...(draft ? [{ id: 'publish', requires: 'RESULTS_EDIT' as const, title: 'Publish Result', icon: <CloudUploadOutlinedIcon fontSize="small" />, onClick: onPublish }] : []),
     {
-      id: 'share', requires: 'RESULTS_EDIT',
+      id: 'share', requires: 'RESULTS_EDIT' as const,
       title: 'Share Result',
       icon: <ShareOutlinedIcon fontSize="small" />,
       onClick: onShare,
