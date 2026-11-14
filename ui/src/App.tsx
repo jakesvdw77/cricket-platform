@@ -10,6 +10,7 @@ import { ConnectionGuard } from './components/ConnectionGuard'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { useSigningOut } from './auth/signOut'
 import Login from './pages/view/Login'
+import Register from './pages/view/Register'
 import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import FindYourPlayersPage from './pages/view/FindYourPlayersPage'
 import ProfileChooserPage from './pages/view/ProfileChooserPage'
@@ -129,6 +130,7 @@ function App() {
                 from the URL (docs/specs/001), so these run on the root domain directly as well
                 as every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
             <Route path="/welcome" element={<FindYourPlayersPage />} />
             <Route path="/choose-profile" element={<ProfileChooserPage />} />

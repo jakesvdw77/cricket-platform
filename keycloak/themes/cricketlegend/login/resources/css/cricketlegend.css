@@ -375,6 +375,19 @@ h1#kc-page-title {
 #kc-register-form #kc-form-options { order: 2; text-align: center; }
 #kc-register-form #kc-form-buttons { order: 1; }
 
+/* Registration, compact (owner, 2026-11-13: "too tall, less scrolling"): tighter card and rows, 40 px fields, first and last name side by
+   side. Scoped to the registration form so the sign-in page keeps its roomier look. */
+.login-pf-page .card-pf:has(#kc-register-form) { gap: 10px; padding: 18px 20px; }
+.card-pf:has(#kc-register-form) h1#kc-page-title { font-size: clamp(24px, 5vw, 28px); }
+.card-pf:has(#kc-register-form) #kc-content-wrapper { gap: 10px; }
+#kc-register-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
+#kc-register-form .form-group { grid-column: 1 / -1; gap: 4px; }
+#kc-register-form .form-group:has(#firstName),
+#kc-register-form .form-group:has(#lastName) { grid-column: auto; }
+#kc-register-form input.pf-c-form-control { height: 40px; }
+#kc-register-form .pf-c-input-group .pf-c-button.pf-m-control { width: 40px; height: 40px; }
+#kc-register-form .form-group:last-of-type { gap: 8px; margin-top: 2px; }
+
 /* Password field with its show/hide button. */
 .card-pf .pf-c-input-group { display: flex; align-items: stretch; width: 100%; }
 .card-pf .pf-c-input-group input.pf-c-form-control {
@@ -756,12 +769,37 @@ ul#kc-totp-supported-apps { margin: 8px 0; padding-left: 20px; }
   box-shadow: 0 0 0 2px var(--cl-green-900), 0 0 0 5px var(--cl-gold);
 }
 
+/* Back link under the card (template.ftl, theme property homeUrl): cream on the green page, quiet. */
+#cl-back-home { margin: 0; text-align: center; }
+#cl-back-home a,
+#cl-back-home a:visited {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cl-cream);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#cl-back-home a:hover { color: var(--cl-gold); }
+#cl-back-home a:focus-visible { outline: 2px solid var(--cl-gold); outline-offset: 2px; border-radius: 4px; }
+
 /* ------------------------------------------------------------------ wider screens */
 @media (min-width: 480px) {
   .login-pf-page .card-pf { padding: 36px; }
 }
 
 @media (min-width: 768px) {
+  /* The page centres its content, so centre the two ovals on it too (owner, 2026-11-13: the pitch must sit inside the inner oval). On a
+     phone the content is top aligned and the ovals stay near the top (above). */
+  html.login-pf body::before {
+    background:
+      radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 50%, var(--cl-green-700) calc(55% - 1px), transparent 55%),
+      radial-gradient(ellipse clamp(315px, 39vw, 480px) clamp(450px, 70vh, 620px) at 50% 50%, var(--cl-green-800) calc(100% - 1px), transparent 100%);
+    background-repeat: no-repeat;
+  }
   .login-pf-page { gap: 24px; padding: 48px 0; justify-content: center; }
   #kc-header-wrapper { font-size: 30px; }
   #kc-header-wrapper::before { width: 60px; height: 60px; }
