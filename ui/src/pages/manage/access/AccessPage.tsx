@@ -44,7 +44,7 @@ export default function AccessPage() {
         action={
           canAdd ? (
             <Button size="compact" onClick={() => setAdding(true)}>
-              Add Person
+              Add New Person
             </Button>
           ) : undefined
         }

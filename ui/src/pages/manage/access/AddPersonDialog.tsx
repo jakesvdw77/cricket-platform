@@ -23,7 +23,7 @@ export interface AddPersonDialogProps {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// docs/specs/150: Add Person. Place first (Whole Club only when the server says the caller may), then the role; only roles the
+// docs/specs/150: Add New Person. Place first (Whole Club only when the server says the caller may), then the role; only roles the
 // caller may give at that place are enabled, the others show why. The server enforces every rule again.
 export function AddPersonDialog({ clubId, open, list, roles, sections, onClose, onAdded }: AddPersonDialogProps) {
   const add = useAddAccessGrant(clubId)
@@ -70,8 +70,8 @@ export function AddPersonDialog({ clubId, open, list, roles, sections, onClose, 
 
   return (
     <Dialog open={open} onClose={add.isPending ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Add Person</DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+      <DialogTitle>Add New Person</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
         <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={add.isPending} inputProps={{ maxLength: 254 }} />
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
           <Input label="First Name" value={firstName} onChange={(event) => setFirstName(event.target.value)} disabled={add.isPending} inputProps={{ maxLength: 100 }} />
@@ -127,7 +127,7 @@ export function AddPersonDialog({ clubId, open, list, roles, sections, onClose, 
           Cancel
         </Button>
         <Button size="compact" disabled={!valid || add.isPending} onClick={submit}>
-          {add.isPending ? 'Adding…' : 'Add Person'}
+          {add.isPending ? 'Adding…' : 'Add New Person'}
         </Button>
       </DialogActions>
     </Dialog>

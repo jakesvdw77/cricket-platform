@@ -36,7 +36,7 @@ export function clubWideFor(list: AccessGrantList | undefined, roleId: string | 
   return Boolean(list?.roles.find((entry) => entry.roleId === roleId)?.clubWide)
 }
 
-/** The outcome line after Add Person. */
+/** The outcome line after Add New Person. */
 export function addOutcome(result: AddAccessGrantResult): { message: string; tone: 'success' | 'warning' } {
   if (result.invitationFailed) {
     return { message: 'Access given, but the invitation email could not be sent. Resend it from the card.', tone: 'warning' }
