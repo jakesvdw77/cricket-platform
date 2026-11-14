@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -204,14 +205,14 @@ class SectionAvailabilityRoundServiceImplTest {
         SectionAvailabilityRound matchingRound = round(matchingRoundId, clubId, matchingSectionId, true);
         SectionAvailabilityRound otherRound = round(otherRoundId, clubId, otherSectionId, true);
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(List.of(matchingRound, otherRound));
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, matchingSectionId)).thenReturn(Set.of(matchingSectionId));
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(matchingSectionId);
 
         List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, matchingSectionId, null, null, null, null);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, matchingSectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(matchingSectionId));
         assertThat(result).hasSize(1);
     }
 
@@ -227,7 +228,7 @@ class SectionAvailabilityRoundServiceImplTest {
             rounds.add(closed);
         }
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(rounds);
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
@@ -264,7 +265,7 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID w3 = UUID.randomUUID();
         when(sectionAvailabilityRoundRepository.findByClubId(clubId))
                 .thenReturn(List.of(leagueRound, teamRound, otherRound));
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(
                 SectionAvailabilityWindow.builder().id(w1).roundId(leagueRound.getId()).build(),
                 SectionAvailabilityWindow.builder().id(w2).roundId(teamRound.getId()).build(),
@@ -314,7 +315,7 @@ class SectionAvailabilityRoundServiceImplTest {
         List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, slots.teamId(), null, null);
 
         assertThat(result).extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.teamRoundId());
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
     }
 
     @Test
@@ -333,7 +334,7 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID leagueId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(
                 com.cricketlegend.domain.League.builder().id(leagueId).clubId(UUID.randomUUID()).build()));
         org.mockito.Mockito.lenient().when(teamRepository.findById(teamId)).thenReturn(Optional.of(
@@ -373,7 +374,7 @@ class SectionAvailabilityRoundServiceImplTest {
         }
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(rounds);
         when(matchRepository.findAllById(any())).thenReturn(allMatches);
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(leagueRepository.findById(leagueId))
                 .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(leagueId).clubId(clubId).build()));
         when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(windows);
@@ -446,7 +447,7 @@ class SectionAvailabilityRoundServiceImplTest {
         SectionAvailabilityRound openRound = round(UUID.randomUUID(), clubId, sectionId, true);
         SectionAvailabilityRound closedRound = round(UUID.randomUUID(), clubId, sectionId, false);
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(List.of(openRound, closedRound));
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
@@ -463,7 +464,7 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID accessibleSectionId = UUID.randomUUID();
         SectionAvailabilityRound round = round(UUID.randomUUID(), clubId, roundSectionId, true);
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(List.of(round));
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
         List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null, null);
@@ -535,7 +536,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 new CreateSectionAvailabilityRoundRequest(
                         sectionId, "Weekend fixtures", List.of(saturdayMatchId, sundayMatchId), true, null));
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         ArgumentCaptor<SectionAvailabilityWindow> windowCaptor = ArgumentCaptor.forClass(SectionAvailabilityWindow.class);
         verify(sectionAvailabilityWindowRepository, times(2)).save(windowCaptor.capture());
         assertThat(windowCaptor.getAllValues()).extracting(SectionAvailabilityWindow::getWindowDate)
@@ -1055,7 +1056,7 @@ class SectionAvailabilityRoundServiceImplTest {
 
         service.delete(authentication, clubId, roundId);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(
                 matchSquadMemberRepository,
                 sectionAvailabilityResponseRepository,
@@ -1158,7 +1159,7 @@ class SectionAvailabilityRoundServiceImplTest {
         SectionAvailabilityRoundDto dto = service.updateCloseTime(
                 authentication, clubId, roundId, new UpdatePollCloseTimeRequest(true, closeAt));
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(round.getSectionId()));
         assertThat(round.isAutoClose()).isTrue();
         assertThat(round.getScheduledCloseAt()).isEqualTo(closeAt);
         assertThat(round.isOpen()).isTrue();
@@ -1377,7 +1378,7 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID m1b = UUID.randomUUID();
         UUID m2 = UUID.randomUUID();
         when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(List.of(r1, r2));
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(w1, w2));
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(List.of(
@@ -1453,7 +1454,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 .thenReturn(Optional.of(closed));
         org.mockito.Mockito.lenient().when(sectionAvailabilityRoundRepository.findByClubId(clubId))
                 .thenReturn(List.of(closed));
-        org.mockito.Mockito.lenient().when(accessService.accessibleSectionIds(authentication, clubId))
+        org.mockito.Mockito.lenient().when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.empty());
         org.mockito.Mockito.lenient()
                 .when(sectionAvailabilityRoundRepository.save(any(SectionAvailabilityRound.class)))

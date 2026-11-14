@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.Permission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -129,13 +130,13 @@ class ManagerOverviewServiceImplTest {
     }
 
     private void unrestricted() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(accessService.canAccessClub(caller, CLUB_ID)).thenReturn(true);
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
+        when(accessService.can(eq(caller), eq(CLUB_ID), any(Permission.class))).thenReturn(true);
     }
 
     private void restrictedTo(UUID... sectionIds) {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of(sectionIds)));
-        when(accessService.canAccessClub(caller, CLUB_ID)).thenReturn(true);
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.of(Set.of(sectionIds)));
+        when(accessService.can(eq(caller), eq(CLUB_ID), any(Permission.class))).thenReturn(true);
     }
 
     /** Default stubs, lenient because which of them a test reaches depends on what it seeds. */
@@ -301,8 +302,8 @@ class ManagerOverviewServiceImplTest {
 
     @Test
     void callerWithNoAccessibleSectionGetsAnEmptyOverviewWithoutAnyQuery() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
-        when(accessService.canAccessClub(caller, CLUB_ID)).thenReturn(false);
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.of(Set.of()));
+        when(accessService.can(eq(caller), eq(CLUB_ID), any(Permission.class))).thenReturn(false);
 
         ManagerOverviewDto dto = service.overview(caller, CLUB_ID);
 
@@ -441,7 +442,7 @@ class ManagerOverviewServiceImplTest {
     }
 
     @Test
-    void quickActionsAllFollowCanAccessClub() {
+    void quickActionsAreAllTrueWhenTheCallerHoldsEveryPermission() {
         unrestricted();
         matches(List.of(), List.of());
 
@@ -454,15 +455,31 @@ class ManagerOverviewServiceImplTest {
     }
 
     @Test
-    void quickActionsAreAllFalseWhenTheCallerCannotAccessTheClub() {
-        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(accessService.canAccessClub(caller, CLUB_ID)).thenReturn(false);
+    void quickActionsAreAllFalseWhenTheCallerHoldsNoneOfThePermissions() {
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
+        when(accessService.can(eq(caller), eq(CLUB_ID), any(Permission.class))).thenReturn(false);
         matches(List.of(), List.of());
 
         assertThat(service.overview(caller, CLUB_ID).quickActions()).satisfies(actions -> {
             assertThat(actions.createMatch()).isFalse();
             assertThat(actions.createPoll()).isFalse();
             assertThat(actions.addPlayer()).isFalse();
+            assertThat(actions.messageSquad()).isFalse();
+        });
+    }
+
+    @Test
+    void quickActionsFollowTheMatchingPermissionEach() {
+        when(accessService.sectionIdsFor(eq(caller), eq(CLUB_ID), any())).thenReturn(Optional.empty());
+        when(accessService.can(eq(caller), eq(CLUB_ID), eq(Permission.MATCHES_EDIT))).thenReturn(true);
+        when(accessService.can(eq(caller), eq(CLUB_ID), eq(Permission.AVAILABILITY_MANAGE))).thenReturn(false);
+        when(accessService.can(eq(caller), eq(CLUB_ID), eq(Permission.PLAYERS_EDIT))).thenReturn(true);
+        matches(List.of(), List.of());
+
+        assertThat(service.overview(caller, CLUB_ID).quickActions()).satisfies(actions -> {
+            assertThat(actions.createMatch()).isTrue();
+            assertThat(actions.createPoll()).isFalse();
+            assertThat(actions.addPlayer()).isTrue();
             assertThat(actions.messageSquad()).isFalse();
         });
     }

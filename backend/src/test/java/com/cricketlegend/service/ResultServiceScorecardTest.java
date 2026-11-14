@@ -84,7 +84,7 @@ class ResultServiceScorecardTest {
         when(scorecardService.load(any(), any())).thenReturn(new ScorecardDto(null, null, null, null, null, null, null));
         match = Match.builder().id(matchId).clubId(clubId).homeTeamName("Riverside").awayTeamName("Hillside")
                 .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
-        when(matchService.requireAdministrableMatch(auth, clubId, matchId)).thenReturn(match);
+        when(matchService.requireAdministrableMatch(org.mockito.ArgumentMatchers.eq(auth), org.mockito.ArgumentMatchers.eq(clubId), org.mockito.ArgumentMatchers.eq(matchId), org.mockito.ArgumentMatchers.any())).thenReturn(match);
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(UUID.randomUUID());
         when(resultRepository.saveAndFlush(any(MatchResult.class))).thenAnswer(inv -> withId(inv.getArgument(0)));
         when(resultRepository.save(any(MatchResult.class))).thenAnswer(inv -> withId(inv.getArgument(0)));

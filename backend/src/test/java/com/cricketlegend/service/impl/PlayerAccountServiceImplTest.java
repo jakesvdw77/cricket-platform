@@ -82,7 +82,7 @@ class PlayerAccountServiceImplTest {
         profile = PlayerProfile.builder().id(UUID.randomUUID()).personId(child.getId()).clubId(clubId).active(true).build();
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(actorId);
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.empty());
         when(playerSectionNames.sectionIds(any())).thenReturn(Map.of());
         when(playerSectionNames.firstNames(any())).thenReturn(Map.of());
         when(personRepository.findAllById(any())).thenAnswer(i -> {
@@ -139,7 +139,7 @@ class PlayerAccountServiceImplTest {
         verify(playerProfileRepository).searchForAccounts(eq(clubId), eq(false), any(), eq(false), eq("%sam%"), any());
 
         UUID mine = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mine)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mine)));
         service.list(auth, clubId, null, true, null, 0, 20);
         verify(playerProfileRepository).searchForAccounts(eq(clubId), eq(true), eq(Set.of(mine)), eq(true), eq("%%"), any());
     }
@@ -148,10 +148,10 @@ class PlayerAccountServiceImplTest {
     void aSectionFilterNeedsAdministeringThatSectionAndNarrowsTheScope() {
         UUID mine = UUID.randomUUID();
         UUID other = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(auth, clubId)).thenReturn(Optional.of(Set.of(mine)));
+        when(accessService.sectionIdsFor(eq(auth), eq(clubId), any())).thenReturn(Optional.of(Set.of(mine)));
         when(accessService.sectionAndDescendantIds(clubId, other)).thenReturn(Set.of(other));
         org.mockito.Mockito.doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerSection(auth, clubId, other);
+                .assertCan(eq(auth), eq(clubId), any(), eq(other));
 
         assertThatThrownBy(() -> service.list(auth, clubId, other, false, null, 0, 20))
                 .isInstanceOf(AccessDeniedException.class);
@@ -175,7 +175,7 @@ class PlayerAccountServiceImplTest {
         assertThatThrownBy(() -> service.links(auth, clubId, elsewhere.getId())).isInstanceOf(NotFoundException.class);
 
         org.mockito.Mockito.doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerAnySection(any(), eq(clubId), any());
+                .assertCanAnySection(any(), eq(clubId), any(), any());
         assertThatThrownBy(() -> service.links(auth, clubId, profile.getId())).isInstanceOf(AccessDeniedException.class);
     }
 
@@ -302,7 +302,7 @@ class PlayerAccountServiceImplTest {
     void aManagerWhoCannotAdministerThePlayerCannotChangeAgents() {
         PersonLink l = link(person("A", "B", "a@b.co"), PersonLinkStatus.ACTIVE, false);
         org.mockito.Mockito.doThrow(new AccessDeniedException("no")).when(accessService)
-                .assertCanAdministerAnySection(any(), eq(clubId), any());
+                .assertCanAnySection(any(), eq(clubId), any(), any());
 
         assertThatThrownBy(() -> service.revokeLink(auth, clubId, profile.getId(), l.getId(), true))
                 .isInstanceOf(AccessDeniedException.class);

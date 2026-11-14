@@ -40,6 +40,7 @@ class PublicAvailabilityRepositoryIntegrationTest {
     @AfterEach
     void cleanUp() {
         jdbcTemplate.execute("TRUNCATE TABLE club, person, public_availability_attempt CASCADE");
+        com.cricketlegend.support.AccessRoleSeed.restore(jdbcTemplate);
     }
 
     private int increment(String key, long now, int max) {

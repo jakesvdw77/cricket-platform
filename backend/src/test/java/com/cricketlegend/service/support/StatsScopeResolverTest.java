@@ -1,5 +1,6 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.domain.Permission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,7 +60,7 @@ class StatsScopeResolverTest {
     }
 
     private void reach(UUID sectionId, UUID teamId, ClubMatchScope.Scope scope) {
-        when(clubMatchScope.resolve(authentication, clubId, sectionId, teamId)).thenReturn(scope);
+        when(clubMatchScope.resolve(authentication, clubId, Permission.STATS_VIEW, sectionId, teamId)).thenReturn(scope);
     }
 
     private static Team team(UUID id, UUID sectionId) {
@@ -106,7 +107,7 @@ class StatsScopeResolverTest {
     @Test
     void aSectionOrTeamThatIsNotFoundIsPropagatedAs404() {
         UUID teamId = UUID.randomUUID();
-        when(clubMatchScope.resolve(authentication, clubId, null, teamId)).thenThrow(new NotFoundException("Team"));
+        when(clubMatchScope.resolve(authentication, clubId, Permission.STATS_VIEW, null, teamId)).thenThrow(new NotFoundException("Team"));
 
         assertThatThrownBy(() -> resolve(null, null, teamId, null)).isInstanceOf(NotFoundException.class);
     }
@@ -116,7 +117,7 @@ class StatsScopeResolverTest {
     @Test
     void aSectionOutsideTheCallersReachIsForbiddenNotNotFound() {
         UUID sectionId = UUID.randomUUID();
-        when(clubMatchScope.resolve(authentication, clubId, sectionId, null))
+        when(clubMatchScope.resolve(authentication, clubId, Permission.STATS_VIEW, sectionId, null))
                 .thenThrow(new AccessDeniedException("section"));
 
         assertThatThrownBy(() -> resolve(null, null, null, sectionId))

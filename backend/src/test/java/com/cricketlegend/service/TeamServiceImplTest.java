@@ -1,5 +1,7 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
@@ -466,7 +468,7 @@ class TeamServiceImplTest {
         when(teamRepository.findByClubId(clubId)).thenReturn(List.of(a, b));
         when(teamMapper.toDto(a)).thenReturn(dummyDto());
         when(teamMapper.toDto(b)).thenReturn(dummyDto());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         List<TeamDto> result = teamService.listByClub(authentication, clubId, null);
 
@@ -483,7 +485,7 @@ class TeamServiceImplTest {
         Team outOfReachTeam = team(UUID.randomUUID(), otherSectionId, true);
         when(teamRepository.findByClubId(clubId)).thenReturn(List.of(accessibleTeam, outOfReachTeam));
         when(teamMapper.toDto(accessibleTeam)).thenReturn(dummyDto());
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
 
         List<TeamDto> result = teamService.listByClub(authentication, clubId, null);

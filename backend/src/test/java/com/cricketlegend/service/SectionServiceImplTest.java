@@ -98,6 +98,12 @@ class SectionServiceImplTest {
     @Mock
     private LeagueAffiliationRepository leagueAffiliationRepository;
 
+    @Mock
+    private com.cricketlegend.repository.RoleAssignmentRepository roleAssignmentRepository;
+
+    @Mock
+    private com.cricketlegend.repository.PersonRepository personRepository;
+
     private SectionServiceImpl sectionService;
 
     @BeforeEach
@@ -105,7 +111,7 @@ class SectionServiceImplTest {
         sectionService = new SectionServiceImpl(
                 sectionRepository, sectionContactRepository, clubContactRepository, sectionMapper, clubContactMapper,
                 seasonRepository, teamRepository, playerProfileRepository, playerSectionRepository,
-                leagueAffiliationRepository);
+                leagueAffiliationRepository, roleAssignmentRepository, personRepository);
     }
 
     private Section section(UUID id, UUID clubId, boolean active) {
@@ -343,6 +349,30 @@ class SectionServiceImplTest {
         assertThatThrownBy(() -> sectionService.deactivate(clubId, sectionId))
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("active child");
+        verify(sectionRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void deactivateRefusesASectionThatStillHasAccessGivenAndNamesThePeople() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        Section existing = section(sectionId, clubId, true);
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(existing));
+        UUID personId = UUID.randomUUID();
+        com.cricketlegend.domain.RoleAssignment grant = com.cricketlegend.domain.RoleAssignment.builder()
+                .personId(personId).scopeType(com.cricketlegend.domain.ScopeType.SECTION).scopeId(sectionId).build();
+        when(roleAssignmentRepository.findByScopeTypeAndScopeId(com.cricketlegend.domain.ScopeType.SECTION, sectionId))
+                .thenReturn(List.of(grant));
+        com.cricketlegend.domain.Person sam = new com.cricketlegend.domain.Person();
+        sam.setId(personId);
+        sam.setFirstName("Sam");
+        sam.setLastName("Smith");
+        when(personRepository.findAllById(ArgumentMatchers.any())).thenReturn(List.of(sam));
+
+        assertThatThrownBy(() -> sectionService.deactivate(clubId, sectionId))
+                .isInstanceOf(com.cricketlegend.exception.ConflictException.class)
+                .hasMessageContaining("Sam Smith")
+                .hasMessageContaining("Access page");
         verify(sectionRepository, never()).save(ArgumentMatchers.any());
     }
 

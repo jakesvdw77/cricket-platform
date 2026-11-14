@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.Permission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -544,7 +545,7 @@ class MatchServiceImplTest {
                 .thenReturn(resolvedSections);
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+                .assertCanAnySection(eq(authentication), eq(clubId), any(), eq(resolvedSections));
 
         assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
@@ -614,7 +615,7 @@ class MatchServiceImplTest {
                 .thenReturn(resolvedSections);
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+                .assertCanAnySection(eq(authentication), eq(clubId), any(), eq(resolvedSections));
 
         assertThatThrownBy(() -> matchService.get(authentication, clubId, matchId))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
@@ -639,7 +640,7 @@ class MatchServiceImplTest {
     @Test
     void listUsesThePlainClubWideQueryForAnUnrestrictedCallerWithNoExplicitSectionFilter() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
@@ -648,7 +649,7 @@ class MatchServiceImplTest {
         matchService.list(authentication, clubId, null, false, null, null, null, null, null, pageable);
 
         verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
-        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+        verify(accessService, never()).assertCan(any(), any(), any(), any());
         verify(accessService, never()).sectionAndDescendantIds(any(), any());
     }
 
@@ -656,7 +657,7 @@ class MatchServiceImplTest {
     void listAppliesTheCallersOwnAccessibleSectionsForARestrictedCallerWithNoExplicitSectionFilter() {
         UUID clubId = UUID.randomUUID();
         UUID accessibleSectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
@@ -666,7 +667,7 @@ class MatchServiceImplTest {
         matchService.list(authentication, clubId, null, false, null, null, null, null, null, pageable);
 
         verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
-        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+        verify(accessService, never()).assertCan(any(), any(), any(), any());
         verify(accessService, never()).sectionAndDescendantIds(any(), any());
     }
 
@@ -675,7 +676,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID descendantSectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId))
                 .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
         org.springframework.data.domain.Pageable pageable =
@@ -685,7 +686,7 @@ class MatchServiceImplTest {
 
         matchService.list(authentication, clubId, sectionId, false, null, null, null, null, null, pageable);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         verify(accessService).sectionAndDescendantIds(clubId, sectionId);
         verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
     }
@@ -700,7 +701,7 @@ class MatchServiceImplTest {
         UUID teamAHome = UUID.randomUUID();
         UUID teamAAway = UUID.randomUUID();
         UUID teamBHome = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
 
@@ -760,7 +761,7 @@ class MatchServiceImplTest {
     }
 
     private List<MatchDto> listCard(Match... matches) {
-        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any())).thenReturn(Optional.empty());
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matches)));
         for (Match m : matches) {
@@ -817,7 +818,7 @@ class MatchServiceImplTest {
 
     @Test
     void listCallsNoBatchSourceForAnEmptyPage() {
-        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any())).thenReturn(Optional.empty());
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
@@ -1062,7 +1063,7 @@ class MatchServiceImplTest {
     @Test
     void listWithUpcomingOnlyFalseCallsFindAllOnceForAnUnrestrictedCaller() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
@@ -1076,7 +1077,7 @@ class MatchServiceImplTest {
     @Test
     void listWithUpcomingOnlyTrueCallsFindAllOnceForAnUnrestrictedCaller() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
@@ -1091,7 +1092,7 @@ class MatchServiceImplTest {
     void listWithUpcomingOnlyTrueCallsFindAllOnceForARestrictedCaller() {
         UUID clubId = UUID.randomUUID();
         UUID accessibleSectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
@@ -1108,7 +1109,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID descendantSectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId))
                 .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
         org.springframework.data.domain.Pageable pageable =
@@ -1118,7 +1119,7 @@ class MatchServiceImplTest {
 
         matchService.list(authentication, clubId, sectionId, true, null, null, null, null, null, pageable);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
     }
 
@@ -1129,7 +1130,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID leagueId = UUID.randomUUID();
         UUID seasonId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
@@ -1143,7 +1144,7 @@ class MatchServiceImplTest {
     @Test
     void listWithABlankSearchStringDoesNotThrowAndStillCallsFindAllOnce() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
@@ -1159,7 +1160,7 @@ class MatchServiceImplTest {
     @Test
     void filterOptionsForAnUnrestrictedCallerWithNoExplicitSectionIdNeverValidatesSectionAccess() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         MatchFilterOptionsDto result =
@@ -1168,7 +1169,7 @@ class MatchServiceImplTest {
         assertThat(result.sectionIds()).isEmpty();
         assertThat(result.leagueIds()).isEmpty();
         assertThat(result.seasonIds()).isEmpty();
-        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+        verify(accessService, never()).assertCan(any(), any(), any(), any());
     }
 
     // --- 087: summary() ---
@@ -1176,7 +1177,7 @@ class MatchServiceImplTest {
     @Test
     void summaryOfACallerWithNoAccessibleSectionsIsAllZerosWithoutQueryingMatches() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.of(java.util.Set.of()));
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.of(java.util.Set.of()));
 
         com.cricketlegend.dto.MatchesSummaryDto result =
                 matchService.summary(authentication, clubId, null, null, null, null, null, false);
@@ -1189,14 +1190,14 @@ class MatchServiceImplTest {
     void summaryRunsOneCountPerFigureAndValidatesAnExplicitSectionAgainstTheCallersAccess() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(java.util.Set.of(sectionId));
         when(matchRepository.count(any(Specification.class))).thenReturn(9L, 4L, 3L, 1L);
 
         com.cricketlegend.dto.MatchesSummaryDto result =
                 matchService.summary(authentication, clubId, sectionId, null, null, null, null, true);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         verify(matchRepository, org.mockito.Mockito.times(4)).count(any(Specification.class));
         assertThat(result).isEqualTo(new com.cricketlegend.dto.MatchesSummaryDto(9, 4, 3, 1));
     }
@@ -1205,13 +1206,13 @@ class MatchServiceImplTest {
     void filterOptionsValidatesAnExplicitSectionIdAgainstTheCallersOwnAccess() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(java.util.Set.of(sectionId));
         when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         matchService.filterOptions(authentication, clubId, sectionId, null, null, null, null, false);
 
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
     }
 
     @Test
@@ -1219,7 +1220,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID leagueId = UUID.randomUUID();
         UUID seasonId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         Match withLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Home")
                 .awayTeamName("Away").leagueId(leagueId).seasonId(seasonId).matchDate(Instant.now())
@@ -1247,7 +1248,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID teamA = UUID.randomUUID();
         UUID teamB = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         Match teamAHomeVsFreeText = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamA)
                 .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
@@ -1276,7 +1277,7 @@ class MatchServiceImplTest {
         UUID parentId = UUID.randomUUID();
         UUID grandchildSectionId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamId)
                 .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
@@ -1316,7 +1317,7 @@ class MatchServiceImplTest {
         UUID parentId = UUID.randomUUID();
         UUID grandchildSectionId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of(parentId, grandchildSectionId)));
 
         Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamId)
@@ -1367,7 +1368,7 @@ class MatchServiceImplTest {
                 matchService.listPrevious(authentication, clubId, teamId, seasonId, leagueId, excludeMatchId);
 
         assertThat(result).hasSize(1);
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         verify(matchRepository)
                 .findPreviousForTeamSeasonLeague(
                         org.mockito.ArgumentMatchers.eq(clubId),
@@ -1404,7 +1405,7 @@ class MatchServiceImplTest {
 
         assertThatThrownBy(() -> matchService.listPrevious(authentication, clubId, teamId, seasonId, null, null))
                 .isInstanceOf(NotFoundException.class);
-        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(accessService).assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
         verify(matchRepository, never()).findPreviousForTeamSeasonLeague(any(), any(), any(), any(), any(), any());
     }
 
@@ -1750,7 +1751,7 @@ class MatchServiceImplTest {
     @Test
     void filterOptionsTeamAndSectionIdsIgnoreLeagueTeamSides() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         Match leagueTeamMatch = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Riverside CC")
                 .homeLeagueTeamId(UUID.randomUUID()).awayTeamName("Hillside CC")
                 .awayLeagueTeamId(UUID.randomUUID()).leagueId(UUID.randomUUID()).seasonId(UUID.randomUUID())
@@ -1770,7 +1771,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID homeLtId = UUID.randomUUID();
         UUID awayLtId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Riverside CC")
                 .homeLeagueTeamId(homeLtId).awayTeamName("Hillside CC").awayLeagueTeamId(awayLtId)
                 .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
@@ -1983,7 +1984,7 @@ class MatchServiceImplTest {
     @Test
     void listCopiesScoringAndStreamingUrlsOntoEachListDto() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Riverside CC")
                 .awayTeamName("Hillside CC").seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true)
                 .scoringUrl("https://cricclubs.com/matches/1").streamingUrl("https://pv.example/live").build();
@@ -2028,7 +2029,7 @@ class MatchServiceImplTest {
 
     @Test
     void listDoesNotAskForResultStatusesOnAnEmptyPage() {
-        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any())).thenReturn(Optional.empty());
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
@@ -2040,7 +2041,7 @@ class MatchServiceImplTest {
     @Test
     void listWithAResultStatusFilterStillRunsOneQueryAndEnriches() {
         Match match = cardMatch(null, "Riverside", null, "Hillside", null);
-        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any())).thenReturn(Optional.empty());
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(match)));
         when(matchMapper.toDto(match)).thenReturn(cardDto(match));
@@ -2058,7 +2059,7 @@ class MatchServiceImplTest {
     @Test
     void summaryWithAResultStatusRunsTheSameFourCounts() {
         UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
         when(matchRepository.count(any(Specification.class))).thenReturn(9L, 4L, 3L, 1L);
 
         com.cricketlegend.dto.MatchesSummaryDto result = matchService.summary(authentication, clubId, null, null,
@@ -2072,7 +2073,7 @@ class MatchServiceImplTest {
     void listMatchingAppliesTheCallersSectionScopeAndEnrichesLikeTheMatchesList() {
         Match match = cardMatch(null, "Riverside", null, "Hillside", null);
         UUID sectionId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, cardClubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of(sectionId)));
         when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(match)));
@@ -2089,7 +2090,7 @@ class MatchServiceImplTest {
 
     @Test
     void countMatchingOfACallerWithNoAccessibleSectionsIsZeroWithoutQuerying() {
-        when(accessService.accessibleSectionIds(authentication, cardClubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(cardClubId), any()))
                 .thenReturn(Optional.of(java.util.Set.of()));
 
         assertThat(matchService.countMatching(
@@ -2107,9 +2108,9 @@ class MatchServiceImplTest {
         java.util.Set<UUID> sections = java.util.Set.of(UUID.randomUUID());
         when(accessService.resolveMatchSectionIds(cardClubId, homeTeam, null)).thenReturn(sections);
 
-        assertThat(matchService.requireAdministrableMatch(authentication, cardClubId, matchId)).isSameAs(match);
+        assertThat(matchService.requireAdministrableMatch(authentication, cardClubId, matchId, Permission.MATCHES_EDIT)).isSameAs(match);
 
-        verify(accessService).assertCanAdministerAnySection(authentication, cardClubId, sections);
+        verify(accessService).assertCanAnySection(authentication, cardClubId, Permission.MATCHES_EDIT, sections);
     }
 
     @Test
@@ -2118,9 +2119,9 @@ class MatchServiceImplTest {
         Match match = Match.builder().id(matchId).clubId(UUID.randomUUID()).active(true).build();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
-        assertThatThrownBy(() -> matchService.requireAdministrableMatch(authentication, cardClubId, matchId))
+        assertThatThrownBy(() -> matchService.requireAdministrableMatch(authentication, cardClubId, matchId, Permission.MATCHES_EDIT))
                 .isInstanceOf(NotFoundException.class);
-        verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+        verify(accessService, never()).assertCanAnySection(any(), any(), any(), any());
     }
 
     // --- docs/specs/111-league-season-dates.md: a match honours its league season's dates ---
@@ -2413,7 +2414,7 @@ class MatchServiceImplTest {
                 .thenReturn(resolvedSections);
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+                .assertCanAnySection(eq(authentication), eq(clubId), any(), eq(resolvedSections));
 
         assertThatThrownBy(() -> matchService.updateDateTime(authentication, clubId, matchId, dateTime(at(2030, 1, 1))))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);

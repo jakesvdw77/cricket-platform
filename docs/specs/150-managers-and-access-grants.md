@@ -50,7 +50,7 @@ Each permission has a **key**, a plain label, a **level** (View or Edit), and a 
 | `LEAGUES_EDIT` | Leagues, seasons, affiliations | Club |
 | `CLUB_SETUP_EDIT` | Club profile, structure (sections), sponsors, contacts, Hub settings | Club |
 | `IMPORTS_RUN` | Run schedule and result imports | Club |
-| `PLAYER_ACCOUNTS_MANAGE` | Link requests and player accounts | Club |
+| `PLAYER_ACCOUNTS_MANAGE` | Link requests and player accounts | Section |
 
 **Reference data is readable by every grant.** Anyone holding any role at a club can read club-wide reference data (club profile, section tree, leagues and seasons, grounds, sponsors, contacts). Otherwise a section coordinator could not even pick a league when creating a match. Only editing it needs `LEAGUES_EDIT` or `CLUB_SETUP_EDIT`.
 
@@ -226,3 +226,5 @@ Three releases so nothing breaks and each can be hand-checked on the Irene club:
 - **Follow-ups:** `TEAM` scope, an audit-log screen, a platform-admin override for the last Manager, dropping the legacy `role_assignment.role` for manager grants, and the platform-admin club pages revamp (separate owner idea).
 - `docs/roadmap.md` gets rows in the same change as the plan; `docs/architecture.md` (RoleAssignment diagram) is updated when release 1 lands. `docs/standards/backend.md`'s Authorization section is amended in release 1 to name `Permission` as the one way to guard an endpoint.
 - **Files:** `docs/mockups/managers-access-round1-mockup.html`.
+
+> Amended 2026-11-14 during the Release 3 test pass: `PLAYER_ACCOUNTS_MANAGE` is section reach, not club reach. Link requests carry a section and spec 119 already narrows them to that section's managers, so a club reach permission would have silently removed that feature from section Managers. A request with no section is still reached only by a club-wide grant.

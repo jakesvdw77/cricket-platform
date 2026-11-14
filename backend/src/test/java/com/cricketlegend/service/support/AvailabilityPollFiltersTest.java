@@ -1,5 +1,7 @@
 package com.cricketlegend.service.support;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -127,7 +129,7 @@ class AvailabilityPollFiltersTest {
         UUID teamId = UUID.randomUUID();
         when(teamRepository.findById(teamId))
                 .thenReturn(Optional.of(Team.builder().id(teamId).clubId(CLUB_ID).sectionId(SECTION).build()));
-        doThrow(new AccessDeniedException("no")).when(accessService).assertCanAdministerSection(caller, CLUB_ID, SECTION);
+        doThrow(new AccessDeniedException("no")).when(accessService).assertCan(eq(caller), eq(CLUB_ID), any(), eq(SECTION));
 
         assertThatThrownBy(() -> resolve(Optional.empty(), null, null, teamId)).isInstanceOf(AccessDeniedException.class);
     }
@@ -139,7 +141,7 @@ class AvailabilityPollFiltersTest {
         AvailabilityPollFilter filter = resolve(Optional.empty(), null, SECTION, null);
 
         assertThat(filter.sectionIds()).containsExactlyInAnyOrder(SECTION, CHILD);
-        org.mockito.Mockito.verify(accessService).assertCanAdministerSection(caller, CLUB_ID, SECTION);
+        org.mockito.Mockito.verify(accessService).assertCan(eq(caller), eq(CLUB_ID), any(), eq(SECTION));
     }
 
     @Test
@@ -153,7 +155,7 @@ class AvailabilityPollFiltersTest {
 
     @Test
     void aSectionOutsideTheCallersAccessIsForbidden() {
-        doThrow(new AccessDeniedException("no")).when(accessService).assertCanAdministerSection(caller, CLUB_ID, SECTION);
+        doThrow(new AccessDeniedException("no")).when(accessService).assertCan(eq(caller), eq(CLUB_ID), any(), eq(SECTION));
 
         assertThatThrownBy(() -> resolve(Optional.of(Set.of(CHILD)), null, SECTION, null))
                 .isInstanceOf(AccessDeniedException.class);

@@ -238,4 +238,44 @@ class LayeringRulesTest {
                 .getDirectDependenciesFromSelf().stream().map(d -> d.getTargetClass().getSimpleName()))
                 .contains("MyPlayerAccess");
     }
+
+    // ---- docs/specs/150: every manager endpoint asks a permission, never the old "can administer" question ----
+
+    @Test
+    void nothingOutsideAccessServiceCallsTheDeprecatedAdministerChecks() {
+        java.util.Set<String> deprecated = java.util.Set.of(
+                "canAdministerClub", "canAccessClub", "canAdministerSection", "accessibleSectionIds",
+                "assertCanAdministerSection", "assertCanAdministerAnySection");
+        ArchRule rule = noClasses().that().doNotHaveFullyQualifiedName("com.cricketlegend.config.AccessService")
+                .should().callMethodWhere(new DescribedPredicate<JavaCall<?>>("a deprecated AccessService check") {
+                    @Override
+                    public boolean test(JavaCall<?> call) {
+                        return call.getTargetOwner().isEquivalentTo(com.cricketlegend.config.AccessService.class)
+                                && deprecated.contains(call.getTarget().getName());
+                    }
+                })
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void noPreAuthorizeUsesTheDeprecatedAdministerChecks() {
+        ArchRule rule = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+                .that().areAnnotatedWith(org.springframework.security.access.prepost.PreAuthorize.class)
+                .should(new com.tngtech.archunit.lang.ArchCondition<com.tngtech.archunit.core.domain.JavaMethod>(
+                        "guard with a permission check, not canAccessClub, canAdministerClub or canAdministerSection") {
+                    @Override
+                    public void check(com.tngtech.archunit.core.domain.JavaMethod method,
+                            com.tngtech.archunit.lang.ConditionEvents events) {
+                        String expression = method.getAnnotationOfType(
+                                org.springframework.security.access.prepost.PreAuthorize.class).value();
+                        boolean old = expression.contains("canAdministerClub") || expression.contains("canAccessClub")
+                                || expression.contains("canAdministerSection");
+                        events.add(new com.tngtech.archunit.lang.SimpleConditionEvent(method, !old,
+                                method.getFullName() + " uses " + expression));
+                    }
+                })
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
 }

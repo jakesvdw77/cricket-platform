@@ -531,7 +531,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
         when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         var result = playerService.list(authentication, clubId, null, false, true, null, null);
 
@@ -551,7 +551,7 @@ class PlayerServiceImplTest {
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of(
                 com.cricketlegend.domain.PlayerSection.builder()
                         .playerProfileId(playerId).sectionId(taggedSectionId).build()));
-        when(accessService.accessibleSectionIds(authentication, clubId))
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any()))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
         var result = playerService.list(authentication, clubId, null, false, true, null, null);
@@ -568,7 +568,7 @@ class PlayerServiceImplTest {
                 .thenReturn(List.of(profile(playerId, personId, clubId, true)));
         when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
 
         var result = playerService.list(authentication, clubId, null, true, true, null, null);
 
@@ -586,7 +586,7 @@ class PlayerServiceImplTest {
     private void stubClubRoster(UUID clubId, PlayerProfile... profiles) {
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(profiles));
         when(playerSectionRepository.findByPlayerProfileIdIn(any())).thenReturn(List.of());
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionIdsFor(eq(authentication), eq(clubId), any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -795,9 +795,9 @@ class PlayerServiceImplTest {
                 profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
                 com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
         stubSingleProfile(own);
-        verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+        verify(accessService, never()).assertCanAnySection(any(), any(), any(), any());
         playerService.reject(authentication, clubId, own.getId());
-        verify(accessService).assertCanAdministerAnySection(any(), any(), any());
+        verify(accessService).assertCanAnySection(any(), any(), any(), any());
     }
 
     // --- date of birth rule (077) ---

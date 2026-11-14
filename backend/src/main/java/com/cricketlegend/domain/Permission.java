@@ -32,7 +32,7 @@ public enum Permission {
     LEAGUES_EDIT("Leagues, seasons and affiliations", Level.EDIT, Reach.CLUB, null),
     CLUB_SETUP_EDIT("Club profile, structure, sponsors, contacts and Hub settings", Level.EDIT, Reach.CLUB, null),
     IMPORTS_RUN("Run schedule and result imports", Level.EDIT, Reach.CLUB, null),
-    PLAYER_ACCOUNTS_MANAGE("Link requests and player accounts", Level.EDIT, Reach.CLUB, null);
+    PLAYER_ACCOUNTS_MANAGE("Link requests and player accounts", Level.EDIT, Reach.SECTION, null);
 
     public enum Level {
         VIEW,

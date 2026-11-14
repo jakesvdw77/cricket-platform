@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -634,7 +635,7 @@ class MatchSquadServiceImplTest {
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
                 .when(accessService)
-                .assertCanAdministerSection(authentication, clubId, sectionId);
+                .assertCan(eq(authentication), eq(clubId), any(), eq(sectionId));
 
         assertThatThrownBy(() -> service.get(authentication, clubId, matchId, teamId))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);

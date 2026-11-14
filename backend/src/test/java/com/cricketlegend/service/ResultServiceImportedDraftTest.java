@@ -94,7 +94,7 @@ class ResultServiceImportedDraftTest {
         when(scorecardService.load(any(), any())).thenReturn(new ScorecardDto(null, null, null, null, null, null, null));
         Match match = Match.builder().id(matchId).clubId(clubId).homeTeamName("Riverside").awayTeamName("Hillside")
                 .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
-        when(matchService.requireAdministrableMatch(auth, clubId, matchId)).thenReturn(match);
+        when(matchService.requireAdministrableMatch(org.mockito.ArgumentMatchers.eq(auth), org.mockito.ArgumentMatchers.eq(clubId), org.mockito.ArgumentMatchers.eq(matchId), org.mockito.ArgumentMatchers.any())).thenReturn(match);
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(personId);
         when(resultRepository.saveAndFlush(any(MatchResult.class))).thenAnswer(inv -> withId(inv.getArgument(0)));
         when(inningsRepository.saveAll(anyCollection())).thenAnswer(inv -> new ArrayList<MatchInnings>(inv.getArgument(0)));
