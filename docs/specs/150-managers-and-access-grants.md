@@ -84,17 +84,17 @@ Optional<Set<UUID>> sectionIdsFor(Authentication a, UUID clubId, Permission p) /
 - The caller's grants are loaded **once per request** (request-scoped), not once per check, so list endpoints with many checks do not multiply queries.
 - Server-side only. The UI receives the caller's effective permissions (below) to hide actions, never to decide them.
 
-## Rules (owner-approved intent 2026-11-14; items marked Proposed need one confirmation)
+## Rules (owner-approved 2026-11-14; the four open questions were answered the same day)
 
 1. **Level rule (Decided).** A grantor can grant only on a section **inside their own reach** (their section and everything beneath it, `035`). Same level is allowed; above never is.
 2. **Hold-what-you-give rule (Decided).** A grantor can grant a role only if they hold, at that place, **every permission the role carries at that place**. Permissions that are inert at the place (club-wide permissions on a section grant) are not compared. A Scorer cannot create a Manager; a section Manager can create a Manager of U15 because the club-wide permissions in the role are inert there.
 3. **Needs the permission (Decided).** Granting, changing and removing need `ACCESS_MANAGE`; seeing the list needs `ACCESS_VIEW`. Coordinator, Team Manager, Scorer and Viewer cannot grant by default.
 4. **Club-wide grants (Decided).** Only a club-wide holder of `ACCESS_MANAGE` can grant or remove a club-wide grant.
-5. **Removal and change (Proposed: same reach, no bigger role).** A person can remove or change a grant if it is inside their reach and its role's permissions at that place are a subset of their own. They cannot touch their own grant.
+5. **Removal and change (Decided 2026-11-14: same reach, no bigger role).** A person can remove or change a grant if it is inside their reach and its role's permissions at that place are a subset of their own. They cannot touch their own grant.
 6. **Last club-wide Manager (Decided).** The last club-wide holder of the Manager role cannot be removed or changed (409). A platform admin can still fix a club.
-7. **Redundant grants (Proposed: refuse).** Granting the same role (or a role whose permissions the person already has) on a section they already cover is refused, naming the existing grant. A person may hold different roles on the same place (Scorer and Team Manager); the permissions union.
-8. **Who is visible (Proposed).** A viewer with `ACCESS_VIEW` sees grants whose place is inside their reach, plus their own. Club-wide holders appear to section viewers only as a count. Emails are personal data and stay inside the reach that needs them.
-9. **A section that is deleted (Open).** Recommended: Club Structure refuses to delete a section that still has grants, naming them.
+7. **Redundant grants (Decided 2026-11-14: refuse).** Granting the same role (or a role whose permissions the person already has) on a section they already cover is refused, naming the existing grant. A person may hold different roles on the same place (Scorer and Team Manager); the permissions union.
+8. **Who is visible (Decided 2026-11-14: a count only for club-wide holders).** A viewer with `ACCESS_VIEW` sees grants whose place is inside their reach, plus their own. Club-wide holders appear to section viewers only as a count. Emails are personal data and stay inside the reach that needs them.
+9. **A section that is deleted (Decided 2026-11-14).** Club Structure refuses to delete a section that still has grants, naming them.
 10. **Abuse limit.** 20 invitations per club per day, 429 after.
 11. **Existing grants (Decided).** Every existing `CLUB_ADMIN` grant (club or section scope) becomes the Manager role at the same place by migration. No one gains or loses anything on the day it ships.
 
