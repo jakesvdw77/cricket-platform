@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AvailabilityPollTypeFilter;
 import com.cricketlegend.domain.AvailabilitySummaryPlayerKind;
 import com.cricketlegend.domain.Person;
@@ -83,7 +84,7 @@ public class AvailabilitySummaryServiceImpl implements AvailabilitySummaryServic
             UUID seasonId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed) {
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.AVAILABILITY_VIEW);
         // Validate the filter ids first so a bad id is a 404/403 even for a caller with no sections.
         AvailabilityPollFilter filter = pollFilters.resolve(
                 authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed, seasonId);
@@ -125,7 +126,7 @@ public class AvailabilitySummaryServiceImpl implements AvailabilitySummaryServic
             String search,
             Pageable pageable) {
         Pageable page = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), MAX_PAGE_SIZE));
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.AVAILABILITY_VIEW);
         AvailabilityPollFilter filter = pollFilters.resolve(
                 authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed, seasonId);
         if (accessible.isPresent() && accessible.get().isEmpty()) {

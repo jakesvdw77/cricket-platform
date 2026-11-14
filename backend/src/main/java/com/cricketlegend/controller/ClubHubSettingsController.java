@@ -24,13 +24,13 @@ public class ClubHubSettingsController {
         this.clubHubSettingsService = clubHubSettingsService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/hub-settings")
     public ResponseEntity<ClubHubSettingsDto> getHubSettings(@PathVariable UUID clubId) {
         return ResponseEntity.ok(clubHubSettingsService.get(clubId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/hub-settings")
     public ResponseEntity<ClubHubSettingsDto> updateHubSettings(
             @PathVariable UUID clubId, @RequestBody ClubHubSettingsDto request) {

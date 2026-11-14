@@ -147,6 +147,61 @@ public class AccessService {
     }
 
     /**
+     * Does the caller hold any grant at all in this club. The gate for reference data every grant may read (club profile,
+     * section tree, leagues, grounds, sponsors, contacts), docs/specs/150. Platform admin always does.
+     */
+    public boolean hasAnyGrant(Authentication authentication, UUID clubId) {
+        if (isPlatformAdmin(authentication)) {
+            return true;
+        }
+        return !effective(authentication, clubId).isEmpty();
+    }
+
+    /**
+     * {@link #can(Authentication, UUID, Permission, UUID)} for a section named in the URL: throws
+     * {@link NotFoundException} (404) first when the section is not in this club, so a wrong-club id is never confused
+     * with a right-club-wrong-section id (the convention {@link #canAdministerSection} set).
+     */
+    public boolean canInSection(Authentication authentication, UUID clubId, Permission permission, UUID sectionId) {
+        Section section = sectionRepository
+                .findById(sectionId)
+                .orElseThrow(() -> new NotFoundException("Section not found: " + sectionId));
+        if (!section.getClubId().equals(clubId)) {
+            throw new NotFoundException("Section not found: " + sectionId);
+        }
+        return can(authentication, clubId, permission, sectionId);
+    }
+
+    /** Void form of {@link #canInSection}, for service code that learns the section only after loading a resource. */
+    public void assertCan(Authentication authentication, UUID clubId, Permission permission, UUID sectionId) {
+        if (!canInSection(authentication, clubId, permission, sectionId)) {
+            throw new AccessDeniedException("Not authorized for " + permission + " in section: " + sectionId);
+        }
+    }
+
+    /**
+     * Passes when the caller holds {@code permission} for ANY of {@code sectionIds} (a player's section tags, a match's
+     * resolved sections). An empty collection is reachable only by a club-wide holder: an untagged resource is the
+     * club's own, the conservative default docs/specs/035 set. Platform admin always passes.
+     */
+    public void assertCanAnySection(
+            Authentication authentication, UUID clubId, Permission permission, Collection<UUID> sectionIds) {
+        if (isPlatformAdmin(authentication)) {
+            return;
+        }
+        EffectivePermissions effective = effective(authentication, clubId);
+        if (sectionIds == null || sectionIds.isEmpty()) {
+            if (!effective.holdsClubWide(permission)) {
+                throw new AccessDeniedException("Not authorized: only a club-wide grant reaches a resource with no section");
+            }
+            return;
+        }
+        if (sectionIds.stream().noneMatch(id -> effective.holds(permission, id))) {
+            throw new AccessDeniedException("Not authorized for " + permission + " in any of: " + sectionIds);
+        }
+    }
+
+    /**
      * What the caller may do in every club where they hold a grant, for {@code GET /api/v1/me/access}. The UI uses it
      * only to hide actions; every endpoint checks again. Platform admin holds no grants and gets an empty list (the
      * response's own {@code platformAdmin} flag means "everything").
@@ -312,6 +367,7 @@ public class AccessService {
                 .anyMatch("ROLE_platform_admin"::equals);
     }
 
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public boolean canAdministerClub(Authentication authentication, UUID clubId) {
         if (authentication == null) {
             return false;
@@ -336,6 +392,7 @@ public class AccessService {
      * caller who is NOT club-wide — empty means "holds no {@code SECTION}-scope grant in this club
      * either." See docs/specs/035-section-scoped-access.md's Data Model Changes.
      */
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public Optional<Set<UUID>> accessibleSectionIds(Authentication authentication, UUID clubId) {
         if (canAdministerClub(authentication, clubId)) {
             return Optional.empty();
@@ -444,6 +501,7 @@ public class AccessService {
      * genuinely club-wide-only surface (Club Profile, Club Structure, Sponsors, Club Contacts,
      * Seasons, Leagues). See docs/specs/035-section-scoped-access.md's API Contract.
      */
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public boolean canAccessClub(Authentication authentication, UUID clubId) {
         if (canAdministerClub(authentication, clubId)) {
             return true;
@@ -459,6 +517,7 @@ public class AccessService {
      * id and a right-club-wrong-section id are never confused with each other. See
      * docs/specs/035-section-scoped-access.md's API Contract.
      */
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public boolean canAdministerSection(Authentication authentication, UUID clubId, UUID sectionId) {
         Section section = sectionRepository
                 .findById(sectionId)
@@ -483,6 +542,7 @@ public class AccessService {
      * {@code docs/standards/backend.md} business exception — see
      * docs/specs/035-section-scoped-access.md's API Contract for why.
      */
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public void assertCanAdministerSection(Authentication authentication, UUID clubId, UUID sectionId) {
         if (!canAdministerSection(authentication, clubId, sectionId)) {
             throw new AccessDeniedException("Not authorized to administer section: " + sectionId);
@@ -497,6 +557,7 @@ public class AccessService {
      * resource is administerable only by a {@code CLUB}-scope admin — a deliberate, conservative
      * default). See docs/specs/035-section-scoped-access.md's API Contract.
      */
+    @Deprecated // docs/specs/150: nothing in the code base calls this any more; use can / sectionIdsFor / assertCan*
     public void assertCanAdministerAnySection(
             Authentication authentication, UUID clubId, Collection<UUID> sectionIds) {
         if (canAdministerClub(authentication, clubId)) {

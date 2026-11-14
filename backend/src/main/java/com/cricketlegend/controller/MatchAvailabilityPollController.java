@@ -41,14 +41,14 @@ public class MatchAvailabilityPollController {
         this.matchAvailabilityPollService = matchAvailabilityPollService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls")
     public ResponseEntity<List<MatchAvailabilityPollDto>> list(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(matchAvailabilityPollService.list(authentication, clubId, matchId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls")
     @ApiResponse(responseCode = "201", description = "Availability poll created")
     public ResponseEntity<MatchAvailabilityPollDto> create(
@@ -60,7 +60,7 @@ public class MatchAvailabilityPollController {
                 .body(matchAvailabilityPollService.create(authentication, clubId, matchId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @DeleteMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}")
     @ApiResponse(responseCode = "204", description = "Availability poll deleted")
     public ResponseEntity<Void> deletePoll(
@@ -72,7 +72,7 @@ public class MatchAvailabilityPollController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/open")
     public ResponseEntity<MatchAvailabilityPollDto> open(
             Authentication authentication,
@@ -82,7 +82,7 @@ public class MatchAvailabilityPollController {
         return ResponseEntity.ok(matchAvailabilityPollService.open(authentication, clubId, matchId, pollId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close")
     public ResponseEntity<MatchAvailabilityPollDto> close(
             Authentication authentication,
@@ -93,7 +93,7 @@ public class MatchAvailabilityPollController {
     }
 
     /** docs/specs/066-poll-close-time-and-unified-cards.md: edit the close time of an open or closed poll. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close-time")
     public ResponseEntity<MatchAvailabilityPollDto> updatePollCloseTime(
             Authentication authentication,
@@ -105,7 +105,7 @@ public class MatchAvailabilityPollController {
                 matchAvailabilityPollService.updateCloseTime(authentication, clubId, matchId, pollId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/responses")
     public ResponseEntity<MatchAvailabilityPollResponsesDto> getResponses(
             Authentication authentication,
@@ -115,7 +115,7 @@ public class MatchAvailabilityPollController {
         return ResponseEntity.ok(matchAvailabilityPollService.getResponses(authentication, clubId, matchId, pollId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerProfileId}")
     public ResponseEntity<MatchAvailabilityPollResponsesDto> setPlayerStatus(
             Authentication authentication,
@@ -129,7 +129,7 @@ public class MatchAvailabilityPollController {
     }
 
     /** docs/specs/034-availability-polls-dashboard.md, section-aware per docs/specs/035. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/availability-polls/open")
     public ResponseEntity<List<OpenAvailabilityPollDto>> listOpen(
             Authentication authentication,
@@ -146,7 +146,7 @@ public class MatchAvailabilityPollController {
      * Closed squad polls, most recent match first, capped server-side at the 50 most recent (see
      * {@code AvailabilityPollFilter.CLOSED_POLLS_LIMIT}). Mirrors {@link #listOpen}.
      */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/availability-polls/closed")
     public ResponseEntity<List<OpenAvailabilityPollDto>> listClosed(
             Authentication authentication,

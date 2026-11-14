@@ -20,7 +20,7 @@ public class ManagerOverviewController {
         this.managerOverviewService = managerOverviewService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/overview")
     public ResponseEntity<ManagerOverviewDto> overview(Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(managerOverviewService.overview(authentication, clubId));

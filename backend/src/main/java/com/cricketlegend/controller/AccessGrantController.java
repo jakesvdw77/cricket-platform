@@ -43,7 +43,7 @@ public class AccessGrantController {
         this.accessRoleService = accessRoleService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/access/roles")
     public ResponseEntity<List<AccessRoleDto>> roles(@PathVariable UUID clubId) {
         return ResponseEntity.ok(accessRoleService.list());

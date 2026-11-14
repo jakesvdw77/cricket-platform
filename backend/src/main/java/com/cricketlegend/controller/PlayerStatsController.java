@@ -38,7 +38,7 @@ public class PlayerStatsController {
         this.playerDashboardService = playerDashboardService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats")
     public ResponseEntity<PlayerStatsDto> get(
             Authentication authentication,
@@ -53,7 +53,7 @@ public class PlayerStatsController {
                 authentication, clubId, playerId, seasonId, leagueId, teamId, sectionId, competition));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/filter-options")
     public ResponseEntity<PlayerStatsFilterOptionsDto> getPlayerStatsFilterOptions(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
@@ -61,7 +61,7 @@ public class PlayerStatsController {
     }
 
     /** docs/specs/115-player-match-list.md: one page of the player's counted matches, newest first. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/matches")
     public ResponseEntity<PlayerMatchListDto> getPlayerMatches(
             Authentication authentication,
@@ -90,7 +90,7 @@ public class PlayerStatsController {
     }
 
     /** docs/specs/117-stats-dashboard.md: every series of the player Dashboard, for the filters the page holds. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/dashboard")
     public ResponseEntity<PlayerDashboardDto> getPlayerDashboard(
             Authentication authentication,

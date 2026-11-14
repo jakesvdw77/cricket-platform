@@ -33,7 +33,7 @@ public class PlayerAccountController {
         this.playerAccountService = playerAccountService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/player-accounts")
     public ResponseEntity<Page<PlayerAccountDto>> list(
             Authentication authentication,
@@ -47,14 +47,14 @@ public class PlayerAccountController {
                 playerAccountService.list(authentication, clubId, sectionId, noMainAgent, search, page, size));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/links")
     public ResponseEntity<List<PlayerLinkDto>> links(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerAccountService.links(authentication, clubId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @DeleteMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}")
     public ResponseEntity<Void> revokeLink(
             Authentication authentication,
@@ -66,7 +66,7 @@ public class PlayerAccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/links/{linkId}/make-main")
     public ResponseEntity<Void> makeMain(
             Authentication authentication,
@@ -78,7 +78,7 @@ public class PlayerAccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/links")
     public ResponseEntity<Void> inviteMain(
             Authentication authentication,

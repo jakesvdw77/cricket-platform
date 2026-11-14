@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.League;
@@ -168,7 +169,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             UUID teamId,
             UUID seasonId,
             Boolean open) {
-        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessibleSectionIds = accessService.sectionIdsFor(authentication, clubId, Permission.AVAILABILITY_VIEW);
         // Validates section/league/team (403/404) and builds the shared narrowing (docs/specs/083).
         AvailabilityPollFilter filter = pollFilters.resolve(
                 authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false, seasonId);
@@ -204,7 +205,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional
     public SectionAvailabilityRoundDto create(
             Authentication authentication, UUID clubId, CreateSectionAvailabilityRoundRequest request) {
-        accessService.assertCanAdministerSection(authentication, clubId, request.sectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, request.sectionId());
         Section section = findSectionOrThrowForClub(clubId, request.sectionId());
 
         Map<UUID, Match> matchesById = new LinkedHashMap<>();
@@ -291,7 +292,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     public SectionAvailabilityRoundDto updateCloseTime(
             Authentication authentication, UUID clubId, UUID roundId, UpdatePollCloseTimeRequest request) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
         RoundSpan span = roundSpan(round.getId());
         Instant validated = AutoCloseSchedule.validateCloseTime(
                 request.autoClose(), request.scheduledCloseAt(), span.earliestKickoff(), Instant.now());
@@ -310,7 +311,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             UUID roundId,
             UpdateSectionAvailabilityRoundDescriptionRequest request) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
         round.setDescription(request.description());
         round = sectionAvailabilityRoundRepository.save(round);
         return toDto(round);
@@ -320,7 +321,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional
     public SectionAvailabilityRoundDto open(Authentication authentication, UUID clubId, UUID roundId) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
         if (round.isOpen()) {
             throw new InvalidStatusTransitionException("Section availability round is already open: " + roundId);
         }
@@ -345,7 +346,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional
     public SectionAvailabilityRoundDto close(Authentication authentication, UUID clubId, UUID roundId) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
         if (!round.isOpen()) {
             throw new InvalidStatusTransitionException("Section availability round is already closed: " + roundId);
         }
@@ -359,7 +360,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional
     public void delete(Authentication authentication, UUID clubId, UUID roundId) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
 
         List<UUID> windowIds = sectionAvailabilityWindowRepository.findByRoundId(roundId).stream()
                 .map(SectionAvailabilityWindow::getId)
@@ -397,7 +398,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional(readOnly = true)
     public SectionAvailabilityRoundResponsesDto getResponses(Authentication authentication, UUID clubId, UUID roundId) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, round.getSectionId());
         return buildResponsesDto(round);
     }
 
@@ -405,7 +406,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     @Transactional(readOnly = true)
     public List<SectionAvailabilityRoundMatchDto> getMatches(Authentication authentication, UUID clubId, UUID roundId) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, round.getSectionId());
 
         List<SectionAvailabilityRoundMatchDto> result = new ArrayList<>();
         for (Map.Entry<SectionAvailabilityWindow, Match> windowed : loadWindowedMatches(List.of(round.getId()))) {
@@ -504,7 +505,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             UUID windowId,
             AvailabilityStatus status) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
-        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_MANAGE, round.getSectionId());
 
         List<SectionAvailabilityResponseRowDto> audience = audienceResolver.resolveAudience(round.getSectionId());
         boolean inAudience = audience.stream().anyMatch(row -> row.playerProfileId().equals(playerProfileId));

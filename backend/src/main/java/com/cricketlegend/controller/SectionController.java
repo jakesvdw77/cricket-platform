@@ -41,14 +41,14 @@ public class SectionController {
         this.sectionService = sectionService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections")
     public ResponseEntity<List<SectionDto>> list(@PathVariable UUID clubId) {
         return ResponseEntity.ok(sectionService.list(clubId));
     }
 
     /** docs/specs/094-club-structure-and-seasons.md: every section's team and player figures and its leagues for a season. */
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/summary")
     public ResponseEntity<SectionsSummaryDto> summary(
             Authentication authentication,
@@ -57,7 +57,7 @@ public class SectionController {
         return ResponseEntity.ok(sectionService.summary(authentication, clubId, seasonId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections")
     @ApiResponse(responseCode = "201", description = "Section created")
     public ResponseEntity<SectionDto> create(
@@ -65,7 +65,7 @@ public class SectionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(sectionService.create(clubId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}")
     public ResponseEntity<SectionDto> update(
             @PathVariable UUID clubId,
@@ -78,7 +78,7 @@ public class SectionController {
     // or 204 with no body when the section had nothing attached to it and was actually deleted —
     // see docs/specs/025-club-structure.md's Data Model Changes Remove rule and this endpoint's
     // own Architecture note in the spec's API Contract.
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate")
     public ResponseEntity<SectionDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
@@ -88,21 +88,21 @@ public class SectionController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate")
     public ResponseEntity<SectionDto> reactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
         return ResponseEntity.ok(sectionService.reactivate(clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts")
     public ResponseEntity<List<ClubContactDto>> listContacts(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
         return ResponseEntity.ok(sectionService.listContacts(clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/link")
     public ResponseEntity<Void> link(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID contactId) {
@@ -110,7 +110,7 @@ public class SectionController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink")
     public ResponseEntity<Void> unlink(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID contactId) {

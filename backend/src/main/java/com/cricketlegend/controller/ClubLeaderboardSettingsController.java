@@ -25,13 +25,13 @@ public class ClubLeaderboardSettingsController {
         this.clubLeaderboardSettingsService = clubLeaderboardSettingsService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).STATS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leaderboard-settings")
     public ResponseEntity<LeaderboardSettingsDto> getLeaderboardSettings(@PathVariable UUID clubId) {
         return ResponseEntity.ok(clubLeaderboardSettingsService.get(clubId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/leaderboard-settings")
     public ResponseEntity<LeaderboardSettingsDto> updateLeaderboardSettings(
             @PathVariable UUID clubId, @RequestBody LeaderboardSettingsDto request) {

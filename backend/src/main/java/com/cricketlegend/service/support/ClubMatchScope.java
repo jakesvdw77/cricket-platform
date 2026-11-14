@@ -1,6 +1,7 @@
 package com.cricketlegend.service.support;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.exception.NotFoundException;
@@ -48,11 +49,12 @@ public class ClubMatchScope {
         this.matchRepository = matchRepository;
     }
 
-    public Scope resolve(Authentication authentication, UUID clubId, UUID sectionId, UUID teamId) {
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+    public Scope resolve(
+            Authentication authentication, UUID clubId, Permission permission, UUID sectionId, UUID teamId) {
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, permission);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, permission, sectionId);
             narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
         }
         Set<UUID> sections = narrowTo;
@@ -67,7 +69,7 @@ public class ClubMatchScope {
                     .findById(teamId)
                     .filter(candidate -> clubId.equals(candidate.getClubId()))
                     .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
-            accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+            accessService.assertCan(authentication, clubId, permission, team.getSectionId());
             boolean outside = sectionId != null && !sections.contains(team.getSectionId());
             return new Scope(Set.of(team.getSectionId()), teamId, outside);
         }

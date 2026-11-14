@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.NameAliasKind;
 import com.cricketlegend.domain.ResultSide;
@@ -110,7 +111,7 @@ public class ResultImportServiceImpl implements ResultImportService {
             throw new ValidationException("Give either a file or pasted content, not both and not neither.");
         }
         if (request.matchId() != null) {
-            matchService.requireAdministrableMatch(authentication, clubId, request.matchId());
+            matchService.requireAdministrableMatch(authentication, clubId, request.matchId(), Permission.RESULTS_EDIT);
         }
         ImportInput input = hasFile
                 ? ImportInput.file(request.format(), fileName, bytes)
@@ -159,7 +160,7 @@ public class ResultImportServiceImpl implements ResultImportService {
         if (!errors.isEmpty()) {
             throw new ImportInputValidationException("The document does not follow the common import format.", errors);
         }
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, request.matchId());
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, request.matchId(), Permission.RESULTS_EDIT);
         if (match.getHomeTeamId() == null && match.getAwayTeamId() == null) {
             // Neither side is one of the club's teams, so there is nobody of ours to import; the scorecard rules would refuse it with a vaguer message.
             throw new ImportInputValidationException("The match has no team of this club.", List.of(new ImportErrorDto(

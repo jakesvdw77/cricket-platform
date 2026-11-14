@@ -27,7 +27,7 @@ public class AvailabilitySummaryController {
         this.availabilitySummaryService = availabilitySummaryService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/availability/summary")
     public ResponseEntity<AvailabilitySummaryDto> summary(
             Authentication authentication,
@@ -47,7 +47,7 @@ public class AvailabilitySummaryController {
      * counters, for the same filters. {@code kind} is {@code responded} or {@code awaiting} (400
      * if missing or otherwise); the page size is capped at 100.
      */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/availability/summary/players")
     public ResponseEntity<Page<AvailabilitySummaryPlayerDto>> players(
             Authentication authentication,

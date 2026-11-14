@@ -414,9 +414,13 @@ public class AccessGrantServiceImpl implements AccessGrantService {
         return grant.getScopeType() == ScopeType.SECTION ? grant.getScopeId() : null;
     }
 
-    /** The old role column still drives the checks and profiles that Release 3 replaces: only a Manager is a CLUB_ADMIN. */
+    /**
+     * The old role column no longer decides what anyone may do (the permission checks do, docs/specs/150). It still marks
+     * "holds a manager grant here" for the profile switcher and {@code me/access}, so every role written through this
+     * screen carries CLUB_ADMIN, whichever access role it is.
+     */
     private static RoleAssignmentRole legacyRoleFor(AccessRole role) {
-        return AccessRole.MANAGER_ID.equals(role.getId()) ? RoleAssignmentRole.CLUB_ADMIN : RoleAssignmentRole.MANAGER;
+        return RoleAssignmentRole.CLUB_ADMIN;
     }
 
     private static UUID roleIdOf(RoleAssignment grant) {

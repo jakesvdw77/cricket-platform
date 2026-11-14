@@ -30,7 +30,7 @@ public class MatchSelectionController {
         this.matchSelectionService = matchSelectionService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/selection-pool")
     public ResponseEntity<SelectionPoolDto> pool(
             Authentication authentication,
@@ -43,7 +43,7 @@ public class MatchSelectionController {
                 matchSelectionService.pool(authentication, clubId, matchId, teamId, wholeSection, q));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).SELECTION_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/selection")
     @ApiResponse(responseCode = "409", description = "One or more players cannot be selected; nothing was saved")
     public ResponseEntity<MatchSideDto> apply(

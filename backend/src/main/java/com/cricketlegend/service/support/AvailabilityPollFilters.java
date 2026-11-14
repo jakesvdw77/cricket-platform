@@ -1,6 +1,7 @@
 package com.cricketlegend.service.support;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AvailabilityPollTypeFilter;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
@@ -96,11 +97,11 @@ public class AvailabilityPollFilters {
                     .findById(teamId)
                     .filter(candidate -> clubId.equals(candidate.getClubId()))
                     .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
-            accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+            accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, team.getSectionId());
         }
         Set<UUID> sectionIds = null;
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.AVAILABILITY_VIEW, sectionId);
             sectionIds = new HashSet<>(accessService.sectionAndDescendantIds(clubId, sectionId));
             if (accessible.isPresent()) {
                 sectionIds.retainAll(accessible.get());

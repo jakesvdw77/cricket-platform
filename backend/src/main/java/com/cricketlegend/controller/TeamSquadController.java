@@ -36,7 +36,7 @@ public class TeamSquadController {
         this.teamSquadService = teamSquadService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad")
     public ResponseEntity<List<TeamSquadMemberDto>> list(
             Authentication authentication,
@@ -46,7 +46,7 @@ public class TeamSquadController {
         return ResponseEntity.ok(teamSquadService.list(authentication, clubId, teamId, seasonId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add")
     public ResponseEntity<TeamSquadMemberDto> add(
             Authentication authentication,
@@ -57,7 +57,7 @@ public class TeamSquadController {
         return ResponseEntity.ok(teamSquadService.add(authentication, clubId, teamId, seasonId, playerId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}")
     public ResponseEntity<TeamSquadMemberDto> update(
             Authentication authentication,
@@ -70,7 +70,7 @@ public class TeamSquadController {
                 authentication, clubId, teamId, seasonId, playerId, request.jerseyNumber(), request.isCaptain()));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/remove")
     public ResponseEntity<Void> remove(
             Authentication authentication,

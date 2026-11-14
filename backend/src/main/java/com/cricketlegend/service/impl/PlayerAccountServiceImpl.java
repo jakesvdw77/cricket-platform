@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.LinkGrantedVia;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonLinkStatus;
@@ -91,13 +92,13 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
             throw new ValidationException("page must be 0 or more and size between 1 and " + MAX_PAGE_SIZE);
         }
         // the caller's own sections (unrestricted when empty), narrowed to a chosen section's closure
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE);
         Set<UUID> scope = null;
         if (accessible.isPresent()) {
             scope = accessible.get();
         }
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, sectionId);
             Set<UUID> closure = accessService.sectionAndDescendantIds(clubId, sectionId);
             scope = scope == null
                     ? closure
@@ -148,7 +149,7 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
                 .filter(p -> p.getClubId().equals(clubId))
                 .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
         Set<UUID> sections = new HashSet<>(playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of()));
-        accessService.assertCanAdministerAnySection(authentication, clubId, sections);
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, sections);
 
         List<PersonLink> links = new ArrayList<>(
                 personLinkRepository.findActiveBySubjectAndClub(profile.getPersonId(), clubId));
@@ -230,7 +231,7 @@ public class PlayerAccountServiceImpl implements PlayerAccountService {
                 .filter(p -> p.getClubId().equals(clubId))
                 .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
         Set<UUID> sections = new HashSet<>(playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of()));
-        accessService.assertCanAdministerAnySection(authentication, clubId, sections);
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, sections);
         return profile;
     }
 

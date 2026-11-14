@@ -1,5 +1,6 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.domain.MatchResultStatus;
@@ -201,7 +202,7 @@ public interface MatchService {
      * after the per-match section gate ({@code AccessDeniedException} when a section-scoped caller cannot administer
      * it). Result capture reuses this so it applies exactly the Matches write rule.
      */
-    Match requireAdministrableMatch(Authentication authentication, UUID clubId, UUID matchId);
+    Match requireAdministrableMatch(Authentication authentication, UUID clubId, UUID matchId, Permission permission);
 
     /**
      * Creates a match. {@code clubId} (the acting club from the URL) is always the saved {@code

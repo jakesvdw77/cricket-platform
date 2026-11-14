@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueTeam;
@@ -260,9 +261,10 @@ public class MatchServiceImpl implements MatchService {
     }
 
     @Override
-    public Match requireAdministrableMatch(Authentication authentication, UUID clubId, UUID matchId) {
+    public Match requireAdministrableMatch(
+            Authentication authentication, UUID clubId, UUID matchId, Permission permission) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, permission);
         return match;
     }
 
@@ -278,9 +280,9 @@ public class MatchServiceImpl implements MatchService {
      */
     private Optional<Set<UUID>> resolveAuthorizedSectionIds(
             Authentication authentication, UUID clubId, UUID sectionId) {
-        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessibleSectionIds = accessService.sectionIdsFor(authentication, clubId, Permission.MATCHES_VIEW);
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.MATCHES_VIEW, sectionId);
             return Optional.of(accessService.sectionAndDescendantIds(clubId, sectionId));
         }
         return accessibleSectionIds;
@@ -556,7 +558,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional(readOnly = true)
     public MatchDto get(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_VIEW);
         return toDto(match);
     }
 
@@ -581,9 +583,10 @@ public class MatchServiceImpl implements MatchService {
         LeagueTeam awayLeagueTeam = resolveLeagueTeam(
                 clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
                 request.homeLeagueTeamId(), null, "away");
-        accessService.assertCanAdministerAnySection(
+        accessService.assertCanAnySection(
                 authentication,
                 clubId,
+                Permission.MATCHES_EDIT,
                 accessService.resolveMatchSectionIds(clubId, request.homeTeamId(), request.awayTeamId()));
         PlayingArea field = resolveField(request.playingAreaId());
 
@@ -674,9 +677,10 @@ public class MatchServiceImpl implements MatchService {
             LeagueTeam awayLeagueTeam = resolveLeagueTeam(
                     clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
                     request.homeLeagueTeamId(), null, "away");
-            accessService.assertCanAdministerAnySection(
+            accessService.assertCanAnySection(
                     authentication,
                     clubId,
+                    Permission.MATCHES_EDIT,
                     accessService.resolveMatchSectionIds(clubId, request.homeTeamId(), request.awayTeamId(), teamsById));
             PlayingArea field = resolveField(request.playingAreaId());
             matches.add(Match.builder()
@@ -776,7 +780,7 @@ public class MatchServiceImpl implements MatchService {
                 clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
                 request.homeLeagueTeamId(), match.getAwayLeagueTeamId(), "away");
 
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_EDIT);
         PlayingArea field = resolveField(request.playingAreaId());
         // docs/specs/132: before any field of the stored match is changed; the edited match excludes itself.
         MatchScheduleRules.Candidate edited = new MatchScheduleRules.Candidate(
@@ -813,7 +817,7 @@ public class MatchServiceImpl implements MatchService {
     public MatchDto updateDateTime(
             Authentication authentication, UUID clubId, UUID matchId, UpdateMatchDateTimeRequest request) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_EDIT);
         // docs/specs/111 and 118: the same league-season dates check as update, over the match's own league and season.
         leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), request.matchDate());
         // docs/specs/132: a reschedule always changes the time, so it always runs the shared scheduling rules.
@@ -832,7 +836,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchDto deactivate(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_EDIT);
         if (!match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already inactive: " + matchId);
         }
@@ -844,7 +848,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchDto reactivate(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_EDIT);
         if (match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already active: " + matchId);
         }
@@ -865,7 +869,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public void delete(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.MATCHES_EDIT);
         Set<MatchEmptiness.Attachment> attached =
                 matchEmptiness.attachmentsFor(List.of(matchId)).getOrDefault(matchId, Set.of());
         if (!attached.isEmpty()) {
@@ -1118,10 +1122,11 @@ public class MatchServiceImpl implements MatchService {
      * that resolves to at least one of their own accessible sections; a match resolving to zero
      * of this club's own sections is reachable only by a {@code CLUB}-scope admin.
      */
-    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+    private void assertCanAdministerMatch(
+            Authentication authentication, UUID clubId, Match match, Permission permission) {
         Set<UUID> matchSectionIds =
                 accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
-        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
+        accessService.assertCanAnySection(authentication, clubId, permission, matchSectionIds);
     }
 
     /**
@@ -1143,7 +1148,7 @@ public class MatchServiceImpl implements MatchService {
     public List<MatchDto> listPrevious(
             Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, UUID excludeMatchId) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
-        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        accessService.assertCan(authentication, clubId, Permission.MATCHES_VIEW, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         return toDtos(matchRepository.findPreviousForTeamSeasonLeague(

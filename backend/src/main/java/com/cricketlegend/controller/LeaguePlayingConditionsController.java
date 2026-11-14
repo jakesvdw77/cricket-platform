@@ -44,14 +44,14 @@ public class LeaguePlayingConditionsController {
         this.accessService = accessService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions")
     public ResponseEntity<LeaguePlayingConditionsDto> get(
             @PathVariable UUID clubId, @PathVariable UUID leagueId, @PathVariable UUID seasonId) {
         return ResponseEntity.ok(leaguePlayingConditionsService.get(clubId, leagueId, seasonId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PostMapping(
             value = "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -66,7 +66,7 @@ public class LeaguePlayingConditionsController {
                 leaguePlayingConditionsService.upload(clubId, leagueId, seasonId, file, uploadedBy));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).LEAGUES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions")
     public ResponseEntity<LeaguePlayingConditionsDto> update(
             @PathVariable UUID clubId,

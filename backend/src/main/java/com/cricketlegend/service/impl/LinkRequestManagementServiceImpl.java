@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.LinkGrantedVia;
 import com.cricketlegend.domain.LinkRequest;
 import com.cricketlegend.domain.LinkRequestStatus;
@@ -205,7 +206,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
         if (request.getStatus() != LinkRequestStatus.PENDING) {
             throw new InvalidStatusTransitionException("This request has already been decided or cancelled.");
         }
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE);
         if (accessible.isPresent() && !isVisibleToScoped(request, accessible, clubId)) {
             throw new AccessDeniedException("Not authorized to decide this link request");
         }
@@ -218,7 +219,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
                 .filter(p -> p.getClubId().equals(clubId))
                 .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
         Set<UUID> sections = playerSectionNames.sectionIds(List.of(playerId)).getOrDefault(playerId, Set.of());
-        accessService.assertCanAdministerAnySection(authentication, clubId, sections);
+        accessService.assertCanAnySection(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, sections);
         if (!profile.isActive()) {
             throw new ValidationException("This player is not active.");
         }
@@ -229,10 +230,10 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
             Authentication authentication, UUID clubId, NewLinkedPlayerRequest np, UUID requestSectionId) {
         UUID sectionId = np.sectionId() != null ? np.sectionId() : requestSectionId; // default to the requester's choice
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, sectionId);
         } else {
             // an untagged player is administerable only club-wide
-            accessService.assertCanAdministerAnySection(authentication, clubId, Set.of());
+            accessService.assertCanAnySection(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE, Set.of());
         }
         PlayerDto created = playerService.create(clubId, new CreatePlayerRequest(
                 np.firstName().trim(), np.lastName().trim(), np.dateOfBirth(), null, null, null, null, null, null,
@@ -285,7 +286,7 @@ public class LinkRequestManagementServiceImpl implements LinkRequestManagementSe
     }
 
     private VisibleLinkRequests visible(Authentication authentication, UUID clubId) {
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.PLAYER_ACCOUNTS_MANAGE);
         List<LinkRequest> pending =
                 linkRequestRepository.findByClubIdAndStatusOrderByCreatedAtAsc(clubId, LinkRequestStatus.PENDING);
         Map<UUID, Suggestion> suggestions = suggester.suggest(clubId, pending, accessible);

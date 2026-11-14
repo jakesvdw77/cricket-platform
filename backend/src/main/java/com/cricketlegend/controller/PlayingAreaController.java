@@ -40,7 +40,7 @@ public class PlayingAreaController {
         this.playingAreaService = playingAreaService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/playing-areas")
     public ResponseEntity<Page<PlayingAreaDto>> list(
             @PathVariable UUID clubId,
@@ -58,7 +58,7 @@ public class PlayingAreaController {
                 clubId, areaType, q, categories, country, province, city, verification, mine, usedByClub, pageable));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/playing-areas/summary")
     public ResponseEntity<PlayingAreaSummaryDto> summary(
             @PathVariable UUID clubId,
@@ -72,7 +72,7 @@ public class PlayingAreaController {
                 playingAreaService.summary(clubId, areaType, q, categories, country, province, city));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/playing-areas/filter-options")
     public ResponseEntity<PlayingAreaFilterOptionsDto> filterOptions(
             @PathVariable UUID clubId,
@@ -88,7 +88,7 @@ public class PlayingAreaController {
                 clubId, areaType, q, categories, country, province, city, verification, mine));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/playing-areas/similar")
     public ResponseEntity<List<PlayingAreaDto>> similar(
             @PathVariable UUID clubId,
@@ -98,13 +98,13 @@ public class PlayingAreaController {
         return ResponseEntity.ok(playingAreaService.similar(clubId, name, city, country));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/playing-areas/{id}")
     public ResponseEntity<PlayingAreaDto> get(@PathVariable UUID clubId, @PathVariable UUID id) {
         return ResponseEntity.ok(playingAreaService.get(clubId, id));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/playing-areas")
     @ApiResponse(responseCode = "201", description = "Field captured")
     public ResponseEntity<PlayingAreaDto> create(
@@ -114,20 +114,20 @@ public class PlayingAreaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(playingAreaService.create(clubId, request, linkHome));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/playing-areas/{id}")
     public ResponseEntity<PlayingAreaDto> update(
             @PathVariable UUID clubId, @PathVariable UUID id, @Valid @RequestBody PlayingAreaRequest request) {
         return ResponseEntity.ok(playingAreaService.update(clubId, id, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/playing-areas/{id}/home")
     public ResponseEntity<PlayingAreaDto> linkHome(@PathVariable UUID clubId, @PathVariable UUID id) {
         return ResponseEntity.ok(playingAreaService.linkHome(clubId, id));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_EDIT)")
     @DeleteMapping("/api/v1/manage/clubs/{clubId}/playing-areas/{id}/home")
     @ApiResponse(responseCode = "204", description = "Home link removed")
     public ResponseEntity<Void> unlinkHome(@PathVariable UUID clubId, @PathVariable UUID id) {

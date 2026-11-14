@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
@@ -106,7 +107,7 @@ public class MatchSelectionServiceImpl implements MatchSelectionService {
             boolean wholeSection,
             String q) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_VIEW);
         if (!teamId.equals(match.getHomeTeamId()) && !teamId.equals(match.getAwayTeamId())) {
             throw new ValidationException(
                     "teamId " + teamId + " is not one of this match's own home/away team ids");
@@ -193,7 +194,7 @@ public class MatchSelectionServiceImpl implements MatchSelectionService {
     public MatchSideDto apply(
             Authentication authentication, UUID clubId, UUID matchId, UUID sideId, ApplySelectionRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
-        assertCanAdministerMatch(authentication, clubId, match);
+        assertCanAdministerMatch(authentication, clubId, match, Permission.SELECTION_MANAGE);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         List<SelectionEntryRequest> entries = request.players();
@@ -366,7 +367,7 @@ public class MatchSelectionServiceImpl implements MatchSelectionService {
             return null;
         }
         boolean canRelease = canReleaseByTeam.computeIfAbsent(taken.teamId(), id -> taken.teamClubId().equals(clubId)
-                && accessService.canAdministerSection(authentication, clubId, taken.teamSectionId()));
+                && accessService.canInSection(authentication, clubId, Permission.SELECTION_VIEW, taken.teamSectionId()));
         return selectionMapper.toTakenDto(taken, canRelease);
     }
 
@@ -389,10 +390,11 @@ public class MatchSelectionServiceImpl implements MatchSelectionService {
                 || info.lastName().toLowerCase(Locale.ROOT).contains(needle);
     }
 
-    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+    private void assertCanAdministerMatch(
+            Authentication authentication, UUID clubId, Match match, Permission permission) {
         Set<UUID> matchSectionIds =
                 accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
-        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
+        accessService.assertCanAnySection(authentication, clubId, permission, matchSectionIds);
     }
 
     private Match findMatchOrThrowForClub(UUID clubId, UUID matchId) {

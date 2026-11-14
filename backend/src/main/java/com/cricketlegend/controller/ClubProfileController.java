@@ -42,20 +42,20 @@ public class ClubProfileController {
         return ResponseEntity.ok(clubProfileService.get(id));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #id)")
+    @PreAuthorize("@access.can(authentication, #id, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/platform/clubs/{id}/profile")
     public ResponseEntity<ClubProfileDto> upsert(
             @PathVariable UUID id, @Valid @RequestBody UpdateClubProfileRequest request) {
         return ResponseEntity.ok(clubProfileService.upsert(id, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #id)")
+    @PreAuthorize("@access.hasAnyGrant(authentication, #id)")
     @GetMapping("/api/v1/manage/clubs/{id}/profile")
     public ResponseEntity<ClubProfileDto> getManaged(@PathVariable UUID id) {
         return ResponseEntity.ok(clubProfileService.get(id));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #id)")
+    @PreAuthorize("@access.can(authentication, #id, T(com.cricketlegend.domain.Permission).CLUB_SETUP_EDIT)")
     @PutMapping("/api/v1/manage/clubs/{id}/profile")
     public ResponseEntity<ClubProfileDto> upsertManaged(
             @PathVariable UUID id, @Valid @RequestBody UpdateClubProfileRequest request) {

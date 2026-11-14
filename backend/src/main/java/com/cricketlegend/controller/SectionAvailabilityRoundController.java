@@ -53,14 +53,14 @@ public class SectionAvailabilityRoundController {
         this.sectionAvailabilityFixtureGroupResolver = sectionAvailabilityFixtureGroupResolver;
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/section-availability-fixture-groups")
     public ResponseEntity<List<SectionAvailabilityFixtureGroupDto>> fixtureGroups(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID sectionId) {
         return ResponseEntity.ok(sectionAvailabilityFixtureGroupResolver.resolveGroups(clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds")
     public ResponseEntity<List<SectionAvailabilityRoundDto>> list(
             Authentication authentication,
@@ -74,7 +74,7 @@ public class SectionAvailabilityRoundController {
                 sectionAvailabilityRoundService.list(authentication, clubId, sectionId, leagueId, teamId, seasonId, open));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds")
     @ApiResponse(responseCode = "201", description = "Section availability round created")
     public ResponseEntity<SectionAvailabilityRoundDto> create(
@@ -85,7 +85,7 @@ public class SectionAvailabilityRoundController {
                 .body(sectionAvailabilityRoundService.create(authentication, clubId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}")
     public ResponseEntity<SectionAvailabilityRoundDto> updateDescription(
             Authentication authentication,
@@ -96,7 +96,7 @@ public class SectionAvailabilityRoundController {
                 sectionAvailabilityRoundService.updateDescription(authentication, clubId, roundId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @DeleteMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}")
     @ApiResponse(responseCode = "204", description = "Section availability round deleted")
     public ResponseEntity<Void> deleteRound(
@@ -105,14 +105,14 @@ public class SectionAvailabilityRoundController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/open")
     public ResponseEntity<SectionAvailabilityRoundDto> open(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
         return ResponseEntity.ok(sectionAvailabilityRoundService.open(authentication, clubId, roundId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/close")
     public ResponseEntity<SectionAvailabilityRoundDto> close(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
@@ -120,7 +120,7 @@ public class SectionAvailabilityRoundController {
     }
 
     /** docs/specs/066-poll-close-time-and-unified-cards.md: edit the close time of an open or closed group poll. */
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/close-time")
     public ResponseEntity<SectionAvailabilityRoundDto> updateRoundCloseTime(
             Authentication authentication,
@@ -131,21 +131,21 @@ public class SectionAvailabilityRoundController {
                 sectionAvailabilityRoundService.updateCloseTime(authentication, clubId, roundId, request));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/responses")
     public ResponseEntity<SectionAvailabilityRoundResponsesDto> getResponses(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
         return ResponseEntity.ok(sectionAvailabilityRoundService.getResponses(authentication, clubId, roundId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/matches")
     public ResponseEntity<List<SectionAvailabilityRoundMatchDto>> getMatches(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
         return ResponseEntity.ok(sectionAvailabilityRoundService.getMatches(authentication, clubId, roundId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).AVAILABILITY_MANAGE)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/players/{playerProfileId}")
     public ResponseEntity<SectionAvailabilityRoundResponsesDto> setPlayerStatus(
             Authentication authentication,

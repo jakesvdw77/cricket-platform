@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
@@ -93,7 +94,7 @@ public class ManagerOverviewServiceImpl implements ManagerOverviewService {
     @Override
     @Transactional(readOnly = true)
     public ManagerOverviewDto overview(Authentication authentication, UUID clubId) {
-        Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessible = accessService.sectionIdsFor(authentication, clubId, Permission.MATCHES_VIEW);
         OverviewQuickActionsDto quickActions = quickActions(authentication, clubId);
         if (accessible.isPresent() && accessible.get().isEmpty()) {
             return new ManagerOverviewDto(0, 0, 0, 0, List.of(), List.of(), List.of(), quickActions);
@@ -183,14 +184,15 @@ public class ManagerOverviewServiceImpl implements ManagerOverviewService {
     }
 
     /**
-     * Every quick action mirrors the guard of the endpoint behind it: match create, squad poll
-     * create, group poll create and player create are all {@code canAccessClub} (the per-resource
-     * section check happens inside each create); Communication is a placeholder, so messageSquad
-     * uses the same gate. One access lookup serves all four.
+     * Every quick action mirrors the guard of the endpoint behind it (docs/specs/150): match create needs Matches Edit,
+     * both poll creates need Availability Manage, player create needs Players Edit; Communication is a placeholder, so
+     * messageSquad uses the poll gate.
      */
     private OverviewQuickActionsDto quickActions(Authentication authentication, UUID clubId) {
-        boolean allowed = accessService.canAccessClub(authentication, clubId);
-        return new OverviewQuickActionsDto(allowed, allowed, allowed, allowed);
+        boolean createMatch = accessService.can(authentication, clubId, Permission.MATCHES_EDIT);
+        boolean createPoll = accessService.can(authentication, clubId, Permission.AVAILABILITY_MANAGE);
+        boolean addPlayer = accessService.can(authentication, clubId, Permission.PLAYERS_EDIT);
+        return new OverviewQuickActionsDto(createMatch, createPoll, addPlayer, createPoll);
     }
 
     private Map<UUID, Team> loadTeams(Collection<Match> matches) {

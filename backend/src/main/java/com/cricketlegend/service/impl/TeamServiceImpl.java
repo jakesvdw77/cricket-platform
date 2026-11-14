@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.domain.Team;
@@ -72,10 +73,10 @@ public class TeamServiceImpl implements TeamService {
     @Override
     @Transactional(readOnly = true)
     public List<TeamDto> listByClub(Authentication authentication, UUID clubId, UUID sectionId) {
-        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Optional<Set<UUID>> accessibleSectionIds = accessService.sectionIdsFor(authentication, clubId, Permission.TEAMS_VIEW);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            accessService.assertCan(authentication, clubId, Permission.TEAMS_VIEW, sectionId);
             narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
         }
         final Set<UUID> narrowToFinal = narrowTo;

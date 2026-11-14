@@ -32,7 +32,7 @@ public class TeamPreviousMatchController {
         this.matchService = matchService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).MATCHES_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous")
     public ResponseEntity<List<MatchDto>> listPrevious(
             Authentication authentication,

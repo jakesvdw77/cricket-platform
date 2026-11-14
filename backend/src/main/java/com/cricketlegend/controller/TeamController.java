@@ -58,7 +58,7 @@ public class TeamController {
         this.teamSponsorService = teamSponsorService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_VIEW)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams")
     public ResponseEntity<List<TeamDto>> listByClub(
             Authentication authentication,
@@ -67,14 +67,14 @@ public class TeamController {
         return ResponseEntity.ok(teamService.listByClub(authentication, clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_VIEW, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams")
     public ResponseEntity<List<TeamDto>> listBySection(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
         return ResponseEntity.ok(teamService.listBySection(clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams")
     @ApiResponse(responseCode = "201", description = "Team created")
     public ResponseEntity<TeamDto> create(
@@ -84,7 +84,7 @@ public class TeamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(teamService.create(clubId, sectionId, request));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}")
     public ResponseEntity<TeamDto> update(
             @PathVariable UUID clubId,
@@ -94,28 +94,28 @@ public class TeamController {
         return ResponseEntity.ok(teamService.update(clubId, sectionId, teamId, request));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/deactivate")
     public ResponseEntity<TeamDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamService.deactivate(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/reactivate")
     public ResponseEntity<TeamDto> reactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamService.reactivate(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_VIEW, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts")
     public ResponseEntity<List<TeamContactDto>> listContacts(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamContactService.list(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/link")
     public ResponseEntity<Void> linkContact(
             @PathVariable UUID clubId,
@@ -127,7 +127,7 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/unlink")
     public ResponseEntity<Void> unlinkContact(
             @PathVariable UUID clubId,
@@ -138,14 +138,14 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_VIEW, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors")
     public ResponseEntity<List<SponsorDto>> listSponsors(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamSponsorService.list(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/link")
     public ResponseEntity<Void> linkSponsor(
             @PathVariable UUID clubId,
@@ -156,7 +156,7 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/unlink")
     public ResponseEntity<Void> unlinkSponsor(
             @PathVariable UUID clubId,

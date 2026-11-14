@@ -30,19 +30,19 @@ public class LinkRequestManagementController {
         this.linkRequestManagementService = linkRequestManagementService;
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/link-requests")
     public ResponseEntity<List<LinkRequestDto>> list(Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(linkRequestManagementService.list(authentication, clubId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/link-requests/summary")
     public ResponseEntity<LinkRequestSummaryDto> summary(Authentication authentication, @PathVariable UUID clubId) {
         return ResponseEntity.ok(linkRequestManagementService.summary(authentication, clubId));
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/link-requests/{requestId}/approve")
     public ResponseEntity<Void> approve(
             Authentication authentication,
@@ -53,7 +53,7 @@ public class LinkRequestManagementController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).PLAYER_ACCOUNTS_MANAGE)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/link-requests/{requestId}/decline")
     public ResponseEntity<Void> decline(
             Authentication authentication,

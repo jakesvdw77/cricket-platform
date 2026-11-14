@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.Permission;
 import com.cricketlegend.domain.AwardType;
 import com.cricketlegend.domain.BattingEntry;
 import com.cricketlegend.domain.BowlingEntry;
@@ -178,7 +179,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     @Override
     @Transactional(readOnly = true)
     public ScorecardPrefillDto prefill(Authentication authentication, UUID clubId, UUID matchId) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_VIEW);
         Map<UUID, MatchSide> sidesByTeam = matchSideRepository.findByMatchId(matchId).stream()
                 .collect(Collectors.toMap(MatchSide::getTeamId, side -> side, (a, b) -> a));
         Map<ResultSide, UUID> ours = oursSides(match);
@@ -241,7 +242,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     @Override
     @Transactional(readOnly = true)
     public ScorecardDto read(Authentication authentication, UUID clubId, UUID matchId) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_VIEW);
         MatchResult result = resultRepository
                 .findByMatchId(matchId)
                 .orElseThrow(() -> new NotFoundException("No result for match: " + matchId));
@@ -322,7 +323,7 @@ public class ScorecardServiceImpl implements ScorecardService {
         Optional<Set<UUID>> scope = authorizedTeamIds(authentication, clubId, teamId);
         Set<String> excluded = new HashSet<>();
         if (matchId != null) {
-            Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+            Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_VIEW);
             if (leagueTeam == null && (name == null || name.isBlank())) {
                 if (match.getHomeTeamId() == null) {
                     leagueTeam = match.getHomeLeagueTeamId();
@@ -363,9 +364,9 @@ public class ScorecardServiceImpl implements ScorecardService {
                     .findById(teamId)
                     .filter(t -> clubId.equals(t.getClubId()))
                     .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
-            accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+            accessService.assertCan(authentication, clubId, Permission.RESULTS_VIEW, team.getSectionId());
         }
-        return accessService.accessibleSectionIds(authentication, clubId).map(sections -> teamRepository
+        return accessService.sectionIdsFor(authentication, clubId, Permission.RESULTS_VIEW).map(sections -> teamRepository
                 .findByClubId(clubId).stream()
                 .filter(t -> sections.contains(t.getSectionId()))
                 .map(Team::getId)
@@ -639,7 +640,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     @Transactional
     public ResultPlayerDto link(
             Authentication authentication, UUID clubId, UUID matchId, UUID resultPlayerId, UUID playerProfileId) {
-        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId, Permission.RESULTS_EDIT);
         MatchResult result = resultRepository
                 .findByMatchId(matchId)
                 .orElseThrow(() -> new NotFoundException("No result for match: " + matchId));

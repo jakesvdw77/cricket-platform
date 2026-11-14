@@ -24,7 +24,7 @@ public class AccessRoleServiceImpl implements AccessRoleService {
 
     public AccessRoleServiceImpl(
             AccessRoleRepository accessRoleRepository,
-            @Value("${app.access.assignable-roles:MANAGER}") List<String> assignableKeys) {
+            @Value("${app.access.assignable-roles:MANAGER,COORDINATOR,TEAM_MANAGER,SCORER,VIEWER}") List<String> assignableKeys) {
         this.accessRoleRepository = accessRoleRepository;
         this.assignableKeys = Set.copyOf(assignableKeys);
     }

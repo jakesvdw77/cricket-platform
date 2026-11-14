@@ -64,13 +64,13 @@ public class ImportController {
         this.importService = importService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/types")
     public ResponseEntity<List<ImportTypeDto>> listTypes(@PathVariable UUID clubId) {
         return ResponseEntity.ok(importService.types());
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/{type}/template")
     public ResponseEntity<byte[]> downloadTemplate(
             @PathVariable UUID clubId,
@@ -85,14 +85,14 @@ public class ImportController {
                 .body(download.content());
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/{type}/ai-help")
     public ResponseEntity<AiHelpDto> aiHelp(
             @PathVariable UUID clubId, @PathVariable String type, @RequestParam Map<String, String> query) {
         return ResponseEntity.ok(importService.aiHelp(clubId, type, scopeFromQuery(query)));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PostMapping(value = BASE + "/{type}/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportBatchDto> preview(
             Authentication authentication,
@@ -106,7 +106,7 @@ public class ImportController {
                 authentication, clubId, type, file.getOriginalFilename(), file.getBytes(), scope, timeZone));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PostMapping(BASE + "/{type}/blank")
     public ResponseEntity<ImportBatchDto> blank(
             Authentication authentication,
@@ -117,13 +117,13 @@ public class ImportController {
         return ResponseEntity.ok(importService.startBlank(authentication, clubId, type, scope, timeZone));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/{batchId}")
     public ResponseEntity<ImportBatchDto> get(@PathVariable UUID clubId, @PathVariable UUID batchId) {
         return ResponseEntity.ok(importService.get(clubId, batchId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/{batchId}/rows")
     public ResponseEntity<Page<ImportRowDto>> rows(
             @PathVariable UUID clubId,
@@ -136,7 +136,7 @@ public class ImportController {
         return ResponseEntity.ok(importService.rows(clubId, batchId, statuses, outcomes, pageable));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PutMapping(BASE + "/{batchId}/decisions")
     public ResponseEntity<ImportBatchDto> saveDecisions(
             Authentication authentication,
@@ -146,7 +146,7 @@ public class ImportController {
         return ResponseEntity.ok(importService.saveDecisions(authentication, clubId, batchId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PostMapping(BASE + "/{batchId}/commit")
     public ResponseEntity<ImportBatchDto> commit(
             Authentication authentication,
@@ -156,14 +156,14 @@ public class ImportController {
         return ResponseEntity.ok(importService.commit(authentication, clubId, batchId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PostMapping(BASE + "/{batchId}/discard")
     public ResponseEntity<ImportBatchDto> discard(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID batchId) {
         return ResponseEntity.ok(importService.discard(authentication, clubId, batchId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE)
     public ResponseEntity<Page<ImportBatchDto>> history(
             @PathVariable UUID clubId,
@@ -175,13 +175,13 @@ public class ImportController {
         return ResponseEntity.ok(importService.history(clubId, type, scopeKey, status, includeEnded, pageable));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @GetMapping(BASE + "/{batchId}/deletion-check")
     public ResponseEntity<DeletionCheckDto> deletionCheck(@PathVariable UUID clubId, @PathVariable UUID batchId) {
         return ResponseEntity.ok(importService.deletionCheck(clubId, batchId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.can(authentication, #clubId, T(com.cricketlegend.domain.Permission).IMPORTS_RUN)")
     @PostMapping(BASE + "/{batchId}/delete")
     public ResponseEntity<ImportBatchDto> delete(
             Authentication authentication,
