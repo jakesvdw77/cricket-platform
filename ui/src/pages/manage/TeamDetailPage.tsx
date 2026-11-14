@@ -310,7 +310,7 @@ export default function TeamDetailPage() {
                 </Button>
                 {canAnalyse && (
                   <Button size="compact" variant="secondary" startIcon={<InsightsOutlinedIcon />} onClick={() => navigate(withReturnTo(analysisPath, currentOrigin(location), 'Team'))} data-testid="team-analysis">
-                    Analysis
+                    Squad Analysis
                   </Button>
                 )}
               </>

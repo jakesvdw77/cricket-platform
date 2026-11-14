@@ -30,6 +30,9 @@ export interface MediaUploadProps {
   // to 'platform' so every existing ClubForm logo/banner call site is unaffected; a club-admin
   // consumer like ClubContactForm (docs/specs/021-club-contacts.md) passes 'manage'.
   namespace?: 'platform' | 'manage'
+  // docs/standards/page-anatomy.md: a form with a filled Save button has no second filled button, so its upload button is the white
+  // secondary one (the Field form, docs/specs/151). Defaults to the original filled button.
+  quiet?: boolean
 }
 
 const DIMENSIONS: Record<MediaUploadVariant, { width: number | string; height: number }> = {
@@ -37,7 +40,7 @@ const DIMENSIONS: Record<MediaUploadVariant, { width: number | string; height: n
   banner: { width: '100%', height: 120 },
 }
 
-export function MediaUpload({ label, value, onUploaded, variant = 'logo', namespace = 'platform' }: MediaUploadProps) {
+export function MediaUpload({ label, value, onUploaded, variant = 'logo', namespace = 'platform', quiet = false }: MediaUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -113,7 +116,7 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo', namesp
       </Box>
 
       <Button
-        variant={value ? 'ghost' : 'primary'}
+        variant={value || quiet ? (value ? 'ghost' : 'secondary') : 'primary'}
         size="sm"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}

@@ -377,7 +377,7 @@ export function FieldFormFields({
           inputProps={{ maxLength: MAX_CONTACT_PHONE_LENGTH }}
         />
         <Box sx={{ gridColumn: '1 / -1' }}>
-          <MediaUpload label="Photo of the field" value={values.photoUrl || null} onUploaded={(photoUrl) => onChange({ photoUrl })} variant="banner" namespace="manage" />
+          <MediaUpload label="Photo of the field" value={values.photoUrl || null} onUploaded={(photoUrl) => onChange({ photoUrl })} variant="banner" namespace="manage" quiet />
         </Box>
       </Box>
 

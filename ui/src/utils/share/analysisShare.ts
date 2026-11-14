@@ -80,7 +80,7 @@ export function generateAnalysisFacebookText(analysis: SquadAnalysis, meta: Anal
 }
 
 export const analysisFileName = (meta: AnalysisShareMeta, extension: string): string =>
-  `${[meta.teamName, meta.seasonLabel, 'squad analysis'].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim()}.${extension}`
+  `${[meta.teamName, meta.seasonLabel?.replace(/\//g, '-'), 'squad analysis'].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim()}.${extension}`
 
 const GREEN: [number, number, number] = [15, 81, 50]
 const INK: [number, number, number] = [16, 35, 26]

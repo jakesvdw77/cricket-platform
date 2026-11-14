@@ -16,7 +16,8 @@ import { isJuniorMatch } from '../../utils/share/isJuniorMatch'
 import { analysisFileName, generateAnalysisFacebookText, generateAnalysisPdf, generateAnalysisWhatsAppText } from '../../utils/share/analysisShare'
 import type { AnalysisShareMeta } from '../../utils/share/analysisShare'
 import { shareName } from '../../utils/share/shareName'
-import { analyseSquad } from '../../utils/squadAnalysis'
+import { BATTING_POSITION_LABEL } from '../../utils/playerLabels'
+import { analyseSquad, BATTING_POSITIONS, FULL_SIDE } from '../../utils/squadAnalysis'
 import type { AnalysisPlayer } from '../../utils/squadAnalysis'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
@@ -273,15 +274,101 @@ function AnalysisPdfScreen({ analysis, meta, initials, collisions }: ScreenProps
         </ShareControlGroup>
       }
       preview={
-        <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 3, bgcolor: 'background.paper', textAlign: 'center' }} data-testid="analysis-pdf-ready">
-          <PictureAsPdfOutlinedIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography sx={{ fontWeight: 700 }}>{result.file ? analysisFileName(meta, 'pdf') : 'No PDF yet'}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            One A4 page with the balance, batting order, bowling, hands and the things to check. Download it, print it, or share it from your phone.
+        <Box sx={{ minHeight: 0, overflow: 'auto' }}>
+          <AnalysisPaperPreview analysis={analysis} meta={meta} />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }} data-testid="analysis-pdf-ready">
+            {result.file ? `${analysisFileName(meta, 'pdf')}. This preview shows what the PDF holds.` : 'The PDF could not be created.'}
           </Typography>
         </Box>
       }
       actions={<SharePdfActions file={result.file} shareTitle={`${meta.teamName} squad analysis`} error={result.error} />}
     />
+  )
+}
+
+// A paper-style preview of the PDF's content: the same blocks in the same order, built from the same analysis, so what is read here is
+// what the PDF says. (A page image is not drawn, so the preview works on every browser and phone.)
+function AnalysisPaperPreview({ analysis, meta }: { analysis: ScreenProps['analysis']; meta: AnalysisShareMeta }) {
+  const warnings = analysis.gaps.filter((gap) => gap.tone === 'warning')
+  const heading = (text: string) => (
+    <Typography sx={{ fontWeight: 700, color: 'primary.dark', mt: 2, mb: 0.5, fontSize: '0.95rem' }}>{text}</Typography>
+  )
+  const names = (list: string[]) => (list.length > 0 ? list.join(', ') : 'None')
+  const figures: [string, number][] = [
+    ['Batters', analysis.batters.length],
+    ['Main bowlers', analysis.mainBowlers.length],
+    ['Part-time', analysis.partTimeBowlers.length],
+    ['All-rounders', analysis.allRounders.length],
+    ['Keepers', analysis.keepers.length],
+  ]
+  const { experience } = analysis
+  return (
+    <Box
+      data-testid="analysis-paper"
+      sx={{ bgcolor: '#fff', color: '#10231a', border: 1, borderColor: 'divider', borderRadius: 1, boxShadow: 2, p: { xs: 2, sm: 3 }, width: '100%', maxWidth: 794, mx: 'auto', fontSize: '0.8125rem' }}
+    >
+      <Typography sx={{ fontWeight: 700, fontSize: '1.4rem', color: 'primary.dark', lineHeight: 1.2 }}>{meta.teamName}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
+        {[meta.seasonLabel, meta.clubName, `${analysis.size} players`].filter(Boolean).join('  |  ')}
+      </Typography>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 1, mt: 1.5 }}>
+        {figures.map(([label, value]) => (
+          <Box key={label} sx={{ border: 1, borderColor: 'divider', borderRadius: 0.5, p: 1 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: 'primary.dark', lineHeight: 1 }}>{value}</Typography>
+            <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{label}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {warnings.length > 0 && (
+        <>
+          {heading('Things to check')}
+          {warnings.map((gap) => (
+            <Typography key={gap.id} sx={{ fontSize: '0.8125rem', ml: 1 }}>
+              - {gap.text}
+            </Typography>
+          ))}
+        </>
+      )}
+
+      {heading('Batting order')}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' }, gap: 1.5 }}>
+        {BATTING_POSITIONS.map((position) => (
+          <Box key={position}>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.8125rem', color: 'primary.dark' }}>
+              {BATTING_POSITION_LABEL[position]} ({analysis.battingOrder[position].length})
+            </Typography>
+            {analysis.battingOrder[position].length === 0 ? (
+              <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>Nobody</Typography>
+            ) : (
+              analysis.battingOrder[position].map((name) => (
+                <Typography key={name} sx={{ fontSize: '0.8125rem' }}>
+                  {name}
+                </Typography>
+              ))
+            )}
+          </Box>
+        ))}
+      </Box>
+      {analysis.battingNotSet.length > 0 && <Typography sx={{ color: 'text.secondary', mt: 0.5 }}>Not set: {analysis.battingNotSet.join(', ')}</Typography>}
+
+      {heading('Bowling')}
+      <Typography>Pace: {names(analysis.bowling.pace)}</Typography>
+      <Typography>Medium: {names(analysis.bowling.medium)}</Typography>
+      <Typography>Spin: {names(analysis.bowling.spin)}</Typography>
+      <Typography>Part-time: {names(analysis.bowling.partTime)}</Typography>
+
+      {heading('Hands')}
+      <Typography>
+        Batters: {analysis.hands.rightBat} right-hand, {analysis.hands.leftBat} left-hand. Bowlers: {analysis.hands.rightArm} right-arm, {analysis.hands.leftArm} left-arm.
+      </Typography>
+
+      {heading('Experience')}
+      <Typography>
+        {experience.averageAge === null ? '' : `Average age ${experience.averageAge}, youngest ${experience.youngest}, oldest ${experience.oldest}. `}
+        Squad size {analysis.size} of {FULL_SIDE} needed.
+      </Typography>
+    </Box>
   )
 }

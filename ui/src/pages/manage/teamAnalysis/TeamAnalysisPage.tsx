@@ -103,7 +103,7 @@ export default function TeamAnalysisPage() {
   const analysis = useMemo(() => analyseSquad(squadQuery.data ?? []), [squadQuery.data])
   const [shareOpen, setShareOpen] = useState(false)
   const clubProfile = useQuery({ queryKey: ['managed-club', clubId, 'profile'], queryFn: () => getManagedClubProfile(clubId as string), enabled: Boolean(clubId) })
-  useDocumentTitle(team ? `${team.name} · Analysis` : 'Squad analysis')
+  useDocumentTitle(team ? `${team.name} · Squad Analysis` : 'Squad analysis')
 
   if (!clubId) return <EmptyState title="Not authorized" description="No club is associated with your account." />
   if (teamQuery.isLoading) return null
@@ -119,7 +119,7 @@ export default function TeamAnalysisPage() {
 
   const header = (
     <ManageScreenHeader
-      title={`${team.name} Analysis`}
+      title={`${team.name} Squad Analysis`}
       action={analysis.size > 0 ? <HeaderShareButton onClick={() => setShareOpen(true)} testId="analysis-share" /> : undefined}
       backTo={backTo}
       backLabel={back.to ? back.label : 'Back to Team'}

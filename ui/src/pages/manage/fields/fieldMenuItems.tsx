@@ -142,5 +142,5 @@ export function fieldMenuItems({ field, admin, clubId, placement, leaveTo, onTog
       : []
 
   // Row: Open, Edit, the field's own opens (maps), then record actions. Page: Edit, Get Directions, record actions, Merge, links.
-  return row ? [open, editItem, ...duplicate, ...maps, ...home, ...statuses] : [editItem, ...duplicate, ...directions, ...home, ...statuses, ...merge, ...maps]
+  return row ? [open, editItem, ...duplicate, ...maps, ...home, ...statuses] : [editItem, ...directions, ...duplicate, ...home, ...statuses, ...merge, ...maps]
 }
