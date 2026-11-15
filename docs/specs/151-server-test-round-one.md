@@ -73,6 +73,10 @@ Added 2026-11-15. **Problem.** The backend container runs in UTC and the code re
 3. **Guard.** A backend test runs the time helpers and the clash check under a UTC default zone and a South African one and asserts the same wall-clock result; a startup log line states the zone in use.
 4. **Deploy.** Recreating the backend container only; the two-hour difference disappears on the next request, including emails and reminders.
 
+## Slice I: Matches with no linked field stand out
+
+Added 2026-11-15 at the owner's request, after three imported matches were found still holding only venue text. A venue typed as text has no map position, so the Player Hub shows no Get Directions and no weather. **Rule:** a match that has venue text but no `playingAreaId` shows a small amber **No Field** tag beside the venue, with the hint "Link a field to get directions and weather". It appears on the Matches list rows, the match card and the league Schedule rows, for managers only (never on the Hub or in shares). A linked match shows no tag (its name is already the field link); a match with no venue at all keeps "TBC" and no tag. One shared component (`NoFieldFlag`) draws it, in the style of the existing "Unverified field" chip. No backend change.
+
 ## Later slices (added when written)
 
 C Fields (built 2026-11-14, see Slice C below; contact person, contact number, address on the card, photo, South African provinces, and **Duplicate Field**: the owner's case is one venue with an A and a B field at the same location, so a duplicate copies every detail (address, location, contact, photo) and asks only for the new name, with the next letter suggested; a true venue-with-fields grouping is a larger later change). D Leagues and league teams (built 2026-11-14, see Slice D below). E Player form: section emphasised and always asked.

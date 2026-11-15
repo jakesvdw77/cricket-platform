@@ -15,6 +15,7 @@ import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { ToolbarCard } from '../../../components/ToolbarCard'
 import { zebraTint } from '../../../utils/zebraTint'
 import { fixtureSideName, isOurMatch } from './leagueFixtureFilters'
+import { NoFieldFlag, showsNoFieldFlag } from '../matches/NoFieldFlag'
 
 export interface LeagueFixturesTableProps {
   matches: Match[]
@@ -169,6 +170,7 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
       </Box>
       <Typography role="cell" variant="body2" color="text.secondary" noWrap sx={desktopOnly} {...DESKTOP_ONLY} data-testid="fixture-row-venue">
         {match.venue ?? '–'}
+        {showsNoFieldFlag(match) && <NoFieldFlag />}
       </Typography>
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="fixture-row-ours">
         {ours && <Chip size="small" label="Our match" sx={{ ...badgeSx('positive'), height: 22, fontSize: '0.75rem' }} />}

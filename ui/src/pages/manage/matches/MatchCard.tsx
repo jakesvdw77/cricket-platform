@@ -20,6 +20,7 @@ import { formatMatchDateTime } from '../availability/pollHelpers'
 import { matchStatusFor } from './matchResultHelpers'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
+import { NoFieldFlag, showsNoFieldFlag } from './NoFieldFlag'
 import { SelectionBlock } from './SelectionBlock'
 import type { PollDestination } from './matchCardHelpers'
 import {
@@ -95,6 +96,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                 ) : (
                   match.venue
                 )}
+                {showsNoFieldFlag(match) && <NoFieldFlag />}
                 {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
                     a match with only the old venue text shows none. */}
                 {match.playingAreaVerificationStatus === 'UNVERIFIED' && (
