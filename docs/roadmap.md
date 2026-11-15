@@ -410,7 +410,7 @@ Built on `feat/leagues-completion` (2026-10-28). Still open:
 
 Both specs are written and not built (`097-import-framework.md`, `098-league-schedule-import.md`); `050`'s "no bulk fixture import" non-goal is resolved by `098`.
 
-- **Club time zone.** The platform assumes South Africa (GMT+2): there is no club time zone, times are read in the server zone and the browser zone on entry. Clubs in other zones are a known gap (confirmed by the user, 2026-10-10). Imports take the browser zone for now (`097` R11); a club time zone setting is the real fix.
+- **Club time zone.** The platform assumes South Africa (GMT+2): there is no club time zone, times are read in the server zone and the browser zone on entry. Clubs in other zones are a known gap (confirmed by the user, 2026-10-10). Imports take the browser zone for now (`097` R11); a club time zone setting is the real fix. **Spec 152 (club time zone) is drafted 2026-11-15**; until it is built the live server runs with a stopgap `TZ=Africa/Johannesburg` (spec 151 slice H).
 - **Matches list default.** A league-wide import adds fixtures that are not ours to the club-admin Matches list and league counters; a "matches involving our teams" default for that list, as its own spec (`098` R3).
 - **Phase 2 AI transform** inside the app (needs a provider terms and POPIA review first; the key stays in the environment). Phase 1 is prompts only.
 - **More import types:** league teams bulk import (next consumer), then players, squads, contacts, sponsors and results.

@@ -18,6 +18,7 @@ import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { matchStatusFor } from './matchResultHelpers'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
+import { NoFieldFlag, showsNoFieldFlag } from './NoFieldFlag'
 import { ProgressMeter } from '../../../components/ProgressMeter'
 import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, sideName } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
@@ -206,6 +207,7 @@ function MatchRow({
           ) : (
             venueText
           )}
+          {showsNoFieldFlag(match) && <NoFieldFlag />}
         </Typography>
       </Box>
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }} data-testid="match-row-selection">

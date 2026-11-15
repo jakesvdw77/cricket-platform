@@ -52,6 +52,31 @@ Added 2026-11-14 at the owner's request. The Club Profile page gains an **Our Fi
 5. **One team's share.** Step 1 of Share League has a **Team** picker (All Teams, our teams, league teams). The schedule and results then show only matches that team plays; the poster, PDF and text carry the team's name, and the file name includes it.
 6. **Every match is actionable on the Schedule tab.** Every row, ours or not, has the kebab with **Edit Match** (Matches Edit) and **Share Match**; **Open Match** stays for our matches only. A match between two other clubs has no section, so under spec 150 only a club-wide Matches Edit holder can change it.
 
+## Slice G: The schedule import links venues to fields
+
+Added 2026-11-15 from the owner's second round on the live server. **Problem.** The schedule import (097) stores only the typed venue text and leaves the match's field empty (`LeagueScheduleImportHandler.matchRequest` passes a null `playingAreaId`). On the server all 20 imported matches have no field, although the fields existed before the import. A match with no field has no Get Directions, no weather and no field page in the Player Hub. Spec 099's "never auto-link" rule was written for strangers' fields and left the import with no way to link at all. The template's "known venues" list also comes from earlier matches' text, not from the Fields directory.
+
+1. **Suggestion, never silent.** For each row the preview proposes a field from the club's own fields (home links) and the directory, shown in a **Field** column beside the typed venue. Matching ignores case, brackets, spaces and punctuation, so "Durbanville CC (A)" proposes "Durbanville CC A". Only an exact match after that clean-up is proposed; two candidates propose nothing and the row says "Pick a field".
+2. **Confirm step.** The user may accept, change (a field picker) or clear each proposal, in bulk or per row, before the final confirm (imports always confirm). An unmatched venue shows a warning with **Pick Field** and **Create Field** (opens the add-field form with the name filled). Rows with no field still import, as today, with the warning.
+3. **Commit.** The match is created with the chosen `playingAreaId`; the typed text stays in `venue` as the source text. Undo of a batch is unchanged. The DIFFERS check for venue compares the field, not the text, when the existing match has a field.
+4. **Template.** The lookup sheet's venues and the AI help list the club's field names (and the text of earlier matches only when no field list exists).
+5. **Existing data.** One reviewed update on the server links matches whose venue text matches exactly one field after the same clean-up (owner approves the preview first). No migration.
+
+**Tests.** Unit: the clean-up and matching table (brackets, case, two candidates, merged and rejected fields skipped). Integration: preview proposes, commit saves the field, clearing leaves it empty, undo, DIFFERS by field. UI: the Field column, bulk accept, Pick Field and Create Field.
+
+## Slice H: Time zone on the server
+
+Added 2026-11-15. **Problem.** The backend container runs in UTC and the code reads the time of day with the server's own zone (`ServerClock`, 35 uses of `ZoneId.systemDefault()`). Instants are stored correctly, so the manager screens (which convert in the browser) show 09:30, while the Player Hub, the ticker, the poster texts, the clash check ("Irene is already playing at 7:30") and day boundaries use UTC and show 07:30. That is a two-hour error for every South African club on the live server; it never showed locally because the developer's machine is in South Africa.
+
+1. **Fix, configuration only.** Set `TZ=Africa/Johannesburg` on the backend service in `deploy/docker-compose.prod.yml` (and the same in the dev compose files), so the server zone is the club zone the whole system already assumes (the known "club time zones" gap stays: a per-club zone is a later change).
+2. **No data change.** Stored match times are instants and stay as they are.
+3. **Guard.** A backend test runs the time helpers and the clash check under a UTC default zone and a South African one and asserts the same wall-clock result; a startup log line states the zone in use.
+4. **Deploy.** Recreating the backend container only; the two-hour difference disappears on the next request, including emails and reminders.
+
+## Slice I: Matches with no linked field stand out
+
+Added 2026-11-15 at the owner's request, after three imported matches were found still holding only venue text. A venue typed as text has no map position, so the Player Hub shows no Get Directions and no weather. **Rule:** a match that has venue text but no `playingAreaId` shows a small amber **No Field** tag beside the venue, with the hint "Link a field to get directions and weather". It appears on the Matches list rows, the match card and the league Schedule rows, for managers only (never on the Hub or in shares). A linked match shows no tag (its name is already the field link); a match with no venue at all keeps "TBC" and no tag. One shared component (`NoFieldFlag`) draws it, in the style of the existing "Unverified field" chip. No backend change.
+
 ## Later slices (added when written)
 
 C Fields (built 2026-11-14, see Slice C below; contact person, contact number, address on the card, photo, South African provinces, and **Duplicate Field**: the owner's case is one venue with an A and a B field at the same location, so a duplicate copies every detail (address, location, contact, photo) and asks only for the new name, with the next letter suggested; a true venue-with-fields grouping is a larger later change). D Leagues and league teams (built 2026-11-14, see Slice D below). E Player form: section emphasised and always asked.
