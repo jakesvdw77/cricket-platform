@@ -51,7 +51,8 @@ services:
       SMTP_AUTH: "true"
       SMTP_STARTTLS: "true"
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
-      JAVA_TOOL_OPTIONS: -Xmx512m
+      TZ: Africa/Johannesburg   # club time zone (docs/specs/151 slice H); the code reads the server zone
+      JAVA_TOOL_OPTIONS: -Xmx512m -Duser.timezone=Africa/Johannesburg
     volumes:
       - ${MEDIA_HOST_DIR}:/data/media   # uploaded logos/photos: a real folder on the server, backed up
     depends_on:
