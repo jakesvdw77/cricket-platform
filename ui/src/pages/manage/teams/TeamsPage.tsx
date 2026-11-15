@@ -380,7 +380,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
             )
           })}
           {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
-          canAdd && <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />
+          {canAdd && <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />}
         </Box>
       )}
     </Box>
