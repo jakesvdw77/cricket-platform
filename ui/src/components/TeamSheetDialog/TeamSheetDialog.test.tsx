@@ -91,9 +91,10 @@ describe('TeamSheetDialog (spec 153)', () => {
     expect(screen.getByRole('button', { name: /Download PDF/ })).toBeDisabled()
   })
 
-  it('says a junior team prints full names', async () => {
+  it('shows no junior notice, and still prints full names', async () => {
     listSections.mockResolvedValue([{ id: 'over40', clubId: 'club-1', parentSectionId: null, name: 'U13', minAge: null, maxAge: 13, gender: null, active: true }])
     renderDialog()
-    expect(await screen.findByText(/junior team. The sheet prints full names/)).toBeInTheDocument()
+    await screen.findByTestId('team-sheet-ready')
+    expect(screen.queryByText(/junior team/i)).not.toBeInTheDocument()
   })
 })

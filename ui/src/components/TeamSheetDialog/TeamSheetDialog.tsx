@@ -8,7 +8,6 @@ import type { League } from '../../api/leagueApi'
 import { listSections } from '../../api/sectionApi'
 import { listSquad } from '../../api/teamSquadApi'
 import type { Match } from '../../api/matchApi'
-import { isJuniorMatch } from '../../utils/share/isJuniorMatch'
 import { generateTeamSheetPdf } from '../../utils/share/printableTeamSheetPdf'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 import { EMPTY_MATCH_INFO, matchInfoFor, sheetPages, sheetPlayers, teamMatches, teamSheetFileName } from '../../utils/teamSheet'
@@ -83,7 +82,6 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     [matches, team, leagueId],
   )
   const players = useMemo(() => sheetPlayers(squad.data ?? []), [squad.data])
-  const junior = useMemo(() => isJuniorMatch({ league: null, sections: sections.data, teams: [{ sectionId: team?.sectionId ?? null }] }), [sections.data, team?.sectionId])
 
   // The leagues this team plays in this season, for the blank sheet's league logo.
   const teamLeagues = useMemo(() => {
@@ -208,11 +206,6 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
       <ShareControlGroup label="Include">
         <CompactSwitch label="Pre-Mark Captain And Keepers" checked={preMark} onChange={setPreMark} />
       </ShareControlGroup>
-      {junior && (
-        <Alert severity="info" sx={{ fontSize: '0.85rem' }}>
-          This is a junior team. The sheet prints full names, as a team sheet needs them. Shared texts and posters still use initials.
-        </Alert>
-      )}
     </>
   )
 
