@@ -27,6 +27,7 @@ import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
+import { TeamSheetDialog } from '../../components/TeamSheetDialog'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
@@ -129,6 +130,8 @@ export default function TeamDetailPage() {
   const canAnalyse = permissions.can('TEAMS_VIEW') && permissions.can('PLAYERS_VIEW')
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
+  // docs/specs/153: the Print Team Sheet dialog (mounted fresh on each open).
+  const [printOpen, setPrintOpen] = useState(false)
 
   const {
     data: team,
@@ -316,7 +319,7 @@ export default function TeamDetailPage() {
               </>
             }
           >
-            <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" />
+            <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" onPrintSheet={() => setPrintOpen(true)} />
           </HeaderActions>
         }
       />
@@ -444,6 +447,18 @@ export default function TeamDetailPage() {
       />
 
       <SponsorQuickViewDialog clubId={clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />
+
+      {printOpen && (
+        <TeamSheetDialog
+          open
+          onClose={() => setPrintOpen(false)}
+          clubId={clubId}
+          teams={[{ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId }]}
+          seasonId={selectedSeasonId}
+          seasonLabel={seasons.find((season) => season.id === selectedSeasonId)?.label ?? null}
+          matches={matches}
+        />
+      )}
     </Box>
   )
 }

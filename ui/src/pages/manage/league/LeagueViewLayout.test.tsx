@@ -399,7 +399,7 @@ describe('LeagueViewLayout', () => {
     })
 
     it.each([
-      ['schedule', 'Manage Schedule', ['Create New Match', 'Import Schedule', 'Share Schedule']],
+      ['schedule', 'Manage Schedule', ['Create New Match', 'Import Schedule', 'Print Match Sheets', 'Share Schedule']],
       ['teams', 'Manage Teams', ['Copy Teams', 'Share Teams']],
       ['conditions', 'Manage Playing Conditions', ['Edit Playing Conditions', 'Share Playing Conditions', 'View Document']],
     ])('the %s tab menu "%s" lists its items in order, Share never first', async (tab, label, expected) => {

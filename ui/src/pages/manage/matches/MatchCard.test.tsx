@@ -324,14 +324,14 @@ describe('MatchCard', () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: future() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Share Match'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Print Team Sheet', 'Share Match'])
     })
 
     it('adds Import Result after the result action once the match has started', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ matchDate: past() }))
 
-      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Share Match'])
+      expect(titles(await openMenu(user))).toEqual(['Open Match', 'Edit Match', 'Select Team', 'Open Availability', 'Capture Result', 'Import Result', 'Print Team Sheet', 'Share Match'])
     })
 
     it('offers Continue Result for a draft and View Result (and no Import) for a published result', async () => {

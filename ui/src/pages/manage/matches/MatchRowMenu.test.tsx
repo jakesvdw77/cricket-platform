@@ -31,6 +31,17 @@ describe('MatchRowMenu', () => {
     expect(items[items.length - 1]).toHaveTextContent('Share Match')
   })
 
+  it('has Print Team Sheet before Share Match, and opens the print screen on One Match (spec 153)', async () => {
+    const user = userEvent.setup()
+    renderMenu()
+
+    await user.click(screen.getByRole('button', { name: 'Actions for 1st XI v Riverside Occasionals' }))
+    const items = within(await screen.findByRole('menu')).getAllByRole('menuitem')
+    expect(items[items.length - 2]).toHaveTextContent('Print Team Sheet')
+    await user.click(items[items.length - 2])
+    expect(await screen.findByRole('dialog', { name: 'Print Team Sheet' })).toBeInTheDocument()
+  })
+
   it('titleCase capitalises each word of a result label', () => {
     expect(titleCase('continue result')).toBe('Continue Result')
   })

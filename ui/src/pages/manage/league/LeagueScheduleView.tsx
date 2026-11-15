@@ -17,7 +17,9 @@ import { LeagueFixturesTable } from './LeagueFixturesTable'
 import { ImportScheduleButton } from '../leagueImport/ImportScheduleControls'
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import { TeamSheetDialog } from '../../../components/TeamSheetDialog'
 import { LeagueTabMenu } from './LeagueTabMenu'
 import { useLeagueView } from './leagueViewContext'
 
@@ -38,6 +40,8 @@ export default function LeagueScheduleView() {
   const originLabel = `${league.name} schedule`
   // docs/specs/131: Share Match on a row opens the Share Match dialog; each click mounts a fresh host.
   const [shareTarget, setShareTarget] = useState<{ match: Match; nonce: number } | null>(null)
+  // docs/specs/153: Print Match Sheets (a page per match of one of our teams); mounted fresh on each open.
+  const [printOpen, setPrintOpen] = useState(false)
   const leaguesById = useMemo(() => new Map<string, League>([[league.id, league]]), [league])
   const seasonsById = useMemo(() => new Map<string, Season>(seasons.map((season) => [season.id, season])), [seasons])
 
@@ -48,6 +52,16 @@ export default function LeagueScheduleView() {
       ...activeLeagueTeams.map((leagueTeam) => ({ id: leagueTeam.id, name: leagueTeam.name })),
     ],
     [affiliationsForSeason, activeLeagueTeams, teamsById],
+  )
+
+  // Our entered teams (those that can print a sheet).
+  const ownTeams = useMemo(
+    () =>
+      affiliationsForSeason
+        .map((affiliation) => teamsById.get(affiliation.teamId))
+        .filter((team): team is NonNullable<typeof team> => Boolean(team))
+        .map((team) => ({ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId })),
+    [affiliationsForSeason, teamsById],
   )
 
   const visible = useMemo(
@@ -158,6 +172,16 @@ export default function LeagueScheduleView() {
             reason: importReason ?? undefined,
           },
           {
+            id: 'print-sheets',
+            requires: 'TEAMS_VIEW',
+            title: 'Print Match Sheets',
+            description: 'One PDF with a team sheet page for each match of our team, to print before the day.',
+            icon: <PrintOutlinedIcon fontSize="small" />,
+            onClick: () => setPrintOpen(true),
+            disabled: ownTeams.length === 0 || !selectedSeasonId,
+            reason: !selectedSeasonId ? 'Create a season first' : 'None of our teams is entered in this league this season',
+          },
+          {
             id: 'share-schedule',
             title: 'Share Schedule',
             description: 'The fixtures as a PDF, poster, calendar or message.',
@@ -173,6 +197,19 @@ export default function LeagueScheduleView() {
         originLabel={originLabel}
         onShare={(match) => setShareTarget((previous) => ({ match, nonce: (previous?.nonce ?? 0) + 1 }))}
       />
+      {printOpen && (
+        <TeamSheetDialog
+          open
+          onClose={() => setPrintOpen(false)}
+          clubId={clubId}
+          teams={ownTeams}
+          seasonId={selectedSeasonId}
+          seasonLabel={seasonsById.get(selectedSeasonId)?.label ?? null}
+          matches={matches}
+          leagueId={leagueId}
+          initialMode="all"
+        />
+      )}
       {shareTarget && (
         <MatchShareHost key={shareTarget.nonce} clubId={clubId} match={shareTarget.match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} />
       )}

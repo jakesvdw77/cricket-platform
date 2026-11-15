@@ -7,7 +7,10 @@ import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { TeamSheetDialog } from '../../../components/TeamSheetDialog'
 import { ManageMenu } from '../../../components/ManageMenu'
 import type { ManageMenuItem } from '../../../components/ManageMenu'
 import type { Match } from '../../../api/matchApi'
@@ -75,7 +78,13 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
   // docs/specs/137: Get Directions and Show Weather Forecast (each hidden when there is nothing to show).
   const location_ = useMatchLocationItems(clubId, match, { title: `${home} v ${away}`, leagueFormat: match.leagueId ? leaguesById.get(match.leagueId)?.format : null })
 
+  const [printOpen, setPrintOpen] = useState(false)
   const hasOwnTeam = ownSides(match).length > 0
+  // docs/specs/153: the sheet is printed for our side(s) of this match.
+  const sheetTeams = ownSides(match).flatMap((own) => {
+    const team = teamsById.get(own.teamId)
+    return team ? [{ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId }] : []
+  })
   const noTeamReason = hasOwnTeam ? null : NO_CLUB_TEAM_REASON
   const resultAction = resultActionFor(match)
   const importAction = resultImportActionFor(match)
@@ -101,6 +110,9 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
       ? [{ id: 'watch-live', title: 'Watch Live', icon: <LiveTvOutlinedIcon fontSize="small" />, onClick: () => window.open(match.streamingUrl as string, '_blank', 'noopener,noreferrer') }]
       : []),
     ...location_.items,
+    ...(sheetTeams.length > 0
+      ? [{ id: 'print-team-sheet', requires: 'TEAMS_VIEW' as const, title: 'Print Team Sheet', icon: <PrintOutlinedIcon fontSize="small" />, onClick: () => setPrintOpen(true) }]
+      : []),
     // docs/specs/131: Share Match is last (page-anatomy section 6b); a played match hands over to the result share.
     { id: 'share-match', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: openShare },
   ]
@@ -114,6 +126,19 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
         groups={[{ id: 'actions', heading: 'Actions', items }]}
       />
       {shareDialog}
+      {printOpen && (
+        <TeamSheetDialog
+          open
+          onClose={() => setPrintOpen(false)}
+          clubId={clubId}
+          teams={sheetTeams}
+          seasonId={match.seasonId}
+          seasonLabel={seasonsById.get(match.seasonId)?.label ?? null}
+          matches={[match]}
+          initialMode="one"
+          initialMatchId={match.id}
+        />
+      )}
       {location_.dialogs}
     </>
   )

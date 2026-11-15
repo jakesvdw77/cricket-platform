@@ -156,7 +156,7 @@ describe('LeagueScheduleView', () => {
     expect(within(inline).getByRole('button', { name: /only our matches/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('puts one white Manage Schedule menu on the tab row: Create New Match, Import Schedule, Share Schedule', async () => {
+  it('puts one white Manage Schedule menu on the tab row: Create New Match, Import Schedule, Print Match Sheets, Share Schedule', async () => {
     mocks.listMatches.mockResolvedValue({
       ...emptyPage(),
       content: [makeMatch({ matchDate: future(1), homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
@@ -172,7 +172,7 @@ describe('LeagueScheduleView', () => {
     expect(screen.getByRole('navigation', { name: 'League views' })).toContainElement(actions)
     await userEvent.click(trigger)
     const items = (await screen.findAllByRole('menuitem')).map((item) => item.querySelector('span')?.textContent)
-    expect(items).toEqual(['Create New Match', 'Import Schedule', 'Share Schedule'])
+    expect(items).toEqual(['Create New Match', 'Import Schedule', 'Print Match Sheets', 'Share Schedule'])
     expect(screen.getByRole('menuitem', { name: /Create New Match/ })).toHaveAttribute('href', expect.stringContaining('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1'))
     expect(screen.getByRole('menuitem', { name: /Import Schedule/ })).toHaveAttribute('href', expect.stringContaining('/schedule/import?seasonId=season-1&from=view'))
   })
