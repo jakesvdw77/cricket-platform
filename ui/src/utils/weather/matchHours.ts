@@ -1,6 +1,6 @@
 import type { DailyForecast, HourSample } from '../../api/weatherApi'
 import { describeWeatherCode } from './wmo'
-import type { WeatherSummary } from './wmo'
+import type { WeatherIconKind, WeatherSummary } from './wmo'
 
 // docs/specs/135 (Match Brief, owner decision 2026-11-02): the weather for the MATCH HOURS only (start to start plus N hours), as a
 // range for the badge and a few plain-language, rule-built lines for its tooltip. Pure; no React, no network. Clock times are the
@@ -112,6 +112,22 @@ function rangeText(window: HourSample[]): { temps: string; short: string; tempMi
   return { temps: degrees, short: `${degrees}, ${rain}`, tempMin, tempMax, rain: high }
 }
 
+// The conditions for the badge's icon and words, read from the MATCH HOURS (owner, 2026-11-15): the day's own weather code described
+// a foggy early morning as "Fog" on a dry 23-29 degree match. Wet hours give showers or storms, otherwise the mean cloud cover gives
+// sunny, partly cloudy or cloudy. A day code of snow stands; with no cloud data a dry window is "Mostly dry" with the sun.
+export function windowConditions(window: HourSample[], daily: { label: string; icon: WeatherIconKind }): { label: string; icon: WeatherIconKind } {
+  if (daily.icon === 'snow') return daily
+  if (window.some(isWet)) {
+    if (daily.icon === 'storm') return { label: 'Thunderstorms', icon: 'storm' }
+    return { label: 'Showers', icon: 'rain' }
+  }
+  const cloud = meanOf(values(window, (hour) => hour.cloud))
+  if (cloud === null) return { label: 'Mostly dry', icon: 'sunny' }
+  if (cloud <= 25) return { label: 'Sunny', icon: 'sunny' }
+  if (cloud <= 60) return { label: 'Partly cloudy', icon: 'partly' }
+  return { label: 'Cloudy', icon: 'cloudy' }
+}
+
 // The forecast for the match hours; null when the day has hourly data but fewer than 2 hours of it fall in the window (never a guess).
 // A response with no hourly data at all keeps the whole-day summary the forecast gave before.
 export function summariseMatchHours(forecast: DailyForecast, start: string, windowHours: number): WeatherSummary | null {
@@ -120,7 +136,7 @@ export function summariseMatchHours(forecast: DailyForecast, start: string, wind
   if (window.length < 2) return null
   const range = rangeText(window)
   if (!range) return null
-  const { label, icon } = describeWeatherCode(forecast.code)
+  const { label, icon } = windowConditions(window, describeWeatherCode(forecast.code))
   return {
     label,
     icon,

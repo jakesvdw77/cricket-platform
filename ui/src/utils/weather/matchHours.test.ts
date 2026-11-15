@@ -49,6 +49,26 @@ describe('summariseMatchHours', () => {
   })
 })
 
+describe('match-hours conditions (icon and words)', () => {
+  const at = (patch: (h: number) => Partial<HourSample>, code = 45) => summariseMatchHours({ ...forecast(day(patch)), code }, '2026-11-06T09:00', 4)
+
+  it('shows the sun for a clear dry window even when the day code is fog', () => {
+    expect(at(() => ({ cloud: 10 }))).toMatchObject({ icon: 'sunny', label: 'Sunny' })
+  })
+  it('is partly cloudy or cloudy by the mean cloud cover', () => {
+    expect(at(() => ({ cloud: 50 }), 0)).toMatchObject({ icon: 'partly', label: 'Partly cloudy' })
+    expect(at(() => ({ cloud: 90 }), 0)).toMatchObject({ icon: 'cloudy', label: 'Cloudy' })
+  })
+  it('is showers when an hour is wet, thunderstorms when the day code says so', () => {
+    expect(at((h) => ({ rainChance: h === 10 ? 60 : 0 }), 0)).toMatchObject({ icon: 'rain', label: 'Showers' })
+    expect(at((h) => ({ rainChance: h === 10 ? 60 : 0 }), 95)).toMatchObject({ icon: 'storm', label: 'Thunderstorms' })
+  })
+  it('keeps a snow day code and shows Mostly dry with the sun when there is no cloud data', () => {
+    expect(at(() => ({ cloud: 10 }), 73)).toMatchObject({ icon: 'snow' })
+    expect(at(() => ({ cloud: null }), 3)).toMatchObject({ icon: 'sunny', label: 'Mostly dry' })
+  })
+})
+
 describe('matchHoursLines', () => {
   const lines = (patch: (h: number) => Partial<HourSample>, sunset: string | null = null, start = '2026-11-06T09:00', n = 4) =>
     matchHoursLines(hoursInWindow(day(patch), start, n), sunset, start, n)
