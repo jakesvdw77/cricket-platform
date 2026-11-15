@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, matchInfoFor, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, matchInfoFor, metaCells, EMPTY_MATCH_INFO, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -121,5 +121,20 @@ describe('teamSheetFileName', () => {
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'blank' })).toBe('Team Sheet - Irene Veterans (blank).pdf')
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'match', opposition: 'Midlands CC', isoDate: '2026-11-19T14:30:00' })).toBe('Team Sheet - Irene Veterans - Midlands CC - 2026-11-19.pdf')
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'bundle', leagueName: 'VCASA: Club Champs' })).toBe('Team Sheets - VCASA Club Champs - Irene Veterans.pdf')
+  })
+})
+
+describe('metaCells', () => {
+  it('has the toss boxes when asked, every box one column', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, true)
+    expect(cells.map((cell) => cell.label)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Toss won by', 'Elected to', 'Overs'])
+    expect(cells.every((cell) => cell.span === 1)).toBe(true)
+  })
+
+  it('drops the toss boxes and gives Venue their room, so the row still fills four columns', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, false)
+    expect(cells.map((cell) => cell.label)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Overs'])
+    expect(cells.find((cell) => cell.label === 'Venue')?.span).toBe(3)
+    expect(cells.reduce((sum, cell) => sum + cell.span, 0)).toBe(8)
   })
 })

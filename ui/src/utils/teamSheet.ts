@@ -29,6 +29,27 @@ export interface SheetMatchInfo {
 
 export const EMPTY_MATCH_INFO: SheetMatchInfo = { league: null, opposition: null, date: null, time: null, venue: null, overs: null }
 
+export interface MetaCell {
+  label: string
+  value: string | null
+  // How many of the four columns the box spans: Venue takes the toss boxes' room when those are switched off.
+  span: number
+}
+
+// The two rows of write-on boxes. The toss boxes are optional (the sheet is handed in before the game); without them Venue is three
+// columns wide so the row stays full.
+export function metaCells(match: SheetMatchInfo, tossBoxes: boolean): MetaCell[] {
+  return [
+    { label: 'League', value: match.league, span: 1 },
+    { label: 'Opposition', value: match.opposition, span: 1 },
+    { label: 'Date', value: match.date, span: 1 },
+    { label: 'Start time', value: match.time, span: 1 },
+    { label: 'Venue', value: match.venue, span: tossBoxes ? 1 : 3 },
+    ...(tossBoxes ? [{ label: 'Toss won by', value: null, span: 1 }, { label: 'Elected to', value: null, span: 1 }] : []),
+    { label: 'Overs', value: match.overs, span: 1 },
+  ]
+}
+
 // How many table rows fit on one A4 page under the header and above the signatures, and how many empty lines close the list.
 export const ROWS_PER_PAGE = 20
 export const BLANK_LINES = 2

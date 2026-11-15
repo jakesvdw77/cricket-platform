@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material'
-import { BLANK_LINES, preMarks, sheetPages } from '../../utils/teamSheet'
+import { BLANK_LINES, metaCells, preMarks, sheetPages } from '../../utils/teamSheet'
 import type { SheetRow } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
@@ -28,18 +28,8 @@ function Row({ row, preMark, zebra }: { row: SheetRow; preMark: boolean; zebra: 
   )
 }
 
-export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, pageCount }: { spec: TeamSheetSpec; preMark: boolean; extraLines?: boolean; pageCount: number }) {
+export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, tossBoxes = false, pageCount }: { spec: TeamSheetSpec; preMark: boolean; extraLines?: boolean; tossBoxes?: boolean; pageCount: number }) {
   const rows = sheetPages(spec.players, extraLines ? BLANK_LINES : 0)[0] ?? []
-  const cells: [string, string | null][] = [
-    ['League', spec.match.league],
-    ['Opposition', spec.match.opposition],
-    ['Date', spec.match.date],
-    ['Start time', spec.match.time],
-    ['Venue', spec.match.venue],
-    ['Toss won by', null],
-    ['Elected to', null],
-    ['Overs', spec.match.overs],
-  ]
   const head = { bgcolor: '#14452f', color: '#fff', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', py: 0.5, px: 0.75, textAlign: 'left' } as const
   return (
     <Box data-testid="team-sheet-paper" sx={{ bgcolor: '#fff', color: '#161a17', border: 1, borderColor: 'divider', borderRadius: 1, boxShadow: 2, p: { xs: 1.5, sm: 2.5 }, width: '100%', maxWidth: 794, mx: 'auto' }}>
@@ -49,8 +39,8 @@ export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, pageCo
         {spec.subtitle && <Typography sx={{ fontSize: '0.8125rem' }}>{spec.subtitle}</Typography>}
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '6px 12px', my: 1.5 }}>
-        {cells.map(([label, value]) => (
-          <Box key={label} sx={{ borderBottom: '1px solid #161a17', minHeight: 34 }}>
+        {metaCells(spec.match, tossBoxes).map(({ label, value, span }) => (
+          <Box key={label} sx={{ borderBottom: '1px solid #161a17', minHeight: 34, gridColumn: `span ${span}` }}>
             <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#5a625c' }}>{label}</Typography>
             <Typography sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>{value ?? ''}</Typography>
           </Box>

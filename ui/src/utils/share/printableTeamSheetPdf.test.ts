@@ -64,9 +64,16 @@ describe('generateTeamSheetPdf (spec 153)', () => {
     expect(text).toEqual(expect.arrayContaining(['First1', 'Last1', 'First2', 'Last2', '1', '2', "Captain's signature", "Umpire's signature"]))
   })
 
-  it('fills the match boxes for a match sheet and leaves the toss boxes empty', async () => {
+  it('fills the match boxes for a match sheet', async () => {
     await generateTeamSheetPdf([spec([player(1)], { match: { league: 'VCASA Club Champs', opposition: 'Midlands CC', date: 'Thu 19 Nov 2026', time: '14:30', venue: 'Durbanville CC B', overs: 'T20' } })], { preMark: false, fileName: 'x.pdf' })
     expect(printed()).toEqual(expect.arrayContaining(['Midlands CC', 'Thu 19 Nov 2026', '14:30', 'Durbanville CC B', 'T20', 'VCASA Club Champs']))
+  })
+
+  it('prints the toss labels only when the toss boxes are on', async () => {
+    await generateTeamSheetPdf([spec([player(1)])], { preMark: false, fileName: 'x.pdf' })
+    expect(printed().map((text) => text.toUpperCase())).not.toContain('TOSS WON BY')
+    await generateTeamSheetPdf([spec([player(1)])], { preMark: false, tossBoxes: true, fileName: 'x.pdf' })
+    expect(printed().map((text) => text.toUpperCase())).toEqual(expect.arrayContaining(['TOSS WON BY', 'ELECTED TO']))
   })
 
   it('draws no filled box unless pre-marking is on', async () => {

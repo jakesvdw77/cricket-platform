@@ -100,6 +100,16 @@ describe('TeamSheetDialog (spec 153)', () => {
     await screen.findByTestId('team-sheet-ready')
   })
 
+  it('leaves the toss boxes off by default and shows them when switched on', async () => {
+    renderDialog()
+    const toggle = await screen.findByRole('checkbox', { name: 'Toss And Elected Boxes' })
+    expect(toggle).not.toBeChecked()
+    expect(screen.queryByText('Toss won by')).not.toBeInTheDocument()
+    await userEvent.click(toggle)
+    expect(await screen.findByText('Toss won by')).toBeInTheDocument()
+    expect(screen.getByText('Elected to')).toBeInTheDocument()
+  })
+
   it('shows no junior notice, and still prints full names', async () => {
     listSections.mockResolvedValue([{ id: 'over40', clubId: 'club-1', parentSectionId: null, name: 'U13', minAge: null, maxAge: 13, gender: null, active: true }])
     renderDialog()
