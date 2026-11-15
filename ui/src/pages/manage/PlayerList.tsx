@@ -383,7 +383,7 @@ export default function PlayerList() {
             />
           ))}
           {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
-          canAdd && <AddCard label="Add New Player" onClick={openCreate} testId="add-player-card" />
+          {canAdd && <AddCard label="Add New Player" onClick={openCreate} testId="add-player-card" />}
         </Box>
       )}
 

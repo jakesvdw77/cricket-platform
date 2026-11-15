@@ -348,6 +348,8 @@ describe('TeamsPage', () => {
       renderPage()
       await screen.findByText('1st XI')
       expect(screen.getByTestId('add-team-card')).toHaveTextContent('Add New Team')
+      // A missing pair of braces once printed the condition as text beside the card (2026-11-15).
+      expect(screen.queryByText(/canAdd/)).not.toBeInTheDocument()
 
       await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       const fused = await screen.findByTestId('teams-fused-card')

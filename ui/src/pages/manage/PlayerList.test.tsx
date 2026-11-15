@@ -210,6 +210,8 @@ describe('PlayerList', () => {
 
     expect(await screen.findByRole('heading', { name: 'Amy Ansell' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Zed Zulu' })).toBeInTheDocument()
+    // A missing pair of braces once printed the condition as text beside the Add card (2026-11-15).
+    expect(screen.queryByText(/canAdd/)).not.toBeInTheDocument()
     expect(screen.getAllByTestId('player-status-badge').map((badge) => badge.textContent)).toEqual(['Verified', 'Unverified'])
     expect(screen.getByText('U15')).toBeInTheDocument()
     expect(screen.getAllByText('No section')).toHaveLength(1)
