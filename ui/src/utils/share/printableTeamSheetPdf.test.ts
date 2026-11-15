@@ -76,6 +76,15 @@ describe('generateTeamSheetPdf (spec 153)', () => {
     expect(printed().map((text) => text.toUpperCase())).toEqual(expect.arrayContaining(['TOSS WON BY', 'ELECTED TO']))
   })
 
+  it('drops the Capt and Keeper columns and writes Captain and Wicketkeeper in boxes when the ticks are off', async () => {
+    await generateTeamSheetPdf([spec([player(1)])], { preMark: false, fileName: 'x.pdf' })
+    expect(printed()).toContain('CAPT')
+    textSpy.mockClear()
+    await generateTeamSheetPdf([spec([player(1)])], { preMark: false, leaderTicks: false, fileName: 'x.pdf' })
+    expect(printed()).not.toContain('CAPT')
+    expect(printed().map((text) => text.toUpperCase())).toEqual(expect.arrayContaining(['CAPTAIN', 'WICKETKEEPER']))
+  })
+
   it('draws no filled box unless pre-marking is on', async () => {
     const players = [player(1, { isCaptain: true }), player(2, { isKeeper: true })]
     await generateTeamSheetPdf([spec(players)], { preMark: false, fileName: 'x.pdf' })

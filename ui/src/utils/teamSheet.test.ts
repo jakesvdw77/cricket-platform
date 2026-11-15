@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, matchInfoFor, metaCells, EMPTY_MATCH_INFO, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -125,16 +125,44 @@ describe('teamSheetFileName', () => {
 })
 
 describe('metaCells', () => {
-  it('has the toss boxes when asked, every box one column', () => {
-    const cells = metaCells(EMPTY_MATCH_INFO, true)
-    expect(cells.map((cell) => cell.label)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Toss won by', 'Elected to', 'Overs'])
-    expect(cells.every((cell) => cell.span === 1)).toBe(true)
+  const labels = (cells: { label: string }[]) => cells.map((cell) => cell.label)
+  const total = (cells: { span: number }[]) => cells.reduce((sum, cell) => sum + cell.span, 0)
+
+  it('is League, Opposition, Date, Start time, then Venue three wide and Overs when nothing optional is on', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, { tossBoxes: false, leaderFields: false })
+    expect(labels(cells)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Overs'])
+    expect(cells.find((cell) => cell.label === 'Venue')?.span).toBe(3)
+    expect(total(cells)).toBe(8)
   })
 
-  it('drops the toss boxes and gives Venue their room, so the row still fills four columns', () => {
-    const cells = metaCells(EMPTY_MATCH_INFO, false)
-    expect(cells.map((cell) => cell.label)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Overs'])
-    expect(cells.find((cell) => cell.label === 'Venue')?.span).toBe(3)
-    expect(cells.reduce((sum, cell) => sum + cell.span, 0)).toBe(8)
+  it('adds the toss boxes in row two, every box one column', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, { tossBoxes: true, leaderFields: false })
+    expect(labels(cells)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Toss won by', 'Elected to', 'Overs'])
+    expect(total(cells)).toBe(8)
+  })
+
+  it('puts Captain and Wicketkeeper in row two when the toss boxes are off, with the names filled', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, { tossBoxes: false, leaderFields: true, captain: 'Hannes Kruger', keeper: 'Pieter Du Plessis' })
+    expect(labels(cells)).toEqual(['League', 'Opposition', 'Date', 'Start time', 'Venue', 'Captain', 'Wicketkeeper', 'Overs'])
+    expect(cells.find((cell) => cell.label === 'Captain')?.value).toBe('Hannes Kruger')
+    expect(total(cells)).toBe(8)
+  })
+
+  it('gives Captain and Wicketkeeper a third row when the toss boxes are on too', () => {
+    const cells = metaCells(EMPTY_MATCH_INFO, { tossBoxes: true, leaderFields: true })
+    expect(labels(cells).slice(-2)).toEqual(['Captain', 'Wicketkeeper'])
+    expect(total(cells)).toBe(12)
+  })
+})
+
+describe('leaderNames', () => {
+  it('names the captain and joins the wicketkeepers', () => {
+    const list = sheetPlayers([
+      member({ firstName: 'Hannes', lastName: 'Kruger', isCaptain: true }),
+      member({ firstName: 'Pieter', lastName: 'Du Plessis', isWicketKeeper: true }),
+      member({ firstName: 'Riaan', lastName: 'Smit', isWicketKeeper: true }),
+    ])
+    expect(leaderNames(list)).toEqual({ captain: 'Hannes Kruger', keeper: 'Pieter Du Plessis, Riaan Smit' })
+    expect(leaderNames([])).toEqual({ captain: null, keeper: null })
   })
 })

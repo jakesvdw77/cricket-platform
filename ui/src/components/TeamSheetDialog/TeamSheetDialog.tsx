@@ -68,6 +68,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   const [preMark, setPreMark] = useState(false)
   const [extraLines, setExtraLines] = useState(true)
   const [tossBoxes, setTossBoxes] = useState(false)
+  const [leaderTicks, setLeaderTicks] = useState(true)
   const team = teams.find((candidate) => candidate.id === teamId) ?? teams[0] ?? null
 
   const leagues = useQuery({ queryKey: ['managed-club', clubId, 'leagues', 'team-sheet'], queryFn: () => listLeagues(clubId), enabled: open && Boolean(clubId) })
@@ -126,13 +127,13 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     }
     let cancelled = false
     setResult((previous) => ({ ...previous, busy: true }))
-    generateTeamSheetPdf(specs, { preMark, extraLines, tossBoxes, fileName })
+    generateTeamSheetPdf(specs, { preMark, extraLines, tossBoxes, leaderTicks, fileName })
       .then((file) => !cancelled && setResult({ file, error: null, busy: false }))
       .catch(() => !cancelled && setResult({ file: null, error: 'The PDF could not be created. Try again.', busy: false }))
     return () => {
       cancelled = true
     }
-  }, [open, specs, preMark, extraLines, tossBoxes, fileName])
+  }, [open, specs, preMark, extraLines, tossBoxes, leaderTicks, fileName])
 
   const empty = squad.isSuccess && players.length === 0
   const noMatches = (mode === 'one' || mode === 'all') && teamMatchList.length === 0
@@ -209,6 +210,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
         <CompactSwitch label="Pre-Mark Captain And Keepers" checked={preMark} onChange={setPreMark} />
         <CompactSwitch label="Two Lines For Late Or Guest Players" checked={extraLines} onChange={setExtraLines} />
         <CompactSwitch label="Toss And Elected Boxes" checked={tossBoxes} onChange={setTossBoxes} />
+        <CompactSwitch label="Capt And Keeper Tick Boxes" checked={leaderTicks} onChange={setLeaderTicks} />
       </ShareControlGroup>
     </>
   )
@@ -243,7 +245,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
                     <Alert severity="info">{mode === 'all' ? 'This team has no matches in this season.' : 'This team has no matches to choose from. Use Blank instead.'}</Alert>
                   ) : preview ? (
                     <Box sx={{ minHeight: 0, overflow: 'auto' }}>
-                      <TeamSheetPaperPreview spec={preview} preMark={preMark} extraLines={extraLines} tossBoxes={tossBoxes} pageCount={pages} />
+                      <TeamSheetPaperPreview spec={preview} preMark={preMark} extraLines={extraLines} tossBoxes={tossBoxes} leaderTicks={leaderTicks} pageCount={pages} />
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }} data-testid="team-sheet-ready">
                         {result.file ? `${fileName}${specs.length > 1 ? ` (${specs.length} sheets)` : ''}. The preview shows the first page.` : result.error ?? 'Preparing the PDF...'}
                       </Typography>

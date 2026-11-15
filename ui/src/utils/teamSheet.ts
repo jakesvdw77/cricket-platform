@@ -36,17 +36,40 @@ export interface MetaCell {
   span: number
 }
 
-// The two rows of write-on boxes. The toss boxes are optional (the sheet is handed in before the game); without them Venue is three
-// columns wide so the row stays full.
-export function metaCells(match: SheetMatchInfo, tossBoxes: boolean): MetaCell[] {
+export interface MetaOptions {
+  // Toss won by and Elected to (off unless asked: the sheet is handed in before the game).
+  tossBoxes: boolean
+  // Captain and Wicketkeeper written in boxes up here, for a sheet without the Capt and Keeper tick columns.
+  leaderFields: boolean
+  captain?: string | null
+  keeper?: string | null
+}
+
+// The captain and the wicketkeeper(s) as names, for the pre-marked write-on boxes.
+export function leaderNames(players: SheetPlayer[]): { captain: string | null; keeper: string | null } {
+  const full = (player: SheetPlayer): string => `${player.firstName} ${player.lastName}`.trim()
+  const captain = players.find((player) => player.isCaptain)
+  const keepers = players.filter((player) => player.isKeeper).map(full)
+  return { captain: captain ? full(captain) : null, keeper: keepers.length > 0 ? keepers.join(', ') : null }
+}
+
+// The write-on boxes under the header, four columns across. Row one is League, Opposition, Date, Start time. Row two is Venue and
+// Overs plus whatever optional boxes are on, Venue taking the spare room so the row stays full. When both the toss boxes and the
+// Captain and Wicketkeeper boxes are on, the latter two get a third row.
+export function metaCells(match: SheetMatchInfo, options: MetaOptions): MetaCell[] {
+  const { tossBoxes, leaderFields, captain = null, keeper = null } = options
+  const toss: MetaCell[] = tossBoxes ? [{ label: 'Toss won by', value: null, span: 1 }, { label: 'Elected to', value: null, span: 1 }] : []
+  const leaders: MetaCell[] = leaderFields ? [{ label: 'Captain', value: captain, span: 1 }, { label: 'Wicketkeeper', value: keeper, span: 1 }] : []
+  const inRowTwo = tossBoxes ? toss : leaders
   return [
     { label: 'League', value: match.league, span: 1 },
     { label: 'Opposition', value: match.opposition, span: 1 },
     { label: 'Date', value: match.date, span: 1 },
     { label: 'Start time', value: match.time, span: 1 },
-    { label: 'Venue', value: match.venue, span: tossBoxes ? 1 : 3 },
-    ...(tossBoxes ? [{ label: 'Toss won by', value: null, span: 1 }, { label: 'Elected to', value: null, span: 1 }] : []),
+    { label: 'Venue', value: match.venue, span: 4 - inRowTwo.length - 1 },
+    ...inRowTwo,
     { label: 'Overs', value: match.overs, span: 1 },
+    ...(tossBoxes && leaderFields ? leaders.map((cell) => ({ ...cell, span: 2 })) : []),
   ]
 }
 

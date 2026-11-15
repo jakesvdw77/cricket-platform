@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material'
-import { BLANK_LINES, metaCells, preMarks, sheetPages } from '../../utils/teamSheet'
+import { BLANK_LINES, leaderNames, metaCells, preMarks, sheetPages } from '../../utils/teamSheet'
 import type { SheetRow } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
@@ -7,7 +7,7 @@ import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 // what prints. (No page image is drawn, so the preview works on every browser and phone.)
 const BOX = { display: 'inline-block', width: 12, height: 12, border: '1.5px solid #161a17', borderRadius: '2px', verticalAlign: 'middle' } as const
 
-function Row({ row, preMark, zebra }: { row: SheetRow; preMark: boolean; zebra: boolean }) {
+function Row({ row, preMark, leaderTicks, zebra }: { row: SheetRow; preMark: boolean; leaderTicks: boolean; zebra: boolean }) {
   const marks = preMarks(row, preMark)
   const cell = { py: 0.5, px: 0.75, borderBottom: '1px solid #9aa59d', fontSize: '0.8125rem', bgcolor: zebra ? '#eef2ee' : 'transparent' } as const
   return (
@@ -18,17 +18,21 @@ function Row({ row, preMark, zebra }: { row: SheetRow; preMark: boolean; zebra: 
       <Box component="td" sx={{ ...cell, fontWeight: 700 }}>{row.kind === 'player' && row.player.shirt !== null ? row.player.shirt : ''}</Box>
       <Box component="td" sx={cell}>{row.kind === 'player' ? row.player.firstName : ''}</Box>
       <Box component="td" sx={cell}>{row.kind === 'player' ? row.player.lastName : ''}</Box>
-      <Box component="td" sx={{ ...cell, textAlign: 'center' }}>
-        <Box component="span" data-testid={marks.captain ? 'mark-captain' : undefined} sx={{ ...BOX, bgcolor: marks.captain ? '#161a17' : 'transparent' }} />
-      </Box>
-      <Box component="td" sx={{ ...cell, textAlign: 'center' }}>
-        <Box component="span" data-testid={marks.keeper ? 'mark-keeper' : undefined} sx={{ ...BOX, bgcolor: marks.keeper ? '#161a17' : 'transparent' }} />
-      </Box>
+      {leaderTicks && (
+        <>
+          <Box component="td" sx={{ ...cell, textAlign: 'center' }}>
+            <Box component="span" data-testid={marks.captain ? 'mark-captain' : undefined} sx={{ ...BOX, bgcolor: marks.captain ? '#161a17' : 'transparent' }} />
+          </Box>
+          <Box component="td" sx={{ ...cell, textAlign: 'center' }}>
+            <Box component="span" data-testid={marks.keeper ? 'mark-keeper' : undefined} sx={{ ...BOX, bgcolor: marks.keeper ? '#161a17' : 'transparent' }} />
+          </Box>
+        </>
+      )}
     </Box>
   )
 }
 
-export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, tossBoxes = false, pageCount }: { spec: TeamSheetSpec; preMark: boolean; extraLines?: boolean; tossBoxes?: boolean; pageCount: number }) {
+export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, tossBoxes = false, leaderTicks = true, pageCount }: { spec: TeamSheetSpec; preMark: boolean; extraLines?: boolean; tossBoxes?: boolean; leaderTicks?: boolean; pageCount: number }) {
   const rows = sheetPages(spec.players, extraLines ? BLANK_LINES : 0)[0] ?? []
   const head = { bgcolor: '#14452f', color: '#fff', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', py: 0.5, px: 0.75, textAlign: 'left' } as const
   return (
@@ -39,7 +43,7 @@ export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, tossBo
         {spec.subtitle && <Typography sx={{ fontSize: '0.8125rem' }}>{spec.subtitle}</Typography>}
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '6px 12px', my: 1.5 }}>
-        {metaCells(spec.match, tossBoxes).map(({ label, value, span }) => (
+        {metaCells(spec.match, { tossBoxes, leaderFields: !leaderTicks, ...(preMark ? leaderNames(spec.players) : {}) }).map(({ label, value, span }) => (
           <Box key={label} sx={{ borderBottom: '1px solid #161a17', minHeight: 34, gridColumn: `span ${span}` }}>
             <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#5a625c' }}>{label}</Typography>
             <Typography sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>{value ?? ''}</Typography>
@@ -53,13 +57,13 @@ export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, tossBo
             <Box component="th" sx={head}>Shirt</Box>
             <Box component="th" sx={head}>First name</Box>
             <Box component="th" sx={head}>Surname</Box>
-            <Box component="th" sx={{ ...head, textAlign: 'center' }}>Capt</Box>
-            <Box component="th" sx={{ ...head, textAlign: 'center' }}>Keeper</Box>
+            {leaderTicks && <Box component="th" sx={{ ...head, textAlign: 'center' }}>Capt</Box>}
+            {leaderTicks && <Box component="th" sx={{ ...head, textAlign: 'center' }}>Keeper</Box>}
           </Box>
         </Box>
         <Box component="tbody">
           {rows.map((row, index) => (
-            <Row key={row.kind === 'player' ? row.player.key : row.key} row={row} preMark={preMark} zebra={index % 2 === 1} />
+            <Row key={row.kind === 'player' ? row.player.key : row.key} row={row} preMark={preMark} leaderTicks={leaderTicks} zebra={index % 2 === 1} />
           ))}
         </Box>
       </Box>

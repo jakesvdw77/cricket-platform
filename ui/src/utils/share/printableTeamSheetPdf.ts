@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
-import { BLANK_LINES, metaCells, sheetPages, preMarks } from '../teamSheet'
+import type { MetaOptions } from '../teamSheet'
+import { BLANK_LINES, leaderNames, metaCells, sheetPages, preMarks } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
 
@@ -24,6 +25,8 @@ export interface TeamSheetPdfOptions {
   extraLines?: boolean
   // The Toss won by and Elected to boxes; off unless switched on (the sheet is handed in before the game).
   tossBoxes?: boolean
+  // The Capt and Keeper tick columns; on unless switched off, then Captain and Wicketkeeper are written in boxes under the header.
+  leaderTicks?: boolean
   fileName: string
 }
 
@@ -39,6 +42,8 @@ const WIDTH = 186
 const ROW = 8
 // Column widths: Playing, Shirt, First name, Surname, Capt, Keeper (sum = WIDTH).
 const COLS = [22, 20, 52, 62, 15, 15]
+// Without the Capt and Keeper ticks their room goes to the names.
+const COLS_NO_TICKS = [22, 20, 72, 72]
 
 function drawLogo(doc: jsPDF, data: string | null, x: number, y: number, box: number, fallback: string): void {
   doc.setDrawColor(...LINE)
@@ -90,10 +95,11 @@ function drawHeader(doc: jsPDF, spec: TeamSheetSpec, teamLogo: string | null, le
 }
 
 // Two rows of four write-on boxes: filled from the match when known, else left empty.
-function drawMeta(doc: jsPDF, match: SheetMatchInfo, tossBoxes: boolean, y: number): number {
+function drawMeta(doc: jsPDF, match: SheetMatchInfo, options: MetaOptions, y: number): number {
   const cell = WIDTH / 4
   let column = 0
-  metaCells(match, tossBoxes).forEach(({ label, value, span }) => {
+  const cells = metaCells(match, options)
+  cells.forEach(({ label, value, span }) => {
     const x = LEFT + column * cell
     const top = y + Math.floor(column / 4) * 13
     column += span
@@ -112,7 +118,7 @@ function drawMeta(doc: jsPDF, match: SheetMatchInfo, tossBoxes: boolean, y: numb
     doc.setLineWidth(0.25)
     doc.line(x + 1, top + 10, x + width - 3, top + 10)
   })
-  return y + 2 * 13 + 3
+  return y + Math.ceil(cells.reduce((sum, cell) => sum + cell.span, 0) / 4) * 13 + 3
 }
 
 function box(doc: jsPDF, centreX: number, centreY: number, filled: boolean): void {
@@ -127,19 +133,20 @@ function box(doc: jsPDF, centreX: number, centreY: number, filled: boolean): voi
   }
 }
 
-function drawTable(doc: jsPDF, rows: SheetRow[], preMark: boolean, y: number): number {
+function drawTable(doc: jsPDF, rows: SheetRow[], preMark: boolean, leaderTicks: boolean, y: number): number {
+  const cols = leaderTicks ? COLS : COLS_NO_TICKS
   // Header band
   doc.setFillColor(...GREEN)
   doc.rect(LEFT, y, WIDTH, 7, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
   doc.setTextColor(255, 255, 255)
-  const heads = ['PLAYING', 'SHIRT', 'FIRST NAME', 'SURNAME', 'CAPT', 'KEEPER']
+  const heads = ['PLAYING', 'SHIRT', 'FIRST NAME', 'SURNAME', 'CAPT', 'KEEPER'].slice(0, cols.length)
   let x = LEFT
   heads.forEach((head, index) => {
     const centred = index === 0 || index >= 4
-    doc.text(head, centred ? x + COLS[index] / 2 : x + 2, y + 4.8, { align: centred ? 'center' : 'left' })
-    x += COLS[index]
+    doc.text(head, centred ? x + cols[index] / 2 : x + 2, y + 4.8, { align: centred ? 'center' : 'left' })
+    x += cols[index]
   })
   y += 7
   rows.forEach((row, index) => {
@@ -152,17 +159,19 @@ function drawTable(doc: jsPDF, rows: SheetRow[], preMark: boolean, y: number): n
     doc.line(LEFT, y + ROW, LEFT + WIDTH, y + ROW)
     const marks = preMarks(row, preMark)
     const mid = y + ROW / 2
-    box(doc, LEFT + COLS[0] / 2, mid, false)
-    box(doc, LEFT + COLS[0] + COLS[1] + COLS[2] + COLS[3] + COLS[4] / 2, mid, marks.captain)
-    box(doc, LEFT + COLS[0] + COLS[1] + COLS[2] + COLS[3] + COLS[4] + COLS[5] / 2, mid, marks.keeper)
+    box(doc, LEFT + cols[0] / 2, mid, false)
+    if (leaderTicks) {
+      box(doc, LEFT + cols[0] + cols[1] + cols[2] + cols[3] + cols[4] / 2, mid, marks.captain)
+      box(doc, LEFT + cols[0] + cols[1] + cols[2] + cols[3] + cols[4] + cols[5] / 2, mid, marks.keeper)
+    }
     if (row.kind === 'player') {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
       doc.setTextColor(...INK)
-      if (row.player.shirt !== null) doc.text(String(row.player.shirt), LEFT + COLS[0] + 2, mid + 1.4)
+      if (row.player.shirt !== null) doc.text(String(row.player.shirt), LEFT + cols[0] + 2, mid + 1.4)
       doc.setFont('helvetica', 'normal')
-      doc.text(doc.splitTextToSize(row.player.firstName, COLS[2] - 3)[0] ?? '', LEFT + COLS[0] + COLS[1] + 2, mid + 1.4)
-      doc.text(doc.splitTextToSize(row.player.lastName, COLS[3] - 3)[0] ?? '', LEFT + COLS[0] + COLS[1] + COLS[2] + 2, mid + 1.4)
+      doc.text(doc.splitTextToSize(row.player.firstName, cols[2] - 3)[0] ?? '', LEFT + cols[0] + cols[1] + 2, mid + 1.4)
+      doc.text(doc.splitTextToSize(row.player.lastName, cols[3] - 3)[0] ?? '', LEFT + cols[0] + cols[1] + cols[2] + 2, mid + 1.4)
     }
     y += ROW
   })
@@ -195,8 +204,10 @@ export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: Tea
       if (!first) doc.addPage()
       first = false
       const afterHeader = drawHeader(doc, sheet, imageOf(sheet.teamLogoUrl), imageOf(sheet.leagueLogoUrl))
-      const afterMeta = drawMeta(doc, sheet.match, options.tossBoxes === true, afterHeader)
-      const end = drawTable(doc, rows, options.preMark, afterMeta)
+      const leaderTicks = options.leaderTicks !== false
+      const names = options.preMark ? leaderNames(sheet.players) : { captain: null, keeper: null }
+      const afterMeta = drawMeta(doc, sheet.match, { tossBoxes: options.tossBoxes === true, leaderFields: !leaderTicks, ...names }, afterHeader)
+      const end = drawTable(doc, rows, options.preMark, leaderTicks, afterMeta)
       drawFooter(doc, end)
     }
   }

@@ -110,6 +110,14 @@ describe('TeamSheetDialog (spec 153)', () => {
     expect(screen.getByText('Elected to')).toBeInTheDocument()
   })
 
+  it('hides the Capt and Keeper columns when their tick boxes are switched off', async () => {
+    renderDialog()
+    expect(await screen.findByText('Keeper')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Capt And Keeper Tick Boxes' }))
+    expect(screen.queryByText('Keeper')).not.toBeInTheDocument()
+    expect(screen.getByText('Wicketkeeper')).toBeInTheDocument()
+  })
+
   it('shows no junior notice, and still prints full names', async () => {
     listSections.mockResolvedValue([{ id: 'over40', clubId: 'club-1', parentSectionId: null, name: 'U13', minAge: null, maxAge: 13, gender: null, active: true }])
     renderDialog()
