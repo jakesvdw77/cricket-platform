@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material'
-import { preMarks, sheetPages } from '../../utils/teamSheet'
+import { BLANK_LINES, preMarks, sheetPages } from '../../utils/teamSheet'
 import type { SheetRow } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
@@ -28,8 +28,8 @@ function Row({ row, preMark, zebra }: { row: SheetRow; preMark: boolean; zebra: 
   )
 }
 
-export function TeamSheetPaperPreview({ spec, preMark, pageCount }: { spec: TeamSheetSpec; preMark: boolean; pageCount: number }) {
-  const rows = sheetPages(spec.players)[0] ?? []
+export function TeamSheetPaperPreview({ spec, preMark, extraLines = true, pageCount }: { spec: TeamSheetSpec; preMark: boolean; extraLines?: boolean; pageCount: number }) {
+  const rows = sheetPages(spec.players, extraLines ? BLANK_LINES : 0)[0] ?? []
   const cells: [string, string | null][] = [
     ['League', spec.match.league],
     ['Opposition', spec.match.opposition],

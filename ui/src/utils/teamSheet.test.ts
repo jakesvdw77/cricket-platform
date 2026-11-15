@@ -45,6 +45,11 @@ describe('sheetPlayers (spec 153)', () => {
 describe('sheetPages', () => {
   const players = (count: number) => sheetPlayers(Array.from({ length: count }, (_, i) => member({ firstName: 'P', lastName: `L${String(i).padStart(2, '0')}` })))
 
+  it('adds no empty lines when switched off, and an empty squad is still one page', () => {
+    expect(sheetPages(players(12), 0)[0]).toHaveLength(12)
+    expect(sheetPages([], 0)).toEqual([[]])
+  })
+
   it('adds two empty lines after the squad on the same page when there is room', () => {
     const pages = sheetPages(players(12))
     expect(pages).toHaveLength(1)

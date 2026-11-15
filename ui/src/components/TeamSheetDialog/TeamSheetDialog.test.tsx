@@ -91,6 +91,15 @@ describe('TeamSheetDialog (spec 153)', () => {
     expect(screen.getByRole('button', { name: /Download PDF/ })).toBeDisabled()
   })
 
+  it('has the late-player lines on by default and lets them be switched off', async () => {
+    renderDialog()
+    const toggle = await screen.findByRole('checkbox', { name: 'Two Lines For Late Or Guest Players' })
+    expect(toggle).toBeChecked()
+    await userEvent.click(toggle)
+    expect(toggle).not.toBeChecked()
+    await screen.findByTestId('team-sheet-ready')
+  })
+
   it('shows no junior notice, and still prints full names', async () => {
     listSections.mockResolvedValue([{ id: 'over40', clubId: 'club-1', parentSectionId: null, name: 'U13', minAge: null, maxAge: 13, gender: null, active: true }])
     renderDialog()

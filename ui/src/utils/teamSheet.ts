@@ -51,15 +51,15 @@ export function sheetPlayers(squad: SquadMember[]): SheetPlayer[] {
     .sort((a, b) => compare(a.lastName, b.lastName) || compare(a.firstName, b.firstName))
 }
 
-// The squad then two empty lines, cut into pages of ROWS_PER_PAGE. An empty squad is one page of empty lines only.
-export function sheetPages(players: SheetPlayer[]): SheetRow[][] {
+// The squad then two empty lines (none when the manager switched them off), cut into pages of ROWS_PER_PAGE. An empty squad is one page of empty lines only.
+export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LINES): SheetRow[][] {
   const rows: SheetRow[] = [
     ...players.map((player) => ({ kind: 'player' as const, player })),
-    ...Array.from({ length: BLANK_LINES }, (_, index) => ({ kind: 'blank' as const, key: `blank-${index}` })),
+    ...Array.from({ length: blankLines }, (_, index) => ({ kind: 'blank' as const, key: `blank-${index}` })),
   ]
   const pages: SheetRow[][] = []
   for (let start = 0; start < rows.length; start += ROWS_PER_PAGE) pages.push(rows.slice(start, start + ROWS_PER_PAGE))
-  return pages
+  return pages.length > 0 ? pages : [[]]
 }
 
 // Whether the Capt and Keeper boxes of a row are pre-filled (only when the manager switched pre-marking on).

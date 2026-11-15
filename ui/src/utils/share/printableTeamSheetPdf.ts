@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { sheetPages, preMarks } from '../teamSheet'
+import { BLANK_LINES, sheetPages, preMarks } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
 
@@ -20,6 +20,8 @@ export interface TeamSheetSpec {
 
 export interface TeamSheetPdfOptions {
   preMark: boolean
+  // The two empty lines for a late or guest player; on unless switched off.
+  extraLines?: boolean
   fileName: string
 }
 
@@ -194,7 +196,7 @@ export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: Tea
 
   let first = true
   for (const sheet of sheets) {
-    for (const rows of sheetPages(sheet.players)) {
+    for (const rows of sheetPages(sheet.players, options.extraLines === false ? 0 : BLANK_LINES)) {
       if (!first) doc.addPage()
       first = false
       const afterHeader = drawHeader(doc, sheet, imageOf(sheet.teamLogoUrl), imageOf(sheet.leagueLogoUrl))
