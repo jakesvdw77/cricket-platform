@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, surnameDisplay, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, surnameDisplay, surnameParts, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -244,6 +244,11 @@ describe('surnameDisplay: the surname in capitals with its leading particles in 
     ['Botha', 'BOTHA'],
   ])('%s prints as %s', (input, expected) => {
     expect(surnameDisplay(input)).toBe(expected)
+  })
+
+  it('splits the particles from the main part for the posters that print them on two lines', () => {
+    expect(surnameParts('Van der Westhuizen')).toEqual({ particles: 'van der', main: 'WESTHUIZEN' })
+    expect(surnameParts('Botha')).toEqual({ particles: '', main: 'BOTHA' })
   })
 
   it('keeps at least one word in capitals, even when the whole surname is a particle', () => {

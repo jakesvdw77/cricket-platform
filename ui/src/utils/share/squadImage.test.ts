@@ -88,6 +88,13 @@ describe('drawSquadImage', () => {
     expect(record({ ...model, players: [model.players[0]] }, options).texts).toContain('2026/2027 · 1 player')
   })
 
+  it('puts the surname particles on the first-name line and the main surname in capitals on its own line, so a long surname fits', () => {
+    const long = { ...model, players: [player('a', 'Jaco', 'Van der Westhuizen'), player('b', 'Emile', 'van der Merwe'), player('c', 'Anton', 'De Villiers')] }
+    const { texts } = record(long, options)
+    expect(texts).toEqual(expect.arrayContaining(['Jaco van der', 'WESTHUIZEN', 'Emile van der', 'MERWE', 'Anton de', 'VILLIERS']))
+    expect(texts).not.toContain('VAN DER WESTHUIZEN')
+  })
+
   it('puts SQUAD on its own row above the team name, never over it, when there is no logo in the header', () => {
     const rows: { text: string; y: number }[] = []
     const ctx = {

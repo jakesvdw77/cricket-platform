@@ -5,7 +5,7 @@ import type { Ctx, Palette } from './matchImage'
 import type { ResultImageColour } from './resultImage'
 import type { ImageSize, ImageTemplate } from './shareChoices'
 import { BRAND } from '../../brandTokens'
-import { surnameDisplay } from '../teamSheet'
+import { surnameParts } from '../teamSheet'
 
 // The squad poster: a team's whole squad for a season, not tied to any match. A grid of round player pictures with the name under each
 // (shirt number and captain or keeper mark on the picture), or a list. One Canvas2D function for the preview and the file, drawn with the
@@ -101,7 +101,25 @@ function drawGrid(ctx: Ctx, model: SquadShareModel, options: SquadImageOptions, 
   const cellH = area.height / rows
   const radius = diameter / 2
   const scale = Math.min(Math.max(1, options.textScale ?? 1), 1.4)
-  const nameSize = Math.min(radius * 0.4 * scale, cellH * 0.17, 40 * k * scale)
+  const wantedSize = Math.min(radius * 0.4 * scale, cellH * 0.17, 40 * k * scale)
+  // Two lines under the picture: the first name with the surname's particles ("Jaco van der"), then the main surname in capitals. ONE size for
+  // every player, the largest that fits the widest of those lines in a cell, so a long surname is never shrunk on its own or cut off.
+  const lines = model.players.map((player) => {
+    const parts = surnameParts(player.lastName)
+    return { first: [player.firstName, parts.particles].filter(Boolean).join(' '), main: parts.main }
+  })
+  const maxWidth = cellW * 0.94
+  const reference = 100
+  const measureAt = (text: string, weight: number): number => {
+    ctx.font = `${weight} ${reference}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    return ctx.measureText(text).width
+  }
+  const fitSize = lines.reduce((size, line) => {
+    const firstWidth = measureAt(line.first, 400) * 0.82
+    const mainWidth = measureAt(line.main, 700)
+    return Math.min(size, firstWidth > 0 ? (reference * maxWidth) / firstWidth : size, mainWidth > 0 ? (reference * maxWidth) / mainWidth : size)
+  }, wantedSize)
+  const nameSize = Math.max(8 * k, fitSize)
   model.players.forEach((player, index) => {
     const column = index % columns
     const row = Math.floor(index / columns)
@@ -110,8 +128,8 @@ function drawGrid(ctx: Ctx, model: SquadShareModel, options: SquadImageOptions, 
     const centreY = top + radius
     if (pictures) drawPlayerPicture(ctx, player, centreX, centreY, radius, options, palette)
     else drawNumberDisc(ctx, player, centreX, centreY, radius, palette)
-    drawText(ctx, player.firstName, centreX, centreY + radius + nameSize * 0.95, { size: nameSize * 0.82, colour: palette.muted, align: 'center', maxWidth: cellW * 0.94 })
-    drawText(ctx, surnameDisplay(player.lastName), centreX, centreY + radius + nameSize * 2.05, { size: nameSize, colour: palette.text, weight: 700, align: 'center', maxWidth: cellW * 0.94 })
+    drawText(ctx, lines[index].first, centreX, centreY + radius + nameSize * 0.95, { size: nameSize * 0.82, colour: palette.muted, align: 'center', maxWidth })
+    drawText(ctx, lines[index].main, centreX, centreY + radius + nameSize * 2.05, { size: nameSize, colour: palette.text, weight: 700, align: 'center', maxWidth })
     if (!pictures && options.include.marks && (player.captain || player.keeper)) {
       drawText(ctx, [player.captain ? 'C' : '', player.keeper ? 'WK' : ''].filter(Boolean).join(' '), centreX, centreY + radius + nameSize * 3.05, { size: nameSize * 0.7, colour: palette.accent, weight: 700, align: 'center' })
     }

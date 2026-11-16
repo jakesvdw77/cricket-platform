@@ -166,12 +166,16 @@ export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LI
 // A surname as the sheets and posters print it in capitals: the main part in capitals, the leading particles (van, der, de, du, le...) in
 // lower case, as the name is written: "de VILLIERS", "van der MERWE". At least one word is always the main part.
 const SURNAME_PARTICLES = new Set(['van', 'von', 'der', 'den', 'de', 'du', 'di', 'da', 'le', 'la', 'te', 'ten', 'ter', 'op', 'vd', 'v/d', 'dos', 'das', 'del', 'della', 'el', 'al', "'t"])
-export function surnameDisplay(lastName: string): string {
+// The surname split into its lower-case particles ("van der") and its main part in capitals ("MERWE"); `particles` is '' when there are none.
+export function surnameParts(lastName: string): { particles: string; main: string } {
   const words = lastName.trim().split(/\s+/).filter(Boolean)
-  let particles = 0
-  while (particles < words.length - 1 && SURNAME_PARTICLES.has(words[particles].toLowerCase())) particles += 1
-  const prefix = words.slice(0, particles).map((word) => word.toLowerCase())
-  return [...prefix, words.slice(particles).join(' ').toUpperCase()].filter(Boolean).join(' ')
+  let count = 0
+  while (count < words.length - 1 && SURNAME_PARTICLES.has(words[count].toLowerCase())) count += 1
+  return { particles: words.slice(0, count).map((word) => word.toLowerCase()).join(' '), main: words.slice(count).join(' ').toUpperCase() }
+}
+export function surnameDisplay(lastName: string): string {
+  const { particles, main } = surnameParts(lastName)
+  return [particles, main].filter(Boolean).join(' ')
 }
 
 // Pre-marking the captain and the wicketkeeper are two separate choices. A plain boolean still means both (the older callers).
