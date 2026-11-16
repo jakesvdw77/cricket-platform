@@ -60,6 +60,8 @@ class ResultValidatorImportedNameTest {
             assertThat(issue.step()).isEqualTo(ResultWizardStep.TEAMS);
             assertThat(issue.side()).isEqualTo(ResultSide.HOME);
             assertThat(issue.message()).startsWith("File said 'Nazar A', matched to ").endsWith("Confirm or change this player.");
+            // the Review step's Accept needs to know which linked player the check is about
+            assertThat(issue.playerProfileId()).isNotNull();
         });
         assertThat(dto.canPublish()).isFalse();
         assertThat(dto.errors()).isNotEmpty();

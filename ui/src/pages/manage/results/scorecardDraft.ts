@@ -369,6 +369,17 @@ export function confirmGuess(scorecard: Scorecard, key: string): Scorecard {
   }
 }
 
+// docs/specs/104: Accept on a Review check confirms the guess for one linked player of a side (the check names the player the
+// import matched): every flagged row of that player on that side loses its flag. Only clears flags, like confirmGuess.
+export function confirmGuessesOf(scorecard: Scorecard, side: ResultSide, playerProfileId: string): Scorecard {
+  return {
+    ...scorecard,
+    players: scorecard.players.map((player) =>
+      player.side === side && player.playerProfileId === playerProfileId && player.importMatch && !player.opposition ? { ...player, importMatch: null } : player,
+    ),
+  }
+}
+
 // docs/specs/104: the manager changes who an imported name is (Change on a guess, or a pick for an unresolved name). Unlike
 // a swap it KEEPS the name the file wrote (`displayName`), because the server writes the remembered name from it when the
 // save changes the linked player. A registered player becomes the row's person; a guest name keeps the row a guest. Refused

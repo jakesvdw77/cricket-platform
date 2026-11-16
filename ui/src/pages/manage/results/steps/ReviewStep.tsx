@@ -68,6 +68,9 @@ export interface ReviewStepProps extends ScorecardStepProps {
   onSaveForPreview: () => Promise<boolean>
   // Runs the checks again (after Add to squad).
   onRevalidate?: () => void
+  // docs/specs/104: Accept on an unconfirmed imported player's check, and Accept All Matches above the checks.
+  onAcceptMatch?: (issue: ResultIssue) => void
+  onAcceptAllMatches?: () => void
 }
 
 function CheckRow({ tone, text, action, chip, problem }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode; chip?: string | null; problem?: string | null }) {
@@ -116,6 +119,8 @@ export function ReviewStep({
   fieldName,
   onSaveForPreview,
   onRevalidate,
+  onAcceptMatch,
+  onAcceptAllMatches,
 }: ReviewStepProps) {
   const payload = toPayload(draft)
   const names = { home: sides[0].name, away: sides[1].name }
@@ -180,6 +185,8 @@ export function ReviewStep({
     setSquadBusy(false)
     onRevalidate?.()
   }
+  const isGuessIssue = (issue: ResultIssue) => issue.code === 'IMPORTED_NAME_UNCONFIRMED' && Boolean(issue.playerProfileId) && Boolean(issue.side)
+  const guessCount = errors.filter(isGuessIssue).length
   const issueFix = (issue: ResultIssue) => {
     if (isSquadIssue(issue)) {
       return (
@@ -190,6 +197,19 @@ export function ReviewStep({
     }
     const id = stepIdForIssue(issue.step, issue.code)
     if (!id || !onGoToStep) return undefined
+    // docs/specs/104: "File said X, matched to Y": Accept keeps the match, Change opens the player on the Teams step.
+    if (isGuessIssue(issue) && onAcceptMatch) {
+      return (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button size="compact" onClick={() => onAcceptMatch(issue)}>
+            Accept
+          </Button>
+          <Button variant="secondary" size="compact" onClick={() => onGoToStep(id, issue.side ?? undefined)}>
+            Change
+          </Button>
+        </Box>
+      )
+    }
     return (
       <Button variant="secondary" size="compact" onClick={() => onGoToStep(id, issue.side ?? undefined)}>
         Fix
@@ -308,11 +328,18 @@ export function ReviewStep({
       <Box aria-live="polite" sx={reviewCardSx}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
           <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
-          {leagueRules && (
-            <Button variant="secondary" size="compact" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)}>
-              Playing conditions
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {guessCount > 1 && onAcceptAllMatches && (
+              <Button size="compact" onClick={onAcceptAllMatches}>
+                Accept All Matches
+              </Button>
+            )}
+            {leagueRules && (
+              <Button variant="secondary" size="compact" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)}>
+                Playing conditions
+              </Button>
+            )}
+          </Box>
         </Box>
         {validating && (
           <Typography variant="body2" color="text.secondary">

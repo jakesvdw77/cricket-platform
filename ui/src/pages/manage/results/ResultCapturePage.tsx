@@ -22,7 +22,7 @@ import {
   saveResultDraft,
   validateResult,
 } from '../../../api/matchResultApi'
-import type { MatchResult, ResultDraft, ResultSide, ResultValidation, Scorecard, ScorecardPrefill } from '../../../api/matchResultApi'
+import type { MatchResult, ResultDraft, ResultIssue, ResultSide, ResultValidation, Scorecard, ScorecardPrefill } from '../../../api/matchResultApi'
 import { getPlayingConditions } from '../../../api/leaguePlayingConditionsApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
@@ -36,7 +36,8 @@ import { errorIssues, errorList, errorStatus, isNotFound } from '../../../utils/
 import type { MarginCheck } from '../../../utils/marginCheck'
 import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromToss, hasRegularFigures, isBlankDraft, scorecardStepsApplicable, tossIncomplete, toPayload } from './resultDraftHelpers'
 import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
-import { defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDraft'
+import { confirmGuessesOf, defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDraft'
+import { confirmRuleBased } from './import/guessSummary'
 import { withCalculatedMargin } from './calculatedMargin'
 import { ImportedChip } from './import/ImportedChip'
 import { ImportReviewContext } from './import/importReviewContext'
@@ -63,6 +64,8 @@ interface StepContext extends StepProps, ScorecardStepProps {
   needsAck: boolean
   onFix: () => void
   onRevalidate: () => void
+  onAcceptMatch: (issue: ResultIssue) => void
+  onAcceptAllMatches: () => void
   validation: ResultValidation | null
   validating: boolean
   validationFailed: boolean
@@ -371,6 +374,19 @@ function CaptureWizard({
       runValidation(fixed)
     },
         onRevalidate: () => runValidation(draft),
+    // docs/specs/104: Accept on a Review check confirms that imported player's match (the flag goes, the player stays linked), then the checks run again.
+    onAcceptMatch: (issue) => {
+      if (!draft.scorecard || !issue.side || !issue.playerProfileId) return
+      const next = { ...draft, scorecard: confirmGuessesOf(draft.scorecard, issue.side, issue.playerProfileId) }
+      setDraft(next)
+      runValidation(next)
+    },
+    onAcceptAllMatches: () => {
+      if (!draft.scorecard) return
+      const next = { ...draft, scorecard: { ...draft.scorecard, players: confirmRuleBased(draft.scorecard.players) } }
+      setDraft(next)
+      runValidation(next)
+    },
     warningsAcknowledged: acknowledged,
     onAcknowledgeChange: setAcknowledged,
     // docs/specs/104: the Review step's Preview result reads the saved draft, so it saves the current one first.

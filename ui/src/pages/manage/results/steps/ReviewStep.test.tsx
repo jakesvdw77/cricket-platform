@@ -62,6 +62,45 @@ beforeEach(() => {
   addToSquad.mockResolvedValue({})
 })
 
+// docs/specs/104: an imported name matched by a guess: Accept keeps the match, Change opens the player, Accept All Matches does the lot.
+describe('Review step: IMPORTED_NAME_UNCONFIRMED', () => {
+  const unconfirmed = (id: string | null, name: string, side: 'HOME' | 'AWAY' = 'HOME') =>
+    issue({ code: 'IMPORTED_NAME_UNCONFIRMED', severity: 'ERROR', playerProfileId: id, side, message: `File said '${name}', matched to ${name}. Confirm or change this player.` })
+
+  it('offers Accept and Change on each unconfirmed player, and Accept sends that issue', async () => {
+    const user = userEvent.setup()
+    const onAcceptMatch = vi.fn()
+    renderReview({ validation: validation([unconfirmed('p-ann', 'Ann Ash')]), onAcceptMatch, onAcceptAllMatches: vi.fn() })
+    const checks = screen.getByRole('list', { name: 'Checks' })
+    expect(within(checks).queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Accept All Matches' })).not.toBeInTheDocument()
+
+    await user.click(within(checks).getByRole('button', { name: 'Accept' }))
+    expect(onAcceptMatch).toHaveBeenCalledWith(expect.objectContaining({ code: 'IMPORTED_NAME_UNCONFIRMED', playerProfileId: 'p-ann', side: 'HOME' }))
+  })
+
+  it('Change opens the Teams step on that side', async () => {
+    const user = userEvent.setup()
+    const props = renderReview({ validation: validation([unconfirmed('p-ann', 'Ann Ash', 'AWAY')]), onAcceptMatch: vi.fn() })
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    expect(props.onGoToStep).toHaveBeenCalledWith(expect.any(String), 'AWAY')
+  })
+
+  it('shows Accept All Matches only for two or more, and it calls the handler', async () => {
+    const user = userEvent.setup()
+    const onAcceptAllMatches = vi.fn()
+    renderReview({ validation: validation([unconfirmed('p-ann', 'Ann Ash'), unconfirmed('p-bob', 'Bob Bell')]), onAcceptMatch: vi.fn(), onAcceptAllMatches })
+    await user.click(screen.getByRole('button', { name: 'Accept All Matches' }))
+    expect(onAcceptAllMatches).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the plain Fix for a name that is not linked to a player', () => {
+    renderReview({ validation: validation([unconfirmed(null, 'Dino V')]), onAcceptMatch: vi.fn() })
+    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fix' })).toBeInTheDocument()
+  })
+})
+
 describe('Review step: PLAYER_NOT_IN_SQUAD', () => {
   it('shows Add to squad, adds the issue\'s player to the side\'s team for the season, then revalidates', async () => {
     const user = userEvent.setup()

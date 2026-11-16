@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ResultPlayer, Scorecard } from '../../../api/matchResultApi'
-import { confirmGuess, linkGuest, resolveImportedRow, swapPlayer } from './scorecardDraft'
+import { confirmGuess, confirmGuessesOf, linkGuest, resolveImportedRow, swapPlayer } from './scorecardDraft'
 
 // docs/specs/104: how a manager's confirm, change or link settles an imported guess. The client can only ever clear the flag.
 
@@ -19,6 +19,23 @@ describe('confirmGuess', () => {
     const next = confirmGuess(card(), 'a')
     expect(find(next, 'a')).toMatchObject({ playerProfileId: 'pa', displayName: 'Ann A', importMatch: null })
     expect(find(next, 'b')).toEqual(find(card(), 'b'))
+  })
+})
+
+describe('confirmGuessesOf (Accept on a Review check)', () => {
+  it('clears the flag of that linked player on that side only, and nothing else', () => {
+    const scorecard: Scorecard = {
+      players: [
+        player('a', 'pa', { importMatch: 'NORMALISED' }),
+        player('c', 'pc', { importMatch: 'NORMALISED' }),
+        player('d', 'pa', { importMatch: 'NORMALISED', side: 'AWAY' }),
+      ],
+      batting: [], bowling: [], fielding: [], awards: [],
+    }
+    const next = confirmGuessesOf(scorecard, 'HOME', 'pa')
+    expect(find(next, 'a')).toMatchObject({ playerProfileId: 'pa', importMatch: null })
+    expect(find(next, 'c')?.importMatch).toBe('NORMALISED')
+    expect(find(next, 'd')?.importMatch).toBe('NORMALISED')
   })
 })
 

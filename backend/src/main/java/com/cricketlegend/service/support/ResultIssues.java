@@ -16,6 +16,13 @@ final class ResultIssues {
         issues.add(new ResultIssueDto(code.name(), step, side, ResultIssueSeverity.ERROR, message));
     }
 
+    /** docs/specs/104: an error about one player ({@code playerProfileId}), so the Review step can offer Accept for it. */
+    void error(
+            ResultValidator.ErrorCode code, ResultWizardStep step, ResultSide side, String message,
+            java.util.UUID playerProfileId) {
+        issues.add(new ResultIssueDto(code.name(), step, side, ResultIssueSeverity.ERROR, message, playerProfileId));
+    }
+
     void warning(ResultValidator.WarningCode code, ResultWizardStep step, ResultSide side, String message) {
         issues.add(new ResultIssueDto(code.name(), step, side, ResultIssueSeverity.WARNING, message));
     }
