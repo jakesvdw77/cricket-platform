@@ -88,6 +88,22 @@ describe('drawSquadImage', () => {
     expect(record({ ...model, players: [model.players[0]] }, options).texts).toContain('2026/2027 · 1 player')
   })
 
+  it('puts SQUAD on its own row above the team name, never over it, when there is no logo in the header', () => {
+    const rows: { text: string; y: number }[] = []
+    const ctx = {
+      fillRect: vi.fn(), drawImage: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), arcTo: vi.fn(), arc: vi.fn(), closePath: vi.fn(), fill: vi.fn(),
+      createLinearGradient: () => ({ addColorStop: vi.fn() }), measureText: (text: string) => ({ width: text.length * 6 }),
+      fillText: (text: string, _x: number, y: number) => rows.push({ text: String(text), y }),
+      font: '', fillStyle: '', textAlign: 'left', textBaseline: 'alphabetic',
+    }
+    drawSquadImage(ctx as unknown as CanvasRenderingContext2D, model, options)
+    const label = rows.find((row) => row.text === 'SQUAD')
+    const name = rows.find((row) => row.text === 'IRENE VETERANS')
+    expect(label && name).toBeTruthy()
+    // the name's top (its middle minus half the title height) is below the label's row
+    expect((name as { y: number }).y).toBeGreaterThan((label as { y: number }).y + 30)
+  })
+
   it('draws a squad of 25 on every size without throwing', () => {
     const many = { ...model, players: Array.from({ length: 25 }, (_, index) => player(`p${index}`, `First${index}`, `Last${index}`, { shirt: index + 1 })) }
     for (const size of ['SQUARE', 'PORTRAIT', 'STORY'] as const) {

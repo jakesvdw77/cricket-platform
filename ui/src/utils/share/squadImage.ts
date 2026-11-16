@@ -197,10 +197,16 @@ export function drawSquadImage(target: HTMLCanvasElement | CanvasRenderingContex
   drawSlotLogo(layout.club, clubImage)
   drawSlotLogo(layout.teamAffiliation, affiliationImage)
   const headerHeight = layout.club?.height ?? layout.teamAffiliation?.height ?? 0
-  drawText(ctx, 'SQUAD', layout.headerText.x + layout.headerText.width / 2, margin + (headerHeight || 40 * k) / 2, { size: 28 * k, colour: palette.muted, weight: 700, align: 'center', maxWidth: layout.headerText.width })
+  // With a logo in the header the label sits between the logos; with none it has its own small row above the title, never over it.
+  const labelRow = headerHeight > 0 ? 0 : 44 * k
+  if (headerHeight > 0) {
+    drawText(ctx, 'SQUAD', layout.headerText.x + layout.headerText.width / 2, margin + headerHeight / 2, { size: 28 * k, colour: palette.muted, weight: 700, align: 'center', maxWidth: layout.headerText.width })
+  } else {
+    drawText(ctx, 'SQUAD', margin, margin + 14 * k, { size: 28 * k, colour: palette.muted, weight: 700, maxWidth: width - margin * 2 })
+  }
 
   // The title row: the team's crest (when on) and its name, then the season and the number of players.
-  const title = { x: margin, y: layout.homeName.y, width: width - margin * 2, height: Math.max(layout.homeName.height, 70 * k) }
+  const title = { x: margin, y: layout.homeName.y + labelRow, width: width - margin * 2, height: Math.max(layout.homeName.height, 70 * k) }
   let nameX = title.x
   if (options.logos.teamLogo) {
     const radius = title.height * 0.5
