@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Avatar, Box, Stack, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
 import { FieldPicker } from '../FieldPicker'
@@ -29,6 +30,9 @@ export interface TeamFormValues {
   // LeagueForm. docs/specs/092: all of it renders in this one form's two sections, not in separate tabs.
   abbreviation?: string | null
   groundName?: string | null
+  // docs/specs/154: affiliation name and logo (the Poster team sheet's top left).
+  affiliationName?: string | null
+  affiliationLogoUrl?: string | null
   socialLinks?: SocialLink[]
   // docs/specs/064-unified-availability-polls.md removed 063's squadMode: how a match's squad is
   // sourced now follows the poll covering the match, not a team setting.
@@ -87,6 +91,8 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, clubI
   const [logoUrl, setLogoUrl] = useState<string | null>(initialValues?.logoUrl ?? null)
   const [abbreviation, setAbbreviation] = useState(initialValues?.abbreviation ?? '')
   const [groundName, setGroundName] = useState(initialValues?.groundName ?? '')
+  const [affiliationName, setAffiliationName] = useState(initialValues?.affiliationName ?? '')
+  const [affiliationLogoUrl, setAffiliationLogoUrl] = useState<string | null>(initialValues?.affiliationLogoUrl ?? null)
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(initialValues?.socialLinks ?? [])
   const [errors, setErrors] = useState<FormErrors>({})
 
@@ -120,6 +126,8 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, clubI
       logoUrl,
       abbreviation: blankToNull(abbreviation),
       groundName: blankToNull(groundName),
+      affiliationName: blankToNull(affiliationName),
+      affiliationLogoUrl,
       socialLinks,
     }
     onSubmit(payload)
@@ -187,6 +195,12 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, clubI
           )}
         </Box>
         <SocialLinksFields value={socialLinks} onChange={setSocialLinks} />
+      </Box>
+
+      <FormSectionHeading icon={<AccountBalanceOutlinedIcon />} title="Affiliation" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+        <MediaUpload label="Affiliation logo (optional)" value={affiliationLogoUrl} onUploaded={(url) => setAffiliationLogoUrl(url)} variant="logo" namespace="manage" />
+        <Input label="Affiliation name (optional)" value={affiliationName} onChange={(event) => setAffiliationName(event.target.value)} inputProps={{ maxLength: 120 }} />
       </Box>
     </Box>
   )

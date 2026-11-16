@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Sheet Poster style mockup (spec 153)</title>
+<style>
+  :root { --green:#14452f; --green2:#1f6a49; --gold:#e8b53f; --ink:#161a17; --line:#9aa59d; --soft:#eef2ee; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:#d9ddd9; font-family: "Barlow", Arial, sans-serif; color:var(--ink); }
+  .note { max-width:1180px; margin:0 auto 18px; font-size:14px; line-height:1.5; }
+  .note h1 { font:700 20px/1.2 "Barlow Condensed", Arial, sans-serif; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  .note li { margin:2px 0; }
+  .pages { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+  .label { text-align:center; font-weight:700; margin-bottom:8px; }
+  /* A4 portrait at 96 dpi: 794 x 1123 */
+  .page { position:relative; width:794px; height:1123px; background:#fff; box-shadow:0 2px 12px rgba(0,0,0,.25); overflow:hidden; display:flex; flex-direction:column; }
+
+  /* header: three zones, every logo in a fixed box so a wide logo cannot push the layout */
+  .top { display:grid; grid-template-columns:130px 1fr 130px; align-items:center; padding:18px 30px 0 52px; }
+  .slot { height:64px; display:grid; place-items:center; border:1.5px dashed var(--line); border-radius:6px; font-size:11px; color:#5a625c; text-align:center; line-height:1.15; }
+  .top .mid { text-align:center; }
+  .top .mid .league { font:700 26px/1.1 "Barlow Condensed", Arial; letter-spacing:.04em; text-transform:uppercase; color:var(--green); }
+  .top .mid .range { font:600 17px "Barlow Condensed", Arial; letter-spacing:.08em; }
+  .top .mid .where { font-size:12px; color:#444; }
+
+  /* the two crests */
+  .crests { display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; padding:6px 52px 0 70px; }
+  .crest { height:92px; display:grid; place-items:center; border:1.5px dashed var(--line); border-radius:10px; font-size:12px; color:#5a625c; text-align:center; }
+  .crest.us { }
+  .vs { text-align:center; font:700 34px "Barlow Condensed", Arial; font-style:italic; color:var(--green2); }
+  .oppname { text-align:center; font:700 15px "Barlow Condensed", Arial; text-transform:uppercase; letter-spacing:.06em; margin-top:10px; height:34px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3px; }
+  .when { text-align:center; margin:8px 0 6px; font:700 22px "Barlow Condensed", Arial; font-style:italic; text-decoration:underline; text-underline-offset:3px; }
+  .when span { font-weight:600; }
+
+  /* the vertical banner down the left edge, as in the example */
+  .banner { position:absolute; left:0; top:250px; width:48px; height:610px; background:linear-gradient(180deg,var(--green),var(--green2)); display:grid; place-items:center; }
+  .banner b { writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; color:#fff; font:700 40px "Barlow Condensed", Arial; letter-spacing:.22em; text-transform:uppercase; }
+  .banner i { position:absolute; bottom:0; left:0; right:0; height:8px; background:var(--gold); }
+
+  .tablewrap { padding:0 40px 0 64px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--green); color:#fff; font:600 11px "Barlow Condensed", Arial; letter-spacing:.12em; text-transform:uppercase; padding:6px 6px; text-align:left; border:1px solid #fff; }
+  th.sub { font-size:9px; padding:3px 4px; }
+  th.c, td.c { text-align:center; }
+  td { border:1px solid #6d786f; padding:0 6px; height:25px; }
+  tr:nth-child(even) td { background:var(--soft); }
+  td.n { width:34px; color:#5a625c; font-size:11px; text-align:center; }
+  td.shirt { width:54px; text-align:center; font-weight:700; }
+  td.play { width:62px; text-align:center; }
+  td.tag { width:54px; text-align:center; font-weight:700; color:var(--green); font-size:12px; }
+  td.comment { }
+  .sn { font-weight:700; text-transform:uppercase; }
+  .box { display:inline-block; width:15px; height:15px; border:1.5px solid var(--ink); border-radius:2px; vertical-align:middle; }
+  .hint { padding:8px 40px 0 64px; font-size:11px; color:#5a625c; }
+
+  .sign { padding:34px 40px 0 64px; display:grid; grid-template-columns:1fr 1fr; gap:30px; }
+  .sign div { display:flex; align-items:flex-end; gap:8px; font:700 16px "Barlow Condensed", Arial; font-style:italic; text-transform:uppercase; }
+  .sign span { flex:1; border-bottom:1px solid var(--ink); min-height:22px; font:600 14px Arial; font-style:normal; text-transform:none; padding-left:4px; }
+
+  /* the footer band: club tagline over a fading band, club logo, sponsors */
+  .foot { margin-top:auto; position:relative; height:150px; background:linear-gradient(180deg,#fff 0%,#dbe9e0 38%,var(--green) 100%); display:flex; flex-direction:column; justify-content:flex-end; }
+  .tagline { position:absolute; top:6px; left:0; right:0; text-align:center; font:italic 600 24px "Barlow Condensed", Georgia, serif; color:var(--green); letter-spacing:.05em; }
+  .strip { display:grid; grid-template-columns:90px 1fr 90px; gap:14px; align-items:center; padding:0 28px 12px; color:#fff; }
+  .strip .slot { height:54px; background:rgba(255,255,255,.92); border-color:#fff; color:#5a625c; }
+  .host .hostlogo { width:70px; height:46px; margin:0 0 4px auto; }
+  .host { text-align:right; font:700 14px/1.2 "Barlow Condensed", Arial; letter-spacing:.06em; text-transform:uppercase; }
+  .sponsors { display:flex; gap:10px; justify-content:center; }
+  .sponsors .slot { width:92px; }
+  .rule { position:absolute; left:0; right:0; bottom:0; height:6px; background:var(--gold); }
+  .oppname.write { text-align:left; border-bottom:1px solid var(--ink); text-transform:none; font-weight:600; padding:0 0 3px 4px; justify-content:flex-start; }
+  .blankwhen { text-decoration:none; font-style:normal; display:flex; gap:8px; align-items:baseline; justify-content:center; padding:0 40px 0 64px; font-size:18px; margin-top:12px; }
+  .blankwhen .line { display:inline-block; flex:1; border-bottom:1px solid var(--ink); height:30px; }
+  .blankwhen .short { flex:0 0 90px; }
+  .mini { margin-top:8px; font-size:12px; color:#444; max-width:1180px; margin-left:auto; margin-right:auto; }
+</style>
+</head>
+<body>
+<div class="note">
+  <h1>Team Sheet, Match Poster style (spec 153 draft, mockup)</h1>
+  A second <b>Style</b> beside the plain sheet, in colour. Same data and switches. The <b>whole squad</b> is listed alphabetically and the
+  <b>Playing</b> tick box stays, so who is playing can be seen at a glance. The <b>W/K</b> column marks the wicketkeeper when Pre-Mark is on, and <b>Captain</b> and <b>Sign</b> are write-on lines at the bottom (Captain pre-filled when Pre-Mark is on).
+  Dashed boxes are the logo slots: each logo is scaled to fit its box, so no logo can push the layout.
+  <ul>
+    <li><b>Header:</b> the affiliation logo (the club) left, the league logo right, the league name and year large in the centre with the tournament dates beneath.</li>
+    <li><b>Crests:</b> our team logo and the opposition's crest (a league team's logo; a name only when the opponent has no logo).</li>
+    <li><b>Table:</b> Playing tick box, shirt number, "First SURNAME", W/K column, optional <b>Players: Bat Pos | Bowl</b> (batting position and bowling order, as in the example) and Comment columns (shown here).</li>
+    <li><b>Blank match:</b> the second page: the same poster with the opposition crest empty and the opposition, date, time and venue left as write-on lines, for play-offs where they are not known until the day. The league header, the host, the sponsors and the whole squad still print.</li>
+    <li><b>Effects:</b> green side banner with a gold edge, a fading footer band with the club tagline, sponsor logos and the tournament host (a host name and logo set on the League).</li>
+  </ul>
+</div>
+<div class="pages">
+  <div>
+    <div class="label">Match Poster, round-robin match (pre-filled)</div>
+    <div class="page">
+      <div class="top">
+        <div class="slot">Affiliation<br>logo<br>(the club)</div>
+        <div class="mid"><div class="league">VCASA Club Champs 2026</div><div class="range">19-21 NOV 2026</div></div>
+        <div class="slot">League<br>logo</div>
+      </div>
+      <div class="crests">
+        <div><div class="crest us">Irene Veterans<br>team logo</div><div class="oppname">Irene Veterans</div></div>
+        <div class="vs">vs</div>
+        <div><div class="crest">Midlands CC<br>crest<br>(league team logo)</div><div class="oppname">Midlands CC</div></div>
+      </div>
+      <div class="when">DATE: <span>Thu 19 Nov 2026 &ndash; 14H30</span></div>
+      <div class="banner"><b>Team Sheet</b><i></i></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c" rowspan="2">Playing</th><th rowspan="2">Player</th><th class="c" rowspan="2">Shirt</th><th class="c" rowspan="2">W/K</th><th class="c" colspan="2">Players</th><th rowspan="2">Comment</th></tr><tr><th class="c sub">Bat Pos</th><th class="c sub">Bowl</th></tr></thead>
+          <tbody>
+            <tr><td class="play"><span class="box"></span></td><td>Andre <span class="sn">Botha</span></td><td class="shirt">7</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Pieter <span class="sn">Du Plessis</span></td><td class="shirt">21</td><td class="tag">W/K</td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Johan <span class="sn">Jacobs</span></td><td class="shirt">12</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Hannes <span class="sn">Kruger</span></td><td class="shirt">3</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Willem <span class="sn">Meyer</span></td><td class="shirt">18</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Dawie <span class="sn">Nel</span></td><td class="shirt">9</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Louis <span class="sn">Pretorius</span></td><td class="shirt">44</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Riaan <span class="sn">Smit</span></td><td class="shirt">5</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Jaco <span class="sn">Van der Westhuizen</span></td><td class="shirt">16</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Gerhard <span class="sn">Venter</span></td><td class="shirt">27</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Stefan <span class="sn">Wessels</span></td><td class="shirt">8</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Marius <span class="sn">Zeelie</span></td><td class="shirt">31</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td></td><td class="shirt"></td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td></td><td class="shirt"></td><td class="tag"></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">Tick the players. W/K is pre-marked from the team's saved wicketkeeper; the captain goes in the Captain line.</div>
+      <div class="sign">
+        <div>Captain: <span>Hannes Kruger</span></div>
+        <div>Sign: <span></span></div>
+      </div>
+      <div class="foot">
+        <div class="tagline">Irene Veterans &middot; Where Legends Play</div>
+        <div class="strip">
+          <div class="slot">Sponsor</div>
+          <div class="sponsors"><div class="slot">Sponsor</div><div class="slot">Sponsor</div><div class="slot">Sponsor</div></div>
+          <div class="host"><div class="slot hostlogo">Host<br>logo</div>HOST:<br>Boland Veterans</div>
+        </div>
+        <div class="rule"></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="label">Match Poster, blank match (play-offs: opposition, date, time and venue written in)</div>
+    <div class="page">
+      <div class="top">
+        <div class="slot">Affiliation<br>logo<br>(the club)</div>
+        <div class="mid"><div class="league">VCASA Club Champs 2026</div><div class="range">19-21 NOV 2026</div></div>
+        <div class="slot">League<br>logo</div>
+      </div>
+      <div class="crests">
+        <div><div class="crest us">Irene Veterans<br>team logo</div><div class="oppname">Irene Veterans</div></div>
+        <div class="vs">vs</div>
+        <div><div class="crest">Opposition<br>crest<br>(left empty to draw or stick on)</div><div class="oppname write"></div></div>
+      </div>
+      <div class="when blankwhen">DATE: <span class="line"></span> TIME: <span class="line short"></span> VENUE: <span class="line"></span></div>
+      <div class="banner"><b>Team Sheet</b><i></i></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c" rowspan="2">Playing</th><th rowspan="2">Player</th><th class="c" rowspan="2">Shirt</th><th class="c" rowspan="2">W/K</th><th class="c" colspan="2">Players</th><th rowspan="2">Comment</th></tr><tr><th class="c sub">Bat Pos</th><th class="c sub">Bowl</th></tr></thead>
+          <tbody>
+            <tr><td class="play"><span class="box"></span></td><td>Andre <span class="sn">Botha</span></td><td class="shirt">7</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Pieter <span class="sn">Du Plessis</span></td><td class="shirt">21</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Johan <span class="sn">Jacobs</span></td><td class="shirt">12</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Hannes <span class="sn">Kruger</span></td><td class="shirt">3</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Willem <span class="sn">Meyer</span></td><td class="shirt">18</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Dawie <span class="sn">Nel</span></td><td class="shirt">9</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Louis <span class="sn">Pretorius</span></td><td class="shirt">44</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Riaan <span class="sn">Smit</span></td><td class="shirt">5</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Jaco <span class="sn">Van der Westhuizen</span></td><td class="shirt">16</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Gerhard <span class="sn">Venter</span></td><td class="shirt">27</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Stefan <span class="sn">Wessels</span></td><td class="shirt">8</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td>Marius <span class="sn">Zeelie</span></td><td class="shirt">31</td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td></td><td class="shirt"></td><td class="tag"></td><td></td><td></td><td></td></tr>
+            <tr><td class="play"><span class="box"></span></td><td></td><td class="shirt"></td><td class="tag"></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">Tick the players. The blank match leaves the opposition, date, time and venue to be written in. Pre-Mark is off here.</div>
+      <div class="sign">
+        <div>Captain: <span></span></div>
+        <div>Sign: <span></span></div>
+      </div>
+      <div class="foot">
+        <div class="tagline">Irene Veterans &middot; Where Legends Play</div>
+        <div class="strip">
+          <div class="slot">Sponsor</div>
+          <div class="sponsors"><div class="slot">Sponsor</div><div class="slot">Sponsor</div><div class="slot">Sponsor</div></div>
+          <div class="host"><div class="slot hostlogo">Host<br>logo</div>HOST:<br>Boland Veterans</div>
+        </div>
+        <div class="rule"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mini">Open questions are listed in the chat: the vertical banner wording, which sponsors appear, and whether Bat Pos and Comment are optional columns.</div>
+</body>
+</html>

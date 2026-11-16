@@ -84,6 +84,8 @@ describe('TeamForm', () => {
       logoUrl: null,
       abbreviation: null,
       groundName: null,
+      affiliationName: null,
+      affiliationLogoUrl: null,
       socialLinks: [],
     })
   })
@@ -102,6 +104,21 @@ describe('TeamForm', () => {
     const payload = onSubmit.mock.calls[0][0] as TeamFormValues
     expect(payload.abbreviation).toBe('ICL')
     expect(payload.groundName).toBe('Irene Country Club')
+  })
+
+  it('submits the affiliation name trimmed, and null when it is left blank (spec 154)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderTeamForm({ onSubmit })
+
+    await user.type(screen.getByLabelText('Name'), '1st XI')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect((onSubmit.mock.calls[0][0] as TeamFormValues).affiliationName).toBeNull()
+    expect((onSubmit.mock.calls[0][0] as TeamFormValues).affiliationLogoUrl).toBeNull()
+
+    await user.type(screen.getByLabelText('Affiliation name (optional)'), '  Titans Veterans Cricket ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect((onSubmit.mock.calls[1][0] as TeamFormValues).affiliationName).toBe('Titans Veterans Cricket')
   })
 
   it('requires a section to be chosen when the sections prop is supplied, and does not submit without one', async () => {
@@ -137,6 +154,8 @@ describe('TeamForm', () => {
       logoUrl: null,
       abbreviation: null,
       groundName: null,
+      affiliationName: null,
+      affiliationLogoUrl: null,
       socialLinks: [],
     })
   })

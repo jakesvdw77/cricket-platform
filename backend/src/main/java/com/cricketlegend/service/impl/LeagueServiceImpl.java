@@ -256,7 +256,8 @@ public class LeagueServiceImpl implements LeagueService {
                 dto.website(), dto.email(), dto.socialLinks(), dto.active(), dto.createdAt(), dto.updatedAt(),
                 dto.updatedBy(), fields.currentSeasonTeamCount(), fields.currentSeasonLabel(),
                 fields.currentSeasonPlayingConditionsUrl(), fields.matchCount(), fields.playedCount(),
-                fields.firstMatchDate(), fields.lastMatchDate(), fields.nextMatchDate(), fields.teams());
+                fields.firstMatchDate(), fields.lastMatchDate(), fields.nextMatchDate(), fields.teams(),
+                dto.hostName(), dto.hostLogoUrl(), dto.affiliationName(), dto.affiliationLogoUrl());
     }
 
     @Override
@@ -280,6 +281,10 @@ public class LeagueServiceImpl implements LeagueService {
                 .phone(request.phone())
                 .website(request.website())
                 .email(request.email())
+                .hostName(request.hostName())
+                .hostLogoUrl(request.hostLogoUrl())
+                .affiliationName(request.affiliationName())
+                .affiliationLogoUrl(request.affiliationLogoUrl())
                 .socialLinks(toSocialLinks(request.socialLinks()))
                 .active(true)
                 .build();
@@ -308,6 +313,10 @@ public class LeagueServiceImpl implements LeagueService {
         league.setPhone(request.phone());
         league.setWebsite(request.website());
         league.setEmail(request.email());
+        league.setHostName(request.hostName());
+        league.setHostLogoUrl(request.hostLogoUrl());
+        league.setAffiliationName(request.affiliationName());
+        league.setAffiliationLogoUrl(request.affiliationLogoUrl());
         league.setSocialLinks(toSocialLinks(request.socialLinks()));
 
         return leagueMapper.toDto(leagueRepository.save(league));

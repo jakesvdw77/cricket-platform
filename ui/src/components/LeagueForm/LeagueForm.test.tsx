@@ -104,6 +104,36 @@ describe('LeagueForm', () => {
     expect(screen.getByDisplayValue('https://facebook.com/riverside-league')).toBeInTheDocument()
   })
 
+  it('submits the league affiliation name trimmed, null when blank (spec 154)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderLeagueForm({ onSubmit, initialValues: { ...populatedValues, affiliationName: 'VCASA' } })
+    expect(screen.getByLabelText('Affiliation name (optional)')).toHaveValue('VCASA')
+
+    await user.clear(screen.getByLabelText('Affiliation name (optional)'))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit.mock.calls[0][0].affiliationName).toBeNull()
+
+    await user.type(screen.getByLabelText('Affiliation name (optional)'), ' VCASA ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit.mock.calls[1][0].affiliationName).toBe('VCASA')
+  })
+
+  it('prefills the host name and submits it trimmed, null when blank (spec 154)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderLeagueForm({ onSubmit, initialValues: { ...populatedValues, hostName: 'Boland Veterans' } })
+    expect(screen.getByLabelText('Host name (optional)')).toHaveValue('Boland Veterans')
+
+    await user.clear(screen.getByLabelText('Host name (optional)'))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit.mock.calls[0][0].hostName).toBeNull()
+
+    await user.type(screen.getByLabelText('Host name (optional)'), ' Boland Veterans ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit.mock.calls[1][0].hostName).toBe('Boland Veterans')
+  })
+
   it('renders an inline validation error for a blank name and does not submit', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
@@ -180,6 +210,10 @@ describe('LeagueForm', () => {
       phone: null,
       website: null,
       email: null,
+      hostName: null,
+      hostLogoUrl: null,
+      affiliationName: null,
+      affiliationLogoUrl: null,
       logoUrl: null,
       socialLinks: [],
     })
@@ -212,6 +246,10 @@ describe('LeagueForm', () => {
       phone: null,
       website: null,
       email: null,
+      hostName: null,
+      hostLogoUrl: null,
+      affiliationName: null,
+      affiliationLogoUrl: null,
       logoUrl: null,
       socialLinks: [],
     })

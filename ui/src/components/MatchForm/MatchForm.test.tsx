@@ -1047,3 +1047,71 @@ describe('MatchForm league season dates', () => {
     await waitFor(() => expect(screen.queryByText(MESSAGE)).not.toBeInTheDocument())
   })
 })
+
+// docs/specs/155: a match can carry a stage and label, and a side can be a TBC placeholder.
+describe('MatchForm stage and TBC sides (spec 155)', () => {
+  async function fillSeasonHomeAndDate(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+    await user.click(screen.getByLabelText('Home team'))
+    await user.click(await screen.findByRole('option', { name: '1st XI' }))
+    setDateTime('Match date & time', '2026-06-01T14:30')
+  }
+
+  it('sends the trimmed stage and label, and null for a pool match', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillSeasonHomeAndDate(user)
+    await user.click(screen.getByLabelText('Away team'))
+    await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect((onSubmit.mock.calls[0][0] as MatchPayload).stage).toBeNull()
+
+    await user.type(screen.getByLabelText('Stage (optional)'), '  Semi-final ')
+    await user.type(screen.getByLabelText('Stage label (optional)'), ' 1st v 4th ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    const payload = onSubmit.mock.calls[1][0] as MatchPayload
+    expect(payload.stage).toBe('Semi-final')
+    expect(payload.stageLabel).toBe('1st v 4th')
+  })
+
+  it('sends a TBC away side as a placeholder with its text and no team', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillSeasonHomeAndDate(user)
+    await user.click(within(screen.getByTestId('match-side-away')).getByRole('button', { name: 'TBC' }))
+    await user.type(screen.getByLabelText('Away side shows (TBC)'), ' 2nd in the pool ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload).toMatchObject({ awayPlaceholder: true, awayTeamName: '2nd in the pool', awayTeamId: null, awayLeagueTeamId: null, homePlaceholder: false })
+  })
+
+  it('refuses a TBC side with no text', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillSeasonHomeAndDate(user)
+    await user.click(within(screen.getByTestId('match-side-away')).getByRole('button', { name: 'TBC' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(await screen.findByText('Enter what to show, e.g. 2nd in the pool')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('opens an existing TBC side in TBC mode, and picking a real team resolves it (placeholder false)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit, initialValues: { seasonId: 'season-1', homeTeamId: 'team-1', awayTeamName: '2nd in the pool', awayPlaceholder: true, matchDate: '2026-06-01T14:30:00' } as never })
+    expect(screen.getByLabelText('Away side shows (TBC)')).toHaveValue('2nd in the pool')
+    await user.click(within(screen.getByTestId('match-side-away')).getByRole('button', { name: 'My team' }))
+    await user.click(screen.getByLabelText('Away team'))
+    await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload.awayPlaceholder).toBe(false)
+    expect(payload.awayTeamId).toBeTruthy()
+    expect(payload.awayTeamName).toBeNull()
+  })
+})

@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Box, FormHelperText, MenuItem } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
@@ -42,6 +43,10 @@ interface FormState {
   website: string
   email: string
   logoUrl: string | null
+  hostName: string
+  hostLogoUrl: string | null
+  affiliationName: string
+  affiliationLogoUrl: string | null
   socialLinks: SocialLink[]
 }
 
@@ -72,6 +77,10 @@ function toFormState(initialValues?: Partial<LeaguePayload>): FormState {
     website: initialValues?.website ?? '',
     email: initialValues?.email ?? '',
     logoUrl: initialValues?.logoUrl ?? null,
+    hostName: initialValues?.hostName ?? '',
+    hostLogoUrl: initialValues?.hostLogoUrl ?? null,
+    affiliationName: initialValues?.affiliationName ?? '',
+    affiliationLogoUrl: initialValues?.affiliationLogoUrl ?? null,
     socialLinks: initialValues?.socialLinks ?? [],
   }
 }
@@ -173,6 +182,8 @@ export function LeagueForm({ initialValues, onSubmit, visibleSection, ageReferen
 
   const handleWebsiteChange = (website: string) => setValues((prev) => ({ ...prev, website }))
   const handleLogoUploaded = (logoUrl: string) => setValues((prev) => ({ ...prev, logoUrl }))
+  const handleHostLogoUploaded = (hostLogoUrl: string) => setValues((prev) => ({ ...prev, hostLogoUrl }))
+  const handleAffiliationLogoUploaded = (affiliationLogoUrl: string) => setValues((prev) => ({ ...prev, affiliationLogoUrl }))
   const handleSocialLinksChange = (socialLinks: SocialLink[]) => setValues((prev) => ({ ...prev, socialLinks }))
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -196,6 +207,10 @@ export function LeagueForm({ initialValues, onSubmit, visibleSection, ageReferen
       website: blankToNull(values.website),
       email: blankToNull(values.email),
       logoUrl: values.logoUrl,
+      hostName: blankToNull(values.hostName),
+      hostLogoUrl: values.hostLogoUrl,
+      affiliationName: blankToNull(values.affiliationName),
+      affiliationLogoUrl: values.affiliationLogoUrl,
       socialLinks: values.socialLinks,
     }
     onSubmit(payload)
@@ -330,6 +345,16 @@ export function LeagueForm({ initialValues, onSubmit, visibleSection, ageReferen
         <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
           <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
           <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
+        </Box>
+        <FormSectionHeading compact icon={<AccountBalanceOutlinedIcon />} title="Affiliation" />
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+          <MediaUpload label="Affiliation logo (optional)" value={values.affiliationLogoUrl} onUploaded={handleAffiliationLogoUploaded} variant="logo" namespace="manage" />
+          <Input label="Affiliation name (optional)" value={values.affiliationName} onChange={(event) => setValues((prev) => ({ ...prev, affiliationName: event.target.value }))} inputProps={{ maxLength: 120 }} />
+        </Box>
+        <FormSectionHeading compact icon={<AccountBalanceOutlinedIcon />} title="Tournament host" />
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+          <MediaUpload label="Host logo (optional)" value={values.hostLogoUrl} onUploaded={handleHostLogoUploaded} variant="logo" namespace="manage" />
+          <Input label="Host name (optional)" value={values.hostName} onChange={(event) => setValues((prev) => ({ ...prev, hostName: event.target.value }))} inputProps={{ maxLength: 120 }} />
         </Box>
       </Box>
     </Box>

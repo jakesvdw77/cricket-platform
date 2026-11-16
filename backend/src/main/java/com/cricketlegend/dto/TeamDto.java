@@ -28,5 +28,7 @@ public record TeamDto(
         boolean active,
         Instant createdAt,
         Instant updatedAt,
-        UUID updatedBy) {
+        UUID updatedBy,
+        String affiliationName,
+        String affiliationLogoUrl) {
 }

@@ -70,6 +70,12 @@ export interface League {
   phone: string | null
   website: string | null
   email: string | null
+  // docs/specs/154: the tournament host (printed in the Poster team sheet footer).
+  hostName?: string | null
+  hostLogoUrl?: string | null
+  // The body the league belongs to (VCASA), printed top right of the Poster team sheet.
+  affiliationName?: string | null
+  affiliationLogoUrl?: string | null
   socialLinks: SocialLink[]
 }
 
@@ -88,6 +94,10 @@ export interface LeaguePayload {
   phone?: string | null
   website?: string | null
   email?: string | null
+  hostName?: string | null
+  hostLogoUrl?: string | null
+  affiliationName?: string | null
+  affiliationLogoUrl?: string | null
   socialLinks?: SocialLink[]
 }
 

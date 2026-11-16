@@ -66,6 +66,11 @@ export interface Match {
   // docs/specs/100-match-results-core.md: NONE, DRAFT or PUBLISHED. A match is completed when its result is published.
   // Optional so older fixtures stay valid; absent means NONE.
   resultStatus?: MatchResultStatus
+  // docs/specs/155: a stage (Playoff, Semi-final, any text; null/absent = a pool match), its label, and whether a side is a TBC placeholder (its text is the side's name).
+  stage?: string | null
+  stageLabel?: string | null
+  homePlaceholder?: boolean
+  awayPlaceholder?: boolean
   // docs/specs/109-delete-empty-match.md: true when nothing is recorded against the match (no result, poll, squad, side or
   // availability link), so it can be deleted. Optional so older fixtures stay valid; absent means not deletable.
   deletable?: boolean
@@ -118,6 +123,11 @@ export interface MatchPayload {
   streamingUrl?: string | null
   // docs/specs/132: the warning codes the manager confirmed after a 409 with needsConfirmation; sent only on the resend.
   acknowledgedWarnings?: string[]
+  // docs/specs/155: the stage and label (blank = a pool match) and the TBC flags; sending a real team with the flag false resolves a TBC side.
+  stage?: string | null
+  stageLabel?: string | null
+  homePlaceholder?: boolean
+  awayPlaceholder?: boolean
 }
 
 // docs/specs/132: one hit of the shared scheduling rules. Errors (OWN_TEAM_OVERLAP, DUPLICATE_MATCH) block; warnings can be

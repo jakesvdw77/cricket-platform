@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Sheet mockup (spec 153)</title>
+<style>
+  :root { --green:#14452f; --gold:#e8b53f; --ink:#161a17; --line:#9aa59d; --soft:#eef2ee; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:#d9ddd9; font-family: "Barlow", Arial, sans-serif; color:var(--ink); }
+  h1 { font: 700 20px/1.2 "Barlow Condensed", Arial, sans-serif; margin:0 0 4px; letter-spacing:.04em; text-transform:uppercase; }
+  .note { max-width:1200px; margin:0 auto 16px; font-size:14px; line-height:1.45; }
+  .pages { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+  .label { text-align:center; font-weight:700; margin-bottom:8px; }
+  /* A4 portrait at 96 dpi is 794 x 1123 */
+  .page { width:794px; height:1123px; background:#fff; padding:40px 44px; box-shadow:0 2px 12px rgba(0,0,0,.25); display:flex; flex-direction:column; }
+  .head { display:grid; grid-template-columns:84px 1fr 84px; gap:14px; align-items:center; border-bottom:3px solid var(--green); padding-bottom:10px; }
+  .logo { width:84px; height:84px; border:1.5px solid var(--line); border-radius:50%; display:grid; place-items:center; font-weight:700; color:var(--green); font-size:13px; text-align:center; line-height:1.1; }
+  .logo.league { border-radius:8px; }
+  .title { text-align:center; }
+  .title .kind { font: 600 13px "Barlow Condensed", Arial; letter-spacing:.18em; text-transform:uppercase; color:#555; }
+  .title .team { font: 700 30px/1.1 "Barlow Condensed", Arial; text-transform:uppercase; color:var(--green); }
+  .title .sub { font-size:13px; color:#333; margin-top:2px; }
+  .meta { display:grid; grid-template-columns:repeat(4,1fr); gap:10px 14px; margin:12px 0 10px; font-size:12px; }
+  .meta div { border-bottom:1px solid var(--ink); min-height:34px; padding-top:2px; }
+  .meta small { display:block; color:#555; text-transform:uppercase; letter-spacing:.08em; font-size:10px; }
+  .meta b { font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { background:var(--green); color:#fff; font: 600 12px "Barlow Condensed", Arial; letter-spacing:.1em; text-transform:uppercase; padding:6px 6px; text-align:left; }
+  th.c, td.c { text-align:center; }
+  td { border-bottom:1px solid var(--line); padding:0 6px; height:31px; }
+  tr:nth-child(even) td { background:var(--soft); }
+  .box { display:inline-block; width:16px; height:16px; border:1.5px solid var(--ink); border-radius:2px; vertical-align:middle; }
+  .box.on { background:var(--ink); }
+  .num { font-weight:700; width:64px; }
+  .blankline td { height:31px; }
+  .foot { margin-top:auto; display:grid; grid-template-columns:1fr 1fr; gap:26px; font-size:11px; color:#333; }
+  .sign { border-top:1px solid var(--ink); padding-top:3px; margin-top:26px; }
+  .hint { font-size:11px; color:#555; margin:8px 0 0; }
+  .tick { font-size:11px; margin-top:6px; color:#333; }
+</style>
+</head>
+<body>
+<div class="note">
+  <h1>Team Sheet (spec 153 draft)</h1>
+  One A4 portrait page per team. Players are listed alphabetically by surname, so no batting order is printed. The Playing, Captain and
+  Keeper boxes are empty tick boxes to fill in by hand once the side is chosen. Left: the totally blank sheet (header lines to write on).
+  Right: the match sheet, pre-filled with the opposition, date, time and venue.
+</div>
+<div class="pages">
+
+  <!-- BLANK -->
+  <div>
+    <div class="label">Blank sheet</div>
+    <div class="page">
+      <div class="head">
+        <div class="logo league">League<br>logo</div>
+        <div class="title"><div class="kind">Team Sheet</div><div class="team">Irene Veterans</div><div class="sub">Over 40 &middot; 2026/2027</div></div>
+        <div class="logo">Team<br>logo</div>
+      </div>
+      <div class="meta">
+        <div><small>League</small></div><div><small>Opposition</small></div><div><small>Date</small></div><div><small>Start time</small></div>
+        <div><small>Venue</small></div><div><small>Toss won by</small></div><div><small>Elected to</small></div><div><small>Overs</small></div>
+      </div>
+      <table>
+        <thead><tr><th class="c">Playing</th><th class="num">Shirt</th><th>First name</th><th>Surname</th><th class="c">Capt</th><th class="c">Keeper</th></tr></thead>
+        <tbody>
+          <tr><td class="c"><span class="box"></span></td><td class="num">7</td><td>Andre</td><td>Botha</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">21</td><td>Pieter</td><td>Du Plessis</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">12</td><td>Johan</td><td>Jacobs</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">3</td><td>Hannes</td><td>Kruger</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">18</td><td>Willem</td><td>Meyer</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">9</td><td>Dawie</td><td>Nel</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">44</td><td>Louis</td><td>Pretorius</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">5</td><td>Riaan</td><td>Smit</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">16</td><td>Jaco</td><td>Van der Westhuizen</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">27</td><td>Gerhard</td><td>Venter</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">8</td><td>Stefan</td><td>Wessels</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">31</td><td>Marius</td><td>Zeelie</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr class="blankline"><td class="c"><span class="box"></span></td><td></td><td></td><td></td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr class="blankline"><td class="c"><span class="box"></span></td><td></td><td></td><td></td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+        </tbody>
+      </table>
+      <p class="hint">Two blank lines at the end are for a late or guest player. Tick 11 under Playing (12 where a twelfth man is allowed).</p>
+      <div class="foot">
+        <div><div class="sign">Captain's signature</div></div>
+        <div><div class="sign">Umpire's signature</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH -->
+  <div>
+    <div class="label">Match sheet (round robin, pre-filled)</div>
+    <div class="page">
+      <div class="head">
+        <div class="logo league">VCASA<br>Club<br>Champs</div>
+        <div class="title"><div class="kind">Team Sheet</div><div class="team">Irene Veterans</div><div class="sub">versus <b>Midlands CC</b></div></div>
+        <div class="logo">Team<br>logo</div>
+      </div>
+      <div class="meta">
+        <div><small>League</small><b>VCASA Club Champs</b></div><div><small>Opposition</small><b>Midlands CC</b></div><div><small>Date</small><b>Thu 19 Nov 2026</b></div><div><small>Start time</small><b>14:30</b></div>
+        <div><small>Venue</small><b>Durbanville CC B</b></div><div><small>Toss won by</small></div><div><small>Elected to</small></div><div><small>Overs</small><b>T20</b></div>
+      </div>
+      <table>
+        <thead><tr><th class="c">Playing</th><th class="num">Shirt</th><th>First name</th><th>Surname</th><th class="c">Capt</th><th class="c">Keeper</th></tr></thead>
+        <tbody>
+          <tr><td class="c"><span class="box"></span></td><td class="num">7</td><td>Andre</td><td>Botha</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">21</td><td>Pieter</td><td>Du Plessis</td><td class="c"><span class="box"></span></td><td class="c"><span class="box on"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">12</td><td>Johan</td><td>Jacobs</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">3</td><td>Hannes</td><td>Kruger</td><td class="c"><span class="box on"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">18</td><td>Willem</td><td>Meyer</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">9</td><td>Dawie</td><td>Nel</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">44</td><td>Louis</td><td>Pretorius</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">5</td><td>Riaan</td><td>Smit</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">16</td><td>Jaco</td><td>Van der Westhuizen</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">27</td><td>Gerhard</td><td>Venter</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">8</td><td>Stefan</td><td>Wessels</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr><td class="c"><span class="box"></span></td><td class="num">31</td><td>Marius</td><td>Zeelie</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr class="blankline"><td class="c"><span class="box"></span></td><td></td><td></td><td></td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+          <tr class="blankline"><td class="c"><span class="box"></span></td><td></td><td></td><td></td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
+        </tbody>
+      </table>
+      <p class="hint">Optional: the team's captain and its regular wicketkeeper are pre-marked (filled boxes) and can be left off. Playing is always left empty.</p>
+      <div class="foot">
+        <div><div class="sign">Captain's signature</div></div>
+        <div><div class="sign">Umpire's signature</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

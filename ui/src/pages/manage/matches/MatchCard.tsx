@@ -21,6 +21,7 @@ import { matchStatusFor } from './matchResultHelpers'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
 import { NoFieldFlag, showsNoFieldFlag } from './NoFieldFlag'
+import { StageChip } from './StageChip'
 import { SelectionBlock } from './SelectionBlock'
 import type { PollDestination } from './matchCardHelpers'
 import {
@@ -30,7 +31,7 @@ import {
   pollBadgeFor,
   pollDestination,
   selectionRows,
-  sideName,
+  matchSideName,
 } from './matchCardHelpers'
 
 export interface MatchCardProps {
@@ -52,8 +53,8 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const directions = useMatchDirections(clubId, match)
   const weather = useMatchFieldWeather(clubId, match, undefined, match.leagueId ? leaguesById.get(match.leagueId)?.format : null)
   const location = useLocation()
-  const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
-  const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
+  const homeTeamName = matchSideName(match, 'home', teamsById)
+  const awayTeamName = matchSideName(match, 'away', teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
@@ -96,6 +97,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                 ) : (
                   match.venue
                 )}
+                <StageChip match={match} />
                 {showsNoFieldFlag(match) && <NoFieldFlag />}
                 {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
                     a match with only the old venue text shows none. */}

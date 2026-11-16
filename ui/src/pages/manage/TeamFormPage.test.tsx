@@ -310,6 +310,8 @@ describe('TeamFormPage', () => {
         logoUrl: null,
         abbreviation: null,
         groundName: null,
+        affiliationName: null,
+        affiliationLogoUrl: null,
         socialLinks: [],
       })
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
@@ -364,6 +366,8 @@ describe('TeamFormPage', () => {
         logoUrl: 'https://cdn.example.com/team.png',
         abbreviation: null,
         groundName: null,
+        affiliationName: null,
+        affiliationLogoUrl: null,
         socialLinks: [],
       })
       // no ?from=section: Save returns to the club-wide directory (docs/specs/142)
@@ -1100,6 +1104,8 @@ describe('TeamFormPage', () => {
         logoUrl: null,
         abbreviation: null,
         groundName: null,
+        affiliationName: null,
+        affiliationLogoUrl: null,
         socialLinks: [],
       })
       expect(await screen.findByText('Team Directory Page')).toBeInTheDocument()

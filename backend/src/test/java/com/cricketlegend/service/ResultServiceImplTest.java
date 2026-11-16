@@ -255,6 +255,23 @@ class ResultServiceImplTest {
         verify(resultRepository, never()).save(any());
     }
 
+    // docs/specs/155: a match with a TBC side has no real opposition yet, so no result can be captured until Edit Match resolves it.
+    @Test
+    void aMatchWithATbcSideIsRefusedForEverySaveAndPublish() {
+        match.setAwayPlaceholder(true);
+        assertThatThrownBy(() -> service.upsertDraft(auth, clubId, matchId, cleanWin()))
+                .isInstanceOf(MatchNotCapturableException.class)
+                .hasMessageContaining("TBC");
+        assertThatThrownBy(() -> service.publish(auth, clubId, matchId, true))
+                .isInstanceOf(MatchNotCapturableException.class);
+        match.setAwayPlaceholder(false);
+        match.setHomePlaceholder(true);
+        assertThatThrownBy(() -> service.upsertDraft(auth, clubId, matchId, cleanWin()))
+                .isInstanceOf(MatchNotCapturableException.class);
+        verify(resultRepository, never()).saveAndFlush(any());
+        verify(resultRepository, never()).save(any());
+    }
+
     @Test
     void aRaceOnTheUniqueMatchBecomesAConflict() {
         when(resultRepository.findByMatchId(matchId)).thenReturn(Optional.empty());

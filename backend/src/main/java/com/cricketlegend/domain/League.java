@@ -89,6 +89,18 @@ public class League {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "host_name")
+    private String hostName;
+
+    @Column(name = "host_logo_url")
+    private String hostLogoUrl;
+
+    @Column(name = "affiliation_name")
+    private String affiliationName;
+
+    @Column(name = "affiliation_logo_url")
+    private String affiliationLogoUrl;
+
     private String phone;
 
     private String website;

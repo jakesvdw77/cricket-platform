@@ -100,6 +100,8 @@ public class TeamServiceImpl implements TeamService {
         team.setLogoUrl(request.logoUrl());
         team.setAbbreviation(request.abbreviation());
         team.setGroundName(request.groundName());
+        team.setAffiliationName(request.affiliationName());
+        team.setAffiliationLogoUrl(request.affiliationLogoUrl());
         team.setSocialLinks(toSocialLinks(request.socialLinks()));
         team.setActive(true);
 
@@ -116,6 +118,8 @@ public class TeamServiceImpl implements TeamService {
         team.setLogoUrl(request.logoUrl());
         team.setAbbreviation(request.abbreviation());
         team.setGroundName(request.groundName());
+        team.setAffiliationName(request.affiliationName());
+        team.setAffiliationLogoUrl(request.affiliationLogoUrl());
         team.setSocialLinks(toSocialLinks(request.socialLinks()));
 
         return teamMapper.toDto(teamRepository.save(team));

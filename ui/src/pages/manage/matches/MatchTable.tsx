@@ -19,8 +19,9 @@ import { matchStatusFor } from './matchResultHelpers'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { MatchRowMenu } from './MatchRowMenu'
 import { NoFieldFlag, showsNoFieldFlag } from './NoFieldFlag'
+import { StageChip } from './StageChip'
 import { ProgressMeter } from '../../../components/ProgressMeter'
-import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, sideName } from './matchCardHelpers'
+import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, matchSideName } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
 
 export interface MatchTableProps {
@@ -84,8 +85,8 @@ function MatchRow({
   seasonsById: Map<string, Season>
   viewTo?: string
 }) {
-  const home = sideName(match.homeTeamId, match.homeTeamName, teamsById)
-  const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
+  const home = matchSideName(match, 'home', teamsById)
+  const away = matchSideName(match, 'away', teamsById)
   const title = `${home} vs ${away}`
   const kickoff = useCountdown(match.matchDate)
   // docs/specs/100: Played is the real (published) result state; a started match without one awaits its result.
@@ -207,6 +208,7 @@ function MatchRow({
           ) : (
             venueText
           )}
+          <StageChip match={match} />
           {showsNoFieldFlag(match) && <NoFieldFlag />}
         </Typography>
       </Box>

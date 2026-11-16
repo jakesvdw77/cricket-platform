@@ -91,6 +91,21 @@ public class Match {
     @Column(name = "playing_area_id")
     private UUID playingAreaId;
 
+    // docs/specs/155: null stage = a pool match; a placeholder side keeps its TBC text in the side's name and has no team.
+    @Column(name = "stage")
+    private String stage;
+
+    @Column(name = "stage_label")
+    private String stageLabel;
+
+    @Column(name = "home_placeholder", nullable = false)
+    @Builder.Default
+    private boolean homePlaceholder = false;
+
+    @Column(name = "away_placeholder", nullable = false)
+    @Builder.Default
+    private boolean awayPlaceholder = false;
+
     @Column(name = "scoring_url")
     private String scoringUrl;
 

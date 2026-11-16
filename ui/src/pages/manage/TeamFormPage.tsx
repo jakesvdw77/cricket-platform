@@ -462,6 +462,8 @@ export default function TeamFormPage() {
         logoUrl: payload.logoUrl,
         abbreviation: payload.abbreviation,
         groundName: payload.groundName,
+        affiliationName: payload.affiliationName,
+        affiliationLogoUrl: payload.affiliationLogoUrl,
         socialLinks: payload.socialLinks,
       }
       if (isEdit && teamId && sectionId) {
@@ -803,6 +805,8 @@ export default function TeamFormPage() {
                   logoUrl: team.logoUrl,
                   abbreviation: team.abbreviation,
                   groundName: team.groundName,
+                  affiliationName: team.affiliationName,
+                  affiliationLogoUrl: team.affiliationLogoUrl,
                   socialLinks: team.socialLinks,
                 }
               : undefined

@@ -2,6 +2,7 @@ package com.cricketlegend.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
@@ -19,5 +20,7 @@ public record UpdateTeamRequest(
         String logoUrl,
         String abbreviation,
         String groundName,
-        @Valid List<SocialLinkDto> socialLinks) {
+        @Valid List<SocialLinkDto> socialLinks,
+        @Size(max = 120) String affiliationName,
+        String affiliationLogoUrl) {
 }

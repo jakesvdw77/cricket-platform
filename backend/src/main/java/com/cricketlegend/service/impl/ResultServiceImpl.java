@@ -565,6 +565,11 @@ public class ResultServiceImpl implements ResultService {
         if (!match.isActive()) {
             throw new MatchNotCapturableException("This match is inactive: reactivate it before capturing a result.");
         }
+        // docs/specs/155: a result needs both sides real; a TBC side is resolved first with Edit Match.
+        if (match.isHomePlaceholder() || match.isAwayPlaceholder()) {
+            throw new MatchNotCapturableException(
+                    "This match still has a TBC side: pick the real team with Edit Match before capturing a result.");
+        }
     }
 
     private MatchResult findResultOrThrow(UUID matchId) {

@@ -64,6 +64,12 @@ public class Team {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "affiliation_name")
+    private String affiliationName;
+
+    @Column(name = "affiliation_logo_url")
+    private String affiliationLogoUrl;
+
     private String abbreviation;
 
     @Column(name = "ground_name")

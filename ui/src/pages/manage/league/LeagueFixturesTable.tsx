@@ -3,6 +3,7 @@ import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
 import { alpha, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -14,7 +15,8 @@ import { initialsFromName } from '../../../utils/initials'
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { ToolbarCard } from '../../../components/ToolbarCard'
 import { zebraTint } from '../../../utils/zebraTint'
-import { fixtureSideName, isOurMatch } from './leagueFixtureFilters'
+import { fixtureSide, isOurMatch } from './leagueFixtureFilters'
+import { stageOf } from '../../../utils/matchStages'
 import { NoFieldFlag, showsNoFieldFlag } from '../matches/NoFieldFlag'
 
 export interface LeagueFixturesTableProps {
@@ -29,6 +31,8 @@ export interface LeagueFixturesTableProps {
   originLabel?: string
   // docs/specs/131: opens the Share Match dialog for one of our matches. Omitted, the row's Share Match item is disabled.
   onShare?: (match: Match) => void
+  // docs/specs/153: opens the print screen on One Match for one of our matches. Omitted, the item is left out.
+  onPrintSheet?: (match: Match) => void
 }
 
 // Desktop: When, Home, Away, Venue, a chip, the actions button (Home and Away equal width so the names line up down the rows). A phone keeps
@@ -57,7 +61,8 @@ const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
 const nameSx = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } as const
 
-function SideLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+function SideLogo({ name, logoUrl, placeholder = false }: { name: string; logoUrl: string | null; placeholder?: boolean }) {
+  if (placeholder) return null
   return (
     <Avatar
       variant="rounded"
@@ -79,24 +84,27 @@ function SideLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   )
 }
 
-function SideCell({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+function SideCell({ name, logoUrl, placeholder = false }: { name: string; logoUrl: string | null; placeholder?: boolean }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <SideLogo name={name} logoUrl={logoUrl} />
-      <Typography variant="body2" fontWeight={600} component="span" title={name} sx={nameSx}>
+      <SideLogo name={name} logoUrl={logoUrl} placeholder={placeholder} />
+      <Typography variant="body2" fontWeight={placeholder ? 400 : 600} component="span" title={name} sx={{ ...nameSx, ...(placeholder ? { fontStyle: 'italic', color: 'text.secondary' } : {}) }}>
         {name}
       </Typography>
     </Box>
   )
 }
 
-function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; teamsById: Map<string, Team>; originLabel: string; onShare?: (match: Match) => void }) {
+function FixtureRow({ match, teamsById, originLabel, onShare, onPrintSheet }: { match: Match; teamsById: Map<string, Team>; originLabel: string; onShare?: (match: Match) => void; onPrintSheet?: (match: Match) => void }) {
   const location = useLocation()
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), originLabel)
-  const homeName = fixtureSideName(match.homeTeamId, match.homeTeamName, teamsById)
-  const awayName = fixtureSideName(match.awayTeamId, match.awayTeamName, teamsById)
-  const homeLogo = match.homeTeamId ? (teamsById.get(match.homeTeamId)?.logoUrl ?? null) : match.homeTeamLogoUrl
-  const awayLogo = match.awayTeamId ? (teamsById.get(match.awayTeamId)?.logoUrl ?? null) : match.awayTeamLogoUrl
+  const home = fixtureSide(match, 'home', teamsById)
+  const away = fixtureSide(match, 'away', teamsById)
+  const homeName = home.name
+  const awayName = away.name
+  const homeLogo = home.placeholder ? null : match.homeTeamId ? (teamsById.get(match.homeTeamId)?.logoUrl ?? null) : match.homeTeamLogoUrl
+  const awayLogo = away.placeholder ? null : match.awayTeamId ? (teamsById.get(match.awayTeamId)?.logoUrl ?? null) : match.awayTeamLogoUrl
+  const stage = stageOf(match)
   const date = new Date(match.matchDate)
   const day = date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
   const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -106,15 +114,15 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
   // accessible name (a single overlay link for the whole row, so it exists once whatever the breakpoint).
   const phoneSides = (
     <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <SideLogo name={homeName} logoUrl={homeLogo} />
-      <Box component="span" sx={nameSx}>
+      <SideLogo name={homeName} logoUrl={homeLogo} placeholder={home.placeholder} />
+      <Box component="span" sx={{ ...nameSx, ...(home.placeholder ? { fontStyle: 'italic', fontWeight: 400 } : {}) }}>
         {homeName}
       </Box>
       <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, flex: 'none' }}>
         vs
       </Box>
-      <SideLogo name={awayName} logoUrl={awayLogo} />
-      <Box component="span" sx={nameSx}>
+      <SideLogo name={awayName} logoUrl={awayLogo} placeholder={away.placeholder} />
+      <Box component="span" sx={{ ...nameSx, ...(away.placeholder ? { fontStyle: 'italic', fontWeight: 400 } : {}) }}>
         {awayName}
       </Box>
     </Box>
@@ -158,21 +166,22 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
             {phoneSides}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap data-testid="fixture-row-phone-when">
-            {`${day}, ${time}${match.venue ? ` · ${match.venue}` : ''}`}
+            {`${stage ? `${stage} · ` : ''}${day}, ${time}${match.venue ? ` · ${match.venue}` : ''}`}
           </Typography>
         </Box>
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, minWidth: 0 }} {...DESKTOP_ONLY} data-testid="fixture-row-home">
-        <SideCell name={homeName} logoUrl={homeLogo} />
+        <SideCell name={homeName} logoUrl={homeLogo} placeholder={home.placeholder} />
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, minWidth: 0 }} {...DESKTOP_ONLY} data-testid="fixture-row-away">
-        <SideCell name={awayName} logoUrl={awayLogo} />
+        <SideCell name={awayName} logoUrl={awayLogo} placeholder={away.placeholder} />
       </Box>
       <Typography role="cell" variant="body2" color="text.secondary" noWrap sx={desktopOnly} {...DESKTOP_ONLY} data-testid="fixture-row-venue">
         {match.venue ?? '–'}
         {showsNoFieldFlag(match) && <NoFieldFlag />}
       </Typography>
       <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY} data-testid="fixture-row-ours">
+        {stage && <Chip size="small" variant="outlined" color="primary" label={stage} data-testid="fixture-stage-chip" sx={{ height: 22, fontSize: '0.75rem', fontWeight: 700, mr: ours ? 0.75 : 0 }} />}
         {ours && <Chip size="small" label="Our match" sx={{ ...badgeSx('positive'), height: 22, fontSize: '0.75rem' }} />}
       </Box>
       <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -192,6 +201,9 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
                   ? [{ id: 'open', title: 'Open Match', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}`) }]
                   : []),
                 { id: 'edit', requires: 'MATCHES_EDIT' as const, title: 'Edit Match', icon: <EditOutlinedIcon fontSize="small" />, to: leaveTo(`/manage/fixtures/matches/${match.id}/edit`) },
+                ...(ours && onPrintSheet
+                  ? [{ id: 'print-team-sheet', requires: 'TEAMS_VIEW' as const, title: 'Print Team Sheet', icon: <PrintOutlinedIcon fontSize="small" />, onClick: () => onPrintSheet(match) }]
+                  : []),
                 // Share is always last (page-anatomy section 8); it opens the Share Match dialog (docs/specs/131).
                 { id: 'share', title: 'Share Match', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare?.(match), disabled: !onShare, reason: 'Sharing is not available here' },
               ],
@@ -206,7 +218,7 @@ function FixtureRow({ match, teamsById, originLabel, onShare }: { match: Match; 
 // docs/specs/091 (C): the Schedule tab's fixtures as a zebra table (the standard of PlayerTable, MatchTable and PollTable):
 // When, Home and Away (a logo beside each name), Venue and an "Our match" chip; our matches open the match, the others are plain
 // rows. (The edit form's Schedule tab uses this table too.)
-export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, originLabel = 'Schedule', onShare }: LeagueFixturesTableProps) {
+export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, originLabel = 'Schedule', onShare, onPrintSheet }: LeagueFixturesTableProps) {
   const table = (
     <Box
       role="table"
@@ -241,7 +253,7 @@ export function LeagueFixturesTable({ matches, teamsById, toolbar, empty, origin
       </Box>
       <Box role="rowgroup">
         {matches.map((match) => (
-          <FixtureRow key={match.id} match={match} teamsById={teamsById} originLabel={originLabel} onShare={onShare} />
+          <FixtureRow key={match.id} match={match} teamsById={teamsById} originLabel={originLabel} onShare={onShare} onPrintSheet={onPrintSheet} />
         ))}
       </Box>
     </Box>
