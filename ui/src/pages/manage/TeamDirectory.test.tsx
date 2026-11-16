@@ -53,6 +53,8 @@ beforeEach(() => {
   // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
   // never leaks into the next.
   localStorage.clear()
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('teamList:view', 'cards')
   listTeamContacts.mockResolvedValue([])
   listTeamSponsors.mockResolvedValue([])
   listSquad.mockResolvedValue([])

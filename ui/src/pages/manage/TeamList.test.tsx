@@ -49,6 +49,8 @@ vi.mock('../../api/matchApi', () => ({
 }))
 
 beforeEach(() => {
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('teamList:view', 'cards')
   vi.clearAllMocks()
   listSections.mockResolvedValue([])
   listTeamContacts.mockResolvedValue([])
