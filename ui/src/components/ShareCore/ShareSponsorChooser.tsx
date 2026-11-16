@@ -1,5 +1,6 @@
-import { Avatar, Box, Checkbox, FormControlLabel, FormGroup, Typography } from '@mui/material'
+import { Box, Checkbox, FormControlLabel, FormGroup, Typography } from '@mui/material'
 import type { Sponsor } from '../../api/sponsorApi'
+import { SponsorLogo } from '../SponsorLogo'
 
 export interface ShareSponsorChooserProps {
   sponsors: Sponsor[]
@@ -38,7 +39,7 @@ export function ShareSponsorChooser({ sponsors, selectedIds, max, onChange }: Sh
               }
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar variant="rounded" src={sponsor.logoUrl ?? undefined} alt="" sx={{ width: 28, height: 28, bgcolor: 'background.paper' }} imgProps={{ style: { objectFit: 'contain' } }} />
+                  <SponsorLogo src={sponsor.logoUrl} fallback={sponsor.name.slice(0, 2).toUpperCase()} height={40} />
                   <Typography component="span" sx={{ fontSize: '0.85rem' }}>
                     {sponsor.name}
                   </Typography>

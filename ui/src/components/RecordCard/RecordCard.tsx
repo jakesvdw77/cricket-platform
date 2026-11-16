@@ -17,6 +17,7 @@ import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { avatarSx } from './avatarSx'
+import { SponsorLogo } from '../SponsorLogo'
 import { LogoAvatar } from '../LogoAvatar'
 import { STRUCTURAL_PURPLE, cardTitleSx } from '../../theme'
 import { Button, compactButtonSx } from '../Button'
@@ -79,7 +80,8 @@ export interface RecordCardAvatar {
   // for a record with no fixed icon, or a plain MUI icon element for one that never has a photo at
   // all (e.g. a Product, a Subscription).
   fallback?: ReactNode
-  shape?: 'circular' | 'rounded'
+  // 'wide' is for a sponsor: a tile as wide as the logo needs (most sponsor logos are wide, so a square left them tiny).
+  shape?: 'circular' | 'rounded' | 'wide'
   // docs/specs/082: a ready-made 56px element (e.g. a BrandIcon tile) drawn in place of the solid
   // Avatar - no green square behind it. When set, imageUrl/fallback/shape are ignored.
   element?: ReactNode
@@ -461,7 +463,8 @@ export function RecordCard({
             sx={{ minWidth: 0, ...(titleWrap && { flex: 1 }) }}
           >
             {avatar?.element}
-            {avatar && !avatar.element && (
+            {avatar && !avatar.element && avatar.shape === 'wide' && <SponsorLogo src={avatar.imageUrl} fallback={typeof avatar.fallback === 'string' ? avatar.fallback : ''} height={56} />}
+            {avatar && !avatar.element && avatar.shape !== 'wide' && (
               <LogoAvatar src={avatar.imageUrl} variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'} size={56} kind={avatar.shape === 'rounded' ? 'record' : 'person'}>
                 {avatar.fallback}
               </LogoAvatar>

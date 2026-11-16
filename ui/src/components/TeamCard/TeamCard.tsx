@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogoAvatar } from '../LogoAvatar'
 import { Box, ButtonBase, Stack, Typography } from '@mui/material'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import type { ReactNode } from 'react'
@@ -10,6 +9,7 @@ import { DetailLine } from '../DetailLine'
 import { Button } from '../Button'
 import { SocialLinksRow } from '../marketing/SocialLinksRow'
 import { SponsorQuickViewDialog } from '../SponsorQuickViewDialog'
+import { SponsorLogo } from '../SponsorLogo'
 import { initialsFromName } from '../../utils/initials'
 import { zebraTint } from '../../utils/zebraTint'
 import type { Team } from '../../api/teamApi'
@@ -120,9 +120,7 @@ export function TeamCard({
                   aria-label={`${sponsor.name} — Sponsor`}
                   sx={{ borderRadius: 1 }}
                 >
-                  <LogoAvatar src={sponsor.logoUrl} variant="rounded" size={28} fontSize="0.6875rem">
-                    {initialsFromName(sponsor.name)}
-                  </LogoAvatar>
+                  <SponsorLogo src={sponsor.logoUrl} fallback={initialsFromName(sponsor.name)} height={44} />
                 </ButtonBase>
               ))}
             </Stack>

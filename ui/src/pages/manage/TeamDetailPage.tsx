@@ -28,6 +28,7 @@ import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
 import { TeamSheetDialog, sheetTeamOf } from '../../components/TeamSheetDialog'
+import { ShareSquadDialog } from '../../components/ShareSquadDialog'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
@@ -132,6 +133,7 @@ export default function TeamDetailPage() {
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
   // docs/specs/153: the Print Team Sheet dialog (mounted fresh on each open).
   const [printOpen, setPrintOpen] = useState(false)
+  const [shareSquadOpen, setShareSquadOpen] = useState(false)
 
   const {
     data: team,
@@ -319,7 +321,7 @@ export default function TeamDetailPage() {
               </>
             }
           >
-            <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" onPrintSheet={() => setPrintOpen(true)} />
+            <TeamActionsMenu trigger="button" teamName={team.name} editTo={editTo} statsTo={statsPath} originLabel="Team" onPrintSheet={() => setPrintOpen(true)} onShareSquad={() => setShareSquadOpen(true)} />
           </HeaderActions>
         }
       />
@@ -447,6 +449,17 @@ export default function TeamDetailPage() {
       />
 
       <SponsorQuickViewDialog clubId={clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />
+
+      {shareSquadOpen && (
+        <ShareSquadDialog
+          open
+          onClose={() => setShareSquadOpen(false)}
+          clubId={clubId}
+          team={team}
+          seasonId={selectedSeasonId}
+          seasonLabel={seasons.find((season) => season.id === selectedSeasonId)?.label ?? null}
+        />
+      )}
 
       {printOpen && (
         <TeamSheetDialog

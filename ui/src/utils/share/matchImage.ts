@@ -88,7 +88,7 @@ export function pictureCrop(natW: number, natH: number, destW: number, destH: nu
   }
 }
 
-interface Palette {
+export interface Palette {
   background: [string, string]
   text: string
   muted: string
@@ -131,7 +131,7 @@ export function matchPalette(template: ImageTemplate | TvTemplate, colour: Resul
   }
 }
 
-type Ctx = CanvasRenderingContext2D
+export type Ctx = CanvasRenderingContext2D
 
 interface TextStyle {
   size: number
@@ -142,7 +142,7 @@ interface TextStyle {
 }
 
 // One line, `y` its vertical middle; shrinks then truncates to fit maxWidth. Returns the width drawn.
-function drawText(ctx: Ctx, text: string, x: number, y: number, style: TextStyle): number {
+export function drawText(ctx: Ctx, text: string, x: number, y: number, style: TextStyle): number {
   if (!text) return 0
   let size = style.size
   const weight = style.weight ?? 400
@@ -166,7 +166,7 @@ function drawText(ctx: Ctx, text: string, x: number, y: number, style: TextStyle
   return ctx.measureText(shown).width
 }
 
-function roundedRect(ctx: Ctx, rect: Rect, radius: number, fill: string): void {
+export function roundedRect(ctx: Ctx, rect: Rect, radius: number, fill: string): void {
   const { x, y, width, height } = rect
   const r = Math.min(radius, width / 2, height / 2)
   ctx.fillStyle = fill
@@ -180,10 +180,10 @@ function roundedRect(ctx: Ctx, rect: Rect, radius: number, fill: string): void {
   ctx.fill()
 }
 
-const imageFor = (images: MatchImageOptions['images'], url: string | null | undefined): HTMLImageElement | null => (url ? (images.get(url) ?? null) : null)
+export const imageFor = (images: MatchImageOptions['images'], url: string | null | undefined): HTMLImageElement | null => (url ? (images.get(url) ?? null) : null)
 
 // A team crest: its logo on a white round backing (aspect kept) or an initial tile when it has none.
-function drawCrest(ctx: Ctx, centreX: number, centreY: number, radius: number, name: string, image: HTMLImageElement | null, palette: Palette): void {
+export function drawCrest(ctx: Ctx, centreX: number, centreY: number, radius: number, name: string, image: HTMLImageElement | null, palette: Palette): void {
   ctx.fillStyle = image ? WHITE : palette.accent
   ctx.beginPath()
   ctx.arc(centreX, centreY, radius, 0, Math.PI * 2)

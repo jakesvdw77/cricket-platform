@@ -30,7 +30,7 @@ function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
   return (
     <RecordCard
       title={sponsor.name}
-      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'wide' }}
       badge={badgeFor(sponsor)}
       fields={sponsorRecordFields(sponsor)}
       viewTo={`/manage/sponsors/${sponsor.id}`}

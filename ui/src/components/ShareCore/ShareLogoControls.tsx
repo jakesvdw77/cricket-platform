@@ -55,7 +55,7 @@ export function ShareLogoControls({
           </Typography>
         )}
         <CompactSwitch label="Team logos" checked={choices.logos.team} onChange={(next) => setLogo({ team: next })} />
-        <LogoSwitch label="League logo" url={leagueLogoUrl} checked={choices.logos.league} reason="No league logo: this match is not in a league, or the league has none." onChange={(next) => setLogo({ league: next })} />
+        {leagueLogoUrl !== undefined && <LogoSwitch label="League logo" url={leagueLogoUrl} checked={choices.logos.league} reason="No league logo: this match is not in a league, or the league has none." onChange={(next) => setLogo({ league: next })} />}
         {/* Only the screens that have a team (match and result) pass a team affiliation; a league share has none to offer. */}
         {teamAffiliationLogoUrl !== undefined && (
           <LogoSwitch label="Team affiliation logo" url={teamAffiliationLogoUrl} checked={choices.logos.teamAffiliation} reason="No affiliation logo set on the team." onChange={(next) => setLogo({ teamAffiliation: next })} />
