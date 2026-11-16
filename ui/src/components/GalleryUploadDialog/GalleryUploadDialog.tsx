@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Autocomplete, Box, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, LinearProgress, MenuItem, Typography, useMediaQuery } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import { GALLERY_MAX_FILES, useInvalidateGallery, useUploadGalleryPhoto } from '../../api/galleryApi'
 import type { GalleryScope } from '../../api/galleryApi'
@@ -153,13 +154,13 @@ export function GalleryUploadDialog({ open, onClose, scope, leagues, teams, play
                 <Box component="img" src={item.preview} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover', opacity: item.status === 'done' ? 0.55 : 1 }} />
                 {item.status === 'uploading' && <LinearProgress sx={{ position: 'absolute', left: 0, right: 0, bottom: 0 }} />}
                 {item.status === 'done' && <Typography sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'primary.main', fontWeight: 700 }}>Sent</Typography>}
-                {item.status === 'error' && <Typography sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, bgcolor: 'error.main', color: '#fff', fontSize: 10, textAlign: 'center' }}>Failed</Typography>}
+                {item.status === 'error' && <Typography sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, bgcolor: 'error.main', color: 'common.white', fontSize: 10, textAlign: 'center' }}>Failed</Typography>}
                 {!busy && item.status !== 'done' && (
                   <IconButton
                     size="small"
                     aria-label="Remove photo"
                     onClick={() => setItems((current) => current.filter((other) => other.id !== item.id))}
-                    sx={{ position: 'absolute', top: 0, left: 0, p: 0.25, bgcolor: 'rgba(0,0,0,.6)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,.8)' } }}
+                    sx={{ position: 'absolute', top: 0, left: 0, p: 0.25, bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.6), color: 'common.white', '&:hover': { bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.8) } }}
                   >
                     <CloseIcon sx={{ fontSize: 14 }} />
                   </IconButton>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Alert, Box, CircularProgress, IconButton, MenuItem, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
@@ -19,11 +21,11 @@ import { listTeamsForClub } from '../../api/teamApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { errorDetail } from '../../utils/errorDetail'
+import { formatInstantDateTime } from '../../utils/formatInstantDate'
 import { fullName } from '../../utils/playerDisplayName'
 
 // docs/specs/157-photo-gallery.md: the manager's Gallery (Club menu). The same photos as the Player Hub, with who added each one, an
 // Add Photos button and a Delete icon on every card (confirmed first). Every list is a server page of 24; Load More asks for the next.
-const dateText = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function GalleryPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
@@ -90,13 +92,13 @@ export default function GalleryPage() {
                   size="small"
                   aria-label="Delete photo"
                   onClick={() => setDeleting(image)}
-                  sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,.6)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,.8)' } }}
+                  sx={{ position: 'absolute', top: 6, right: 6, bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.6), color: 'common.white', '&:hover': { bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.8) } }}
                 >
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
                 <Box sx={{ p: 1, display: 'grid', gap: 0.25 }}>
                   <Typography variant="body2" fontWeight={600} noWrap>{image.caption || image.tags.map((tag) => tag.name).join(', ') || 'Untagged'}</Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap>{[image.uploadedByName, dateText(image.uploadedAt)].filter(Boolean).join(' · ')}</Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>{[image.uploadedByName, formatInstantDateTime(image.uploadedAt)].filter(Boolean).join(' · ')}</Typography>
                 </Box>
               </Box>
             ))}

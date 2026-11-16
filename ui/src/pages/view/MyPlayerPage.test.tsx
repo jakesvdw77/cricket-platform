@@ -336,7 +336,7 @@ describe('MyPlayerPage on a phone (menu first, then a page)', () => {
   })
 
   it('a locked section is a full screen too', async () => {
-    setup('/account/players/k1/updates')
+    setup('/account/players/k1/club/bookings')
 
     expect(await screen.findByText('Coming soon')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Back to menu' })).toBeInTheDocument()

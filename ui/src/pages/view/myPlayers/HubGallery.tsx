@@ -16,6 +16,7 @@ import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { creamAlpha } from '../../../brandTokens'
 import { errorDetail } from '../../../utils/errorDetail'
+import { formatInstantDateTime } from '../../../utils/formatInstantDate'
 import { HubPageHeader } from './HubPageHeader'
 import { HUB, darkFieldSx, darkMenuProps } from './hubStyle'
 
@@ -23,7 +24,6 @@ import { HUB, darkFieldSx, darkMenuProps } from './hubStyle'
 // Player filters, and small thumbnails 24 at a time (Load More). A thumbnail opens the photo large. Anyone with a held player can add
 // photos and delete their own. Every list is a server page; the browser never holds more than the pages asked for.
 const tile = { display: 'block', width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '3px', bgcolor: creamAlpha(0.12) } as const
-const dateText = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 function Carousel({ images, onOpen }: { images: GalleryImage[]; onOpen: (image: GalleryImage) => void }) {
   const [index, setIndex] = useState(0)
@@ -60,7 +60,7 @@ function Carousel({ images, onOpen }: { images: GalleryImage[]; onOpen: (image: 
           {image.caption || image.tags.map((tag) => tag.name).join(' · ') || 'Photo'}
         </Typography>
         <Typography sx={{ fontSize: 13, color: HUB.muted }}>
-          {[image.caption ? image.tags.map((tag) => tag.name).join(', ') : null, dateText(image.uploadedAt)].filter(Boolean).join(' · ')}
+          {[image.caption ? image.tags.map((tag) => tag.name).join(', ') : null, formatInstantDateTime(image.uploadedAt)].filter(Boolean).join(' · ')}
         </Typography>
       </Box>
     </Box>

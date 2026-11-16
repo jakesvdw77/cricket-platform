@@ -192,4 +192,17 @@ describe('ManageScreenHeader', () => {
       expect(screen.queryByText(/Evil/)).not.toBeInTheDocument()
     })
   })
+
+  // docs/specs/157: a logo or photo before the title, on the same row (the team, club and player pages).
+  it('renders titleLead before the title, and the title row is unchanged without one', () => {
+    render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Irene Veterans" titleLead={<img alt="Team crest" src="/crest.png" />} titleAdornment={<span>Active</span>} />
+      </MemoryRouter>,
+    )
+    const crest = screen.getByAltText('Team crest')
+    const heading = screen.getByRole('heading', { name: 'Irene Veterans' })
+    expect(crest.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(heading.compareDocumentPosition(screen.getByText('Active')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

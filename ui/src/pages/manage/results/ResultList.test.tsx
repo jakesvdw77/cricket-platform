@@ -111,6 +111,14 @@ describe('ResultList', () => {
     expect(getResultsSummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ search: 'Hillcrest' }))
   })
 
+  it('remembers the team filter per club, so coming back to Results keeps the team', async () => {
+    localStorage.setItem('resultList:filters:club-1', JSON.stringify({ teamId: 'team-1' }))
+    renderPage()
+    await screen.findByTestId('page-counter-played')
+
+    await waitFor(() => expect(listResults).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ teamId: 'team-1' })))
+  })
+
   it('renders a card per result with a Draft badge only on the draft, and no "Showing N results" line (138)', async () => {
     renderPage()
 
