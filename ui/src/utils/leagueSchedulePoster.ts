@@ -272,6 +272,25 @@ export interface LeagueSharePosterOptions {
   logos?: { clubUrl?: string | null; leagueUrl?: string | null; leagueAffiliationUrl?: string | null; sponsorUrls?: string[] }
   // The Text Size step as a factor (1 = Auto): the rows and their text grow with it, so fewer rows fit and the poster says "Next N".
   textScale?: number
+  // The heading line: the season name (default on, as before), the league's start to finish dates (default off) and the club's name (default off).
+  season?: boolean
+  dates?: boolean
+  clubName?: boolean
+  // The "Our team" tag on the club's own teams in the Teams list (default on).
+  ourTeamTag?: boolean
+}
+
+// "19 Nov 2026 to 21 Nov 2026" from the league's start and end key dates; one alone reads "Starts ..." or "Ends ...".
+function durationText(model: LeagueShareModel): string | null {
+  const short = (iso: string | undefined) => {
+    const bare = iso ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null
+    return bare ? new Date(Number(bare[1]), Number(bare[2]) - 1, Number(bare[3])).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null
+  }
+  const start = short(model.keyDates.find((date) => date.kind === 'LEAGUE_START')?.dateIso)
+  const end = short(model.keyDates.find((date) => date.kind === 'LEAGUE_END')?.dateIso)
+  if (start && end) return `${start} to ${end}`
+  if (start) return `Starts ${start}`
+  return end ? `Ends ${end}` : null
 }
 
 const CONTENT_LEFT = 64
@@ -340,7 +359,7 @@ export async function generateLeagueSharePoster(
   ctx.fillText(model.league.name, CONTENT_LEFT, 130, titleWidth)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.82)'
   ctx.font = `28px ${FONT_STACK}`
-  ctx.fillText([model.teamName, model.season?.label, model.clubName].filter(Boolean).join(' — '), CONTENT_LEFT, 172, titleWidth)
+  ctx.fillText([model.teamName, options.season === false ? null : model.season?.label, options.dates ? durationText(model) : null, options.clubName ? model.clubName : null].filter(Boolean).join(' — '), CONTENT_LEFT, 172, titleWidth)
 
   // The sponsor strip sits between the lists and the footer line; the lists give it the room.
   const sponsorImages = sponsorUrls.map((url) => imagesByUrl.get(url) ?? null).filter((image): image is HTMLImageElement => image !== null)
@@ -381,8 +400,8 @@ export async function generateLeagueSharePoster(
       ctx.fillStyle = '#ffffff'
       ctx.font = `${team.own ? 'bold ' : ''}${26 * ts}px ${FONT_STACK}`
       ctx.textAlign = 'left'
-      ctx.fillText(team.name, CONTENT_LEFT + rowH + 8, y + 33 * ts, CONTENT_WIDTH - rowH - 160)
-      if (team.own) {
+      ctx.fillText(team.name, CONTENT_LEFT + rowH + 8, y + 33 * ts, CONTENT_WIDTH - rowH - (team.own && options.ourTeamTag !== false ? 160 : 16))
+      if (team.own && options.ourTeamTag !== false) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
         ctx.font = `${20 * ts}px ${FONT_STACK}`
         ctx.textAlign = 'right'
