@@ -95,6 +95,24 @@ describe('drawSquadImage', () => {
     expect(texts).not.toContain('VAN DER WESTHUIZEN')
   })
 
+  it('shows the team\'s affiliation name under the team name when the switch is on and the team has one', () => {
+    const named = { ...model, affiliationName: 'Titans Veterans' }
+    expect(record(named, { ...options, include: { ...options.include, affiliationName: true } }).texts).toContain('Titans Veterans')
+    expect(record(named, { ...options, include: { ...options.include, affiliationName: false } }).texts).not.toContain('Titans Veterans')
+    expect(record(model, { ...options, include: { ...options.include, affiliationName: true } }).texts).not.toContain('Titans Veterans')
+  })
+
+  it('draws the heading you typed in capitals, and SQUAD when it is empty', () => {
+    expect(record({ ...model, heading: 'VCASA Club Champs 2026' }, options).texts).toContain('VCASA CLUB CHAMPS 2026')
+    expect(record({ ...model, heading: '   ' }, options).texts).toContain('SQUAD')
+    expect(record(model, options).texts).toContain('SQUAD')
+  })
+
+  it('leaves out the season and player count line when its switch is off', () => {
+    expect(record(model, options).texts).toContain('2026/2027 · 3 players')
+    expect(record(model, { ...options, include: { ...options.include, subtitle: false } }).texts).not.toContain('2026/2027 · 3 players')
+  })
+
   it('puts SQUAD on its own row above the team name, never over it, when there is no logo in the header', () => {
     const rows: { text: string; y: number }[] = []
     const ctx = {

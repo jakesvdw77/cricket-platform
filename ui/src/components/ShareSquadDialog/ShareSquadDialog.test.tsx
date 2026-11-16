@@ -67,6 +67,15 @@ describe('ShareSquadDialog', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The squad could not be loaded')
   })
 
+  it('has an editable heading, SQUAD to begin with, remembered for next time', async () => {
+    renderDialog()
+    const field = await screen.findByRole('textbox', { name: 'Heading' })
+    expect(field).toHaveValue('SQUAD')
+    await userEvent.clear(field)
+    await userEvent.type(field, 'VCASA Club Champs')
+    expect(JSON.parse(localStorage.getItem('squadShare:heading:club-1') as string)).toBe('VCASA Club Champs')
+  })
+
   it('remembers the layout for next time', async () => {
     renderDialog()
     await userEvent.click(await screen.findByRole('button', { name: 'List' }))

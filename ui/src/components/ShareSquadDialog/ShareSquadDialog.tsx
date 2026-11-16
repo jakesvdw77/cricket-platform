@@ -20,6 +20,7 @@ import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import { playerAvatarSrc } from '../BrandIcon'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
+import { Input } from '../Input'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { ShareControlGroup, ShareImageActions, ShareLogoControls, ShareTextSizeControl, useShareLogoImages } from '../ShareCore'
 import { ShareFillContext, ShareFooterContext, ShareFormatScreen } from '../ShareFormatScreen'
@@ -56,6 +57,9 @@ export function ShareSquadDialog({ open, onClose, clubId, team, seasonId, season
   const [shirtNumbers, setShirtNumbers] = useRememberedState<boolean>(key('shirtNumbers'), true, isBoolean)
   const [marks, setMarks] = useRememberedState<boolean>(key('marks'), true, isBoolean)
   const [playerPictures, setPlayerPictures] = useRememberedState<boolean>(key('playerPictures'), true, isBoolean)
+  const [subtitle, setSubtitle] = useRememberedState<boolean>(key('subtitle'), true, isBoolean)
+  const [heading, setHeading] = useRememberedState<string>(key('heading'), 'SQUAD', (value) => typeof value === 'string')
+  const [affiliationName, setAffiliationName] = useRememberedState<boolean>(key('affiliationName'), true, isBoolean)
   const [initialsOnly, setInitialsOnly] = useRememberedState<boolean>(key('initialsOnly'), false, isBoolean)
 
   const squadQuery = useQuery({ queryKey: ['managed-club', clubId, 'teams', team.id, 'squad', seasonId, 'share'], queryFn: () => listSquad(clubId, team.id, seasonId), enabled: open && Boolean(clubId && team.id && seasonId), retry: false })
@@ -86,8 +90,8 @@ export function ShareSquadDialog({ open, onClose, clubId, team, seasonId, season
       // Surname then first name, as the team sheet lists the squad.
       .sort((a, b) => a.lastName.localeCompare(b.lastName, undefined, { sensitivity: 'base' }) || a.sortFirst.localeCompare(b.sortFirst, undefined, { sensitivity: 'base' }))
       .map(({ sortFirst: _sortFirst, ...player }) => player)
-    return { teamName: team.name, teamLogoUrl: team.logoUrl, seasonLabel, players }
-  }, [squadQuery.data, team.name, team.logoUrl, seasonLabel, initialsOnly])
+    return { teamName: team.name, teamLogoUrl: team.logoUrl, affiliationName: team.affiliationName ?? null, heading, seasonLabel, players }
+  }, [squadQuery.data, team.name, team.logoUrl, team.affiliationName, heading, seasonLabel, initialsOnly])
 
   const clubLogoUrl = profileQuery.data?.logoUrl ?? null
   const teamLogoUrl = team.logoUrl ?? null
@@ -102,14 +106,14 @@ export function ShareSquadDialog({ open, onClose, clubId, team, seasonId, season
       template,
       colour: { main, dark, contrastText },
       layout,
-      include: { shirtNumbers, marks, playerPictures },
+      include: { shirtNumbers, marks, playerPictures, affiliationName, subtitle },
       logos: { clubUrl: choices.logos.club ? clubLogoUrl : null, teamAffiliationUrl: choices.logos.teamAffiliation ? (team.affiliationLogoUrl ?? null) : null, teamLogo: choices.logos.team, sponsorUrls },
       textScale: SHARE_TEXT_SCALE[choices.textSize],
       images,
       clubWebsite: profileQuery.data?.website ?? null,
       footerLine: choices.footerLine,
     }),
-    [size, template, main, dark, contrastText, layout, shirtNumbers, marks, playerPictures, choices.logos.club, choices.logos.teamAffiliation, choices.logos.team, clubLogoUrl, team.affiliationLogoUrl, sponsorUrls, choices.textSize, images, profileQuery.data?.website, choices.footerLine],
+    [size, template, main, dark, contrastText, layout, shirtNumbers, marks, playerPictures, affiliationName, subtitle, choices.logos.club, choices.logos.teamAffiliation, choices.logos.team, clubLogoUrl, team.affiliationLogoUrl, sponsorUrls, choices.textSize, images, profileQuery.data?.website, choices.footerLine],
   )
 
   const fileName = useMemo(() => `Squad - ${team.name}${seasonLabel ? ` ${seasonLabel}` : ''}.png`, [team.name, seasonLabel])
@@ -178,10 +182,15 @@ export function ShareSquadDialog({ open, onClose, clubId, team, seasonId, season
                       </CompactToggleGroup>
                     </ShareControlGroup>
                     <ShareTextSizeControl choices={choices} updateChoices={updateChoices} />
+                    <ShareControlGroup label="Heading">
+                      <Input label="Heading" value={heading} onChange={(event) => setHeading(event.target.value)} placeholder="SQUAD" helperText="For example the league or tournament" inputProps={{ maxLength: 40 }} />
+                    </ShareControlGroup>
                     <ShareControlGroup label="Include">
                       <CompactSwitch label="Player Pictures" checked={playerPictures} onChange={setPlayerPictures} />
                       <CompactSwitch label="Shirt Numbers" checked={shirtNumbers} onChange={setShirtNumbers} />
                       <CompactSwitch label="Captain And Keeper Marks" checked={marks} onChange={setMarks} />
+                      <CompactSwitch label="Season And Player Count" checked={subtitle} onChange={setSubtitle} />
+                      {team.affiliationName && <CompactSwitch label="Affiliation Name" checked={affiliationName} onChange={setAffiliationName} />}
                       <CompactSwitch label="First Names As Initials" checked={initialsOnly} onChange={setInitialsOnly} />
                     </ShareControlGroup>
                     <ShareLogoControls

@@ -25,6 +25,10 @@ export interface SquadSharePlayer {
 export interface SquadShareModel {
   teamName: string
   teamLogoUrl: string | null
+  // The team's affiliation name (for example the union it plays under), shown under the team name when the switch is on.
+  affiliationName?: string | null
+  // The small heading above the team name; "SQUAD" when empty. Editable, as a poster is often for one league or tournament.
+  heading?: string
   seasonLabel: string | null
   players: SquadSharePlayer[]
 }
@@ -36,7 +40,7 @@ export interface SquadImageOptions {
   template: ImageTemplate
   colour: ResultImageColour
   layout: SquadLayout
-  include: { shirtNumbers: boolean; marks: boolean; playerPictures: boolean }
+  include: { shirtNumbers: boolean; marks: boolean; playerPictures: boolean; affiliationName?: boolean; subtitle?: boolean }
   logos: { clubUrl: string | null; teamAffiliationUrl: string | null; teamLogo: boolean; sponsorUrls: string[] }
   // The Text Size step as a factor (1 = Auto).
   textScale?: number
@@ -199,8 +203,9 @@ export function drawSquadImage(target: HTMLCanvasElement | CanvasRenderingContex
     height,
     club: clubImage !== null,
     league: false,
-    teamAffiliation: affiliationImage !== null,
-    leagueAffiliation: false,
+    // The team's affiliation logo sits in the top right corner (the slot the league's affiliation uses on the other posters).
+    teamAffiliation: false,
+    leagueAffiliation: affiliationImage !== null,
     teamLogos: false,
     sponsors: sponsorImages.length,
     footerLine: options.footerLine,
@@ -214,30 +219,40 @@ export function drawSquadImage(target: HTMLCanvasElement | CanvasRenderingContex
     ctx.drawImage(image, fit.x, fit.y, fit.width, fit.height)
   }
   drawSlotLogo(layout.club, clubImage)
-  drawSlotLogo(layout.teamAffiliation, affiliationImage)
-  const headerHeight = layout.club?.height ?? layout.teamAffiliation?.height ?? 0
+  drawSlotLogo(layout.leagueAffiliation, affiliationImage)
+  const headerHeight = layout.club?.height ?? layout.leagueAffiliation?.height ?? 0
   // With a logo in the header the label sits between the logos; with none it has its own small row above the title, never over it.
   const labelRow = headerHeight > 0 ? 0 : 44 * k
+  const heading = (model.heading?.trim() || 'SQUAD').toUpperCase()
   if (headerHeight > 0) {
-    drawText(ctx, 'SQUAD', layout.headerText.x + layout.headerText.width / 2, margin + headerHeight / 2, { size: 28 * k, colour: palette.muted, weight: 700, align: 'center', maxWidth: layout.headerText.width })
+    drawText(ctx, heading, layout.headerText.x + layout.headerText.width / 2, margin + headerHeight / 2, { size: 28 * k, colour: palette.muted, weight: 700, align: 'center', maxWidth: layout.headerText.width })
   } else {
-    drawText(ctx, 'SQUAD', margin, margin + 14 * k, { size: 28 * k, colour: palette.muted, weight: 700, maxWidth: width - margin * 2 })
+    drawText(ctx, heading, margin, margin + 14 * k, { size: 28 * k, colour: palette.muted, weight: 700, maxWidth: width - margin * 2 })
   }
 
   // The title row: the team's crest (when on) and its name, then the season and the number of players.
-  const title = { x: margin, y: layout.homeName.y + labelRow, width: width - margin * 2, height: Math.max(layout.homeName.height, 70 * k) }
+  const baseHeight = Math.max(layout.homeName.height, 70 * k)
+  // The team's crest is big enough to read (about 130 px across), so its row is taller than the name alone needs.
+  const crestRadius = 66 * k
+  const title = { x: margin, y: layout.homeName.y + labelRow, width: width - margin * 2, height: options.logos.teamLogo ? Math.max(baseHeight, crestRadius * 2) : baseHeight }
   let nameX = title.x
   if (options.logos.teamLogo) {
-    const radius = title.height * 0.5
-    drawCrest(ctx, title.x + radius, title.y + title.height / 2, radius, model.teamName, imageFor(options.images, model.teamLogoUrl), palette)
-    nameX = title.x + radius * 2 + 22 * k
+    drawCrest(ctx, title.x + crestRadius, title.y + title.height / 2, crestRadius, model.teamName, imageFor(options.images, model.teamLogoUrl), palette)
+    nameX = title.x + crestRadius * 2 + 24 * k
   }
-  drawText(ctx, model.teamName.toUpperCase(), nameX, title.y + title.height / 2, { size: title.height * 0.62, colour: palette.text, weight: 700, maxWidth: title.x + title.width - nameX })
+  const affiliationName = options.include.affiliationName && model.affiliationName ? model.affiliationName : null
+  const nameMiddle = title.y + title.height / 2 - (affiliationName ? baseHeight * 0.16 : 0)
+  drawText(ctx, model.teamName.toUpperCase(), nameX, nameMiddle, { size: baseHeight * 0.62, colour: palette.text, weight: 700, maxWidth: title.x + title.width - nameX })
+  if (affiliationName) {
+    drawText(ctx, affiliationName, nameX, nameMiddle + baseHeight * 0.52, { size: baseHeight * 0.3, colour: palette.muted, weight: 500, maxWidth: title.x + title.width - nameX })
+  }
   const sub = [model.seasonLabel, `${model.players.length} ${model.players.length === 1 ? 'player' : 'players'}`].filter(Boolean).join(' · ')
+  // The season and player count line can be switched off (Season And Player Count); the players then start sooner.
+  const showSub = options.include.subtitle !== false
   const subY = title.y + title.height + 22 * k
-  drawText(ctx, sub, margin, subY, { size: 28 * k, colour: palette.muted, maxWidth: width - margin * 2 })
+  if (showSub) drawText(ctx, sub, margin, subY, { size: 28 * k, colour: palette.muted, maxWidth: width - margin * 2 })
 
-  const top = subY + 30 * k
+  const top = showSub ? subY + 30 * k : title.y + title.height + 18 * k
   const bottom = layout.content.y + layout.content.height
   const area: Rect = { x: margin, y: top, width: width - margin * 2, height: Math.max(0, bottom - top) }
   if (model.players.length === 0) {
