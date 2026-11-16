@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -25,6 +25,14 @@ describe('sheetPlayers (spec 153)', () => {
       member({ firstName: 'Piet', lastName: 'Du Plessis' }),
     ])
     expect(list.map((p) => `${p.firstName} ${p.lastName}`)).toEqual(['Andre Botha', 'Zane botha', 'Piet Du Plessis', 'Eloff Éloff', 'Jaco Van der Westhuizen'])
+  })
+
+  it('sorts by first name when asked, with the surname breaking ties', () => {
+    const list = sheetPlayers(
+      [member({ firstName: 'Sam', lastName: 'Zulu' }), member({ firstName: 'Andre', lastName: 'Botha' }), member({ firstName: 'Sam', lastName: 'Adams' }), member({ firstName: 'Piet', lastName: 'Du Plessis' })],
+      'firstName',
+    )
+    expect(list.map((p) => `${p.firstName} ${p.lastName}`)).toEqual(['Andre Botha', 'Piet Du Plessis', 'Sam Adams', 'Sam Zulu'])
   })
 
   it('lists every active squad player and leaves out inactive ones', () => {
@@ -84,7 +92,7 @@ describe('preMarks', () => {
 })
 
 describe('match details', () => {
-  const match = { homeTeamId: 't1', homeTeamName: 'Irene Veterans', awayTeamId: null, awayTeamName: 'Midlands CC', matchDate: '2026-11-19T14:30:00', venue: ' Durbanville CC B ', active: true }
+  const match = { homeTeamId: 't1', homeTeamName: 'Irene Veterans', awayTeamId: null, awayTeamName: 'Midlands CC', matchDate: '2026-11-19T14:30:00', venue: ' Durbanville CC B ', active: true, homeTeamLogoUrl: null, awayTeamLogoUrl: '/media/midlands.png' }
 
   it('prints the other side as the opposition, whichever way round the fixture is', () => {
     expect(matchInfoFor(match, 't1', 'VCASA Club Champs', 'T20')).toEqual({
@@ -94,10 +102,13 @@ describe('match details', () => {
       time: '14:30',
       venue: 'Durbanville CC B',
       overs: 'T20',
+      oppositionLogoUrl: '/media/midlands.png',
+      stage: null,
     })
     const away = { ...match, homeTeamId: null, homeTeamName: 'Frontier Vets', awayTeamId: 't1', awayTeamName: 'Irene Veterans' }
     expect(matchInfoFor(away, 't1', null, null).opposition).toBe('Frontier Vets')
     expect(matchInfoFor(away, 't1', null, null).overs).toBeNull()
+    expect(matchInfoFor(away, 't1', null, null).oppositionLogoUrl).toBeNull()
   })
 
   it('formats the date and time', () => {
@@ -164,5 +175,60 @@ describe('leaderNames', () => {
     ])
     expect(leaderNames(list)).toEqual({ captain: 'Hannes Kruger', keeper: 'Pieter Du Plessis, Riaan Smit' })
     expect(leaderNames([])).toEqual({ captain: null, keeper: null })
+  })
+})
+
+describe('tournamentRange and hourStyle', () => {
+  it('writes the first to the last day of a tournament', () => {
+    expect(tournamentRange([])).toBeNull()
+    expect(tournamentRange(['2026-11-19T12:30:00'])).toBe('19 NOV 2026')
+    expect(tournamentRange(['2026-11-21T09:00:00', '2026-11-19T12:30:00'])).toBe('19-21 NOV 2026')
+    expect(tournamentRange(['2026-11-30T09:00:00', '2026-12-02T09:00:00'])).toBe('30 NOV - 2 DEC 2026')
+    expect(tournamentRange(['2026-12-30T09:00:00', '2027-01-02T09:00:00'])).toBe('30 DEC 2026 - 2 JAN 2027')
+  })
+
+  it('writes a start time as 14H30', () => {
+    expect(hourStyle('14:30')).toBe('14H30')
+  })
+})
+
+describe('sidePlayers (Selected Side)', () => {
+  const squad = [
+    member({ playerProfileId: 'a', firstName: 'Andre', lastName: 'Botha', squadJerseyNumber: 7 }),
+    member({ playerProfileId: 'b', firstName: 'Hannes', lastName: 'Kruger', jerseyNumber: 3 }),
+    member({ playerProfileId: 'c', firstName: 'Willem', lastName: 'Meyer' }),
+    member({ playerProfileId: 'd', firstName: 'Jaco', lastName: 'Zeelie', squadJerseyNumber: 31 }),
+  ]
+  const side = {
+    captainPlayerId: 'b',
+    wicketKeeperPlayerId: 'c',
+    twelfthManPlayerId: 'd',
+    players: [
+      { playerProfileId: 'c', battingOrder: 1, role: 'BATSMAN' as const },
+      { playerProfileId: 'a', battingOrder: 2, role: 'BATSMAN' as const },
+      { playerProfileId: 'b', battingOrder: null, role: 'BOWLER' as const },
+    ],
+  }
+
+  it('lists the XI in batting order, a player with no position after those with one, and the twelfth man last', () => {
+    const list = sidePlayers(side, squad, 'batting')
+    expect(list.map((p) => p.lastName)).toEqual(['Meyer', 'Botha', 'Kruger', 'Zeelie'])
+    expect(list.at(-1)?.twelfth).toBe(true)
+  })
+
+  it('sorts the alphabetical XI by first name when asked, the twelfth man still last', () => {
+    expect(sidePlayers(side, squad, 'alphabetical', 'firstName').map((p) => p.firstName)).toEqual(['Andre', 'Hannes', 'Willem', 'Jaco'])
+  })
+
+  it('lists the XI alphabetically with the twelfth man still last', () => {
+    expect(sidePlayers(side, squad, 'alphabetical').map((p) => p.lastName)).toEqual(['Botha', 'Kruger', 'Meyer', 'Zeelie'])
+  })
+
+  it('flags the captain and keeper, takes the shirt from the squad (squad number first), and names a player not on the squad from the side', () => {
+    const list = sidePlayers({ ...side, players: [...side.players, { playerProfileId: 'x', battingOrder: 3, role: 'BATSMAN', firstName: 'Guest', lastName: 'Player' }] }, squad, 'batting')
+    expect(list.find((p) => p.lastName === 'Kruger')).toMatchObject({ isCaptain: true, shirt: 3 })
+    expect(list.find((p) => p.lastName === 'Meyer')).toMatchObject({ isKeeper: true, shirt: null })
+    expect(list.find((p) => p.lastName === 'Botha')?.shirt).toBe(7)
+    expect(list.find((p) => p.key === 'x')).toMatchObject({ firstName: 'Guest', lastName: 'Player', shirt: null })
   })
 })

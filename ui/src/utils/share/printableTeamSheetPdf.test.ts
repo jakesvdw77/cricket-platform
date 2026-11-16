@@ -19,6 +19,8 @@ vi.mock('jspdf', () => {
     text = textSpy
     addImage = vi.fn()
     addPage = addPageSpy
+    setLineDashPattern = vi.fn()
+    getTextWidth = () => 10
     getImageProperties = () => ({ width: 100, height: 100 })
     splitTextToSize = (value: string) => [value]
     output = vi.fn(() => new Blob(['fake-pdf']))
@@ -98,5 +100,61 @@ describe('generateTeamSheetPdf (spec 153)', () => {
     await generateTeamSheetPdf([spec([player(1)]), spec([player(1)]), spec(Array.from({ length: 23 }, (_, i) => player(i)))], { preMark: false, fileName: 'x.pdf' })
     // 1 + 1 + 2 pages = 4 pages, so 3 page breaks.
     expect(addPageSpy).toHaveBeenCalledTimes(3)
+  })
+
+  describe('Poster style (spec 153 addendum)', () => {
+    const poster = { leagueTitle: 'VCASA Club Champs 2026', dateRange: '19-21 NOV 2026', affiliationName: 'Titans Veterans Cricket', affiliationLogoUrl: null, leagueAffiliationName: 'VCASA', leagueAffiliationLogoUrl: null, hostName: 'Boland Veterans', hostLogoUrl: null, sponsorLogoUrls: [] }
+    const matchInfo = { ...EMPTY_MATCH_INFO, league: 'VCASA Club Champs', opposition: 'Midlands CC', date: 'Thu 19 Nov 2026', time: '14:30', venue: 'Durbanville CC B' }
+
+    it('prints the league title, tournament dates, affiliation, host, date line and the names with the surname in capitals', async () => {
+      await generateTeamSheetPdf([spec([player(1, { firstName: 'Andre', lastName: 'Botha' })], { match: matchInfo, poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['VCASA CLUB CHAMPS 2026', '19-21 NOV 2026', 'Titans Veterans Cricket', 'VCASA', 'BOLAND VETERANS', 'MIDLANDS CC', 'DATE: Thu 19 Nov 2026 - 14H30', 'Andre', 'BOTHA', 'TEAM SHEET']))
+    })
+
+    it('has no Capt column and no S/N, only W/K, and adds Bat Pos, Bowl and Comment when asked', async () => {
+      await generateTeamSheetPdf([spec([player(1)], { match: matchInfo, poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['W/K', 'PLAYING', 'PLAYER', 'SHIRT']))
+      expect(printed()).not.toContain('CAPT')
+      expect(printed()).not.toContain('S/N')
+      expect(printed()).not.toContain('BAT POS')
+      textSpy.mockClear()
+      await generateTeamSheetPdf([spec([player(1)], { match: matchInfo, poster })], { preMark: false, style: 'poster', batBowl: true, comment: true, fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['PLAYERS', 'BAT POS', 'BOWL', 'COMMENT']))
+    })
+
+    it('pre-marks the captain line and the W/K column only when asked', async () => {
+      const players = [player(1, { firstName: 'Hannes', lastName: 'Kruger', isCaptain: true }), player(2, { isKeeper: true })]
+      await generateTeamSheetPdf([spec(players, { match: matchInfo, poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      expect(printed()).not.toContain('Hannes Kruger')
+      expect(printed().filter((text) => text === 'W/K')).toHaveLength(1)
+      textSpy.mockClear()
+      await generateTeamSheetPdf([spec(players, { match: matchInfo, poster })], { preMark: true, style: 'poster', fileName: 'x.pdf' })
+      expect(printed()).toContain('Hannes Kruger')
+      expect(printed().filter((text) => text === 'W/K')).toHaveLength(2)
+    })
+
+    it('leaves the opposition, date, time and venue as write-on lines for a blank match', async () => {
+      await generateTeamSheetPdf([spec([player(1)], { poster: { ...poster, hostName: null } })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['DATE:', 'TIME:', 'VENUE:']))
+      expect(printed().some((text) => text.startsWith('DATE: '))).toBe(false)
+      expect(printed()).not.toContain('HOST:')
+    })
+
+    describe('Selected Side', () => {
+      const sidePlayersList = [player(1, { firstName: 'Hannes', lastName: 'Kruger', isCaptain: true }), player(2, { firstName: 'Pieter', lastName: 'Du Plessis', isKeeper: true }), player(3, { twelfth: true })]
+
+      it('has no Playing column or empty lines, shows C, W/K and 12th always, fills the captain and reads PLAYING XII', async () => {
+        await generateTeamSheetPdf([spec(sidePlayersList, { match: matchInfo, poster, selectedSide: true })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+        const out = printed()
+        expect(out).toEqual(expect.arrayContaining(['C / W/K', 'C', 'W/K', '12th', 'Hannes Kruger', 'PLAYING XII', 'KRUGER']))
+        expect(out).not.toContain('PLAYING')
+        expect(out).not.toContain('TEAM SHEET')
+      })
+
+      it('reads PLAYING XI without a twelfth man', async () => {
+        await generateTeamSheetPdf([spec(sidePlayersList.slice(0, 2), { match: matchInfo, poster, selectedSide: true })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+        expect(printed()).toContain('PLAYING XI')
+      })
+    })
   })
 })

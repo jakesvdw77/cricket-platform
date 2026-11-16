@@ -3,6 +3,7 @@ import type { MetaOptions } from '../teamSheet'
 import { BLANK_LINES, leaderNames, metaCells, sheetPages, preMarks } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
+import { drawPosterPage, posterImageUrls } from './teamSheetPosterPdf'
 
 // docs/specs/153-printable-team-sheet.md: the printable team sheet as an A4 portrait PDF, one or more pages per team (a long squad
 // flows onto a second page with the header repeated). Black and white safe: the green header band prints as a dark grey and the tick
@@ -17,6 +18,26 @@ export interface TeamSheetSpec {
   // All null for a blank sheet: the boxes stay empty to write on.
   match: SheetMatchInfo
   players: SheetPlayer[]
+  // Only the Poster style reads these (docs/specs/153 addendum, docs/specs/154).
+  poster?: PosterExtras
+  // The Selected Side poster: `players` is the saved side (not the squad), with no Playing boxes and no empty lines.
+  selectedSide?: boolean
+}
+
+export interface PosterExtras {
+  // "VCASA Club Champs 2026" and "19-21 NOV 2026", large in the centre of the header.
+  leagueTitle: string | null
+  dateRange: string | null
+  // The body the team is affiliated to: its logo top left, else its name.
+  affiliationName: string | null
+  affiliationLogoUrl: string | null
+  // The body the league belongs to (VCASA), top right; the league's own logo is the fallback.
+  leagueAffiliationName?: string | null
+  leagueAffiliationLogoUrl?: string | null
+  // The tournament host, bottom right.
+  hostName: string | null
+  hostLogoUrl: string | null
+  sponsorLogoUrls: string[]
 }
 
 export interface TeamSheetPdfOptions {
@@ -27,6 +48,13 @@ export interface TeamSheetPdfOptions {
   tossBoxes?: boolean
   // The Capt and Keeper tick columns; on unless switched off, then Captain and Wicketkeeper are written in boxes under the header.
   leaderTicks?: boolean
+  // 'poster' draws the coloured Match Poster style instead of the plain sheet.
+  style?: 'plain' | 'poster'
+  // Poster style only: the Bat Pos and Bowl column pair, and a Comment column (both off unless switched on).
+  batBowl?: boolean
+  // Poster: the Playing tick box column (default on).
+  playingBox?: boolean
+  comment?: boolean
   fileName: string
 }
 
@@ -194,15 +222,20 @@ function drawFooter(doc: jsPDF, tableEnd: number): void {
 
 export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: TeamSheetPdfOptions): Promise<File> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const wanted = [...new Set(sheets.flatMap((sheet) => [sheet.teamLogoUrl, sheet.leagueLogoUrl]).filter((url): url is string => Boolean(url)))]
+  const poster = options.style === 'poster'
+  const wanted = [...new Set(sheets.flatMap((sheet) => (poster ? posterImageUrls(sheet) : [sheet.teamLogoUrl, sheet.leagueLogoUrl])).filter((url): url is string => Boolean(url)))]
   const logos = new Map<string, string | null>(await Promise.all(wanted.map(async (url) => [url, await loadImageDataUrl(url)] as const)))
   const imageOf = (url: string | null): string | null => (url ? (logos.get(url) ?? null) : null)
 
   let first = true
   for (const sheet of sheets) {
-    for (const rows of sheetPages(sheet.players, options.extraLines === false ? 0 : BLANK_LINES)) {
+    for (const rows of sheetPages(sheet.players, options.extraLines === false || sheet.selectedSide ? 0 : BLANK_LINES)) {
       if (!first) doc.addPage()
       first = false
+      if (poster) {
+        drawPosterPage(doc, sheet, rows, options, (url) => (url ? (logos.get(url) ?? null) : null))
+        continue
+      }
       const afterHeader = drawHeader(doc, sheet, imageOf(sheet.teamLogoUrl), imageOf(sheet.leagueLogoUrl))
       const leaderTicks = options.leaderTicks !== false
       const names = options.preMark ? leaderNames(sheet.players) : { captain: null, keeper: null }

@@ -27,7 +27,7 @@ import { currentOrigin, withReturnTo } from '../../utils/returnTo'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
-import { TeamSheetDialog } from '../../components/TeamSheetDialog'
+import { TeamSheetDialog, sheetTeamOf } from '../../components/TeamSheetDialog'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
@@ -453,7 +453,7 @@ export default function TeamDetailPage() {
           open
           onClose={() => setPrintOpen(false)}
           clubId={clubId}
-          teams={[{ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId }]}
+          teams={[sheetTeamOf(team)]}
           seasonId={selectedSeasonId}
           seasonLabel={seasons.find((season) => season.id === selectedSeasonId)?.label ?? null}
           matches={matches}

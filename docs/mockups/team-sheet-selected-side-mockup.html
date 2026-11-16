@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Sheet Selected Side mockup (spec 153)</title>
+<style>
+  :root { --green:#14452f; --green2:#1f6a49; --gold:#e8b53f; --ink:#161a17; --line:#9aa59d; --soft:#eef2ee; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:#d9ddd9; font-family: "Barlow", Arial, sans-serif; color:var(--ink); }
+  .note { max-width:1180px; margin:0 auto 18px; font-size:14px; line-height:1.5; }
+  .note h1 { font:700 20px/1.2 "Barlow Condensed", Arial, sans-serif; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  .note li { margin:2px 0; }
+  .pages { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+  .label { text-align:center; font-weight:700; margin-bottom:8px; }
+  /* A4 portrait at 96 dpi: 794 x 1123 */
+  .page { position:relative; width:794px; height:1123px; background:#fff; box-shadow:0 2px 12px rgba(0,0,0,.25); overflow:hidden; display:flex; flex-direction:column; }
+
+  /* header: three zones, every logo in a fixed box so a wide logo cannot push the layout */
+  .top { display:grid; grid-template-columns:130px 1fr 130px; align-items:center; padding:18px 30px 0 52px; }
+  .slot { height:64px; display:grid; place-items:center; border:1.5px dashed var(--line); border-radius:6px; font-size:11px; color:#5a625c; text-align:center; line-height:1.15; }
+  .top .mid { text-align:center; }
+  .top .mid .league { font:700 26px/1.1 "Barlow Condensed", Arial; letter-spacing:.04em; text-transform:uppercase; color:var(--green); }
+  .top .mid .range { font:600 17px "Barlow Condensed", Arial; letter-spacing:.08em; }
+  .top .mid .where { font-size:12px; color:#444; }
+
+  /* the two crests */
+  .crests { display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; padding:6px 52px 0 70px; }
+  .crest { height:92px; display:grid; place-items:center; border:1.5px dashed var(--line); border-radius:10px; font-size:12px; color:#5a625c; text-align:center; }
+  .crest.us { }
+  .vs { text-align:center; font:700 34px "Barlow Condensed", Arial; font-style:italic; color:var(--green2); }
+  .oppname { text-align:center; font:700 15px "Barlow Condensed", Arial; text-transform:uppercase; letter-spacing:.06em; margin-top:10px; height:34px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3px; }
+  .when { text-align:center; margin:8px 0 6px; font:700 22px "Barlow Condensed", Arial; font-style:italic; text-decoration:underline; text-underline-offset:3px; }
+  .when span { font-weight:600; }
+
+  /* the vertical banner down the left edge, as in the example */
+  .banner { position:absolute; left:0; top:250px; width:48px; height:610px; background:linear-gradient(180deg,var(--green),var(--green2)); display:grid; place-items:center; }
+  .banner b { writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; color:#fff; font:700 40px "Barlow Condensed", Arial; letter-spacing:.22em; text-transform:uppercase; }
+  .banner i { position:absolute; bottom:0; left:0; right:0; height:8px; background:var(--gold); }
+
+  .tablewrap { padding:0 40px 0 64px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--green); color:#fff; font:600 11px "Barlow Condensed", Arial; letter-spacing:.12em; text-transform:uppercase; padding:6px 6px; text-align:left; border:1px solid #fff; }
+  th.sub { font-size:9px; padding:3px 4px; }
+  th.c, td.c { text-align:center; }
+  td { border:1px solid #6d786f; padding:0 6px; height:25px; }
+  tr:nth-child(even) td { background:var(--soft); }
+  td.n { width:34px; color:#5a625c; font-size:11px; text-align:center; }
+  td.shirt { width:54px; text-align:center; font-weight:700; }
+  td.play { width:62px; text-align:center; }
+  td.tag { width:54px; text-align:center; font-weight:700; color:var(--green); font-size:12px; }
+  td.comment { }
+  .sn { font-weight:700; text-transform:uppercase; }
+  .box { display:inline-block; width:15px; height:15px; border:1.5px solid var(--ink); border-radius:2px; vertical-align:middle; }
+  .hint { padding:8px 40px 0 64px; font-size:11px; color:#5a625c; }
+
+  .sign { padding:34px 40px 0 64px; display:grid; grid-template-columns:1fr 1fr; gap:30px; }
+  .sign div { display:flex; align-items:flex-end; gap:8px; font:700 16px "Barlow Condensed", Arial; font-style:italic; text-transform:uppercase; }
+  .sign span { flex:1; border-bottom:1px solid var(--ink); min-height:22px; font:600 14px Arial; font-style:normal; text-transform:none; padding-left:4px; }
+
+  /* the footer band: club tagline over a fading band, club logo, sponsors */
+  .foot { margin-top:auto; position:relative; height:150px; background:linear-gradient(180deg,#fff 0%,#dbe9e0 38%,var(--green) 100%); display:flex; flex-direction:column; justify-content:flex-end; }
+  .tagline { position:absolute; top:6px; left:0; right:0; text-align:center; font:italic 600 24px "Barlow Condensed", Georgia, serif; color:var(--green); letter-spacing:.05em; }
+  .strip { display:grid; grid-template-columns:90px 1fr 90px; gap:14px; align-items:center; padding:0 28px 12px; color:#fff; }
+  .strip .slot { height:54px; background:rgba(255,255,255,.92); border-color:#fff; color:#5a625c; }
+  .host .hostlogo { width:70px; height:46px; margin:0 0 4px auto; }
+  .host { text-align:right; font:700 14px/1.2 "Barlow Condensed", Arial; letter-spacing:.06em; text-transform:uppercase; }
+  .sponsors { display:flex; gap:10px; justify-content:center; }
+  .sponsors .slot { width:92px; }
+  .rule { position:absolute; left:0; right:0; bottom:0; height:6px; background:var(--gold); }
+  .oppname.write { text-align:left; border-bottom:1px solid var(--ink); text-transform:none; font-weight:600; padding:0 0 3px 4px; justify-content:flex-start; }
+  .blankwhen { text-decoration:none; font-style:normal; display:flex; gap:8px; align-items:baseline; justify-content:center; padding:0 40px 0 64px; font-size:18px; margin-top:12px; }
+  .blankwhen .line { display:inline-block; flex:1; border-bottom:1px solid var(--ink); height:30px; }
+  .blankwhen .short { flex:0 0 90px; }
+  .mini { margin-top:8px; font-size:12px; color:#444; max-width:1180px; margin-left:auto; margin-right:auto; }
+  td.ord { width:46px; text-align:center; font-weight:700; color:var(--green); }
+  td.tag2 { width:46px; text-align:center; font-weight:700; color:var(--green); font-size:12px; }
+  .twelfth td { font-style:italic; }
+  .opt { display:inline-block; border:1.5px solid var(--green); border-radius:14px; padding:1px 10px; font-weight:700; font-size:12px; color:var(--green); margin-right:6px; }
+  .opt.on { background:var(--green); color:#fff; }
+</style>
+</head>
+<body>
+<div class="note">
+  <h1>Team Sheet, Selected Side (spec 153 draft, mockup)</h1>
+  A third sheet type for the Poster style: <b>Selected Side</b>, beside Blank, One Match and All Matches. It prints only the players picked in Team
+  Selection for the match (no Playing tick box and no order column, the side is chosen: just the names), the Captain line filled from the saved side, <b>C</b> and <b>W/K</b> beside the
+  names, the twelfth man last, and the banner reading <b>PLAYING XI</b> (<b>PLAYING XII</b> with a twelfth man, as shown). Same header, crests, footer, host and sponsors as the Poster.
+  <p><b>Order option</b> on the print screen: <span class="opt on">Batting order</span><span class="opt">Alphabetical</span> Batting order lists the players in the order set in Team Selection, with the twelfth man last. Alphabetical lists them by surname, twelfth man last. Only the row order changes; no number is printed.
+  Left: batting order. Right: alphabetical. A match with no saved side is skipped in All Matches, and One Match says so with a link to Team Selection.</p>
+</div>
+<div class="pages">
+  <div>
+    <div class="label">Selected Side, Batting order</div>
+    <div class="page">
+      <div class="top">
+        <div class="slot">Affiliation<br>logo</div>
+        <div class="mid"><div class="slot" style="height:48px;width:150px;margin:0 auto 4px">League<br>logo</div><div class="league">VCASA Club Champs 2026</div><div class="range">19-21 NOV 2026</div></div>
+        <div class="slot">Affiliation<br>logo</div>
+      </div>
+      <div class="crests">
+        <div><div class="crest us" style="height:70px">Irene Veterans<br>team logo</div><div class="oppname">Irene Veterans</div></div>
+        <div class="vs">vs</div>
+        <div><div class="crest" style="height:70px">Midlands CC<br>crest</div><div class="oppname">Midlands CC</div></div>
+      </div>
+      <div class="when">DATE: <span>Thu 19 Nov 2026 &ndash; 14H30</span></div>
+      <div class="banner"><b>Playing XII</b><i></i></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th rowspan="2">Player</th><th class="c" rowspan="2">Shirt</th><th class="c" rowspan="2">C / W/K</th><th class="c" colspan="2">Players</th><th rowspan="2">Comment</th></tr><tr><th class="c sub">Bat Pos</th><th class="c sub">Bowl</th></tr></thead>
+          <tbody><tr><td>Andre <span class="sn">BOTHA</span></td><td class="shirt">7</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Johan <span class="sn">JACOBS</span></td><td class="shirt">12</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Hannes <span class="sn">KRUGER</span></td><td class="shirt">3</td><td class="tag2">C</td><td></td><td></td><td></td></tr><tr><td>Willem <span class="sn">MEYER</span></td><td class="shirt">18</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Dawie <span class="sn">NEL</span></td><td class="shirt">9</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Pieter <span class="sn">DU PLESSIS</span></td><td class="shirt">21</td><td class="tag2">W/K</td><td></td><td></td><td></td></tr><tr><td>Louis <span class="sn">PRETORIUS</span></td><td class="shirt">44</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Riaan <span class="sn">SMIT</span></td><td class="shirt">5</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Gerhard <span class="sn">VENTER</span></td><td class="shirt">27</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Stefan <span class="sn">WESSELS</span></td><td class="shirt">8</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Marius <span class="sn">ZEELIE</span></td><td class="shirt">31</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr class="twelfth"><td>Jaco <span class="sn">VAN DER WESTHUIZEN</span></td><td class="shirt">16</td><td class="tag2">12th</td><td></td><td></td><td></td></tr></tbody>
+        </table>
+      </div>
+      <div class="hint">The selected side from Team Selection. The twelfth man is the last line.</div>
+      <div class="sign"><div>Captain: <span>Hannes Kruger</span></div><div>Sign: <span></span></div></div>
+      <div class="foot">
+        <div class="tagline">Irene Veterans &middot; Where Legends Play</div>
+        <div class="strip"><div class="slot">Sponsor</div><div class="sponsors"><div class="slot">Sponsor</div><div class="slot">Sponsor</div></div><div class="host"><div class="slot hostlogo">Host<br>logo</div>HOST:<br>Boland Veterans</div></div>
+        <div class="rule"></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="label">Selected Side, Alphabetical</div>
+    <div class="page">
+      <div class="top">
+        <div class="slot">Affiliation<br>logo</div>
+        <div class="mid"><div class="slot" style="height:48px;width:150px;margin:0 auto 4px">League<br>logo</div><div class="league">VCASA Club Champs 2026</div><div class="range">19-21 NOV 2026</div></div>
+        <div class="slot">Affiliation<br>logo</div>
+      </div>
+      <div class="crests">
+        <div><div class="crest us" style="height:70px">Irene Veterans<br>team logo</div><div class="oppname">Irene Veterans</div></div>
+        <div class="vs">vs</div>
+        <div><div class="crest" style="height:70px">Midlands CC<br>crest</div><div class="oppname">Midlands CC</div></div>
+      </div>
+      <div class="when">DATE: <span>Thu 19 Nov 2026 &ndash; 14H30</span></div>
+      <div class="banner"><b>Playing XII</b><i></i></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th rowspan="2">Player</th><th class="c" rowspan="2">Shirt</th><th class="c" rowspan="2">C / W/K</th><th class="c" colspan="2">Players</th><th rowspan="2">Comment</th></tr><tr><th class="c sub">Bat Pos</th><th class="c sub">Bowl</th></tr></thead>
+          <tbody><tr><td>Andre <span class="sn">BOTHA</span></td><td class="shirt">7</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Pieter <span class="sn">DU PLESSIS</span></td><td class="shirt">21</td><td class="tag2">W/K</td><td></td><td></td><td></td></tr><tr><td>Johan <span class="sn">JACOBS</span></td><td class="shirt">12</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Hannes <span class="sn">KRUGER</span></td><td class="shirt">3</td><td class="tag2">C</td><td></td><td></td><td></td></tr><tr><td>Willem <span class="sn">MEYER</span></td><td class="shirt">18</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Dawie <span class="sn">NEL</span></td><td class="shirt">9</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Louis <span class="sn">PRETORIUS</span></td><td class="shirt">44</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Riaan <span class="sn">SMIT</span></td><td class="shirt">5</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Gerhard <span class="sn">VENTER</span></td><td class="shirt">27</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Stefan <span class="sn">WESSELS</span></td><td class="shirt">8</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr><td>Marius <span class="sn">ZEELIE</span></td><td class="shirt">31</td><td class="tag2"></td><td></td><td></td><td></td></tr><tr class="twelfth"><td>Jaco <span class="sn">VAN DER WESTHUIZEN</span></td><td class="shirt">16</td><td class="tag2">12th</td><td></td><td></td><td></td></tr></tbody>
+        </table>
+      </div>
+      <div class="hint">The selected side from Team Selection. The twelfth man is the last line.</div>
+      <div class="sign"><div>Captain: <span>Hannes Kruger</span></div><div>Sign: <span></span></div></div>
+      <div class="foot">
+        <div class="tagline">Irene Veterans &middot; Where Legends Play</div>
+        <div class="strip"><div class="slot">Sponsor</div><div class="sponsors"><div class="slot">Sponsor</div><div class="slot">Sponsor</div></div><div class="host"><div class="slot hostlogo">Host<br>logo</div>HOST:<br>Boland Veterans</div></div>
+        <div class="rule"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -10,6 +10,12 @@ const listSections = vi.fn()
 const listSquad = vi.fn()
 const listLeagues = vi.fn()
 const generate = vi.fn()
+const listTeamSponsors = vi.fn()
+const getLeagueSeasonDates = vi.fn()
+const listMatchSides = vi.fn()
+vi.mock('../../api/matchSideApi', () => ({ listMatchSides: (...args: unknown[]) => listMatchSides(...args) }))
+vi.mock('../../api/leagueSeasonDatesApi', () => ({ getLeagueSeasonDates: (...args: unknown[]) => getLeagueSeasonDates(...args) }))
+vi.mock('../../api/teamSponsorApi', () => ({ listTeamSponsors: (...args: unknown[]) => listTeamSponsors(...args) }))
 vi.mock('../../api/sectionApi', () => ({ listSections: (clubId: string) => listSections(clubId) }))
 vi.mock('../../api/teamSquadApi', () => ({ listSquad: (...args: unknown[]) => listSquad(...args) }))
 vi.mock('../../api/leagueApi', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/leagueApi')>()), listLeagues: (...args: unknown[]) => listLeagues(...args) }))
@@ -29,7 +35,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof TeamSheetDialog
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <TeamSheetDialog open onClose={vi.fn()} clubId="club-1" teams={[team]} seasonId="s1" seasonLabel="2026/2027" matches={matches} {...props} />
+        <TeamSheetDialog open onClose={vi.fn()} clubId="club-1" teams={[team]} seasonId="s1" seasonLabel="2026/2027" matches={matches} initialStyle="plain" {...props} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -40,6 +46,13 @@ beforeEach(() => {
   listSections.mockResolvedValue([{ id: 'over40', clubId: 'club-1', parentSectionId: null, name: 'Over 40', minAge: 40, maxAge: null, gender: null, active: true }])
   listSquad.mockResolvedValue([member('Jaco', 'Van der Westhuizen', { squadJerseyNumber: 16 }), member('Andre', 'Botha', { isCaptain: true, squadJerseyNumber: 7 })])
   listLeagues.mockResolvedValue([{ id: 'l1', name: 'VCASA Club Champs', logoUrl: null, format: 'T20' }])
+  getLeagueSeasonDates.mockResolvedValue(null)
+  listMatchSides.mockImplementation(async (_club: string, matchId: string) =>
+    matchId === 'm1'
+      ? [{ id: 'side1', matchId: 'm1', teamId: 't1', captainPlayerId: 'Andre-Botha', wicketKeeperPlayerId: null, twelfthManPlayerId: null, announced: false, players: [{ playerProfileId: 'Jaco-Van der Westhuizen', battingOrder: 1, role: 'BATSMAN' }, { playerProfileId: 'Andre-Botha', battingOrder: 2, role: 'BATSMAN' }] }]
+      : [],
+  )
+  listTeamSponsors.mockResolvedValue([{ id: 'sp1', name: 'Sponsor One', logoUrl: '/media/sponsor.png' }])
   generate.mockResolvedValue(new File(['x'], 'sheet.pdf', { type: 'application/pdf' }))
 })
 
@@ -116,6 +129,107 @@ describe('TeamSheetDialog (spec 153)', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: 'Capt And Keeper Tick Boxes' }))
     expect(screen.queryByText('Keeper')).not.toBeInTheDocument()
     expect(screen.getByText('Wicketkeeper')).toBeInTheDocument()
+  })
+
+  it('opens on the Poster style: its own preview, spec extras and switches (spec 153 addendum, 154)', async () => {
+    listLeagues.mockResolvedValue([{ id: 'l1', name: 'VCASA Club Champs', logoUrl: null, format: 'T20', hostName: 'Boland Veterans', hostLogoUrl: null, affiliationName: 'VCASA', affiliationLogoUrl: null }])
+    renderDialog({ teams: [{ ...team, affiliationName: 'Titans Veterans Cricket', affiliationLogoUrl: null }], initialMode: 'one', initialMatchId: 'm1', initialStyle: undefined })
+
+    const poster = await screen.findByTestId('team-sheet-poster')
+    expect(poster).toHaveTextContent('VCASA Club Champs 2026')
+    expect(poster).toHaveTextContent('19-20 NOV 2026')
+    expect(poster).toHaveTextContent('Titans Veterans Cricket')
+    expect(poster).toHaveTextContent('Boland Veterans')
+    expect(poster).toHaveTextContent('VCASA')
+    expect(poster).toHaveTextContent('Midlands CC')
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ style: 'poster', batBowl: true, comment: true }))
+    expect(generate.mock.calls.at(-1)?.[0][0].poster.sponsorLogoUrls).toEqual(['/media/sponsor.png'])
+    expect(screen.queryByRole('checkbox', { name: 'Toss And Elected Boxes' })).not.toBeInTheDocument()
+
+    expect(within(poster).getByText('Bowl')).toBeInTheDocument()
+    expect(within(poster).getByText('Comment')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Bat Pos And Bowl Columns' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Comment Column' }))
+    const after = await screen.findByTestId('team-sheet-poster')
+    expect(within(after).queryByText('Bowl')).not.toBeInTheDocument()
+    expect(within(after).queryByText('Comment')).not.toBeInTheDocument()
+  })
+
+  it('has a Playing Tick Box switch, on by default, that removes the Playing column when off (Poster)', async () => {
+    renderDialog({ initialStyle: undefined })
+    const poster = await screen.findByTestId('team-sheet-poster')
+    expect(within(poster).getByText('Playing')).toBeInTheDocument()
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ playingBox: true }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Playing Tick Box' }))
+    expect(within(await screen.findByTestId('team-sheet-poster')).queryByText('Playing')).not.toBeInTheDocument()
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ playingBox: false }))
+  })
+
+  it('does not offer the Playing Tick Box for Selected Side, which has no tick column', async () => {
+    renderDialog({ initialStyle: undefined, initialMode: 'all' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Selected Side' }))
+    expect(screen.queryByRole('checkbox', { name: 'Playing Tick Box' })).not.toBeInTheDocument()
+  })
+
+  it('sorts by surname by default and by first name when Sort By is switched', async () => {
+    listSquad.mockResolvedValue([member('Zane', 'Adams'), member('Andre', 'Botha')])
+    renderDialog()
+    let rows = within(await screen.findByTestId('team-sheet-paper')).getAllByTestId('team-sheet-row')
+    await waitFor(() => expect(rows[0]).toHaveTextContent('Zane'))
+    await userEvent.click(screen.getByRole('button', { name: 'First Name' }))
+    rows = within(await screen.findByTestId('team-sheet-paper')).getAllByTestId('team-sheet-row')
+    await waitFor(() => expect(rows[0]).toHaveTextContent('Andre'))
+  })
+
+  it('prints the stage and a TBC opposition on the Poster for a playoff match (spec 155)', async () => {
+    const playoff = match('p1', '2026-11-21T10:00:00', '3rd in the pool', { awayPlaceholder: true, stage: 'Semi-final' })
+    renderDialog({ matches: [playoff], initialStyle: undefined, initialMode: 'one', initialMatchId: 'p1' })
+    const poster = await screen.findByTestId('team-sheet-poster')
+    expect(poster).toHaveTextContent(/semi-final/i)
+    expect(poster).toHaveTextContent('TBC: 3rd in the pool')
+  })
+
+  it('prints the tournament\'s saved start and end dates on the Poster, not just our own matches (spec 111)', async () => {
+    getLeagueSeasonDates.mockResolvedValue({ startDate: '2026-11-19', endDate: '2026-11-21' })
+    renderDialog({ initialMode: 'one', initialMatchId: 'm1', initialStyle: undefined })
+    expect(await screen.findByText('19-21 NOV 2026')).toBeInTheDocument()
+  })
+
+  it('Selected Side prints only the saved side in batting order, skips a match with none, and can sort alphabetically (spec 153)', async () => {
+    renderDialog({ initialStyle: undefined, initialMode: 'all' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Selected Side' }))
+
+    const poster = await screen.findByTestId('team-sheet-poster')
+    await waitFor(() => expect(within(poster).getAllByTestId('team-sheet-row')).toHaveLength(2))
+    let rows = within(poster).getAllByTestId('team-sheet-row')
+    expect(rows[0]).toHaveTextContent('Jaco')
+    expect(rows[1]).toHaveTextContent('Andre')
+    expect(rows[1]).toHaveTextContent('C')
+    expect(poster).toHaveTextContent('Midlands CC')
+    expect(within(poster).queryByText('Playing')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('team-sheet-skipped')).toHaveTextContent('Paarl Heat')
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0]).toHaveLength(1))
+    expect(generate.mock.calls.at(-1)?.[0][0]).toMatchObject({ selectedSide: true })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Alphabetical' }))
+    rows = within(await screen.findByTestId('team-sheet-poster')).getAllByTestId('team-sheet-row')
+    expect(rows[0]).toHaveTextContent('Andre')
+  })
+
+  it('Selected Side says so, with a link to Team Selection, when no ticked match has a side', async () => {
+    listMatchSides.mockResolvedValue([])
+    renderDialog({ initialStyle: undefined, initialMode: 'all' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Selected Side' }))
+    expect(await screen.findByText(/No side has been selected for the ticked matches yet/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Team Selection' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Download PDF/ })).toBeDisabled()
+  })
+
+  it('offers Selected Side only on the Poster style', async () => {
+    renderDialog({ initialStyle: undefined })
+    expect(await screen.findByRole('button', { name: 'Selected Side' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Plain' }))
+    expect(screen.queryByRole('button', { name: 'Selected Side' })).not.toBeInTheDocument()
   })
 
   it('shows no junior notice, and still prints full names', async () => {

@@ -1,6 +1,8 @@
 import type { SquadMember } from '../api/teamSquadApi'
 import type { Match } from '../api/matchApi'
+import type { MatchSide } from '../api/matchSideApi'
 import { LEAGUE_FORMAT_LABELS } from '../api/leagueApi'
+import { stageOf, tbcText } from './matchStages'
 import type { LeagueFormat } from '../api/leagueApi'
 
 // docs/specs/153-printable-team-sheet.md: the rows, pages and match details of a printable team sheet. Pure; no React, no jsPDF.
@@ -13,6 +15,8 @@ export interface SheetPlayer {
   shirt: number | null
   isCaptain: boolean
   isKeeper: boolean
+  // Selected Side only: the side's twelfth man, listed last.
+  twelfth?: boolean
 }
 
 // A table row: a squad player, or an empty line to write a late or guest player on.
@@ -25,6 +29,10 @@ export interface SheetMatchInfo {
   time: string | null
   venue: string | null
   overs: string | null
+  // The opposition's crest (a registered league team's logo or an opponent's own); the Poster style draws it, the plain sheet does not.
+  oppositionLogoUrl?: string | null
+  // docs/specs/155: the match's stage (Playoff, Semi-final, ...), printed under the date by the Poster; null for a pool match.
+  stage?: string | null
 }
 
 export const EMPTY_MATCH_INFO: SheetMatchInfo = { league: null, opposition: null, date: null, time: null, venue: null, overs: null }
@@ -79,9 +87,58 @@ export const BLANK_LINES = 2
 
 const compare = (a: string, b: string): number => a.localeCompare(b, undefined, { sensitivity: 'base' })
 
-// Every active squad player, surname then first name (case and accents ignored), so "Van der Westhuizen" sorts under V.
+export type SideOrder = 'batting' | 'alphabetical'
+
+// What an alphabetical list sorts on first: the surname (the default) or the first name. The other name breaks ties.
+export type NameSort = 'surname' | 'firstName'
+const nameCompare = (sort: NameSort) => (a: { firstName: string; lastName: string }, b: { firstName: string; lastName: string }): number =>
+  sort === 'firstName' ? compare(a.firstName, b.firstName) || compare(a.lastName, b.lastName) : compare(a.lastName, b.lastName) || compare(a.firstName, b.firstName)
+
+// The players of a saved match side (docs/specs/076) as sheet rows: the batting XI in Team Selection's order or alphabetically
+// (a player with no batting position yet goes after those with one), then the twelfth man last. Names and shirt numbers come from the
+// season squad when the player is on it, else from the side itself.
+export function sidePlayers(
+  side: Pick<MatchSide, 'players' | 'captainPlayerId' | 'wicketKeeperPlayerId' | 'twelfthManPlayerId'>,
+  squad: SquadMember[],
+  order: SideOrder,
+  nameSort: NameSort = 'surname',
+): SheetPlayer[] {
+  const squadById = new Map(squad.map((member) => [member.playerProfileId, member]))
+  const picks = new Map(side.players.map((pick) => [pick.playerProfileId, pick]))
+  if (side.twelfthManPlayerId && !picks.has(side.twelfthManPlayerId)) {
+    picks.set(side.twelfthManPlayerId, { playerProfileId: side.twelfthManPlayerId, battingOrder: null, role: 'BATSMAN' })
+  }
+  const all = [...picks.values()].map((pick) => {
+    const member = squadById.get(pick.playerProfileId)
+    return {
+      player: {
+        key: pick.playerProfileId,
+        firstName: member?.firstName ?? pick.firstName ?? '',
+        lastName: member?.lastName ?? pick.lastName ?? '',
+        shirt: member?.squadJerseyNumber ?? member?.jerseyNumber ?? null,
+        isCaptain: pick.playerProfileId === side.captainPlayerId,
+        isKeeper: pick.playerProfileId === side.wicketKeeperPlayerId,
+        twelfth: pick.playerProfileId === side.twelfthManPlayerId,
+      } satisfies SheetPlayer,
+      battingOrder: pick.battingOrder,
+    }
+  })
+  const byName = nameCompare(nameSort)
+  const batting = all.filter((entry) => !entry.player.twelfth)
+  batting.sort((a, b) => {
+    if (order === 'batting' && a.battingOrder !== b.battingOrder) {
+      if (a.battingOrder === null) return 1
+      if (b.battingOrder === null) return -1
+      return a.battingOrder - b.battingOrder
+    }
+    return byName(a.player, b.player)
+  })
+  return [...batting.map((entry) => entry.player), ...all.filter((entry) => entry.player.twelfth).map((entry) => entry.player)]
+}
+
+// Every active squad player, by surname then first name unless nameSort says first name first (case and accents ignored), so "Van der Westhuizen" sorts under V.
 // The shirt number is the squad number, else the player's standing number, else blank.
-export function sheetPlayers(squad: SquadMember[]): SheetPlayer[] {
+export function sheetPlayers(squad: SquadMember[], nameSort: NameSort = 'surname'): SheetPlayer[] {
   return squad
     .filter((member) => member.active !== false)
     .map((member) => ({
@@ -92,7 +149,7 @@ export function sheetPlayers(squad: SquadMember[]): SheetPlayer[] {
       isCaptain: member.isCaptain === true,
       isKeeper: member.isWicketKeeper === true,
     }))
-    .sort((a, b) => compare(a.lastName, b.lastName) || compare(a.firstName, b.firstName))
+    .sort(nameCompare(nameSort))
 }
 
 // The squad then two empty lines (none when the manager switched them off), cut into pages of ROWS_PER_PAGE. An empty squad is one page of empty lines only.
@@ -128,22 +185,44 @@ export function sheetTime(iso: string): string {
 
 // The match as the sheet prints it, for OUR team: the opposition is the other side, whichever way round the fixture is.
 export function matchInfoFor(
-  match: Pick<Match, 'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName' | 'matchDate' | 'venue'>,
+  match: Pick<Match, 'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName' | 'matchDate' | 'venue' | 'homeTeamLogoUrl' | 'awayTeamLogoUrl'> &
+    Partial<Pick<Match, 'stage' | 'homePlaceholder' | 'awayPlaceholder'>>,
   teamId: string,
   leagueName: string | null,
   format: LeagueFormat | null | undefined,
 ): SheetMatchInfo {
   const home = match.homeTeamId === teamId
   const opposition = home ? match.awayTeamName : match.homeTeamName
+  const oppositionIsTbc = Boolean(home ? match.awayPlaceholder : match.homePlaceholder)
   return {
     league: leagueName,
-    opposition: opposition?.trim() || null,
+    opposition: oppositionIsTbc ? tbcText(opposition?.trim()) : opposition?.trim() || null,
     date: sheetDate(match.matchDate),
     time: sheetTime(match.matchDate),
     venue: match.venue?.trim() || null,
     overs: format ? LEAGUE_FORMAT_LABELS[format] : null,
+    oppositionLogoUrl: oppositionIsTbc ? null : (home ? match.awayTeamLogoUrl : match.homeTeamLogoUrl) || null,
+    stage: stageOf(match),
   }
 }
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+// The dates line of a tournament, from its first to its last match: "19-21 NOV 2026", "30 NOV - 2 DEC 2026", "19 NOV 2026" for one day.
+export function tournamentRange(isoDates: string[]): string | null {
+  if (isoDates.length === 0) return null
+  const days = isoDates.map((iso) => new Date(iso)).sort((a, b) => a.getTime() - b.getTime())
+  const first = days[0]
+  const last = days[days.length - 1]
+  const same = (a: Date, b: Date, part: 'getDate' | 'getMonth' | 'getFullYear') => a[part]() === b[part]()
+  if (same(first, last, 'getFullYear') && same(first, last, 'getMonth') && same(first, last, 'getDate')) return `${first.getDate()} ${MONTHS[first.getMonth()]} ${first.getFullYear()}`
+  if (same(first, last, 'getFullYear') && same(first, last, 'getMonth')) return `${first.getDate()}-${last.getDate()} ${MONTHS[first.getMonth()]} ${first.getFullYear()}`
+  const year = same(first, last, 'getFullYear') ? '' : ` ${first.getFullYear()}`
+  return `${first.getDate()} ${MONTHS[first.getMonth()]}${year} - ${last.getDate()} ${MONTHS[last.getMonth()]} ${last.getFullYear()}`
+}
+
+// "14:30" as South Africans write it on a fixture: "14H30".
+export const hourStyle = (time: string): string => time.replace(':', 'H')
 
 // The matches a team plays, soonest first, for the pickers.
 export function teamMatches<T extends Pick<Match, 'homeTeamId' | 'awayTeamId' | 'matchDate' | 'active'>>(matches: T[], teamId: string): T[] {
