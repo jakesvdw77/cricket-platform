@@ -144,7 +144,7 @@ export function HubLeagueTeams({ dto }: { dto: MyLeagueDto }) {
     <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
       {dto.teams.map((team) => (
         <Box key={team.id} component="article" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 44, border: 1, borderColor: team.mine ? HUB.gold : HUB.line, bgcolor: team.mine ? alpha(HUB.gold, 0.12) : creamAlpha(0.07), borderRadius: '4px', p: 1.5 }}>
-          <LeagueLogo logoUrl={team.logoUrl} size={40} />
+          <LeagueLogo logoUrl={team.logoUrl} size={52} />
           <Typography sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 22, letterSpacing: '0.04em', textTransform: 'uppercase', minWidth: 0, overflowWrap: 'anywhere' }}>{team.name}</Typography>
           {team.mine && <Chip size="small" label="Your team" sx={{ ...tagSx, ml: 'auto' }} />}
         </Box>

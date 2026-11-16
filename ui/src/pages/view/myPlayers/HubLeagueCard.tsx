@@ -35,8 +35,10 @@ export function HubLeagueCard({ league, seasonName, onOpen }: { league: MyLeague
       data-testid="hub-league-card"
       sx={{
         display: 'flex',
+        // ButtonBase centres its content by default; the logo and the text start at the left edge.
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        gap: 1.5,
+        gap: 2,
         width: '100%',
         minHeight: 44,
         p: 2,
@@ -51,7 +53,7 @@ export function HubLeagueCard({ league, seasonName, onOpen }: { league: MyLeague
         '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 },
       }}
     >
-      <LeagueLogo logoUrl={league.logoUrl} size={48} />
+      <LeagueLogo logoUrl={league.logoUrl} size={72} />
       <Box sx={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25 }}>
         <Typography component="h3" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 24, lineHeight: 1.1, letterSpacing: '0.04em', textTransform: 'uppercase', overflowWrap: 'anywhere' }}>
           {league.name}

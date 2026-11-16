@@ -40,7 +40,7 @@ function OnlyMine({ checked, onChange }: { checked: boolean; onChange: (next: bo
 function Side({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl} size={40} name={name} />
+      <LeagueLogo logoUrl={logoUrl} size={56} name={name} />
       <Typography sx={{ fontSize: 17, fontWeight: 600, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )
@@ -91,7 +91,7 @@ export function HubLeagueSchedule({ dto, playerKey }: { dto: MyLeagueDto; player
               )}
               <RowBody link={{ playerKey, leagueId: dto.league.id, tab: 'schedule' }} matchId={row.matchId} label={`${row.homeName} versus ${row.awayName}`} tapped={row.mine}>
                 <Side name={row.homeName} logoUrl={row.homeLogoUrl} />
-                <Typography sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
+                <Typography sx={{ fontFamily: HUB.display, fontSize: 20, fontWeight: 700, lineHeight: 1, color: HUB.sand, pl: 0.5 }}>vs</Typography>
                 <Side name={row.awayName} logoUrl={row.awayLogoUrl} />
               </RowBody>
               <Box sx={{ position: 'relative', zIndex: 1 }}>
