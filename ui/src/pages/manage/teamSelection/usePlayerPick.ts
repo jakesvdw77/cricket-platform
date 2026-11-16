@@ -74,7 +74,19 @@ export function usePlayerPick(clubId: string) {
     onError: (err) => setError(errorDetail(err, "Couldn't move this player. Please try again.")),
   })
 
-  const busy = pickMutation.isPending || unpickMutation.isPending || reorderMutation.isPending
+  // Batting order view: take every player (the 12th man too) off one side, one remove call each, then refresh once.
+  const clearMutation = useMutation({
+    mutationFn: async ({ match, side }: { match: TeamSelectionMatch; side: TeamSelectionSide }) => {
+      for (const pick of side.picks) {
+        await removeMatchSidePlayer(clubId, match.matchId, side.sideId as string, pick.playerId)
+      }
+    },
+    onMutate: () => setError(null),
+    onSettled: refresh,
+    onError: (err) => setError(errorDetail(err, "Couldn't clear this team. Please try again.")),
+  })
+
+  const busy = pickMutation.isPending || unpickMutation.isPending || reorderMutation.isPending || clearMutation.isPending
 
   return {
     pick: (target: PickTarget) => pickMutation.mutate(target),
@@ -92,6 +104,9 @@ export function usePlayerPick(clubId: string) {
       reorderMutation.mutate({ match, side, orderedIds: ids })
     },
     unpick: (target: PickTarget) => unpickMutation.mutate(target),
+    clear: (match: TeamSelectionMatch, side: TeamSelectionSide) => {
+      if (!busy && side.sideId) clearMutation.mutate({ match, side })
+    },
     busy,
     error,
     clearError: () => setError(null),

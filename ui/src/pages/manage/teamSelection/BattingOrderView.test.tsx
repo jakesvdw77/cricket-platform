@@ -159,8 +159,8 @@ describe('BattingOrderView', () => {
   it('links each column to the Select team page and offers Announce only on a column that is ready', async () => {
     renderView()
     await screen.findByTestId('batting-cell-m-1-team-1-1')
-    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Oakfield' })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
-    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Vets B, Vets B' })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
+    expect(screen.getByRole('link', { name: 'Open Match, Vets A v Oakfield' })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-1/sides/side-1'))
+    expect(screen.getByRole('link', { name: 'Open Match, Vets A v Vets B, Vets B' })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-3/sides/s-b'))
     expect(screen.getAllByRole('button', { name: /^Announce team/ })).toHaveLength(1)
   })
 

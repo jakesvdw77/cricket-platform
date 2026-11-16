@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
+import CloseIcon from '@mui/icons-material/Close'
 import { Alert, Box, IconButton, Link, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
@@ -28,7 +29,7 @@ import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from 
 import { useTeamSelectionHub } from './hubContext'
 import { MatchesFrame } from './MatchesFrame'
 import { PickedName } from './PickedName'
-import { selectTeamPath } from './selectionLinks'
+import { useSelectTeamPath } from './selectionLinks'
 import { useAnnounceSide } from './useAnnounceSide'
 import { usePlayerPick } from './usePlayerPick'
 
@@ -121,6 +122,8 @@ function BattingMatrix({
   busy,
   onAdd,
   onMove,
+  onRemove,
+  onClear,
   announcingSideId,
   onAnnounce,
   editing,
@@ -133,6 +136,8 @@ function BattingMatrix({
   busy: boolean
   onAdd: (target: AddTarget) => void
   onMove: (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => void
+  onRemove: (match: TeamSelectionMatch, side: TeamSelectionSide, pick: TeamSelectionPick) => void
+  onClear: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   announcingSideId: string | null
   onAnnounce: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   editing: ReadonlySet<string>
@@ -165,6 +170,7 @@ function BattingMatrix({
   const showUnpositioned = columns.some(({ side }) => side.picks.some((pick) => pick.battingOrder == null && !pick.twelfthMan))
   const slotColumnCount = (slotGames: TeamSelectionMatch[]) => slotGames.reduce((total, match) => total + match.sides.length, 0)
 
+  const selectTeamPath = useSelectTeamPath()
   const columnWidth = shortNames ? narrowColumnWidth : fullColumnWidth
   // The short form of a pick, unless another pick in the same column would look the same (then the full name).
   const labelOf = ({ side }: Column, pick: TeamSelectionPick): string | undefined => {
@@ -289,8 +295,11 @@ function BattingMatrix({
                 return (
                   <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...bodyCellSx, ...editSx(column) }} data-testid={`batting-cell-${match.matchId}-${side.teamId}-${position}`}>
                     {pick && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.25 }}>
-                        <PickedName pick={pick} displayName={labelOf(column, pick)} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        {/* The name takes the room, so the arrows and the remove icon always sit at the same place at the right edge. */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <PickedName pick={pick} displayName={labelOf(column, pick)} />
+                        </Box>
                         {isEditing(column) && (
                           <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
                             <IconButton
@@ -314,6 +323,18 @@ function BattingMatrix({
                               <ArrowDownward fontSize="inherit" />
                             </IconButton>
                           </Box>
+                        )}
+                        {!isEditing(column) && (
+                        <IconButton
+                          size="small"
+                          disabled={busy}
+                          data-testid={`remove-${match.matchId}-${side.teamId}-${position}`}
+                          aria-label={`Remove ${nameOf(pick)}, ${columnLabel(column)}`}
+                          onClick={() => onRemove(match, side, pick)}
+                          sx={{ ...arrowSx, flexShrink: 0, color: 'text.secondary' }}
+                        >
+                          <CloseIcon fontSize="inherit" />
+                        </IconButton>
                         )}
                       </Box>
                     )}
@@ -397,26 +418,41 @@ function BattingMatrix({
               return (
                 <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...footCellSx, ...editSx(column), verticalAlign: 'top' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                    {!isEditing(column) && (
                     <MuiButton
                       size="small"
                       variant="outlined"
                       component={RouterLink}
                       to={selectTeamPath(match.matchId, side.sideId, side.home)}
-                      aria-label={`Select Players, ${columnLabel(column)}`}
+                      aria-label={`Open Match, ${columnLabel(column)}`}
                       sx={footActionSx}
                     >
-                      Select Players
+                      Open Match
                     </MuiButton>
+                    )}
                     {side.sideId !== null && side.picks.length >= 2 && (
                       <MuiButton
                         size="small"
-                        variant={isEditing(column) ? 'contained' : 'outlined'}
+                        variant={isEditing(column) ? 'outlined' : 'contained'}
                         aria-pressed={isEditing(column)}
                         aria-label={`Reorder, ${columnLabel(column)}`}
                         onClick={() => onToggleEdit(match, side)}
                         sx={footActionSx}
                       >
-                        {isEditing(column) ? 'Done' : 'Reorder'}
+                        {isEditing(column) ? 'Done' : 'Reorder Batting Order'}
+                      </MuiButton>
+                    )}
+                    {!isEditing(column) && side.sideId !== null && side.picks.length > 0 && (
+                      <MuiButton
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        disabled={busy}
+                        aria-label={`Clear team, ${columnLabel(column)}`}
+                        onClick={() => onClear(match, side)}
+                        sx={footActionSx}
+                      >
+                        Clear
                       </MuiButton>
                     )}
                     {canAnnounce && (
@@ -455,6 +491,16 @@ export default function BattingOrderView() {
   // The server un-announces a side on its first write, so starting to reorder an announced side is confirmed once; the
   // moves inside that edit session are not asked about again.
   const [pendingStart, setPendingStart] = useState<string | null>(null)
+  // Taking a player out also un-announces an announced side, so that is confirmed once; any other side removes at once.
+  const [pendingRemove, setPendingRemove] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide; pick: TeamSelectionPick } | null>(null)
+  const removePick = (match: TeamSelectionMatch, side: TeamSelectionSide, pick: TeamSelectionPick) =>
+    picker.unpick({ match, side, playerId: pick.playerId, cell: { matchId: match.matchId, teamId: side.teamId, sideId: side.sideId, picked: true, pickable: true, availability: 'AVAILABLE', reasonCode: null } })
+  // Clear takes every player off the side, so it is always confirmed.
+  const [pendingClear, setPendingClear] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide } | null>(null)
+  const requestRemove = (match: TeamSelectionMatch, side: TeamSelectionSide, pick: TeamSelectionPick) => {
+    if (side.announced) setPendingRemove({ match, side, pick })
+    else removePick(match, side, pick)
+  }
   const toggleEdit = (_match: TeamSelectionMatch, side: TeamSelectionSide) => {
     if (side.sideId === null) return
     if (reorder.editing.has(side.sideId)) reorder.stop(side.sideId)
@@ -503,6 +549,8 @@ export default function BattingOrderView() {
               busy={picker.busy}
               onAdd={setAdding}
               onMove={picker.move}
+              onRemove={requestRemove}
+              onClear={(match, side) => setPendingClear({ match, side })}
               announcingSideId={announce.announcingSideId}
               onAnnounce={announce.request}
               editing={reorder.editing}
@@ -528,6 +576,28 @@ export default function BattingOrderView() {
               ))}
             </Menu>
             {announce.dialog}
+            <ConfirmDialog
+              open={pendingClear !== null}
+              title="Clear this team?"
+              description={`This takes all ${pendingClear?.side.picks.length ?? 0} players off the team${pendingClear?.side.announced ? ' and un-announces it' : ''}. The players are not deleted, you can pick them again.`}
+              confirmLabel="Clear Team"
+              onConfirm={() => {
+                if (pendingClear) picker.clear(pendingClear.match, pendingClear.side)
+                setPendingClear(null)
+              }}
+              onClose={() => setPendingClear(null)}
+            />
+            <ConfirmDialog
+              open={pendingRemove !== null}
+              title="Change an announced team?"
+              description="Removing a player un-announces this team. It will need to be announced again."
+              confirmLabel="Remove Player"
+              onConfirm={() => {
+                if (pendingRemove) removePick(pendingRemove.match, pendingRemove.side, pendingRemove.pick)
+                setPendingRemove(null)
+              }}
+              onClose={() => setPendingRemove(null)}
+            />
             <ConfirmDialog
               open={pendingStart !== null}
               title="Change an announced team?"

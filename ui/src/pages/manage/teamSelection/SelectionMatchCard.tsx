@@ -18,7 +18,7 @@ import { useMatchLocationItems } from '../../../hooks/useMatchLocationItems'
 import { PickedName } from './PickedName'
 import { useSelectionMatch } from './useSelectionMatch'
 import { SelectionBlock } from '../matches/SelectionBlock'
-import { selectTeamPath } from './selectionLinks'
+import { useSelectTeamPath } from './selectionLinks'
 import { STATUS_LABELS, STATUS_TONES } from './selectionStatus'
 import { sideMenuItems } from './sideMenuItems'
 import { sortedPicks } from './sortedPicks'
@@ -45,6 +45,7 @@ export interface SelectionMatchCardProps {
 // has two), its ONE kebab in the corner (Select Players, Announce Team, Share Team last) and, on a ready side, a quick Announce Team button.
 // The Matches tab's Cards view and the Time Slots tab both use it; Time Slots also lists the picks.
 export function SelectionMatchCard({ clubId, leagueFormat = null, match, side, onAnnounce, announcing = false, onShare, sharing = false, showPicks = false, testId = 'selection-card' }: SelectionMatchCardProps) {
+  const selectTeamPath = useSelectTeamPath()
   const to = selectTeamPath(match.matchId, side.sideId, side.home)
   const title = side.home ? `${side.teamName} vs ${side.opponentName}` : `${side.opponentName} vs ${side.teamName}`
   const kickoff = useCountdown(match.matchDate)
