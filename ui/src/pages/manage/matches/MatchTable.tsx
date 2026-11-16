@@ -169,7 +169,7 @@ function MatchRow({
         <Avatar
           variant="rounded"
           src={ownTeam ? (ownTeam.logoUrl ?? undefined) : undefined}
-          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.7rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
+          sx={{ width: 44, height: 44, flex: 'none', fontSize: '0.7rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
         >
           {ownTeam?.abbreviation || initialsFromName(logoName)}
         </Avatar>

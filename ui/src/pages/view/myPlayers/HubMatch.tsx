@@ -83,12 +83,12 @@ export function HubMatch({ playerKey, matchId, from, onAnswerAvailability }: Hub
       <Box data-testid="match-title-block" sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'flex-start', justifyContent: 'space-between', gap: 0.75 }}>
         <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, minWidth: 0, overflowWrap: 'anywhere', display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5 }}>
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={28} name={match.home.name} />
+            <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={44} name={match.home.name} />
             <span>{match.home.name}</span>
           </Box>
           <span>versus</span>
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={28} name={match.away.name} />
+            <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={44} name={match.away.name} />
             <span>{match.away.name}</span>
           </Box>
         </Typography>

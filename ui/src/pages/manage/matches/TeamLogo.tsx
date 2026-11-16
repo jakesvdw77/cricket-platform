@@ -10,8 +10,8 @@ export function TeamLogo({ logo, testId }: { logo: SideLogo; testId: string }) {
       aria-hidden
       data-testid={testId}
       sx={{
-        width: { xs: 36, md: 44 },
-        height: { xs: 36, md: 44 },
+        width: { xs: 44, md: 52 },
+        height: { xs: 44, md: 52 },
         flex: 'none',
         fontSize: { xs: '0.7rem', md: '0.8rem' },
         fontWeight: 700,

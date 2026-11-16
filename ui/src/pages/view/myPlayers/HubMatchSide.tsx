@@ -11,7 +11,7 @@ export function HubMatchSide({ side }: { side: MyMatchSideDto }) {
     <Box data-testid="match-side" data-mine={side.mine ? 'true' : undefined} component="section" aria-label={side.name} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75, border: 1, borderColor: HUB.line, borderRadius: '4px', p: 1.5, bgcolor: blackAlpha(0.22) }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <LeagueLogo logoUrl={side.logoUrl ?? null} size={28} name={side.name} />
+          <LeagueLogo logoUrl={side.logoUrl ?? null} size={44} name={side.name} />
           <Typography component="h3" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, overflowWrap: 'anywhere' }}>{side.name}</Typography>
         </Box>
         {side.mine && <Chip size="small" variant="outlined" label="Your team" sx={{ height: 22, flex: 'none', borderRadius: '4px', fontSize: 12, fontWeight: 600, color: HUB.gold, borderColor: HUB.gold, bgcolor: 'transparent' }} />}

@@ -55,7 +55,7 @@ export function SelectionTag({ selection }: { selection: MyMatchSelection | null
 function Side({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl ?? null} size={24} name={name} />
+      <LeagueLogo logoUrl={logoUrl ?? null} size={40} name={name} />
       <Typography component="span" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )

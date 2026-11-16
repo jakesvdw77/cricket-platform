@@ -148,10 +148,10 @@ export function HubWatchLive({ playerKey, matchId, onBack, backLabel = 'Back' }:
           </Button>
         )}
         <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 1, fontFamily: HUB.display, fontWeight: 700, fontSize: { xs: 16, md: 20 }, lineHeight: 1.1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
-          <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={22} />
+          <LeagueLogo logoUrl={match.home.logoUrl ?? null} size={36} />
           <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{match.home.name}</Box>
           <Box component="span" sx={{ color: HUB.muted, fontFamily: 'inherit', fontSize: 13, fontWeight: 400 }}>versus</Box>
-          <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={22} />
+          <LeagueLogo logoUrl={match.away.logoUrl ?? null} size={36} />
           <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{match.away.name}</Box>
           {facts && <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, ml: 1, fontFamily: 'Barlow, sans-serif', fontWeight: 400, fontSize: 14, color: HUB.sand }}>{facts}</Box>}
         </Box>
