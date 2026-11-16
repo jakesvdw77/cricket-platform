@@ -79,11 +79,35 @@ public record MatchDto(
         BigDecimal playingAreaAccessLongitude,
         String playingAreaAccessNote,
         MatchResultStatus resultStatus,
-        boolean deletable) {
+        boolean deletable,
+        String stage,
+        String stageLabel,
+        boolean homePlaceholder,
+        boolean awayPlaceholder) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;
         resultStatus = resultStatus == null ? MatchResultStatus.NONE : resultStatus;
+    }
+
+    /** Without the stage and placeholder fields (docs/specs/155): a pool match with two real sides. */
+    public MatchDto(
+            UUID id, UUID clubId, UUID homeTeamId, String homeTeamName, UUID awayTeamId, String awayTeamName,
+            String homeTeamLogoUrl, String awayTeamLogoUrl, UUID leagueId, UUID seasonId, Instant matchDate,
+            String venue, boolean active, boolean homeSideAnnounced, boolean awaySideAnnounced, Instant createdAt,
+            Instant updatedAt, UUID updatedBy, Integer homePickedCount, Integer awayPickedCount,
+            Integer playingXiSize, List<MatchPollDto> polls, UUID homeLeagueTeamId, UUID awayLeagueTeamId,
+            String scoringUrl, String streamingUrl, UUID playingAreaId, String playingAreaName,
+            PlayingAreaVerificationStatus playingAreaVerificationStatus, BigDecimal playingAreaLatitude,
+            BigDecimal playingAreaLongitude, BigDecimal playingAreaAccessLatitude,
+            BigDecimal playingAreaAccessLongitude, String playingAreaAccessNote, MatchResultStatus resultStatus,
+            boolean deletable) {
+        this(id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
+                leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
+                updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
+                playingAreaVerificationStatus, playingAreaLatitude, playingAreaLongitude, playingAreaAccessLatitude,
+                playingAreaAccessLongitude, playingAreaAccessNote, resultStatus, deletable, null, null, false, false);
     }
 
     /**
@@ -109,7 +133,8 @@ public record MatchDto(
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, latitude, longitude,
-                accessLatitude, accessLongitude, accessNote, resultStatus, deletable);
+                accessLatitude, accessLongitude, accessNote, resultStatus, deletable, stage, stageLabel, homePlaceholder,
+                awayPlaceholder);
     }
 
     /** A copy carrying the match's result status (docs/specs/100-match-results-core.md). */
@@ -120,7 +145,8 @@ public record MatchDto(
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
                 playingAreaVerificationStatus, playingAreaLatitude, playingAreaLongitude, playingAreaAccessLatitude,
-                playingAreaAccessLongitude, playingAreaAccessNote, status, deletable);
+                playingAreaAccessLongitude, playingAreaAccessNote, status, deletable, stage, stageLabel, homePlaceholder,
+                awayPlaceholder);
     }
 
     /** A copy carrying whether the match is deletable (docs/specs/109-delete-empty-match.md). */
@@ -131,6 +157,7 @@ public record MatchDto(
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
                 playingAreaVerificationStatus, playingAreaLatitude, playingAreaLongitude, playingAreaAccessLatitude,
-                playingAreaAccessLongitude, playingAreaAccessNote, resultStatus, deletable);
+                playingAreaAccessLongitude, playingAreaAccessNote, resultStatus, deletable, stage, stageLabel, homePlaceholder,
+                awayPlaceholder);
     }
 }

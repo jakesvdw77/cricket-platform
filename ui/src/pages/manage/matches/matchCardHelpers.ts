@@ -1,4 +1,5 @@
 import type { RecordCardBadge } from '../../../components/RecordCard'
+import { tbcText } from '../../../utils/matchStages'
 import type { Match, MatchPoll } from '../../../api/matchApi'
 import type { MatchAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { MatchSquad } from '../../../api/matchSquadApi'
@@ -92,6 +93,18 @@ export function sideName(teamId: string | null, teamName: string | null, teamsBy
     return teamsById.get(teamId)?.name ?? 'Unknown team'
   }
   return teamName ?? 'TBC'
+}
+
+// docs/specs/155: a side as the Matches lists name it; a TBC side reads "TBC: 3rd in the pool".
+export function matchSideName(
+  match: Pick<Match, 'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName' | 'homePlaceholder' | 'awayPlaceholder'>,
+  side: 'home' | 'away',
+  teamsById: Map<string, Team>,
+): string {
+  const placeholder = side === 'home' ? match.homePlaceholder : match.awayPlaceholder
+  const teamId = side === 'home' ? match.homeTeamId : match.awayTeamId
+  const teamName = side === 'home' ? match.homeTeamName : match.awayTeamName
+  return placeholder ? tbcText(teamName) : sideName(teamId, teamName, teamsById)
 }
 
 export function badgeFor(match: Match): RecordCardBadge | undefined {

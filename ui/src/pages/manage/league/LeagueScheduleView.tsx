@@ -12,14 +12,17 @@ import { CompactSwitch } from '../../../components/CompactSwitch'
 import { EmptyState } from '../../../components/EmptyState'
 import { ToolbarToggleChip } from '../../../components/ToolbarCard'
 import { FilterBar } from '../../../components/FilterBar'
-import { filterFixtures } from './leagueFixtureFilters'
+import { filterFixtures, POOL_STAGE } from './leagueFixtureFilters'
+import { stagesIn } from '../../../utils/matchStages'
 import { LeagueFixturesTable } from './LeagueFixturesTable'
 import { ImportScheduleButton } from '../leagueImport/ImportScheduleControls'
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import { TeamSheetDialog } from '../../../components/TeamSheetDialog'
+import { TeamSheetDialog, sheetTeamOf } from '../../../components/TeamSheetDialog'
+import { PlayoffGamesDialog } from '../../../components/PlayoffGamesDialog'
 import { LeagueTabMenu } from './LeagueTabMenu'
 import { useLeagueView } from './leagueViewContext'
 
@@ -33,6 +36,7 @@ export default function LeagueScheduleView() {
   const [teamId, setTeamId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [onlyOurs, setOnlyOurs] = useState(false)
+  const [stage, setStage] = useState('')
   // docs/specs/127: ?showAll=1 (added when a saved past match returns here) starts with the whole season visible.
   const [searchParams] = useSearchParams()
   const [showPlayed, setShowPlayed] = useState(searchParams.get('showAll') === '1')
@@ -42,6 +46,9 @@ export default function LeagueScheduleView() {
   const [shareTarget, setShareTarget] = useState<{ match: Match; nonce: number } | null>(null)
   // docs/specs/153: Print Match Sheets (a page per match of one of our teams); mounted fresh on each open.
   const [printOpen, setPrintOpen] = useState(false)
+  const [printMatch, setPrintMatch] = useState<Match | null>(null)
+  // docs/specs/155: Add Playoff Games; mounted fresh on each open.
+  const [playoffOpen, setPlayoffOpen] = useState(false)
   const leaguesById = useMemo(() => new Map<string, League>([[league.id, league]]), [league])
   const seasonsById = useMemo(() => new Map<string, Season>(seasons.map((season) => [season.id, season])), [seasons])
 
@@ -60,19 +67,27 @@ export default function LeagueScheduleView() {
       affiliationsForSeason
         .map((affiliation) => teamsById.get(affiliation.teamId))
         .filter((team): team is NonNullable<typeof team> => Boolean(team))
-        .map((team) => ({ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId })),
+        .map(sheetTeamOf),
+    [affiliationsForSeason, teamsById],
+  )
+
+  // Our entered teams as full records, for the playoff dialog's side pickers.
+  const ownTeamRecords = useMemo(
+    () => affiliationsForSeason.map((affiliation) => teamsById.get(affiliation.teamId)).filter((team): team is NonNullable<typeof team> => Boolean(team)),
     [affiliationsForSeason, teamsById],
   )
 
   const visible = useMemo(
-    () => filterFixtures(matches, { teamId, search, onlyOurs, showPlayed, today: new Date() }, teamsById),
-    [matches, teamId, search, onlyOurs, showPlayed, teamsById],
+    () => filterFixtures(matches, { teamId, search, onlyOurs, showPlayed, stage, today: new Date() }, teamsById),
+    [matches, teamId, search, onlyOurs, showPlayed, stage, teamsById],
   )
 
   const ourSwitch = <CompactSwitch checked={onlyOurs} onChange={setOnlyOurs} label="Only our matches" />
   const playedSwitch = <CompactSwitch checked={showPlayed} onChange={setShowPlayed} label="View entire season" />
   const importReason = importScheduleDisabledReason({ hasSeason: Boolean(selectedSeasonId), leagueActive: league.active })
-  const isFiltering = teamId !== null || search.trim() !== '' || onlyOurs
+  const isFiltering = teamId !== null || search.trim() !== '' || onlyOurs || stage !== ''
+  // docs/specs/155: the Stage filter exists only when the season has a staged (playoff or knockout) match.
+  const stages = useMemo(() => stagesIn(matches), [matches])
 
   const bar = (
     <FilterBar
@@ -87,6 +102,20 @@ export default function LeagueScheduleView() {
       searchValue={search}
       onSearchChange={setSearch}
       searchPlaceholder="Search teams or venue"
+      extraSelects={
+        stages.length > 0
+          ? [
+              {
+                key: 'stage',
+                label: 'Stage',
+                allLabel: 'All stages',
+                options: [{ value: POOL_STAGE, label: 'Pool' }, ...stages.map((name) => ({ value: name, label: name }))],
+                value: stage,
+                onChange: setStage,
+              },
+            ]
+          : undefined
+      }
       // docs/standards/page-anatomy.md section 3: the switches sit in the toolbar as toggle chips (the sheet keeps switches; below lg they fold into it).
       secondaryControls={(placement) =>
         placement === 'row' ? (
@@ -105,6 +134,7 @@ export default function LeagueScheduleView() {
         setTeamId(null)
         setSearch('')
         setOnlyOurs(false)
+        setStage('')
       }}
     />
   )
@@ -172,6 +202,15 @@ export default function LeagueScheduleView() {
             reason: importReason ?? undefined,
           },
           {
+            id: 'add-playoffs', requires: 'MATCHES_EDIT',
+            title: 'Add Playoff Games',
+            description: 'Create a round of playoff or knockout games, with the opposition marked TBC until it is known.',
+            icon: <EmojiEventsOutlinedIcon fontSize="small" />,
+            onClick: () => setPlayoffOpen(true),
+            disabled: !selectedSeasonId,
+            reason: 'Create a season first',
+          },
+          {
             id: 'print-sheets',
             requires: 'TEAMS_VIEW',
             title: 'Print Match Sheets',
@@ -196,6 +235,7 @@ export default function LeagueScheduleView() {
         empty={emptyNode}
         originLabel={originLabel}
         onShare={(match) => setShareTarget((previous) => ({ match, nonce: (previous?.nonce ?? 0) + 1 }))}
+        onPrintSheet={setPrintMatch}
       />
       {printOpen && (
         <TeamSheetDialog
@@ -208,6 +248,31 @@ export default function LeagueScheduleView() {
           matches={matches}
           leagueId={leagueId}
           initialMode="all"
+        />
+      )}
+      {playoffOpen && (
+        <PlayoffGamesDialog
+          open
+          onClose={() => setPlayoffOpen(false)}
+          clubId={clubId}
+          leagueId={leagueId}
+          seasonId={selectedSeasonId}
+          ownTeams={ownTeamRecords}
+          leagueTeams={activeLeagueTeams}
+        />
+      )}
+      {printMatch && (
+        <TeamSheetDialog
+          open
+          onClose={() => setPrintMatch(null)}
+          clubId={clubId}
+          teams={ownTeams.filter((team) => team.id === printMatch.homeTeamId || team.id === printMatch.awayTeamId)}
+          seasonId={selectedSeasonId}
+          seasonLabel={seasonsById.get(selectedSeasonId)?.label ?? null}
+          matches={matches}
+          leagueId={leagueId}
+          initialMode="one"
+          initialMatchId={printMatch.id}
         />
       )}
       {shareTarget && (

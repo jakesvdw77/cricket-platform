@@ -10,7 +10,7 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { TeamSheetDialog } from '../../../components/TeamSheetDialog'
+import { TeamSheetDialog, sheetTeamOf } from '../../../components/TeamSheetDialog'
 import { ManageMenu } from '../../../components/ManageMenu'
 import type { ManageMenuItem } from '../../../components/ManageMenu'
 import type { Match } from '../../../api/matchApi'
@@ -20,7 +20,7 @@ import type { Season } from '../../../api/seasonApi'
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { selectTeamPath } from '../teamSelection/selectionLinks'
 import { resultActionFor, resultImportActionFor } from './matchResultHelpers'
-import { NO_CLUB_TEAM_REASON, ownSides, pollDestination, sideName } from './matchCardHelpers'
+import { NO_CLUB_TEAM_REASON, matchSideName, ownSides, pollDestination } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
 import { useTeamSheetShare } from './useTeamSheetShare'
 import { useMatchLocationItems } from '../../../hooks/useMatchLocationItems'
@@ -70,8 +70,8 @@ export function availabilityMenuItems(
 export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsById, testId = 'match-actions' }: MatchRowMenuProps) {
   const location = useLocation()
   const base = `${MATCHES_PATH}/${match.id}`
-  const home = sideName(match.homeTeamId, match.homeTeamName, teamsById)
-  const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
+  const home = matchSideName(match, 'home', teamsById)
+  const away = matchSideName(match, 'away', teamsById)
   // docs/specs/127: every destination returns to the list the menu is on.
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), 'Matches')
   const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
@@ -83,7 +83,7 @@ export function MatchRowMenu({ clubId, match, teamsById, leaguesById, seasonsByI
   // docs/specs/153: the sheet is printed for our side(s) of this match.
   const sheetTeams = ownSides(match).flatMap((own) => {
     const team = teamsById.get(own.teamId)
-    return team ? [{ id: team.id, name: team.name, logoUrl: team.logoUrl, sectionId: team.sectionId }] : []
+    return team ? [sheetTeamOf(team)] : []
   })
   const noTeamReason = hasOwnTeam ? null : NO_CLUB_TEAM_REASON
   const resultAction = resultActionFor(match)

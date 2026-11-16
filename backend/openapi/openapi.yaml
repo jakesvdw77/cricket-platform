@@ -4369,6 +4369,86 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playoffs/preview:
+    post:
+      tags:
+      - playoff-controller
+      operationId: previewPlayoffs
+      summary: "Validates a playoff round and returns what would be created, writing nothing (docs/specs/155)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayoffsRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playoffs:
+    post:
+      tags:
+      - playoff-controller
+      operationId: createPlayoffs
+      summary: "Creates a round of playoff games in one transaction (docs/specs/155)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayoffsRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchDto"
   /api/v1/manage/clubs/{clubId}/matches:
     get:
       tags:
@@ -11060,6 +11140,10 @@ components:
           type: string
         groundName:
           type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         socialLinks:
           type: array
           items:
@@ -11085,6 +11169,10 @@ components:
         abbreviation:
           type: string
         groundName:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
           type: string
         socialLinks:
           type: array
@@ -11140,10 +11228,6 @@ components:
     SectionAvailabilityRoundDto:
       type: object
       properties:
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
         id:
           type: string
           format: uuid
@@ -11170,10 +11254,6 @@ components:
           format: date-time
         open:
           type: boolean
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
         brackets:
           type: array
           items:
@@ -11617,6 +11697,18 @@ components:
           description: "Scheduling warning codes the manager has confirmed with Save Anyway (docs/specs/132). A code not listed, or any error finding, answers 409 again."
           items:
             type: string
+        stage:
+          type: string
+          maxLength: 60
+          description: "docs/specs/155: the match's stage (Playoff, Semi-final, any text). Empty or absent means a pool match."
+        stageLabel:
+          type: string
+          maxLength: 80
+        homePlaceholder:
+          type: boolean
+          description: "docs/specs/155: the home side is a TBC placeholder whose text is homeTeamName; no team, league team or logo. False or absent means a real side, so sending a real team resolves a TBC side."
+        awayPlaceholder:
+          type: boolean
       required:
       - matchDate
       - seasonId
@@ -11727,6 +11819,72 @@ components:
         deletable:
           type: boolean
           description: "True when nothing is recorded against the match (no result, poll, squad, team selection or availability window), so it can be deleted (docs/specs/109)."
+        stage:
+          type: string
+        stageLabel:
+          type: string
+        homePlaceholder:
+          type: boolean
+        awayPlaceholder:
+          type: boolean
+    PlayoffSideRequest:
+      type: object
+      description: "docs/specs/155: exactly one of a TBC placeholder text, one of our team ids, or a league team id."
+      properties:
+        placeholder:
+          type: string
+        teamId:
+          type: string
+          format: uuid
+        leagueTeamId:
+          type: string
+          format: uuid
+    PlayoffGameRequest:
+      type: object
+      properties:
+        stage:
+          type: string
+          maxLength: 60
+          description: "A game's own stage; overrides the round's stage."
+        label:
+          type: string
+          maxLength: 80
+        home:
+          $ref: "#/components/schemas/PlayoffSideRequest"
+        away:
+          $ref: "#/components/schemas/PlayoffSideRequest"
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        playingAreaId:
+          type: string
+          format: uuid
+      required:
+      - away
+      - home
+      - matchDate
+    CreatePlayoffsRequest:
+      type: object
+      description: "docs/specs/155: a stage and the games of one playoff round."
+      properties:
+        stage:
+          type: string
+          minLength: 1
+          maxLength: 60
+        games:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PlayoffGameRequest"
+        acknowledgedWarnings:
+          type: array
+          items:
+            type: string
+      required:
+      - games
+      - stage
     MatchPollDto:
       type: object
       properties:
@@ -12323,6 +12481,14 @@ components:
           type: string
         website:
           type: string
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         email:
           type: string
         socialLinks:
@@ -12377,6 +12543,14 @@ components:
         phone:
           type: string
         website:
+          type: string
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
           type: string
         email:
           type: string
@@ -12481,14 +12655,6 @@ components:
         bonusPointsEnabled:
           type: boolean
         bonusBattingOversThreshold:
-        hostName:
-          type: string
-        hostLogoUrl:
-          type: string
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
           type: integer
           format: int32
           minimum: 1
@@ -12544,14 +12710,6 @@ components:
           type: integer
           format: int32
         fieldingRestrictionsNotes:
-        hostName:
-          type: string
-        hostLogoUrl:
-          type: string
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
           type: string
         allowSubstitutions:
           type: boolean
@@ -13532,6 +13690,10 @@ components:
           type: string
         groundName:
           type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         socialLinks:
           type: array
           items:
@@ -13690,10 +13852,6 @@ components:
         scoringUrl:
           type: string
         streamingUrl:
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
           type: string
         playingAreaId:
           type: string
@@ -13704,6 +13862,18 @@ components:
           description: "Scheduling warning codes the manager has confirmed with Save Anyway (docs/specs/132). A code not listed, or any error finding, answers 409 again."
           items:
             type: string
+        stage:
+          type: string
+          maxLength: 60
+          description: "docs/specs/155: the match's stage (Playoff, Semi-final, any text). Empty or absent means a pool match."
+        stageLabel:
+          type: string
+          maxLength: 80
+        homePlaceholder:
+          type: boolean
+          description: "docs/specs/155: the home side is a TBC placeholder whose text is homeTeamName; no team, league team or logo. False or absent means a real side, so sending a real team resolves a TBC side."
+        awayPlaceholder:
+          type: boolean
       required:
       - matchDate
       - seasonId
@@ -13813,6 +13983,14 @@ components:
         phone:
           type: string
         website:
+          type: string
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
           type: string
         email:
           type: string
@@ -13984,14 +14162,6 @@ components:
         size:
           type: integer
           format: int32
-        hostName:
-          type: string
-        hostLogoUrl:
-          type: string
-        affiliationName:
-          type: string
-        affiliationLogoUrl:
-          type: string
         content:
           type: array
           items:

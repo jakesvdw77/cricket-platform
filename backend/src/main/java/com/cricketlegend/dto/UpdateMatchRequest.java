@@ -1,6 +1,7 @@
 package com.cricketlegend.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +36,11 @@ public record UpdateMatchRequest(
         String scoringUrl,
         String streamingUrl,
         UUID playingAreaId,
-        List<String> acknowledgedWarnings) {
+        List<String> acknowledgedWarnings,
+        @Size(max = 60) String stage,
+        @Size(max = 80) String stageLabel,
+        Boolean homePlaceholder,
+        Boolean awayPlaceholder) {
 
     /** Without acknowledgements: every scheduling warning (docs/specs/132) is returned as a 409 to confirm. */
     public UpdateMatchRequest(
@@ -43,6 +48,17 @@ public record UpdateMatchRequest(
             String awayTeamLogoUrl, UUID leagueId, UUID seasonId, Instant matchDate, String venue,
             UUID homeLeagueTeamId, UUID awayLeagueTeamId, String scoringUrl, String streamingUrl, UUID playingAreaId) {
         this(homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl, leagueId, seasonId,
-                matchDate, venue, homeLeagueTeamId, awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, null);
+                matchDate, venue, homeLeagueTeamId, awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, (List<String>) null);
+    }
+
+    /** Without the stage and placeholder fields (docs/specs/155): a pool match with two real sides. */
+    public UpdateMatchRequest(
+            UUID homeTeamId, String homeTeamName, UUID awayTeamId, String awayTeamName, String homeTeamLogoUrl,
+            String awayTeamLogoUrl, UUID leagueId, UUID seasonId, Instant matchDate, String venue,
+            UUID homeLeagueTeamId, UUID awayLeagueTeamId, String scoringUrl, String streamingUrl, UUID playingAreaId,
+            List<String> acknowledgedWarnings) {
+        this(homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl, leagueId, seasonId,
+                matchDate, venue, homeLeagueTeamId, awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId,
+                acknowledgedWarnings, null, null, null, null);
     }
 }

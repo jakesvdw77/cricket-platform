@@ -524,7 +524,8 @@ public class MatchServiceImpl implements MatchService {
                     field(fieldsById, dto.playingAreaId(), PlayingArea::getAccessLongitude),
                     field(fieldsById, dto.playingAreaId(), PlayingArea::getAccessNote),
                     resultStatusByMatchId.get(dto.id()),
-                    emptyMatchIds.contains(dto.id()));
+                    emptyMatchIds.contains(dto.id()),
+                    dto.stage(), dto.stageLabel(), dto.homePlaceholder(), dto.awayPlaceholder());
         });
     }
 
@@ -569,10 +570,12 @@ public class MatchServiceImpl implements MatchService {
         String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
         validateSides(
                 request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
-                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
+                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
         validateLogoOnlyWithName(
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
-                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
+                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
         leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
@@ -607,6 +610,10 @@ public class MatchServiceImpl implements MatchService {
                 .playingAreaId(field == null ? null : field.getId())
                 .scoringUrl(scoringUrl)
                 .streamingUrl(streamingUrl)
+                .stage(trimToNull(request.stage()))
+                .stageLabel(trimToNull(request.stageLabel()))
+                .homePlaceholder(isPlaceholder(request.homePlaceholder()))
+                .awayPlaceholder(isPlaceholder(request.awayPlaceholder()))
                 .active(true)
                 .build();
 
@@ -656,10 +663,12 @@ public class MatchServiceImpl implements MatchService {
             String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
             validateSides(
                     request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
-                    request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
+                    request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
             validateLogoOnlyWithName(
                     request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
-                    request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
+                    request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
             if (request.seasonId() == null) {
                 throw new ValidationException("seasonId is required");
             }
@@ -700,6 +709,10 @@ public class MatchServiceImpl implements MatchService {
                     .playingAreaId(field == null ? null : field.getId())
                     .scoringUrl(scoringUrl)
                     .streamingUrl(streamingUrl)
+                    .stage(trimToNull(request.stage()))
+                    .stageLabel(trimToNull(request.stageLabel()))
+                    .homePlaceholder(isPlaceholder(request.homePlaceholder()))
+                    .awayPlaceholder(isPlaceholder(request.awayPlaceholder()))
                     .active(true)
                     .build());
         }
@@ -765,10 +778,12 @@ public class MatchServiceImpl implements MatchService {
         String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
         validateSides(
                 request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
-                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
+                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
         validateLogoOnlyWithName(
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
-                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
+                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId(),
+                isPlaceholder(request.homePlaceholder()), isPlaceholder(request.awayPlaceholder()));
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
         leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
@@ -808,6 +823,11 @@ public class MatchServiceImpl implements MatchService {
         match.setPlayingAreaId(field == null ? null : field.getId());
         match.setScoringUrl(scoringUrl);
         match.setStreamingUrl(streamingUrl);
+        match.setStage(trimToNull(request.stage()));
+        match.setStageLabel(trimToNull(request.stageLabel()));
+        // A request that sends a real team (flag false) resolves a TBC side: docs/specs/155.
+        match.setHomePlaceholder(isPlaceholder(request.homePlaceholder()));
+        match.setAwayPlaceholder(isPlaceholder(request.awayPlaceholder()));
 
         return toDto(matchRepository.save(match));
     }
@@ -967,12 +987,33 @@ public class MatchServiceImpl implements MatchService {
      */
     private void validateSides(
             UUID homeTeamId, String homeTeamName, UUID homeLeagueTeamId,
-            UUID awayTeamId, String awayTeamName, UUID awayLeagueTeamId) {
-        validateSide(homeTeamId, homeTeamName, homeLeagueTeamId, "home");
-        validateSide(awayTeamId, awayTeamName, awayLeagueTeamId, "away");
+            UUID awayTeamId, String awayTeamName, UUID awayLeagueTeamId,
+            boolean homePlaceholder, boolean awayPlaceholder) {
+        validateSide(homeTeamId, homeTeamName, homeLeagueTeamId, homePlaceholder, "home");
+        validateSide(awayTeamId, awayTeamName, awayLeagueTeamId, awayPlaceholder, "away");
     }
 
-    private void validateSide(UUID teamId, String teamName, UUID leagueTeamId, String side) {
+    /** docs/specs/155: a null placeholder flag in a request means a real side. */
+    private static boolean isPlaceholder(Boolean flag) {
+        return Boolean.TRUE.equals(flag);
+    }
+
+    /** docs/specs/155: a stage or label is stored trimmed, a blank one as null (a pool match). */
+    private static String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void validateSide(UUID teamId, String teamName, UUID leagueTeamId, boolean placeholder, String side) {
+        if (placeholder) {
+            // docs/specs/155: a TBC side is just text; it never carries a team, a league team or a logo.
+            if (teamName == null || teamName.isBlank()) {
+                throw new ValidationException(side + "TeamName is required for a TBC " + side + " side");
+            }
+            if (teamId != null || leagueTeamId != null) {
+                throw new ValidationException("A TBC " + side + " side cannot have a team or league team");
+            }
+            return;
+        }
         if (leagueTeamId != null) {
             if (teamId != null) {
                 throw new ValidationException(
@@ -1002,7 +1043,12 @@ public class MatchServiceImpl implements MatchService {
      */
     private void validateLogoOnlyWithName(
             String homeTeamName, String homeTeamLogoUrl, UUID homeLeagueTeamId,
-            String awayTeamName, String awayTeamLogoUrl, UUID awayLeagueTeamId) {
+            String awayTeamName, String awayTeamLogoUrl, UUID awayLeagueTeamId,
+            boolean homePlaceholder, boolean awayPlaceholder) {
+        if ((homePlaceholder && homeTeamLogoUrl != null && !homeTeamLogoUrl.isBlank())
+                || (awayPlaceholder && awayTeamLogoUrl != null && !awayTeamLogoUrl.isBlank())) {
+            throw new ValidationException("A TBC side cannot have a logo");
+        }
         // A league-team side's name/logo come from the league team (client values are ignored),
         // so the free-text logo rule only applies to the other two kinds of side.
         if (homeLeagueTeamId == null) {

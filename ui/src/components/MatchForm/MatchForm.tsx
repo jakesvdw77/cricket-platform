@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Alert, Box, MenuItem, Typography } from '@mui/material'
+import { Alert, Autocomplete, Box, MenuItem, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
@@ -21,6 +21,7 @@ import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 import { useLeagueDatesHint } from '../../hooks/useLeagueDatesHint'
 import { currentSeasonId } from '../../utils/currentSeason'
+import { STAGE_SUGGESTIONS } from '../../utils/matchStages'
 import { buildLeagueSideOptions, excludeOtherSide, isSameTeam } from '../../utils/matchSideOptions'
 import type { SideIdentity } from '../../utils/matchSideOptions'
 
@@ -76,6 +77,9 @@ interface FormState {
   field: FieldPickerValue | null
   scoringUrl: string
   streamingUrl: string
+  // docs/specs/155: blank = a pool match.
+  stage: string
+  stageLabel: string
 }
 
 type FormErrors = Partial<
@@ -102,8 +106,9 @@ function toSideState(
   teamName: string | null | undefined,
   logoUrl: string | null | undefined,
   leagueTeamId: string | null | undefined,
+  placeholder?: boolean,
 ): SideState {
-  const mode: SideMode = leagueTeamId ? 'leagueTeam' : teamName ? 'external' : 'team'
+  const mode: SideMode = placeholder ? 'tbc' : leagueTeamId ? 'leagueTeam' : teamName ? 'external' : 'team'
   return {
     mode,
     teamId: teamId ?? '',
@@ -128,12 +133,14 @@ function toFormState(initialValues?: Partial<MatchPayload>, initialField?: Field
       initialValues?.homeTeamName,
       initialValues?.homeTeamLogoUrl,
       initialValues?.homeLeagueTeamId,
+      initialValues?.homePlaceholder,
     ),
     away: toSideState(
       initialValues?.awayTeamId,
       initialValues?.awayTeamName,
       initialValues?.awayTeamLogoUrl,
       initialValues?.awayLeagueTeamId,
+      initialValues?.awayPlaceholder,
     ),
     leagueId: initialValues?.leagueId ?? '',
     seasonId: initialValues?.seasonId ?? '',
@@ -141,6 +148,8 @@ function toFormState(initialValues?: Partial<MatchPayload>, initialField?: Field
     field: initialField ?? null,
     scoringUrl: initialValues?.scoringUrl ?? '',
     streamingUrl: initialValues?.streamingUrl ?? '',
+    stage: initialValues?.stage ?? '',
+    stageLabel: initialValues?.stageLabel ?? '',
   }
 }
 
@@ -172,6 +181,12 @@ function validate(values: FormState, selfPlay = false): FormErrors {
   }
   if (values.home.mode === 'external' && !values.home.teamName.trim()) {
     errors.homeTeamName = 'Enter the opponent name'
+  }
+  if (values.home.mode === 'tbc' && !values.home.teamName.trim()) {
+    errors.homeTeamName = 'Enter what to show, e.g. 1st in the pool'
+  }
+  if (values.away.mode === 'tbc' && !values.away.teamName.trim()) {
+    errors.awayTeamName = 'Enter what to show, e.g. 2nd in the pool'
   }
   if (values.home.mode === 'leagueTeam' && !values.home.leagueTeamId) {
     errors.homeLeagueTeamId = 'Choose a home league team'
@@ -220,7 +235,8 @@ function validate(values: FormState, selfPlay = false): FormErrors {
 function sidePayload(side: SideState) {
   return {
     teamId: side.mode === 'team' ? side.teamId : null,
-    teamName: side.mode === 'external' ? side.teamName.trim() : null,
+    teamName: side.mode === 'external' || side.mode === 'tbc' ? side.teamName.trim() : null,
+    placeholder: side.mode === 'tbc',
     teamLogoUrl: side.mode === 'external' ? side.teamLogoUrl || null : null,
     leagueTeamId: side.mode === 'leagueTeam' ? side.leagueTeamId : null,
   }
@@ -395,6 +411,10 @@ export function MatchForm({
       awayTeamName: away.teamName,
       awayTeamLogoUrl: away.teamLogoUrl,
       awayLeagueTeamId: away.leagueTeamId,
+      homePlaceholder: home.placeholder,
+      awayPlaceholder: away.placeholder,
+      stage: values.stage.trim() || null,
+      stageLabel: values.stageLabel.trim() || null,
       leagueId: values.leagueId || null,
       seasonId: values.seasonId,
       matchDate: fromDatetimeLocal(values.matchDate),
@@ -443,6 +463,25 @@ export function MatchForm({
               </MenuItem>
             ))}
           </Input>
+
+          <Autocomplete
+            freeSolo
+            disableClearable
+            options={[...STAGE_SUGGESTIONS]}
+            value={values.stage}
+            inputValue={values.stage}
+            onInputChange={(_, stage) => setValues((prev) => ({ ...prev, stage }))}
+            renderInput={(params) => <Input {...params} label="Stage (optional)" inputProps={{ ...params.inputProps, maxLength: 60 }} />}
+          />
+
+          <Input
+            label="Stage label (optional)"
+            placeholder="e.g. 1st v 2nd"
+            value={values.stageLabel}
+            onChange={(event) => setValues((prev) => ({ ...prev, stageLabel: event.target.value }))}
+            inputProps={{ maxLength: 80 }}
+            InputLabelProps={{ shrink: true }}
+          />
 
           <DateTimeField
             label="Match date & time"

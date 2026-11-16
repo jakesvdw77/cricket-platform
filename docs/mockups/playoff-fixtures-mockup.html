@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playoff fixtures mockup (spec 155)</title>
+<style>
+  :root { --green:#14452f; --green2:#1f6a49; --gold:#e8b53f; --ink:#161a17; --line:#c9d1cb; --soft:#eef2ee; --muted:#5a625c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:#e6e9e5; font-family:"Barlow", Arial, sans-serif; color:var(--ink); }
+  .note { max-width:1100px; margin:0 auto 18px; font-size:14px; line-height:1.5; }
+  .note h1 { font:700 20px/1.2 "Barlow Condensed", Arial, sans-serif; letter-spacing:.04em; text-transform:uppercase; margin:0 0 6px; }
+  .grid { max-width:1100px; margin:0 auto; display:grid; gap:24px; }
+  .card { background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.18); padding:18px 20px; }
+  .card h2 { margin:0 0 10px; font:700 16px "Barlow Condensed", Arial; letter-spacing:.08em; text-transform:uppercase; color:var(--green); }
+  .menu { display:inline-block; border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.18); padding:6px 0; font-size:14px; min-width:220px; }
+  .menu div { padding:8px 16px; } .menu .hot { background:var(--soft); font-weight:700; color:var(--green); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; font:600 11px "Barlow Condensed", Arial; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:6px 8px; border-bottom:2px solid var(--line); }
+  td { padding:8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr.ours td { background:var(--soft); }
+  .chip { display:inline-block; border-radius:12px; padding:1px 10px; font-size:12px; font-weight:700; margin-left:6px; }
+  .chip.our { background:#d6ecdf; color:var(--green); }
+  .chip.stage { border:1.5px solid var(--green2); color:var(--green2); background:#fff; }
+  .chip.nofield { background:#fdf0cf; color:#8a5a00; }
+  .tbc { font-style:italic; color:var(--muted); }
+  .logo { display:inline-block; width:22px; height:22px; border-radius:50%; background:#cfd8d2; vertical-align:middle; margin-right:6px; }
+  .filters { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .pill { border:1px solid var(--line); border-radius:16px; padding:3px 12px; font-size:13px; }
+  .pill.on { background:var(--green); color:#fff; border-color:var(--green); }
+  .dialog { border:1px solid var(--line); border-radius:12px; padding:0; overflow:hidden; }
+  .dhead { padding:14px 20px; font:700 18px "Barlow Condensed", Arial; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--line); }
+  .dbody { padding:16px 20px; }
+  .field { border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:14px; background:#fff; min-height:34px; }
+  .field small { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+  .row { display:grid; grid-template-columns:1.1fr 1.4fr 1.4fr .9fr .6fr 1fr; gap:8px; margin-bottom:8px; align-items:end; }
+  .btn { display:inline-block; border-radius:6px; padding:6px 14px; font-weight:700; font-size:13px; border:1.5px solid var(--green); color:var(--green); background:#fff; margin-right:8px; }
+  .btn.fill { background:var(--green); color:#fff; }
+  .dfoot { padding:12px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
+  .sugg { display:inline-block; border:1px solid var(--line); border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.16); padding:4px 0; font-size:14px; margin-top:4px; }
+  .sugg div { padding:5px 14px; }
+  .cap { color:var(--muted); font-size:13px; margin:0 0 10px; }
+</style>
+</head>
+<body>
+<div class="note">
+  <h1>Playoff and knockout fixtures (spec 155 draft, mockup)</h1>
+  Four pieces: the new <b>Add Playoff Games</b> item in the schedule's Manage menu; the <b>Add Playoff Games</b> dialog (pairings table, presets, then a confirm summary);
+  how the games show in the <b>league schedule</b> (stage chip, italic TBC side, a Stage filter); and the <b>Stage</b> field on the match form with its suggestion list.
+  A side that is not known yet is a <b>TBC placeholder</b>; once the pool ends it is resolved by hand through the normal Edit Match. The log counts pool matches only.
+</div>
+<div class="grid">
+
+  <div class="card">
+    <h2>1. Manage Schedule menu</h2>
+    <div class="menu"><div>Create New Match</div><div>Import Schedule</div><div class="hot">Add Playoff Games</div><div>Print Match Sheets</div><div>Share Schedule</div></div>
+  </div>
+
+  <div class="card">
+    <h2>2. League schedule with playoff games</h2>
+    <div class="filters"><span class="pill on">All</span><span class="pill">Pool</span><span class="pill">Playoff</span><span class="pill">Semi-final</span><span class="pill">Final</span><span class="pill">Only our matches</span></div>
+    <table>
+      <thead><tr><th>When</th><th>Match</th><th>Venue</th><th></th></tr></thead>
+      <tbody>
+        <tr class="ours"><td>Thu 19 Nov 09:30</td><td><span class="logo"></span>Irene Veterans v <span class="logo"></span>Delta CC</td><td>Durbanville CC A</td><td><span class="chip our">Our match</span></td></tr>
+        <tr><td>Fri 20 Nov 09:30</td><td><span class="logo"></span>Midlands CC v <span class="logo"></span>Paarl Heat</td><td>Boland Park</td><td></td></tr>
+        <tr class="ours"><td>Sat 21 Nov 09:00</td><td><span class="logo"></span>Irene Veterans v <span class="tbc">TBC: 3rd in the pool</span></td><td>Durbanville CC B</td><td><span class="chip stage">Playoff</span><span class="chip our">Our match</span></td></tr>
+        <tr><td>Sat 21 Nov 09:00</td><td><span class="tbc">TBC: 1st in the pool</span> v <span class="tbc">TBC: 2nd in the pool</span></td><td>Boland Park</td><td><span class="chip stage">Playoff</span></td></tr>
+        <tr><td>Sat 21 Nov 14:00</td><td><span class="tbc">TBC: Winner semi-final 1</span> v <span class="tbc">TBC: Winner semi-final 2</span></td><td><span class="chip nofield">No Field</span></td><td><span class="chip stage">Final</span></td></tr>
+      </tbody>
+    </table>
+    <p class="cap">Staged games are sorted by date like the rest. A TBC side is italic with no logo. The No Field tag and the Our match chip work as today.</p>
+  </div>
+
+  <div class="card">
+    <h2>3. Add Playoff Games dialog</h2>
+    <div class="dialog">
+      <div class="dhead">Add Playoff Games</div>
+      <div class="dbody">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:12px">
+          <div style="width:260px"><div class="field"><small>Stage</small>Playoff</div>
+            <div class="sugg"><div>Playoff</div><div>Quarter-final</div><div>Semi-final</div><div>Third place</div><div>Final</div></div>
+            <p class="cap" style="margin-top:6px">Pick from the list or type your own.</p></div>
+          <div><span class="btn">1v2, 3v4...</span><span class="btn">Semi-finals and final</span><span class="btn">Add Pairing</span></div>
+        </div>
+        <div class="row"><div class="field"><small>Label</small>1st v 2nd</div><div class="field"><small>Home</small><span class="tbc">TBC: 1st in the pool</span></div><div class="field"><small>Away</small><span class="tbc">TBC: 2nd in the pool</span></div><div class="field"><small>Date</small>21 Nov 2026</div><div class="field"><small>Time</small>09:00</div><div class="field"><small>Field</small>Boland Park</div></div>
+        <div class="row"><div class="field"><small>Label</small>3rd v 4th</div><div class="field"><small>Home</small>Irene Veterans (team)</div><div class="field"><small>Away</small><span class="tbc">TBC: 3rd in the pool</span></div><div class="field"><small>Date</small>21 Nov 2026</div><div class="field"><small>Time</small>09:00</div><div class="field"><small>Field</small>Durbanville CC B</div></div>
+        <div class="row"><div class="field"><small>Label</small>5th v 6th</div><div class="field"><small>Home</small><span class="tbc">TBC: 5th in the pool</span></div><div class="field"><small>Away</small><span class="tbc">TBC: 6th in the pool</span></div><div class="field"><small>Date</small>21 Nov 2026</div><div class="field"><small>Time</small>14:00</div><div class="field"><small>Field</small><i style="color:var(--muted)">None</i></div></div>
+        <p class="cap">Each side is a team, a league team, or <b>TBC</b> with the text to show. Presets fill the pairings from the league's team count; everything can be edited before continuing.</p>
+      </div>
+      <div class="dfoot"><span class="btn">Cancel</span><span class="btn fill">Review</span></div>
+    </div>
+    <h2 style="margin-top:20px">3b. Confirm step (nothing is written before this)</h2>
+    <div class="dialog">
+      <div class="dhead">Create 3 playoff games?</div>
+      <div class="dbody">
+        <table><tbody>
+          <tr><td>Sat 21 Nov 09:00</td><td>TBC: 1st v TBC: 2nd</td><td>Boland Park</td><td><span class="chip stage">Playoff</span></td></tr>
+          <tr><td>Sat 21 Nov 09:00</td><td>Irene Veterans v TBC: 3rd</td><td>Durbanville CC B</td><td><span class="chip stage">Playoff</span></td></tr>
+          <tr><td>Sat 21 Nov 14:00</td><td>TBC: 5th v TBC: 6th</td><td><span class="chip nofield">No Field</span></td><td><span class="chip stage">Playoff</span></td></tr>
+        </tbody></table>
+        <p class="cap">The league log will not count these games. Pick the real teams later with Edit Match once the pool ends.</p>
+      </div>
+      <div class="dfoot"><span class="btn">Back</span><span class="btn fill">Create 3 Games</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4. Match form: Stage and TBC sides</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px">
+      <div class="field"><small>Stage (optional)</small>Semi-final</div>
+      <div class="field"><small>Label (optional)</small>Winner pool A v Runner-up pool B</div>
+      <div class="field"><small>Home side</small>Team &middot; League team &middot; <b>TBC</b></div>
+      <div class="field"><small>Away side</small>Team &middot; League team &middot; <b>TBC</b> &rarr; <span class="tbc">Runner-up pool B</span></div>
+    </div>
+    <p class="cap" style="margin-top:10px">Empty Stage means a pool match. Choosing TBC asks for the text to show. When the real team is known, edit the match and pick it: the TBC flag clears.</p>
+  </div>
+
+</div>
+</body>
+</html>

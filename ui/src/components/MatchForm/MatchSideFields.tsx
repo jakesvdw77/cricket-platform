@@ -12,7 +12,8 @@ import { initialsFromName } from '../../utils/initials'
 
 // docs/specs/070-league-teams.md: a side is one of our own teams, a registered league team, or a
 // free-text opponent.
-export type SideMode = 'team' | 'leagueTeam' | 'external'
+// docs/specs/155: 'tbc' is a placeholder side ("1st in the pool"), text only, resolved later with Edit Match.
+export type SideMode = 'team' | 'leagueTeam' | 'external' | 'tbc'
 
 export interface SideState {
   mode: SideMode
@@ -89,7 +90,9 @@ export function MatchSideFields({
       ...(next !== 'external' ? { teamLogoUrl: '' } : {}),
       ...(next === 'leagueTeam' ? { teamId: '', teamName: '' } : {}),
       ...(next !== 'leagueTeam' ? { leagueTeamId: '' } : {}),
-      ...(next === 'team' && value.mode === 'leagueTeam' ? { teamName: '' } : {}),
+      ...(next === 'tbc' ? { teamId: '' } : {}),
+      ...(next === 'team' && (value.mode === 'leagueTeam' || value.mode === 'tbc') ? { teamName: '' } : {}),
+      ...(next === 'external' && value.mode === 'tbc' ? { teamName: '' } : {}),
     })
   }
 
@@ -160,6 +163,7 @@ export function MatchSideFields({
             </ToggleButton>
           )}
           <ToggleButton value="external">Other</ToggleButton>
+          <ToggleButton value="tbc" aria-label="TBC">TBC</ToggleButton>
         </CompactToggleGroup>
       </Box>
 
@@ -230,6 +234,17 @@ export function MatchSideFields({
             </Stack>
           )}
         </>
+      )}
+
+      {value.mode === 'tbc' && (
+        <Input
+          label={`${label} side shows (TBC)`}
+          value={value.teamName}
+          onChange={(event) => onChange({ teamName: event.target.value })}
+          error={Boolean(errors.name)}
+          helperText={errors.name ?? 'e.g. 1st in the pool, Winner of semi-final 1'}
+          inputProps={{ maxLength: 120 }}
+        />
       )}
 
       {value.mode === 'external' && (

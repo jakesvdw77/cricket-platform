@@ -25,10 +25,10 @@ function match(overrides: Partial<Match>): Match {
   } as Match
 }
 
-function renderTable(matches: Match[], entry = '/', originLabel?: string, onShare?: (match: Match) => void) {
+function renderTable(matches: Match[], entry = '/', originLabel?: string, onShare?: (match: Match) => void, onPrintSheet?: (match: Match) => void) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
-      <LeagueFixturesTable matches={matches} teamsById={teamsById} originLabel={originLabel} onShare={onShare} />
+      <LeagueFixturesTable matches={matches} teamsById={teamsById} originLabel={originLabel} onShare={onShare} onPrintSheet={onPrintSheet} />
     </MemoryRouter>,
   )
 }
@@ -110,6 +110,22 @@ describe('LeagueFixturesTable', () => {
     expect(item).not.toHaveAttribute('aria-disabled', 'true')
     await userEvent.click(item)
     expect(onShare).toHaveBeenCalledWith(expect.objectContaining({ id: 'ours' }))
+  })
+
+  it('has Print Team Sheet before Share Match on our matches only, and calls the handler (spec 153)', async () => {
+    const onPrintSheet = vi.fn()
+    renderTable([match({ id: 'ours', homeTeamId: 't1', homeTeamName: null }), match({ id: 'theirs' })], '/', undefined, undefined, onPrintSheet)
+
+    const [ours, theirs] = screen.getAllByTestId('fixture-row')
+    await userEvent.click(within(theirs).getByRole('button', { name: /^Actions for / }))
+    expect(screen.queryByRole('menuitem', { name: /Print Team Sheet/ })).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+
+    await userEvent.click(within(ours).getByRole('button', { name: 'Actions for Villagers 1 vs Eagles' }))
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Open Match', 'Edit Match', 'Print Team Sheet', expect.stringContaining('Share Match')])
+    await userEvent.click(items[2])
+    expect(onPrintSheet).toHaveBeenCalledWith(expect.objectContaining({ id: 'ours' }))
   })
 
   it('keeps the desktop-only columns marked so a phone can drop them, and shows the phone line', () => {

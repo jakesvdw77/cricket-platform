@@ -182,6 +182,43 @@ class MatchServiceImplTest {
         verify(matchRepository, never()).save(any());
     }
 
+    // ---- docs/specs/155: TBC (placeholder) sides ----
+
+    private CreateMatchRequest tbcRequest(UUID homeTeamId, String homeName, UUID homeLeagueTeamId, UUID awayTeamId, String awayName) {
+        return new CreateMatchRequest(
+                homeTeamId, homeName, awayTeamId, awayName, null, null, null, UUID.randomUUID(), Instant.now(), null,
+                homeLeagueTeamId, null, null, null, null, null, "Playoff", "1st v 2nd", true, false);
+    }
+
+    @Test
+    void createWithATbcSideAndNoTextThrowsValidationException() {
+        CreateMatchRequest request = tbcRequest(null, "  ", null, null, "Paarl Heat");
+
+        assertThatThrownBy(() -> matchService.create(authentication, UUID.randomUUID(), request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("TBC");
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithATbcSideThatAlsoHasATeamIdThrowsValidationException() {
+        CreateMatchRequest request = tbcRequest(UUID.randomUUID(), "1st in the pool", null, null, "Paarl Heat");
+
+        assertThatThrownBy(() -> matchService.create(authentication, UUID.randomUUID(), request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("cannot have a team");
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithATbcSideThatAlsoHasALeagueTeamThrowsValidationException() {
+        CreateMatchRequest request = tbcRequest(null, "1st in the pool", UUID.randomUUID(), null, "Paarl Heat");
+
+        assertThatThrownBy(() -> matchService.create(authentication, UUID.randomUUID(), request))
+                .isInstanceOf(ValidationException.class);
+        verify(matchRepository, never()).save(any());
+    }
+
     @Test
     void createWithNeitherAwayTeamIdNorAwayTeamNameSetThrowsValidationException() {
         UUID clubId = UUID.randomUUID();
