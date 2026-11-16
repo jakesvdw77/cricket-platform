@@ -28,6 +28,8 @@ export interface ManageScreenHeaderProps {
   // docs/specs/089: a small control right after the title on the same row (a list page's season pill). Omitted, the markup
   // is unchanged.
   titleAdornment?: ReactNode
+  // A logo or avatar shown before the title, on the same row (the team page's crest). Omitted, the markup is unchanged.
+  titleLead?: ReactNode
 }
 
 // The page-title header (and optional back link) every bare /manage screen needs — RecordFormScreen's
@@ -37,7 +39,7 @@ export interface ManageScreenHeaderProps {
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo: defaultBackTo, backLabel: defaultBackLabel = 'Back', action, middle, subtitle, titleAdornment }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo: defaultBackTo, backLabel: defaultBackLabel = 'Back', action, middle, subtitle, titleAdornment, titleLead }: ManageScreenHeaderProps) {
   // docs/specs/127: a valid returnTo in the address overrides the page's own default Back (and shows one where there was none).
   const { to: backTo, label: backLabel } = useBackLink(defaultBackTo, defaultBackLabel)
   const titleNode = (
@@ -46,8 +48,9 @@ export function ManageScreenHeader({ title, backTo: defaultBackTo, backLabel: de
     </Typography>
   )
   // The adornment (a season pill) sits on the title's row; without one the heading is the bare title as before.
-  const heading = titleAdornment ? (
+  const heading = titleAdornment || titleLead ? (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minWidth: 0 }}>
+      {titleLead}
       {titleNode}
       {titleAdornment}
     </Box>

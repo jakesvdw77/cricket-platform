@@ -135,21 +135,19 @@ export default function PlayerDetailPage() {
         backTo={backLink.to ?? '/manage/players'}
         backLabel={backLink.label}
         // docs/specs/141: the avatar and the ONE status badge sit beside the name, as a result's logos and badge do.
-        titleAdornment={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <LogoAvatar
-              src={playerAvatarSrc(player.photoUrl, player.gender)}
-              variant="circular"
-              size={40}
-              kind="person"
-              keepTile={!player.photoUrl}
-              fontSize="0.9rem"
-            >
-              {initialsFromName(fullName(player))}
-            </LogoAvatar>
-            <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
-          </Box>
+        titleLead={
+          <LogoAvatar
+            src={playerAvatarSrc(player.photoUrl, player.gender)}
+            variant="circular"
+            size={64}
+            kind="person"
+            keepTile={!player.photoUrl}
+            fontSize="1.25rem"
+          >
+            {initialsFromName(fullName(player))}
+          </LogoAvatar>
         }
+        titleAdornment={<Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />}
         // The player's sections as the plain sub-header line every detail page uses (a result's date, league and field), not pills (owner, 2026-11-04).
         subtitle={
           <Typography variant="subtitle1" fontWeight={600} color={taggedSections.length > 0 ? 'text.primary' : 'text.secondary'} component="span">
