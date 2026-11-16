@@ -26,6 +26,9 @@ import type { Team } from '../../../api/teamApi'
 import { listSections } from '../../../api/sectionApi'
 import type { Section } from '../../../api/sectionApi'
 import { listSeasons } from '../../../api/seasonApi'
+import { listMatches } from '../../../api/matchApi'
+import { ShareSquadDialog } from '../../../components/ShareSquadDialog'
+import { TeamSheetDialog, sheetTeamOf } from '../../../components/TeamSheetDialog'
 import { useListViewPreference } from '../../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { useTeamCardData } from '../../../hooks/useTeamCardData'
@@ -151,6 +154,14 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
     return sortAsc ? sorted : sorted.reverse()
   }, [shownTeams, cardData, search, focus, sortAsc])
 
+  // Print Team Sheet and Share Squad from the list too (as on the Team page): they need a season, which the Season pill always provides.
+  const [teamDialog, setTeamDialog] = useState<{ kind: 'print' | 'share'; team: Team } | null>(null)
+  const printMatchesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', 'team-sheet-season', seasonId],
+    queryFn: () => listMatches(clubId as string, { page: 0, size: 200, seasonId }),
+    enabled: Boolean(clubId) && Boolean(seasonId) && teamDialog?.kind === 'print',
+  })
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -195,8 +206,11 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
       openTo={viewPath(team.sectionId, team.id)}
       editTo={editPath(team.sectionId, team.id)}
       statsTo={statsPath(team.id)}
+      onPrintSheet={seasonId ? () => setTeamDialog({ kind: 'print', team }) : undefined}
+      onShareSquad={seasonId ? () => setTeamDialog({ kind: 'share', team }) : undefined}
     />
   )
+  const seasonLabel = seasons.find((season) => season.id === seasonId)?.label ?? null
 
   const figure = (value: number) => (counters.loaded ? value : NOT_ON_FILE)
   const attention = (id: TeamFocus, value: number): PageCounterItem => ({
@@ -382,6 +396,21 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
           {/* The grid ends with a dashed Add card (same action as the title-row button); with no cards it is not shown. */}
           {canAdd && <AddCard label="Add New Team" onClick={openCreate} testId="add-team-card" />}
         </Box>
+      )}
+
+      {teamDialog?.kind === 'print' && (
+        <TeamSheetDialog
+          open
+          onClose={() => setTeamDialog(null)}
+          clubId={clubId as string}
+          teams={[sheetTeamOf(teamDialog.team)]}
+          seasonId={seasonId}
+          seasonLabel={seasonLabel}
+          matches={printMatchesQuery.data?.content ?? []}
+        />
+      )}
+      {teamDialog?.kind === 'share' && (
+        <ShareSquadDialog open onClose={() => setTeamDialog(null)} clubId={clubId as string} team={teamDialog.team} seasonId={seasonId} seasonLabel={seasonLabel} />
       )}
     </Box>
   )

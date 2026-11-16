@@ -365,10 +365,22 @@ describe('TeamsPage', () => {
       renderPage()
       await screen.findByText('1st XI')
       await user.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
-      for (const item of screen.getAllByRole('menuitem')) {
+      // Print Team Sheet and Share Squad open a dialog, so they have no link; every other item is a link that comes back to this list.
+      const links = screen.getAllByRole('menuitem').filter((item) => item.getAttribute('href') !== null)
+      expect(links.length).toBeGreaterThanOrEqual(4)
+      for (const item of links) {
         expect(item.getAttribute('href')).toContain('returnTo=')
         expect(item.getAttribute('href')).toContain('returnLabel=Teams')
       }
+    })
+
+    it('offers Print Team Sheet and Share Squad in the kebab, as the Team page does', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByText('1st XI')
+      await user.click(screen.getByRole('button', { name: 'Actions for 1st XI' }))
+      expect(screen.getByRole('menuitem', { name: /Print Team Sheet/ })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /Share Squad/ })).toBeInTheDocument()
     })
   })
 
