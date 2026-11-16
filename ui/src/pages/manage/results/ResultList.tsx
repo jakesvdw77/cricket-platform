@@ -115,7 +115,7 @@ export default function ResultList() {
   const [teamId, setTeamId] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<ResultOutcomeType | null>(null)
   const [status, setStatus] = useState<ResultStatus | null>(null)
-  const [view, setView] = useListViewPreference('resultList:view')
+  const [view, setView] = useListViewPreference('resultList:view', 'list')
   const [pickerOpen, setPickerOpen] = useState(false)
   const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   // docs/specs/114: the result whose Share dialog is open.

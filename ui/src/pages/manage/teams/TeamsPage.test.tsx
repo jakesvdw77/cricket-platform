@@ -85,6 +85,8 @@ describe('TeamsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+    localStorage.setItem('teamList:view', 'cards')
     listTeamsForClub.mockResolvedValue(TEAMS)
     listTeamsForSection.mockResolvedValue(TEAMS)
     listSections.mockResolvedValue([{ id: 'section-1', clubId: 'club-1', parentSectionId: null, name: 'Men', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null }])
@@ -192,21 +194,22 @@ describe('TeamsPage', () => {
   })
 
   describe('list view', () => {
-    it('shows cards by default, switches to the table, shows its rows and remembers the choice', async () => {
+    it('shows the table by default for a new user, switches to cards and remembers the choice', async () => {
+      localStorage.removeItem('teamList:view')
       const user = userEvent.setup()
       const { unmount } = renderPage()
 
-      await screen.findByText('1st XI')
-      expect(screen.queryByRole('table', { name: 'Teams' })).not.toBeInTheDocument()
-
-      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       const table = await screen.findByRole('table', { name: 'Teams' })
       expect(within(table).getAllByTestId('team-row')).toHaveLength(3)
-      expect(localStorage.getItem('teamList:view')).toBe('list')
+
+      await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
+      await waitFor(() => expect(screen.queryByRole('table', { name: 'Teams' })).not.toBeInTheDocument())
+      expect(localStorage.getItem('teamList:view')).toBe('cards')
       unmount()
 
       renderPage()
-      expect(await screen.findByRole('table', { name: 'Teams' })).toBeInTheDocument()
+      await screen.findByText('1st XI')
+      expect(screen.queryByRole('table', { name: 'Teams' })).not.toBeInTheDocument()
     })
   })
 

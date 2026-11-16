@@ -85,7 +85,7 @@ export function TeamsPage({ clubId, scope }: TeamsPageProps) {
   const showInactive = params.get('inactive') === '1'
   const setShowInactive = (next: boolean) => setParam('inactive', next ? '1' : null)
   const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
-  const [view, setView] = useListViewPreference('teamList:view')
+  const [view, setView] = useListViewPreference('teamList:view', 'list')
   // docs/specs/035: the club-wide Section filter is a backend parameter, saved per club (043); 092 saves the chosen
   // season with it. The section-scoped list is fixed to its section and ignores the saved Section.
   const [{ sectionId: savedSectionId, seasonId: savedSeasonId }, setFilters] = usePersistedListFilters(`teamList:filters:${clubId}`, {

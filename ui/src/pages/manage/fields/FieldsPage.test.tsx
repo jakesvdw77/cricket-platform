@@ -30,6 +30,8 @@ const OTHER = makeField({ id: 'other-1', name: 'Hilton College Oval' })
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('fieldList:view', 'cards')
   listPlayingAreas.mockResolvedValue(fieldPage([OURS]))
   getPlayingAreasSummary.mockResolvedValue({ ourFields: 2, inDirectory: 14, unverified: 3 })
   listPlayingAreaFilterOptions.mockResolvedValue({ countries: ['ZA', 'GB'], provinces: ['KwaZulu-Natal'], cities: ['Hilton'] })
@@ -254,18 +256,18 @@ describe('FieldsPage', () => {
   })
 
   describe('cards and list', () => {
-    it('shows cards by default and the table after switching to List, remembering the choice', async () => {
+    it('shows the table by default for a new user, and cards after switching, remembering the choice', async () => {
+      localStorage.removeItem('fieldList:view')
       const user = userEvent.setup()
       listPlayingAreas.mockResolvedValue(fieldPage([OURS, OTHER]))
       renderPage()
 
-      await screen.findByRole('heading', { name: 'Riverside Oval' })
-      expect(screen.queryByRole('table', { name: 'Fields' })).not.toBeInTheDocument()
-
-      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
-
       expect(await screen.findByRole('table', { name: 'Fields' })).toBeInTheDocument()
-      expect(localStorage.getItem('fieldList:view')).toBe('list')
+
+      await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
+
+      expect(await screen.findByRole('heading', { name: 'Riverside Oval' })).toBeInTheDocument()
+      expect(localStorage.getItem('fieldList:view')).toBe('cards')
     })
 
     it('Add To Our Fields in the kebab links the field for this club', async () => {

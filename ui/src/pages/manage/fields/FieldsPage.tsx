@@ -79,7 +79,7 @@ export default function FieldsPage() {
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [descending, setDescending] = useState(false)
   const [unverifiedOnly, setUnverifiedOnly] = useState(false)
-  const [view, setView] = useListViewPreference('fieldList:view')
+  const [view, setView] = useListViewPreference('fieldList:view', 'list')
   // `ownOnly` is true, false or null (never chosen). Null resolves to on once the first summary reports that the club has
   // fields of its own, and to off otherwise; that answer is held (`autoOwnOnly`) so later filter changes never flip it.
   const [filters, setFilters] = usePersistedListFilters(`fieldList:filters:${clubId}`, {

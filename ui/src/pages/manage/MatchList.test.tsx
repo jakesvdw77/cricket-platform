@@ -93,6 +93,8 @@ beforeEach(() => {
   // consumer in the codebase — each test starts from a clean slate so a filter selection made in
   // one test never leaks (via the real jsdom localStorage) into the next.
   localStorage.clear()
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('matchList:view', 'cards')
   listTeamsForClub.mockResolvedValue([{ id: 'team-1', name: '1st XI' }])
   listLeagues.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
@@ -243,20 +245,20 @@ describe('MatchList', () => {
 
   // docs/specs/089 (C): the Cards | List switch and its remembered preference.
   describe('list view', () => {
-    it('shows cards by default, switches to the table and back, and keeps the other controls', async () => {
+    it('shows the list by default for a new user, switches to cards and back, and keeps the other controls', async () => {
+      localStorage.removeItem('matchList:view')
       listMatches.mockResolvedValue(makePage([makeMatch()]))
       const user = userEvent.setup()
       renderPage('test-club-id')
 
-      await screen.findByText('1st XI vs Riverside Occasionals')
-      expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument()
-
-      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /view (entire season|all seasons)/i })).toBeInTheDocument()
 
       await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
       await waitFor(() => expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument())
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
     })
 
     it('remembers the chosen view for next time', async () => {

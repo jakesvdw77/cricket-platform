@@ -115,7 +115,7 @@ export default function PlayerList() {
   const { seasonId, seasonsLoading } = useAvailabilitySeason(clubId)
   // docs/specs/088 (F): Cards or List, remembered per page in the browser (`playerList:view`, default Cards). It changes
   // only how the same players are shown: the filters, counters and Status actions are identical in both views.
-  const [view, setView] = useListViewPreference('playerList:view')
+  const [view, setView] = useListViewPreference('playerList:view', 'list')
   const statusActions = usePlayerStatusActions(clubId)
   // docs/specs/119 shortcut (a): a failed or pending count renders nothing.
   const linkRequestsWaiting = useLinkRequestsSummary(clubId).data?.waiting

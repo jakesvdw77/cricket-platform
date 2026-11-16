@@ -122,7 +122,7 @@ export default function MatchList({
   // docs/specs/099-fields-directory.md: matches on one field, a backend param, remembered like Team.
   const [playingAreaId, setPlayingAreaId] = useState<string | null>(null)
   // docs/specs/089 (C): Cards | List, remembered for this page.
-  const [view, setView] = useListViewPreference('matchList:view')
+  const [view, setView] = useListViewPreference('matchList:view', 'list')
   // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only. The
   // "Show past matches" switch in the toolbar flips this, so a match saved with a wrong date (and
   // therefore hidden from the default view) can still be found and corrected.
