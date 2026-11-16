@@ -23,6 +23,7 @@ import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { TeamSheetDialog, sheetTeamOf } from '../../../components/TeamSheetDialog'
 import { PlayoffGamesDialog } from '../../../components/PlayoffGamesDialog'
+import { useRememberedState } from '../../../hooks/useRememberedState'
 import { LeagueTabMenu } from './LeagueTabMenu'
 import { useLeagueView } from './leagueViewContext'
 
@@ -33,13 +34,21 @@ import { useLeagueView } from './leagueViewContext'
 export default function LeagueScheduleView() {
   const { clubId, leagueId, league, seasons, selectedSeasonId, teamsById, affiliationsForSeason, activeLeagueTeams, matches, isLoadingMatches, openShare } =
     useLeagueView()
-  const [teamId, setTeamId] = useState<string | null>(null)
+  // Owner decision 2026-11-16: every toolbar filter is remembered per league (search never is).
+  const filterKey = (name: string) => `leagueSchedule:${name}:${leagueId}`
+  const [teamId, setTeamId] = useRememberedState<string | null>(filterKey('team'), null, (value) => value === null || typeof value === 'string')
   const [search, setSearch] = useState('')
-  const [onlyOurs, setOnlyOurs] = useState(false)
-  const [stage, setStage] = useState('')
-  // docs/specs/127: ?showAll=1 (added when a saved past match returns here) starts with the whole season visible.
+  const [onlyOurs, setOnlyOurs] = useRememberedState<boolean>(filterKey('onlyOurs'), false, (value) => typeof value === 'boolean')
+  const [stage, setStage] = useRememberedState<string>(filterKey('stage'), '', (value) => typeof value === 'string')
+  // docs/specs/127: ?showAll=1 (added when a saved past match returns here) starts with the whole season visible, over what was remembered.
   const [searchParams] = useSearchParams()
-  const [showPlayed, setShowPlayed] = useState(searchParams.get('showAll') === '1')
+  const [rememberedShowPlayed, setShowPlayed] = useRememberedState<boolean>(filterKey('showPlayed'), false, (value) => typeof value === 'boolean')
+  const [forcedShowAll, setForcedShowAll] = useState(searchParams.get('showAll') === '1')
+  const showPlayed = forcedShowAll || rememberedShowPlayed
+  const changeShowPlayed = (next: boolean) => {
+    setForcedShowAll(false)
+    setShowPlayed(next)
+  }
   const location = useLocation()
   const originLabel = `${league.name} schedule`
   // docs/specs/131: Share Match on a row opens the Share Match dialog; each click mounts a fresh host.
@@ -83,7 +92,7 @@ export default function LeagueScheduleView() {
   )
 
   const ourSwitch = <CompactSwitch checked={onlyOurs} onChange={setOnlyOurs} label="Only our matches" />
-  const playedSwitch = <CompactSwitch checked={showPlayed} onChange={setShowPlayed} label="View entire season" />
+  const playedSwitch = <CompactSwitch checked={showPlayed} onChange={changeShowPlayed} label="View entire season" />
   const importReason = importScheduleDisabledReason({ hasSeason: Boolean(selectedSeasonId), leagueActive: league.active })
   const isFiltering = teamId !== null || search.trim() !== '' || onlyOurs || stage !== ''
   // docs/specs/155: the Stage filter exists only when the season has a staged (playoff or knockout) match.
@@ -121,7 +130,7 @@ export default function LeagueScheduleView() {
         placement === 'row' ? (
           <>
             <ToolbarToggleChip pressed={onlyOurs} onChange={setOnlyOurs} label="Only our matches" />
-            <ToolbarToggleChip pressed={showPlayed} onChange={setShowPlayed} label="View entire season" />
+            <ToolbarToggleChip pressed={showPlayed} onChange={changeShowPlayed} label="View entire season" />
           </>
         ) : (
           <>

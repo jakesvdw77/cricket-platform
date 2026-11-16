@@ -1,3 +1,4 @@
+import { useRememberedState } from '../../hooks/useRememberedState'
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
@@ -67,7 +68,7 @@ export default function SponsorContactList() {
   const { sponsorId } = useParams<{ sponsorId: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('name,asc')
+  const [sort, setSort] = useRememberedState<string>(clubId ? `sponsorContacts:sort:${clubId}` : null, 'name,asc', (value) => typeof value === 'string')
 
   const {
     data: contacts,

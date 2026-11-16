@@ -115,11 +115,11 @@ export default function MatchList({
   // shape as sectionId above — combinable with it and with search/upcomingOnly in any combination.
   const [leagueId, setLeagueId] = useState<string | null>(null)
   const [seasonId, setSeasonId] = useState<string | null>(null)
-  // docs/specs/087: Team and the counters' quick filter. Both are backend params too, and per visit only: neither
-  // is saved with Section/League/Season below. At most one quick filter is active at a time.
+  // docs/specs/087: Team and the counters' quick filter, both backend params. Team is remembered with the other toolbar filters below;
+  // the counters' quick filter stays per visit. At most one quick filter is active at a time.
   const [teamId, setTeamId] = useState<string | null>(null)
   const [focus, setFocus] = useState<MatchListFocus | null>(null)
-  // docs/specs/099-fields-directory.md: matches on one field, a backend param, per visit like Team.
+  // docs/specs/099-fields-directory.md: matches on one field, a backend param, remembered like Team.
   const [playingAreaId, setPlayingAreaId] = useState<string | null>(null)
   // docs/specs/089 (C): Cards | List, remembered for this page.
   const [view, setView] = useListViewPreference('matchList:view')
@@ -167,6 +167,12 @@ export default function MatchList({
         if (parsed.sectionId) setSectionId(parsed.sectionId)
         if (parsed.leagueId) setLeagueId(parsed.leagueId)
         if (parsed.seasonId) setSeasonId(parsed.seasonId)
+        // Owner decision 2026-11-16: every toolbar filter is remembered across visits, not just Section, League and Season. Search and the
+        // counter tiles (a quick filter that would hide the rest of the list on return) stay per visit.
+        if (parsed.teamId) setTeamId(parsed.teamId)
+        if (parsed.playingAreaId) setPlayingAreaId(parsed.playingAreaId)
+        if (typeof parsed.sort === 'string' && SORT_OPTIONS.some((option) => option.value === parsed.sort)) setSort(parsed.sort)
+        if (typeof parsed.upcomingOnly === 'boolean') setUpcomingOnly(parsed.upcomingOnly)
       }
     } catch {
       // storage unavailable/corrupt — start from defaults, never throw
@@ -177,11 +183,11 @@ export default function MatchList({
   useEffect(() => {
     if (!clubId) return
     try {
-      localStorage.setItem(filtersStorageKey, JSON.stringify({ sectionId, leagueId, seasonId }))
+      localStorage.setItem(filtersStorageKey, JSON.stringify({ sectionId, leagueId, seasonId, teamId, playingAreaId, sort, upcomingOnly }))
     } catch {
       // storage full/unavailable — filters just won't persist this session
     }
-  }, [clubId, filtersStorageKey, sectionId, leagueId, seasonId])
+  }, [clubId, filtersStorageKey, sectionId, leagueId, seasonId, teamId, playingAreaId, sort, upcomingOnly])
 
   const {
     data,

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useRememberedState } from '../../../../hooks/useRememberedState'
 import { Alert, Box, CircularProgress } from '@mui/material'
 import { BrandIcon } from '../../../../components/BrandIcon'
 import { AddPollAction } from '../AddPollAction'
@@ -21,7 +22,8 @@ import { computeSlotCoverage } from './slotCoverage'
 export default function AvailabilityCoveragePage() {
   const { clubId, filters, seasonId, seasonsLoading, leagues, leaguesLoading, leaguesError } = useAvailabilityHub()
 
-  const [includePast, setIncludePast] = useState(false)
+  // Remembered per club (owner decision 2026-11-16), like the other toolbar filters.
+  const [includePast, setIncludePast] = useRememberedState<boolean>(clubId ? `availabilityCoverage:includePast:${clubId}` : null, false, (value) => typeof value === 'boolean')
   // docs/specs/136: a team search in the top row; it narrows the teams shown inside each slot card (a slot with no matching team is hidden).
   const [search, setSearch] = useState('')
   const { leagueId, sectionId } = filters

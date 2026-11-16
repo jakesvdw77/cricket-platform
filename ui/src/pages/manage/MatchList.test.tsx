@@ -934,7 +934,9 @@ describe('MatchList', () => {
     )
 
     const persisted = JSON.parse(localStorage.getItem('matchList:filters:test-club-id') as string)
-    expect(persisted).toEqual({ sectionId: 'section-1', leagueId: 'league-1', seasonId: 'season-1' })
+    // Every toolbar filter is remembered (owner decision 2026-11-16), search never is.
+    expect(persisted).toEqual({ sectionId: 'section-1', leagueId: 'league-1', seasonId: 'season-1', teamId: null, playingAreaId: null, sort: expect.any(String), upcomingOnly: true })
+    expect(persisted).not.toHaveProperty('search')
   })
 
   // docs/specs/087-matches-polls-alignment.md (A): the counters and the Team filter
@@ -1067,7 +1069,7 @@ describe('MatchList', () => {
       expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
 
-    it('never saves the team or the quick filter with the persisted Section, League and Season filters', async () => {
+    it('saves the team with the other toolbar filters but never the counters\' quick filter', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
 
@@ -1081,7 +1083,16 @@ describe('MatchList', () => {
 
       const persisted = JSON.parse(localStorage.getItem('matchList:filters:test-club-id') as string)
       expect(persisted).not.toHaveProperty('focus')
-      expect(persisted).not.toHaveProperty('teamId')
+      expect(persisted.teamId).toBe('team-1')
+    })
+
+    it('remembers the team, the sort and the past-matches switch for the next visit', async () => {
+      localStorage.setItem('matchList:filters:test-club-id', JSON.stringify({ sectionId: null, leagueId: null, seasonId: null, teamId: 'team-1', playingAreaId: null, sort: 'matchDate,desc', upcomingOnly: false }))
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1', upcomingOnly: false })))
     })
 
     it('on a phone the quick filter is a chip, counts in the Filters badge, shows a Quick filter row in the sheet, and Clear all clears it with the team', async () => {
