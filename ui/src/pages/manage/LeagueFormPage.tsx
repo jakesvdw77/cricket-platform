@@ -317,6 +317,10 @@ export default function LeagueFormPage() {
                     phone: league.phone,
                     website: league.website,
                     email: league.email,
+                    hostName: league.hostName,
+                    hostLogoUrl: league.hostLogoUrl,
+                    affiliationName: league.affiliationName,
+                    affiliationLogoUrl: league.affiliationLogoUrl,
                     socialLinks: league.socialLinks,
                   }
                 : undefined

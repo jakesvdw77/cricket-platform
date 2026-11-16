@@ -119,7 +119,7 @@ class LeagueServiceImplTest {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
                 null, null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
     }
 
     private League existingLeague(UUID id, UUID clubId, boolean active) {
@@ -142,7 +142,7 @@ class LeagueServiceImplTest {
                 league.getMaxAge(), league.getAgeCutoffMonth(), league.getAgeCutoffDay(), league.getFormat(), league.getLogoUrl(),
                 league.getPhone(), league.getWebsite(), league.getEmail(), List.of(),
                 league.isActive(), league.getCreatedAt(),
-                league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null, null, null, null, null, null, null);
+                league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -150,7 +150,7 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
-                        "Vets League", null, null, null, null, null, null, null, null, null, null, null, null);
+                        "Vets League", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -176,7 +176,7 @@ class LeagueServiceImplTest {
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
                         "Vets League", LeagueSource.INTERNAL, 12, 35, null, null, null, null, null, null, null, null,
-                        null);
+                        null, null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -193,7 +193,7 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
-                        "U15s", null, null, 20, 15, null, null, null, null, null, null, null, null);
+                        "U15s", null, null, 20, 15, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.create(clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -204,11 +204,11 @@ class LeagueServiceImplTest {
     // --- 110: the age cut-off as a day and month ---
 
     private CreateLeagueRequest createWithCutoff(Integer month, Integer day) {
-        return new CreateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null);
+        return new CreateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null, null, null, null, null);
     }
 
     private UpdateLeagueRequest updateWithCutoff(Integer month, Integer day) {
-        return new UpdateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null);
+        return new UpdateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -330,7 +330,7 @@ class LeagueServiceImplTest {
         CreateLeagueRequest request = new CreateLeagueRequest(
                 "Premier League", null, null, null, null, null, null, LeagueFormat.T20, "/media/logo.png",
                 "0123456789", "https://premierleague.example", "info@premierleague.example",
-                List.of(linkDto));
+                List.of(linkDto), null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -344,6 +344,39 @@ class LeagueServiceImplTest {
         assertThat(saved.getWebsite()).isEqualTo("https://premierleague.example");
         assertThat(saved.getEmail()).isEqualTo("info@premierleague.example");
         assertThat(saved.getSocialLinks()).containsExactly(mappedLink);
+    }
+
+    @Test
+    void createAndUpdateCarryTheHostAndAffiliationAndAnOmittedOneClearsIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        CreateLeagueRequest create = new CreateLeagueRequest(
+                "Club Champs", null, null, null, null, null, null, null, null, null, null, null,
+                List.of(), "Boland Veterans", "/media/boland.png", "VCASA", "/media/vcasa.png");
+        ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
+        when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
+        leagueService.create(clubId, create);
+        assertThat(captor.getValue().getHostName()).isEqualTo("Boland Veterans");
+        assertThat(captor.getValue().getHostLogoUrl()).isEqualTo("/media/boland.png");
+        assertThat(captor.getValue().getAffiliationName()).isEqualTo("VCASA");
+        assertThat(captor.getValue().getAffiliationLogoUrl()).isEqualTo("/media/vcasa.png");
+
+        League existing = existingLeague(leagueId, clubId, true);
+        existing.setHostName("Old Host");
+        existing.setHostLogoUrl("/media/old.png");
+        existing.setAffiliationName("Old Body");
+        existing.setAffiliationLogoUrl("/media/old-body.png");
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
+        when(leagueRepository.save(existing)).thenReturn(existing);
+        when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
+        leagueService.update(clubId, leagueId, new UpdateLeagueRequest(
+                "Club Champs", null, null, null, null, null, null, null, null, null, null, null,
+                List.of(), null, null, null, null));
+        assertThat(existing.getHostName()).isNull();
+        assertThat(existing.getHostLogoUrl()).isNull();
+        assertThat(existing.getAffiliationName()).isNull();
+        assertThat(existing.getAffiliationLogoUrl()).isNull();
     }
 
     @Test
@@ -362,7 +395,7 @@ class LeagueServiceImplTest {
         UpdateLeagueRequest request = new UpdateLeagueRequest(
                 "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, LeagueFormat.ONE_DAY,
                 "/media/logo.png", "0123456789", "https://premierleague.example",
-                "info@premierleague.example", List.of(linkDto));
+                "info@premierleague.example", List.of(linkDto), null, null, null, null);
 
         leagueService.update(clubId, leagueId, request);
 
@@ -381,7 +414,7 @@ class LeagueServiceImplTest {
                 "Premier League", null, null, null, null, null, null, null, null, null, null, null,
                 List.of(
                         new SocialLinkDto("facebook", "https://facebook.com/a"),
-                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+                        new SocialLinkDto("facebook", "https://facebook.com/b")), null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.create(clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -397,7 +430,7 @@ class LeagueServiceImplTest {
                 "Premier League", null, null, null, null, null, null, null, null, null, null, null,
                 List.of(
                         new SocialLinkDto("facebook", "https://facebook.com/a"),
-                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+                        new SocialLinkDto("facebook", "https://facebook.com/b")), null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
                 .isInstanceOf(ValidationException.class);
@@ -417,7 +450,7 @@ class LeagueServiceImplTest {
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
                 "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, null, null, null, null, null,
-                null);
+                null, null, null, null, null);
 
         leagueService.update(clubId, leagueId, request);
 
@@ -439,7 +472,7 @@ class LeagueServiceImplTest {
         when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null, null, null, null, null, null, null, null);
+                "Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null, null, null, null, null, null, null, null, null, null, null, null);
 
         leagueService.update(clubId, leagueId, request);
 
@@ -458,7 +491,7 @@ class LeagueServiceImplTest {
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Renamed League", null, null, null, null, null, null, null, null, null, null, null, null);
+                "Renamed League", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -649,9 +682,9 @@ class LeagueServiceImplTest {
 
         List<LeagueDto> results = new java.util.ArrayList<>();
         results.add(leagueService.create(clubId, new CreateLeagueRequest(
-                "New League", null, null, null, null, null, null, null, null, null, null, null, null)));
+                "New League", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         results.add(leagueService.update(clubId, leagueId, new UpdateLeagueRequest(
-                "Renamed", null, null, null, null, null, null, null, null, null, null, null, null)));
+                "Renamed", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         results.add(leagueService.deactivate(clubId, leagueId));
         results.add(leagueService.reactivate(clubId, leagueId));
 

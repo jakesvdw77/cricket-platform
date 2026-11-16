@@ -11140,6 +11140,10 @@ components:
     SectionAvailabilityRoundDto:
       type: object
       properties:
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         id:
           type: string
           format: uuid
@@ -11166,6 +11170,10 @@ components:
           format: date-time
         open:
           type: boolean
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         brackets:
           type: array
           items:
@@ -12473,6 +12481,14 @@ components:
         bonusPointsEnabled:
           type: boolean
         bonusBattingOversThreshold:
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
           type: integer
           format: int32
           minimum: 1
@@ -12528,6 +12544,14 @@ components:
           type: integer
           format: int32
         fieldingRestrictionsNotes:
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
           type: string
         allowSubstitutions:
           type: boolean
@@ -13666,6 +13690,10 @@ components:
         scoringUrl:
           type: string
         streamingUrl:
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
           type: string
         playingAreaId:
           type: string
@@ -13956,6 +13984,14 @@ components:
         size:
           type: integer
           format: int32
+        hostName:
+          type: string
+        hostLogoUrl:
+          type: string
+        affiliationName:
+          type: string
+        affiliationLogoUrl:
+          type: string
         content:
           type: array
           items:

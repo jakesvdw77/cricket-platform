@@ -52,5 +52,9 @@ public record LeagueDto(
         Instant firstMatchDate,
         Instant lastMatchDate,
         Instant nextMatchDate,
-        List<LeagueSeasonTeamDto> teams) {
+        List<LeagueSeasonTeamDto> teams,
+        String hostName,
+        String hostLogoUrl,
+        String affiliationName,
+        String affiliationLogoUrl) {
 }

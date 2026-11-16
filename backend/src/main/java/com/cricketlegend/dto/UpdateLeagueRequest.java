@@ -3,6 +3,7 @@ package com.cricketlegend.dto;
 import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeagueSource;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
@@ -26,5 +27,9 @@ public record UpdateLeagueRequest(
         String phone,
         String website,
         String email,
-        @Valid List<SocialLinkDto> socialLinks) {
+        @Valid List<SocialLinkDto> socialLinks,
+        @Size(max = 120) String hostName,
+        String hostLogoUrl,
+        @Size(max = 120) String affiliationName,
+        String affiliationLogoUrl) {
 }

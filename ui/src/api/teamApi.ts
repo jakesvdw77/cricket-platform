@@ -18,6 +18,9 @@ export interface Team {
   // League — every one nullable/optional, reusing SocialLinkDto/SocialLink unchanged.
   abbreviation: string | null
   groundName: string | null
+  // docs/specs/154: the body the team is affiliated to (printed top left of the Poster team sheet).
+  affiliationName?: string | null
+  affiliationLogoUrl?: string | null
   socialLinks: SocialLink[]
   active: boolean
   createdAt: string
@@ -37,6 +40,8 @@ export interface TeamPayload {
   logoUrl?: string | null
   abbreviation?: string | null
   groundName?: string | null
+  affiliationName?: string | null
+  affiliationLogoUrl?: string | null
   socialLinks?: SocialLink[]
 }
 
