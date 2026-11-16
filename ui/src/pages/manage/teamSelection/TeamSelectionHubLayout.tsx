@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { Box } from '@mui/material'
+import { Button } from '../../../components/Button'
 import { EmptyState } from '../../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { ViewTabsRow } from '../../../components/ViewTabsRow'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { useTeamSelectionHubState } from './hubContext'
+import { SelectionAnalysisDialog } from './SelectionAnalysisDialog'
 
 type HubView = 'matches' | 'slots' | 'players' | 'batting'
 
@@ -34,6 +37,7 @@ export default function TeamSelectionHubLayout() {
   const view = activeView(pathname)
   useDocumentTitle(`${VIEWS.find((entry) => entry.value === view)?.label ?? 'Matches'} · Team Selection`)
   const hub = useTeamSelectionHubState(clubId)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -43,6 +47,7 @@ export default function TeamSelectionHubLayout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
       <ManageScreenHeader
         title="Team Selection"
+        action={<Button variant="secondary" onClick={() => setAnalysisOpen(true)}>Selection Analysis</Button>}
         // Season is a small pill beside the title; there is no "All seasons" (every figure is for one season).
         titleAdornment={
           hub.seasons.length > 0 ? (
@@ -59,6 +64,7 @@ export default function TeamSelectionHubLayout() {
       <ViewTabsRow aria-label="Team Selection views" value={view} tabs={VIEWS.map((entry) => ({ value: entry.value, label: entry.label, to: { pathname: entry.path, search } }))} />
 
       <Outlet context={hub} />
+      <SelectionAnalysisDialog hub={hub} open={analysisOpen} onClose={() => setAnalysisOpen(false)} />
     </Box>
   )
 }
