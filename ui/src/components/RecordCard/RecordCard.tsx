@@ -82,6 +82,8 @@ export interface RecordCardAvatar {
   fallback?: ReactNode
   // 'wide' is for a sponsor: a tile as wide as the logo needs (most sponsor logos are wide, so a square left them tiny).
   shape?: 'circular' | 'rounded' | 'wide'
+  // The avatar's size in px (default 56). A logo with fine detail, such as a league roundel with text on it, needs a bigger one to be read.
+  size?: number
   // docs/specs/082: a ready-made 56px element (e.g. a BrandIcon tile) drawn in place of the solid
   // Avatar - no green square behind it. When set, imageUrl/fallback/shape are ignored.
   element?: ReactNode
@@ -465,7 +467,7 @@ export function RecordCard({
             {avatar?.element}
             {avatar && !avatar.element && avatar.shape === 'wide' && <SponsorLogo src={avatar.imageUrl} fallback={typeof avatar.fallback === 'string' ? avatar.fallback : ''} height={56} />}
             {avatar && !avatar.element && avatar.shape !== 'wide' && (
-              <LogoAvatar src={avatar.imageUrl} variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'} size={56} kind={avatar.shape === 'rounded' ? 'record' : 'person'}>
+              <LogoAvatar src={avatar.imageUrl} variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'} size={avatar.size ?? 56} kind={avatar.shape === 'rounded' ? 'record' : 'person'}>
                 {avatar.fallback}
               </LogoAvatar>
             )}
