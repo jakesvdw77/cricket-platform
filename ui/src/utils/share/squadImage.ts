@@ -5,6 +5,7 @@ import type { Ctx, Palette } from './matchImage'
 import type { ResultImageColour } from './resultImage'
 import type { ImageSize, ImageTemplate } from './shareChoices'
 import { BRAND } from '../../brandTokens'
+import { surnameDisplay } from '../teamSheet'
 
 // The squad poster: a team's whole squad for a season, not tied to any match. A grid of round player pictures with the name under each
 // (shirt number and captain or keeper mark on the picture), or a list. One Canvas2D function for the preview and the file, drawn with the
@@ -110,7 +111,7 @@ function drawGrid(ctx: Ctx, model: SquadShareModel, options: SquadImageOptions, 
     if (pictures) drawPlayerPicture(ctx, player, centreX, centreY, radius, options, palette)
     else drawNumberDisc(ctx, player, centreX, centreY, radius, palette)
     drawText(ctx, player.firstName, centreX, centreY + radius + nameSize * 0.95, { size: nameSize * 0.82, colour: palette.muted, align: 'center', maxWidth: cellW * 0.94 })
-    drawText(ctx, player.lastName.toUpperCase(), centreX, centreY + radius + nameSize * 2.05, { size: nameSize, colour: palette.text, weight: 700, align: 'center', maxWidth: cellW * 0.94 })
+    drawText(ctx, surnameDisplay(player.lastName), centreX, centreY + radius + nameSize * 2.05, { size: nameSize, colour: palette.text, weight: 700, align: 'center', maxWidth: cellW * 0.94 })
     if (!pictures && options.include.marks && (player.captain || player.keeper)) {
       drawText(ctx, [player.captain ? 'C' : '', player.keeper ? 'WK' : ''].filter(Boolean).join(' '), centreX, centreY + radius + nameSize * 3.05, { size: nameSize * 0.7, colour: palette.accent, weight: 700, align: 'center' })
     }

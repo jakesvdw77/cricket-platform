@@ -1,5 +1,5 @@
 import type { jsPDF } from 'jspdf'
-import { hourStyle, leaderNames, preMarkOf, preMarks } from '../teamSheet'
+import { hourStyle, leaderNames, preMarkOf, preMarks, surnameDisplay } from '../teamSheet'
 import type { SheetRow } from '../teamSheet'
 import { imageFormatOf } from './loadImageDataUrl'
 import type { TeamSheetPdfOptions, TeamSheetSpec } from './printableTeamSheetPdf'
@@ -236,7 +236,7 @@ function drawTable(doc: jsPDF, rows: SheetRow[], options: TeamSheetPdfOptions, s
       const first = row.player.firstName
       text(doc, first, nameX, mid + 1.4, 10, 'normal', INK)
       const firstWidth = doc.getTextWidth(first + ' ')
-      text(doc, wrap(doc, row.player.lastName.toUpperCase(), cols.player - firstWidth - 3, 10, 'bold')[0] ?? '', nameX + firstWidth, mid + 1.4, 10, 'bold', INK)
+      text(doc, wrap(doc, surnameDisplay(row.player.lastName), cols.player - firstWidth - 3, 10, 'bold')[0] ?? '', nameX + firstWidth, mid + 1.4, 10, 'bold', INK)
       if (row.player.shirt !== null) text(doc, String(row.player.shirt), LEFT + cols.playing + cols.player + cols.shirt / 2, mid + 1.4, 10, 'bold', INK, 'center')
       // A plain Poster marks the keeper only with Pre-Mark; a selected side is real, so C, W/K and 12th always show.
       const tag = side

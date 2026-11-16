@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { SheetRow } from '../../utils/teamSheet'
-import { BLANK_LINES, hourStyle, leaderNames, preMarkOf, preMarks, sheetPages } from '../../utils/teamSheet'
+import { BLANK_LINES, hourStyle, leaderNames, preMarkOf, preMarks, sheetPages, surnameDisplay } from '../../utils/teamSheet'
 import type { PreMarkOption } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
@@ -42,7 +42,7 @@ function PlayerRow({ row, preMark, zebra, batBowl, comment, side, playing }: { r
       <Box component="td" sx={{ ...cell, fontStyle: row.kind === 'player' && row.player.twelfth ? 'italic' : 'normal' }}>
         {row.kind === 'player' ? (
           <>
-            {row.player.firstName} <b>{row.player.lastName.toUpperCase()}</b>
+            {row.player.firstName} <b>{surnameDisplay(row.player.lastName)}</b>
           </>
         ) : null}
       </Box>

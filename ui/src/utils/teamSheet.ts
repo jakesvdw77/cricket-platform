@@ -163,6 +163,17 @@ export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LI
   return pages.length > 0 ? pages : [[]]
 }
 
+// A surname as the sheets and posters print it in capitals: the main part in capitals, the leading particles (van, der, de, du, le...) in
+// lower case, as the name is written: "de VILLIERS", "van der MERWE". At least one word is always the main part.
+const SURNAME_PARTICLES = new Set(['van', 'von', 'der', 'den', 'de', 'du', 'di', 'da', 'le', 'la', 'te', 'ten', 'ter', 'op', 'vd', 'v/d', 'dos', 'das', 'del', 'della', 'el', 'al', "'t"])
+export function surnameDisplay(lastName: string): string {
+  const words = lastName.trim().split(/\s+/).filter(Boolean)
+  let particles = 0
+  while (particles < words.length - 1 && SURNAME_PARTICLES.has(words[particles].toLowerCase())) particles += 1
+  const prefix = words.slice(0, particles).map((word) => word.toLowerCase())
+  return [...prefix, words.slice(particles).join(' ').toUpperCase()].filter(Boolean).join(' ')
+}
+
 // Pre-marking the captain and the wicketkeeper are two separate choices. A plain boolean still means both (the older callers).
 export interface PreMark {
   captain: boolean

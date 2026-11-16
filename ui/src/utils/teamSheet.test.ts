@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, surnameDisplay, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -230,5 +230,25 @@ describe('sidePlayers (Selected Side)', () => {
     expect(list.find((p) => p.lastName === 'Meyer')).toMatchObject({ isKeeper: true, shirt: null })
     expect(list.find((p) => p.lastName === 'Botha')?.shirt).toBe(7)
     expect(list.find((p) => p.key === 'x')).toMatchObject({ firstName: 'Guest', lastName: 'Player', shirt: null })
+  })
+})
+
+describe('surnameDisplay: the surname in capitals with its leading particles in lower case', () => {
+  it.each([
+    ['Van der Westhuizen', 'van der WESTHUIZEN'],
+    ['van der Merwe', 'van der MERWE'],
+    ['De Villiers', 'de VILLIERS'],
+    ['du Plessis', 'du PLESSIS'],
+    ['vd Westhuizen', 'vd WESTHUIZEN'],
+    ['Coetzer', 'COETZER'],
+    ['Botha', 'BOTHA'],
+  ])('%s prints as %s', (input, expected) => {
+    expect(surnameDisplay(input)).toBe(expected)
+  })
+
+  it('keeps at least one word in capitals, even when the whole surname is a particle', () => {
+    expect(surnameDisplay('Van')).toBe('VAN')
+    expect(surnameDisplay('de la Rey')).toBe('de la REY')
+    expect(surnameDisplay('  ')).toBe('')
   })
 })
