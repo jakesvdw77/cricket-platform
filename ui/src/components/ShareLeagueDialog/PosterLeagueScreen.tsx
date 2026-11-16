@@ -1,9 +1,10 @@
+import { useMemo } from 'react'
 import { Box } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { CompactSwitch } from '../CompactSwitch'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
-import { ShareControlGroup, ShareImageActions } from '../ShareCore'
+import { ShareImageActions, ShareLogoControls, ShareTextSizeControl } from '../ShareCore'
+import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import { AttachedImagePreview } from '../ShareResultDialog/AttachedImagePreview'
 import { LeagueLeftOutNote } from './LeagueLeftOutNote'
 import type { LeagueScreenProps } from './leagueScreenTypes'
@@ -14,8 +15,22 @@ import { useLeaguePosterOutput } from './useLeaguePosterOutput'
 export function PosterLeagueScreen(props: LeagueScreenProps) {
   const { model, choices, updateChoices, shareTitle, ticked } = props
   const colour = useTheme().palette.primary.main
-  const teamLogos = choices.logos.team
-  const { file, error } = useLeaguePosterOutput(model, colour, teamLogos)
+  const { clubLogoUrl, leagueLogoUrl, leagueAffiliationLogoUrl, sponsors, selectedSponsorIds } = props
+  const posterOptions = useMemo(
+    () => ({
+      teamLogos: choices.logos.team,
+      footer: choices.footerLine,
+      textScale: SHARE_TEXT_SCALE[choices.textSize],
+      logos: {
+        clubUrl: choices.logos.club ? clubLogoUrl : null,
+        leagueUrl: choices.logos.league ? leagueLogoUrl : null,
+        leagueAffiliationUrl: choices.logos.leagueAffiliation ? (leagueAffiliationLogoUrl ?? null) : null,
+        sponsorUrls: selectedSponsorIds.map((id) => sponsors.find((sponsor) => sponsor.id === id)?.logoUrl).filter((url): url is string => Boolean(url)),
+      },
+    }),
+    [choices.logos.team, choices.logos.club, choices.logos.league, choices.logos.leagueAffiliation, choices.footerLine, choices.textSize, clubLogoUrl, leagueLogoUrl, leagueAffiliationLogoUrl, sponsors, selectedSponsorIds],
+  )
+  const { file, error } = useLeaguePosterOutput(model, colour, posterOptions)
 
   return (
     <ShareFormatScreen
@@ -23,9 +38,8 @@ export function PosterLeagueScreen(props: LeagueScreenProps) {
       controls={
         <>
         <LeagueLeftOutNote format="POSTER" ticked={ticked} />
-        <ShareControlGroup label="Include">
-          <CompactSwitch label="Team logos" checked={teamLogos} onChange={(next) => updateChoices({ logos: { team: next } })} />
-        </ShareControlGroup>
+        <ShareTextSizeControl choices={choices} updateChoices={updateChoices} />
+        <ShareLogoControls {...props} />
         </>
       }
       preview={

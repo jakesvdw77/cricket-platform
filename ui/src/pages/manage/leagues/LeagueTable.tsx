@@ -83,7 +83,8 @@ function LeagueRow({ league, seasonId, onShare, onDuplicate }: { league: League;
         <Avatar
           variant="rounded"
           src={league.logoUrl ?? undefined}
-          sx={{ width: 36, height: 36, flex: 'none', bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
+          imgProps={{ style: { objectFit: 'contain' } }}
+          sx={{ width: 48, height: 48, flex: 'none', bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
         >
           <EmojiEventsOutlinedIcon fontSize="small" />
         </Avatar>

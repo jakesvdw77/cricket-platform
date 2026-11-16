@@ -214,7 +214,9 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
     sponsors: data.sponsors,
     selectedSponsorIds,
     clubLogoUrl: data.clubProfile?.logoUrl ?? null,
-    leagueLogoUrl: null,
+    leagueLogoUrl: data.league?.logoUrl ?? null,
+    teamAffiliationLogoUrl: (ownTeamId ? teamsById.get(ownTeamId)?.affiliationLogoUrl : null) ?? null,
+    leagueAffiliationLogoUrl: data.league?.affiliationLogoUrl ?? null,
     clubWebsite: data.clubProfile?.website ?? null,
     shareTitle: model.title,
   }

@@ -3,6 +3,7 @@ import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import type { ManageMenuItem } from '../components/ManageMenu'
 
 export interface TeamMenuOptions {
@@ -12,11 +13,13 @@ export interface TeamMenuOptions {
   statsTo: string
   // docs/specs/153: the Team page only; opens the Print Team Sheet dialog.
   onPrintSheet?: () => void
+  // The Team page only; opens the Share Squad dialog (a picture poster of the whole squad).
+  onShareSquad?: () => void
 }
 
 // docs/specs/142: the ordered actions of one team, built in ONE place for the card, the table row and the Team page so they cannot drift:
 // Open Team and View Squad (the squad is on the team page; not on the Team page itself), Edit Team, View Stats.
-export function teamMenuItems({ openTo, editTo, statsTo, onPrintSheet }: TeamMenuOptions): ManageMenuItem[] {
+export function teamMenuItems({ openTo, editTo, statsTo, onPrintSheet, onShareSquad }: TeamMenuOptions): ManageMenuItem[] {
   return [
     ...(openTo ? [{ id: 'open', title: 'Open Team', icon: <OpenInNewOutlinedIcon fontSize="small" />, to: openTo }] : []),
     { id: 'edit', requires: 'TEAMS_EDIT', title: 'Edit Team', icon: <EditOutlinedIcon fontSize="small" />, to: editTo },
@@ -31,6 +34,18 @@ export function teamMenuItems({ openTo, editTo, statsTo, onPrintSheet }: TeamMen
             description: 'A blank sheet, or one with the match filled in, listing the whole squad.',
             icon: <PrintOutlinedIcon fontSize="small" />,
             onClick: onPrintSheet,
+          },
+        ]
+      : []),
+    ...(onShareSquad
+      ? [
+          {
+            id: 'share-squad',
+            requires: 'TEAMS_VIEW' as const,
+            title: 'Share Squad',
+            description: 'A picture poster of the whole squad, to share or download.',
+            icon: <ShareOutlinedIcon fontSize="small" />,
+            onClick: onShareSquad,
           },
         ]
       : []),

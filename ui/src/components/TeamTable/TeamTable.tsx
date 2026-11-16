@@ -81,7 +81,7 @@ function TeamRow({ row }: { row: TeamTableRow }) {
       }}
     >
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-        <LogoAvatar src={team.logoUrl} variant="rounded" size={36} fontSize="0.8125rem">
+        <LogoAvatar src={team.logoUrl} variant="rounded" size={44} fontSize="0.8125rem">
           {initialsFromName(team.name)}
         </LogoAvatar>
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>

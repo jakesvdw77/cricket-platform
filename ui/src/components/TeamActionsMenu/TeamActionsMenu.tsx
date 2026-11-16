@@ -14,14 +14,16 @@ export interface TeamActionsMenuProps {
   originLabel?: string
   // docs/specs/153: the Team page's Print Team Sheet item.
   onPrintSheet?: () => void
+  // The Team page's Share Squad item.
+  onShareSquad?: () => void
 }
 
 // docs/specs/142 and page-anatomy section 6: the ONE actions menu of a team, a row/card kebab or the Team page's Manage Team button. Every
 // destination returns to where the user is now (`returnTo`, docs/specs/127). It never navigates the row it sits in.
-export function TeamActionsMenu({ teamName, trigger = 'kebab', openTo, editTo, statsTo, originLabel = 'Teams', onPrintSheet }: TeamActionsMenuProps) {
+export function TeamActionsMenu({ teamName, trigger = 'kebab', openTo, editTo, statsTo, originLabel = 'Teams', onPrintSheet, onShareSquad }: TeamActionsMenuProps) {
   const location = useLocation()
   const leaveTo = (destination: string) => withReturnTo(destination, currentOrigin(location), originLabel)
-  const items = teamMenuItems({ openTo: openTo ? leaveTo(openTo) : undefined, editTo: leaveTo(editTo), statsTo: leaveTo(statsTo), onPrintSheet })
+  const items = teamMenuItems({ openTo: openTo ? leaveTo(openTo) : undefined, editTo: leaveTo(editTo), statsTo: leaveTo(statsTo), onPrintSheet, onShareSquad })
   const groups = [{ id: 'team', heading: 'Team', items }]
   return trigger === 'kebab' ? (
     <ManageMenu trigger="kebab" dense label={`Actions for ${teamName}`} testId="team-actions" groups={groups} />

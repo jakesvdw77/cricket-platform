@@ -125,7 +125,7 @@ describe('ShareResultDialog tiles', () => {
   it('describes each tile in its own words', () => {
     renderDialog()
 
-    for (const text of ['Full scorecard, A4, to print or send', 'Result card for feeds and chats', 'Widescreen match summary', 'Message text plus image', 'Post text plus image']) {
+    for (const text of ['Full scorecard, A4, to print or send', 'Best for phones: feeds and chats', 'For big screens (small on a phone)', 'Message text plus image', 'Post text plus image']) {
       expect(screen.getByText(text)).toBeInTheDocument()
     }
   })

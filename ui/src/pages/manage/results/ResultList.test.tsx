@@ -64,6 +64,8 @@ const draft = makeListItem({ id: 'match-2', awayTeamName: 'Hillcrest CC' }, { id
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('resultList:view', 'cards')
   listTeamsForClub.mockResolvedValue([{ id: 'team-1', name: '1st XI' }])
   listResultFilterOptions.mockResolvedValue({ sectionIds: [], leagueIds: [], seasonIds: [], teamIds: ['team-1'] })
   getResultsSummary.mockResolvedValue(SUMMARY)

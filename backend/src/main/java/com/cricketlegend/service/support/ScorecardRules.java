@@ -443,7 +443,8 @@ final class ScorecardRules {
             }
             String said = blank(p.displayName()) ? "a name" : "'" + p.displayName().trim() + "'";
             issues.error(ResultValidator.ErrorCode.IMPORTED_NAME_UNCONFIRMED, ResultWizardStep.TEAMS, p.side(),
-                    "File said " + said + ", matched to " + label(p, context) + ". Confirm or change this player.");
+                    "File said " + said + ", matched to " + label(p, context) + ". Confirm or change this player.",
+                    p.playerProfileId());
         }
     }
 

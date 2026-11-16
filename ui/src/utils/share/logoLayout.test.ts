@@ -11,11 +11,49 @@ const SIZES: [LogoLayoutFormat, number, number][] = [
 ]
 
 const all = (layout: ReturnType<typeof layoutLogos>): Rect[] =>
-  [layout.club, layout.league, layout.home, layout.away, layout.sponsorLabel, layout.footerText, ...layout.sponsors, layout.content].filter(
+  [layout.club, layout.league, layout.teamAffiliation, layout.leagueAffiliation, layout.home, layout.away, layout.sponsorLabel, layout.footerText, ...layout.sponsors, layout.content].filter(
     (rect): rect is Rect => rect !== null,
   )
 
 describe('layoutLogos', () => {
+  it.each(SIZES)('keeps room for the title with all four header logos for %s %d x %d, and shows the room', (format, width, height) => {
+    const layout = layoutLogos({ format, width, height, club: true, league: true, teamAffiliation: true, leagueAffiliation: true, teamLogos: false, sponsors: 0, footerLine: false })
+    // the title keeps at least a third of the width beside the four logos
+    expect(layout.headerText.width).toBeGreaterThanOrEqual(width * 0.33)
+  })
+
+  it.each(SIZES)('makes the sponsor tiles wider than tall so wide logos are not squashed for %s %d x %d', (format, width, height) => {
+    const layout = layoutLogos({ format, width, height, club: true, league: true, teamLogos: true, sponsors: 2, footerLine: true })
+    for (const rect of layout.sponsors) expect(rect.width).toBeGreaterThan(rect.height * 1.5)
+    const rects = [layout.club, layout.league, layout.home, layout.away, layout.sponsorLabel, layout.footerText, ...layout.sponsors, layout.content].filter((rect): rect is Rect => rect !== null)
+    for (let i = 0; i < rects.length; i += 1) {
+      expect(rects[i].x).toBeGreaterThanOrEqual(0)
+      expect(rects[i].x + rects[i].width).toBeLessThanOrEqual(width + 1e-9)
+      for (let j = i + 1; j < rects.length; j += 1) expect(rectsOverlap(rects[i], rects[j])).toBe(false)
+    }
+  })
+
+  it.each(SIZES)('fits the team and league affiliation logos in the header without overlap for %s %d x %d (spec 154)', (format, width, height) => {
+    const layout = layoutLogos({ format, width, height, club: true, league: true, teamAffiliation: true, leagueAffiliation: true, teamLogos: true, sponsors: 2, footerLine: true })
+    expect(layout.teamAffiliation).not.toBeNull()
+    expect(layout.leagueAffiliation).not.toBeNull()
+    // the team's affiliation follows the club logo, the league's precedes the league logo, the title is between them
+    expect((layout.teamAffiliation as Rect).x).toBeGreaterThan((layout.club as Rect).x)
+    expect((layout.leagueAffiliation as Rect).x).toBeLessThan((layout.league as Rect).x)
+    expect(layout.headerText.x).toBeGreaterThanOrEqual((layout.teamAffiliation as Rect).x + (layout.teamAffiliation as Rect).width)
+    expect(layout.headerText.x + layout.headerText.width).toBeLessThanOrEqual((layout.leagueAffiliation as Rect).x + 1e-9)
+    const rects = all(layout)
+    for (let i = 0; i < rects.length; i += 1) for (let j = i + 1; j < rects.length; j += 1) expect(rectsOverlap(rects[i], rects[j])).toBe(false)
+  })
+
+  it('gives the affiliation logos no slot when they are off, and leaves the header as before', () => {
+    const base = layoutLogos({ format: 'IMAGE', width: 1080, height: 1350, club: true, league: true, teamLogos: false, sponsors: 0, footerLine: false })
+    const off = layoutLogos({ format: 'IMAGE', width: 1080, height: 1350, club: true, league: true, teamAffiliation: false, leagueAffiliation: false, teamLogos: false, sponsors: 0, footerLine: false })
+    expect(off.teamAffiliation).toBeNull()
+    expect(off.leagueAffiliation).toBeNull()
+    expect(off.headerText).toEqual(base.headerText)
+  })
+
   it.each(SIZES)('never overlaps and stays on the canvas for %s %d x %d', (format, width, height) => {
     const layout = layoutLogos({ format, width, height, club: true, league: true, teamLogos: true, sponsors: 4, footerLine: true })
     const rects = all(layout)
@@ -165,6 +203,8 @@ describe('layoutLogos for every combination of present and absent slots', () => 
     expect(rowsOf(story(4))).toEqual([2, 2])
     expect(rowsOf(story(3))).toEqual([2, 1])
     expect(rowsOf(story(1))).toEqual([1])
+    // Two sponsors stay side by side on one row: stacking them one per row left the Story size looking empty.
+    expect(rowsOf(story(2))).toEqual([2])
     // The Square and Portrait sizes and the TV and PDF pages stay on one row.
     for (const [format, width, height] of [['IMAGE', 1080, 1080], ['IMAGE', 1080, 1350], ['TV', 1920, 1080], ['PDF', 210, 297]] as [LogoLayoutFormat, number, number][]) {
       expect(rowsOf(layoutLogos({ format, width, height, club: true, league: true, teamLogos: true, sponsors: 4, footerLine: true }).sponsors)).toEqual([4])

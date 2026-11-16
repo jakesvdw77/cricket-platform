@@ -40,7 +40,7 @@ function OnlyMine({ checked, onChange }: { checked: boolean; onChange: (next: bo
 function Side({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl} size={28} name={name} />
+      <LeagueLogo logoUrl={logoUrl} size={40} name={name} />
       <Typography sx={{ fontSize: 17, fontWeight: 600, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )

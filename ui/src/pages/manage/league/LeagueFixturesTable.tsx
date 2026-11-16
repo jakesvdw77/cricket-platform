@@ -69,10 +69,10 @@ function SideLogo({ name, logoUrl, placeholder = false }: { name: string; logoUr
       src={logoUrl ?? undefined}
       alt=""
       sx={{
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
         flex: 'none',
-        fontSize: '0.65rem',
+        fontSize: '0.7rem',
         fontWeight: 700,
         bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
         color: 'primary.dark',

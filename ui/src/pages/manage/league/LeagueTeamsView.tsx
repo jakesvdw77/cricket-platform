@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { LogoAvatar } from '../../../components/LogoAvatar'
+import { useRememberedState } from '../../../hooks/useRememberedState'
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom'
 import { Box, Link as MuiLink, Skeleton, Stack, ToggleButton, Typography, useMediaQuery } from '@mui/material'
 import { alpha, useTheme } from '@mui/material/styles'
@@ -149,7 +150,7 @@ export default function LeagueTeamsView() {
   // docs/specs/127: Open Team returns to this tab (and season).
   const teamPath = (team: Team) => withReturnTo(`/manage/sections/${team.sectionId}/teams/${team.id}`, currentOrigin(location), `${league.name} teams`)
   const [search, setSearch] = useState('')
-  const [scope, setScope] = useState<TeamScope>('all')
+  const [scope, setScope] = useRememberedState<TeamScope>(`leagueTeams:scope:${league.id}`, 'all', (value) => value === 'all' || value === 'own' || value === 'league')
   const [unaffiliating, setUnaffiliating] = useState<{ affiliationId: string; team: Team } | null>(null)
 
   // Manage League > Add Team lands here with ?add=team: open the chooser once and take the parameter off the address.

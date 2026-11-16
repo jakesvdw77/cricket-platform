@@ -66,17 +66,37 @@ describe('TeamSheetDialog (spec 153)', () => {
     expect(rows[1]).toHaveTextContent('Van der Westhuizen')
     expect(within(paper).queryByTestId('mark-captain')).not.toBeInTheDocument()
     await waitFor(() => expect(generate).toHaveBeenCalled())
-    expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ preMark: false, fileName: 'Team Sheet - Irene Veterans (blank).pdf' })
+    expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ preMark: { captain: false, keeper: false }, fileName: 'Team Sheet - Irene Veterans (blank).pdf' })
     expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument()
   })
 
-  it('pre-marks the captain only when the switch is on', async () => {
+  it('has two separate switches, Pre-Mark Captain and Pre-Mark Wicketkeeper, both off by default', async () => {
+    renderDialog()
+    await screen.findByTestId('team-sheet-paper')
+    expect(screen.getByRole('checkbox', { name: 'Pre-Mark Captain' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Pre-Mark Wicketkeeper' })).not.toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: 'Pre-Mark Captain And Keepers' })).not.toBeInTheDocument()
+  })
+
+  it('pre-marks the captain alone when only Pre-Mark Captain is on', async () => {
     renderDialog()
     const paper = await screen.findByTestId('team-sheet-paper')
     await waitFor(() => expect(within(paper).getAllByTestId('team-sheet-row').length).toBeGreaterThan(2))
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pre-Mark Captain And Keepers' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Pre-Mark Captain' }))
     expect(await within(paper).findByTestId('mark-captain')).toBeInTheDocument()
-    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ preMark: true }))
+    expect(within(paper).queryByTestId('mark-keeper')).not.toBeInTheDocument()
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ preMark: { captain: true, keeper: false } }))
+  })
+
+  it('pre-marks the wicketkeeper alone when only Pre-Mark Wicketkeeper is on', async () => {
+    listSquad.mockResolvedValue([member('Jaco', 'Van der Westhuizen', { isWicketKeeper: true }), member('Andre', 'Botha', { isCaptain: true })])
+    renderDialog()
+    const paper = await screen.findByTestId('team-sheet-paper')
+    await waitFor(() => expect(within(paper).getAllByTestId('team-sheet-row').length).toBeGreaterThan(1))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Pre-Mark Wicketkeeper' }))
+    expect(await within(paper).findByTestId('mark-keeper')).toBeInTheDocument()
+    expect(within(paper).queryByTestId('mark-captain')).not.toBeInTheDocument()
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ preMark: { captain: false, keeper: true } }))
   })
 
   it('fills the match details for One Match, soonest match first', async () => {
@@ -90,11 +110,24 @@ describe('TeamSheetDialog (spec 153)', () => {
 
   it('makes one sheet per ticked match for All Matches, and drops an unticked one', async () => {
     renderDialog({ initialMode: 'all', leagueId: 'l1' })
-    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0]).toHaveLength(2))
     expect(screen.getByRole('heading', { name: 'Print Match Sheets' })).toBeInTheDocument()
+    // No match is ticked to begin with (each one makes its own sheet, so ticking them all up front was heavy): Select All ticks them.
+    expect(await screen.findByTestId('team-sheet-chosen-count')).toHaveTextContent('Tick the matches to print')
+    expect(screen.getAllByRole('checkbox', { name: /vs / }).every((box) => !(box as HTMLInputElement).checked)).toBe(true)
+    await userEvent.click(screen.getByRole('button', { name: 'Select All' }))
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0]).toHaveLength(2))
+    expect(screen.getByTestId('team-sheet-chosen-count')).toHaveTextContent('2 of 2 ticked')
     await userEvent.click(screen.getByRole('checkbox', { name: /Fri 20 Nov.*Paarl Heat/ }))
     await waitFor(() => expect(generate.mock.calls.at(-1)?.[0]).toHaveLength(1))
     expect(generate.mock.calls.at(-1)?.[0][0].match.opposition).toBe('Midlands CC')
+  })
+
+  it('Clear unticks every match again', async () => {
+    renderDialog({ initialMode: 'all', leagueId: 'l1' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Select All' }))
+    await waitFor(() => expect(screen.getByTestId('team-sheet-chosen-count')).toHaveTextContent('2 of 2 ticked'))
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(screen.getByTestId('team-sheet-chosen-count')).toHaveTextContent('Tick the matches to print')
   })
 
   it('says so when the squad is empty and offers no PDF', async () => {
@@ -198,6 +231,7 @@ describe('TeamSheetDialog (spec 153)', () => {
   it('Selected Side prints only the saved side in batting order, skips a match with none, and can sort alphabetically (spec 153)', async () => {
     renderDialog({ initialStyle: undefined, initialMode: 'all' })
     await userEvent.click(await screen.findByRole('button', { name: 'Selected Side' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Select All' }))
 
     const poster = await screen.findByTestId('team-sheet-poster')
     await waitFor(() => expect(within(poster).getAllByTestId('team-sheet-row')).toHaveLength(2))
@@ -220,6 +254,7 @@ describe('TeamSheetDialog (spec 153)', () => {
     listMatchSides.mockResolvedValue([])
     renderDialog({ initialStyle: undefined, initialMode: 'all' })
     await userEvent.click(await screen.findByRole('button', { name: 'Selected Side' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Select All' }))
     expect(await screen.findByText(/No side has been selected for the ticked matches yet/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open Team Selection' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Download PDF/ })).toBeDisabled()

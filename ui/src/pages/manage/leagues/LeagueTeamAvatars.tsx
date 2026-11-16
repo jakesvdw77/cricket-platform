@@ -32,7 +32,7 @@ export function LeagueTeamAvatars({ teams }: { teams: LeagueSeasonTeam[] | null 
             <LogoAvatar
               src={team.logoUrl}
               alt=""
-              size={34}
+              size={44}
               fontSize="0.75rem"
               fallbackSx={
                 team.own

@@ -84,9 +84,14 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   const [sideOrder, setSideOrder] = useState<SideOrder>('batting')
   const [nameSort, setNameSort] = useState<NameSort>('surname')
   const [matchId, setMatchId] = useState<string>(initialMatchId ?? '')
-  const [unticked, setUnticked] = useState<Set<string>>(new Set())
+  // The matches ticked for All Matches and Selected Side. None to begin with: every ticked match makes its own sheet with logos, so ticking
+  // them all up front used a lot of memory (owner, 2026-11-16).
+  const [chosenIds, setChosenIds] = useState<Set<string>>(new Set())
   const [blankLeagueId, setBlankLeagueId] = useState<string>('')
-  const [preMark, setPreMark] = useState(false)
+  // Pre-marking the captain and the wicketkeeper are two separate switches.
+  const [preMarkCaptain, setPreMarkCaptain] = useState(false)
+  const [preMarkKeeper, setPreMarkKeeper] = useState(false)
+  const preMark = useMemo(() => ({ captain: preMarkCaptain, keeper: preMarkKeeper }), [preMarkCaptain, preMarkKeeper])
   const [extraLines, setExtraLines] = useState(true)
   const [tossBoxes, setTossBoxes] = useState(false)
   const [leaderTicks, setLeaderTicks] = useState(true)
@@ -139,7 +144,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   )
 
   const chosenMatch = useMemo(() => teamMatchList.find((match) => match.id === matchId) ?? teamMatchList[0] ?? null, [teamMatchList, matchId])
-  const ticked = useMemo(() => teamMatchList.filter((match) => !unticked.has(match.id)), [teamMatchList, unticked])
+  const ticked = useMemo(() => teamMatchList.filter((match) => chosenIds.has(match.id)), [teamMatchList, chosenIds])
   // Selected Side: each ticked match's saved side, read when the sheet type is on.
   const sideQueries = useQueries({
     queries: (mode === 'side' ? ticked : []).map((match) => ({
@@ -288,6 +293,19 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
           </Input>
         )}
         {(mode === 'all' || mode === 'side') && teamMatchList.length > 0 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Button size="compact" variant="secondary" onClick={() => setChosenIds(new Set(teamMatchList.map((match) => match.id)))}>
+              Select All
+            </Button>
+            <Button size="compact" variant="secondary" onClick={() => setChosenIds(new Set())} disabled={chosenIds.size === 0}>
+              Clear
+            </Button>
+            <Typography variant="caption" color="text.secondary" data-testid="team-sheet-chosen-count">
+              {chosenIds.size === 0 ? 'Tick the matches to print' : `${chosenIds.size} of ${teamMatchList.length} ticked`}
+            </Typography>
+          </Box>
+        )}
+        {(mode === 'all' || mode === 'side') && teamMatchList.length > 0 && (
           <Box role="group" aria-label="Matches to print" sx={{ display: 'flex', flexDirection: 'column', mt: 0.5, maxHeight: 220, overflowY: 'auto', width: '100%' }}>
             {teamMatchList.map((match) => (
               <FormControlLabel
@@ -296,12 +314,12 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
                 control={
                   <Checkbox
                     size="small"
-                    checked={!unticked.has(match.id)}
+                    checked={chosenIds.has(match.id)}
                     onChange={(_, checked) =>
-                      setUnticked((previous) => {
+                      setChosenIds((previous) => {
                         const next = new Set(previous)
-                        if (checked) next.delete(match.id)
-                        else next.add(match.id)
+                        if (checked) next.add(match.id)
+                        else next.delete(match.id)
                         return next
                       })
                     }
@@ -328,7 +346,8 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
         </CompactToggleGroup>
       </ShareControlGroup>
       <ShareControlGroup label="Include">
-        {mode !== 'side' && <CompactSwitch label="Pre-Mark Captain And Keepers" checked={preMark} onChange={setPreMark} />}
+        {mode !== 'side' && <CompactSwitch label="Pre-Mark Captain" checked={preMarkCaptain} onChange={setPreMarkCaptain} />}
+        {mode !== 'side' && <CompactSwitch label="Pre-Mark Wicketkeeper" checked={preMarkKeeper} onChange={setPreMarkKeeper} />}
         {mode !== 'side' && <CompactSwitch label="Two Lines For Late Or Guest Players" checked={extraLines} onChange={setExtraLines} />}
         {style === 'plain' ? (
           <>

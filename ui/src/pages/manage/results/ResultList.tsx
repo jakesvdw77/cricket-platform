@@ -7,6 +7,7 @@ import { AddCard } from '../../../components/AddCard'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { Button } from '../../../components/Button'
 import { SplitButton } from '../../../components/SplitButton'
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { SortMenu } from '../../../components/ContentControlsLine'
 import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
@@ -114,7 +115,7 @@ export default function ResultList() {
   const [teamId, setTeamId] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<ResultOutcomeType | null>(null)
   const [status, setStatus] = useState<ResultStatus | null>(null)
-  const [view, setView] = useListViewPreference('resultList:view')
+  const [view, setView] = useListViewPreference('resultList:view', 'list')
   const [pickerOpen, setPickerOpen] = useState(false)
   const phone = useMediaQuery(useTheme().breakpoints.down('sm'), { noSsr: true })
   // docs/specs/114: the result whose Share dialog is open.
@@ -414,6 +415,7 @@ export default function ResultList() {
         action={
           !canCapture ? undefined : <SplitButton
             label="Capture New Result"
+            icon={<AddOutlinedIcon fontSize="small" />}
             onClick={openCreate}
             testId="capture-result"
             items={[

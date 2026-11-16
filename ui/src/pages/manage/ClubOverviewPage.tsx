@@ -367,7 +367,7 @@ export default function ClubOverviewPage() {
                 <RecordIconButton
                   key={sponsor.id}
                   imageUrl={sponsor.logoUrl}
-                  shape="rounded"
+                  shape="wide"
                   label={`${sponsor.name} \u2014 Sponsor`}
                   name={sponsor.name}
                   initials={initialsFromName(sponsor.name)}

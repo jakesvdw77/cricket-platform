@@ -22,6 +22,26 @@ describe('shareChoices', () => {
     for (const raw of [null, undefined, 'x', 7, [], true]) expect(sanitiseShareChoices(raw)).toEqual(DEFAULT_SHARE_CHOICES)
   })
 
+  it('has Include Weather and Player Pictures off by default for a match share, and keeps a saved choice', () => {
+    expect(DEFAULT_SHARE_CHOICES.match.include.weather).toBe(false)
+    expect(DEFAULT_SHARE_CHOICES.match.include.playerPictures).toBe(false)
+    const saved = { ...DEFAULT_SHARE_CHOICES, match: { ...DEFAULT_SHARE_CHOICES.match, include: { ...DEFAULT_SHARE_CHOICES.match.include, playerPictures: true } } }
+    expect(sanitiseShareChoices(JSON.parse(JSON.stringify(saved))).match.include.playerPictures).toBe(true)
+    // choices saved before the switch existed fall back to the default
+    const older = JSON.parse(JSON.stringify(DEFAULT_SHARE_CHOICES))
+    delete older.match.include.playerPictures
+    expect(sanitiseShareChoices(older).match.include.playerPictures).toBe(false)
+  })
+
+  it('has Text Size on Auto by default, one choice for every picture template, keeping a saved step and dropping an unknown one', () => {
+    expect(DEFAULT_SHARE_CHOICES.textSize).toBe('AUTO')
+    const saved = JSON.parse(JSON.stringify(DEFAULT_SHARE_CHOICES))
+    saved.textSize = 'LARGER'
+    expect(sanitiseShareChoices(saved).textSize).toBe('LARGER')
+    saved.textSize = 'HUGE'
+    expect(sanitiseShareChoices(saved).textSize).toBe('AUTO')
+  })
+
   it('round trips valid choices', () => {
     const choices = { ...DEFAULT_SHARE_CHOICES, format: 'IMAGE' as const, teams: 'ours' as const, initialsOnly: true, sponsorIds: ['a', 'b'] }
     expect(sanitiseShareChoices(JSON.parse(JSON.stringify(choices)))).toEqual(choices)
@@ -45,7 +65,7 @@ describe('shareChoices', () => {
     expect(result.teams).toBe('both')
     expect(result.tvPerformers).toBe(3)
     expect(result.include.pdf).toEqual({ ...DEFAULT_SHARE_CHOICES.include.pdf, batting: false })
-    expect(result.logos).toEqual({ club: false, team: true, league: true })
+    expect(result.logos).toEqual({ club: false, team: true, league: true, teamAffiliation: true, leagueAffiliation: true })
     expect(result.footerLine).toBe(true)
     expect(result.sponsorIds).toEqual(['1', '2', '3', '4'])
     expect(result.initialsOnly).toBeNull()
@@ -93,7 +113,7 @@ describe('sanitiseShareChoices in detail', () => {
     const result = sanitiseShareChoices({ include: { tv: { batters: false, extra: true } }, logos: { league: false, nonsense: true }, mystery: 1 })
     expect(result.include.tv).toEqual({ ...DEFAULT_SHARE_CHOICES.include.tv, batters: false })
     expect(result.include.pdf).toEqual(DEFAULT_SHARE_CHOICES.include.pdf)
-    expect(result.logos).toEqual({ club: true, team: true, league: false })
+    expect(result.logos).toEqual({ club: true, team: true, league: false, teamAffiliation: true, leagueAffiliation: true })
     expect(result).not.toHaveProperty('mystery')
     expect(result.include.tv).not.toHaveProperty('extra')
   })

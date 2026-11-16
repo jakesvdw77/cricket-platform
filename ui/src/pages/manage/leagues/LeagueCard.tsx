@@ -65,7 +65,7 @@ export function LeagueCard({ league, seasonId, onShare, onDuplicate }: LeagueCar
       title={league.name}
       titleWrap
       badgesBelow
-      avatar={{ imageUrl: league.logoUrl, fallback: <BrandIcon name="nav/cricket-leagues" size={40} surface="none" />, shape: 'rounded' }}
+      avatar={{ imageUrl: league.logoUrl, fallback: <BrandIcon name="nav/cricket-leagues" size={56} surface="none" />, shape: 'rounded', size: 80 }}
       badges={leagueBadges(league)}
       // position: relative paints the links above the card's stretched link (059).
       headerActions={

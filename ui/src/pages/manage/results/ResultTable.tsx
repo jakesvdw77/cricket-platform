@@ -87,7 +87,7 @@ function ResultRow({ item, teamsById, actions }: { item: ResultListItem; teamsBy
         <Avatar
           variant="rounded"
           src={logoSide.logo.src ?? undefined}
-          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.75rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
+          sx={{ width: 44, height: 44, flex: 'none', fontSize: '0.75rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
         >
           {logoSide.logo.initials}
         </Avatar>

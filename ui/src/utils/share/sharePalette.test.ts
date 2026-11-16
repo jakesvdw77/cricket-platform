@@ -175,7 +175,7 @@ describe('club colour templates on a light club colour', () => {
       it(`${label}: the main text reads 4.5:1 on both ends of the gradient (${colour.main})`, () => {
         const recorded = record(base({ ...patch, colour, logos: { clubUrl: null, leagueUrl: null, teams: true, sponsorUrls: [] } }))
         const [from, to] = recorded.stops
-        const heading = recorded.texts.find((item) => /FULL TIME|MATCH SUMMARY/.test(item.text))
+        const heading = recorded.texts.find((item) => / V |MATCH SUMMARY/.test(item.text))
         expect(heading, 'heading drawn').toBeDefined()
         for (const background of [from, to]) {
           expect(contrastRatio(over((heading as { colour: string }).colour, background), background)).toBeGreaterThanOrEqual(WCAG_AA)
@@ -187,7 +187,8 @@ describe('club colour templates on a light club colour', () => {
   it('draws dark ink on a light club colour and white on a dark one', () => {
     const light = record(base({ template: 'CLUB_GREEN', colour: YELLOW, logos: { clubUrl: null, leagueUrl: null, teams: true, sponsorUrls: [] } }))
     const dark = record(base({ template: 'CLUB_GREEN', colour: GREEN, logos: { clubUrl: null, leagueUrl: null, teams: true, sponsorUrls: [] } }))
-    expect(light.texts.find((item) => item.text === 'FULL TIME')?.colour).toBe('#14231c')
-    expect(dark.texts.find((item) => item.text === 'FULL TIME')?.colour).toBe('#ffffff')
+    // the header's "TEAM V TEAM" line
+    expect(light.texts.find((item) => / V /.test(item.text))?.colour).toBe('#14231c')
+    expect(dark.texts.find((item) => / V /.test(item.text))?.colour).toBe('#ffffff')
   })
 })

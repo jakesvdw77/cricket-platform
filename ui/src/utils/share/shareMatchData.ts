@@ -1,3 +1,4 @@
+import { playerAvatarSrc } from '../../components/BrandIcon'
 import type { Match } from '../../api/matchApi'
 import type { PlayingRole } from '../../api/matchSideApi'
 import type { TeamSheetSide } from '../teamSheetSide'
@@ -22,6 +23,8 @@ export interface MatchSharePlayer {
   keeper: boolean
   role: PlayingRole
   jersey: number | null
+  // The profile picture (or the default avatar for the player's gender) for the Player Pictures switch; null when there is none to show.
+  photoUrl: string | null
 }
 
 export interface MatchShareLineup {
@@ -155,6 +158,7 @@ export function lineupOf(side: TeamSheetSide, own: boolean, logoUrl: string | nu
       keeper: side.side?.wicketKeeperPlayerId === row.playerProfileId,
       role: row.role,
       jersey: squadById.get(row.playerProfileId)?.squadJerseyNumber ?? null,
+      photoUrl: playerAvatarSrc(squadById.get(row.playerProfileId)?.photoUrl, squadById.get(row.playerProfileId)?.gender) ?? null,
     })),
   }
 }

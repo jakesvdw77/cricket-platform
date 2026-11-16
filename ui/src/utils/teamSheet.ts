@@ -163,10 +163,42 @@ export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LI
   return pages.length > 0 ? pages : [[]]
 }
 
-// Whether the Capt and Keeper boxes of a row are pre-filled (only when the manager switched pre-marking on).
-export function preMarks(row: SheetRow, preMark: boolean): { captain: boolean; keeper: boolean } {
-  if (!preMark || row.kind !== 'player') return { captain: false, keeper: false }
-  return { captain: row.player.isCaptain, keeper: row.player.isKeeper }
+// A surname as the sheets and posters print it in capitals: the main part in capitals, the leading particles (van, der, de, du, le...) in
+// lower case, as the name is written: "de VILLIERS", "van der MERWE". At least one word is always the main part.
+const SURNAME_PARTICLES = new Set(['van', 'von', 'der', 'den', 'de', 'du', 'di', 'da', 'le', 'la', 'te', 'ten', 'ter', 'op', 'vd', 'v/d', 'dos', 'das', 'del', 'della', 'el', 'al', "'t"])
+// The surname split into its lower-case particles ("van der") and its main part in capitals ("MERWE"); `particles` is '' when there are none.
+export function surnameParts(lastName: string): { particles: string; main: string } {
+  const words = lastName.trim().split(/\s+/).filter(Boolean)
+  let count = 0
+  while (count < words.length - 1 && SURNAME_PARTICLES.has(words[count].toLowerCase())) count += 1
+  return { particles: words.slice(0, count).map((word) => word.toLowerCase()).join(' '), main: words.slice(count).join(' ').toUpperCase() }
+}
+export function surnameDisplay(lastName: string): string {
+  const { particles, main } = surnameParts(lastName)
+  return [particles, main].filter(Boolean).join(' ')
+}
+
+// Pre-marking the captain and the wicketkeeper are two separate choices. A plain boolean still means both (the older callers).
+export interface PreMark {
+  captain: boolean
+  keeper: boolean
+}
+export type PreMarkOption = boolean | PreMark
+export const preMarkOf = (option: PreMarkOption | undefined): PreMark =>
+  typeof option === 'object' && option !== null ? option : { captain: option === true, keeper: option === true }
+
+// Whether the Capt and Keeper boxes of a row are pre-filled (each only when the manager switched that pre-mark on).
+export function preMarks(row: SheetRow, preMark: PreMarkOption): { captain: boolean; keeper: boolean } {
+  const wanted = preMarkOf(preMark)
+  if (row.kind !== 'player') return { captain: false, keeper: false }
+  return { captain: wanted.captain && row.player.isCaptain, keeper: wanted.keeper && row.player.isKeeper }
+}
+
+// The captain's and the keeper's names for the match details, each only when that pre-mark is on.
+export function preMarkedLeaders(players: SheetPlayer[], preMark: PreMarkOption): { captain: string | null; keeper: string | null } {
+  const wanted = preMarkOf(preMark)
+  const names = leaderNames(players)
+  return { captain: wanted.captain ? names.captain : null, keeper: wanted.keeper ? names.keeper : null }
 }
 
 const two = (value: number): string => String(value).padStart(2, '0')

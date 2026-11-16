@@ -60,15 +60,20 @@ async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
       return null
     }
     const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const image = await new Promise<HTMLImageElement | null>((resolve) => {
+    // A data URL, not a blob URL: Safari can draw a blank logo when the blob URL is revoked right after the image loads.
+    const dataUrl = await new Promise<string | null>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+    if (!dataUrl) return null
+    return await new Promise<HTMLImageElement | null>((resolve) => {
       const element = new Image()
       element.onload = () => resolve(element)
       element.onerror = () => resolve(null)
-      element.src = objectUrl
+      element.src = dataUrl
     })
-    URL.revokeObjectURL(objectUrl)
-    return image
   } catch {
     return null
   }
@@ -263,6 +268,10 @@ export interface LeagueSharePosterOptions {
   footer?: boolean
   // For the test: the day "upcoming" is counted from.
   now?: Date
+  // The logos the other picture templates have: shown in the header (club, league, league affiliation) and as the sponsor strip.
+  logos?: { clubUrl?: string | null; leagueUrl?: string | null; leagueAffiliationUrl?: string | null; sponsorUrls?: string[] }
+  // The Text Size step as a factor (1 = Auto): the rows and their text grow with it, so fewer rows fit and the poster says "Next N".
+  textScale?: number
 }
 
 const CONTENT_LEFT = 64
@@ -296,6 +305,9 @@ export async function generateLeagueSharePoster(
       })
     }
   }
+  const extra = options.logos ?? {}
+  const sponsorUrls = (extra.sponsorUrls ?? []).slice(0, 4)
+  ;[extra.clubUrl, extra.leagueUrl, extra.leagueAffiliationUrl, ...sponsorUrls].forEach((url) => url && logoUrls.add(url))
   const imageEntries = await Promise.all(Array.from(logoUrls).map(async (url) => [url, await loadImageElement(url)] as const))
   const imagesByUrl = new Map(imageEntries)
 
@@ -308,16 +320,38 @@ export async function generateLeagueSharePoster(
   }
   paintPosterBackground(ctx, primaryColorHex)
 
+  // Header logos at the right, from the edge in: league, league affiliation, club (each only when set and loaded); the title keeps the rest.
+  const headerLogos = [extra.leagueUrl, extra.leagueAffiliationUrl, extra.clubUrl]
+    .map((url) => (url ? (imagesByUrl.get(url) ?? null) : null))
+    .filter((image): image is HTMLImageElement => image !== null)
+  const logoBox = 104
+  headerLogos.forEach((image, index) => {
+    const x = CONTENT_LEFT + CONTENT_WIDTH - logoBox - index * (logoBox + 14)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(x, 40, logoBox, logoBox)
+    const scale = Math.min((logoBox - 14) / (image.naturalWidth || image.width), (logoBox - 14) / (image.naturalHeight || image.height))
+    const w = (image.naturalWidth || image.width) * scale
+    const h = (image.naturalHeight || image.height) * scale
+    ctx.drawImage(image, x + (logoBox - w) / 2, 40 + (logoBox - h) / 2, w, h)
+  })
+  const titleWidth = CONTENT_WIDTH - (headerLogos.length > 0 ? headerLogos.length * (logoBox + 14) + 10 : 0)
   ctx.fillStyle = '#ffffff'
   ctx.font = `bold 56px ${FONT_STACK}`
-  ctx.fillText(model.league.name, CONTENT_LEFT, 130, CONTENT_WIDTH)
+  ctx.fillText(model.league.name, CONTENT_LEFT, 130, titleWidth)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.82)'
   ctx.font = `28px ${FONT_STACK}`
-  ctx.fillText([model.teamName, model.season?.label, model.clubName].filter(Boolean).join(' — '), CONTENT_LEFT, 172, CONTENT_WIDTH)
+  ctx.fillText([model.teamName, model.season?.label, model.clubName].filter(Boolean).join(' — '), CONTENT_LEFT, 172, titleWidth)
+
+  // The sponsor strip sits between the lists and the footer line; the lists give it the room.
+  const sponsorImages = sponsorUrls.map((url) => imagesByUrl.get(url) ?? null).filter((image): image is HTMLImageElement => image !== null)
+  const stripHeight = sponsorImages.length > 0 ? 112 : 0
+  const contentBottom = CONTENT_BOTTOM - stripHeight
+  // The Text Size step grows the rows and their text; fewer then fit.
+  const ts = Math.min(Math.max(1, options.textScale ?? 1), 1.4)
 
   // The room is shared between the ticked contents: each heading, then rows while they fit its share.
   const sections = [wantTeams, wantSchedule, wantKeyDates].filter(Boolean).length || 1
-  const share = (CONTENT_BOTTOM - CONTENT_TOP) / sections
+  const share = (contentBottom - CONTENT_TOP) / sections
   let top = CONTENT_TOP
   const heading = (label: string) => {
     ctx.fillStyle = '#ffffff'
@@ -337,7 +371,7 @@ export async function generateLeagueSharePoster(
 
   if (wantTeams) {
     heading('Teams')
-    const rowH = 56
+    const rowH = 56 * ts
     const fit = rowsThatFit(rowH, model.teams.length)
     model.teams.slice(0, fit).forEach((team, index) => {
       const y = top + 44 + index * rowH
@@ -345,14 +379,14 @@ export async function generateLeagueSharePoster(
       ctx.fillRect(CONTENT_LEFT, y, CONTENT_WIDTH, rowH - 8)
       avatar({ name: team.name, logoUrl: team.logoUrl, own: team.own }, CONTENT_LEFT + 8, y + 4, rowH - 16)
       ctx.fillStyle = '#ffffff'
-      ctx.font = `${team.own ? 'bold ' : ''}26px ${FONT_STACK}`
+      ctx.font = `${team.own ? 'bold ' : ''}${26 * ts}px ${FONT_STACK}`
       ctx.textAlign = 'left'
-      ctx.fillText(team.name, CONTENT_LEFT + rowH + 8, y + 33, CONTENT_WIDTH - rowH - 160)
+      ctx.fillText(team.name, CONTENT_LEFT + rowH + 8, y + 33 * ts, CONTENT_WIDTH - rowH - 160)
       if (team.own) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-        ctx.font = `20px ${FONT_STACK}`
+        ctx.font = `${20 * ts}px ${FONT_STACK}`
         ctx.textAlign = 'right'
-        ctx.fillText('Our team', CONTENT_LEFT + CONTENT_WIDTH - 16, y + 32)
+        ctx.fillText('Our team', CONTENT_LEFT + CONTENT_WIDTH - 16, y + 32 * ts)
         ctx.textAlign = 'left'
       }
     })
@@ -361,7 +395,7 @@ export async function generateLeagueSharePoster(
   }
 
   if (wantSchedule) {
-    const rowH = 84
+    const rowH = 84 * ts
     const fit = rowsThatFit(rowH, fixtures.length)
     // docs/specs/151: a poster is a snapshot, so when the fixtures do not all fit it says what it shows ("Next 8 Matches"), never
     // "and 12 more". The PDF and the texts carry the whole schedule.
@@ -370,16 +404,16 @@ export async function generateLeagueSharePoster(
       const y = top + 44 + index * rowH
       ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
       ctx.fillRect(CONTENT_LEFT, y, CONTENT_WIDTH, rowH - 8)
-      avatar(fixture.home, CONTENT_LEFT + 12, y + 10, 52)
-      avatar(fixture.away, CONTENT_LEFT + CONTENT_WIDTH - 64, y + 10, 52)
+      avatar(fixture.home, CONTENT_LEFT + 12, y + 10 * ts, 52 * ts)
+      avatar(fixture.away, CONTENT_LEFT + CONTENT_WIDTH - 12 - 52 * ts, y + 10 * ts, 52 * ts)
       ctx.fillStyle = '#ffffff'
-      ctx.font = `bold 26px ${FONT_STACK}`
+      ctx.font = `bold ${26 * ts}px ${FONT_STACK}`
       ctx.textAlign = 'center'
-      ctx.fillText(`${fixture.home.name}  vs  ${fixture.away.name}`, CONTENT_LEFT + CONTENT_WIDTH / 2, y + 34, CONTENT_WIDTH - 200)
+      ctx.fillText(`${fixture.home.name}  vs  ${fixture.away.name}`, CONTENT_LEFT + CONTENT_WIDTH / 2, y + 34 * ts, CONTENT_WIDTH - 200 * ts)
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-      ctx.font = `20px ${FONT_STACK}`
+      ctx.font = `${20 * ts}px ${FONT_STACK}`
       const where = fixture.venue ? ` · ${fixture.venue}` : ''
-      ctx.fillText(`${fixture.dateLabel}${fixture.timeLabel ? ` · ${fixture.timeLabel}` : ''}${where}`, CONTENT_LEFT + CONTENT_WIDTH / 2, y + 62, CONTENT_WIDTH - 200)
+      ctx.fillText(`${fixture.dateLabel}${fixture.timeLabel ? ` · ${fixture.timeLabel}` : ''}${where}`, CONTENT_LEFT + CONTENT_WIDTH / 2, y + 62 * ts, CONTENT_WIDTH - 200 * ts)
       ctx.textAlign = 'left'
     })
     top += share
@@ -387,22 +421,44 @@ export async function generateLeagueSharePoster(
 
   if (wantKeyDates) {
     heading('Key dates')
-    const rowH = 52
+    const rowH = 52 * ts
     const fit = rowsThatFit(rowH, model.keyDates.length)
     model.keyDates.slice(0, fit).forEach((date, index) => {
       const y = top + 44 + index * rowH
       ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
       ctx.fillRect(CONTENT_LEFT, y, CONTENT_WIDTH, rowH - 8)
       ctx.fillStyle = '#ffffff'
-      ctx.font = `bold 24px ${FONT_STACK}`
+      ctx.font = `bold ${24 * ts}px ${FONT_STACK}`
       ctx.textAlign = 'left'
-      ctx.fillText(date.label, CONTENT_LEFT + 16, y + 30, 300)
-      ctx.font = `24px ${FONT_STACK}`
+      ctx.fillText(date.label, CONTENT_LEFT + 16, y + 30 * ts, 300)
+      ctx.font = `${24 * ts}px ${FONT_STACK}`
       ctx.textAlign = 'right'
-      ctx.fillText(date.dateLabel, CONTENT_LEFT + CONTENT_WIDTH - 16, y + 30, CONTENT_WIDTH - 340)
+      ctx.fillText(date.dateLabel, CONTENT_LEFT + CONTENT_WIDTH - 16, y + 30 * ts, CONTENT_WIDTH - 340)
       ctx.textAlign = 'left'
     })
     if (fit < model.keyDates.length) more(model.keyDates.length - fit, top + 44 + fit * rowH)
+  }
+
+  if (sponsorImages.length > 0) {
+    // Sponsor logos are mostly wide, so each tile is wider than it is tall.
+    const tile = 70
+    const tileWidth = 130
+    const gap = 16
+    const rowWidth = sponsorImages.length * tileWidth + (sponsorImages.length - 1) * gap
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+    ctx.font = `20px ${FONT_STACK}`
+    ctx.textAlign = 'center'
+    ctx.fillText('Proudly sponsored by', POSTER_SIZE / 2, contentBottom + 26)
+    sponsorImages.forEach((image, index) => {
+      const x = (POSTER_SIZE - rowWidth) / 2 + index * (tileWidth + gap)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(x, contentBottom + 38, tileWidth, tile)
+      const scale = Math.min((tileWidth - 10) / (image.naturalWidth || image.width), (tile - 10) / (image.naturalHeight || image.height))
+      const w = (image.naturalWidth || image.width) * scale
+      const h = (image.naturalHeight || image.height) * scale
+      ctx.drawImage(image, x + (tileWidth - w) / 2, contentBottom + 38 + (tile - h) / 2, w, h)
+    })
+    ctx.textAlign = 'left'
   }
 
   if (options.footer !== false) {

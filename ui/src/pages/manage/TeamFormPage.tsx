@@ -137,7 +137,7 @@ function TeamSponsorCard({
     <RecordCard
       flat
       title={sponsor.name}
-      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'wide' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
       editTo={backHere(`/manage/sponsors/${sponsor.id}/edit`)}
@@ -160,7 +160,7 @@ function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
     <RecordCard
       flat
       title={sponsor.name}
-      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'wide' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
       editTo={backHere(`/manage/sponsors/${sponsor.id}/edit`)}

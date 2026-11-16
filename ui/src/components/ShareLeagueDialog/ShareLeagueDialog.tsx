@@ -202,6 +202,7 @@ export function ShareLeagueDialog({ open, onClose, clubId, league, seasonId, pre
     selectedSponsorIds,
     clubLogoUrl: data.clubProfile?.logoUrl ?? null,
     leagueLogoUrl: league.logoUrl ?? null,
+    leagueAffiliationLogoUrl: league.affiliationLogoUrl ?? null,
     clubWebsite: data.clubProfile?.website ?? null,
     shareTitle: model.title,
   }

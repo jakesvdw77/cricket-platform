@@ -95,6 +95,13 @@ export function MatchContentControls(props: Props) {
             {directionsReason}
           </Typography>
         )}
+        {lineup && (
+          <CompactSwitch
+            label="Player Pictures"
+            checked={choices.match.include.playerPictures}
+            onChange={(next) => guard(() => updateChoices({ match: { include: { playerPictures: next } } }))}
+          />
+        )}
         {children}
       </ShareControlGroup>
       {(model.content === 'FUN_FACTS' || showFacts) && (

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useRememberedState } from '../../../../hooks/useRememberedState'
 import type { ReactNode } from 'react'
 import { Box, InputAdornment, Stack, ToggleButton, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
@@ -69,10 +70,10 @@ export function ResponsesPageShell({
 }: ResponsesPageShellProps) {
   // docs/specs/085 (C8): the browser tab names the poll.
   useDocumentTitle(title)
-  // Neither the view nor the search is persisted: a fresh visit starts on By time slot.
+  // The view is remembered (owner decision 2026-11-16); the search never is. A first visit starts on By time slot.
   const [searchParams] = useSearchParams()
   const returnTo = safeReturnTo(searchParams.get('returnTo'))
-  const [view, setView] = useState<View>('slot')
+  const [view, setView] = useRememberedState<View>('availabilityResponses:view', 'slot', (value) => value === 'slot' || value === 'player')
   const [search, setSearch] = useState('')
 
   const filteredRows = useMemo(() => filterPlayers(responses.rows, search), [responses.rows, search])

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import type { MetaOptions } from '../teamSheet'
-import { BLANK_LINES, leaderNames, metaCells, sheetPages, preMarks } from '../teamSheet'
+import { BLANK_LINES, metaCells, sheetPages, preMarks, preMarkedLeaders } from '../teamSheet'
+import type { PreMarkOption } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
 import { drawPosterPage, posterImageUrls } from './teamSheetPosterPdf'
@@ -41,7 +42,7 @@ export interface PosterExtras {
 }
 
 export interface TeamSheetPdfOptions {
-  preMark: boolean
+  preMark: PreMarkOption
   // The two empty lines for a late or guest player; on unless switched off.
   extraLines?: boolean
   // The Toss won by and Elected to boxes; off unless switched on (the sheet is handed in before the game).
@@ -161,7 +162,7 @@ function box(doc: jsPDF, centreX: number, centreY: number, filled: boolean): voi
   }
 }
 
-function drawTable(doc: jsPDF, rows: SheetRow[], preMark: boolean, leaderTicks: boolean, y: number): number {
+function drawTable(doc: jsPDF, rows: SheetRow[], preMark: PreMarkOption, leaderTicks: boolean, y: number): number {
   const cols = leaderTicks ? COLS : COLS_NO_TICKS
   // Header band
   doc.setFillColor(...GREEN)
@@ -238,7 +239,7 @@ export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: Tea
       }
       const afterHeader = drawHeader(doc, sheet, imageOf(sheet.teamLogoUrl), imageOf(sheet.leagueLogoUrl))
       const leaderTicks = options.leaderTicks !== false
-      const names = options.preMark ? leaderNames(sheet.players) : { captain: null, keeper: null }
+      const names = preMarkedLeaders(sheet.players, options.preMark)
       const afterMeta = drawMeta(doc, sheet.match, { tossBoxes: options.tossBoxes === true, leaderFields: !leaderTicks, ...names }, afterHeader)
       const end = drawTable(doc, rows, options.preMark, leaderTicks, afterMeta)
       drawFooter(doc, end)

@@ -6,7 +6,7 @@ import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
-import { ShareControlGroup, ShareImageActions, ShareLogoControls } from '../ShareCore'
+import { ShareControlGroup, ShareImageActions, ShareLogoControls, ShareTextSizeControl } from '../ShareCore'
 import { ShareResultCanvas } from '../ShareResultDialog/ShareResultCanvas'
 import { downloadFile } from '../../utils/share/downloadFile'
 import { effectiveLayout, MATCH_CONTENT_LABELS, usesLineup } from '../../utils/share/matchShareFormats'
@@ -88,6 +88,7 @@ export function MatchImageScreen(props: MatchScreenProps & { tv?: boolean }) {
               </CompactToggleGroup>
             </ShareControlGroup>
           )}
+          <ShareTextSizeControl choices={props.choices} updateChoices={props.updateChoices} />
           {fellBack && (
             <Typography variant="caption" color="text.secondary" role="status" sx={{ display: 'block', mb: 1.5 }}>
               Both teams do not fit side by side at this size, so each team gets its own image.
@@ -130,7 +131,26 @@ export function MatchImageScreen(props: MatchScreenProps & { tv?: boolean }) {
           {(view) => <ShareResultCanvas canvasRef={canvasRef} ariaLabel={label} width={view.width} />}
         </SharePreviewStage>
       }
-      actions={<ShareImageActions file={file} shareTitle={shareTitle} error={error} />}
+      actions={
+        <ShareImageActions
+          file={file}
+          shareTitle={shareTitle}
+          error={error}
+          // The other sizes are made on demand, with the same choices as the preview (the TV summary has one fixed size).
+          sizes={
+            tv
+              ? undefined
+              : {
+                  current: size,
+                  options: IMAGE_SIZES.map((item) => ({
+                    id: item,
+                    label: SIZE_LABELS[item],
+                    make: async () => new File([await generateMatchImage(shown, { ...options, size: item })], fileName.replace(/\.png$/, ` - ${SIZE_LABELS[item]}.png`), { type: 'image/png' }),
+                  })),
+                }
+          }
+        />
+      }
     />
   )
 }

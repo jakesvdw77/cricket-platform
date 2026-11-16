@@ -56,6 +56,8 @@ beforeEach(() => {
   // docs/specs/043-list-toolbar-gold-standard.md: PlayerList's Section filter persists via usePersistedListFilters -
   // clear the real jsdom localStorage so a selection made in one test never leaks into the next.
   localStorage.clear()
+  // These tests drive the Cards view; a new user's default is the List (owner, 2026-11-16), so they start from Cards.
+  localStorage.setItem('playerList:view', 'cards')
   linkRequestsSummary.mockReset()
   linkRequestsSummary.mockReturnValue({ data: undefined })
 })

@@ -1,3 +1,4 @@
+import { useRememberedState } from '../../hooks/useRememberedState'
 import { useEffect, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -96,7 +97,7 @@ export default function SubscriptionList() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useRememberedState<string>('admin:subscriptions:sort', SORT_OPTIONS[0].value, (value) => typeof value === 'string')
 
   // Debounced into the query key, not filtered client-side — the API's `search` param does
   // the filtering, per docs/standards/frontend.md's pagination rule.

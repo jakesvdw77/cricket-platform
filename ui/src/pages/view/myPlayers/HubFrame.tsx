@@ -247,10 +247,17 @@ export function HubFooterButton({ onClick, children, icon }: { onClick: () => vo
   return (
     <ButtonBase
       onClick={onClick}
+      aria-label={children}
       sx={{ minHeight: 44, gap: 1.25, fontFamily: HUB.display, fontWeight: 600, fontSize: 20, letterSpacing: '.12em', textTransform: 'uppercase', color: HUB.cream, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: 2 } }}
     >
       {icon ?? <ArrowBackIcon sx={{ fontSize: 20 }} />}
-      {children}
+      {/* On a small phone the footer just says Back (owner, 2026-11-16); the full label stays its accessible name. */}
+      <Box component="span" aria-hidden sx={{ display: 'none', '@media (max-width: 479.95px)': { display: 'inline' } }}>
+        Back
+      </Box>
+      <Box component="span" sx={{ '@media (max-width: 479.95px)': { display: 'none' } }}>
+        {children}
+      </Box>
     </ButtonBase>
   )
 }

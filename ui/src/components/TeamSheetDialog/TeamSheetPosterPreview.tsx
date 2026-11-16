@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { SheetRow } from '../../utils/teamSheet'
-import { BLANK_LINES, hourStyle, leaderNames, preMarks, sheetPages } from '../../utils/teamSheet'
+import { BLANK_LINES, hourStyle, leaderNames, preMarkOf, preMarks, sheetPages, surnameDisplay } from '../../utils/teamSheet'
+import type { PreMarkOption } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
 const GREEN = '#14452f'
@@ -11,7 +12,7 @@ const BOX = { display: 'inline-block', width: 12, height: 12, border: `1.5px sol
 
 export interface TeamSheetPosterPreviewProps {
   spec: TeamSheetSpec
-  preMark: boolean
+  preMark: PreMarkOption
   extraLines: boolean
   batBowl: boolean
   playingBox?: boolean
@@ -28,7 +29,7 @@ function Logo({ url, label, height = 56 }: { url: string | null | undefined; lab
   return label ? <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: GREEN, textAlign: 'center', lineHeight: 1.2 }}>{label}</Typography> : <Box />
 }
 
-function PlayerRow({ row, preMark, zebra, batBowl, comment, side, playing }: { row: SheetRow; preMark: boolean; zebra: boolean; batBowl: boolean; comment: boolean; side: boolean; playing: boolean }) {
+function PlayerRow({ row, preMark, zebra, batBowl, comment, side, playing }: { row: SheetRow; preMark: PreMarkOption; zebra: boolean; batBowl: boolean; comment: boolean; side: boolean; playing: boolean }) {
   const marks = preMarks(row, preMark)
   const cell = { border: `1px solid ${LINE}`, py: 0.4, px: 0.75, fontSize: '0.78rem', bgcolor: zebra ? '#eef2ee' : 'transparent' } as const
   return (
@@ -41,7 +42,7 @@ function PlayerRow({ row, preMark, zebra, batBowl, comment, side, playing }: { r
       <Box component="td" sx={{ ...cell, fontStyle: row.kind === 'player' && row.player.twelfth ? 'italic' : 'normal' }}>
         {row.kind === 'player' ? (
           <>
-            {row.player.firstName} <b>{row.player.lastName.toUpperCase()}</b>
+            {row.player.firstName} <b>{surnameDisplay(row.player.lastName)}</b>
           </>
         ) : null}
       </Box>
@@ -63,7 +64,7 @@ export function TeamSheetPosterPreview({ spec, preMark, extraLines, batBowl, pla
   const title = poster?.leagueTitle ?? spec.match.league
   const side = Boolean(spec.selectedSide)
   const playing = !side && playingBox
-  const captain = preMark || side ? leaderNames(spec.players).captain : null
+  const captain = preMarkOf(preMark).captain || side ? leaderNames(spec.players).captain : null
   const banner = side ? (spec.players.some((player) => player.twelfth) ? 'PLAYING XII' : 'PLAYING XI') : 'TEAM SHEET'
   return (
     <Box data-testid="team-sheet-poster" sx={{ position: 'relative', bgcolor: '#fff', color: INK, border: 1, borderColor: 'divider', borderRadius: 1, boxShadow: 2, width: '100%', maxWidth: 794, mx: 'auto', overflow: 'hidden', pl: 5, pr: 2, pt: 1.5 }}>
