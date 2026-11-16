@@ -56,9 +56,9 @@ export interface LogoLayout {
 
 // Box sizes as a share of the shorter side, per format.
 const BOX = {
-  PDF: { header: 0.09, team: 0.1, sponsor: 0.07 },
-  IMAGE: { header: 0.1, team: 0.17, sponsor: 0.11 },
-  TV: { header: 0.11, team: 0.18, sponsor: 0.12 },
+  PDF: { header: 0.09, team: 0.1, sponsor: 0.055 },
+  IMAGE: { header: 0.1, team: 0.17, sponsor: 0.08 },
+  TV: { header: 0.11, team: 0.18, sponsor: 0.09 },
 } as const
 
 const MARGIN = 0.04
@@ -68,7 +68,7 @@ const FOOTER_HEIGHT = 0.045
 // A canvas this much taller than wide (the Story size) wraps its sponsor strip to two rows.
 const TWO_ROW_ASPECT = 1.7
 // A sponsor tile is this much wider than tall.
-const SPONSOR_WIDTH_RATIO = 1.9
+const SPONSOR_WIDTH_RATIO = 2.7
 
 export function layoutLogos(input: LogoLayoutInput): LogoLayout {
   const { width, height } = input
@@ -123,7 +123,7 @@ export function layoutLogos(input: LogoLayoutInput): LogoLayout {
     // Two sponsors still fit one row on a tall size; three or four wrap to two rows of two.
     const rows = height / width >= TWO_ROW_ASPECT && count > 2 ? 2 : 1
     const perRow = Math.ceil(count / rows)
-    // Sponsor logos are mostly wide, so each tile is wider than it is tall (a square tile squashed them): up to 1.9 times its height.
+    // Sponsor logos are mostly wide, so each tile is wider than it is tall (a square tile squashed them): up to 2.7 times its height, and a shorter tile than before, so a wide logo is not left in a tall empty box.
     const box = unit * sizes.sponsor
     const boxWidth = Math.min(box * SPONSOR_WIDTH_RATIO, (innerWidth - gap * (perRow - 1)) / perRow)
     const stripHeight = rows * box + (rows - 1) * gap

@@ -1,9 +1,11 @@
 import { ButtonBase, Typography } from '@mui/material'
 import { LogoAvatar } from '../LogoAvatar'
+import { SponsorLogo } from '../SponsorLogo'
 
 export interface RecordIconButtonProps {
   imageUrl?: string | null
-  shape: 'circular' | 'rounded'
+  // 'wide' is for a sponsor: a tile as wide as the logo needs, 72 px high (most sponsor logos are wide, a square avatar left them tiny).
+  shape: 'circular' | 'rounded' | 'wide'
   label: string
   name: string
   initials: string
@@ -26,6 +28,23 @@ export interface RecordIconButtonProps {
 // accessible name (unchanged); `name` is deliberately just the bare name, shown in full
 // (the tile grows to 160 px, then wraps) so a long name is never cut off.
 export function RecordIconButton({ imageUrl, shape, label, name, initials, onClick, compact }: RecordIconButtonProps) {
+  if (shape === 'wide') {
+    return (
+      <ButtonBase
+        onClick={onClick}
+        title={label}
+        aria-label={label}
+        sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75, p: 0.5, borderRadius: 1, minWidth: 120, maxWidth: 220 }}
+      >
+        <SponsorLogo src={imageUrl} fallback={initials} height={compact ? 40 : 72} />
+        {!compact && (
+          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: '100%', textAlign: 'center', lineHeight: 1.25 }}>
+            {name}
+          </Typography>
+        )}
+      </ButtonBase>
+    )
+  }
   if (compact) {
     return (
       <ButtonBase onClick={onClick} title={label} aria-label={label} sx={{ borderRadius: '50%', width: 'auto' }}>

@@ -380,7 +380,7 @@ export default function TeamDetailPage() {
                 <RecordIconButton
                   key={sponsor.id}
                   imageUrl={sponsor.logoUrl}
-                  shape="rounded"
+                  shape="wide"
                   label={`${sponsor.name} — Sponsor`}
                   name={sponsor.name}
                   initials={initialsFromName(sponsor.name)}
