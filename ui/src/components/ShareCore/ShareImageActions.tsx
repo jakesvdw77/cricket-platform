@@ -42,13 +42,13 @@ export function ShareImageActions({ file, shareTitle, error, sizes }: ShareImage
   // Another size: the file is made when asked for, then shared or downloaded, and the preview is left as it was.
   const [making, setMaking] = useState(false)
   const otherSizes = sizes ? sizes.options.filter((item) => item.id !== sizes.current) : []
-  const withSize = async (id: string, use: (made: File) => Promise<void> | void) => {
+  const withSize = async (id: string, handOut: (made: File) => Promise<void> | void) => {
     const option = sizes?.options.find((item) => item.id === id)
     if (!option) return
     setFailure(null)
     setMaking(true)
     try {
-      await use(await option.make())
+      await handOut(await option.make())
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') return
       setFailure('That size could not be made. Try again.')
