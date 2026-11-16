@@ -106,13 +106,13 @@ export default function ResultList() {
     )
   const setSort = (next: string) => setParam('sort', next === SORT_ASC ? 'asc' : null)
   const setFocus = (next: ResultListFocus | null) => setParam('focus', next)
-  // Section, League and Season are saved per club; Team, Outcome, Status and the counters' quick filter are per visit.
-  const [{ sectionId, leagueId, seasonId }, setSaved] = usePersistedListFilters(`resultList:filters:${clubId}`, {
+  // Section, League, Season and Team are saved per club (the team is what a manager filters by most); Outcome, Status and the counters' quick filter are per visit.
+  const [{ sectionId, leagueId, seasonId, teamId }, setSaved] = usePersistedListFilters(`resultList:filters:${clubId}`, {
     sectionId: null as string | null,
     leagueId: null as string | null,
     seasonId: null as string | null,
+    teamId: null as string | null,
   })
-  const [teamId, setTeamId] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<ResultOutcomeType | null>(null)
   const [status, setStatus] = useState<ResultStatus | null>(null)
   const [view, setView] = useListViewPreference('resultList:view', 'list')
@@ -320,7 +320,7 @@ export default function ResultList() {
       teamId={teamId}
       onLeagueChange={(next) => setSaved({ leagueId: next })}
       onSectionChange={(next) => setSaved({ sectionId: next })}
-      onTeamChange={setTeamId}
+      onTeamChange={(next) => setSaved({ teamId: next })}
       searchValue={search}
       onSearchChange={setSearch}
       extraSelects={[
@@ -370,8 +370,7 @@ export default function ResultList() {
         )
       }
       onClearAll={() => {
-        setSaved({ leagueId: null, sectionId: null })
-        setTeamId(null)
+        setSaved({ leagueId: null, sectionId: null, teamId: null })
         setOutcome(null)
         setStatus(null)
         setFocus(null)
