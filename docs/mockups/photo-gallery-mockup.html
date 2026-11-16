@@ -1,0 +1,130 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Photo gallery (mockup)</title><style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ground:#0b1f17;--panel:#0f2a20;--line:rgba(247,243,232,.28);--soft:rgba(247,243,232,.14);--muted:rgba(247,243,232,.66);--card:rgba(247,243,232,.07);
+--g900:#0B3D26;--g700:#14633F;--ink:#10231a;--inkMuted:#55665c;--cardLine:#d8dfd2;--ground2:#f4f1e6;--err:#b0402e;
+--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#16241d;color:var(--cream);font-family:var(--body);padding:24px 16px 80px}
+h1{font-family:var(--display);font-size:32px;margin:0 0 4px;letter-spacing:.04em;text-transform:uppercase}
+h2{font-family:var(--display);font-size:22px;margin:38px 0 4px;color:var(--sand);letter-spacing:.08em;text-transform:uppercase}
+.note{color:var(--muted);font-size:14px;max-width:880px;margin:0 0 12px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+/* hub */
+.hub{background:var(--ground);border:1px solid var(--line);border-radius:6px;padding:14px;overflow:hidden}
+.hub.d{width:900px;max-width:100%}.hub.p{width:360px}
+.pg{font-family:var(--display);font-size:26px;letter-spacing:.1em;text-transform:uppercase;color:var(--sand);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.pg .btn{margin-left:auto}
+.btn{border:1px solid var(--line);border-radius:4px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--cream);white-space:nowrap}
+.btn.g{background:var(--gold);border-color:var(--gold);color:#10231a}
+.ph{background:linear-gradient(135deg,#2c5a43,#6b8f5e 45%,#c9b26a);position:relative;display:flex;align-items:flex-end;justify-content:flex-start;color:rgba(255,255,255,.85);font-size:12px}
+.ph.b{background:linear-gradient(135deg,#27455a,#5e8a9b 50%,#d5c58a)}.ph.c{background:linear-gradient(135deg,#4a3b2a,#8a7048 50%,#d9c08a)}.ph.d{background:linear-gradient(135deg,#2a3f2f,#4f7a55 55%,#a8c08a)}
+.ph::after{content:"\1F4F7";position:absolute;right:8px;top:6px;opacity:.55;font-size:14px}
+.car{position:relative;border-radius:6px;overflow:hidden;margin-bottom:10px}
+.car .ph{height:300px;align-items:flex-end}.p .car .ph{height:210px}
+.car .meta{position:absolute;left:0;right:0;bottom:0;padding:26px 14px 10px;background:linear-gradient(transparent,rgba(0,0,0,.7));font-size:14px}
+.car .meta b{font-family:var(--display);font-size:20px;letter-spacing:.03em}
+.arr{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);display:grid;place-items:center;font-size:20px}
+.arr.l{left:10px}.arr.r{right:10px}
+.dots{position:absolute;top:10px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.4)}.dots i.on{background:var(--gold)}
+.badge{position:absolute;left:10px;top:8px;background:rgba(0,0,0,.55);border-radius:10px;padding:1px 9px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.in{flex:1 1 220px;border:1px solid var(--line);border-radius:4px;padding:7px 12px;color:var(--muted);font-size:14px;background:var(--card)}
+.sel{border:1px solid var(--line);border-radius:4px;padding:7px 12px;font-size:13px;background:var(--card)}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.p .grid{grid-template-columns:repeat(3,1fr)}
+.grid .ph{aspect-ratio:1/1;border-radius:3px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 8px}
+.more{display:flex;justify-content:center;margin-top:12px}
+/* dialogs (light, like the manager) */
+.dlg{background:#fff;color:var(--ink);border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.4);width:520px;max-width:100%;padding:0 0 12px}
+.dlg h3{font-family:var(--display);font-size:24px;margin:0;padding:14px 18px 6px;color:var(--g900);text-transform:uppercase;letter-spacing:.03em}
+.dlg .bd{padding:0 18px;display:grid;gap:10px}
+.fld{border:1px solid var(--cardLine);border-radius:4px;padding:8px 12px;font-size:14px;color:var(--inkMuted)}
+.drop{border:2px dashed var(--g700);border-radius:6px;padding:16px;text-align:center;color:var(--g700);font-weight:600;font-size:14px}
+.strip{display:flex;gap:6px}.strip .ph{width:64px;height:64px;border-radius:3px}.strip .x{position:absolute;left:3px;top:3px;font-size:11px;background:rgba(0,0,0,.6);border-radius:50%;width:16px;height:16px;display:grid;place-items:center}
+.bar{height:4px;background:#e5eadf;border-radius:2px;margin-top:3px;position:absolute;left:4px;right:4px;bottom:4px}.bar i{display:block;height:100%;background:var(--gold);border-radius:2px}
+.dlg .ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px 0}
+.lb{border:1px solid var(--cardLine);border-radius:16px;padding:5px 16px;font-size:13px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.04em}.lb.f{background:var(--g700);color:#fff;border-color:var(--g700)}
+.chip{background:#e8efe6;color:var(--g900);border-radius:10px;padding:1px 9px;font-size:12px;font-weight:600}
+/* manager */
+.mgr{background:linear-gradient(170deg,#e9efe6,#f7f4ea);color:var(--ink);border:1px solid var(--cardLine);border-radius:6px;padding:16px;width:900px;max-width:100%}
+.mgr h4{font-family:var(--display);font-size:32px;margin:0 0 10px;color:var(--g900);text-transform:uppercase;display:flex;align-items:center;gap:12px}
+.mgr h4 .lb{margin-left:auto}
+.tb{display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--cardLine);border-radius:6px;padding:10px;margin-bottom:12px}
+.tb .in2{flex:1 1 200px;border:1px solid var(--cardLine);border-radius:6px;padding:7px 12px;font-size:14px;color:var(--inkMuted)}
+.tb .sl{border:1px solid var(--cardLine);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mc{background:#fff;border:1px solid var(--cardLine);border-radius:6px;overflow:hidden;font-size:12px;color:var(--inkMuted)}
+.mc .ph{height:120px}.mc .in{padding:8px 10px}.mc b{color:var(--ink);font-size:13px;display:block}
+.mc .del{position:absolute;right:6px;top:6px;background:rgba(0,0,0,.6);border-radius:50%;width:28px;height:28px;display:grid;place-items:center;color:#fff;font-size:14px}
+.mc .ph::after{display:none}
+.ul{color:var(--muted);font-size:14px;max-width:880px}
+</style></head><body>
+<h1>Photo gallery</h1>
+<p class="note">First, simple version for the tournament. Mockup only: the pictures are coloured placeholders and the names and numbers are made up.</p>
+
+<h2>1. Player Hub, Gallery (desktop and phone)</h2>
+<p class="note">A new Gallery item in the Hub menu. At the top, a looping carousel of the latest 12 photos (newest first). Under it, a search box and League, Team and Player filters, then small thumbnails, 24 at a time, with Load More. A thumbnail opens the photo large.</p>
+<div class="row">
+<div><p class="cap">Desktop</p><div class="hub d">
+  <div class="pg">Gallery <span class="btn g">Add Photos</span></div>
+  <div class="car"><div class="ph"><span class="badge">Latest · 3 of 12</span><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div><span class="arr l">&#8249;</span><span class="arr r">&#8250;</span>
+    <div class="meta"><b>Irene Veterans v Delta CC</b><br>VCASA Club Champs · Jaco, Willie · Thu 19 Nov, 11:42 · added by a parent</div></div></div>
+  <div class="tools"><div class="in">&#128269; Search photos, teams, players or leagues</div><span class="sel">All leagues &#9662;</span><span class="sel">All teams &#9662;</span><span class="sel">All players &#9662;</span></div>
+  <p class="sub">48 photos</p>
+  <div class="grid"><div class="ph"></div><div class="ph b"></div><div class="ph c"></div><div class="ph d"></div><div class="ph"></div><div class="ph c"></div><div class="ph b"></div><div class="ph"></div><div class="ph d"></div><div class="ph c"></div><div class="ph"></div><div class="ph b"></div></div>
+  <div class="more"><span class="btn">Load More</span></div>
+</div></div>
+
+<div><p class="cap">Phone</p><div class="hub p">
+  <div class="pg">Gallery <span class="btn g">Add</span></div>
+  <div class="car"><div class="ph"><span class="badge">3 of 12</span><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i></div><span class="arr l">&#8249;</span><span class="arr r">&#8250;</span>
+    <div class="meta"><b>Irene Vets v Delta CC</b><br>VCASA Club Champs · 19 Nov</div></div></div>
+  <div class="tools"><div class="in" style="flex-basis:100%">&#128269; Search photos</div><span class="sel">League &#9662;</span><span class="sel">Team &#9662;</span><span class="sel">Player &#9662;</span></div>
+  <p class="sub">48 photos</p>
+  <div class="grid"><div class="ph"></div><div class="ph b"></div><div class="ph c"></div><div class="ph d"></div><div class="ph"></div><div class="ph c"></div></div>
+  <div class="more"><span class="btn">Load More</span></div>
+</div></div>
+</div>
+
+<h2>2. Add Photos dialog</h2>
+<p class="note">Open from the camera or the library, up to 10 photos. The browser shrinks each one before it is sent (a medium copy and a small thumbnail), so uploads stay quick on tournament signal and a phone's rotation is correct. One caption and one set of tags for the whole batch.</p>
+<div class="dlg"><h3>Add Photos</h3><div class="bd">
+  <div class="drop">Take a photo or choose from your library<br><small style="font-weight:400">JPEG or PNG, up to 10 photos</small></div>
+  <div class="strip"><div class="ph" style="position:relative"><span class="x">&times;</span><span class="bar"><i style="width:100%"></i></span></div><div class="ph b" style="position:relative"><span class="x">&times;</span><span class="bar"><i style="width:70%"></i></span></div><div class="ph c" style="position:relative"><span class="x">&times;</span><span class="bar"><i style="width:20%"></i></span></div></div>
+  <div class="fld">Caption (optional)</div>
+  <div class="fld">League: VCASA Club Champs &#9662;</div>
+  <div class="fld">Team: Irene Veterans &#9662;</div>
+  <div class="fld">Players: <span class="chip">Jaco van der Westhuizen &times;</span> <span class="chip">Willie Prinsloo &times;</span> &#9662;</div>
+</div><div class="ft"><span class="lb">Cancel</span><span class="lb f">Upload 3 Photos</span></div></div>
+
+<h2>3. Manager page, Gallery (Club menu)</h2>
+<p class="note">The same photos for a manager, with the uploader and date on each card and a Delete icon. Delete asks first: "Delete this photo? It is removed for everyone." The same filters, paged 24 at a time.</p>
+<div class="mgr"><h4>Gallery <span class="lb f">Add Photos</span></h4>
+  <div class="tb"><div class="in2">&#128269; Search photos, teams, players or leagues</div><span class="sl">All leagues &#9662;</span><span class="sl">All teams &#9662;</span><span class="sl">All players &#9662;</span></div>
+  <div class="cards">
+    <div class="mc"><div class="ph" style="position:relative"><span class="del">&#128465;</span></div><div class="in"><b>Irene Veterans v Delta CC</b>A parent · Thu 19 Nov, 11:42</div></div>
+    <div class="mc"><div class="ph b" style="position:relative"><span class="del">&#128465;</span></div><div class="in"><b>Untagged</b>M. Boshoff · Thu 19 Nov, 11:30</div></div>
+    <div class="mc"><div class="ph c" style="position:relative"><span class="del">&#128465;</span></div><div class="in"><b>VCASA Club Champs</b>A parent · Thu 19 Nov, 10:05</div></div>
+    <div class="mc"><div class="ph d" style="position:relative"><span class="del">&#128465;</span></div><div class="in"><b>Irene Veterans</b>You · Wed 18 Nov, 16:20</div></div>
+  </div>
+  <div class="more"><span class="lb">Load More</span></div>
+</div>
+
+<h2>What is deliberately left out</h2>
+<ul class="ul">
+<li>No approval step, flagging or comments yet. Photos show at once; a manager deletes what is not up to standard.</li>
+<li>No editing of a photo's tags after upload (delete and upload again).</li>
+<li>Photos are for signed-in club members only, never public.</li>
+</ul>
+<h2>Questions for you</h2>
+<ul class="ul">
+<li>Should a signed-in account that has <b>no held player yet</b> be able to upload? (Default: no.)</li>
+<li>Can an uploader delete their <b>own</b> photo? (Default: yes.)</li>
+<li>Must a photo have at least one <b>tag</b>? (Default: no, untagged photos show under All.)</li>
+<li>Should the carousel follow the filters, or always show the club's latest 12? (Default: always the latest 12.)</li>
+</ul>
+</body></html>

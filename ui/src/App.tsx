@@ -29,6 +29,7 @@ import ManagerHome from './pages/manage/ManagerHome'
 import ManagerOverviewPage from './pages/manage/ManagerOverviewPage'
 import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
 import ClubOverviewPage from './pages/manage/ClubOverviewPage'
+import GalleryPage from './pages/manage/GalleryPage'
 import ClubContactList from './pages/manage/ClubContactList'
 import ClubContactFormPage from './pages/manage/ClubContactFormPage'
 import ClubContactDetailPage from './pages/manage/ClubContactDetailPage'
@@ -313,7 +314,8 @@ function App() {
               </Route>
               {/* docs/specs/056-club-profile-overview.md: two new dashboard placeholders, same
                   "Coming soon" EmptyState precedent as results/permissions above. */}
-              <Route path="gallery" element={<EmptyState title="Gallery" description="Coming soon." />} />
+              {/* docs/specs/157-photo-gallery.md: the club photo gallery. */}
+              <Route path="gallery" element={<GalleryPage />} />
               <Route path="notifications" element={<EmptyState title="Notifications" description="Coming soon." />} />
               {/* docs/specs/093-team-selection-hub.md: Squads became Team selection - one layout route (header +
                   Matches | Players | Time slots | Batting order switch); the old URL redirects. */}

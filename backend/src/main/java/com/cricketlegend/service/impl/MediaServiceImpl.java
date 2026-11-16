@@ -64,4 +64,21 @@ public class MediaServiceImpl implements MediaService {
 
         return new MediaUploadResponse("/media/" + filename);
     }
+
+    @Override
+    public void delete(String url) {
+        String prefix = "/media/";
+        if (url == null || !url.startsWith(prefix)) {
+            return;
+        }
+        String name = url.substring(prefix.length());
+        if (name.isEmpty() || name.contains("/") || name.contains("\\") || name.contains("..")) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(Path.of(storagePath).resolve(name));
+        } catch (IOException e) {
+            // The row is already gone; a file that cannot be removed is only left behind.
+        }
+    }
 }

@@ -75,5 +75,6 @@
     <include file="db/changelog/v1/068-field-contact-photo.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/069-affiliation-and-host.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/070-match-stage-and-placeholders.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/071-photo-gallery.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

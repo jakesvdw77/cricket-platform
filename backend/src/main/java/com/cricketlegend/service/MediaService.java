@@ -36,4 +36,11 @@ public interface MediaService {
      * isn't a key of {@code allowedContentTypes}.
      */
     MediaUploadResponse upload(MultipartFile file, Map<String, String> allowedContentTypes);
+
+    /**
+     * Removes the file a {@code /media/<name>} URL from {@link #upload} points at (docs/specs/157-photo-gallery.md: a deleted
+     * photo takes its files with it). Only a plain file name under the storage directory is touched, and a missing file or
+     * an unrecognised URL is ignored.
+     */
+    void delete(String url);
 }
