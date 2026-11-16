@@ -163,10 +163,27 @@ export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LI
   return pages.length > 0 ? pages : [[]]
 }
 
-// Whether the Capt and Keeper boxes of a row are pre-filled (only when the manager switched pre-marking on).
-export function preMarks(row: SheetRow, preMark: boolean): { captain: boolean; keeper: boolean } {
-  if (!preMark || row.kind !== 'player') return { captain: false, keeper: false }
-  return { captain: row.player.isCaptain, keeper: row.player.isKeeper }
+// Pre-marking the captain and the wicketkeeper are two separate choices. A plain boolean still means both (the older callers).
+export interface PreMark {
+  captain: boolean
+  keeper: boolean
+}
+export type PreMarkOption = boolean | PreMark
+export const preMarkOf = (option: PreMarkOption | undefined): PreMark =>
+  typeof option === 'object' && option !== null ? option : { captain: option === true, keeper: option === true }
+
+// Whether the Capt and Keeper boxes of a row are pre-filled (each only when the manager switched that pre-mark on).
+export function preMarks(row: SheetRow, preMark: PreMarkOption): { captain: boolean; keeper: boolean } {
+  const wanted = preMarkOf(preMark)
+  if (row.kind !== 'player') return { captain: false, keeper: false }
+  return { captain: wanted.captain && row.player.isCaptain, keeper: wanted.keeper && row.player.isKeeper }
+}
+
+// The captain's and the keeper's names for the match details, each only when that pre-mark is on.
+export function preMarkedLeaders(players: SheetPlayer[], preMark: PreMarkOption): { captain: string | null; keeper: string | null } {
+  const wanted = preMarkOf(preMark)
+  const names = leaderNames(players)
+  return { captain: wanted.captain ? names.captain : null, keeper: wanted.keeper ? names.keeper : null }
 }
 
 const two = (value: number): string => String(value).padStart(2, '0')

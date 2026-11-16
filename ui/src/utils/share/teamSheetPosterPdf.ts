@@ -1,5 +1,5 @@
 import type { jsPDF } from 'jspdf'
-import { hourStyle, leaderNames, preMarks } from '../teamSheet'
+import { hourStyle, leaderNames, preMarkOf, preMarks } from '../teamSheet'
 import type { SheetRow } from '../teamSheet'
 import { imageFormatOf } from './loadImageDataUrl'
 import type { TeamSheetPdfOptions, TeamSheetSpec } from './printableTeamSheetPdf'
@@ -254,7 +254,7 @@ function drawTable(doc: jsPDF, rows: SheetRow[], options: TeamSheetPdfOptions, s
 }
 
 function drawSignatures(doc: jsPDF, sheet: TeamSheetSpec, options: TeamSheetPdfOptions, y: number): void {
-  const captain = options.preMark || sheet.selectedSide ? leaderNames(sheet.players).captain : null
+  const captain = preMarkOf(options.preMark).captain || sheet.selectedSide ? leaderNames(sheet.players).captain : null
   text(doc, 'CAPTAIN:', LEFT, y, 11, 'bolditalic', INK)
   writeLine(doc, LEFT + 24, LEFT + 92, y + 0.5)
   if (captain) text(doc, captain, LEFT + 26, y - 0.8, 10, 'bold', INK)
