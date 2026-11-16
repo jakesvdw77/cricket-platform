@@ -2,7 +2,7 @@
 // components/ManagerShell/managerNav.ts. The menu, the routes, the footer Back and the Escape key all read it, so a Hub
 // item is added in this list and nowhere else. At most seven top-level items and two levels (a unit test pins both).
 // Ids, labels and order are binding on routes, tests and copy; the Club order is Club info, Bookings, Field Directory,
-// Other Services, and Updates holds Messages, Gallery, Social Media (owner, 2026-10-24).
+// Other Services, and Media holds Gallery and Social Media (owner, 2026-10-24; renamed from Updates and Messages left out until the messages bell is specified, 2026-11-16).
 
 import { hubLeaguePath } from './leagueFormat'
 import { matchPath, parseFrom } from './matchFormat'
@@ -68,12 +68,13 @@ export const HUB_NAV: HubNavItem[] = [
     ],
   },
   {
-    id: 'updates',
-    label: 'Updates',
+    id: 'media',
+    label: 'Media',
     children: [
-      { id: 'updates.messages', label: 'Messages', soon: true, soonCopy: 'Notices from the club to parents and players.' },
-      { id: 'updates.gallery', label: 'Gallery', soon: true, soonCopy: 'Photos and highlights.' },
-      { id: 'updates.social', label: 'Social Media', soon: true, soonCopy: "The club's social media pages, once the club adds them." },
+      // docs/specs/157: the club photo gallery is live.
+      { id: 'media.gallery', label: 'Gallery' },
+      // The club's social pages as link cards (nothing embedded: embeds are blocked by many browsers and ad blockers).
+      { id: 'media.social', label: 'Social Media' },
     ],
   },
   {

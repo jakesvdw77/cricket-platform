@@ -3,7 +3,8 @@ import { Box } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
-import { ShareImageActions, ShareLogoControls, ShareTextSizeControl } from '../ShareCore'
+import { CompactSwitch } from '../CompactSwitch'
+import { ShareControlGroup, ShareImageActions, ShareLogoControls, ShareTextSizeControl } from '../ShareCore'
 import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import { AttachedImagePreview } from '../ShareResultDialog/AttachedImagePreview'
 import { LeagueLeftOutNote } from './LeagueLeftOutNote'
@@ -20,6 +21,10 @@ export function PosterLeagueScreen(props: LeagueScreenProps) {
     () => ({
       teamLogos: choices.logos.team,
       footer: choices.footerLine,
+      season: choices.league.include.poster.season,
+      dates: choices.league.include.poster.dates,
+      clubName: choices.league.include.poster.clubName,
+      ourTeamTag: choices.league.include.poster.ourTeamTag,
       textScale: SHARE_TEXT_SCALE[choices.textSize],
       logos: {
         clubUrl: choices.logos.club ? clubLogoUrl : null,
@@ -28,7 +33,7 @@ export function PosterLeagueScreen(props: LeagueScreenProps) {
         sponsorUrls: selectedSponsorIds.map((id) => sponsors.find((sponsor) => sponsor.id === id)?.logoUrl).filter((url): url is string => Boolean(url)),
       },
     }),
-    [choices.logos.team, choices.logos.club, choices.logos.league, choices.logos.leagueAffiliation, choices.footerLine, choices.textSize, clubLogoUrl, leagueLogoUrl, leagueAffiliationLogoUrl, sponsors, selectedSponsorIds],
+    [choices.logos.team, choices.logos.club, choices.logos.league, choices.logos.leagueAffiliation, choices.footerLine, choices.league.include.poster, choices.textSize, clubLogoUrl, leagueLogoUrl, leagueAffiliationLogoUrl, sponsors, selectedSponsorIds],
   )
   const { file, error } = useLeaguePosterOutput(model, colour, posterOptions)
 
@@ -39,6 +44,16 @@ export function PosterLeagueScreen(props: LeagueScreenProps) {
         <>
         <LeagueLeftOutNote format="POSTER" ticked={ticked} />
         <ShareTextSizeControl choices={choices} updateChoices={updateChoices} />
+        <ShareControlGroup label="Include">
+          <CompactSwitch label="Season" checked={choices.league.include.poster.season} onChange={(next) => updateChoices({ league: { include: { poster: { season: next } } } })} />
+          <CompactSwitch label="Start And Finish Dates" checked={choices.league.include.poster.dates} onChange={(next) => updateChoices({ league: { include: { poster: { dates: next } } } })} />
+          {model.contents.includes('TEAMS') && (
+            <CompactSwitch label="Our Team Tag" checked={choices.league.include.poster.ourTeamTag} onChange={(next) => updateChoices({ league: { include: { poster: { ourTeamTag: next } } } })} />
+          )}
+          {model.clubName && (
+            <CompactSwitch label="Club Name" checked={choices.league.include.poster.clubName} onChange={(next) => updateChoices({ league: { include: { poster: { clubName: next } } } })} />
+          )}
+        </ShareControlGroup>
         <ShareLogoControls {...props} />
         </>
       }

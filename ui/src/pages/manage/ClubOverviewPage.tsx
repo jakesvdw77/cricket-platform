@@ -246,13 +246,13 @@ export default function ClubOverviewPage() {
           then the static compact figures, then flat cards. No Back (the side menu is the way here), no Season pill. */}
       <ManageScreenHeader
         title={profile.name}
+        titleLead={
+          <LogoAvatar src={profile.logoUrl} variant="rounded" size={64}>
+            {initialsFromName(profile.name)}
+          </LogoAvatar>
+        }
         titleAdornment={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <LogoAvatar src={profile.logoUrl} variant="rounded" size={40}>
-              {initialsFromName(profile.name)}
-            </LogoAvatar>
-            {profile.type && <Chip size="small" label={CLUB_TYPE_LABELS[profile.type]} sx={badgeSx('neutral')} data-testid="club-type-badge" />}
-          </Box>
+          profile.type ? <Chip size="small" label={CLUB_TYPE_LABELS[profile.type]} sx={badgeSx('neutral')} data-testid="club-type-badge" /> : undefined
         }
         action={
           <ManageMenu

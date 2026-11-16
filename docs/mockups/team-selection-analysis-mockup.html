@@ -1,0 +1,113 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Team selection analysis (mockup)</title><style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{
+  --green900:#0B3D26;--green800:#0F5132;--green700:#14633F;--ink:#06241A;--gold:#E8B83D;
+  --groundTop:#e9efe6;--groundMid:#f4f1e6;--groundEnd:#f7f4ea;--cardLine:#d8dfd2;
+  --ink900:#10231a;--inkMuted:#55665c;--error:#b0402e;--warning:#b7791f;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--ink900);background:linear-gradient(170deg,var(--groundTop),var(--groundMid) 55%,var(--groundEnd));padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:34px;margin:0 0 4px;color:var(--green900)}
+h2{font-family:var(--display);font-size:24px;margin:36px 0 4px;color:var(--green800)}
+.lede,.note{color:var(--inkMuted);max-width:860px;font-size:14px;margin:0 0 14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.stage{position:relative;background:var(--groundEnd);border:1px solid var(--cardLine);border-radius:6px;overflow:hidden}
+.stage.d{width:960px;height:640px}.stage.p{width:375px;height:700px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:#fff;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.d .dlg{width:720px}.p .dlg{height:100%}
+.dh{padding:16px 20px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dh h3{font-family:var(--display);font-size:26px;margin:0;color:var(--green900);text-transform:uppercase;letter-spacing:.02em}
+.dh .sub{color:var(--inkMuted);font-size:13px}
+.x{font-size:20px;color:var(--inkMuted)}
+.bar-tools{padding:4px 20px 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--green700);border-radius:16px;overflow:hidden;font-size:12px;font-weight:600}
+.seg span{padding:5px 12px;color:var(--green700)}.seg .on{background:var(--green700);color:#fff}
+.sel{border:1px solid var(--cardLine);border-radius:16px;padding:5px 12px;font-size:12px;color:var(--ink900)}
+.figs{display:flex;gap:10px;padding:0 20px 10px;flex-wrap:wrap}
+.fig{border:1px solid var(--cardLine);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--inkMuted);text-transform:uppercase;letter-spacing:.05em}
+.fig b{font-family:var(--display);font-size:22px;color:var(--ink900);margin-right:6px;letter-spacing:0}
+.list{overflow:auto;padding:0 20px 8px;position:relative}
+.pl{display:grid;grid-template-columns:150px 1fr 74px;gap:10px;align-items:center;padding:5px 0;font-size:14px}
+.p .pl{grid-template-columns:110px 1fr 54px;gap:8px;font-size:13px}
+.nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{height:16px;background:#eef1ea;border-radius:3px;position:relative;display:flex;overflow:hidden}
+.seg-a{background:var(--green700)}.seg-b{background:#4f9a76}.seg-12{background:repeating-linear-gradient(45deg,#9bc4ad 0 4px,#c9e0d3 4px 8px)}
+.avg{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--gold);z-index:2}
+.num{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}.num small{color:var(--inkMuted);font-weight:400}
+.hot .nm{color:var(--warning)}.hot .seg-a,.hot .seg-b{background:var(--warning)}
+.cold .nm{color:var(--inkMuted)}
+.tag{font-size:11px;font-weight:600;border-radius:10px;padding:1px 7px;margin-left:6px}
+.tag.w{background:#f8ecd2;color:var(--warning)}.tag.c{background:#e8ebe6;color:var(--inkMuted)}
+.legend{display:flex;gap:16px;padding:6px 20px 10px;font-size:12px;color:var(--inkMuted);flex-wrap:wrap;align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-2px}
+.dfoot{border-top:1px solid var(--cardLine);padding:10px 20px;display:flex;justify-content:flex-end}
+.btn{border:1px solid var(--green700);color:var(--green700);border-radius:16px;padding:5px 16px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.btn.f{background:var(--green700);color:#fff}
+.tb{position:absolute;top:14px;left:20px;right:20px;display:flex;gap:8px;align-items:center}
+.tb .t{font-family:var(--display);font-size:30px;color:var(--green900);text-transform:uppercase;margin-right:auto}
+.ghost{height:300px;margin:70px 20px 0;border:1px dashed var(--cardLine);border-radius:6px;background:repeating-linear-gradient(0deg,#fff 0 28px,#f1f4ee 28px 56px)}
+ul{color:var(--inkMuted);font-size:14px;max-width:860px}
+</style></head><body>
+<h1>Selection analysis</h1>
+<p class="lede">A read-only dialog on the Team Selection hub. One horizontal bar per player shows how many of the games in view they have been picked for, so the manager can see at a glance who plays a lot and who has not played. Mockup only; names and numbers are made up.</p>
+
+<h2>1. Where it lives</h2>
+<p class="note">A quiet <b>Selection Analysis</b> button in the hub toolbar (all four tabs, beside the filters). It opens the dialog below.</p>
+<div class="row"><div class="stage d" style="height:250px">
+  <div class="tb"><span class="t">Team Selection</span><span class="sel">All sections</span><span class="sel">Irene Veterans</span><span class="btn">Selection Analysis</span></div>
+  <div class="ghost" style="height:110px;margin-top:70px"></div>
+</div></div>
+
+<h2>2. Desktop dialog</h2>
+<p class="note">Bars are sorted most picked first. The gold line is the average for the group. Players picked well above it are flagged, and players with no picks are listed last. The hatched part of a bar is 12th man.</p>
+<div class="row"><div class="stage d"><div class="ghost" style="margin-top:20px;height:560px"></div><div class="scrim"><div class="dlg">
+  <div class="dh"><div><h3>Selection Analysis</h3><div class="sub">Irene Veterans · 2026/2027 · 4 games in view</div></div><span class="x">&times;</span></div>
+  <div class="bar-tools">
+    <span class="seg"><span class="on">Games In View</span><span>Whole Season</span></span>
+    <span class="seg"><span class="on">All Selections</span><span>Announced Only</span></span>
+    <span class="sel">Team: Irene Veterans &#9662;</span>
+  </div>
+  <div class="figs"><div class="fig"><b>13</b>Players</div><div class="fig"><b>2.1</b>Average picks</div><div class="fig"><b>3</b>Not picked yet</div></div>
+  <div class="list">
+    <div class="pl hot"><span class="nm">Willie Prinsloo<span class="tag w">Above average</span></span><div class="track"><div class="seg-a" style="width:100%"></div><span class="avg" style="left:52%"></span></div><span class="num">4 <small>of 4</small></span></div>
+    <div class="pl hot"><span class="nm">Jaco van der Westhuizen<span class="tag w">Above average</span></span><div class="track"><div class="seg-a" style="width:75%"></div></div><span class="num">3 <small>of 4</small></span></div>
+    <div class="pl"><span class="nm">Michiel Boshoff</span><div class="track"><div class="seg-a" style="width:50%"></div></div><span class="num">2 <small>of 4</small></span></div>
+    <div class="pl"><span class="nm">Pierre Coetzer</span><div class="track"><div class="seg-a" style="width:50%"></div></div><span class="num">2 <small>of 3</small></span></div>
+    <div class="pl"><span class="nm">C. Venter</span><div class="track"><div class="seg-a" style="width:25%"></div><div class="seg-12" style="width:25%"></div></div><span class="num">2 <small>of 4</small></span></div>
+    <div class="pl"><span class="nm">Hennie Smit</span><div class="track"><div class="seg-a" style="width:25%"></div></div><span class="num">1 <small>of 4</small></span></div>
+    <div class="pl cold"><span class="nm">Andre Botha<span class="tag c">Not picked</span></span><div class="track"></div><span class="num">0 <small>of 2</small></span></div>
+    <div class="pl cold"><span class="nm">Dawie Kruger<span class="tag c">Not picked</span></span><div class="track"></div><span class="num">0 <small>of 3</small></span></div>
+  </div>
+  <div class="legend"><span><i style="background:var(--green700)"></i>Playing</span><span><i style="background:repeating-linear-gradient(45deg,#9bc4ad 0 3px,#c9e0d3 3px 6px)"></i>12th man</span><span><i style="background:var(--gold);width:3px"></i>Average</span><span>&ldquo;of 4&rdquo; = games they said they were available for</span></div>
+  <div class="dfoot"><span class="btn">Close</span></div>
+</div></div></div></div>
+
+<h2>3. Phone</h2>
+<p class="note">Full-screen dialog, names shortened, the same bars. Controls become two small selects.</p>
+<div class="row"><div class="stage p"><div class="scrim" style="padding:0"><div class="dlg" style="border-radius:0">
+  <div class="dh"><div><h3>Selection Analysis</h3><div class="sub">Irene Veterans · 4 games</div></div><span class="x">&times;</span></div>
+  <div class="bar-tools"><span class="sel">Games In View &#9662;</span><span class="sel">All Selections &#9662;</span></div>
+  <div class="figs"><div class="fig"><b>13</b>Players</div><div class="fig"><b>2.1</b>Average</div><div class="fig"><b>3</b>Not picked</div></div>
+  <div class="list" style="flex:1">
+    <div class="pl hot"><span class="nm">W. Prinsloo</span><div class="track"><div class="seg-a" style="width:100%"></div><span class="avg" style="left:52%"></span></div><span class="num">4 <small>/4</small></span></div>
+    <div class="pl hot"><span class="nm">J. van der Westhuizen</span><div class="track"><div class="seg-a" style="width:75%"></div></div><span class="num">3 <small>/4</small></span></div>
+    <div class="pl"><span class="nm">M. Boshoff</span><div class="track"><div class="seg-a" style="width:50%"></div></div><span class="num">2 <small>/4</small></span></div>
+    <div class="pl"><span class="nm">P. Coetzer</span><div class="track"><div class="seg-a" style="width:50%"></div></div><span class="num">2 <small>/3</small></span></div>
+    <div class="pl"><span class="nm">C. Venter</span><div class="track"><div class="seg-a" style="width:25%"></div><div class="seg-12" style="width:25%"></div></div><span class="num">2 <small>/4</small></span></div>
+    <div class="pl cold"><span class="nm">A. Botha</span><div class="track"></div><span class="num">0 <small>/2</small></span></div>
+  </div>
+  <div class="dfoot"><span class="btn">Close</span></div>
+</div></div></div></div>
+
+<h2>Questions for you</h2>
+<ul>
+<li><b>What counts as "picked":</b> the default shows every selection, drafts included. An Announced Only switch is in the mockup. Say if you would rather drop it.</li>
+<li><b>"of 4":</b> the number after each count is the games the player said they were available for, so someone picked 2 of 2 does not look under-used. The alternative is a plain count of all games in view.</li>
+<li><b>Juniors:</b> names follow the existing rule (full names inside the manager screens, initials only on anything shared). This dialog is not shared or printed.</li>
+<li><b>Share or print:</b> not included. It can be added later if you want to send the breakdown to the selectors.</li>
+</ul>
+</body></html>

@@ -141,6 +141,14 @@ public class GlobalExceptionHandler {
     }
 
     /** docs/specs/119: the daily link request limit, 429 with the seconds to wait. */
+    /** docs/specs/157: the daily gallery photo limit, 429 with the seconds to wait. */
+    @ExceptionHandler(GalleryDailyLimitException.class)
+    ProblemDetail handleGalleryDailyLimit(GalleryDailyLimitException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return problem;
+    }
+
     @ExceptionHandler(LinkRateLimitedException.class)
     ProblemDetail handleLinkRateLimited(LinkRateLimitedException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());

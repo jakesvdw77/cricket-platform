@@ -47,6 +47,8 @@ export type LeagueShareChoices = {
     facebook: { hashtags: boolean }
     // Results as the result line (true) or scores only (false).
     results: { resultLine: boolean }
+    // The Poster's heading line: the season name and the club name (both off by default: the league is not always the sharing club's) and the start to finish dates (on).
+    poster: { season: boolean; dates: boolean; clubName: boolean; ourTeamTag: boolean }
   }
 }
 
@@ -121,7 +123,7 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     contents: [],
     format: null,
     templates: { pdf: 'CLUB', whatsapp: 'SHORT', facebook: 'FULL_POST' },
-    include: { whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: true } },
+    include: { whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: true }, poster: { season: false, dates: true, clubName: false, ourTeamTag: true } },
   },
   match: {
     content: null,
@@ -220,6 +222,7 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
         whatsapp: pickBooleans(leagueInclude.whatsapp, d.league.include.whatsapp),
         facebook: pickBooleans(leagueInclude.facebook, d.league.include.facebook),
         results: pickBooleans(leagueInclude.results, d.league.include.results),
+        poster: pickBooleans(leagueInclude.poster, d.league.include.poster),
       },
     },
     match: {

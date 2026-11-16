@@ -1,0 +1,94 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Player Hub match card (mockup)</title><style>
+@font-face{font-family:'Barlow';font-weight:400;src:url(../../ui/public/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow';font-weight:600;src:url(../../ui/public/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;src:url(../../ui/public/fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
+:root{--cream:#F7F3E8;--gold:#E8B83D;--sand:#E2D5B0;--ground:#0b1f17;--line:rgba(247,243,232,.28);--muted:rgba(247,243,232,.66);--card:rgba(247,243,232,.07);--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--cream);font-family:var(--body);padding:24px 16px 64px}
+h1{font-family:var(--display);font-size:32px;margin:0 0 4px;letter-spacing:.04em;text-transform:uppercase}
+h2{font-family:var(--display);font-size:22px;margin:34px 0 4px;color:var(--sand);letter-spacing:.08em;text-transform:uppercase}
+.note{color:var(--muted);font-size:14px;max-width:860px;margin:0 0 12px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.card{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:4px;background:var(--card);padding:10px 12px;display:grid;gap:6px;font-size:14px}
+.d{width:760px;max-width:100%}.p{width:360px}
+.top{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;flex-wrap:wrap}
+.top .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.lg{color:var(--muted)}
+.chip{border:1px solid var(--line);border-radius:12px;padding:1px 9px;font-size:12px;color:var(--cream);white-space:nowrap}
+.tag{border:1px solid var(--line);border-radius:4px;padding:1px 8px;font-size:12px;font-weight:600;color:var(--sand);white-space:nowrap}
+.tag.g{border-color:var(--gold);color:var(--gold)}
+.sides{display:grid;gap:4px}
+.sides.h{grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.side{display:flex;align-items:center;gap:10px;min-width:0}
+.crest{flex:none;width:44px;height:44px;border-radius:4px;background:#fff;display:grid;place-items:center;color:#1b4d36;font-weight:700;font-size:15px}
+.crest.i{background:rgba(247,243,232,.12);color:var(--muted)}
+.p .crest{width:40px;height:40px}
+.nm{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.1;overflow-wrap:anywhere}
+.v{color:var(--muted);font-size:13px;text-align:center}
+.side .tag{margin-left:auto}
+.venue{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.venue small{letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-size:11px}
+.btn{margin-left:auto;border:1px solid var(--line);border-radius:4px;padding:3px 12px;font-size:13px;font-weight:600}
+.foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+ul{color:var(--muted);font-size:14px;max-width:860px}
+</style></head><body>
+<h1>Match card, compact</h1>
+<p class="note">The same card as today (time, teams, league, venue, status) in about four lines instead of seven. Mockup only.</p>
+
+<h2>Today</h2>
+<div class="row"><div><p class="cap">Seven lines</p><div class="card p" style="gap:5px">
+  <div class="top">09:30 · in 3 days<span class="sp"><span class="chip">&#9728; 23-29 degrees, dry</span></span></div>
+  <div class="side"><div class="crest">IV</div><span class="nm">Irene Veterans</span></div>
+  <div class="v" style="text-align:left">versus</div>
+  <div class="side"><div class="crest i">DC</div><span class="nm">Delta CC</span></div>
+  <div class="lg">VCASA Club Champs</div>
+  <div class="venue"><small>Venue</small>Durbanville CC A<span class="btn">Get Directions</span></div>
+  <div class="foot"><span class="tag">Waiting For Team Announcement</span></div>
+</div></div></div>
+
+<h2>Desktop (card wider than about 640 px)</h2>
+<p class="note">The two teams sit side by side with a small "vs" between them, so they take one line. The league moves to the top right beside the weather. The status tags move to the right end of the venue line, where the card was empty.</p>
+<div class="card d">
+  <div class="top">09:30 · in 3 days<span class="sp"><span class="lg">VCASA Club Champs</span><span class="chip">&#9728; 23-29 degrees, dry</span></span></div>
+  <div class="sides h">
+    <div class="side"><div class="crest">IV</div><span class="nm">Irene Veterans</span></div>
+    <span class="v">vs</span>
+    <div class="side"><div class="crest i">DC</div><span class="nm">Delta CC</span></div>
+  </div>
+  <div class="venue"><small>Venue</small>Durbanville CC A<span class="tag" style="margin-left:auto">Team Pending</span><span class="btn" style="margin-left:0">Get Directions</span></div>
+</div>
+
+<h2>Phone</h2>
+<p class="note">Teams stay stacked (names are long), but "versus" becomes "vs" between the teams and the league joins the first line. The status tag sits on the same row as the venue, so the card ends after the venue line. Wording shortens to <b>Team Pending</b>.</p>
+<div class="row">
+<div><p class="cap">Normal match</p><div class="card p">
+  <div class="top">09:30 · in 3 days<span class="sp"><span class="chip">&#9728; 23-29&deg;</span></span></div>
+  <div class="lg" style="margin-top:-2px">VCASA Club Champs</div>
+  <div class="sides">
+    <div class="side"><div class="crest">IV</div><span class="nm">Irene Veterans</span><span class="tag">Team Pending</span></div>
+    <div class="side"><div class="crest i">DC</div><span class="nm">Delta CC</span></div>
+  </div>
+  <div class="venue"><small>Venue</small>Durbanville CC A<span class="btn">Directions</span></div>
+</div></div>
+
+<div><p class="cap">Derby (both teams are ours)</p><div class="card p">
+  <div class="top">09:30 · in 3 days<span class="sp"><span class="chip">&#9728; 23-29&deg;</span></span></div>
+  <div class="lg" style="margin-top:-2px">Club Champs · Derby</div>
+  <div class="sides">
+    <div class="side"><div class="crest">IV</div><span class="nm">Irene Vets A</span><span class="tag g">Selected</span></div>
+    <div class="side"><div class="crest">IV</div><span class="nm">Irene Vets B</span></div>
+  </div>
+  <div class="venue"><small>Venue</small>Irene Oval<span class="btn">Directions</span></div>
+</div></div>
+</div>
+
+<h2>Suggestions</h2>
+<ul>
+<li><b>Three lines saved on a phone, five on a desktop.</b> League and weather share the first line, "versus" is gone, and the status tag moves up beside the team it belongs to (phone) or the venue (desktop).</li>
+<li><b>Derby:</b> the tag goes on the row of the team the player is picked for, so a derby reads correctly ("Selected" beside Vets A). A small "Derby" is added to the league line. <b>This needs one new field on the server:</b> which side is the player's (today the match only says whether it is theirs). Until then, the tag stays on the venue line and a derby shows no side.</li>
+<li><b>Wording on a phone (under about 480 px):</b> Waiting For Team Announcement becomes <b>Team Pending</b>. Selected, Not Selected and Selected (12th) are short enough already. Full wording on a desktop.</li>
+<li><b>Logos:</b> 40 px on a phone, 44 px on a desktop (down from 56 px, which is what makes the card tall). If you want the larger logos kept, the desktop layout still saves three lines.</li>
+<li><b>Question:</b> is dropping the word "versus" fine? The small "vs" make the meaning clear, but it is a visible change.</li>
+</ul>
+</body></html>

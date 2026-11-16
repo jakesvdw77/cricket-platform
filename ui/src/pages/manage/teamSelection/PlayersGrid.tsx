@@ -25,7 +25,7 @@ import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from 
 import type { SlotAttrs } from '../playerAvailability/slotNavigation'
 import { PlayerNameLink } from '../playerAvailability/PlayerNameLink'
 import { reasonText } from './pickReasons'
-import { selectTeamPath } from './selectionLinks'
+import { useSelectTeamPath } from './selectionLinks'
 import type { PickTarget } from './usePlayerPick'
 
 const playerName = (player: Pick<TeamSelectionPlayer, 'firstName' | 'lastName'>) => `${player.firstName} ${player.lastName}`.trim()
@@ -97,6 +97,7 @@ function PickCell({
 }
 
 function MatchHeader({ match, firstColWidth, slotAttrs }: { match: TeamSelectionMatch; firstColWidth: number; slotAttrs?: SlotAttrs }) {
+  const selectTeamPath = useSelectTeamPath()
   const derby = match.sides.length > 1
   return (
     <TableCell

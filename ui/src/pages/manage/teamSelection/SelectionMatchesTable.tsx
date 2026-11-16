@@ -12,7 +12,7 @@ import type { TeamSelectionMatch, TeamSelectionSide } from '../../../api/teamSel
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { zebraTint } from '../../../utils/zebraTint'
 import { useMatchLocationItems } from '../../../hooks/useMatchLocationItems'
-import { selectTeamPath } from './selectionLinks'
+import { useSelectTeamPath } from './selectionLinks'
 import { useSelectionMatch } from './useSelectionMatch'
 import { sideMenuItems } from './sideMenuItems'
 import { TeamNameLink } from './TeamNameLink'
@@ -85,6 +85,7 @@ function SideRow({
   onShare?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   sharing: boolean
 }) {
+  const selectTeamPath = useSelectTeamPath()
   const to = selectTeamPath(match.matchId, side.sideId, side.home)
   const title = side.home ? `${side.teamName} v ${side.opponentName}` : `${side.opponentName} v ${side.teamName}`
   const when = formatMatchDateTime(match.matchDate)

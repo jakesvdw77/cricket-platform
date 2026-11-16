@@ -14,7 +14,7 @@ describe('shareChoices league branch', () => {
         contents: ['SCHEDULE', 'TEAMS'] as never,
         format: 'CALENDAR' as const,
         templates: { pdf: 'COMPACT' as const, whatsapp: 'FULL' as const, facebook: 'BRIEF' as const },
-        include: { whatsapp: { emoji: false }, facebook: { hashtags: false }, results: { resultLine: false } },
+        include: { whatsapp: { emoji: false }, facebook: { hashtags: false }, results: { resultLine: false }, poster: { season: true, dates: false, clubName: true, ourTeamTag: false } },
       },
     }
     // Contents come back in the standard order.
@@ -28,7 +28,12 @@ describe('shareChoices league branch', () => {
     expect(league.contents).toEqual(['TEAMS'])
     expect(league.format).toBeNull()
     expect(league.templates).toEqual({ pdf: 'CLUB', whatsapp: 'FULL', facebook: 'FULL_POST' })
-    expect(league.include).toEqual({ whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: false } })
+    expect(league.include).toEqual({ whatsapp: { emoji: true }, facebook: { hashtags: true }, results: { resultLine: false }, poster: { season: false, dates: true, clubName: false, ourTeamTag: true } })
+  })
+
+  it('defaults the poster heading to dates on and season, club name off, with the Our Team tag on', () => {
+    expect(DEFAULT_SHARE_CHOICES.league.include.poster).toEqual({ season: false, dates: true, clubName: false, ourTeamTag: true })
+    expect(sanitiseShareChoices({ league: { include: { poster: { season: true, dates: 'yes' } } } }).league.include.poster).toEqual({ season: true, dates: true, clubName: false, ourTeamTag: true })
   })
 
   it('never remembers the contact opt-in, even when storage holds one', () => {

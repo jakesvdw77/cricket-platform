@@ -59,7 +59,7 @@ export function HubLiveScore({ source, variant, owner }: HubLiveScoreProps) {
     >
       {variant === 'card' && owner && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <LeagueLogo logoUrl={owner.logoUrl ?? null} size={40} />
+          <LeagueLogo logoUrl={owner.logoUrl ?? null} size={56} />
           <Typography sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, overflowWrap: 'anywhere' }}>{owner.name}</Typography>
         </Box>
       )}

@@ -11,8 +11,8 @@ const childLabels = (id: string) => byId(id).children?.map((child) => child.labe
 describe('HUB_NAV', () => {
   it('has exactly the seven main items in order (Availability, Schedule, Results, Stats: chronological, owner 2026-11-12), never more than seven (Account is route-only)', () => {
     const menu = HUB_NAV.filter((item) => item.inMenu !== false)
-    expect(menu.map((item) => item.id)).toEqual(['availability', 'schedule', 'results', 'stats', 'updates', 'club', 'profile'])
-    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Schedule', 'Results', 'Stats', 'Updates', 'Club', 'Profile'])
+    expect(menu.map((item) => item.id)).toEqual(['availability', 'schedule', 'results', 'stats', 'media', 'club', 'profile'])
+    expect(menu.map((item) => item.label)).toEqual(['Availability', 'Schedule', 'Results', 'Stats', 'Media', 'Club', 'Profile'])
     expect(menu.length).toBeLessThanOrEqual(7)
   })
 
@@ -22,7 +22,7 @@ describe('HUB_NAV', () => {
 
   it('lists each parent\'s children in the agreed order', () => {
     expect(childLabels('availability')).toBeUndefined()
-    expect(childLabels('updates')).toEqual(['Messages', 'Gallery', 'Social Media'])
+    expect(childLabels('media')).toEqual(['Gallery', 'Social Media'])
     expect(childLabels('schedule')).toEqual(['Matches', 'Leagues', 'Calendar'])
     expect(childLabels('stats')).toEqual(['Player Stats', 'Team Stats', 'Leaderboards'])
     expect(childLabels('club')).toEqual(['Club info', 'Field Directory', 'Bookings', 'Other Services'])
@@ -32,7 +32,7 @@ describe('HUB_NAV', () => {
 
   it('marks Club info and Field Directory as the only live Club items, and the other sections as Soon where they are not built', () => {
     expect(byId('club').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Club info', 'Field Directory'])
-    expect(byId('updates').children?.every((child) => child.soon)).toBe(true)
+    expect(byId('media').children?.some((child) => child.soon)).toBe(false)
     expect(byId('stats').children?.some((child) => child.soon)).toBe(false)
     expect(byId('schedule').children?.filter((child) => !child.soon).map((child) => child.label)).toEqual(['Matches', 'Leagues', 'Calendar'])
     for (const id of ['profile', 'account']) expect(byId(id).children?.some((child) => child.soon)).toBe(false)

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Box, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
@@ -45,7 +46,16 @@ export function SelectionTag({ selection }: { selection: MyMatchSelection | null
     <Chip
       size="small"
       variant="outlined"
-      label={selectionLabel(selection)}
+      label={
+        selection === 'NOT_ANNOUNCED' ? (
+          <>
+            <Box component="span" sx={{ '@media (max-width: 599.95px)': { display: 'none' } }}>{selectionLabel(selection)}</Box>
+            <Box component="span" aria-hidden sx={{ display: 'none', '@media (max-width: 599.95px)': { display: 'inline' } }}>Team Pending</Box>
+          </>
+        ) : (
+          selectionLabel(selection)
+        )
+      }
       data-testid="selection-tag"
       sx={{ height: 22, borderRadius: '4px', fontSize: 12, fontWeight: 600, color: HUB.sand, borderColor: HUB.line, bgcolor: 'transparent', justifySelf: 'start' }}
     />
@@ -55,7 +65,7 @@ export function SelectionTag({ selection }: { selection: MyMatchSelection | null
 function Side({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-      <LeagueLogo logoUrl={logoUrl ?? null} size={40} name={name} />
+      <LeagueLogo logoUrl={logoUrl ?? null} size={44} name={name} />
       <Typography component="span" sx={{ fontFamily: HUB.display, fontWeight: 700, fontSize: 21, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{name}</Typography>
     </Box>
   )
@@ -86,22 +96,26 @@ function LiveRowScore({ playerKey, matchId }: { playerKey: string; matchId: stri
 
 // The top line of an upcoming row: the time and countdown on the left, the match-hours weather badge in the top right corner (a phone
 // drops it under the time). The position for the forecast comes from the match read.
-function UpcomingHeader({ playerKey, matchId, text }: { playerKey: string; matchId: string; text: string }) {
+function UpcomingHeader({ playerKey, matchId, text, league }: { playerKey: string; matchId: string; text: string; league: string }) {
   const match = useMyPlayerMatch(playerKey, matchId)
   return (
-    <Box sx={{ ...inner, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 0.5, pointerEvents: 'none' }}>
+    <Box sx={{ ...inner, display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.25, pointerEvents: 'none' }}>
       <Typography sx={{ fontSize: 14, color: HUB.muted }}>{text}</Typography>
-      {match.data && <HubWeatherBadge row={match.data} />}
+      {/* The league and the weather share the right end of the line (docs/mockups/hub-match-card-mockup.html); a phone wraps them under the time. */}
+      <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', columnGap: 1.5, rowGap: 0.25, minWidth: 0 }}>
+        <Typography data-testid="match-league-line" sx={{ fontSize: 14, color: HUB.muted, textAlign: 'right' }}>{league}</Typography>
+        {match.data && <HubWeatherBadge row={match.data} />}
+      </Box>
     </Box>
   )
 }
 
 // The VENUE line of a row. Get Directions needs the stored position, which only the match read carries; a recent row has none.
-function RowVenue({ playerKey, row, withDirections }: { playerKey: string; row: MyMatchSummaryDto; withDirections: boolean }) {
+function RowVenue({ playerKey, row, withDirections, trailing }: { playerKey: string; row: MyMatchSummaryDto; withDirections: boolean; trailing?: ReactNode }) {
   const match = useMyPlayerMatch(playerKey, row.matchId, withDirections)
   return (
     <Box sx={inner}>
-      <HubVenueLine row={match.data} venue={row.venue} withDirections={withDirections} />
+      <HubVenueLine row={match.data} venue={row.venue} withDirections={withDirections} trailing={trailing} />
     </Box>
   )
 }
@@ -151,14 +165,26 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
           </Box>
         </Box>
       )}
-      {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
-      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, from)} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25, '&:focus-visible': { outline: 'none' } }}>
+      {kind === 'upcoming' && <UpcomingHeader playerKey={playerKey} matchId={row.matchId} league={row.league || 'Friendly'} text={[time, countdownLabel(row.date, now)].filter(Boolean).join(' · ')} />}
+      <Box component={RouterLink} to={matchPath(playerKey, row.matchId, from)} aria-label={title} sx={{ ...stretchedLink, display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) auto minmax(0, 1fr)' }, alignItems: 'center', columnGap: 1.5, rowGap: 0.25, '&:focus-visible': { outline: 'none' } }}>
         <Side name={row.home.name} logoUrl={row.home.logoUrl} />
-        <Typography component="span" sx={{ fontSize: 14, color: HUB.muted, pl: 0.5 }}>versus</Typography>
+        <Typography component="span" aria-hidden sx={{ fontFamily: HUB.display, fontSize: 22, fontWeight: 700, lineHeight: 1, color: HUB.sand, textAlign: 'center', justifySelf: 'center', textTransform: 'uppercase' }}>vs</Typography>
         <Side name={row.away.name} logoUrl={row.away.logoUrl} />
       </Box>
-      <Typography data-testid="match-league-line" sx={{ fontSize: 14, color: HUB.muted }}>{row.league || 'Friendly'}</Typography>
-      <RowVenue playerKey={playerKey} row={row} withDirections={kind !== 'recent'} />
+      {kind !== 'upcoming' && <Typography data-testid="match-league-line" sx={{ fontSize: 14, color: HUB.muted }}>{row.league || 'Friendly'}</Typography>}
+      <RowVenue
+        playerKey={playerKey}
+        row={row}
+        withDirections={kind !== 'recent'}
+        trailing={
+          kind !== 'recent' ? (
+            <>
+              <SelectionTag selection={row.selection} />
+              {kind === 'upcoming' && row.availability && <AvailabilityTag playerKey={playerKey} availability={row.availability} />}
+            </>
+          ) : undefined
+        }
+      />
       {kind === 'recent' && (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.25 }}>
           {row.result && (
@@ -170,12 +196,6 @@ export function HubMatchRow({ playerKey, row, now, from }: HubMatchRowProps) {
             {outcome && <OutcomeChip outcome={outcome} />}
             <Typography data-testid="match-result-line" sx={{ fontSize: 15, minWidth: 0, overflowWrap: 'anywhere', color: outcome ? OUTCOME_LOOK[outcome].color : row.result ? HUB.gold : HUB.muted }}>{recentResultLine(row)}</Typography>
           </Box>
-        </Box>
-      )}
-      {kind !== 'recent' && (
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          <SelectionTag selection={row.selection} />
-          {kind === 'upcoming' && row.availability && <AvailabilityTag playerKey={playerKey} availability={row.availability} />}
         </Box>
       )}
     </Box>

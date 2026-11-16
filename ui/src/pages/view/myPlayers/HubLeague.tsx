@@ -46,7 +46,7 @@ export function HubLeague({ playerKey, leagueId, seasonId, clubName, tab, onTab 
   return (
     <Box data-testid="hub-league" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-        <LeagueLogo logoUrl={dto.league.logoUrl} size={48} />
+        <LeagueLogo logoUrl={dto.league.logoUrl} size={72} />
         <Box sx={{ minWidth: 0, flex: '1 1 160px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.5 }}>
           <Typography component="h2" sx={{ fontFamily: HUB.display, fontWeight: 600, fontSize: 26, lineHeight: 1.1, letterSpacing: '0.06em', textTransform: 'uppercase', color: HUB.sand, overflowWrap: 'anywhere' }}>
             {dto.league.name}

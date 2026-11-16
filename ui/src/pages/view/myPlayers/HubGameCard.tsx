@@ -17,7 +17,7 @@ export function HubGameCard({ playerName, row }: { playerName: string; row: MyRe
   const howOut = last ? (last.notOut ? 'not out' : howOutWords(last.howOut)) : ''
 
   return (
-    <Box component="article" data-testid="hub-game-card" data-kind={kind} data-tone={tone} sx={cardSx(tone)}>
+    <Box component="article" data-testid="hub-game-card" data-kind={kind} data-tone={tone} sx={{ ...cardSx(tone), p: '12px 16px 12px', gap: 0.5 }}>
       <Typography sx={kickerSx}>
         {playerName}
         {kind === 'bowling' ? ' · Bowling' : ''}
@@ -40,9 +40,11 @@ export function HubGameCard({ playerName, row }: { playerName: string; row: MyRe
           )}
         </Box>
       ) : (
-        <>
+        // Compact (owner, 2026-11-16): the figure on the left and the story and the drawing on the right from a tablet up, so the card is
+        // one short block instead of a tall one with an empty right half.
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(0, 1fr)' }, columnGap: 4, rowGap: 0.5, alignItems: 'center' }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 1.25, minWidth: 0 }}>
-            <Typography data-testid="result-figure" sx={{ ...bigSx, fontSize: { xs: 72, sm: 92 } }}>{kind === 'batting' ? battingFigure(row) : bowlingFigure(row)}</Typography>
+            <Typography data-testid="result-figure" sx={{ ...bigSx, fontSize: { xs: 56, sm: 64 } }}>{kind === 'batting' ? battingFigure(row) : bowlingFigure(row)}</Typography>
             <Typography component="div" sx={{ color: HUB.muted, fontSize: 15, pb: 1 }}>
               {kind === 'batting' ? (
                 <>
@@ -59,15 +61,15 @@ export function HubGameCard({ playerName, row }: { playerName: string; row: MyRe
               )}
             </Typography>
           </Box>
-          <Typography sx={{ fontSize: 17, lineHeight: 1.35 }}>{storyLine(row)}</Typography>
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ minWidth: 0, display: 'grid', gap: 0.75 }}>
+            <Typography sx={{ fontSize: 16, lineHeight: 1.35 }}>{storyLine(row)}</Typography>
             {kind === 'batting' ? (
               <RunsMixBar runs={row.batting.runs} fours={row.batting.fours} sixes={row.batting.sixes} />
             ) : (
               <OverBlocks balls={row.bowling.balls} ballsPerOver={row.ballsPerOver} wickets={row.bowling.wickets} maidens={row.bowling.maidens} />
             )}
           </Box>
-        </>
+        </Box>
       )}
     </Box>
   )

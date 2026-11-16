@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, ButtonBase, Collapse, Typography } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { compactButtonSx } from '../../../components/Button'
@@ -54,11 +55,12 @@ export function HubDirectionsButton({ row, venue }: { row?: MatchFieldPosition |
   )
 }
 
-export function HubVenueLine({ row, venue, withDirections = true }: { row?: MatchFieldPosition | null; venue?: string | null; withDirections?: boolean }) {
+// `trailing` (the match card's status tags) sits between the venue and Get Directions from a tablet up, and on a line of its own below on a phone.
+export function HubVenueLine({ row, venue, withDirections = true, trailing }: { row?: MatchFieldPosition | null; venue?: string | null; withDirections?: boolean; trailing?: ReactNode }) {
   const name = row?.playingAreaName || row?.venue || venue || ''
   return (
-    <Box data-testid="hub-venue-line" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0 }}>
+    <Box data-testid="hub-venue-line" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0, flexWrap: trailing ? 'wrap' : 'nowrap' }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0, flex: trailing ? '1 1 auto' : undefined, order: 0 }}>
         <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: HUB.muted, flex: 'none' }}>
           Venue
         </Typography>
@@ -66,7 +68,8 @@ export function HubVenueLine({ row, venue, withDirections = true }: { row?: Matc
           {name || 'TBC'}
         </Typography>
       </Box>
-      {withDirections && <HubDirectionsButton row={row} venue={venue} />}
+      {trailing && <Box sx={{ order: { xs: 3, sm: 1 }, flex: { xs: '1 0 100%', sm: '0 1 auto' }, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', justifyContent: { sm: 'flex-end' } }}>{trailing}</Box>}
+      {withDirections && <Box sx={{ order: 2 }}><HubDirectionsButton row={row} venue={venue} /></Box>}
     </Box>
   )
 }

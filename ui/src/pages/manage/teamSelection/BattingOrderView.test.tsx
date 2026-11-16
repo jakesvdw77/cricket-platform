@@ -159,8 +159,8 @@ describe('BattingOrderView', () => {
   it('links each column to the Select team page and offers Announce only on a column that is ready', async () => {
     renderView()
     await screen.findByTestId('batting-cell-m-1-team-1-1')
-    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Oakfield' })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
-    expect(screen.getByRole('link', { name: 'Select Players, Vets A v Vets B, Vets B' })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
+    expect(screen.getByRole('link', { name: 'Open Match, Vets A v Oakfield' })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-1/sides/side-1'))
+    expect(screen.getByRole('link', { name: 'Open Match, Vets A v Vets B, Vets B' })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-3/sides/s-b'))
     expect(screen.getAllByRole('button', { name: /^Announce team/ })).toHaveLength(1)
   })
 
@@ -372,6 +372,105 @@ describe('BattingOrderView', () => {
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
+    })
+  })
+
+  describe('remove, Clear and Open Match', () => {
+    const twoBatters = (announced = false) => {
+      get.mockResolvedValue({
+        data: makeOverview([
+          makeMatch({
+            matchId: 'x-1',
+            label: 'Vets A v Oakfield',
+            sides: [makeSide({ announced, picks: [makePick('ann', 1), makePick('bob', 2)], pickedCount: 2 })],
+          }),
+        ]),
+      })
+    }
+
+    it('shows a remove icon on every picked player and removes one at once on a side that is not announced', async () => {
+      twoBatters()
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(2)
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Ann Smith, Vets A v Oakfield' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(removeMatchSidePlayer).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', 'ann'))
+    })
+
+    it('asks first before removing from an announced side, and removes on confirm', async () => {
+      twoBatters(true)
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Bob Smith, Vets A v Oakfield' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Change an announced team?')).toBeInTheDocument()
+      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Player' }))
+      await waitFor(() => expect(removeMatchSidePlayer).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', 'bob'))
+    })
+
+    it('Clear asks first, names how many players it takes off, then removes every one of them', async () => {
+      twoBatters()
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      await userEvent.click(screen.getByRole('button', { name: 'Clear team, Vets A v Oakfield' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Clear this team?')).toBeInTheDocument()
+      expect(within(dialog).getByText(/all 2 players/)).toBeInTheDocument()
+      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Clear Team' }))
+      await waitFor(() => expect(removeMatchSidePlayer).toHaveBeenCalledTimes(2))
+      expect(removeMatchSidePlayer).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', 'ann')
+      expect(removeMatchSidePlayer).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', 'bob')
+    })
+
+    it('cancelling the Clear dialog removes nobody', async () => {
+      twoBatters()
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      await userEvent.click(screen.getByRole('button', { name: 'Clear team, Vets A v Oakfield' }))
+      await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
+    })
+
+    it('hides the remove icons, Clear and Open Match while the column is being reordered, and brings them back after', async () => {
+      twoBatters()
+      renderView()
+      await startReorder()
+      expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Clear team/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /^Open Match/ })).not.toBeInTheDocument()
+      await userEvent.click(await reorderButton('Vets A v Oakfield'))
+      expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(2)
+      expect(screen.getByRole('link', { name: 'Open Match, Vets A v Oakfield' })).toBeInTheDocument()
+    })
+
+    it('Reorder Batting Order is the main button of a column with two or more players', async () => {
+      twoBatters()
+      renderView()
+      const button = await reorderButton('Vets A v Oakfield')
+      expect(button).toHaveTextContent('Reorder Batting Order')
+      expect(button.className).toContain('MuiButton-contained')
+    })
+
+    it('opens the match team page with the tab it came from, so Back returns to Batting Order', async () => {
+      twoBatters()
+      renderView()
+      const link = await screen.findByRole('link', { name: 'Open Match, Vets A v Oakfield' })
+      expect(link.getAttribute('href')).toContain('returnTo=%2Fmanage%2Fteam-selection%2Fbatting')
+      expect(link.getAttribute('href')).toContain('returnLabel=Batting+Order')
+    })
+  })
+
+  describe('Selection Analysis', () => {
+    it('opens from the header on any tab and shows a bar per player', async () => {
+      renderView()
+      await screen.findByTestId('batting-cell-m-1-team-1-1')
+      await userEvent.click(screen.getByRole('button', { name: 'Selection Analysis' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByRole('heading', { name: /Selection Analysis/ })).toBeInTheDocument()
+      expect(await within(dialog).findAllByTestId('analysis-row')).not.toHaveLength(0)
     })
   })
 

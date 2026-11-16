@@ -103,10 +103,10 @@ describe('SlotsView', () => {
     await userEvent.click(within(card('m-2', 'team-2')).getByRole('button', { name: 'Show Team' }))
     expect(await within(card('m-2', 'team-2')).findByText('Nobody picked yet.')).toBeInTheDocument()
     await userEvent.click(within(card('m-1')).getByRole('button', { name: /^Actions for/ }))
-    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-1/sides/side-1')
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-1/sides/side-1'))
     await userEvent.keyboard('{Escape}')
     await userEvent.click(within(card('m-2', 'team-2')).getByRole('button', { name: /^Actions for/ }))
-    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-2/sides/home')
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-2/sides/home'))
   })
 
   it('shows the announced chip only on an announced side and one card per side of a derby', async () => {
@@ -115,7 +115,7 @@ describe('SlotsView', () => {
     expect(within(card('m-3', 'team-b')).getByText('Announced')).toBeInTheDocument()
     expect(within(card('m-3', 'team-a')).queryByText('Announced')).not.toBeInTheDocument()
     await userEvent.click(within(card('m-3', 'team-b')).getByRole('button', { name: /^Actions for/ }))
-    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', '/manage/team-selection/matches/m-3/sides/s-b')
+    expect(await screen.findByRole('menuitem', { name: /^Select Players/ })).toHaveAttribute('href', expect.stringContaining('/manage/team-selection/matches/m-3/sides/s-b'))
   })
 
   it('sends the hub filters and Show past, and filters by the search text', async () => {

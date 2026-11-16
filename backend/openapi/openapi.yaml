@@ -2316,6 +2316,330 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MyPollResponsesDto"
+  /api/v1/me/players/{playerKey}/gallery:
+    get:
+      tags:
+      - me-player-gallery-controller
+      description: "Hub photo gallery (docs/specs/157): one page of the club's photos, newest first (a real LIMIT and OFFSET). Cache-Control is private, no-store. 404 for a key the caller does not hold; 400 for size above 48 or below 1, a negative page or a q over 60 characters."
+      operationId: listMyGallery
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        description: "Case-insensitive match on the caption or the name of a tagged league, team or player, at most 60 characters."
+        schema:
+          type: string
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "1 to 48, default 24."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryPageDto"
+    post:
+      tags:
+      - me-player-gallery-controller
+      description: "Add one photo (docs/specs/157): a medium and a thumbnail JPEG, an optional caption and tags (one league, one team, and the held player; all of the club). 400 for a file that is not a readable JPEG or is too large; 404 for a tag of another club; 429 after 60 photos in a day."
+      operationId: uploadMyGalleryPhoto
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                medium:
+                  type: string
+                  format: binary
+                  description: "JPEG, longest side 1280 px, at most 2 MB."
+                thumb:
+                  type: string
+                  format: binary
+                  description: "JPEG, longest side 320 px, at most 200 KB."
+                caption:
+                  type: string
+                leagueId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+                tagMyPlayer:
+                  type: boolean
+                  description: "Tags the held player of playerKey; the Hub tags no other player."
+              required:
+              - medium
+              - thumb
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryImageDto"
+  /api/v1/me/players/{playerKey}/gallery/filters:
+    get:
+      tags:
+      - me-player-gallery-controller
+      description: "The leagues, teams and players at least one photo is tagged to (docs/specs/157), for the filter selects."
+      operationId: myGalleryFilters
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryFiltersDto"
+  /api/v1/me/players/{playerKey}/gallery/latest:
+    get:
+      tags:
+      - me-player-gallery-controller
+      description: "The carousel (docs/specs/157): the latest photos, newest first, at most 12."
+      operationId: latestMyGallery
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: "1 to 12, default 12."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GalleryImageDto"
+  /api/v1/me/players/{playerKey}/gallery/{imageId}:
+    delete:
+      tags:
+      - me-player-gallery-controller
+      description: "Delete the caller's own photo (docs/specs/157). 404 for another person's photo."
+      operationId: deleteMyGalleryPhoto
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/gallery:
+    get:
+      tags:
+      - gallery-controller
+      description: "Manager photo gallery (docs/specs/157): one page of the club's photos with the uploader's name, newest first."
+      operationId: listGallery
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: q
+        in: query
+        required: false
+        description: "Case-insensitive match on the caption or the name of a tagged league, team or player, at most 60 characters."
+        schema:
+          type: string
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: "1 to 48, default 24."
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryPageDto"
+    post:
+      tags:
+      - gallery-controller
+      description: "Add one photo as a manager (docs/specs/157). Needs CLUB_SETUP_EDIT."
+      operationId: uploadGalleryPhoto
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                medium:
+                  type: string
+                  format: binary
+                  description: "JPEG, longest side 1280 px, at most 2 MB."
+                thumb:
+                  type: string
+                  format: binary
+                  description: "JPEG, longest side 320 px, at most 200 KB."
+                caption:
+                  type: string
+                leagueId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+                playerId:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: "At most 5."
+              required:
+              - medium
+              - thumb
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryImageDto"
+  /api/v1/manage/clubs/{clubId}/gallery/filters:
+    get:
+      tags:
+      - gallery-controller
+      description: "The leagues, teams and players at least one photo is tagged to (docs/specs/157), for the filter selects."
+      operationId: galleryFilters
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GalleryFiltersDto"
+  /api/v1/manage/clubs/{clubId}/gallery/{imageId}:
+    delete:
+      tags:
+      - gallery-controller
+      description: "Delete any photo of the club (docs/specs/157). Needs CLUB_SETUP_EDIT."
+      operationId: deleteGalleryPhoto
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/me/players/{playerKey}/club-info:
     get:
       tags:
@@ -17043,6 +17367,76 @@ components:
         email:
           type: string
           nullable: true
+    GalleryTagDto:
+      type: object
+      description: "docs/specs/157: type is LEAGUE, TEAM or PLAYER."
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    GalleryFiltersDto:
+      type: object
+      description: "docs/specs/157: each entry is a GalleryTagDto; sorted by name."
+      properties:
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryTagDto"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryTagDto"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryTagDto"
+    GalleryImageDto:
+      type: object
+      description: "docs/specs/157: uploadedByName is only filled for a manager; mine says the caller added the photo."
+      properties:
+        id:
+          type: string
+          format: uuid
+        thumbUrl:
+          type: string
+        mediumUrl:
+          type: string
+        caption:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedByName:
+          type: string
+        mine:
+          type: boolean
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryTagDto"
+    GalleryPageDto:
+      type: object
+      description: "docs/specs/157: one page of the gallery, newest first."
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryImageDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        hasMore:
+          type: boolean
     MyClubContactPageDto:
       type: object
       description: "docs/specs/148: letters are the distinct first letters of last names (# for others) of the searched set, A to Z then #."

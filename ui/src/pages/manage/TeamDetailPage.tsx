@@ -276,11 +276,13 @@ export default function TeamDetailPage() {
         backTo={backTo}
         backLabel={backLabel}
         // docs/specs/142: the logo, the ONE status badge and the Season pill (no "All") sit beside the name, as on a league.
+        titleLead={
+          <LogoAvatar src={team.logoUrl} variant="rounded" size={64}>
+            {initialsFromName(team.name)}
+          </LogoAvatar>
+        }
         titleAdornment={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <LogoAvatar src={team.logoUrl} variant="rounded" size={40}>
-              {initialsFromName(team.name)}
-            </LogoAvatar>
             <Chip size="small" label={status.label} sx={badgeSx(status.tone)} data-testid="team-status-badge" />
             {seasons.length > 0 && (
               <HeaderSeasonSelect

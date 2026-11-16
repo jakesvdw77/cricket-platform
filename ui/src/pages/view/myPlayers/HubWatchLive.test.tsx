@@ -36,7 +36,7 @@ describe('HubWatchLive', () => {
 
     const strip = await screen.findByTestId('watch-scoreboard')
     expect(strip).toHaveTextContent('Riverside U15 A')
-    expect(strip).toHaveTextContent('versus')
+    expect(strip).toHaveTextContent('vs')
     expect(strip).toHaveTextContent('Coastal U15')
     expect(strip).toHaveTextContent('TVL Division 1 · Riverside Oval')
     expect(within(strip).getByTestId('live-badge')).toBeInTheDocument()
