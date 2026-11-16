@@ -57,7 +57,7 @@ const findMenu = () => screen.findByRole('navigation', { name: 'Player sections'
 beforeEach(() => vi.clearAllMocks())
 afterEach(clearViewport)
 
-const ROOT_BARS = ['Availability', 'Schedule', 'Results', 'Stats', 'Updates', 'Club', 'Profile']
+const ROOT_BARS = ['Availability', 'Schedule', 'Results', 'Stats', 'Media', 'Club', 'Profile']
 
 describe('MyPlayerPage on a desktop', () => {
   it('opens on Availability with the seven-item menu, the player card and the open polls', async () => {
@@ -103,8 +103,8 @@ describe('MyPlayerPage on a desktop', () => {
   })
 
   it.each([
-    ['updates', 'Messages', /Notices from the club to parents and players/],
-  ])('%s opens on its first child, a locked panel that says Coming soon', async (path, label, text) => {
+    ['club/bookings', 'Bookings', /Nets and facility bookings/],
+  ])('%s opens a locked panel that says Coming soon', async (path, label, text) => {
     setup(`/account/players/k1/${path}`)
 
     expect(await screen.findByRole('heading', { name: label })).toBeInTheDocument()
