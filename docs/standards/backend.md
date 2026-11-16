@@ -22,6 +22,7 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 | `EmailNotVerifiedException` | 403 (token has no verified email; problem property `code` = `EMAIL_NOT_VERIFIED`; spec 119) |
 | `LinkLockedException` | 423 (account locked after 5 failed link confirmations in an hour, carries `retryAfterSeconds`; spec 119) |
 | `LinkRateLimitedException` | 429 (more than 10 link requests in a day, carries `retryAfterSeconds`; spec 119) |
+| `GalleryDailyLimitException` | 429 (more than 60 gallery photos added by one person in a day, carries `retryAfterSeconds`; spec 157) |
 
 | `ScheduleRuleException` | 409 (extends `ConflictException`; a match save refused by the shared scheduling rules, problem properties `findings` and `needsConfirmation`; spec 132) |
 

@@ -32,7 +32,7 @@ Parents, players and managers take photos at matches and have nowhere in the sys
 ## Data Model Changes
 Migration `071-photo-gallery.sql` (never edit an applied migration):
 - `gallery_image`: `id uuid PK`, `club_id uuid NOT NULL`, `uploaded_by_person_id uuid NOT NULL`, `uploaded_at timestamptz NOT NULL`, `caption varchar(200)` null, `medium_url varchar(255) NOT NULL`, `thumb_url varchar(255) NOT NULL`, `status varchar(20) NOT NULL DEFAULT 'PUBLISHED'`. Index `(club_id, status, uploaded_at DESC)`.
-- `gallery_image_tag`: `image_id uuid NOT NULL` (FK, `ON DELETE CASCADE`), `tag_type varchar(10) NOT NULL` (`LEAGUE`, `TEAM`, `PLAYER`), `tag_id uuid NOT NULL`. PK `(image_id, tag_type, tag_id)`; index `(tag_type, tag_id)`.
+- `gallery_image_tag`: `image_id uuid NOT NULL` (FK, `ON DELETE CASCADE`), `tag_type varchar(10) NOT NULL` (`LEAGUE`, `TEAM`, `PLAYER`), `tag_id uuid NOT NULL`. a surrogate `id uuid` primary key with a unique constraint on `(image_id, tag_type, tag_id)`; index `(tag_type, tag_id)`.
 No change to existing tables. Deleting a photo deletes its two files from the media folder (`MediaService` gains `delete(url)`).
 
 ## API Contract
@@ -48,7 +48,7 @@ No change to existing tables. Deleting a photo deletes its two files from the me
 | `POST /api/v1/manage/clubs/{clubId}/gallery` | manager (`CLUB_SETUP_EDIT`) | Add one photo (multipart as above, with `playerId` repeated for up to 5 players). |
 | `DELETE /api/v1/manage/clubs/{clubId}/gallery/{imageId}` | manager (`CLUB_SETUP_EDIT`) | Delete any photo of the club. |
 
-Responses are `Cache-Control: private, no-store` for lists (they change) and the image files are served from `/media` as today. Problems follow the existing error shape (`400` bad image or too many files, `404` not found or another club's tag, `429` over the daily limit). Add the paths and schemas to `backend/openapi/openapi.yaml` by hand.
+Responses are `Cache-Control: private, no-store` for lists (they change) and the image files are served from `/media` as today. Problems follow the existing error shape (`400` bad image or too many files, `404` not found or another club's tag, `429` over the daily limit, its own `GalleryDailyLimitException`). Add the paths and schemas to `backend/openapi/openapi.yaml` by hand.
 
 ## UI Requirements
 Mockup: `docs/mockups/photo-gallery-mockup.html`.

@@ -122,4 +122,36 @@ class MediaServiceImplTest {
         assertThatThrownBy(() -> mediaService.upload(file, Map.of("application/pdf", ".pdf")))
                 .isInstanceOf(UnsupportedMediaTypeException.class);
     }
+
+    // ---- delete (docs/specs/157-photo-gallery.md) ----
+
+    @Test
+    void deleteRemovesTheStoredFileOfAMediaUrl() throws IOException {
+        Path stored = Files.writeString(tempStorageDir.resolve("photo.jpg"), "x");
+        mediaService.delete("/media/photo.jpg");
+        assertThat(stored).doesNotExist();
+    }
+
+    @Test
+    void deleteIgnoresAMissingFileAndAnUnrecognisedUrl() {
+        mediaService.delete("/media/never-existed.jpg");
+        mediaService.delete(null);
+        mediaService.delete("https://elsewhere.example/photo.jpg");
+        mediaService.delete("/media/");
+    }
+
+    @Test
+    void deleteNeverLeavesTheStorageDirectory() throws IOException {
+        Path outside = Files.createTempFile("outside-media", ".jpg");
+        Path stored = Files.writeString(tempStorageDir.resolve("keep.jpg"), "x");
+        try {
+            mediaService.delete("/media/../" + outside.getFileName());
+            mediaService.delete("/media/sub/keep.jpg");
+            mediaService.delete("/media/..\\" + outside.getFileName());
+            assertThat(outside).exists();
+            assertThat(stored).exists();
+        } finally {
+            Files.deleteIfExists(outside);
+        }
+    }
 }

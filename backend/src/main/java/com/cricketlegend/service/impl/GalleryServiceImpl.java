@@ -11,7 +11,7 @@ import com.cricketlegend.dto.GalleryImageDto;
 import com.cricketlegend.dto.GalleryPageDto;
 import com.cricketlegend.dto.GalleryQuery;
 import com.cricketlegend.dto.GalleryTagDto;
-import com.cricketlegend.exception.LinkRateLimitedException;
+import com.cricketlegend.exception.GalleryDailyLimitException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.UnsupportedMediaTypeException;
 import com.cricketlegend.exception.ValidationException;
@@ -25,7 +25,6 @@ import com.cricketlegend.service.GalleryService;
 import com.cricketlegend.service.MediaService;
 import com.cricketlegend.service.support.HeldPlayer;
 import com.cricketlegend.service.support.MyPlayerAccess;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -43,6 +42,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -50,6 +51,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -70,6 +73,9 @@ class GalleryServiceImpl implements GalleryService {
     static final int DAILY_LIMIT = 60;
     static final long MAX_MEDIUM_BYTES = 2L * 1024 * 1024;
     static final long MAX_THUMB_BYTES = 200L * 1024;
+    // The browser makes 1280 and 320 pixels on the longest side; a photo a good deal larger than that is not one of ours.
+    static final int MAX_MEDIUM_SIDE = 4096;
+    static final int MAX_THUMB_SIDE = 1024;
     private static final Map<String, String> JPEG_ONLY = Map.of("image/jpeg", ".jpg");
     private static final UUID NO_ID = new UUID(0L, 0L);
     private static final Logger log = LoggerFactory.getLogger(GalleryServiceImpl.class);
@@ -256,8 +262,8 @@ class GalleryServiceImpl implements GalleryService {
             UUID leagueId,
             UUID teamId,
             List<UUID> playerIds) {
-        checkPhoto(medium, MAX_MEDIUM_BYTES, "medium");
-        checkPhoto(thumb, MAX_THUMB_BYTES, "thumb");
+        checkPhoto(medium, MAX_MEDIUM_BYTES, MAX_MEDIUM_SIDE, "medium");
+        checkPhoto(thumb, MAX_THUMB_BYTES, MAX_THUMB_SIDE, "thumb");
         String text = caption == null ? null : caption.trim();
         if (text != null && text.isEmpty()) {
             text = null;
@@ -271,7 +277,7 @@ class GalleryServiceImpl implements GalleryService {
         }
         checkTags(clubId, leagueId, teamId, players);
         if (imageRepository.countByUploadedByPersonIdAndUploadedAtAfter(personId, Instant.now().minus(Duration.ofHours(24))) >= DAILY_LIMIT) {
-            throw new LinkRateLimitedException(Duration.ofHours(1).toSeconds());
+            throw new GalleryDailyLimitException(Duration.ofHours(1).toSeconds());
         }
 
         String mediumUrl = mediaService.upload(medium, JPEG_ONLY).url();
@@ -282,24 +288,32 @@ class GalleryServiceImpl implements GalleryService {
             mediaService.delete(mediumUrl);
             throw e;
         }
-        GalleryImage image = imageRepository.save(GalleryImage.builder()
-                .clubId(clubId)
-                .uploadedByPersonId(personId)
-                .uploadedAt(Instant.now())
-                .caption(text)
-                .mediumUrl(mediumUrl)
-                .thumbUrl(thumbUrl)
-                .status(GalleryImage.PUBLISHED)
-                .build());
+        GalleryImage image;
         List<GalleryImageTag> tags = new ArrayList<>();
-        if (leagueId != null) {
-            tags.add(tag(image, GalleryImageTag.LEAGUE, leagueId));
+        try {
+            image = imageRepository.save(GalleryImage.builder()
+                    .clubId(clubId)
+                    .uploadedByPersonId(personId)
+                    .uploadedAt(Instant.now())
+                    .caption(text)
+                    .mediumUrl(mediumUrl)
+                    .thumbUrl(thumbUrl)
+                    .status(GalleryImage.PUBLISHED)
+                    .build());
+            if (leagueId != null) {
+                tags.add(tag(image, GalleryImageTag.LEAGUE, leagueId));
+            }
+            if (teamId != null) {
+                tags.add(tag(image, GalleryImageTag.TEAM, teamId));
+            }
+            players.forEach(playerId -> tags.add(tag(image, GalleryImageTag.PLAYER, playerId)));
+            tagRepository.saveAll(tags);
+        } catch (RuntimeException e) {
+            // The rows did not save, so the two files just written would be left behind with nothing pointing at them.
+            mediaService.delete(mediumUrl);
+            mediaService.delete(thumbUrl);
+            throw e;
         }
-        if (teamId != null) {
-            tags.add(tag(image, GalleryImageTag.TEAM, teamId));
-        }
-        players.forEach(playerId -> tags.add(tag(image, GalleryImageTag.PLAYER, playerId)));
-        tagRepository.saveAll(tags);
         // Ids only: who added a photo, never a name or a caption.
         log.info("Gallery photo added: clubId={} imageId={} personId={} tags={}", clubId, image.getId(), personId, tags.size());
         return toDtos(List.of(image), personId, showUploader).get(0);
@@ -325,8 +339,11 @@ class GalleryServiceImpl implements GalleryService {
         }
     }
 
-    /** One JPEG, inside its size cap, that really decodes as an image (the content type alone is the client's word). */
-    private static void checkPhoto(MultipartFile file, long maxBytes, String name) {
+    /**
+     * One real JPEG inside its size caps: the content type is the client's word, so the first bytes must be a JPEG, the image
+     * must decode, and its width and height must stay under a fixed side limit (read from the header, before any full decode).
+     */
+    private static void checkPhoto(MultipartFile file, long maxBytes, int maxSide, String name) {
         if (file == null || file.isEmpty()) {
             throw new ValidationException(name + " photo is required");
         }
@@ -337,9 +354,31 @@ class GalleryServiceImpl implements GalleryService {
             throw new ValidationException(name + " photo is too large");
         }
         try {
-            BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(file.getBytes()));
-            if (decoded == null) {
+            byte[] bytes = file.getBytes();
+            boolean jpegStart = bytes.length > 3 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8 && (bytes[2] & 0xFF) == 0xFF;
+            if (!jpegStart) {
                 throw new ValidationException(name + " photo is not a readable image");
+            }
+            try (ImageInputStream stream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+                java.util.Iterator<ImageReader> readers = stream == null ? java.util.Collections.emptyIterator() : ImageIO.getImageReaders(stream);
+                if (!readers.hasNext()) {
+                    throw new ValidationException(name + " photo is not a readable image");
+                }
+                ImageReader reader = readers.next();
+                try {
+                    reader.setInput(stream);
+                    if (reader.getWidth(0) > maxSide || reader.getHeight(0) > maxSide) {
+                        throw new ValidationException(name + " photo is too large");
+                    }
+                    reader.read(0);
+                } catch (IOException | RuntimeException e) {
+                    if (e instanceof ValidationException validation) {
+                        throw validation;
+                    }
+                    throw new ValidationException(name + " photo is not a readable image");
+                } finally {
+                    reader.dispose();
+                }
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read the uploaded photo", e);
@@ -349,8 +388,21 @@ class GalleryServiceImpl implements GalleryService {
     private void remove(GalleryImage image) {
         imageRepository.delete(image);
         imageRepository.flush();
-        mediaService.delete(image.getMediumUrl());
-        mediaService.delete(image.getThumbUrl());
+        // The files go only once the row is really gone: a failed commit must not leave a photo whose files are missing.
+        Runnable deleteFiles = () -> {
+            mediaService.delete(image.getMediumUrl());
+            mediaService.delete(image.getThumbUrl());
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deleteFiles.run();
+                }
+            });
+        } else {
+            deleteFiles.run();
+        }
         log.info("Gallery photo deleted: clubId={} imageId={}", image.getClubId(), image.getId());
     }
 
