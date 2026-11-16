@@ -7,8 +7,23 @@ import type { ShareCoreScreenProps } from './shareScreenTypes'
 
 type Props = Pick<
   ShareCoreScreenProps,
-  'choices' | 'updateChoices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'clubWebsite'
+  'choices' | 'updateChoices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'teamAffiliationLogoUrl' | 'leagueAffiliationLogoUrl' | 'clubWebsite'
 >
+
+// One logo switch: always shown, and greyed out with its reason when there is no logo to show, so a missing logo is never a missing switch.
+function LogoSwitch({ label, url, checked, reason, onChange }: { label: string; url: string | null | undefined; checked: boolean; reason: string; onChange: (next: boolean) => void }) {
+  const reasonId = `share-${label.toLowerCase().replace(/\s+/g, '-')}-reason`
+  return (
+    <>
+      <CompactSwitch label={label} checked={Boolean(url) && checked} disabled={!url} describedBy={url ? undefined : reasonId} onChange={onChange} />
+      {!url && (
+        <Typography id={reasonId} variant="caption" color="text.secondary">
+          {reason}
+        </Typography>
+      )}
+    </>
+  )
+}
 
 // docs/specs/114-share-result.md (Logos and footer): the Logos group and the Footer line switch shared by Image and TV.
 // The League logo switch is hidden when the league has no logo; the Club logo switch says so when there is none to show.
@@ -19,6 +34,8 @@ export function ShareLogoControls({
   selectedSponsorIds,
   clubLogoUrl,
   leagueLogoUrl,
+  teamAffiliationLogoUrl,
+  leagueAffiliationLogoUrl,
   clubWebsite,
 }: Props) {
   const setLogo = (patch: Partial<typeof choices.logos>) => updateChoices({ logos: patch })
@@ -38,8 +55,13 @@ export function ShareLogoControls({
           </Typography>
         )}
         <CompactSwitch label="Team logos" checked={choices.logos.team} onChange={(next) => setLogo({ team: next })} />
-        {leagueLogoUrl && (
-          <CompactSwitch label="League logo" checked={choices.logos.league} onChange={(next) => setLogo({ league: next })} />
+        <LogoSwitch label="League logo" url={leagueLogoUrl} checked={choices.logos.league} reason="No league logo: this match is not in a league, or the league has none." onChange={(next) => setLogo({ league: next })} />
+        {/* Only the screens that have a team (match and result) pass a team affiliation; a league share has none to offer. */}
+        {teamAffiliationLogoUrl !== undefined && (
+          <LogoSwitch label="Team affiliation logo" url={teamAffiliationLogoUrl} checked={choices.logos.teamAffiliation} reason="No affiliation logo set on the team." onChange={(next) => setLogo({ teamAffiliation: next })} />
+        )}
+        {leagueAffiliationLogoUrl !== undefined && (
+          <LogoSwitch label="League affiliation logo" url={leagueAffiliationLogoUrl} checked={choices.logos.leagueAffiliation} reason="No affiliation logo set on the league." onChange={(next) => setLogo({ leagueAffiliation: next })} />
         )}
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5, fontWeight: 700 }}>
           Sponsor logos

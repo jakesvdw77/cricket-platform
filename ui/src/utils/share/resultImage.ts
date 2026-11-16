@@ -45,6 +45,9 @@ export interface ResultImageLogos {
   // A logo is drawn only when its url is given AND its image loaded; otherwise its slot collapses.
   clubUrl: string | null
   leagueUrl: string | null
+  // docs/specs/154: our team's and the league's affiliation logos, beside the club and league logos (omitted by the callers that have none).
+  teamAffiliationUrl?: string | null
+  leagueAffiliationUrl?: string | null
   // The Team logos switch: each side gets its logo or, when it has none, an initial tile.
   teams: boolean
   // At most MAX_SHARE_SPONSORS, in order.
@@ -68,6 +71,8 @@ export interface ResultImageOptions {
   batters?: boolean
   bowlers?: boolean
   logos: ResultImageLogos
+  // The Text Size step as a factor (1 = Auto): the text grows with it, never past what fits the picture.
+  textScale?: number
   // Pre-loaded by the caller (loadShareLogos); a null or missing entry is a logo that did not load.
   images: Map<string, HTMLImageElement | null>
   // The web address line, shown only when the club has a website (never invented).
@@ -333,8 +338,10 @@ const imageFor = (images: Images, url: string | null | undefined): HTMLImageElem
 
 // A logo on a white backing in its square slot, fitted with its aspect ratio kept (never stretched).
 function drawLogo(ctx: Ctx, slot: Rect, image: HTMLImageElement, palette: Palette): void {
-  roundedRect(ctx, slot, slot.width * 0.14, palette.backing)
-  const inset = slot.width * 0.08
+  // The shorter side sets the corner and the margin, so a wide sponsor tile keeps its logo as large as the height allows.
+  const shorter = Math.min(slot.width, slot.height)
+  roundedRect(ctx, slot, shorter * 0.14, palette.backing)
+  const inset = shorter * 0.08
   const inner = {
     x: slot.x + inset,
     y: slot.y + inset,
@@ -346,11 +353,15 @@ function drawLogo(ctx: Ctx, slot: Rect, image: HTMLImageElement, palette: Palett
 }
 
 // A team's logo, or its initial on a tile when it has none or the logo did not load.
-function drawTeamMark(ctx: Ctx, slot: Rect, team: ShareTeam, images: Images, palette: Palette): void {
+// A team's logo or initial tile; returns the width it took. The logo's tile follows the logo's own shape (a tall pennant gets a narrow
+// tile, a wide badge a wide one, within limits) so it fills its tile instead of sitting small in a square with empty sides.
+function drawTeamMark(ctx: Ctx, slot: Rect, team: ShareTeam, images: Images, palette: Palette): number {
   const image = imageFor(images, team.logoUrl)
   if (image) {
-    drawLogo(ctx, slot, image, palette)
-    return
+    const aspect = (image.naturalWidth || image.width) / (image.naturalHeight || image.height || 1)
+    const width = slot.height * Math.min(1.6, Math.max(0.62, Number.isFinite(aspect) && aspect > 0 ? aspect : 1))
+    drawLogo(ctx, { x: slot.x, y: slot.y, width, height: slot.height }, image, palette)
+    return width
   }
   roundedRect(ctx, slot, slot.width * 0.14, palette.tile)
   drawText(ctx, team.name.charAt(0).toUpperCase() || '?', slot.x + slot.width / 2, slot.y + slot.height / 2 + 1, {
@@ -359,6 +370,7 @@ function drawTeamMark(ctx: Ctx, slot: Rect, team: ShareTeam, images: Images, pal
     weight: 700,
     align: 'center',
   })
+  return slot.width
 }
 
 function scoreParts(text: string): { main: string; sub: string } {
@@ -387,6 +399,8 @@ interface Resolved {
   // The logos that are on AND loaded.
   clubImage: HTMLImageElement | null
   leagueImage: HTMLImageElement | null
+  teamAffiliationImage: HTMLImageElement | null
+  leagueAffiliationImage: HTMLImageElement | null
   sponsorImages: HTMLImageElement[]
 }
 
@@ -460,6 +474,8 @@ function resolve(options: ResultImageOptions): Resolved {
     height,
     clubImage: imageFor(options.images, options.logos.clubUrl),
     leagueImage: imageFor(options.images, options.logos.leagueUrl),
+    teamAffiliationImage: imageFor(options.images, options.logos.teamAffiliationUrl),
+    leagueAffiliationImage: imageFor(options.images, options.logos.leagueAffiliationUrl),
     sponsorImages,
   }
 }
@@ -471,6 +487,8 @@ function layoutFor(resolved: Resolved) {
     height: resolved.height,
     club: resolved.clubImage !== null,
     league: resolved.leagueImage !== null,
+    teamAffiliation: resolved.teamAffiliationImage !== null,
+    leagueAffiliation: resolved.leagueAffiliationImage !== null,
     teamLogos: false,
     sponsors: resolved.sponsorImages.length,
     footerLine: resolved.options.footerLine,
@@ -488,8 +506,6 @@ const CARD = {
   perfGap: 36,
   perfPad: 24,
   perfLine: 52,
-  metaGap: 30,
-  metaHeight: 36,
 }
 
 function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
@@ -499,28 +515,27 @@ function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
   const { margin } = layout
   const innerWidth = width - margin * 2
 
-  // Header: club logo left, league logo right, "Full time" and the league name between.
+  // Header: club logo left, league logo right, "Result" and the league name between.
   if (layout.club && resolved.clubImage) drawLogo(ctx, layout.club, resolved.clubImage, palette)
   if (layout.league && resolved.leagueImage) drawLogo(ctx, layout.league, resolved.leagueImage, palette)
+  if (layout.teamAffiliation && resolved.teamAffiliationImage) drawLogo(ctx, layout.teamAffiliation, resolved.teamAffiliationImage, palette)
+  if (layout.leagueAffiliation && resolved.leagueAffiliationImage) drawLogo(ctx, layout.leagueAffiliation, resolved.leagueAffiliationImage, palette)
   const head = layout.headerText
   const headSize = head.height * 0.3
-  if (model.leagueName) {
-    drawText(ctx, 'FULL TIME', head.x, head.y + head.height * 0.3, {
-      size: headSize,
-      colour: palette.text,
-      weight: 700,
-      maxWidth: head.width,
-    })
-    drawText(ctx, model.leagueName.toUpperCase(), head.x, head.y + head.height * 0.7, {
-      size: headSize * 0.9,
+  // The header names the match, not the word "Result": team v team, with the league, date and venue under it in a smaller font.
+  const teamsLine = `${model.home.name} v ${model.away.name}`.toUpperCase()
+  const dateAndVenue = options.venueAndDate !== false ? [model.dateLabel, model.venue].filter(Boolean).join(' · ') : ''
+  const subLine = [model.leagueName, dateAndVenue].filter(Boolean).join(' · ')
+  drawText(ctx, teamsLine, head.x, head.y + head.height * (subLine ? 0.3 : 0.5), {
+    size: headSize,
+    colour: palette.text,
+    weight: 700,
+    maxWidth: head.width,
+  })
+  if (subLine) {
+    drawText(ctx, subLine, head.x, head.y + head.height * 0.72, {
+      size: headSize * 0.62,
       colour: palette.muted,
-      maxWidth: head.width,
-    })
-  } else {
-    drawText(ctx, 'FULL TIME', head.x, head.y + head.height / 2, {
-      size: headSize,
-      colour: palette.text,
-      weight: 700,
       maxWidth: head.width,
     })
   }
@@ -535,26 +550,26 @@ function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
     .flatMap((innings) => innings.topBowlers)
     .sort(byWickets)
     .slice(0, 2)
+  // The Text Size step grows the performer lines, the result chip and the venue line; the team rows keep their size so a long team name keeps its room.
+  const ts = Math.min(Math.max(1, options.textScale ?? 1), 1.4)
   const perfLines: string[] = []
   if (options.topPerformers !== false) {
     if (story) {
       batters.forEach((row) => perfLines.push(`🏏 ${battingText(row)}`))
-      bowlers.forEach((row) => perfLines.push(`🎯 ${bowlingText(row)}`))
+      bowlers.forEach((row) => perfLines.push(`🔴 ${bowlingText(row)}`))
     } else {
       if (batters.length > 0) perfLines.push(`🏏 ${batters.map(battingText).join(' · ')}`)
-      if (bowlers.length > 0) perfLines.push(`🎯 ${bowlers.map(bowlingText).join(' · ')}`)
+      if (bowlers.length > 0) perfLines.push(`🔴 ${bowlers.map(bowlingText).join(' · ')}`)
     }
   }
   if (options.playerOfTheMatch !== false && model.playerOfTheMatch) perfLines.push(`⭐ Player of the match: ${model.playerOfTheMatch.name}`)
-  const meta = options.venueAndDate !== false ? [model.dateLabel, model.venue].filter(Boolean).join(' · ') : ''
 
   const base =
     CARD.rowHeight * 2 +
     CARD.rowGap +
     CARD.chipGap +
-    CARD.chipHeight +
-    (perfLines.length > 0 ? CARD.perfGap + 2 + CARD.perfPad + CARD.perfLine * perfLines.length : 0) +
-    (meta ? CARD.metaGap + CARD.metaHeight : 0)
+    CARD.chipHeight * ts +
+    (perfLines.length > 0 ? CARD.perfGap + 2 + CARD.perfPad + CARD.perfLine * ts * perfLines.length : 0)
   const bodyTop = head.y + head.height + Math.min(width, height) * 0.04
   const bodyBottom = layout.content.y + layout.content.height
   const maxScale = story ? 1.35 : resolved.height > resolved.width ? 1.15 : 1
@@ -575,8 +590,8 @@ function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
     let nameX = margin
     if (options.logos.teams) {
       const box = rowHeight * 0.86
-      drawTeamMark(ctx, { x: margin, y: mid - box / 2, width: box, height: box }, team, options.images, palette)
-      nameX = margin + box + 20 * k
+      const used = drawTeamMark(ctx, { x: margin, y: mid - box / 2, width: box, height: box }, team, options.images, palette)
+      nameX = margin + used + 20 * k
     }
     const { main, sub } = scoreParts(team.scoreText)
     const right = width - margin
@@ -609,9 +624,9 @@ function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
   y += (CARD.chipGap - CARD.rowGap) * k
 
   // The result margin chip.
-  const chipHeight = CARD.chipHeight * k
+  const chipHeight = CARD.chipHeight * k * ts
   const chipText = model.resultLine.toUpperCase()
-  const chipSize = 40 * k
+  const chipSize = 40 * k * ts
   const chipWidth = Math.min(innerWidth, measure(ctx, chipText, chipSize, 500) + 48 * k)
   roundedRect(ctx, { x: margin, y, width: chipWidth, height: chipHeight }, 10 * k, palette.chip)
   drawText(ctx, chipText, margin + 24 * k, y + chipHeight / 2, {
@@ -628,20 +643,12 @@ function drawCard(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
     ctx.fillRect(margin, y, innerWidth, 2)
     y += 2 + CARD.perfPad * k
     perfLines.forEach((line) => {
-      drawText(ctx, line, margin, y + (CARD.perfLine * k) / 2, {
-        size: 34 * k,
+      drawText(ctx, line, margin, y + (CARD.perfLine * k * ts) / 2, {
+        size: 34 * k * ts,
         colour: palette.text,
         maxWidth: innerWidth,
       })
-      y += CARD.perfLine * k
-    })
-  }
-  if (meta) {
-    y += CARD.metaGap * k
-    drawText(ctx, meta, margin, y + (CARD.metaHeight * k) / 2, {
-      size: 28 * k,
-      colour: palette.muted,
-      maxWidth: innerWidth,
+      y += CARD.perfLine * k * ts
     })
   }
 }
@@ -678,8 +685,8 @@ function drawTvPanel(ctx: Ctx, model: ShareResultModel, resolved: Resolved, team
   let nameX = panel.x
   if (options.logos.teams) {
     const box = nameRow * 0.92
-    drawTeamMark(ctx, { x: panel.x, y: y + (nameRow - box) / 2, width: box, height: box }, team, options.images, palette)
-    nameX += box + 18 * k
+    const used = drawTeamMark(ctx, { x: panel.x, y: y + (nameRow - box) / 2, width: box, height: box }, team, options.images, palette)
+    nameX += used + 18 * k
   }
   drawText(ctx, team.name.toUpperCase(), nameX, y + nameRow / 2, {
     size: 52 * k,
@@ -769,6 +776,8 @@ function drawTv(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
   }
   if (layout.club && resolved.clubImage) drawLogo(ctx, layout.club, resolved.clubImage, palette)
   if (layout.league && resolved.leagueImage) drawLogo(ctx, layout.league, resolved.leagueImage, palette)
+  if (layout.teamAffiliation && resolved.teamAffiliationImage) drawLogo(ctx, layout.teamAffiliation, resolved.teamAffiliationImage, palette)
+  if (layout.leagueAffiliation && resolved.leagueAffiliationImage) drawLogo(ctx, layout.leagueAffiliation, resolved.leagueAffiliationImage, palette)
   const title = [model.leagueName?.toUpperCase(), 'MATCH SUMMARY'].filter(Boolean).join(' · ')
   const line = [model.dateLabel, model.venue].filter(Boolean).join(' · ')
   drawText(ctx, title, head.x, head.y + head.height * 0.32, {
@@ -807,10 +816,9 @@ function drawTv(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
   // Two side panels between the header bar and the result bar.
   const top = barHeight + margin * 0.6
   const bottom = barTop - margin * 0.6
-  const lines = (side: ShareTeam['side']): number => {
+  const lines = (side: ShareTeam['side'], count: number): number => {
     const own = model.innings.filter((innings) => innings.battingSide === side)
     const fielding = model.innings.filter((innings) => innings.battingSide !== side)
-    const count = options.performers ?? 3
     const batters = options.batters !== false ? Math.min(count, own.flatMap((innings) => innings.topBatters).length) : 0
     const bowlers = options.bowlers !== false ? Math.min(count, fielding.flatMap((innings) => innings.topBowlers).length) : 0
     return (
@@ -818,18 +826,29 @@ function drawTv(ctx: Ctx, model: ShareResultModel, resolved: Resolved): void {
       (bowlers > 0 ? TV.listGap + TV.listLabel + bowlers * TV.listRow : 0)
     )
   }
-  const base = TV.nameRow + TV.scoreGap + TV.score + Math.max(lines('HOME'), lines('AWAY'))
-  const k = Math.max(0.5, Math.min(1.25, (bottom - top) / base))
+  const baseFor = (count: number): number => TV.nameRow + TV.scoreGap + TV.score + Math.max(lines('HOME', count), lines('AWAY', count))
+  // The Text Size step: at Auto the panel is usually as big as its height allows with all the performers, so a bigger step shows fewer of
+  // them (down to one each) to make room for bigger text. It never drops below what the step asks for, nor hides a whole list.
+  const textScale = Math.max(1, options.textScale ?? 1)
+  let count = options.performers ?? 3
+  if (textScale > 1) {
+    const autoFit = Math.min(1.25, (bottom - top) / baseFor(count))
+    const wanted = autoFit * textScale
+    while (count > 1 && (bottom - top) / baseFor(count) < wanted) count -= 1
+  }
+  const shown: Resolved = count === (options.performers ?? 3) ? resolved : { ...resolved, options: { ...options, performers: count as TvPerformers } }
+  const base = baseFor(count)
+  const k = Math.max(0.5, Math.min(1.25 * textScale, (bottom - top) / base))
   const panelTop = top + Math.max(0, (bottom - top - base * k) / 2)
   const half = (width - margin * 2) / 2
   const gutter = margin * 0.5
   ctx.fillStyle = palette.rule
   ctx.fillRect(width / 2, top, 1, Math.max(0, bottom - top))
-  drawTvPanel(ctx, model, resolved, model.home, { x: margin, y: panelTop, width: half - gutter, height: bottom - panelTop }, k)
+  drawTvPanel(ctx, model, shown, model.home, { x: margin, y: panelTop, width: half - gutter, height: bottom - panelTop }, k)
   drawTvPanel(
     ctx,
     model,
-    resolved,
+    shown,
     model.away,
     {
       x: margin + half + gutter,
@@ -878,15 +897,20 @@ async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
     const response = await fetch(url)
     if (!response.ok) return null
     const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const image = await new Promise<HTMLImageElement | null>((resolveImage) => {
+    // A data URL, not a blob URL: Safari can draw a blank logo when the blob URL is revoked right after the image loads.
+    const dataUrl = await new Promise<string | null>((resolveData) => {
+      const reader = new FileReader()
+      reader.onload = () => resolveData(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolveData(null)
+      reader.readAsDataURL(blob)
+    })
+    if (!dataUrl) return null
+    return await new Promise<HTMLImageElement | null>((resolveImage) => {
       const element = new Image()
       element.onload = () => resolveImage(element)
       element.onerror = () => resolveImage(null)
-      element.src = objectUrl
+      element.src = dataUrl
     })
-    URL.revokeObjectURL(objectUrl)
-    return image
   } catch {
     return null
   }

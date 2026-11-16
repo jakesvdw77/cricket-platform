@@ -40,13 +40,14 @@ describe('ImageShareScreen', () => {
     expect(screen.queryByRole('button', { name: 'Our team only' })).not.toBeInTheDocument()
   })
 
-  it('hides the League logo switch when the league has no logo and shows it when it has one', () => {
+  it('shows the League logo switch greyed out, with its reason, when there is no league logo, and enabled when there is one', () => {
     const { unmount } = renderScreen(<ImageShareScreen {...makeScreenProps()} />)
-    expect(screen.queryByRole('checkbox', { name: 'League logo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'League logo' })).toBeDisabled()
+    expect(screen.getByText(/No league logo/)).toBeInTheDocument()
     unmount()
 
     renderScreen(<ImageShareScreen {...makeScreenProps({ leagueLogoUrl: 'https://example.com/league.png' })} />)
-    expect(screen.getByRole('checkbox', { name: 'League logo' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'League logo' })).toBeEnabled()
   })
 
   it('remembers a changed template, size, switch and footer line through updateChoices', async () => {

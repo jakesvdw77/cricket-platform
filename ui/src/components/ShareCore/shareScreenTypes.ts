@@ -14,6 +14,9 @@ export interface ShareCoreScreenProps {
   // What the club and league logos and the footer line draw from (null when the read is not allowed or there is none).
   clubLogoUrl: string | null
   leagueLogoUrl: string | null
+  // docs/specs/154: our team's and the league's affiliation logos (match share only; omitted elsewhere, so their switches stay hidden).
+  teamAffiliationLogoUrl?: string | null
+  leagueAffiliationLogoUrl?: string | null
   clubWebsite: string | null
   // Names of teams, leagues or clubs only: never a player name (the share title).
   shareTitle: string

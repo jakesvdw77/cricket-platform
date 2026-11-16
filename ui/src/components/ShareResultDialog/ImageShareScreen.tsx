@@ -4,8 +4,10 @@ import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
+import { generateResultImage } from '../../utils/share/resultImage'
 import { shareFileName } from '../../utils/share/shareFileName'
 import type { ImageSize, ImageTemplate } from '../../utils/share/shareChoices'
+import { ShareTextSizeControl } from '../ShareCore'
 import { ShareControlGroup } from './ShareControlGroup'
 import { ShareImageActions } from './ShareImageActions'
 import { ShareInitialsControl } from './ShareInitialsControl'
@@ -86,6 +88,7 @@ export function ImageShareScreen(props: ShareScreenProps) {
               ))}
             </CompactToggleGroup>
           </ShareControlGroup>
+          <ShareTextSizeControl choices={choices} updateChoices={updateChoices} />
           <ShareControlGroup label="Include">
             <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={initials.setValue} />
             <CompactSwitch
@@ -120,7 +123,22 @@ export function ImageShareScreen(props: ShareScreenProps) {
           )}
         </SharePreviewStage>
       }
-      actions={<ShareImageActions file={file} shareTitle={shareTitle} error={error} />}
+      actions={
+        <ShareImageActions
+          file={file}
+          shareTitle={shareTitle}
+          error={error}
+          // Download PNG and Share can ask for another size: it is made when picked, with the same choices as the preview.
+          sizes={{
+            current: size,
+            options: SIZES.map((item) => ({
+              id: item.value,
+              label: item.label,
+              make: async () => new File([await generateResultImage(model, { ...options, size: item.value })], fileName.replace(/\.png$/, ` - ${item.label}.png`), { type: 'image/png' }),
+            })),
+          }}
+        />
+      }
     />
   )
 }

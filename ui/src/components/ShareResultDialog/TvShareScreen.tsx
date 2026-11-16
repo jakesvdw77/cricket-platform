@@ -6,6 +6,7 @@ import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
 import { shareFileName } from '../../utils/share/shareFileName'
 import type { TvPerformers, TvTemplate } from '../../utils/share/shareChoices'
+import { ShareTextSizeControl } from '../ShareCore'
 import { ShareControlGroup } from './ShareControlGroup'
 import { ShareImageActions } from './ShareImageActions'
 import { ShareInitialsControl } from './ShareInitialsControl'
@@ -76,6 +77,7 @@ export function TvShareScreen(props: ShareScreenProps) {
               <ToggleButton value="3">Top 3</ToggleButton>
             </CompactToggleGroup>
           </ShareControlGroup>
+          <ShareTextSizeControl choices={choices} updateChoices={updateChoices} />
           <ShareControlGroup label="Include">
             <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={initials.setValue} />
             <CompactSwitch label="Batters" checked={include.batters} onChange={(next) => setInclude({ batters: next })} />

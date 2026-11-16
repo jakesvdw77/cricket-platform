@@ -38,6 +38,9 @@ const MM_PER_PT = 25.4 / 72
 export interface ResultPdfLogos {
   clubUrl: string | null
   leagueUrl: string | null
+  // docs/specs/154: the match share's affiliation logos (omitted by the result and league shares).
+  teamAffiliationUrl?: string | null
+  leagueAffiliationUrl?: string | null
   // The Team logos switch: a side with no logo gets the initial tile.
   teams: boolean
   sponsorUrls: string[]

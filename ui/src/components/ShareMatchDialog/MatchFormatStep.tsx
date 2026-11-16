@@ -20,8 +20,8 @@ const ICONS: Record<ShareFormat, ReactNode> = {
 
 const SUBTITLES: Record<ShareFormat, string> = {
   PDF: 'A4 document to print or send',
-  IMAGE: 'Poster for feeds and chats',
-  TV: 'Widescreen 1920 x 1080',
+  IMAGE: 'Best for phones: feeds and chats',
+  TV: 'For big screens (small on a phone)',
   WHATSAPP: 'Message text to edit and send',
   FACEBOOK: 'Post text to copy',
 }

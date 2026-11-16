@@ -23,6 +23,9 @@ export interface LogoLayoutInput {
   // Whether the club and league logo are shown (switch on AND a logo exists).
   club: boolean
   league: boolean
+  // docs/specs/154: the team and league affiliation logos, each beside the club (left) or league (right) logo. Optional: off when omitted.
+  teamAffiliation?: boolean
+  leagueAffiliation?: boolean
   // The Team logos switch: both slots exist (a side with no logo gets the initial tile in its slot).
   teamLogos: boolean
   // How many sponsor logos are shown (capped at MAX_SHARE_SPONSORS).
@@ -35,6 +38,8 @@ export interface LogoLayout {
   margin: number
   club: Rect | null
   league: Rect | null
+  teamAffiliation: Rect | null
+  leagueAffiliation: Rect | null
   // The room left in the header band for the title, between the club and league slots.
   headerText: Rect
   home: Rect | null
@@ -62,6 +67,8 @@ const LABEL_HEIGHT = 0.04
 const FOOTER_HEIGHT = 0.045
 // A canvas this much taller than wide (the Story size) wraps its sponsor strip to two rows.
 const TWO_ROW_ASPECT = 1.7
+// A sponsor tile is this much wider than tall.
+const SPONSOR_WIDTH_RATIO = 1.9
 
 export function layoutLogos(input: LogoLayoutInput): LogoLayout {
   const { width, height } = input
@@ -76,13 +83,22 @@ export function layoutLogos(input: LogoLayoutInput): LogoLayout {
   // Header band: club on the left, league on the right, the title between them.
   const club = input.club ? { x: margin, y: margin, width: headerBox, height: headerBox } : null
   const league = input.league ? { x: width - margin - headerBox, y: margin, width: headerBox, height: headerBox } : null
-  const headerLeft = club ? club.x + club.width + gap : margin
-  const headerRight = league ? league.x - gap : width - margin
+  // The affiliation logos sit beside them, towards the title: the team's after the club, the league's before the league logo.
+  const affiliationBox = headerBox
+  const teamAffiliation = input.teamAffiliation
+    ? { x: club ? club.x + club.width + gap : margin, y: margin, width: affiliationBox, height: affiliationBox }
+    : null
+  const leagueAffiliation = input.leagueAffiliation
+    ? { x: (league ? league.x - gap : width - margin) - affiliationBox, y: margin, width: affiliationBox, height: affiliationBox }
+    : null
+  const headerLeft = teamAffiliation ? teamAffiliation.x + teamAffiliation.width + gap : club ? club.x + club.width + gap : margin
+  const headerRight = leagueAffiliation ? leagueAffiliation.x - gap : league ? league.x - gap : width - margin
   const headerText = { x: headerLeft, y: margin, width: Math.max(0, headerRight - headerLeft), height: headerBox }
-  const headerBottom = margin + (club || league ? headerBox : 0)
+  const hasHeader = club || league || teamAffiliation || leagueAffiliation
+  const headerBottom = margin + (hasHeader ? headerBox : 0)
 
   // Team row: home logo on the left, away logo on the right, names beside them up to the centre.
-  const teamTop = headerBottom + (club || league ? gap : 0)
+  const teamTop = headerBottom + (hasHeader ? gap : 0)
   const home = input.teamLogos ? { x: margin, y: teamTop, width: teamBox, height: teamBox } : null
   const away = input.teamLogos ? { x: width - margin - teamBox, y: teamTop, width: teamBox, height: teamBox } : null
   const rowHeight = input.teamLogos ? teamBox : unit * 0.08
@@ -104,19 +120,22 @@ export function layoutLogos(input: LogoLayoutInput): LogoLayout {
   const sponsors: Rect[] = []
   let sponsorLabel: Rect | null = null
   if (count > 0) {
-    const rows = height / width >= TWO_ROW_ASPECT && count > 1 ? 2 : 1
+    // Two sponsors still fit one row on a tall size; three or four wrap to two rows of two.
+    const rows = height / width >= TWO_ROW_ASPECT && count > 2 ? 2 : 1
     const perRow = Math.ceil(count / rows)
-    const box = Math.min(unit * sizes.sponsor, (innerWidth - gap * (perRow - 1)) / perRow)
+    // Sponsor logos are mostly wide, so each tile is wider than it is tall (a square tile squashed them): up to 1.9 times its height.
+    const box = unit * sizes.sponsor
+    const boxWidth = Math.min(box * SPONSOR_WIDTH_RATIO, (innerWidth - gap * (perRow - 1)) / perRow)
     const stripHeight = rows * box + (rows - 1) * gap
     const top = bottom - stripHeight
     for (let index = 0; index < count; index += 1) {
       const row = Math.floor(index / perRow)
       const inRow = row === rows - 1 ? count - perRow * (rows - 1) : perRow
-      const rowWidth = inRow * box + (inRow - 1) * gap
+      const rowWidth = inRow * boxWidth + (inRow - 1) * gap
       sponsors.push({
-        x: (width - rowWidth) / 2 + (index - row * perRow) * (box + gap),
+        x: (width - rowWidth) / 2 + (index - row * perRow) * (boxWidth + gap),
         y: top + row * (box + gap),
-        width: box,
+        width: boxWidth,
         height: box,
       })
     }
@@ -126,7 +145,7 @@ export function layoutLogos(input: LogoLayoutInput): LogoLayout {
 
   const contentTop = teamBottom + gap
   const content = { x: margin, y: contentTop, width: innerWidth, height: Math.max(0, bottom - contentTop) }
-  return { margin, club, league, headerText, home, away, homeName, awayName, sponsorLabel, sponsors, footerText, content }
+  return { margin, club, league, teamAffiliation, leagueAffiliation, headerText, home, away, homeName, awayName, sponsorLabel, sponsors, footerText, content }
 }
 
 // A logo of the given natural size fitted inside its square slot, centred, aspect ratio kept (never stretched, never

@@ -5,7 +5,7 @@ import { readableOn } from './resultImage'
 import type { ResultImageColour } from './resultImage'
 import type { ImageSize, ImageTemplate, TvTemplate } from './shareChoices'
 import { directionsText } from './shareMatchData'
-import type { MatchShareLineup, MatchShareModel } from './shareMatchData'
+import type { MatchShareLineup, MatchSharePlayer, MatchShareModel } from './shareMatchData'
 
 // docs/specs/131-match-sharing.md (Team selection poster, Countdown poster, Fixture card, Fun facts card; TV summary): ONE
 // Canvas2D drawing function for the match images (Square 1080, Portrait 1080 x 1350, Story 1080 x 1920, TV 1920 x 1080).
@@ -53,8 +53,11 @@ export interface MatchImageOptions {
   size?: ImageSize
   template: ImageTemplate | TvTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean; directions?: boolean }
-  logos: { clubUrl: string | null; leagueUrl: string | null; teams: boolean; sponsorUrls: string[] }
+  // playerPictures: the Team selection lineup shows each player's picture (or an initial tile) in place of the number.
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; picture: boolean; directions?: boolean; playerPictures?: boolean }
+  // The Text Size steps as a factor on the Auto size of the text and pictures (1 = Auto).
+  textScale?: number
+  logos: { clubUrl: string | null; leagueUrl: string | null; teamAffiliationUrl?: string | null; leagueAffiliationUrl?: string | null; teams: boolean; sponsorUrls: string[] }
   images: Map<string, HTMLImageElement | null>
   clubWebsite?: string | null
   footerLine: boolean
@@ -222,16 +225,40 @@ function drawChip(ctx: Ctx, text: string, x: number, y: number, size: number, pa
   drawText(ctx, text, left + width / 2, y, { size, colour: palette.chipText, weight: 700, align: 'center', maxWidth: width - size })
 }
 
+// The label of a player on a lineup: the name with the captain and keeper marks when those are on.
+const lineupLabel = (player: MatchSharePlayer, options: MatchImageOptions): string =>
+  `${player.name}${options.include.marks ? `${player.captain ? ' (C)' : ''}${player.keeper ? ' (WK)' : ''}` : ''}`
+
+// The one size every name on a lineup is drawn at: the wanted `rowSize`, or smaller when the longest name (with the picture or number
+// before it) would not fit its column. Shared by the drawing and by the choice of one or two columns, so both agree.
+function lineupFitSize(ctx: Ctx, lineup: MatchShareLineup, areaWidth: number, columns: 1 | 2, rowSize: number, options: MatchImageOptions): number {
+  const columnWidth = (areaWidth - (columns - 1) * rowSize) / columns
+  const reference = 100
+  ctx.font = `500 ${reference}px ${FONT_STACK}`
+  const longest = Math.max(0, ...lineup.players.map((player) => ctx.measureText(lineupLabel(player, options)).width))
+  const beforeName = options.include.playerPictures === true ? 1.74 : lineup.numbered ? 1.7 : 0
+  return Math.min(rowSize, columnWidth / (longest / reference + beforeName + 0.05))
+}
+
 function drawLineup(ctx: Ctx, lineup: MatchShareLineup, area: Rect, columns: 1 | 2, options: MatchImageOptions, palette: Palette, rowSize: number, heading: boolean): number {
   let y = area.y
   if (heading) {
-    drawText(ctx, lineup.teamName, area.x, y + rowSize * 0.7, { size: rowSize * 1.15, colour: palette.panelText, weight: 700, maxWidth: area.width })
+    // The Team logos switch: the team's crest (or its initial tile) before the name.
+    const crest = options.logos.teams ? rowSize * 0.75 : 0
+    if (crest > 0) drawCrest(ctx, area.x + crest, y + rowSize * 0.55, crest, lineup.teamName, imageFor(options.images, lineup.logoUrl), palette)
+    const nameLeft = crest > 0 ? area.x + crest * 2 + rowSize * 0.5 : area.x
+    drawText(ctx, lineup.teamName, nameLeft, y + rowSize * 0.7, { size: rowSize * 1.15, colour: palette.panelText, weight: 700, maxWidth: area.width - (nameLeft - area.x) })
     y += rowSize * 1.7
   }
   const players = lineup.players
   const perColumn = Math.ceil(players.length / columns)
-  const rowHeight = rowSize * 1.55
   const columnWidth = (area.width - (columns - 1) * rowSize) / columns
+  const pictures = options.include.playerPictures === true
+  const labelOf = (player: MatchSharePlayer): string => lineupLabel(player, options)
+  // One size for every name: the largest that fits the longest name in its column, so a long name never shrinks on its own and
+  // looks different from the rest. The picture or number before the name scales with the same size.
+  const size = lineupFitSize(ctx, lineup, area.width, columns, rowSize, options)
+  const rowHeight = size * 1.55
   let position = 0
   const positions = players.map((player) => (lineup.numbered && player.order != null ? (position += 1) : null))
   players.forEach((player, index) => {
@@ -240,15 +267,16 @@ function drawLineup(ctx: Ctx, lineup: MatchShareLineup, area: Rect, columns: 1 |
     const x = area.x + column * (columnWidth + rowSize)
     const cy = y + row * rowHeight + rowHeight / 2
     const number = positions[index]
-    if (lineup.numbered) drawText(ctx, number != null ? String(number) : '', x, cy, { size: rowSize, colour: palette.accent, weight: 700 })
-    // An alphabetical list has no number column, so the names start at the edge.
-    const nameLeft = lineup.numbered ? x + rowSize * 1.7 : x
-    const marks = options.include.marks ? `${player.captain ? ' (C)' : ''}${player.keeper ? ' (WK)' : ''}` : ''
-    drawText(ctx, `${player.name}${marks}`, nameLeft, cy, { size: rowSize, colour: palette.panelText, weight: 500, maxWidth: columnWidth - (nameLeft - x) })
+    const radius = size * 0.62
+    if (pictures) drawCrest(ctx, x + radius, cy, radius, player.name, imageFor(options.images, player.photoUrl), palette)
+    else if (lineup.numbered) drawText(ctx, number != null ? String(number) : '', x, cy, { size, colour: palette.accent, weight: 700 })
+    // An alphabetical list has no number column, so the names start at the edge (after the picture when there is one).
+    const nameLeft = pictures ? x + radius * 2 + size * 0.5 : lineup.numbered ? x + size * 1.7 : x
+    drawText(ctx, labelOf(player), nameLeft, cy, { size, colour: palette.panelText, weight: 500, maxWidth: columnWidth - (nameLeft - x) })
   })
   y += perColumn * rowHeight
   if (lineup.twelfthMan) {
-    drawText(ctx, `12th man: ${lineup.twelfthMan}`, area.x, y + rowHeight / 2, { size: rowSize * 0.9, colour: palette.panelMuted, maxWidth: area.width })
+    drawText(ctx, `12th man: ${lineup.twelfthMan}`, area.x, y + rowHeight / 2, { size: size * 0.9, colour: palette.panelMuted, maxWidth: area.width })
     y += rowHeight
   }
   return y
@@ -277,6 +305,7 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
   const tv = options.format === 'TV'
   const unit = Math.min(width, height)
   const k = unit / 1080
+  const kBase = k
 
   const gradient = ctx.createLinearGradient(0, 0, width * 0.3, height)
   gradient.addColorStop(0, palette.background[0])
@@ -286,6 +315,8 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
 
   const clubImage = imageFor(options.images, options.logos.clubUrl)
   const leagueImage = imageFor(options.images, options.logos.leagueUrl)
+  const teamAffiliationImage = imageFor(options.images, options.logos.teamAffiliationUrl)
+  const leagueAffiliationImage = imageFor(options.images, options.logos.leagueAffiliationUrl)
   const sponsorImages = options.logos.sponsorUrls
     .slice(0, MAX_SHARE_SPONSORS)
     .map((url) => imageFor(options.images, url))
@@ -296,6 +327,8 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     height,
     club: clubImage !== null,
     league: leagueImage !== null,
+    teamAffiliation: teamAffiliationImage !== null,
+    leagueAffiliation: leagueAffiliationImage !== null,
     teamLogos: false,
     sponsors: sponsorImages.length,
     footerLine: options.footerLine,
@@ -304,7 +337,7 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
 
   // Header: club logo, the competition line, league logo.
   const headerTop = margin
-  const headerHeight = layout.club?.height ?? layout.league?.height ?? 0
+  const headerHeight = layout.club?.height ?? layout.league?.height ?? layout.teamAffiliation?.height ?? layout.leagueAffiliation?.height ?? 0
   const drawSlotLogo = (slot: Rect | null, image: HTMLImageElement | null) => {
     if (!slot || !image) return
     roundedRect(ctx, slot, slot.width * 0.12, WHITE)
@@ -313,6 +346,8 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
   }
   drawSlotLogo(layout.club, clubImage)
   drawSlotLogo(layout.league, leagueImage)
+  drawSlotLogo(layout.teamAffiliation, teamAffiliationImage)
+  drawSlotLogo(layout.leagueAffiliation, leagueAffiliationImage)
   const competition = competitionLine(model)
   const headerMiddle = headerTop + (headerHeight || 40 * k) / 2
   if (competition) {
@@ -351,6 +386,8 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     drawSelection(ctx, model, options, palette, area, tv, k, weather, drawChip)
   } else if (model.content === 'COUNTDOWN') {
     const mid = area.y + area.height / 2
+    // The Text Size step scales these lines about the middle, capped so they keep their room.
+    const k = kBase * Math.min(Math.max(1, options.textScale ?? 1), 1.3)
     drawText(ctx, (model.countdown ?? '').toUpperCase(), width / 2, mid - 150 * k, { size: (tv ? 150 : 130) * k, colour: palette.accent, weight: 700, align: 'center', maxWidth: area.width })
     drawVersus(mid + 10 * k, 56 * k, 46 * k)
     const details = detailsLine(model, options)
@@ -359,6 +396,8 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     drawDirections(mid + (weather ? 262 : 200) * k)
   } else if (model.content === 'FIXTURE') {
     const mid = area.y + area.height / 2
+    // The Text Size step scales these lines about the middle, capped so they keep their room.
+    const k = kBase * Math.min(Math.max(1, options.textScale ?? 1), 1.3)
     drawVersus(mid - 60 * k, 70 * k, 52 * k)
     drawText(ctx, detailsLine(model, options), width / 2, mid + 90 * k, { size: 38 * k, colour: palette.text, weight: 500, align: 'center', maxWidth: area.width })
     if (weather) drawChip(ctx, weather, width / 2, mid + 170 * k, 30 * k, palette, 'center', area.width)
@@ -383,7 +422,7 @@ export function drawMatchImage(target: HTMLCanvasElement | CanvasRenderingContex
     sponsorImages.forEach((image, index) => {
       const slot = layout.sponsors[index]
       if (!slot) return
-      roundedRect(ctx, slot, slot.width * 0.1, WHITE)
+      roundedRect(ctx, slot, Math.min(slot.width, slot.height) * 0.1, WHITE)
       const fit = fitLogo({ x: slot.x + 6 * k, y: slot.y + 6 * k, width: slot.width - 12 * k, height: slot.height - 12 * k }, image.naturalWidth || image.width, image.naturalHeight || image.height)
       ctx.drawImage(image, fit.x, fit.y, fit.width, fit.height)
     })
@@ -405,20 +444,27 @@ function drawSelection(ctx: Ctx, model: MatchShareModel, options: MatchImageOpti
   const size = options.size ?? 'PORTRAIT'
   const beside = tv || size === 'SQUARE'
   const pictureShare = both ? (beside ? 0.28 : 0.2) : beside ? (tv ? 0.36 : 0.38) : size === 'STORY' ? 0.34 : 0.36
+  // The Picture switch off: no picture box at all, the list panel takes the whole area and the team gets more room.
+  const showPicture = options.include.picture
   const pictureRect: Rect = beside
     ? { x: area.x, y: area.y, width: area.width * pictureShare, height: area.height }
     : { x: area.x, y: area.y, width: area.width, height: area.height * pictureShare }
-  drawPicture(ctx, pictureRect, options, palette)
+  if (showPicture) drawPicture(ctx, pictureRect, options, palette)
   const gap = 18 * k
-  const panel: Rect = beside
-    ? { x: pictureRect.x + pictureRect.width + gap, y: area.y, width: area.width - pictureRect.width - gap, height: area.height }
-    : { x: area.x, y: pictureRect.y + pictureRect.height + gap, width: area.width, height: area.height - pictureRect.height - gap }
+  const panel: Rect = !showPicture
+    ? { ...area }
+    : beside
+      ? { x: pictureRect.x + pictureRect.width + gap, y: area.y, width: area.width - pictureRect.width - gap, height: area.height }
+      : { x: area.x, y: pictureRect.y + pictureRect.height + gap, width: area.width, height: area.height - pictureRect.height - gap }
   roundedRect(ctx, panel, 14 * k, palette.panel)
   const inner: Rect = { x: panel.x + 28 * k, y: panel.y + 26 * k, width: panel.width - 56 * k, height: panel.height - 52 * k }
 
   const title = both ? `${model.homeName} v ${model.awayName}` : `${lineups[0]?.teamName ?? model.homeName}`
   drawText(ctx, 'TEAM SELECTION', inner.x, inner.y + 14 * k, { size: 24 * k, colour: palette.panelMuted, weight: 700, maxWidth: inner.width })
-  drawText(ctx, title.toUpperCase(), inner.x, inner.y + 62 * k, { size: 52 * k, colour: palette.panelText, weight: 700, maxWidth: inner.width })
+  // One team on the poster: its crest at the right of the title when the Team logos switch is on.
+  const singleCrest = !both && options.logos.teams && lineups[0] ? 44 * k : 0
+  if (singleCrest > 0 && lineups[0]) drawCrest(ctx, inner.x + inner.width - singleCrest, inner.y + 58 * k, singleCrest, lineups[0].teamName, imageFor(options.images, lineups[0].logoUrl), palette)
+  drawText(ctx, title.toUpperCase(), inner.x, inner.y + 62 * k, { size: 52 * k, colour: palette.panelText, weight: 700, maxWidth: inner.width - (singleCrest > 0 ? singleCrest * 2 + 20 * k : 0) })
   const versus = both ? '' : `v ${lineups[0] && lineups[0].teamName === model.homeName ? model.awayName : model.homeName}`
   const sub = [versus, options.include.venueAndDate ? [model.whenLabel, model.venue].filter(Boolean).join(' · ') : ''].filter(Boolean).join(' · ')
   drawText(ctx, sub, inner.x, inner.y + 108 * k, { size: 27 * k, colour: palette.panelMuted, maxWidth: inner.width })
@@ -426,18 +472,23 @@ function drawSelection(ctx: Ctx, model: MatchShareModel, options: MatchImageOpti
   const listTop = inner.y + 150 * k
   const weatherReserve = weather ? 60 * k : 0
   const listArea: Rect = { x: inner.x, y: listTop, width: inner.width, height: inner.y + inner.height - listTop - weatherReserve }
+  const scale = Math.max(1, options.textScale ?? 1)
   const rowsNeeded = Math.max(...lineups.map((lineup) => lineup.players.length + (lineup.twelfthMan ? 1 : 0)), 1)
   if (both) {
     const half = (listArea.width - 30 * k) / 2
     lineups.forEach((lineup, index) => {
-      const rowSize = Math.min(30 * k, listArea.height / ((rowsNeeded + 2) * 1.55))
+      const rowSize = Math.min(30 * k * scale, listArea.height / ((rowsNeeded + 2) * 1.55))
       drawLineup(ctx, lineup, { x: listArea.x + index * (half + 30 * k), y: listArea.y, width: half, height: listArea.height }, 1, options, palette, rowSize, true)
     })
   } else if (lineups[0]) {
-    const columns: 1 | 2 = beside && !tv ? 1 : tv ? 2 : 2
-    const perColumn = Math.ceil(rowsNeeded / columns)
-    const rowSize = Math.min(34 * k, listArea.height / ((perColumn + 1) * 1.55))
-    drawLineup(ctx, lineups[0], listArea, columns, options, palette, rowSize, false)
+    // One team: two columns, or one when that lets the names be bigger (a long name caps the size in a narrow column). A narrow poster
+    // beside its picture keeps one.
+    const rowSizeFor = (count: 1 | 2): number => Math.min(34 * k * scale, listArea.height / ((Math.ceil(rowsNeeded / count) + 1) * 1.55))
+    const forced: 1 | 2 | null = beside && !tv && showPicture ? 1 : null
+    const twoSize = forced === 1 ? 0 : lineupFitSize(ctx, lineups[0], listArea.width, 2, rowSizeFor(2), options)
+    const oneSize = lineupFitSize(ctx, lineups[0], listArea.width, 1, rowSizeFor(1), options)
+    const columns: 1 | 2 = forced ?? (oneSize > twoSize * 1.05 ? 1 : 2)
+    drawLineup(ctx, lineups[0], listArea, columns, options, palette, rowSizeFor(columns), false)
   }
   if (weather) chip(ctx, weather, inner.x, inner.y + inner.height - 22 * k, 24 * k, palette, 'left', inner.width)
 }

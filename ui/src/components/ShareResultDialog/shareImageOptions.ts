@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
 import { generateResultImage } from '../../utils/share/resultImage'
+import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import type { ResultImageLogos, ResultImageOptions } from '../../utils/share/resultImage'
 import { shareFileName } from '../../utils/share/shareFileName'
 import type { ShareResultModel } from '../../utils/share/shareResultData'
@@ -9,7 +10,7 @@ import { useShareLogoImages } from './useShareLogoImages'
 
 type OptionSource = Pick<
   ShareScreenProps,
-  'cardModel' | 'choices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'clubWebsite'
+  'cardModel' | 'choices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'teamAffiliationLogoUrl' | 'leagueAffiliationLogoUrl' | 'clubWebsite'
 >
 // What differs per format: the format, size, template and the include switches.
 export type ShareImageSpecifics = Omit<ResultImageOptions, 'colour' | 'logos' | 'images' | 'clubWebsite' | 'footerLine'>
@@ -22,7 +23,7 @@ function sponsorUrlsOf({ sponsors, selectedSponsorIds }: Pick<OptionSource, 'spo
 // Memoised on values, so a preview effect depending on it only runs when something really changed.
 export function useShareImageOptions(source: OptionSource, specifics: ShareImageSpecifics, enabled = true): ResultImageOptions {
   const { main, dark, contrastText } = useTheme().palette.primary
-  const { cardModel, choices, clubLogoUrl, leagueLogoUrl, clubWebsite } = source
+  const { cardModel, choices, clubLogoUrl, leagueLogoUrl, teamAffiliationLogoUrl = null, leagueAffiliationLogoUrl = null, clubWebsite } = source
   const sponsorUrlsKey = JSON.stringify(sponsorUrlsOf(source))
   const sponsorUrls = useMemo(() => JSON.parse(sponsorUrlsKey) as string[], [sponsorUrlsKey])
   const specificsKey = JSON.stringify(specifics)
@@ -32,14 +33,18 @@ export function useShareImageOptions(source: OptionSource, specifics: ShareImage
     () => ({
       clubUrl: choices.logos.club ? clubLogoUrl : null,
       leagueUrl: choices.logos.league ? leagueLogoUrl : null,
+      teamAffiliationUrl: choices.logos.teamAffiliation ? teamAffiliationLogoUrl : null,
+      leagueAffiliationUrl: choices.logos.leagueAffiliation ? leagueAffiliationLogoUrl : null,
       teams: choices.logos.team,
       sponsorUrls,
     }),
-    [choices.logos.club, choices.logos.league, choices.logos.team, clubLogoUrl, leagueLogoUrl, sponsorUrls],
+    [choices.logos.club, choices.logos.league, choices.logos.teamAffiliation, choices.logos.leagueAffiliation, choices.logos.team, clubLogoUrl, leagueLogoUrl, teamAffiliationLogoUrl, leagueAffiliationLogoUrl, sponsorUrls],
   )
   const wanted = [
     logos.clubUrl,
     logos.leagueUrl,
+    logos.teamAffiliationUrl,
+    logos.leagueAffiliationUrl,
     ...sponsorUrls,
     ...(choices.logos.team ? [cardModel.home.logoUrl, cardModel.away.logoUrl] : []),
   ]
@@ -51,10 +56,11 @@ export function useShareImageOptions(source: OptionSource, specifics: ShareImage
       colour: { main, dark, contrastText },
       logos,
       images,
+      textScale: SHARE_TEXT_SCALE[choices.textSize],
       clubWebsite,
       footerLine: choices.footerLine,
     }),
-    [stableSpecifics, main, dark, contrastText, logos, images, clubWebsite, choices.footerLine],
+    [stableSpecifics, main, dark, contrastText, logos, images, clubWebsite, choices.footerLine, choices.textSize],
   )
 }
 

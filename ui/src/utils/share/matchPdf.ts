@@ -75,7 +75,7 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
   const clubRgb = toRgb(options.colour.main, INK)
   const onClub = toRgb(readableOn([options.colour.main], [options.colour.contrastText, ON_CLUB_WHITE, ON_CLUB_INK]), WHITE)
   const sponsorUrls = options.logos.sponsorUrls.slice(0, MAX_SHARE_SPONSORS)
-  const wanted = [options.logos.clubUrl, options.logos.leagueUrl, ...sponsorUrls].filter((url): url is string => Boolean(url))
+  const wanted = [options.logos.clubUrl, options.logos.leagueUrl, options.logos.teamAffiliationUrl ?? null, options.logos.leagueAffiliationUrl ?? null, ...sponsorUrls].filter((url): url is string => Boolean(url))
   const loaded = new Map<string, string | null>(await Promise.all([...new Set(wanted)].map(async (url) => [url, await loadImageBase64(url)] as const)))
   const imageOf = (url: string | null): string | null => (url ? (loaded.get(url) ?? null) : null)
 
@@ -143,6 +143,19 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
       fillRect(right - logoSize - 0.8, 6.2, logoSize + 1.6, logoSize + 1.6, WHITE, 2)
       placeImage(leagueImage, { x: right - logoSize, y: 7, width: logoSize, height: logoSize })
       textRight = right - logoSize - 5
+    }
+    // docs/specs/154: the affiliation logos sit next to the club (team's) and league (league's) logos, towards the title.
+    const teamAffiliationImage = imageOf(options.logos.teamAffiliationUrl ?? null)
+    if (teamAffiliationImage) {
+      fillRect(textLeft - 0.8, 6.2, logoSize + 1.6, logoSize + 1.6, WHITE, 2)
+      placeImage(teamAffiliationImage, { x: textLeft, y: 7, width: logoSize, height: logoSize })
+      textLeft += logoSize + 5
+    }
+    const leagueAffiliationImage = imageOf(options.logos.leagueAffiliationUrl ?? null)
+    if (leagueAffiliationImage) {
+      fillRect(textRight - logoSize - 0.8, 6.2, logoSize + 1.6, logoSize + 1.6, WHITE, 2)
+      placeImage(leagueAffiliationImage, { x: textRight - logoSize, y: 7, width: logoSize, height: logoSize })
+      textRight -= logoSize + 5
     }
     const width = textRight - textLeft
     text(fit(model.title, width, type.title, 'bold'), textLeft, 14, type.title, onClub, 'bold')

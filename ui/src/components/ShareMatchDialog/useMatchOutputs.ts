@@ -8,13 +8,14 @@ import type { MatchPdfOptions } from '../../utils/share/matchPdf'
 import { drawResultPdfPage } from '../../utils/share/resultPdfPreview'
 import type { PdfOp } from '../../utils/share/resultPdf'
 import type { MatchShareModel } from '../../utils/share/shareMatchData'
+import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import { useShareLogoImages } from '../ShareCore'
 import type { MatchScreenProps } from './matchScreenTypes'
 
 export const MATCH_IMAGE_ERROR = 'The image could not be created. Try again, or choose another template.'
 export const MATCH_PDF_ERROR = 'The PDF could not be created. Try again.'
 
-type Source = Pick<MatchScreenProps, 'choices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'clubWebsite'>
+type Source = Pick<MatchScreenProps, 'choices' | 'sponsors' | 'selectedSponsorIds' | 'clubLogoUrl' | 'leagueLogoUrl' | 'teamAffiliationLogoUrl' | 'leagueAffiliationLogoUrl' | 'clubWebsite'>
 
 function sponsorUrlsOf({ sponsors, selectedSponsorIds }: Pick<Source, 'sponsors' | 'selectedSponsorIds'>): string[] {
   return selectedSponsorIds.map((id) => sponsors.find((sponsor) => sponsor.id === id)?.logoUrl).filter((url): url is string => Boolean(url))
@@ -23,12 +24,14 @@ function sponsorUrlsOf({ sponsors, selectedSponsorIds }: Pick<Source, 'sponsors'
 // The image generator options for the current choices; `model` is only read for the team logo urls.
 export function useMatchImageOptions(source: Source, model: MatchShareModel, specifics: Pick<MatchImageOptions, 'format' | 'size' | 'template' | 'picture' | 'pictureSettings'>): MatchImageOptions {
   const { main, dark, contrastText } = useTheme().palette.primary
-  const { choices, clubLogoUrl, leagueLogoUrl, clubWebsite } = source
+  const { choices, clubLogoUrl, leagueLogoUrl, teamAffiliationLogoUrl = null, leagueAffiliationLogoUrl = null, clubWebsite } = source
   const sponsorKey = JSON.stringify(sponsorUrlsOf(source))
   const sponsorUrls = useMemo(() => JSON.parse(sponsorKey) as string[], [sponsorKey])
-  const { club, league, team } = choices.logos
+  const { club, league, team, teamAffiliation, leagueAffiliation } = choices.logos
+  const teamAffiliationUrl = teamAffiliation ? teamAffiliationLogoUrl : null
+  const leagueAffiliationUrl = leagueAffiliation ? leagueAffiliationLogoUrl : null
   const include = choices.match.include
-  const urls = [club ? clubLogoUrl : null, league ? leagueLogoUrl : null, ...sponsorUrls, team ? model.homeLogoUrl : null, team ? model.awayLogoUrl : null].filter((url): url is string => Boolean(url))
+  const urls = [club ? clubLogoUrl : null, league ? leagueLogoUrl : null, teamAffiliationUrl, leagueAffiliationUrl, ...sponsorUrls, team ? model.homeLogoUrl : null, team ? model.awayLogoUrl : null, ...(team ? model.lineups.map((lineup) => lineup.logoUrl) : []), ...(include.playerPictures ? model.lineups.flatMap((lineup) => lineup.players.map((player) => player.photoUrl)) : [])].filter((url): url is string => Boolean(url))
   const images = useShareLogoImages(urls)
   const { format, size, template, picture, pictureSettings } = specifics
   return useMemo(
@@ -37,15 +40,16 @@ export function useMatchImageOptions(source: Source, model: MatchShareModel, spe
       size,
       template,
       colour: { main, dark, contrastText },
-      include: { marks: include.marks, venueAndDate: include.venueAndDate, weather: include.weather, directions: include.directions, picture: include.picture },
-      logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teams: team, sponsorUrls },
+      include: { marks: include.marks, venueAndDate: include.venueAndDate, weather: include.weather, directions: include.directions, picture: include.picture, playerPictures: include.playerPictures },
+      logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teamAffiliationUrl, leagueAffiliationUrl, teams: team, sponsorUrls },
+      textScale: SHARE_TEXT_SCALE[choices.textSize],
       images,
       clubWebsite,
       footerLine: choices.footerLine,
       picture,
       pictureSettings,
     }),
-    [format, size, template, main, dark, contrastText, include.marks, include.venueAndDate, include.weather, include.directions, include.picture, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, images, clubWebsite, choices.footerLine, picture, pictureSettings],
+    [format, size, template, main, dark, contrastText, include.marks, include.venueAndDate, include.weather, include.directions, include.picture, include.playerPictures, choices.textSize, club, league, team, clubLogoUrl, leagueLogoUrl, teamAffiliationUrl, leagueAffiliationUrl, sponsorUrls, images, clubWebsite, choices.footerLine, picture, pictureSettings],
   )
 }
 
@@ -89,21 +93,23 @@ export function useMatchImageOutput(model: MatchShareModel, options: MatchImageO
 
 export function useMatchPdfOptions(source: Source): MatchPdfOptions {
   const { main, dark, contrastText } = useTheme().palette.primary
-  const { choices, clubLogoUrl, leagueLogoUrl, clubWebsite } = source
+  const { choices, clubLogoUrl, leagueLogoUrl, teamAffiliationLogoUrl = null, leagueAffiliationLogoUrl = null, clubWebsite } = source
   const sponsorKey = JSON.stringify(sponsorUrlsOf(source))
   const sponsorUrls = useMemo(() => JSON.parse(sponsorKey) as string[], [sponsorKey])
-  const { club, league, team } = choices.logos
+  const { club, league, team, teamAffiliation, leagueAffiliation } = choices.logos
+  const teamAffiliationUrl = teamAffiliation ? teamAffiliationLogoUrl : null
+  const leagueAffiliationUrl = leagueAffiliation ? leagueAffiliationLogoUrl : null
   const { marks, venueAndDate, weather, directions, blankLines } = choices.match.include
   return useMemo(
     () => ({
       template: choices.match.templates.pdf,
       colour: { main, dark, contrastText },
       include: { marks, venueAndDate, weather, directions, blankLines },
-      logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teams: team, sponsorUrls },
+      logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teamAffiliationUrl, leagueAffiliationUrl, teams: team, sponsorUrls },
       clubWebsite,
       footerLine: choices.footerLine,
     }),
-    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, blankLines, club, league, team, clubLogoUrl, leagueLogoUrl, sponsorUrls, clubWebsite, choices.footerLine],
+    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, blankLines, club, league, team, clubLogoUrl, leagueLogoUrl, teamAffiliationUrl, leagueAffiliationUrl, sponsorUrls, clubWebsite, choices.footerLine],
   )
 }
 

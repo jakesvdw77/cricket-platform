@@ -7,6 +7,7 @@ import { AddCard } from '../../../components/AddCard'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { Button } from '../../../components/Button'
 import { SplitButton } from '../../../components/SplitButton'
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { SortMenu } from '../../../components/ContentControlsLine'
 import { EmptyState, EmptyStateLink } from '../../../components/EmptyState'
@@ -414,6 +415,7 @@ export default function ResultList() {
         action={
           !canCapture ? undefined : <SplitButton
             label="Capture New Result"
+            icon={<AddOutlinedIcon fontSize="small" />}
             onClick={openCreate}
             testId="capture-result"
             items={[

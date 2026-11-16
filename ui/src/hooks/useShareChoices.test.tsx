@@ -39,7 +39,7 @@ describe('useShareChoices storage behaviour', () => {
       imageSize: 'STORY' as const,
       tvPerformers: 2 as const,
       include: { ...DEFAULT_SHARE_CHOICES.include, tv: { batters: false, bowlers: true, playerOfTheMatchBar: false } },
-      logos: { club: false, team: true, league: false },
+      logos: { ...DEFAULT_SHARE_CHOICES.logos, club: false, team: true, league: false },
       footerLine: false,
       sponsorIds: ['s1', 's2'],
       initialsOnly: true,

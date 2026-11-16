@@ -66,13 +66,13 @@ const TILES: FormatTile[] = [
   {
     value: "IMAGE",
     title: "Image",
-    subtitle: "Result card for feeds and chats",
+    subtitle: "Best for phones: feeds and chats",
     icon: <ImageOutlinedIcon />,
   },
   {
     value: "TV",
     title: "TV summary",
-    subtitle: "Widescreen match summary",
+    subtitle: "For big screens (small on a phone)",
     icon: <LiveTvOutlinedIcon />,
   },
   {
@@ -237,6 +237,9 @@ export function ShareResultDialog({
     cardModel,
     clubLogoUrl: data.clubProfile?.logoUrl ?? null,
     leagueLogoUrl: data.league?.logoUrl ?? null,
+    // docs/specs/154: the affiliation logos of our team (the home side when it is ours, else the away side) and of the league.
+    teamAffiliationLogoUrl: teamsById.get(match.homeTeamId ?? match.awayTeamId ?? '')?.affiliationLogoUrl ?? null,
+    leagueAffiliationLogoUrl: data.league?.affiliationLogoUrl ?? null,
     clubWebsite: data.clubProfile?.website ?? null,
     choices,
     updateChoices,

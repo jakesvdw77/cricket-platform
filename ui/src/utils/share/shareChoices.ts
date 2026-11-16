@@ -8,6 +8,8 @@ import type {
 import { LEAGUE_CONTENTS, LEAGUE_FACEBOOK_TEMPLATES, LEAGUE_SHARE_FORMATS, LEAGUE_WHATSAPP_TEMPLATES } from './leagueShareFormats'
 import type { TeamsChoice } from './shareResultData'
 import type { MatchContent, MatchFacebookTemplate, MatchLayout, MatchLineupOrder, MatchSideChoice, MatchWhatsAppTemplate } from './matchShareFormats'
+import { SHARE_TEXT_SIZES } from './textSize'
+import type { ShareTextSize } from './textSize'
 import { MATCH_CONTENTS, MATCH_FACEBOOK_TEMPLATES, MATCH_LAYOUTS, MATCH_LINEUP_ORDERS, MATCH_SIDE_CHOICES, MATCH_WHATSAPP_TEMPLATES } from './matchShareFormats'
 
 // docs/specs/114-share-result.md (Browser storage): the manager's remembered choices, one object per club in
@@ -59,7 +61,7 @@ export type MatchShareChoices = {
   imageSize: ImageSize
   templates: { pdf: PdfTemplate; image: ImageTemplate; tv: TvTemplate; whatsapp: MatchWhatsAppTemplate; facebook: MatchFacebookTemplate }
   // blankLines: the Team Sheet PDF's blank lines for officials (Scorers, Toss won by, Signed), off by default.
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; blankLines: boolean; picture: boolean; emoji: boolean; hashtags: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; blankLines: boolean; picture: boolean; playerPictures: boolean; emoji: boolean; hashtags: boolean }
 }
 
 // A type alias (not an interface) so it satisfies usePersistedListFilters' Record<string, unknown>.
@@ -84,8 +86,11 @@ export type ShareChoices = {
     facebook: { attachImage: boolean; hashtags: boolean; mentionSponsor: boolean }
   }
   // The Logos group and the Footer line, shared by PDF, Image and TV.
-  logos: { club: boolean; team: boolean; league: boolean }
+  // teamAffiliation / leagueAffiliation (docs/specs/154): the affiliation logos of our team and of the league, shown when set.
+  logos: { club: boolean; team: boolean; league: boolean; teamAffiliation: boolean; leagueAffiliation: boolean }
   footerLine: boolean
+  // How big the text is on every picture template (Auto, Large, Larger, Largest); one choice for them all.
+  textSize: ShareTextSize
   // At most MAX_SHARE_SPONSORS ids of the sponsors to show.
   sponsorIds: string[]
   // The user's own First names as initials choice for non-junior matches; null means never chosen (the club default applies).
@@ -107,8 +112,9 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     whatsapp: { attachImage: true, emoji: true },
     facebook: { attachImage: true, hashtags: true, mentionSponsor: false },
   },
-  logos: { club: true, team: true, league: true },
+  logos: { club: true, team: true, league: true, teamAffiliation: true, leagueAffiliation: true },
   footerLine: true,
+  textSize: 'AUTO',
   sponsorIds: [],
   initialsOnly: null,
   league: {
@@ -125,7 +131,7 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     lineupOrder: 'BATTING',
     imageSize: 'PORTRAIT',
     templates: { pdf: 'CLUB', image: 'CLUB_GREEN', tv: 'BROADCAST', whatsapp: 'SHORT', facebook: 'ANNOUNCEMENT' },
-    include: { marks: true, venueAndDate: true, weather: true, directions: true, blankLines: false, picture: true, emoji: true, hashtags: true },
+    include: { marks: true, venueAndDate: true, weather: false, directions: true, blankLines: false, picture: true, playerPictures: false, emoji: true, hashtags: true },
   },
 }
 
@@ -199,6 +205,7 @@ export function sanitiseShareChoices(raw: unknown): ShareChoices {
     },
     logos: pickBooleans(raw.logos, d.logos),
     footerLine: typeof raw.footerLine === 'boolean' ? raw.footerLine : d.footerLine,
+    textSize: pickEnum(raw.textSize, SHARE_TEXT_SIZES, d.textSize),
     sponsorIds,
     initialsOnly: typeof raw.initialsOnly === 'boolean' ? raw.initialsOnly : null,
     league: {
