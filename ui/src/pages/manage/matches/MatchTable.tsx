@@ -1,4 +1,4 @@
-import { Avatar, Box, Link as MuiLink, Typography } from '@mui/material'
+import { Box, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
@@ -11,7 +11,6 @@ import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
-import { initialsFromName } from '../../../utils/initials'
 import { currentOrigin, withReturnTo } from '../../../utils/returnTo'
 import { zebraTint } from '../../../utils/zebraTint'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
@@ -23,6 +22,7 @@ import { StageChip } from './StageChip'
 import { ProgressMeter } from '../../../components/ProgressMeter'
 import { announcedBadges, matchLeagueValue, ownSides, pollBadgeFor, pollDestination, selectionRows, matchSideName } from './matchCardHelpers'
 import type { PollDestination } from './matchCardHelpers'
+import { MatchLogoPair } from './MatchLogoPair'
 
 export interface MatchTableProps {
   clubId: string
@@ -108,10 +108,6 @@ function MatchRow({
   const countdownText = status.kind === 'upcoming' && kickoff.text ? `in ${kickoff.text}` : ''
   const timeColor = soon ? 'warning.dark' : 'text.secondary'
 
-  // The logo is the club's own side (home first); a match with no own side shows the home side's initials.
-  const ownTeam = (match.homeTeamId && teamsById.get(match.homeTeamId)) || (match.awayTeamId && teamsById.get(match.awayTeamId)) || undefined
-  const logoName = ownTeam ? ownTeam.name : home
-
   // `venue` carries the field's name when the match is linked to a field (docs/specs/099); a field links to its page.
   const venueText = match.venue?.trim() || 'TBC'
   const venueTo = match.playingAreaId ? leaveTo(`/manage/fixtures/fields/${match.playingAreaId}`) : undefined
@@ -166,13 +162,7 @@ function MatchRow({
       }}
     >
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-        <Avatar
-          variant="rounded"
-          src={ownTeam ? (ownTeam.logoUrl ?? undefined) : undefined}
-          sx={{ width: 44, height: 44, flex: 'none', fontSize: '0.7rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
-        >
-          {ownTeam?.abbreviation || initialsFromName(logoName)}
-        </Avatar>
+        <MatchLogoPair match={match} teamsById={teamsById} size={40} />
         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
           {titleNode}
           <Typography variant="caption" color="text.secondary" noWrap sx={desktopOnly} {...DESKTOP_ONLY}>

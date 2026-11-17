@@ -1,7 +1,6 @@
 import { Box, Chip, Link as MuiLink } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
-import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { CardForecastStrip } from '../../../components/CardForecastStrip'
@@ -24,6 +23,7 @@ import { NoFieldFlag, showsNoFieldFlag } from './NoFieldFlag'
 import { StageChip } from './StageChip'
 import { SelectionBlock } from './SelectionBlock'
 import type { PollDestination } from './matchCardHelpers'
+import { MatchLogoPair } from './MatchLogoPair'
 import {
   announcedBadges,
   matchLeagueValue,
@@ -121,9 +121,8 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
       badgesBelow
       description={leagueValue || undefined}
       headerActions={<MatchRowMenu clubId={clubId} match={match} teamsById={teamsById} leaguesById={leaguesById} seasonsById={seasonsById} testId="match-card-actions" />}
-      // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
-      // each side is the 56px avatar box).
-      avatar={{ element: <BrandIcon name="nav/upcoming-matches" size={48} padding={4} /> }}
+      // Both sides' logos (home then away), so the opposition shows too; a side with no logo shows its initials.
+      avatar={{ element: <MatchLogoPair match={match} teamsById={teamsById} size={44} /> }}
       badges={badges}
       viewTo={viewTo ? withReturnTo(viewTo, currentOrigin(location), 'Matches') : undefined}
       // No footer action bar (page-anatomy section 6): the kebab in the corner holds every action.
