@@ -246,3 +246,6 @@ Per `docs/standards/testing.md`. Following the owner's working rule, tests are w
 | Fun facts | Did You Know | A curated, club-neutral rule set computed from visible data (streaks, "most wins this season") or static copy, with a rule file | No names beyond what a Hub page shows; `to` may be null |
 
 - **Also later:** an aggregate `GET .../ticker` if two or more kinds need server composition; a club-level switch (when the first club-authored kind lands); a one-shot polite announcement when a live match starts; the in-app live score in the live item once `NATIVE` exists (`135`).
+
+## Addendum 2026-11-17: phone footer (owner). Mockup `docs/mockups/hub-phone-footer-mockup.html`
+Under 600 px the Back button moves from the footer to the top left of the shell's bar (`AccountShell` offers a slot, `HubFrame` portals Back into it), and Club Home (managers) becomes a home icon beside the avatar, so the only arrow on the screen is Back. The footer is then only the ticker, shown as a two-line card (`HubTicker card`): the key words, then the muted part, fading to the next item after the display time, three dots showing the position, a tap opens the item, no sideways scroll and no pause button. From 600 px up the footer and the marquee are unchanged.

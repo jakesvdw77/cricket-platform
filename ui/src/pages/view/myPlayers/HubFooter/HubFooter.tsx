@@ -26,6 +26,9 @@ export interface HubFooterProps {
   // Stories and tests: use these items instead of reading the three Hub reads (no request is made).
   items?: TickerItem[]
   kinds?: KindRules
+  // A phone (owner, 2026-11-17): Back lives in the shell's top bar, so the footer is only the ticker, shown as a two-line card that fades
+  // from one item to the next instead of scrolling sideways.
+  compact?: boolean
 }
 
 const bandSx = { gridRow: 3, alignSelf: 'end', minWidth: 0, maxWidth: '100%', borderTop: `1px solid ${HUB.line}` } as const
@@ -45,12 +48,12 @@ function PlainFooter({ back, fill }: { back?: ReactNode; fill?: boolean }) {
   )
 }
 
-export function HubFooter({ back, fill, items, kinds }: HubFooterProps) {
+export function HubFooter({ back, fill, items, kinds, compact }: HubFooterProps) {
   const { pathname } = useLocation()
   const route = tickerRoute(pathname)
   // A screen with no player never mounts the data hooks (so it needs no query client either).
   if (!route.playerKey || !route.visible) return <PlainFooter back={back} fill={fill} />
-  return <PlayerFooter back={back} fill={fill} playerKey={route.playerKey} routeKey={route.routeKey} items={items} kinds={kinds} />
+  return <PlayerFooter back={back} fill={fill} compact={compact} playerKey={route.playerKey} routeKey={route.routeKey} items={items} kinds={kinds} />
 }
 
 interface PlayerFooterProps extends HubFooterProps {
@@ -58,7 +61,7 @@ interface PlayerFooterProps extends HubFooterProps {
   routeKey: string
 }
 
-function PlayerFooter({ back, fill, playerKey, routeKey, items: given, kinds }: PlayerFooterProps) {
+function PlayerFooter({ back, fill, compact, playerKey, routeKey, items: given, kinds }: PlayerFooterProps) {
   const [on] = useHubTickerPreference()
   const ctx = useTickerData(playerKey, { enabled: on && given === undefined, routeKey })
   const built = useMemo(() => (!on ? [] : (given ?? (ctx ? buildTickerItems(ctx) : []))), [on, given, ctx])
@@ -88,7 +91,7 @@ function PlayerFooter({ back, fill, playerKey, routeKey, items: given, kinds }: 
           </Box>
         )}
         <Box ref={slotRef} data-testid="hub-footer-ticker" sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
-          {room && <HubTicker items={cycle} kinds={kinds} />}
+          {room && <HubTicker items={cycle} kinds={kinds} card={compact} />}
         </Box>
       </Box>
     </Box>

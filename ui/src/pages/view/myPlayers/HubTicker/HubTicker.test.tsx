@@ -294,3 +294,44 @@ describe('later kinds', () => {
     expect(within(screen.getByTestId('ticker-list')).getByText('Acme Hardware')).toBeInTheDocument()
   })
 })
+
+// Owner, 2026-11-17 (docs/mockups/hub-phone-footer-mockup.html): on a phone the strip is a two-line card, one item at a time, no scrolling.
+describe('the phone card', () => {
+  const showCard = (list: TickerItem[] = items()) =>
+    render(
+      <MemoryRouter initialEntries={[`${BASE}/availability`]}>
+        <HubTicker items={list} card />
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+
+  it('shows one item as two lines: the key words, then the muted part under them, with no scrolling track or controls', () => {
+    showCard()
+    expect(screen.getByTestId('hub-ticker')).toHaveAttribute('data-mode', 'card')
+    // The strip shows the items in the order it is given: the first is the result.
+    const link = screen.getByTestId('ticker-link')
+    expect(link).toHaveTextContent('Villagers beat Rovers')
+    expect(link).toHaveTextContent('Over 40, Sat')
+    expect(screen.queryByTestId('ticker-track')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pause Ticker/ })).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('ticker-link')).toHaveLength(1)
+  })
+
+  it('fades to the next item after the display time and shows where it is with dots', () => {
+    vi.useFakeTimers()
+    showCard()
+    expect(screen.getByTestId('ticker-dots').children).toHaveLength(3)
+    const first = screen.getByTestId('ticker-link').getAttribute('data-to')
+    act(() => {
+      vi.advanceTimersByTime(TICKER_STATIC_MS + 50)
+    })
+    expect(screen.getByTestId('ticker-link').getAttribute('data-to')).not.toBe(first)
+  })
+
+  it('opens the item when tapped', async () => {
+    showCard([item('upcoming', 'u1', { parts: [{ type: 'strong', text: 'Villagers v Eagles' }, { type: 'muted', text: 'Starts in 3 days' }], to: `${BASE}/schedule/matches/u1` })])
+    await userEvent.click(screen.getByTestId('ticker-link'))
+    expect(screen.getByTestId('location')).toHaveTextContent(`${BASE}/schedule/matches/u1`)
+    expect(screen.queryByTestId('ticker-dots')).not.toBeInTheDocument()
+  })
+})

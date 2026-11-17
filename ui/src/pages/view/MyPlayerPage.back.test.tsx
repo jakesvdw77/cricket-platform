@@ -55,14 +55,14 @@ describe.each([
     ['a sub menu page', '/account/players/k1/club/fields', 'Field Directory'],
     ['a Soon page', '/account/players/k1/schedule/matches', 'Matches'],
     ['a Profile page', '/account/players/k1/profile/contact', 'Contact'],
-  ])('%s has exactly one Back control and it is the footer', async (_name, path, heading) => {
+  ])('%s has exactly one Back control and it is the footer\'s (the shell\'s top bar on a phone)', async (_name, path, heading) => {
     setup(path)
     await screen.findAllByRole('heading', { name: heading })
     await footerBack()
 
     const backs = backControls()
     expect(backs).toHaveLength(1)
-    expect(backs[0].closest('footer')).not.toBeNull()
+    expect(backs[0].closest(phone ? 'header' : 'footer')).not.toBeNull()
   })
 
   it('a Profile edit view has exactly one Back, the footer\'s Back to Profile', async () => {
@@ -72,7 +72,7 @@ describe.each([
     const backs = backControls()
     expect(backs).toHaveLength(1)
     expect(backs[0]).toHaveAccessibleName('Back to Profile')
-    expect(backs[0].closest('footer')).not.toBeNull()
+    expect(backs[0].closest(phone ? 'header' : 'footer')).not.toBeNull()
   })
 
   it('the Agents edit view has exactly one Back too', async () => {
@@ -80,17 +80,17 @@ describe.each([
     await screen.findByTestId('agent-change-view')
 
     expect(backControls()).toHaveLength(1)
-    expect(backControls()[0].closest('footer')).not.toBeNull()
+    expect(backControls()[0].closest(phone ? 'header' : 'footer')).not.toBeNull()
   })
 
-  it('the main menu has one Back, to players, and it is the footer', async () => {
+  it('the main menu has one Back, to players, and it is the footer\'s (the shell\'s top bar on a phone)', async () => {
     setup(phone ? '/account/players/k1' : '/account/players/k1/availability')
     await screen.findByRole('navigation', { name: 'Player sections' })
     await footerBack()
 
     expect(backControls()).toHaveLength(1)
     expect(backControls()[0]).toHaveAccessibleName('Back to players')
-    expect(backControls()[0].closest('footer')).not.toBeNull()
+    expect(backControls()[0].closest(phone ? 'header' : 'footer')).not.toBeNull()
   })
 })
 

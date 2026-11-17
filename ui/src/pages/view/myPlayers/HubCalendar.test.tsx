@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../../../api/axiosConfig'
 import type { MyMatchListDto } from '../../../api/myPlayersApi'
 import { HubCalendar } from './HubCalendar'
-import { httpError, newQueryClient, routeApi } from '../../../test/accountTestUtils'
+import { clearViewport, httpError, newQueryClient, routeApi, setPhone } from '../../../test/accountTestUtils'
 import type { ApiMock } from '../../../test/accountTestUtils'
 import { matchList, summary } from '../../../test/hubMatchFixtures'
 
@@ -34,7 +34,10 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 10, 12, 10, 0, 0))
 })
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  clearViewport()
+})
 
 describe('HubCalendar', () => {
   it('shows the current month with Monday first and today\'s games listed', async () => {
@@ -135,5 +138,26 @@ describe('HubCalendar', () => {
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('grid')).toBeInTheDocument()
+  })
+
+  // Owner, 2026-11-17: the day's games below the grid were out of sight, on a phone and on a desktop. Wide: beside the grid. Phone: a sheet.
+  it('on a wide screen shows the tapped day beside the calendar, not in a sheet', async () => {
+    renderCalendar(matchList({ upcoming: [summary({ matchId: 'a', date: '2026-11-20', home: { name: 'Hillside U15' } })] }))
+    await screen.findByTestId('calendar-month')
+    await userEvent.click(day('2026-11-20'))
+    expect(screen.queryByRole('presentation')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('calendar-day-list')).getByRole('heading', { name: 'Friday, 20 November 2026' })).toBeInTheDocument()
+  })
+
+  it('on a phone opens the tapped day in a bottom sheet with its games and a close button', async () => {
+    setPhone(true)
+    renderCalendar(matchList({ upcoming: [summary({ matchId: 'a', date: '2026-11-20', home: { name: 'Hillside U15' } })] }))
+    await screen.findByTestId('calendar-month')
+    // Nothing is open until a day is tapped.
+    await userEvent.click(day('2026-11-20'))
+    const sheet = await screen.findByRole('presentation')
+    expect(within(sheet).getByRole('heading', { name: 'Friday, 20 November 2026' })).toBeInTheDocument()
+    expect(await within(sheet).findByTestId('hub-match-row')).toHaveTextContent('Hillside U15')
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
   })
 })

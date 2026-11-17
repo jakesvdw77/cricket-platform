@@ -30,6 +30,11 @@ const marquee = keyframes`
   to { transform: translate3d(-50%, 0, 0); }
 `
 
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`
+
 const FADE_PX = 70
 const display = { fontFamily: HUB.display } as const
 const visuallyHidden = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', whiteSpace: 'nowrap' } as const
@@ -131,12 +136,96 @@ export interface HubTickerProps {
   kinds?: KindRules
   // Stories and tests: force the reduced-motion rotation on (true) or the marquee (false) instead of reading the system setting.
   reducedMotion?: boolean
+  // A phone: one item at a time as a two-line card that fades to the next (no sideways scroll, no controls), the dots show where in the cycle.
+  card?: boolean
 }
 
-export function HubTicker({ items, kinds = TICKER_KIND_RULES, reducedMotion }: HubTickerProps) {
+export function HubTicker({ items, kinds = TICKER_KIND_RULES, reducedMotion, card }: HubTickerProps) {
   const shown = useMemo(() => items.filter((item) => kinds[item.kind]), [items, kinds])
   if (shown.length === 0) return null
+  if (card) return <CardStrip items={shown} kinds={kinds} />
   return <Strip items={shown} kinds={kinds} reducedMotion={reducedMotion} />
+}
+
+const CARD_DOTS = 3
+
+// The item's text split into the two card lines: the key words up to the first muted part, and the muted part(s) under them.
+function cardLines(item: TickerItem): { first: TickerPart[]; second: string } {
+  const cut = item.parts.findIndex((part) => part.type === 'muted')
+  if (cut < 0) return { first: item.parts, second: '' }
+  return { first: item.parts.slice(0, cut), second: item.parts.slice(cut).map((part) => part.text).join(' ') }
+}
+
+function CardStrip({ items, kinds }: { items: TickerItem[]; kinds: KindRules }) {
+  const navigate = useNavigate()
+  const [index, setIndex] = useState(0)
+  const [held, setHeld] = useState(false)
+  const count = items.length
+  const current = index % count
+  useEffect(() => {
+    if (held || count < 2) return
+    const id = window.setTimeout(() => setIndex((value) => (value + 1) % count), TICKER_STATIC_MS)
+    return () => window.clearTimeout(id)
+  }, [held, count, current])
+  const item = items[current]
+  const rules = kinds[item.kind] as TickerKindRules
+  const { first, second } = cardLines(item)
+  const dots = Math.min(count, CARD_DOTS)
+  const body = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px', minWidth: 0, flex: 1, textAlign: 'left' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <TypeChip rules={rules} />
+        <Box component="span" sx={{ ...display, fontWeight: 600, fontSize: 15, letterSpacing: '0.04em', textTransform: 'uppercase', color: HUB.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+          {first.map((part, position) => <Part key={position} part={part} />)}
+        </Box>
+      </Box>
+      {second && <Box component="span" sx={{ fontSize: 12.5, color: HUB.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{second}</Box>}
+    </Box>
+  )
+  const frame = {
+    display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0, minHeight: 56, px: 1.75, width: '100%', color: 'inherit',
+    // A short cross-fade each time the item changes (the key restarts it); none under reduced motion.
+    '@media (prefers-reduced-motion: no-preference)': { animation: `${fadeIn} 400ms ease` },
+  } as const
+  return (
+    <Box
+      data-testid="hub-ticker"
+      data-mode="card"
+      onTouchStart={() => setHeld(true)}
+      onTouchEnd={() => window.setTimeout(() => setHeld(false), TICKER_TOUCH_GRACE_MS)}
+      sx={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', position: 'relative', overflow: 'hidden' }}
+    >
+      <Box component="ul" aria-label="Scoreboard ticker" data-testid="ticker-list" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flex: 1, minWidth: 0 }}>
+        <Box component="li" key={itemKey(item)} data-current="true" sx={{ display: 'flex', flex: 1, minWidth: 0 }}>
+          {item.to ? (
+            <ButtonBase
+              role="link"
+              data-to={item.to}
+              aria-label={itemName(item, rules)}
+              title={itemSentence(item)}
+              data-testid="ticker-link"
+              onClick={(event) => {
+                navigate(item.to as string)
+                event.currentTarget.blur()
+              }}
+              sx={{ ...frame, '&.Mui-focusVisible': { outline: `2px solid ${HUB.gold}`, outlineOffset: -2 } }}
+            >
+              {body}
+            </ButtonBase>
+          ) : (
+            <Box sx={frame}>{body}</Box>
+          )}
+        </Box>
+      </Box>
+      {count > 1 && (
+        <Box aria-hidden data-testid="ticker-dots" sx={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '4px', pr: 1.5 }}>
+          {Array.from({ length: dots }, (_, position) => (
+            <Box key={position} sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: position === current % dots ? HUB.gold : HUB.lineSoft }} />
+          ))}
+        </Box>
+      )}
+    </Box>
+  )
 }
 
 type Mode = 'marquee' | 'static' | 'rotate'

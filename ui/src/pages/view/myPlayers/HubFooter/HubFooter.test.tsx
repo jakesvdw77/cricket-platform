@@ -215,3 +215,19 @@ describe('reading the three Hub reads', () => {
     expect(within(screen.getByRole('list', { name: 'Scoreboard ticker' })).getAllByRole('link').map((link) => link.getAttribute('data-to'))).toEqual(first)
   })
 })
+
+// Owner, 2026-11-17: on a phone Back moves to the shell's top bar, so the footer is only the ticker, as a two-line card.
+describe('compact (phone)', () => {
+  it('shows the ticker card across the whole footer and no Back', () => {
+    renderWithProviders(<HubFooter fill compact items={items()} />, HUB)
+    const band = within(footer() as HTMLElement)
+    expect(band.queryByRole('button', { name: /Back/ })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('hub-footer-back')).not.toBeInTheDocument()
+    expect(screen.getByTestId('hub-ticker')).toHaveAttribute('data-mode', 'card')
+  })
+
+  it('draws no footer at all when there is nothing to show and no Back', () => {
+    renderWithProviders(<HubFooter fill compact items={[]} />, HUB)
+    expect(footer()).not.toBeInTheDocument()
+  })
+})
