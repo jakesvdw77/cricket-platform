@@ -30,6 +30,8 @@ const createSponsor = vi.fn()
 const listTeamSponsors = vi.fn()
 const linkTeamSponsor = vi.fn()
 const unlinkTeamSponsor = vi.fn()
+const setMainTeamSponsor = vi.fn()
+const clearMainTeamSponsor = vi.fn()
 const listSeasons = vi.fn()
 const listSquad = vi.fn()
 const addToSquad = vi.fn()
@@ -78,6 +80,8 @@ vi.mock('../../api/teamSponsorApi', () => ({
     linkTeamSponsor(clubId, sectionId, teamId, sponsorId),
   unlinkTeamSponsor: (clubId: string, sectionId: string, teamId: string, sponsorId: string) =>
     unlinkTeamSponsor(clubId, sectionId, teamId, sponsorId),
+  setMainTeamSponsor: (clubId: string, sectionId: string, teamId: string, sponsorId: string) => setMainTeamSponsor(clubId, sectionId, teamId, sponsorId),
+  clearMainTeamSponsor: (clubId: string, sectionId: string, teamId: string, sponsorId: string) => clearMainTeamSponsor(clubId, sectionId, teamId, sponsorId),
 }))
 
 vi.mock('../../api/seasonApi', () => ({
@@ -651,6 +655,39 @@ describe('TeamFormPage', () => {
         await user.click(screen.getByRole('button', { name: 'Unlink' }))
 
         expect(unlinkTeamSponsor).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1', 'sponsor-1')
+      })
+
+      // docs/specs/158-main-sponsor.md: one linked sponsor is the team's main sponsor.
+      it('marks the main sponsor with a badge, and Set As Main makes another one main', async () => {
+        const user = userEvent.setup()
+        setMainTeamSponsor.mockResolvedValue(undefined)
+        listTeamSponsors.mockResolvedValue([
+          makeSponsor({ id: 'sponsor-1', name: 'Porsche', main: true }),
+          makeSponsor({ id: 'sponsor-2', name: 'Surphics' }),
+        ])
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
+
+        expect(await screen.findByText('Main Sponsor')).toBeInTheDocument()
+        expect(screen.getAllByText('Main Sponsor')).toHaveLength(1)
+        expect(screen.getByRole('button', { name: 'Remove As Main' })).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Set As Main' }))
+        await waitFor(() => expect(setMainTeamSponsor).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1', 'sponsor-2'))
+        expect(clearMainTeamSponsor).not.toHaveBeenCalled()
+      })
+
+      it('Remove As Main clears the main flag of that sponsor', async () => {
+        const user = userEvent.setup()
+        clearMainTeamSponsor.mockResolvedValue(undefined)
+        listTeamSponsors.mockResolvedValue([makeSponsor({ id: 'sponsor-1', name: 'Porsche', main: true })])
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
+        await user.click(await screen.findByRole('button', { name: 'Remove As Main' }))
+        await waitFor(() => expect(clearMainTeamSponsor).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1', 'sponsor-1'))
       })
 
       it('the "Club sponsors" read-only list excludes sponsors already linked to this team', async () => {

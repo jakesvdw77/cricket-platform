@@ -2,6 +2,7 @@ package com.cricketlegend.controller;
 
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -27,6 +28,7 @@ import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.SponsorRepository;
 import com.cricketlegend.repository.TeamRepository;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -677,6 +679,50 @@ class TeamControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    // docs/specs/158-main-sponsor.md: the team's main sponsor leads the list; making another main moves the first one down.
+    @Test
+    void clubAdminCanMakeASponsorTheTeamsMainSponsorAndTheListPutsItFirst() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Sponsor alpha = sponsorRepository.save(Sponsor.builder().clubId(club.getId()).name("Alpha Bank").active(true).build());
+        Sponsor porsche = sponsorRepository.save(Sponsor.builder().clubId(club.getId()).name("Porsche").active(true).build());
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String base = "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors";
+        for (Sponsor sponsor : List.of(alpha, porsche)) {
+            mockMvc.perform(post(base + "/{sponsorId}/link", club.getId(), section.getId(), team.getId(), sponsor.getId()).with(admin)).andExpect(status().isOk());
+        }
+
+        // No main sponsor yet: by name.
+        mockMvc.perform(get(base, club.getId(), section.getId(), team.getId()).with(admin))
+                .andExpect(jsonPath("$[0].name").value("Alpha Bank"))
+                .andExpect(jsonPath("$[0].main").value(false));
+
+        mockMvc.perform(put(base + "/{sponsorId}/main", club.getId(), section.getId(), team.getId(), porsche.getId()).with(admin)).andExpect(status().isNoContent());
+        mockMvc.perform(get(base, club.getId(), section.getId(), team.getId()).with(admin))
+                .andExpect(jsonPath("$[0].name").value("Porsche"))
+                .andExpect(jsonPath("$[0].main").value(true))
+                .andExpect(jsonPath("$[1].main").value(false));
+
+        // Another sponsor main: the first one is cleared, only one main remains.
+        mockMvc.perform(put(base + "/{sponsorId}/main", club.getId(), section.getId(), team.getId(), alpha.getId()).with(admin)).andExpect(status().isNoContent());
+        mockMvc.perform(get(base, club.getId(), section.getId(), team.getId()).with(admin))
+                .andExpect(jsonPath("$[0].name").value("Alpha Bank"))
+                .andExpect(jsonPath("$[0].main").value(true))
+                .andExpect(jsonPath("$[1].name").value("Porsche"))
+                .andExpect(jsonPath("$[1].main").value(false));
+
+        mockMvc.perform(delete(base + "/{sponsorId}/main", club.getId(), section.getId(), team.getId(), alpha.getId()).with(admin)).andExpect(status().isNoContent());
+        mockMvc.perform(get(base, club.getId(), section.getId(), team.getId()).with(admin)).andExpect(jsonPath("$[0].main").value(false));
+
+        // A sponsor that is not linked to the team is not found; another club's admin is refused.
+        Sponsor loose = sponsorRepository.save(Sponsor.builder().clubId(club.getId()).name("Loose").active(true).build());
+        mockMvc.perform(put(base + "/{sponsorId}/main", club.getId(), section.getId(), team.getId(), loose.getId()).with(admin)).andExpect(status().isNotFound());
+        Club other = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        mockMvc.perform(put(base + "/{sponsorId}/main", club.getId(), section.getId(), team.getId(), alpha.getId()).with(grantClubAdmin("other-admin", other.getId())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -28,6 +28,7 @@ import { useShareResultData } from "../../hooks/useShareResultData";
 import { useShareSettings } from "../../hooks/useShareSettings";
 import { offeredFormats } from "../../utils/share/enabledFormats";
 import { MAX_SHARE_SPONSORS } from "../../utils/share/logoLayout";
+import { inListOrder } from "../../utils/share/sponsorOrder";
 import type { ShareFormat } from "../../utils/share/shareChoices";
 import { buildShareResultModel } from "../../utils/share/shareResultData";
 import { Button } from "../Button";
@@ -144,9 +145,11 @@ export function ShareResultDialog({
     () => new Set(data.sponsors.map((sponsor) => sponsor.id)),
     [data.sponsors],
   );
-  const remembered = choices.sponsorIds
-    .filter((id) => candidateIds.has(id))
-    .slice(0, MAX_SHARE_SPONSORS);
+  // Drawn in the offered order (the main sponsor first), not the order they were ticked (docs/specs/158-main-sponsor.md).
+  const remembered = inListOrder(
+    choices.sponsorIds.filter((id) => candidateIds.has(id)),
+    data.sponsors,
+  ).slice(0, MAX_SHARE_SPONSORS);
   const selectedSponsorIds =
     remembered.length > 0
       ? remembered

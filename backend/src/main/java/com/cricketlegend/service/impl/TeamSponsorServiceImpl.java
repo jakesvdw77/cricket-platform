@@ -13,6 +13,7 @@ import com.cricketlegend.repository.SponsorRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSponsorRepository;
 import com.cricketlegend.service.TeamSponsorService;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -66,12 +67,43 @@ public class TeamSponsorServiceImpl implements TeamSponsorService {
         findTeamOrThrowForSection(sectionId, teamId);
 
         return teamSponsorRepository.findByTeamId(teamId).stream()
-                .map(link -> sponsorRepository
-                        .findById(link.getSponsorId())
-                        .orElseThrow(
-                                () -> new NotFoundException("Sponsor not found: " + link.getSponsorId())))
-                .map(sponsorMapper::toDto)
+                .map(link -> withMain(
+                        sponsorMapper.toDto(sponsorRepository
+                                .findById(link.getSponsorId())
+                                .orElseThrow(() -> new NotFoundException("Sponsor not found: " + link.getSponsorId()))),
+                        link.isMain()))
+                // The main sponsor first, then the rest by name (docs/specs/158-main-sponsor.md).
+                .sorted(Comparator.comparing(SponsorDto::main).reversed()
+                        .thenComparing(dto -> dto.name() == null ? "" : dto.name(), String.CASE_INSENSITIVE_ORDER))
                 .toList();
+    }
+
+    private static SponsorDto withMain(SponsorDto dto, boolean main) {
+        return new SponsorDto(dto.id(), dto.clubId(), dto.name(), dto.website(), dto.email(), dto.phone(), dto.logoUrl(),
+                dto.bannerUrl(), dto.socialLinks(), dto.active(), dto.createdAt(), dto.updatedAt(), dto.updatedBy(), main);
+    }
+
+    @Override
+    @Transactional
+    public void setMain(UUID clubId, UUID sectionId, UUID teamId, UUID sponsorId, boolean main) {
+        findSectionOrThrowForClub(clubId, sectionId);
+        findTeamOrThrowForSection(sectionId, teamId);
+
+        List<TeamSponsor> links = teamSponsorRepository.findByTeamId(teamId);
+        TeamSponsor target = links.stream()
+                .filter(link -> link.getSponsorId().equals(sponsorId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("No link between team " + teamId + " and sponsor " + sponsorId));
+        if (target.isMain() == main) {
+            return;
+        }
+        if (main) {
+            // The one-main-per-team index would refuse two at once, so the old main is cleared and flushed first.
+            links.stream().filter(TeamSponsor::isMain).forEach(link -> link.setMain(false));
+            teamSponsorRepository.saveAllAndFlush(links);
+        }
+        target.setMain(main);
+        teamSponsorRepository.save(target);
     }
 
     @Override

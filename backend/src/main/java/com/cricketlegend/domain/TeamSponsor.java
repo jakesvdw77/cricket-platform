@@ -42,6 +42,10 @@ public class TeamSponsor {
     @Column(name = "sponsor_id", nullable = false)
     private UUID sponsorId;
 
+    // docs/specs/158: at most one linked sponsor per team is its main sponsor (partial unique index ux_team_sponsor_main).
+    @Column(name = "is_main", nullable = false)
+    private boolean isMain;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { getManagedClubProfile } from '../api/clubApi'
 import type { ClubProfile } from '../api/clubApi'
 import { listLeagues } from '../api/leagueApi'
@@ -12,6 +12,8 @@ import type { Section } from '../api/sectionApi'
 import { listSponsors } from '../api/sponsorApi'
 import type { Sponsor } from '../api/sponsorApi'
 import type { Team } from '../api/teamApi'
+import { listTeamSponsors } from '../api/teamSponsorApi'
+import { offeredSponsors } from '../utils/share/sponsorOrder'
 import { isJuniorMatch } from '../utils/share/isJuniorMatch'
 import type { JuniorMatchResult } from '../utils/share/isJuniorMatch'
 import { buildFunFacts } from '../utils/share/matchFunFacts'
@@ -102,7 +104,20 @@ export function useShareMatchData(
     teams: knownOwn.map((team) => ({ sectionId: team.sectionId })),
   })
 
-  const sponsors = useMemo(() => (sponsorsQuery.data ?? []).filter((sponsor) => sponsor.active && sponsor.logoUrl), [sponsorsQuery.data])
+  // docs/specs/158-main-sponsor.md: the match's own teams' main sponsors first, then the club's sponsors, then the teams' other sponsors.
+  const teamSponsorQueries = useQueries({
+    queries: knownOwn.map((team) => ({
+      queryKey: ['managed-club', clubId, 'sections', team.sectionId, 'teams', team.id, 'sponsors'],
+      queryFn: () => listTeamSponsors(clubId, team.sectionId, team.id),
+      enabled: active,
+      retry: tolerantRetry,
+    })),
+  })
+  const sponsors = useMemo(
+    () => offeredSponsors(sponsorsQuery.data ?? [], teamSponsorQueries.flatMap((query) => query.data ?? [])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sponsorsQuery.data, ...teamSponsorQueries.map((query) => query.data)],
+  )
 
   const facts = useMemo(() => {
     const before = localDateIso(match.matchDate)

@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useQuery } from '@tanstack/react-query'
 import { getManagedClubProfile } from '../../api/clubApi'
 import { listSponsors } from '../../api/sponsorApi'
+import { listTeamSponsors } from '../../api/teamSponsorApi'
 import { listSquad } from '../../api/teamSquadApi'
 import type { Team } from '../../api/teamApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -15,6 +16,7 @@ import type { SquadImageOptions, SquadLayout, SquadShareModel } from '../../util
 import { IMAGE_SIZES, IMAGE_TEMPLATES } from '../../utils/share/shareChoices'
 import type { ImageSize, ImageTemplate } from '../../utils/share/shareChoices'
 import { MAX_SHARE_SPONSORS } from '../../utils/share/logoLayout'
+import { inListOrder, offeredSponsors } from '../../utils/share/sponsorOrder'
 import { shareName } from '../../utils/share/shareName'
 import { SHARE_TEXT_SCALE } from '../../utils/share/textSize'
 import { playerAvatarSrc } from '../BrandIcon'
@@ -65,9 +67,11 @@ export function ShareSquadDialog({ open, onClose, clubId, team, seasonId, season
   const squadQuery = useQuery({ queryKey: ['managed-club', clubId, 'teams', team.id, 'squad', seasonId, 'share'], queryFn: () => listSquad(clubId, team.id, seasonId), enabled: open && Boolean(clubId && team.id && seasonId), retry: false })
   const profileQuery = useQuery({ queryKey: ['managed-club', clubId, 'profile'], queryFn: () => getManagedClubProfile(clubId), enabled: open && Boolean(clubId), retry: false })
   const sponsorsQuery = useQuery({ queryKey: ['managed-club', clubId, 'sponsors'], queryFn: () => listSponsors(clubId), enabled: open && Boolean(clubId), retry: false })
-  const sponsors = useMemo(() => (sponsorsQuery.data ?? []).filter((sponsor) => sponsor.active && sponsor.logoUrl), [sponsorsQuery.data])
+  // docs/specs/158-main-sponsor.md: the team's main sponsor first, then the club's sponsors, then the team's other sponsors.
+  const teamSponsorsQuery = useQuery({ queryKey: ['managed-club', clubId, 'sections', team.sectionId, 'teams', team.id, 'sponsors'], queryFn: () => listTeamSponsors(clubId, team.sectionId as string, team.id), enabled: open && Boolean(clubId && team.sectionId), retry: false })
+  const sponsors = useMemo(() => offeredSponsors(sponsorsQuery.data ?? [], teamSponsorsQuery.data ?? []), [sponsorsQuery.data, teamSponsorsQuery.data])
   const candidateIds = useMemo(() => new Set(sponsors.map((sponsor) => sponsor.id)), [sponsors])
-  const selectedSponsorIds = choices.sponsorIds.filter((id) => candidateIds.has(id)).slice(0, MAX_SHARE_SPONSORS)
+  const selectedSponsorIds = inListOrder(choices.sponsorIds.filter((id) => candidateIds.has(id)), sponsors).slice(0, MAX_SHARE_SPONSORS)
   const sponsorUrls = useMemo(
     () => selectedSponsorIds.map((id) => sponsors.find((sponsor) => sponsor.id === id)?.logoUrl).filter((url): url is string => Boolean(url)),
     // eslint-disable-next-line react-hooks/exhaustive-deps

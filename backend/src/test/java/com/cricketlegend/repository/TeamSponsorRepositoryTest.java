@@ -128,4 +128,27 @@ class TeamSponsorRepositoryTest {
         assertThatThrownBy(() -> teamSponsorRepository.saveAndFlush(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    // docs/specs/158-main-sponsor.md: a team has at most one main sponsor, enforced by the partial unique index.
+    @Test
+    void aTeamCanHaveOnlyOneMainSponsorButManyTeamsCanEachHaveOne() {
+        Club club = savedClub("riverside-cc");
+        Section section = savedSection(club.getId());
+        Team teamA = savedTeam(club.getId(), section.getId());
+        Team teamB = savedTeam(club.getId(), section.getId());
+        Sponsor first = savedSponsor(club.getId());
+        Sponsor second = savedSponsor(club.getId());
+
+        teamSponsorRepository.saveAndFlush(TeamSponsor.builder().teamId(teamA.getId()).sponsorId(first.getId()).isMain(true).build());
+        // Another team, the same sponsor, also main: fine.
+        teamSponsorRepository.saveAndFlush(TeamSponsor.builder().teamId(teamB.getId()).sponsorId(first.getId()).isMain(true).build());
+        // A second, non-main sponsor on team A: fine.
+        teamSponsorRepository.saveAndFlush(TeamSponsor.builder().teamId(teamA.getId()).sponsorId(second.getId()).build());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> {
+            TeamSponsor other = teamSponsorRepository.findByTeamIdAndSponsorId(teamA.getId(), second.getId()).orElseThrow();
+            other.setMain(true);
+            teamSponsorRepository.saveAndFlush(other);
+        }).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
 }

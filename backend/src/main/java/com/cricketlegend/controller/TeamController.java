@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -154,6 +155,30 @@ public class TeamController {
             @PathVariable UUID sponsorId) {
         teamSponsorService.link(clubId, sectionId, teamId, sponsorId);
         return ResponseEntity.ok().build();
+    }
+
+    /** docs/specs/158-main-sponsor.md: make this linked sponsor the team's main sponsor (the previous main one is cleared). */
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
+    @PutMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/main")
+    public ResponseEntity<Void> setMainSponsor(
+            @PathVariable UUID clubId,
+            @PathVariable UUID sectionId,
+            @PathVariable UUID teamId,
+            @PathVariable UUID sponsorId) {
+        teamSponsorService.setMain(clubId, sectionId, teamId, sponsorId, true);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Clears the main sponsor flag of this linked sponsor. */
+    @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
+    @DeleteMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/main")
+    public ResponseEntity<Void> clearMainSponsor(
+            @PathVariable UUID clubId,
+            @PathVariable UUID sectionId,
+            @PathVariable UUID teamId,
+            @PathVariable UUID sponsorId) {
+        teamSponsorService.setMain(clubId, sectionId, teamId, sponsorId, false);
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("@access.canInSection(authentication, #clubId, T(com.cricketlegend.domain.Permission).TEAMS_EDIT, #sectionId)")
