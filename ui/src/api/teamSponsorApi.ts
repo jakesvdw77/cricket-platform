@@ -32,3 +32,12 @@ export async function unlinkTeamSponsor(
 ): Promise<void> {
   await api.post(`${teamSponsorsPath(clubId, sectionId, teamId)}/${sponsorId}/unlink`)
 }
+
+// docs/specs/158-main-sponsor.md: make a linked sponsor the team's main sponsor (the previous one is cleared by the server), or clear it.
+export async function setMainTeamSponsor(clubId: string, sectionId: string, teamId: string, sponsorId: string): Promise<void> {
+  await api.put(`${teamSponsorsPath(clubId, sectionId, teamId)}/${sponsorId}/main`)
+}
+
+export async function clearMainTeamSponsor(clubId: string, sectionId: string, teamId: string, sponsorId: string): Promise<void> {
+  await api.delete(`${teamSponsorsPath(clubId, sectionId, teamId)}/${sponsorId}/main`)
+}

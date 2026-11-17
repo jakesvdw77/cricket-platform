@@ -18,6 +18,8 @@ export interface Sponsor {
   createdAt: string
   updatedAt: string
   updatedBy: string | null
+  // docs/specs/158-main-sponsor.md: true only in a team's sponsor list, for the team's main sponsor (listed first).
+  main?: boolean
 }
 
 // Same field set for create and update — CreateSponsorRequest/UpdateSponsorRequest are identical

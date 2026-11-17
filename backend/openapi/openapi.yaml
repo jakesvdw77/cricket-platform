@@ -3913,6 +3913,73 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/main:
+    put:
+      tags:
+      - team-controller
+      description: "Make this linked sponsor the team's main sponsor (docs/specs/158-main-sponsor.md); the previous main sponsor of the team is cleared. 404 if the sponsor is not linked to the team."
+      operationId: setMainSponsor
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+    delete:
+      tags:
+      - team-controller
+      description: "Clear the main sponsor flag of this linked sponsor (docs/specs/158-main-sponsor.md)."
+      operationId: clearMainSponsor
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/unlink:
     post:
       tags:
@@ -11367,6 +11434,9 @@ components:
         updatedBy:
           type: string
           format: uuid
+        main:
+          type: boolean
+          description: "docs/specs/158: true only in a team's sponsor list, for the team's main sponsor (listed first)."
     ContactDto:
       type: object
       properties:

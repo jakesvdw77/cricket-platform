@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface TeamSponsorService {
 
     /**
-     * Every {@link SponsorDto} currently linked to {@code teamId}. 404s if {@code sectionId}
+     * Every {@link SponsorDto} currently linked to {@code teamId}, the main sponsor first (its {@code main} flag true), then the rest by name. 404s if {@code sectionId}
      * doesn't belong to {@code clubId}, or {@code teamId} doesn't belong to {@code sectionId}.
      */
     List<SponsorDto> list(UUID clubId, UUID sectionId, UUID teamId);
@@ -36,4 +36,11 @@ public interface TeamSponsorService {
      * rows.
      */
     void unlink(UUID clubId, UUID sectionId, UUID teamId, UUID sponsorId);
+
+    /**
+     * Makes {@code sponsorId} the main sponsor of {@code teamId} (docs/specs/158-main-sponsor.md), clearing any other main sponsor of
+     * the team, or clears it when {@code main} is false. Same scoping chain as {@link #unlink}; {@link
+     * com.cricketlegend.exception.NotFoundException} if the sponsor is not linked to the team.
+     */
+    void setMain(UUID clubId, UUID sectionId, UUID teamId, UUID sponsorId, boolean main);
 }

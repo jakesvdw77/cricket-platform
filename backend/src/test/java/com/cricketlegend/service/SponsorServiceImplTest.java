@@ -74,7 +74,8 @@ class SponsorServiceImplTest {
                 true,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 
     private Sponsor existingSponsor(UUID id, UUID clubId, boolean active) {

@@ -76,5 +76,6 @@
     <include file="db/changelog/v1/069-affiliation-and-host.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/070-match-stage-and-placeholders.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/071-photo-gallery.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/072-team-sponsor-main.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

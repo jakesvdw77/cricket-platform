@@ -13,6 +13,7 @@ import { MAX_PRETICKED_FACTS } from '../../utils/share/matchFunFacts'
 import { contentGap, MATCH_CONTENTS, matchFormatAvailability, sideGap } from '../../utils/share/matchShareFormats'
 import type { MatchContent, MatchLayout, MatchSideChoice } from '../../utils/share/matchShareFormats'
 import { MAX_SHARE_SPONSORS } from '../../utils/share/logoLayout'
+import { inListOrder } from '../../utils/share/sponsorOrder'
 import type { ShareFormat } from '../../utils/share/shareChoices'
 import { buildMatchShareModel, sideRoles } from '../../utils/share/shareMatchData'
 import type { TeamSheetSide } from '../../utils/teamSheetSide'
@@ -133,7 +134,8 @@ export function ShareMatchDialog({ open, onClose, clubId, match, teamsById, side
 
   const tickedFacts = useMemo(() => data.facts.filter((fact) => !unticked.includes(fact.id)).slice(0, MAX_PRETICKED_FACTS), [data.facts, unticked])
   const candidateIds = useMemo(() => new Set(data.sponsors.map((sponsor) => sponsor.id)), [data.sponsors])
-  const selectedSponsorIds = choices.sponsorIds.filter((id) => candidateIds.has(id)).slice(0, MAX_SHARE_SPONSORS)
+  // Drawn in the offered order, the main sponsor first (docs/specs/158-main-sponsor.md).
+  const selectedSponsorIds = inListOrder(choices.sponsorIds.filter((id) => candidateIds.has(id)), data.sponsors).slice(0, MAX_SHARE_SPONSORS)
   const sponsorName = data.sponsors.find((sponsor) => sponsor.id === selectedSponsorIds[0])?.name ?? null
 
   const model = useMemo(

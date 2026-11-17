@@ -103,7 +103,8 @@ class TeamSponsorServiceImplTest {
                 true,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 
     // --- list ---
@@ -139,6 +140,113 @@ class TeamSponsorServiceImplTest {
         assertThatThrownBy(() -> teamSponsorService.list(clubId, sectionId, teamId))
                 .isInstanceOf(NotFoundException.class);
         verify(teamRepository, never()).findById(ArgumentMatchers.any());
+    }
+
+    // --- main sponsor (docs/specs/158-main-sponsor.md) ---
+
+    private SponsorDto named(String name) {
+        return new SponsorDto(UUID.randomUUID(), UUID.randomUUID(), name, null, null, null, null, null, List.of(), true, null, null, null, false);
+    }
+
+    private void teamInClub(UUID clubId, UUID sectionId, UUID teamId) {
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, sectionId)));
+    }
+
+    @Test
+    void listPutsTheMainSponsorFirstThenTheRestByNameIgnoringCase() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        teamInClub(clubId, sectionId, teamId);
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+        UUID c = UUID.randomUUID();
+        when(teamSponsorRepository.findByTeamId(teamId)).thenReturn(List.of(
+                TeamSponsor.builder().teamId(teamId).sponsorId(a).build(),
+                TeamSponsor.builder().teamId(teamId).sponsorId(b).isMain(true).build(),
+                TeamSponsor.builder().teamId(teamId).sponsorId(c).build()));
+        Sponsor sa = sponsor(a, clubId);
+        Sponsor sb = sponsor(b, clubId);
+        Sponsor sc = sponsor(c, clubId);
+        when(sponsorRepository.findById(a)).thenReturn(Optional.of(sa));
+        when(sponsorRepository.findById(b)).thenReturn(Optional.of(sb));
+        when(sponsorRepository.findById(c)).thenReturn(Optional.of(sc));
+        when(sponsorMapper.toDto(sa)).thenReturn(named("zeta Foods"));
+        when(sponsorMapper.toDto(sb)).thenReturn(named("Porsche"));
+        when(sponsorMapper.toDto(sc)).thenReturn(named("Alpha Bank"));
+
+        List<SponsorDto> result = teamSponsorService.list(clubId, sectionId, teamId);
+
+        assertThat(result).extracting(SponsorDto::name).containsExactly("Porsche", "Alpha Bank", "zeta Foods");
+        assertThat(result).extracting(SponsorDto::main).containsExactly(true, false, false);
+    }
+
+    @Test
+    void makingASponsorMainClearsThePreviousMainOneFirstAndSetsTheNewOne() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        teamInClub(clubId, sectionId, teamId);
+        UUID oldMain = UUID.randomUUID();
+        UUID next = UUID.randomUUID();
+        TeamSponsor oldLink = TeamSponsor.builder().teamId(teamId).sponsorId(oldMain).isMain(true).build();
+        TeamSponsor nextLink = TeamSponsor.builder().teamId(teamId).sponsorId(next).build();
+        when(teamSponsorRepository.findByTeamId(teamId)).thenReturn(List.of(oldLink, nextLink));
+
+        teamSponsorService.setMain(clubId, sectionId, teamId, next, true);
+
+        assertThat(oldLink.isMain()).isFalse();
+        assertThat(nextLink.isMain()).isTrue();
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(teamSponsorRepository);
+        order.verify(teamSponsorRepository).saveAllAndFlush(List.of(oldLink, nextLink));
+        order.verify(teamSponsorRepository).save(nextLink);
+    }
+
+    @Test
+    void clearingTheMainFlagLeavesTheOthersAlone() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        teamInClub(clubId, sectionId, teamId);
+        UUID main = UUID.randomUUID();
+        TeamSponsor link = TeamSponsor.builder().teamId(teamId).sponsorId(main).isMain(true).build();
+        when(teamSponsorRepository.findByTeamId(teamId)).thenReturn(List.of(link));
+
+        teamSponsorService.setMain(clubId, sectionId, teamId, main, false);
+
+        assertThat(link.isMain()).isFalse();
+        verify(teamSponsorRepository).save(link);
+        verify(teamSponsorRepository, never()).saveAllAndFlush(ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void settingTheStateItAlreadyHasChangesNothing() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        teamInClub(clubId, sectionId, teamId);
+        UUID main = UUID.randomUUID();
+        TeamSponsor link = TeamSponsor.builder().teamId(teamId).sponsorId(main).isMain(true).build();
+        when(teamSponsorRepository.findByTeamId(teamId)).thenReturn(List.of(link));
+
+        teamSponsorService.setMain(clubId, sectionId, teamId, main, true);
+
+        verify(teamSponsorRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void makingAnUnlinkedSponsorMainIsNotFoundAndACrossClubParentNeverGetsThatFar() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        teamInClub(clubId, sectionId, teamId);
+        when(teamSponsorRepository.findByTeamId(teamId)).thenReturn(List.of());
+        assertThatThrownBy(() -> teamSponsorService.setMain(clubId, sectionId, teamId, UUID.randomUUID(), true)).isInstanceOf(NotFoundException.class);
+
+        UUID otherSection = UUID.randomUUID();
+        when(sectionRepository.findById(otherSection)).thenReturn(Optional.of(section(otherSection, UUID.randomUUID())));
+        assertThatThrownBy(() -> teamSponsorService.setMain(clubId, otherSection, teamId, UUID.randomUUID(), true)).isInstanceOf(NotFoundException.class);
     }
 
     // --- link ---

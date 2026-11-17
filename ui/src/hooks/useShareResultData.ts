@@ -12,6 +12,7 @@ import type { Section } from '../api/sectionApi'
 import { listSponsors } from '../api/sponsorApi'
 import type { Sponsor } from '../api/sponsorApi'
 import { listTeamSponsors } from '../api/teamSponsorApi'
+import { offeredSponsors } from '../utils/share/sponsorOrder'
 import type { Team } from '../api/teamApi'
 import { isJuniorMatch } from '../utils/share/isJuniorMatch'
 import type { JuniorMatchResult } from '../utils/share/isJuniorMatch'
@@ -96,19 +97,12 @@ export function useShareResultData(
   // A league id whose league could not be loaded is undefined (fails safe to junior); no league id is null.
   const league: League | null | undefined = match.leagueId ? leagueLoaded : null
 
-  const sponsors = useMemo(() => {
-    const seen = new Set<string>()
-    const list: Sponsor[] = []
-    const add = (sponsor: Sponsor) => {
-      if (!sponsor.active || !sponsor.logoUrl || seen.has(sponsor.id)) return
-      seen.add(sponsor.id)
-      list.push(sponsor)
-    }
-    ;(sponsorsQuery.data ?? []).forEach(add)
-    teamSponsorQueries.forEach((query) => (query.data ?? []).forEach(add))
-    return list
+  // docs/specs/158-main-sponsor.md: the teams' main sponsors first, then the club's sponsors, then the teams' other sponsors.
+  const sponsors = useMemo(
+    () => offeredSponsors(sponsorsQuery.data ?? [], teamSponsorQueries.flatMap((query) => query.data ?? [])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sponsorsQuery.data, ...teamSponsorQueries.map((query) => query.data)])
+    [sponsorsQuery.data, ...teamSponsorQueries.map((query) => query.data)],
+  )
 
   const defaultSponsorId =
     teamSponsorQueries.flatMap((query) => query.data ?? []).find((sponsor) => sponsor.active && sponsor.logoUrl)?.id ?? null

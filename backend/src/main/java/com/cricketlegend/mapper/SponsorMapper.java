@@ -21,6 +21,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface SponsorMapper {
 
+    @Mapping(target = "main", constant = "false")
     SponsorDto toDto(Sponsor entity);
 
     @Mapping(target = "id", ignore = true)

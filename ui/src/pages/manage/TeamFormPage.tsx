@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Breadcrumbs, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
@@ -35,7 +37,7 @@ import { listTeamContacts, linkTeamContact, unlinkTeamContact } from '../../api/
 import type { TeamContact } from '../../api/teamContactApi'
 import { listSponsors, createSponsor } from '../../api/sponsorApi'
 import type { Sponsor, SponsorPayload } from '../../api/sponsorApi'
-import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor } from '../../api/teamSponsorApi'
+import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor, setMainTeamSponsor, clearMainTeamSponsor } from '../../api/teamSponsorApi'
 import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSquad, addToSquad, removeFromSquad, updateSquadMember } from '../../api/teamSquadApi'
@@ -132,6 +134,11 @@ function TeamSponsorCard({
     mutationFn: () => unlinkTeamSponsor(clubId, sectionId, teamId, sponsor.id),
     onSuccess: onUnlinked,
   })
+  // docs/specs/158-main-sponsor.md: one linked sponsor is the team's main sponsor, shown first everywhere; making another main clears this one.
+  const main = useMutation({
+    mutationFn: () => (sponsor.main ? clearMainTeamSponsor(clubId, sectionId, teamId, sponsor.id) : setMainTeamSponsor(clubId, sectionId, teamId, sponsor.id)),
+    onSuccess: onUnlinked,
+  })
 
   return (
     <RecordCard
@@ -139,8 +146,18 @@ function TeamSponsorCard({
       title={sponsor.name}
       avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'wide' }}
       fields={sponsorRecordFields(sponsor)}
+      badges={sponsor.main ? [{ label: 'Main Sponsor', tone: 'positive' }] : undefined}
       editLabel="Edit"
       editTo={backHere(`/manage/sponsors/${sponsor.id}/edit`)}
+      secondaryActions={[
+        {
+          label: sponsor.main ? 'Remove As Main' : 'Set As Main',
+          pendingLabel: 'Saving…',
+          pending: main.isPending,
+          onClick: () => main.mutate(),
+          icon: sponsor.main ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />,
+        },
+      ]}
       secondaryAction={{
         label: 'Unlink',
         pendingLabel: 'Unlinking…',
