@@ -3,7 +3,7 @@ import { Alert, Autocomplete, Box, Dialog, DialogActions, DialogContent, DialogT
 import { alpha, useTheme } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
-import { GALLERY_MAX_FILES, useInvalidateGallery, useUploadGalleryPhoto } from '../../api/galleryApi'
+import { GALLERY_MAX_FILES, GALLERY_MAX_ORIGINAL_BYTES, useInvalidateGallery, useUploadGalleryPhoto } from '../../api/galleryApi'
 import type { GalleryScope } from '../../api/galleryApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { resizePhoto } from '../../utils/gallery/resizePhoto'
@@ -80,8 +80,11 @@ export function GalleryUploadDialog({ open, onClose, scope, leagues, teams, play
   const addFiles = (files: FileList | null) => {
     if (!files) return
     const room = GALLERY_MAX_FILES - items.length
-    const accepted = Array.from(files).filter((file) => file.type === 'image/jpeg' || file.type === 'image/png').slice(0, Math.max(0, room))
-    if (files.length > accepted.length) setNotice(`Only JPEG and PNG photos are added, up to ${GALLERY_MAX_FILES} at a time.`)
+    const picked = Array.from(files).filter((file) => file.type === 'image/jpeg' || file.type === 'image/png')
+    const tooBig = picked.filter((file) => file.size > GALLERY_MAX_ORIGINAL_BYTES)
+    const accepted = picked.filter((file) => file.size <= GALLERY_MAX_ORIGINAL_BYTES).slice(0, Math.max(0, room))
+    if (tooBig.length > 0) setNotice(`${tooBig.length === 1 ? 'One photo is' : `${tooBig.length} photos are`} too large to add (over ${GALLERY_MAX_ORIGINAL_BYTES / 1024 / 1024} MB). Choose a smaller photo.`)
+    else if (files.length > accepted.length) setNotice(`Only JPEG and PNG photos are added, up to ${GALLERY_MAX_FILES} at a time.`)
     else setNotice(null)
     const added = accepted.map((file) => {
       const preview = URL.createObjectURL(file)
@@ -143,7 +146,7 @@ export function GalleryUploadDialog({ open, onClose, scope, leagues, teams, play
         />
         <Box sx={{ border: 2, borderStyle: 'dashed', borderColor: 'primary.main', borderRadius: 1, p: 2, textAlign: 'center', display: 'grid', gap: 1, justifyItems: 'center' }}>
           <Typography variant="body2" color="primary" fontWeight={600}>Take a photo or choose from your library</Typography>
-          <Typography variant="caption" color="text.secondary">JPEG or PNG, up to {GALLERY_MAX_FILES} photos</Typography>
+          <Typography variant="caption" color="text.secondary">JPEG or PNG, up to {GALLERY_MAX_FILES} photos, each under {GALLERY_MAX_ORIGINAL_BYTES / 1024 / 1024} MB</Typography>
           <Button variant="secondary" onClick={() => picker.current?.click()} disabled={busy || items.length >= GALLERY_MAX_FILES}>Choose Photos</Button>
         </Box>
         {notice && <Alert severity={items.some((item) => item.status === 'error') ? 'error' : 'info'}>{notice}</Alert>}

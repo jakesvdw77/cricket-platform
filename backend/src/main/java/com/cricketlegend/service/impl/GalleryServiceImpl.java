@@ -73,9 +73,10 @@ class GalleryServiceImpl implements GalleryService {
     static final int DAILY_LIMIT = 60;
     static final long MAX_MEDIUM_BYTES = 2L * 1024 * 1024;
     static final long MAX_THUMB_BYTES = 200L * 1024;
-    // The browser makes 1280 and 320 pixels on the longest side; a photo a good deal larger than that is not one of ours.
-    static final int MAX_MEDIUM_SIDE = 4096;
-    static final int MAX_THUMB_SIDE = 1024;
+    // The browser makes 1280 and 320 pixels on the longest side; a photo a good deal larger than that is not one of ours. The caps keep
+    // the memory of checking one upload small (2048 x 2048 is about 16 MB decoded, 512 x 512 about 1 MB).
+    static final int MAX_MEDIUM_SIDE = 2048;
+    static final int MAX_THUMB_SIDE = 512;
     private static final Map<String, String> JPEG_ONLY = Map.of("image/jpeg", ".jpg");
     private static final UUID NO_ID = new UUID(0L, 0L);
     private static final Logger log = LoggerFactory.getLogger(GalleryServiceImpl.class);

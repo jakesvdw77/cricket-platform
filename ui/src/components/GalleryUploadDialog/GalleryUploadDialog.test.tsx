@@ -52,6 +52,16 @@ describe('GalleryUploadDialog', () => {
     expect(screen.getByRole('button', { name: 'Choose Photos' })).toBeDisabled()
   })
 
+  it('refuses a huge original with a clear message and keeps the other photos', async () => {
+    renderDialog()
+    const huge = photo('huge.jpg')
+    Object.defineProperty(huge, 'size', { value: 31 * 1024 * 1024 })
+    choose([huge, photo('ok.jpg')])
+    expect(await screen.findByText(/One photo is too large to add \(over 30 MB\)/)).toBeInTheDocument()
+    expect((strip() as HTMLElement).querySelectorAll('img')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Upload 1 Photo' })).toBeEnabled()
+  })
+
   it('sends each photo on its own with the caption and tags, then closes', async () => {
     const { onClose } = renderDialog()
     choose([photo('a.jpg'), photo('b.png', 'image/png')])
