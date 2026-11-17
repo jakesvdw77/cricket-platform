@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../../../api/axiosConfig'
-import type { MyClubInfo } from '../../../api/meClubInfoApi'
+import type { MyClubInfo, MyTeamLinks } from '../../../api/meClubInfoApi'
 import { HubSocial } from './HubSocial'
 import { newQueryClient, routeApi } from '../../../test/accountTestUtils'
 import type { ApiMock } from '../../../test/accountTestUtils'
@@ -12,8 +12,8 @@ vi.mock('../../../api/axiosConfig', () => ({ default: { get: vi.fn(), post: vi.f
 const http = api as unknown as ApiMock
 
 // The Hub Social Media page: one link card per social page the club added; nothing embedded.
-function renderSocial(info: MyClubInfo | Error) {
-  routeApi(http, { 'GET /me/players/k1/club-info': info })
+function renderSocial(info: MyClubInfo | Error, teamLinks: MyTeamLinks[] | Error = []) {
+  routeApi(http, { 'GET /me/players/k1/club-info': info, 'GET /me/players/k1/team-links': teamLinks })
   return render(
     <QueryClientProvider client={newQueryClient()}>
       <HubSocial playerKey="k1" />
@@ -60,5 +60,36 @@ describe('HubSocial', () => {
   it('offers Retry when the club info cannot be read', async () => {
     renderSocial(new Error('boom'))
     expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  // docs/specs/157: the links of the teams the player is in, after the club's own.
+  it('shows a group per team the player is in, each under the team name, after the club group', async () => {
+    renderSocial(makeClubInfo(), [
+      { teamName: 'Irene Veterans', social: [{ platform: 'instagram', url: 'https://www.instagram.com/irene_vets' }] },
+      { teamName: 'Irene Over 50', social: [{ platform: 'facebook', url: 'https://www.facebook.com/irene50' }, { platform: 'x', url: 'http://insecure.example/x' }] },
+    ])
+    const team = await screen.findAllByTestId('hub-social-team')
+    expect(team).toHaveLength(2)
+    expect(within(team[0]).getByRole('heading', { name: 'Irene Veterans' })).toBeInTheDocument()
+    expect(within(team[0]).getByText('Instagram')).toBeInTheDocument()
+    expect(within(team[1]).getAllByTestId('hub-social-card')).toHaveLength(1)
+    const club = screen.getByTestId('hub-social-club')
+    expect(within(club).getByRole('heading', { name: 'Riverside CC' })).toBeInTheDocument()
+    expect(club.compareDocumentPosition(team[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('shows team links alone when the club has none, and no club heading without team groups', async () => {
+    renderSocial(makeClubInfo({ links: null }), [{ teamName: 'Irene Veterans', social: [{ platform: 'facebook', url: 'https://www.facebook.com/irene' }] }])
+    expect(await screen.findByTestId('hub-social-team')).toBeInTheDocument()
+    expect(screen.queryByTestId('hub-social-club')).not.toBeInTheDocument()
+    expect(screen.queryByText('The club has not added any social media pages yet.')).not.toBeInTheDocument()
+  })
+
+  it('keeps the club links when the team links cannot be read', async () => {
+    renderSocial(makeClubInfo(), new Error('boom'))
+    const cards = await screen.findAllByTestId('hub-social-card')
+    expect(cards).toHaveLength(1)
+    expect(screen.queryByTestId('hub-social-team')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Riverside CC' })).not.toBeInTheDocument()
   })
 })

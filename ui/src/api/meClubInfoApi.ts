@@ -79,6 +79,12 @@ export interface MyClubContactPage {
   hasMore: boolean
 }
 
+// Hub Social Media (docs/specs/157): the https social links of each active team the held player is in, only teams that have any.
+export interface MyTeamLinks {
+  teamName: string
+  social: MyClubSocialLink[]
+}
+
 export type ClubContactSort = 'name' | 'role'
 
 export interface ClubContactParams {
@@ -93,6 +99,16 @@ export const clubInfoKeys = {
   all: (playerKey: string) => ['me', 'players', playerKey, 'club-info'] as const,
   info: (playerKey: string) => ['me', 'players', playerKey, 'club-info', 'info'] as const,
   contacts: (playerKey: string, params: ClubContactParams) => ['me', 'players', playerKey, 'club-info', 'contacts', params.query, params.sort, params.letter] as const,
+}
+
+export async function getMyTeamLinks(playerKey: string): Promise<MyTeamLinks[]> {
+  const { data } = await api.get<MyTeamLinks[]>(`/me/players/${playerKey}/team-links`)
+  return data
+}
+
+// A failed read only leaves the team groups out; the club's own links still show.
+export function useMyTeamLinks(playerKey: string | undefined) {
+  return useQuery({ queryKey: [...clubInfoKeys.all(playerKey as string), 'team-links'], queryFn: () => getMyTeamLinks(playerKey as string), enabled: Boolean(playerKey), retry: false })
 }
 
 export async function getMyClubInfo(playerKey: string): Promise<MyClubInfo> {
