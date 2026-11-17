@@ -7,24 +7,27 @@ import type { TeamSheetPdfOptions, TeamSheetSpec } from './printableTeamSheetPdf
 // docs/specs/153-printable-team-sheet.md, addendum "Match Poster": the coloured second style of the printable team sheet. One A4
 // portrait page per team and match, the whole squad listed alphabetically with a Playing tick box. Mirrors docs/mockups/team-sheet-poster-mockup.html.
 
-type Rgb = [number, number, number]
-const GREEN: Rgb = [20, 69, 47]
-const GREEN_2: Rgb = [31, 106, 73]
-const GOLD: Rgb = [232, 181, 63]
-const INK: Rgb = [22, 26, 23]
-const MUTED: Rgb = [90, 98, 92]
+export type Rgb = [number, number, number]
+export const GREEN: Rgb = [20, 69, 47]
+export const GREEN_2: Rgb = [31, 106, 73]
+export const GOLD: Rgb = [232, 181, 63]
+export const INK: Rgb = [22, 26, 23]
+export const MUTED: Rgb = [90, 98, 92]
 const LINE: Rgb = [109, 120, 111]
 const ZEBRA: Rgb = [238, 242, 238]
-const WHITE: Rgb = [255, 255, 255]
+export const WHITE: Rgb = [255, 255, 255]
 
-const PAGE_W = 210
-const PAGE_H = 297
-const BANNER_W = 11
-const LEFT = 16
+export const PAGE_W = 210
+export const PAGE_H = 297
+// Printers cannot reach the outer 5 to 6 mm of a sheet, so nothing coloured may sit closer to an edge than SAFE (owner, 2026-11-17: the
+// side banner printed half cut off when it was drawn from the page edge).
+export const SAFE = 7
+const BANNER_W = 10
+const LEFT = SAFE + BANNER_W + 4
 const RIGHT = PAGE_W - 12
 const WIDTH = RIGHT - LEFT
 const ROW = 7
-const FOOTER_TOP = 252
+export const FOOTER_TOP = 252
 // The footer holds the affiliation tile, the sponsors and the host; with an affiliation the sponsors are limited to three.
 export const MAX_FOOTER_SPONSORS_WITH_AFFILIATION = 3
 
@@ -39,7 +42,7 @@ export function posterImageUrls(sheet: TeamSheetSpec): string[] {
 }
 
 // A logo scaled to fit its box and centred in it; with no image (or an unreadable one) a dashed frame, or nothing when `frame` is off.
-function fit(doc: jsPDF, data: string | null, x: number, y: number, w: number, h: number, frame: boolean): boolean {
+export function fit(doc: jsPDF, data: string | null, x: number, y: number, w: number, h: number, frame: boolean): boolean {
   if (data) {
     try {
       const props = doc.getImageProperties(data)
@@ -62,7 +65,7 @@ function fit(doc: jsPDF, data: string | null, x: number, y: number, w: number, h
   return false
 }
 
-function text(doc: jsPDF, value: string, x: number, y: number, size: number, style: 'normal' | 'bold' | 'italic' | 'bolditalic', color: Rgb, align: 'left' | 'center' | 'right' = 'left'): void {
+export function text(doc: jsPDF, value: string, x: number, y: number, size: number, style: 'normal' | 'bold' | 'italic' | 'bolditalic', color: Rgb, align: 'left' | 'center' | 'right' = 'left'): void {
   doc.setFont('helvetica', style)
   doc.setFontSize(size)
   doc.setTextColor(...color)
@@ -70,13 +73,13 @@ function text(doc: jsPDF, value: string, x: number, y: number, size: number, sty
 }
 
 // Wraps text to a width at the size and weight it will be drawn in (jsPDF measures with the font set at the time).
-function wrap(doc: jsPDF, value: string, width: number, size: number, style: 'normal' | 'bold' | 'italic' | 'bolditalic'): string[] {
+export function wrap(doc: jsPDF, value: string, width: number, size: number, style: 'normal' | 'bold' | 'italic' | 'bolditalic'): string[] {
   doc.setFont('helvetica', style)
   doc.setFontSize(size)
   return doc.splitTextToSize(value, width) as string[]
 }
 
-function writeLine(doc: jsPDF, x1: number, x2: number, y: number): void {
+export function writeLine(doc: jsPDF, x1: number, x2: number, y: number): void {
   doc.setDrawColor(...INK)
   doc.setLineWidth(0.3)
   doc.line(x1, y, x2, y)
@@ -86,13 +89,13 @@ function drawBanner(doc: jsPDF, label: string): void {
   const top = 62
   const height = 192
   doc.setFillColor(...GREEN)
-  doc.rect(0, top, BANNER_W, height, 'F')
+  doc.rect(SAFE, top, BANNER_W, height, 'F')
   doc.setFillColor(...GOLD)
-  doc.rect(0, top + height - 2, BANNER_W, 2, 'F')
+  doc.rect(SAFE, top + height - 2, BANNER_W, 2, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(26)
   doc.setTextColor(...WHITE)
-  doc.text(label, BANNER_W / 2 + 3.5, top + height / 2 + label.length * 2.4, { angle: 90, charSpace: 2 })
+  doc.text(label, SAFE + BANNER_W / 2 + 3.5, top + height / 2 + label.length * 2.4, { angle: 90, charSpace: 2 })
 }
 
 function drawHeader(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): number {
@@ -267,24 +270,25 @@ function drawSignatures(doc: jsPDF, sheet: TeamSheetSpec, options: TeamSheetPdfO
 
 // The fading band at the foot of the page: the team's affiliation as the first white tile, the sponsor logos on white tiles after it (three
 // when an affiliation is shown, else four), and the tournament host at the right.
-function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
-  const height = PAGE_H - FOOTER_TOP
+export function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
+  const bottom = PAGE_H - SAFE
+  const height = bottom - FOOTER_TOP
   const strips = 24
   for (let i = 0; i < strips; i += 1) {
     const t = i / (strips - 1)
     const colour = GREEN.map((channel) => Math.round(255 + (channel - 255) * Math.min(1, t * 1.3))) as Rgb
     doc.setFillColor(...colour)
-    doc.rect(0, FOOTER_TOP + (height / strips) * i, PAGE_W, height / strips + 0.3, 'F')
+    doc.rect(SAFE, FOOTER_TOP + (height / strips) * i, PAGE_W - 2 * SAFE, height / strips + 0.3, 'F')
   }
   doc.setFillColor(...GOLD)
-  doc.rect(0, PAGE_H - 2, PAGE_W, 2, 'F')
+  doc.rect(SAFE, bottom - 2, PAGE_W - 2 * SAFE, 2, 'F')
 
   const poster = sheet.poster
   const affiliated = Boolean(poster?.affiliationLogoUrl || poster?.affiliationName)
   const sponsors = (poster?.sponsorLogoUrls ?? []).slice(0, affiliated ? MAX_FOOTER_SPONSORS_WITH_AFFILIATION : 4)
   const slotW = 30
   const slotH = 16
-  const y = PAGE_H - slotH - 8
+  const y = bottom - slotH - 5
   let slot = 0
   if (affiliated) {
     doc.setFillColor(...WHITE)
@@ -304,8 +308,8 @@ function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
   if (poster?.hostName || poster?.hostLogoUrl) {
     const textRight = poster.hostLogoUrl ? RIGHT - 28 : RIGHT
     if (poster.hostName) {
-      text(doc, 'HOST:', textRight, PAGE_H - 17, 8, 'bold', WHITE, 'right')
-      text(doc, wrap(doc, poster.hostName.toUpperCase(), 60, 10, 'bold')[0], textRight, PAGE_H - 11.5, 10, 'bold', WHITE, 'right')
+      text(doc, 'HOST:', textRight, bottom - 14, 8, 'bold', WHITE, 'right')
+      text(doc, wrap(doc, poster.hostName.toUpperCase(), 60, 10, 'bold')[0], textRight, bottom - 8.5, 10, 'bold', WHITE, 'right')
     }
     if (poster.hostLogoUrl) {
       doc.setFillColor(...WHITE)

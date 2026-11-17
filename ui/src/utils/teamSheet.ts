@@ -269,8 +269,9 @@ const clean = (value: string): string => value.replace(/[\\/:*?"<>|]/g, '').repl
 
 // "Team Sheet - Irene Veterans - Midlands CC - 2026-11-19.pdf", "Team Sheet - Irene Veterans (blank).pdf" and the league bundle
 // "Team Sheets - VCASA Club Champs - Irene Veterans.pdf".
-export function teamSheetFileName(opts: { teamName: string; kind: 'blank' | 'match' | 'bundle'; opposition?: string | null; isoDate?: string | null; leagueName?: string | null }): string {
+export function teamSheetFileName(opts: { teamName: string; kind: 'blank' | 'match' | 'bundle' | 'cover'; opposition?: string | null; isoDate?: string | null; leagueName?: string | null }): string {
   const { teamName, kind, opposition, isoDate, leagueName } = opts
+  if (kind === 'cover') return `${clean(['Tournament Cover', leagueName, teamName].filter(Boolean).join(' - '))}.pdf`
   if (kind === 'blank') return `${clean(`Team Sheet - ${teamName} (blank)`)}.pdf`
   if (kind === 'bundle') return `${clean(['Team Sheets', leagueName, teamName].filter(Boolean).join(' - '))}.pdf`
   const day = isoDate ? new Date(isoDate) : null

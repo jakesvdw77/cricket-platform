@@ -139,6 +139,8 @@ describe('teamSheetFileName', () => {
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'blank' })).toBe('Team Sheet - Irene Veterans (blank).pdf')
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'match', opposition: 'Midlands CC', isoDate: '2026-11-19T14:30:00' })).toBe('Team Sheet - Irene Veterans - Midlands CC - 2026-11-19.pdf')
     expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'bundle', leagueName: 'VCASA: Club Champs' })).toBe('Team Sheets - VCASA Club Champs - Irene Veterans.pdf')
+    expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'cover', leagueName: 'VCASA Club Champs 2026' })).toBe('Tournament Cover - VCASA Club Champs 2026 - Irene Veterans.pdf')
+    expect(teamSheetFileName({ teamName: 'Irene Veterans', kind: 'cover' })).toBe('Tournament Cover - Irene Veterans.pdf')
   })
 })
 
