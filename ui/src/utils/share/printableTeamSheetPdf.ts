@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import type { MetaOptions } from '../teamSheet'
-import { BLANK_LINES, metaCells, sheetPages, preMarks, preMarkedLeaders } from '../teamSheet'
+import { BLANK_LINES, POSTER_ROWS_PER_PAGE, ROWS_PER_PAGE, metaCells, sheetPages, preMarks, preMarkedLeaders } from '../teamSheet'
 import type { PreMarkOption } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
@@ -29,10 +29,12 @@ export interface PosterExtras {
   // "VCASA Club Champs 2026" and "19-21 NOV 2026", large in the centre of the header.
   leagueTitle: string | null
   dateRange: string | null
-  // The body the team is affiliated to: its logo top left, else its name.
+  // The body the team is affiliated to: its logo, else its name, as the first tile of the footer (owner, 2026-11-17).
   affiliationName: string | null
   affiliationLogoUrl: string | null
-  // The body the league belongs to (VCASA), top right; the league's own logo is the fallback.
+  // Our club's logo, top right (the Club Logo switch); null leaves the corner empty.
+  clubLogoUrl?: string | null
+  // The body the league belongs to (VCASA), top left; the league's own logo is the fallback.
   leagueAffiliationName?: string | null
   leagueAffiliationLogoUrl?: string | null
   // The tournament host, bottom right.
@@ -230,7 +232,7 @@ export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: Tea
 
   let first = true
   for (const sheet of sheets) {
-    for (const rows of sheetPages(sheet.players, options.extraLines === false || sheet.selectedSide ? 0 : BLANK_LINES)) {
+    for (const rows of sheetPages(sheet.players, options.extraLines === false || sheet.selectedSide ? 0 : BLANK_LINES, poster ? POSTER_ROWS_PER_PAGE : ROWS_PER_PAGE)) {
       if (!first) doc.addPage()
       first = false
       if (poster) {

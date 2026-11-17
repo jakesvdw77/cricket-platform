@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // docs/specs/153: jsPDF mocked in the manner of resultPdf.test.ts; the assertions read the inputs to the drawing calls.
 const textSpy = vi.fn()
 const addPageSpy = vi.fn()
+const roundedRectSpy = vi.fn()
 const rectSpy = vi.fn()
 
 vi.mock('jspdf', () => {
@@ -14,7 +15,7 @@ vi.mock('jspdf', () => {
     setFont = vi.fn()
     setFontSize = vi.fn()
     rect = rectSpy
-    roundedRect = vi.fn()
+    roundedRect = roundedRectSpy
     line = vi.fn()
     text = textSpy
     addImage = vi.fn()
@@ -109,6 +110,30 @@ describe('generateTeamSheetPdf (spec 153)', () => {
     it('prints the league title, tournament dates, affiliation, host, date line and the names with the surname in capitals', async () => {
       await generateTeamSheetPdf([spec([player(1, { firstName: 'Andre', lastName: 'Botha' })], { match: matchInfo, poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
       expect(printed()).toEqual(expect.arrayContaining(['VCASA CLUB CHAMPS 2026', '19-21 NOV 2026', 'Titans Veterans Cricket', 'VCASA', 'BOLAND VETERANS', 'MIDLANDS CC', 'DATE: Thu 19 Nov 2026 - 14H30', 'Andre', 'BOTHA', 'TEAM SHEET']))
+    })
+
+    // Owner, 2026-11-17: the league's affiliation (VCASA) is top left and the team's affiliation top right; the tournament badge is the hero.
+    it('puts the league affiliation top left and the team affiliation in the footer, as its first tile', async () => {
+      await generateTeamSheetPdf([spec([player(1)], { match: matchInfo, poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      const at = (label: string) => textSpy.mock.calls.find((call) => String(call[0]).includes(label))
+      const league = at('VCASA')
+      const team = at('Titans')
+      expect(league?.[1]).toBe(16)
+      // Centred on the first footer tile (16 + 30 / 2), low on the page.
+      expect(team?.[1]).toBe(31)
+      expect(team?.[2]).toBeGreaterThan(252)
+      expect(team?.[3]).toMatchObject({ align: 'center' })
+    })
+
+    it('leaves the footer to four sponsors when there is no team affiliation', async () => {
+      const sponsorLogoUrls = ['a', 'b', 'c', 'd', 'e'].map((n) => `/media/${n}.png`)
+      roundedRectSpy.mockClear()
+      await generateTeamSheetPdf([spec([player(1)], { match: matchInfo, poster: { ...poster, affiliationName: null, affiliationLogoUrl: null, sponsorLogoUrls } })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      const noAffiliation = roundedRectSpy.mock.calls.length
+      roundedRectSpy.mockClear()
+      await generateTeamSheetPdf([spec([player(1)], { match: matchInfo, poster: { ...poster, sponsorLogoUrls } })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      // Four sponsor tiles alone, against one affiliation tile and three sponsor tiles: the same number of tiles, so the footer never grows.
+      expect(roundedRectSpy.mock.calls.length).toBe(noAffiliation)
     })
 
     it('has no Capt column and no S/N, only W/K, and adds Bat Pos, Bowl and Comment when asked', async () => {

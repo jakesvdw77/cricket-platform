@@ -94,11 +94,12 @@ describe('MatchCard', () => {
     expect(heading.parentElement?.parentElement?.querySelector('.MuiChip-root')).toBeNull()
   })
 
-  it('uses the brand match icon on its tile as the avatar (docs/specs/087)', () => {
-    renderCard(makeMatch())
+  it('shows both sides\' logos as the avatar, so the opposition shows too', () => {
+    renderCard(makeMatch({ awayTeamId: null, awayTeamName: 'Delta CC', awayTeamLogoUrl: '/media/delta.png' }))
 
-    const tile = screen.getByTestId('brand-icon-tile')
-    expect(tile.querySelector('img')?.getAttribute('src')).toContain('upcoming-matches')
+    const pair = screen.getByTestId('match-logo-pair')
+    expect(pair.querySelector('[data-testid="match-logo-home"]')).toBeInTheDocument()
+    expect(pair.querySelector('[data-testid="match-logo-away"] img')?.getAttribute('src')).toBe('/media/delta.png')
   })
 
   describe('badges', () => {

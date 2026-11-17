@@ -72,6 +72,17 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
     List<PlayerTeamNameView> findActiveSeasonTeamNames(
             @org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids);
 
+    /** The active teams one player is in the squad of in an ACTIVE season, by team name (Hub Social Media team links). */
+    @org.springframework.data.jpa.repository.Query("""
+            select distinct t
+            from TeamSquadMember m, Team t, Season s
+            where t.id = m.teamId and s.id = m.seasonId and s.active = true and t.active = true
+              and m.playerProfileId = :profileId
+            order by t.name
+            """)
+    List<com.cricketlegend.domain.Team> findActiveSeasonTeams(
+            @org.springframework.data.repository.query.Param("profileId") UUID profileId);
+
     /** docs/specs/123: every squad row of one player profile, across seasons, for the Player Hub leagues read. */
     List<TeamSquadMember> findByPlayerProfileId(UUID playerProfileId);
 }

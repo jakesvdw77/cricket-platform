@@ -2640,6 +2640,28 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/v1/me/players/{playerKey}/team-links:
+    get:
+      tags:
+      - me-player-team-links-controller
+      description: "Hub Social Media team links (docs/specs/157): the https social links of the active teams the held player is in, only teams that have any; empty when the club switched its Hub links off. Cache-Control is private, no-store. 404 for a key the caller does not hold."
+      operationId: getMyTeamLinks
+      parameters:
+      - name: playerKey
+        in: path
+        required: true
+        description: "The person link id, or self:<profileId> for the caller's own record."
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyTeamLinksDto"
   /api/v1/me/players/{playerKey}/club-info:
     get:
       tags:
@@ -17437,6 +17459,16 @@ components:
           format: int64
         hasMore:
           type: boolean
+    MyTeamLinksDto:
+      type: object
+      description: "docs/specs/157: the https social links of one team; never empty."
+      properties:
+        teamName:
+          type: string
+        social:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyClubSocialLinkDto"
     MyClubContactPageDto:
       type: object
       description: "docs/specs/148: letters are the distinct first letters of last names (# for others) of the searched set, A to Z then #."

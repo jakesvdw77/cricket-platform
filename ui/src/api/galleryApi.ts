@@ -51,6 +51,8 @@ export type GalleryScope = { kind: 'hub'; playerKey: string } | { kind: 'club'; 
 export const GALLERY_PAGE_SIZE = 24
 export const GALLERY_CAROUSEL_LIMIT = 12
 export const GALLERY_MAX_FILES = 10
+// A phone photo is a few megabytes; one over this is a huge original that an older phone may fail to open.
+export const GALLERY_MAX_ORIGINAL_BYTES = 30 * 1024 * 1024
 export const EMPTY_GALLERY_PARAMS: GalleryParams = { q: '', leagueId: null, teamId: null, playerId: null }
 
 const basePath = (scope: GalleryScope) => (scope.kind === 'hub' ? `/me/players/${scope.playerKey}/gallery` : `/manage/clubs/${scope.clubId}/gallery`)

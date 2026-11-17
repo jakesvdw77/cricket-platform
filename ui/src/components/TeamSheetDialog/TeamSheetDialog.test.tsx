@@ -13,6 +13,8 @@ const generate = vi.fn()
 const listTeamSponsors = vi.fn()
 const getLeagueSeasonDates = vi.fn()
 const listMatchSides = vi.fn()
+const getManagedClubProfile = vi.fn()
+vi.mock('../../api/clubApi', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/clubApi')>()), getManagedClubProfile: (...args: unknown[]) => getManagedClubProfile(...args) }))
 vi.mock('../../api/matchSideApi', () => ({ listMatchSides: (...args: unknown[]) => listMatchSides(...args) }))
 vi.mock('../../api/leagueSeasonDatesApi', () => ({ getLeagueSeasonDates: (...args: unknown[]) => getLeagueSeasonDates(...args) }))
 vi.mock('../../api/teamSponsorApi', () => ({ listTeamSponsors: (...args: unknown[]) => listTeamSponsors(...args) }))
@@ -186,6 +188,27 @@ describe('TeamSheetDialog (spec 153)', () => {
     const after = await screen.findByTestId('team-sheet-poster')
     expect(within(after).queryByText('Bowl')).not.toBeInTheDocument()
     expect(within(after).queryByText('Comment')).not.toBeInTheDocument()
+  })
+
+  // Owner, 2026-11-17: our club logo top right (a switch, on by default); the team's affiliation is the first footer tile.
+  it('puts the club logo in the Poster spec behind a Club Logo switch that is on by default, and takes it out when switched off', async () => {
+    getManagedClubProfile.mockResolvedValue({ logoUrl: '/media/club.png' })
+    renderDialog({ teams: [{ ...team, affiliationName: 'Titans Veterans Cricket', affiliationLogoUrl: null }], initialMode: 'one', initialMatchId: 'm1', initialStyle: undefined })
+    const toggle = await screen.findByRole('checkbox', { name: 'Club Logo' })
+    expect(toggle).toBeChecked()
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0][0].poster.clubLogoUrl).toBe('/media/club.png'))
+    await userEvent.click(toggle)
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0][0].poster.clubLogoUrl).toBeNull())
+  })
+
+  it('shows the team affiliation as the first tile of the footer, and only three sponsors beside it', async () => {
+    listTeamSponsors.mockResolvedValue([1, 2, 3, 4].map((n) => ({ id: `s${n}`, name: `S${n}`, logoUrl: `/media/s${n}.png`, active: true })))
+    renderDialog({ teams: [{ ...team, affiliationName: 'Titans Veterans Cricket', affiliationLogoUrl: null }], initialMode: 'one', initialMatchId: 'm1', initialStyle: undefined })
+    const poster = await screen.findByTestId('team-sheet-poster')
+    const tile = await within(poster).findByTestId('poster-affiliation-tile')
+    expect(tile).toHaveTextContent('Titans Veterans Cricket')
+    const footer = tile.parentElement as HTMLElement
+    await waitFor(() => expect(footer.children).toHaveLength(1 + 3))
   })
 
   it('has a Playing Tick Box switch, on by default, that removes the Playing column when off (Poster)', async () => {

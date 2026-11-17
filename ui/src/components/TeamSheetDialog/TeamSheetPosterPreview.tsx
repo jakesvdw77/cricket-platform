@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { SheetRow } from '../../utils/teamSheet'
-import { BLANK_LINES, hourStyle, leaderNames, preMarkOf, preMarks, sheetPages, surnameDisplay } from '../../utils/teamSheet'
+import { MAX_FOOTER_SPONSORS_WITH_AFFILIATION } from '../../utils/share/teamSheetPosterPdf'
+import { BLANK_LINES, POSTER_ROWS_PER_PAGE, hourStyle, leaderNames, preMarkOf, preMarks, sheetPages, surnameDisplay } from '../../utils/teamSheet'
 import type { PreMarkOption } from '../../utils/teamSheet'
 import type { TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
 
@@ -57,7 +58,7 @@ function PlayerRow({ row, preMark, zebra, batBowl, comment, side, playing }: { r
 
 // docs/specs/153 addendum: a paper-style view of the first page of the Match Poster, close to the PDF the Download button makes.
 export function TeamSheetPosterPreview({ spec, preMark, extraLines, batBowl, playingBox = true, comment, pageCount }: TeamSheetPosterPreviewProps) {
-  const rows = sheetPages(spec.players, extraLines && !spec.selectedSide ? BLANK_LINES : 0)[0] ?? []
+  const rows = sheetPages(spec.players, extraLines && !spec.selectedSide ? BLANK_LINES : 0, POSTER_ROWS_PER_PAGE)[0] ?? []
   const poster = spec.poster
   const blank = !spec.match.opposition
   const head = { bgcolor: GREEN, color: '#fff', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', py: 0.5, px: 0.75, border: '1px solid #fff' } as const
@@ -72,13 +73,13 @@ export function TeamSheetPosterPreview({ spec, preMark, extraLines, batBowl, pla
         <Typography sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', color: '#fff', fontWeight: 700, letterSpacing: '0.2em', fontSize: '1.05rem', whiteSpace: 'nowrap' }}>{banner}</Typography>
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px', alignItems: 'center', gap: 1 }}>
-        <Logo url={poster?.affiliationLogoUrl} label={poster?.affiliationName ?? undefined} />
+        <Logo url={poster?.leagueAffiliationLogoUrl} label={poster?.leagueAffiliationName ?? undefined} />
         <Box sx={{ textAlign: 'center' }}>
-          {spec.leagueLogoUrl && <Logo url={spec.leagueLogoUrl} height={48} />}
+          {spec.leagueLogoUrl && <Logo url={spec.leagueLogoUrl} height={104} />}
           {title && <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: GREEN, textTransform: 'uppercase', lineHeight: 1.15 }}>{title}</Typography>}
           {poster?.dateRange && <Typography sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{poster.dateRange}</Typography>}
         </Box>
-        <Logo url={poster?.leagueAffiliationLogoUrl} label={poster?.leagueAffiliationName ?? undefined} />
+        <Logo url={poster?.clubLogoUrl} />
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 56px 1fr', alignItems: 'start', gap: 1, mt: 1 }}>
         <Box>
@@ -138,7 +139,12 @@ export function TeamSheetPosterPreview({ spec, preMark, extraLines, batBowl, pla
       </Box>
       <Box sx={{ mx: -2, ml: -5, height: 62, background: `linear-gradient(180deg, #fff, ${GREEN})`, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', px: 2, pb: 1, gap: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.75 }}>
-          {(poster?.sponsorLogoUrls ?? []).slice(0, 4).map((url) => (
+          {(poster?.affiliationLogoUrl || poster?.affiliationName) && (
+            <Box data-testid="poster-affiliation-tile" sx={{ bgcolor: '#fff', borderRadius: 1, width: 64, height: 32, display: 'grid', placeItems: 'center', px: 0.25, textAlign: 'center' }}>
+              <Logo url={poster?.affiliationLogoUrl} label={poster?.affiliationName ?? undefined} height={26} />
+            </Box>
+          )}
+          {(poster?.sponsorLogoUrls ?? []).slice(0, poster?.affiliationLogoUrl || poster?.affiliationName ? MAX_FOOTER_SPONSORS_WITH_AFFILIATION : 4).map((url) => (
             <Box key={url} sx={{ bgcolor: '#fff', borderRadius: 1, width: 64, height: 32, display: 'grid', placeItems: 'center' }}>
               <Logo url={url} height={26} />
             </Box>

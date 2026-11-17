@@ -4,6 +4,7 @@ import { Alert, Box, Link, Checkbox, Dialog, DialogActions, DialogContent, Dialo
 import { useTheme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import { useQueries, useQuery } from '@tanstack/react-query'
+import { getManagedClubProfile } from '../../api/clubApi'
 import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 import { listSections } from '../../api/sectionApi'
@@ -15,7 +16,7 @@ import type { Match } from '../../api/matchApi'
 import { generateTeamSheetPdf } from '../../utils/share/printableTeamSheetPdf'
 import type { NameSort, SideOrder } from '../../utils/teamSheet'
 import type { PosterExtras, TeamSheetSpec } from '../../utils/share/printableTeamSheetPdf'
-import { BLANK_LINES, EMPTY_MATCH_INFO, matchInfoFor, sheetPages, sheetPlayers, sidePlayers, teamMatches, teamSheetFileName, tournamentRange } from '../../utils/teamSheet'
+import { BLANK_LINES, EMPTY_MATCH_INFO, POSTER_ROWS_PER_PAGE, ROWS_PER_PAGE, matchInfoFor, sheetPages, sheetPlayers, sidePlayers, teamMatches, teamSheetFileName, tournamentRange } from '../../utils/teamSheet'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
@@ -98,6 +99,8 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   const [style, setStyle] = useState<Style>(initialStyle)
   const [batBowl, setBatBowl] = useState(true)
   const [playingBox, setPlayingBox] = useState(true)
+  // The Poster's Club Logo switch: our club's logo top right (on unless switched off).
+  const [clubLogo, setClubLogo] = useState(true)
   const [comment, setComment] = useState(true)
   // The Selected Side sheet only exists in the Poster style; switching to Plain falls back to One Match.
   const mode: Mode = style === 'plain' && rawMode === 'side' ? 'one' : rawMode
@@ -115,6 +118,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     enabled: open && style === 'poster' && Boolean(clubId) && Boolean(team?.sectionId),
   })
   const sections = useQuery({ queryKey: ['managed-club', clubId, 'sections'], queryFn: () => listSections(clubId), enabled: open && Boolean(clubId) })
+  const clubProfile = useQuery({ queryKey: ['managed-club', clubId, 'profile'], queryFn: () => getManagedClubProfile(clubId), enabled: open && style === 'poster' && Boolean(clubId), retry: false })
 
   const leaguesById = useMemo(() => new Map<string, League>((leagues.data ?? []).map((league) => [league.id, league])), [leagues.data])
   const teamMatchList = useMemo(
@@ -180,6 +184,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
         dateRange: league ? (datesByLeague.get(league.id) ? tournamentRange([`${datesByLeague.get(league.id)?.startDate}T00:00:00`, `${datesByLeague.get(league.id)?.endDate}T00:00:00`]) : tournamentRange(dates)) : null,
         affiliationName: team.affiliationName ?? null,
         affiliationLogoUrl: team.affiliationLogoUrl ?? null,
+        clubLogoUrl: clubLogo ? (clubProfile.data?.logoUrl ?? null) : null,
         leagueAffiliationName: league?.affiliationName ?? null,
         leagueAffiliationLogoUrl: league?.affiliationLogoUrl ?? null,
         hostName: league?.hostName ?? null,
@@ -203,7 +208,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     if (mode === 'all') return ticked.map(forMatch)
     const blankLeague = leaguesById.get(blankLeagueId || leagueId || (teamLeagues.length === 1 ? teamLeagues[0].id : ''))
     return [{ ...base, leagueLogoUrl: blankLeague?.logoUrl ?? null, match: { ...EMPTY_MATCH_INFO, league: blankLeague?.name ?? null }, poster: posterFor(blankLeague) }]
-  }, [team, subtitle, players, mode, chosenMatch, ticked, leaguesById, blankLeagueId, leagueId, teamLeagues, style, sponsors.data, teamMatchList, datesByLeague, sidesByMatch, squad.data, sideOrder, nameSort])
+  }, [team, subtitle, players, mode, chosenMatch, ticked, leaguesById, blankLeagueId, leagueId, teamLeagues, style, sponsors.data, clubLogo, clubProfile.data?.logoUrl, teamMatchList, datesByLeague, sidesByMatch, squad.data, sideOrder, nameSort])
 
   const fileName = useMemo(() => {
     if (!team) return 'Team Sheet.pdf'
@@ -243,7 +248,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     : []
   const noSides = sidesLoaded && specs.length === 0
   const preview = specs[0]
-  const pages = preview ? sheetPages(preview.players, extraLines && !preview.selectedSide ? BLANK_LINES : 0).length : 1
+  const pages = preview ? sheetPages(preview.players, extraLines && !preview.selectedSide ? BLANK_LINES : 0, style === 'poster' ? POSTER_ROWS_PER_PAGE : ROWS_PER_PAGE).length : 1
   const fill = !phone
   const title = mode === 'all' || mode === 'side' ? 'Print Match Sheets' : 'Print Team Sheet'
 
@@ -356,6 +361,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
           </>
         ) : (
           <>
+            <CompactSwitch label="Club Logo" checked={clubLogo} onChange={setClubLogo} />
             {mode !== 'side' && <CompactSwitch label="Playing Tick Box" checked={playingBox} onChange={setPlayingBox} />}
             <CompactSwitch label="Bat Pos And Bowl Columns" checked={batBowl} onChange={setBatBowl} />
             <CompactSwitch label="Comment Column" checked={comment} onChange={setComment} />
