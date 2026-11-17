@@ -1,4 +1,6 @@
+import { useContext } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Box, ButtonBase, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -8,6 +10,7 @@ import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import { useLocation } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { AccountShell } from '../AccountShell'
+import { PhoneBackSlotContext } from '../phoneBackSlot'
 import { HUB, HUB_GROUND, HUB_GROUND_SOLID, hubOutlineButton } from './hubStyle'
 import { blackAlpha } from '../../../brandTokens'
 import { HubFooter } from './HubFooter'
@@ -235,10 +238,22 @@ export function HubFrame({ title, menu, footer, children, maxWidth = 1320, testI
         </Box>
 
         {/* docs/specs/146: the footer band holds the Back slot and, on a Player Hub page with something to show, the scoreboard ticker. */}
-        <HubFooter back={footer} fill={fill} />
+        <FrameFooter back={footer} fill={fill} />
       </Box>
     </AccountShell>
     </HubHeaderProvider>
+  )
+}
+
+// On a phone the shell (which this frame renders, so the slot is read from inside it) offers a slot in its top bar: Back goes there and the
+// footer is left to the ticker (owner, 2026-11-17).
+function FrameFooter({ back, fill }: { back?: ReactNode; fill: boolean }) {
+  const backSlot = useContext(PhoneBackSlotContext)
+  return (
+    <>
+      <HubFooter back={backSlot && back ? undefined : back} fill={fill} compact={Boolean(backSlot)} />
+      {backSlot && back ? createPortal(back, backSlot) : null}
+    </>
   )
 }
 
@@ -252,10 +267,10 @@ export function HubFooterButton({ onClick, children, icon }: { onClick: () => vo
     >
       {icon ?? <ArrowBackIcon sx={{ fontSize: 20 }} />}
       {/* On a small phone the footer just says Back (owner, 2026-11-16); the full label stays its accessible name. */}
-      <Box component="span" aria-hidden sx={{ display: 'none', '@media (max-width: 479.95px)': { display: 'inline' } }}>
+      <Box component="span" aria-hidden sx={{ display: 'none', '@media (max-width: 599.95px)': { display: 'inline' } }}>
         Back
       </Box>
-      <Box component="span" sx={{ '@media (max-width: 479.95px)': { display: 'none' } }}>
+      <Box component="span" sx={{ '@media (max-width: 599.95px)': { display: 'none' } }}>
         {children}
       </Box>
     </ButtonBase>

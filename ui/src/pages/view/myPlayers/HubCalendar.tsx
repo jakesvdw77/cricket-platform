@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Alert, Box, IconButton, Skeleton, Typography } from '@mui/material'
+import { Alert, Box, IconButton, Skeleton, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import { BottomSheet } from '../../../components/BottomSheet/BottomSheet'
 import { Button } from '../../../components/Button'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { useMyPlayerMatches } from '../../../api/myPlayersApi'
@@ -26,6 +28,11 @@ export function HubCalendar({ playerKey, playerName }: { playerKey?: string; pla
   const today = todayIso()
   const [cursor, setCursor] = useState(() => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) - 1 }))
   const [picked, setPicked] = useState<string | null>(today)
+  // The day's games must be seen the moment a day is tapped (owner, 2026-11-17: below the grid they were out of sight, on a phone and on
+  // a desktop alike): beside the grid on a wide screen, in a bottom sheet on a phone.
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('md'))
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const byDay = useMemo(() => {
     const map = new Map<string, MyMatchSummaryDto[]>()
@@ -60,8 +67,22 @@ export function HubCalendar({ playerKey, playerName }: { playerKey?: string; pla
       </Alert>
     )
   } else {
+    const dayPanel = picked ? (
+      <Box data-testid="calendar-day-list" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, alignContent: 'start' }}>
+        {!phone && <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(picked)}</Typography>}
+        {dayRows.length === 0 ? (
+          <Box sx={{ display: 'grid', justifyItems: 'center', gap: 1, py: 4, px: 2, textAlign: 'center', border: `1px dashed ${creamAlpha(0.25)}`, borderRadius: 2 }}>
+            <BrandIcon name="nav/upcoming-matches" size={48} onDark />
+            <Typography sx={{ fontSize: 15, color: HUB.muted }}>No matches on this day.</Typography>
+          </Box>
+        ) : (
+          dayRows.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey as string} row={row} now={now} from="matches" />)
+        )}
+      </Box>
+    ) : null
     body = (
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' }, gap: 2, alignItems: 'start' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton aria-label="Previous month" onClick={() => shift(-1)} sx={{ color: HUB.sand, width: 44, height: 44 }}><ChevronLeftIcon /></IconButton>
           <Typography component="h2" data-testid="calendar-month" sx={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 600, color: HUB.sand }}>{monthLabel}</Typography>
@@ -85,7 +106,7 @@ export function HubCalendar({ playerKey, playerName }: { playerKey?: string; pla
                 data-testid={`calendar-day-${key}`}
                 aria-label={`${longDate(key)}, ${games.length === 0 ? 'no matches' : `${games.length} ${games.length === 1 ? 'match' : 'matches'}`}`}
                 aria-pressed={selected}
-                onClick={() => setPicked(key)}
+                onClick={() => { setPicked(key); setSheetOpen(true) }}
                 sx={{
                   display: 'grid', alignContent: 'space-between', justifyItems: 'center', gap: 0.5,
                   minHeight: { xs: 52, sm: 72 }, p: 0.75, cursor: 'pointer', font: 'inherit', color: HUB.sand,
@@ -108,18 +129,12 @@ export function HubCalendar({ playerKey, playerName }: { playerKey?: string; pla
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: HUB.gold }} />{playerName}'s games</Box>
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: HUB.sand }} />Other games</Box>
         </Box>
-        {picked && (
-          <Box data-testid="calendar-day-list" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1 }}>
-            <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: HUB.sand }}>{longDate(picked)}</Typography>
-            {dayRows.length === 0 ? (
-              <Box sx={{ display: 'grid', justifyItems: 'center', gap: 1, py: 4, px: 2, textAlign: 'center', border: `1px dashed ${creamAlpha(0.25)}`, borderRadius: 2 }}>
-                <BrandIcon name="nav/upcoming-matches" size={48} onDark />
-                <Typography sx={{ fontSize: 15, color: HUB.muted }}>No matches on this day.</Typography>
-              </Box>
-            ) : (
-              dayRows.map((row) => <HubMatchRow key={row.matchId} playerKey={playerKey as string} row={row} now={now} from="matches" />)
-            )}
-          </Box>
+        </Box>
+        {!phone && dayPanel}
+        {phone && picked && (
+          <BottomSheet open={sheetOpen} onOpen={() => setSheetOpen(true)} onClose={() => setSheetOpen(false)} ariaLabel={`Matches on ${longDate(picked)}`} title={longDate(picked)} closeLabel="Close" tone="dark">
+            {dayPanel}
+          </BottomSheet>
         )}
       </Box>
     )

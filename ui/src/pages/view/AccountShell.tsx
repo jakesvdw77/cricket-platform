@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { Avatar, Badge, Box, ButtonBase, IconButton, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import { BrandMark } from '../../components/BrandMark'
 import { useClubHome } from './myPlayers/useClubHome'
 import { useMyInvitations, useMyLinkRequests } from '../../api/meApi'
@@ -11,6 +12,7 @@ import { keycloak } from '../../auth/keycloak'
 import { signOut } from '../../auth/signOut'
 import { BRAND, creamAlpha, DARK_MENU_BG, FONT_DISPLAY } from '../../brandTokens'
 import { forgetProfileChoices } from '../../utils/activeProfile'
+import { PhoneBackSlotContext } from './phoneBackSlot'
 
 // The shared frame of the signed-in, not-in-the-manager-app pages (docs/specs/119): Find your players
 // and Player Hub. The cricket backdrop, a slim header with Sign out and one white card column.
@@ -35,6 +37,10 @@ export function AccountShell({
   const backTo = useClubHome()
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true })
+  // Under 600 px the bar's left is the page's Back (portalled in by the Hub) and Club Home is a home icon at the right, so only one arrow
+  // on the screen means Back (owner, 2026-11-17).
+  const small = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
+  const [backSlot, setBackSlot] = useState<HTMLElement | null>(null)
   // docs/specs/145: Invitations, Link Requests and Link More Players moved here from the Hub menu's Account item; the counts are the
   // same reads the Hub used for the old Account pills, and the avatar carries the total.
   const invitations = useMyInvitations().data?.length ?? 0
@@ -46,11 +52,12 @@ export function AccountShell({
   const quietLink = { fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, letterSpacing: '0.14em', textTransform: 'uppercase', color: BACKDROP_COLOURS.cream, py: 0.75, borderBottom: '2px solid transparent', '&:hover': { borderBottomColor: BRAND.gold }, '&.Mui-focusVisible': { outline: `2px solid ${BRAND.gold}`, outlineOffset: 2 } } as const
   return (
     <PageBackdrop>
+      <PhoneBackSlotContext.Provider value={small ? backSlot : null}>
       {/* The quiet top row (Back to club, Account, Sign out) is on every screen, the Player Hub included (owner, 2026-11-06); Account is not a Hub menu item. */}
       <Box component="header" sx={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, gap: 1, color: BACKDROP_COLOURS.cream }}>
         {/* Owner, 2026-11-06: no brand mark here; Back to club is the quiet link at the left, and the controls at the right are plain text links. */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {backTo && (
+        <Box ref={small ? setBackSlot : undefined} sx={{ display: 'flex', alignItems: 'center' }}>
+          {backTo && !small && (
             <ButtonBase onClick={() => navigate(backTo)} sx={quietLink}>
               <ArrowBackIcon sx={{ fontSize: 18, mr: 0.75 }} />
               Back to club
@@ -58,7 +65,12 @@ export function AccountShell({
           )}
         </Box>
         {phone ? (
-          <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {backTo && small && (
+              <IconButton aria-label="Club Home" onClick={() => navigate(backTo)} sx={{ width: 36, height: 36, borderRadius: '8px', border: `1px solid ${creamAlpha(0.28)}`, color: BACKDROP_COLOURS.cream }}>
+                <HomeOutlinedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            )}
             <IconButton aria-label="Account menu" onClick={(event) => setAnchor(event.currentTarget)} sx={{ p: 0.5 }}>
               <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
                 <Avatar sx={{ width: 32, height: 32, fontSize: 13, fontWeight: 700, bgcolor: creamAlpha(0.2), color: BACKDROP_COLOURS.cream }}>{initials}</Avatar>
@@ -88,7 +100,7 @@ export function AccountShell({
                 Sign out
               </MenuItem>
             </Menu>
-          </>
+          </Box>
         ) : (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <Badge badgeContent={pending} sx={badgeSx} invisible={pending === 0} data-testid="account-pending">
@@ -125,6 +137,7 @@ export function AccountShell({
           <Typography fontSize={12.5}>&copy; {new Date().getFullYear()} Cricket Legend. All rights reserved.</Typography>
         </Box>
       )}
+      </PhoneBackSlotContext.Provider>
     </PageBackdrop>
   )
 }

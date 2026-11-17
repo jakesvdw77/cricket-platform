@@ -56,19 +56,33 @@ describe('AccountShell on a desktop', () => {
 })
 
 describe('AccountShell on a phone', () => {
-  it('keeps Back to club as the link at the left and folds Sign out into the Account menu with initials', async () => {
+  // Owner, 2026-11-17: only one arrow on the phone means Back (the Hub's, portalled into the left of this bar), so Club Home is a home icon.
+  it('shows Club Home as a home icon at the right, not a Back to club link, and folds Sign out into the Account menu with initials', async () => {
     setPhone(true)
     renderShell(access({ clubAdminClubIds: ['c1'] }), [players, riverside])
 
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
     const trigger = screen.getByRole('button', { name: 'Account menu' })
     expect(trigger).toHaveTextContent('SS')
-    expect(await screen.findByRole('button', { name: 'Back to club' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back to club' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Club Home' })).toBeInTheDocument()
     await userEvent.click(trigger)
 
     expect(screen.queryByRole('menuitem', { name: 'Switch profile' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
     expect(logout).toHaveBeenCalledOnce()
+  })
+
+  it('takes a manager to the club from the Club Home icon, and shows none to anyone else', async () => {
+    setPhone(true)
+    const manager = renderShell(access({ clubAdminClubIds: ['c1'] }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Club Home' }))
+    expect(await screen.findByTestId('location')).toHaveTextContent('/manage')
+    manager.unmount()
+
+    renderShell(access())
+    await vi.waitFor(() => expect(http.post).toHaveBeenCalledWith('/me/activate'))
+    expect(screen.queryByRole('button', { name: 'Club Home' })).not.toBeInTheDocument()
   })
 
   it('has Account and Sign out in the avatar menu, and nothing else, when there is no club to go back to', async () => {
