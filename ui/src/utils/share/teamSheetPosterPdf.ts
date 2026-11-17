@@ -25,13 +25,15 @@ const RIGHT = PAGE_W - 12
 const WIDTH = RIGHT - LEFT
 const ROW = 7
 const FOOTER_TOP = 252
+// The footer holds the affiliation tile, the sponsors and the host; with an affiliation the sponsors are limited to three.
+export const MAX_FOOTER_SPONSORS_WITH_AFFILIATION = 3
 
 export type ImageOf = (url: string | null | undefined) => string | null
 
 // Every image URL a poster page may draw, so the caller loads each once.
 export function posterImageUrls(sheet: TeamSheetSpec): string[] {
   const poster = sheet.poster
-  return [sheet.teamLogoUrl, sheet.leagueLogoUrl, sheet.match.oppositionLogoUrl, poster?.affiliationLogoUrl, poster?.leagueAffiliationLogoUrl, poster?.hostLogoUrl, ...(poster?.sponsorLogoUrls ?? [])].filter(
+  return [sheet.teamLogoUrl, sheet.leagueLogoUrl, sheet.match.oppositionLogoUrl, poster?.affiliationLogoUrl, poster?.clubLogoUrl, poster?.leagueAffiliationLogoUrl, poster?.hostLogoUrl, ...(poster?.sponsorLogoUrls ?? [])].filter(
     (url): url is string => Boolean(url),
   )
 }
@@ -97,23 +99,24 @@ function drawHeader(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): number 
   const poster = sheet.poster
   const top = 8
   const box = 24
-  // Affiliation top left (its logo, else its name), league top right.
-  if (!fit(doc, imageOf(poster?.affiliationLogoUrl), LEFT, top, 34, box, false) && poster?.affiliationName) {
-    const lines = wrap(doc, poster.affiliationName, 36, 9, 'bold').slice(0, 3)
-    text(doc, lines.join('\n'), LEFT, top + box / 2 - (lines.length - 1) * 2, 9, 'bold', GREEN)
-  }
-  // The league's affiliation (VCASA) top right: its logo, else its name. The league's own logo sits above the league name in the centre.
-  if (!fit(doc, imageOf(poster?.leagueAffiliationLogoUrl), RIGHT - 34, top, 34, box, false) && poster?.leagueAffiliationName) {
+  // The tournament badge is the hero of the page: big, in the centre, with the title under it. The corner logos sit level with its middle.
+  const heroW = 70
+  const heroH = 30
+  const cornerTop = top + (heroH - box) / 2
+  // The league's affiliation (VCASA) top left (its logo, else its name); our club's logo top right (owner, 2026-11-17). The team's
+  // affiliation is the first tile of the footer.
+  if (!fit(doc, imageOf(poster?.leagueAffiliationLogoUrl), LEFT, cornerTop, 34, box, false) && poster?.leagueAffiliationName) {
     const lines = wrap(doc, poster.leagueAffiliationName, 34, 9, 'bold').slice(0, 3)
-    text(doc, lines.join('\n'), RIGHT, top + box / 2 - (lines.length - 1) * 2, 9, 'bold', GREEN, 'right')
+    text(doc, lines.join('\n'), LEFT, cornerTop + box / 2 - (lines.length - 1) * 2, 9, 'bold', GREEN)
   }
+  fit(doc, imageOf(poster?.clubLogoUrl), RIGHT - 34, cornerTop, 34, box, false)
   const centre = PAGE_W / 2
-  const leagueLogo = fit(doc, imageOf(sheet.leagueLogoUrl), centre - 26, top, 52, 16, false)
+  const leagueLogo = fit(doc, imageOf(sheet.leagueLogoUrl), centre - heroW / 2, top, heroW, heroH, false)
   const title = poster?.leagueTitle ?? sheet.match.league
-  const titleY = top + (leagueLogo ? 23 : 11)
+  const titleY = top + (leagueLogo ? heroH + 7 : 11)
   if (title) text(doc, wrap(doc, title.toUpperCase(), 100, 17, 'bold')[0], centre, titleY, 17, 'bold', GREEN, 'center')
   if (poster?.dateRange) text(doc, poster.dateRange, centre, titleY + 6.5, 11, 'bold', INK, 'center')
-  return Math.max(top + box + 4, titleY + (poster?.dateRange ? 6.5 : 0) + 3)
+  return Math.max(cornerTop + box + 4, titleY + (poster?.dateRange ? 6.5 : 0) + 3)
 }
 
 // Our logo, "vs", the opposition's crest, the names beneath on one level (the opposition's is a write-on line on a blank sheet), then the date.
@@ -262,7 +265,8 @@ function drawSignatures(doc: jsPDF, sheet: TeamSheetSpec, options: TeamSheetPdfO
   writeLine(doc, LEFT + 116, RIGHT, y + 0.5)
 }
 
-// The fading band at the foot of the page: sponsor logos on white tiles along it and the tournament host at the right.
+// The fading band at the foot of the page: the team's affiliation as the first white tile, the sponsor logos on white tiles after it (three
+// when an affiliation is shown, else four), and the tournament host at the right.
 function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
   const height = PAGE_H - FOOTER_TOP
   const strips = 24
@@ -276,12 +280,23 @@ function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
   doc.rect(0, PAGE_H - 2, PAGE_W, 2, 'F')
 
   const poster = sheet.poster
-  const sponsors = (poster?.sponsorLogoUrls ?? []).slice(0, 4)
+  const affiliated = Boolean(poster?.affiliationLogoUrl || poster?.affiliationName)
+  const sponsors = (poster?.sponsorLogoUrls ?? []).slice(0, affiliated ? MAX_FOOTER_SPONSORS_WITH_AFFILIATION : 4)
   const slotW = 30
   const slotH = 16
   const y = PAGE_H - slotH - 8
+  let slot = 0
+  if (affiliated) {
+    doc.setFillColor(...WHITE)
+    doc.roundedRect(LEFT, y, slotW, slotH, 1.5, 1.5, 'F')
+    if (!fit(doc, imageOf(poster?.affiliationLogoUrl), LEFT + 1.5, y + 1.5, slotW - 3, slotH - 3, false) && poster?.affiliationName) {
+      const lines = wrap(doc, poster.affiliationName, slotW - 4, 6.5, 'bold').slice(0, 3)
+      text(doc, lines.join('\n'), LEFT + slotW / 2, y + slotH / 2 - (lines.length - 1) * 1.4 + 0.8, 6.5, 'bold', GREEN, 'center')
+    }
+    slot = 1
+  }
   sponsors.forEach((url, index) => {
-    const x = LEFT + index * (slotW + 5)
+    const x = LEFT + (slot + index) * (slotW + 5)
     doc.setFillColor(...WHITE)
     doc.roundedRect(x, y, slotW, slotH, 1.5, 1.5, 'F')
     fit(doc, imageOf(url), x + 1.5, y + 1.5, slotW - 3, slotH - 3, false)

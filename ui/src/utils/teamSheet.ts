@@ -83,6 +83,8 @@ export function metaCells(match: SheetMatchInfo, options: MetaOptions): MetaCell
 
 // How many table rows fit on one A4 page under the header and above the signatures, and how many empty lines close the list.
 export const ROWS_PER_PAGE = 20
+// The Poster style has a taller header (the tournament badge is the hero), so fewer rows fit under it.
+export const POSTER_ROWS_PER_PAGE = 17
 export const BLANK_LINES = 2
 
 const compare = (a: string, b: string): number => a.localeCompare(b, undefined, { sensitivity: 'base' })
@@ -152,14 +154,14 @@ export function sheetPlayers(squad: SquadMember[], nameSort: NameSort = 'surname
     .sort(nameCompare(nameSort))
 }
 
-// The squad then two empty lines (none when the manager switched them off), cut into pages of ROWS_PER_PAGE. An empty squad is one page of empty lines only.
-export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LINES): SheetRow[][] {
+// The squad then two empty lines (none when the manager switched them off), cut into pages of `rowsPerPage` (ROWS_PER_PAGE, or POSTER_ROWS_PER_PAGE on the Poster). An empty squad is one page of empty lines only.
+export function sheetPages(players: SheetPlayer[], blankLines: number = BLANK_LINES, rowsPerPage: number = ROWS_PER_PAGE): SheetRow[][] {
   const rows: SheetRow[] = [
     ...players.map((player) => ({ kind: 'player' as const, player })),
     ...Array.from({ length: blankLines }, (_, index) => ({ kind: 'blank' as const, key: `blank-${index}` })),
   ]
   const pages: SheetRow[][] = []
-  for (let start = 0; start < rows.length; start += ROWS_PER_PAGE) pages.push(rows.slice(start, start + ROWS_PER_PAGE))
+  for (let start = 0; start < rows.length; start += rowsPerPage) pages.push(rows.slice(start, start + rowsPerPage))
   return pages.length > 0 ? pages : [[]]
 }
 

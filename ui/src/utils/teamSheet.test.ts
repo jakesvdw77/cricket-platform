@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SquadMember } from '../api/teamSquadApi'
-import { BLANK_LINES, surnameDisplay, surnameParts, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
+import { BLANK_LINES, surnameDisplay, surnameParts, sidePlayers, hourStyle, tournamentRange, EMPTY_MATCH_INFO, leaderNames, matchInfoFor, metaCells, preMarks, POSTER_ROWS_PER_PAGE, ROWS_PER_PAGE, sheetDate, sheetPages, sheetPlayers, sheetTime, teamMatches, teamSheetFileName } from './teamSheet'
 
 const member = (patch: Partial<SquadMember>): SquadMember =>
   ({
@@ -63,6 +63,13 @@ describe('sheetPages', () => {
     expect(pages).toHaveLength(1)
     expect(pages[0]).toHaveLength(12 + BLANK_LINES)
     expect(pages[0].slice(-BLANK_LINES).every((row) => row.kind === 'blank')).toBe(true)
+  })
+
+  it('cuts a poster into shorter pages with its own rows per page', () => {
+    const pages = sheetPages(players(POSTER_ROWS_PER_PAGE + 2), 0, POSTER_ROWS_PER_PAGE)
+    expect(pages).toHaveLength(2)
+    expect(pages[0]).toHaveLength(POSTER_ROWS_PER_PAGE)
+    expect(POSTER_ROWS_PER_PAGE).toBeLessThan(ROWS_PER_PAGE)
   })
 
   it('flows a long squad onto a second page', () => {
