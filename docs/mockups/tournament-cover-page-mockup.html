@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tournament Cover Page Mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Mockup for a printable tournament cover page: one A4 portrait sheet per team, put on top of that team's printed match sheets.
+     Same palette and safe margin (7 mm) as the team sheet poster (docs/specs/153 addendum). Print at 100%. */
+  :root { --green:#14452f; --green2:#1f6a49; --gold:#e8b53f; --ink:#161a17; --muted:#5a625c; --paper:#fff; --bg:#e9ece9; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1f1c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); font-family:"Barlow","Helvetica Neue",Arial,sans-serif; color:var(--ink); padding:24px 16px; }
+  h1.note { font-size:14px; font-weight:600; margin:0 auto 4px; max-width:210mm; color:var(--ink); }
+  p.note { font-size:12px; margin:0 auto 16px; max-width:210mm; color:var(--muted); }
+  .page { width:210mm; height:297mm; margin:0 auto 24px; background:var(--paper); position:relative; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.25); }
+  /* Everything sits inside a 7 mm safe margin. */
+  .safe { position:absolute; inset:7mm; display:flex; flex-direction:column; }
+  .top { display:flex; justify-content:space-between; align-items:center; height:26mm; }
+  .top .logo { width:38mm; height:24mm; border:1px dashed #9aa59d; border-radius:2mm; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--muted); text-align:center; }
+  .hero { margin:6mm auto 0; width:120mm; height:62mm; border:1px dashed #9aa59d; border-radius:3mm; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; }
+  .title { text-align:center; margin-top:8mm; }
+  .title h2 { margin:0; font-size:34pt; line-height:1.05; letter-spacing:.5px; text-transform:uppercase; color:var(--green); font-weight:800; }
+  .title .dates { margin-top:3mm; font-size:17pt; font-weight:700; }
+  .title .where { margin-top:1.5mm; font-size:11pt; color:var(--muted); }
+  .rule { height:2mm; background:var(--gold); width:60mm; margin:8mm auto; }
+  .team { text-align:center; }
+  .team .crest { width:46mm; height:46mm; margin:0 auto; border:1px dashed #9aa59d; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--muted); }
+  .team h3 { margin:5mm 0 0; font-size:28pt; text-transform:uppercase; font-weight:800; }
+  .team .sub { margin-top:1mm; font-size:13pt; color:var(--green2); font-weight:700; }
+  .meta { margin:8mm auto 0; width:150mm; border-collapse:collapse; font-size:12pt; }
+  .meta td { padding:2.2mm 3mm; border-bottom:1px solid #6d786f; }
+  .meta td:first-child { width:42mm; font-weight:700; font-style:italic; color:var(--green); text-transform:uppercase; font-size:10pt; }
+  .meta small { font-weight:400; text-transform:none; color:var(--muted); }
+  .meta .line { height:6mm; }
+  .spacer { flex:1; }
+  /* Footer band, same as the poster: affiliation tile, sponsors, host. */
+  .footer { height:40mm; margin:0 -0mm; background:linear-gradient(180deg,#fff 0%,#14452f 100%); position:relative; border-bottom:2mm solid var(--gold); border-radius:1mm; }
+  .tiles { position:absolute; left:5mm; right:5mm; bottom:5mm; display:flex; gap:5mm; align-items:flex-end; }
+  .tile { width:30mm; height:16mm; background:#fff; border-radius:1.5mm; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--muted); text-align:center; }
+  .host { margin-left:auto; display:flex; gap:3mm; align-items:flex-end; color:#fff; text-align:right; }
+  .host b { display:block; font-size:10pt; text-transform:uppercase; }
+  .host span { font-size:8pt; font-weight:700; }
+  .host .tile { width:24mm; height:18mm; }
+  @media print {
+    @page { size:A4 portrait; margin:0; }
+    body { background:none; padding:0; }
+    .note { display:none; }
+    .page { margin:0; box-shadow:none; page-break-after:always; }
+  }
+</style>
+</head>
+<body>
+<h1 class="note">Tournament Cover Page (mockup)</h1>
+<p class="note">A4 portrait, one per team, printed on top of that team's match sheets. Dashed boxes are logos. Everything sits 7 mm inside the paper edge.</p>
+
+<div class="page">
+  <div class="safe">
+    <div class="top">
+      <div class="logo">League Affiliation Logo (VCASA)</div>
+      <div class="logo">Club Logo</div>
+    </div>
+    <div class="hero">Tournament Badge<br>(big, centre)</div>
+    <div class="title">
+      <h2>VCASA Club Champs 2026</h2>
+      <div class="dates">18 - 20 Nov 2026</div>
+      <div class="where">Cape Winelands</div>
+    </div>
+    <div class="rule"></div>
+    <div class="team">
+      <div class="crest">Team Logo</div>
+      <h3>Irene Veterans</h3>
+      <div class="sub">Over 50 | 2026/2027</div>
+    </div>
+    <table class="meta">
+      <tr><td>Captain</td><td>Michiel Boshoff</td></tr>
+      <tr><td>Manager</td><td class="line"></td></tr>
+      <tr><td>Contact</td><td class="line"></td></tr>
+      <tr><td>Notes</td><td class="line"></td></tr>
+    </table>
+    <div class="spacer"></div>
+    <div class="footer">
+      <div class="tiles">
+        <div class="tile">Team Affiliation</div>
+        <div class="tile">Sponsor</div>
+        <div class="tile">Sponsor</div>
+        <div class="tile">Sponsor</div>
+        <div class="host"><div><span>HOST:</span><b>Boland Veterans</b></div><div class="tile">Host Logo</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

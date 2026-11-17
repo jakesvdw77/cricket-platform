@@ -25,11 +25,13 @@ import { ShareControlGroup, SharePdfActions } from '../ShareCore'
 import { ShareFillContext, ShareFooterContext, ShareFormatScreen } from '../ShareFormatScreen'
 import { selectTeamPath } from '../../pages/manage/teamSelection/selectionLinks'
 import { TeamSheetPaperPreview } from './TeamSheetPaperPreview'
+import { TeamSheetCoverPreview } from './TeamSheetCoverPreview'
 import { TeamSheetPosterPreview } from './TeamSheetPosterPreview'
 
 // 'side' (Poster only): the sides saved in Team Selection for the ticked matches, not the whole squad.
 type Mode = 'blank' | 'one' | 'all' | 'side'
-type Style = 'plain' | 'poster'
+// 'cover' (docs/specs/159): the Tournament Cover Page, one page for the team and tournament, with no match choice.
+type Style = 'plain' | 'poster' | 'cover'
 
 export interface TeamSheetTeam {
   id: string
@@ -102,8 +104,18 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   // The Poster's Club Logo switch: our club's logo top right (on unless switched off).
   const [clubLogo, setClubLogo] = useState(true)
   const [comment, setComment] = useState(true)
+  // The Cover Page's write-on lines (docs/specs/159): Captain and Notes on, Manager and Contact off.
+  const [coverCaptain, setCoverCaptain] = useState(true)
+  const [coverManager, setCoverManager] = useState(false)
+  const [coverContact, setCoverContact] = useState(false)
+  const [coverNotes, setCoverNotes] = useState(true)
+  const cover = style === 'cover'
+  const coverOptions = useMemo(
+    () => ({ captain: coverCaptain, manager: coverManager, contact: coverContact, notes: coverNotes, fillCaptain: preMarkCaptain }),
+    [coverCaptain, coverManager, coverContact, coverNotes, preMarkCaptain],
+  )
   // The Selected Side sheet only exists in the Poster style; switching to Plain falls back to One Match.
-  const mode: Mode = style === 'plain' && rawMode === 'side' ? 'one' : rawMode
+  const mode: Mode = cover ? 'blank' : style === 'plain' && rawMode === 'side' ? 'one' : rawMode
   const team = teams.find((candidate) => candidate.id === teamId) ?? teams[0] ?? null
 
   const leagues = useQuery({ queryKey: ['managed-club', clubId, 'leagues', 'team-sheet'], queryFn: () => listLeagues(clubId), enabled: open && Boolean(clubId) })
@@ -115,10 +127,10 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
   const sponsors = useQuery({
     queryKey: ['managed-club', clubId, 'teams', team?.id, 'sponsors'],
     queryFn: () => listTeamSponsors(clubId, team?.sectionId as string, team?.id as string),
-    enabled: open && style === 'poster' && Boolean(clubId) && Boolean(team?.sectionId),
+    enabled: open && style !== 'plain' && Boolean(clubId) && Boolean(team?.sectionId),
   })
   const sections = useQuery({ queryKey: ['managed-club', clubId, 'sections'], queryFn: () => listSections(clubId), enabled: open && Boolean(clubId) })
-  const clubProfile = useQuery({ queryKey: ['managed-club', clubId, 'profile'], queryFn: () => getManagedClubProfile(clubId), enabled: open && style === 'poster' && Boolean(clubId), retry: false })
+  const clubProfile = useQuery({ queryKey: ['managed-club', clubId, 'profile'], queryFn: () => getManagedClubProfile(clubId), enabled: open && style !== 'plain' && Boolean(clubId), retry: false })
 
   const leaguesById = useMemo(() => new Map<string, League>((leagues.data ?? []).map((league) => [league.id, league])), [leagues.data])
   const teamMatchList = useMemo(
@@ -138,7 +150,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     queries: teamLeagues.map((league) => ({
       queryKey: ['managed-club', clubId, 'leagues', league.id, 'seasons', seasonId, 'dates'],
       queryFn: () => getLeagueSeasonDates(clubId, league.id, seasonId),
-      enabled: open && style === 'poster' && Boolean(clubId) && Boolean(seasonId),
+      enabled: open && style !== 'plain' && Boolean(clubId) && Boolean(seasonId),
     })),
   })
   const datesByLeague = useMemo(
@@ -175,7 +187,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     // The Poster's extras for a league: its name and year, the tournament dates (our team's first to last match in it), the team's
     // affiliation, the league's host and the team's sponsors.
     const posterFor = (league: League | undefined): PosterExtras | undefined => {
-      if (style !== 'poster') return undefined
+      if (style === 'plain') return undefined
       const dates = teamMatchList.filter((match) => !league || match.leagueId === league.id).map((match) => match.matchDate)
       const year = dates.length > 0 ? String(new Date([...dates].sort()[0]).getFullYear()) : null
       return {
@@ -206,12 +218,18 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     }
     if (mode === 'one') return chosenMatch ? [forMatch(chosenMatch)] : []
     if (mode === 'all') return ticked.map(forMatch)
+    if (cover) {
+      // The cover is for the tournament, so it takes the league the team plays in (or the one picked).
+      const coverLeague = leaguesById.get(blankLeagueId || leagueId || (teamLeagues.length === 1 ? teamLeagues[0].id : ''))
+      return [{ ...base, leagueLogoUrl: coverLeague?.logoUrl ?? null, match: { ...EMPTY_MATCH_INFO, league: coverLeague?.name ?? null }, poster: posterFor(coverLeague) }]
+    }
     const blankLeague = leaguesById.get(blankLeagueId || leagueId || (teamLeagues.length === 1 ? teamLeagues[0].id : ''))
     return [{ ...base, leagueLogoUrl: blankLeague?.logoUrl ?? null, match: { ...EMPTY_MATCH_INFO, league: blankLeague?.name ?? null }, poster: posterFor(blankLeague) }]
-  }, [team, subtitle, players, mode, chosenMatch, ticked, leaguesById, blankLeagueId, leagueId, teamLeagues, style, sponsors.data, clubLogo, clubProfile.data?.logoUrl, teamMatchList, datesByLeague, sidesByMatch, squad.data, sideOrder, nameSort])
+  }, [team, subtitle, players, mode, chosenMatch, ticked, leaguesById, blankLeagueId, leagueId, teamLeagues, style, cover, sponsors.data, clubLogo, clubProfile.data?.logoUrl, teamMatchList, datesByLeague, sidesByMatch, squad.data, sideOrder, nameSort])
 
   const fileName = useMemo(() => {
     if (!team) return 'Team Sheet.pdf'
+    if (cover) return teamSheetFileName({ teamName: team.name, kind: 'cover', leagueName: specs[0]?.match.league ?? null })
     if (mode === 'one' && chosenMatch) {
       return teamSheetFileName({ teamName: team.name, kind: 'match', opposition: specs[0]?.match.opposition, isoDate: chosenMatch.matchDate })
     }
@@ -221,7 +239,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     }
     if (mode === 'all' || mode === 'side') return teamSheetFileName({ teamName: team.name, kind: 'bundle', leagueName: leagueId ? (leaguesById.get(leagueId)?.name ?? null) : null })
     return teamSheetFileName({ teamName: team.name, kind: 'blank' })
-  }, [team, mode, chosenMatch, specs, ticked, leagueId, leaguesById])
+  }, [team, cover, mode, chosenMatch, specs, ticked, leagueId, leaguesById])
 
   const [result, setResult] = useState<{ file: File | null; error: string | null; busy: boolean }>({ file: null, error: null, busy: false })
   useEffect(() => {
@@ -231,16 +249,16 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     }
     let cancelled = false
     setResult((previous) => ({ ...previous, busy: true }))
-    generateTeamSheetPdf(specs, { preMark, extraLines, tossBoxes, leaderTicks, style, batBowl, playingBox, comment, fileName })
+    generateTeamSheetPdf(specs, { preMark, extraLines, tossBoxes, leaderTicks, style, batBowl, playingBox, comment, cover: coverOptions, fileName })
       .then((file) => !cancelled && setResult({ file, error: null, busy: false }))
       .catch(() => !cancelled && setResult({ file: null, error: 'The PDF could not be created. Try again.', busy: false }))
     return () => {
       cancelled = true
     }
-  }, [open, specs, preMark, extraLines, tossBoxes, leaderTicks, style, batBowl, playingBox, comment, fileName])
+  }, [open, specs, preMark, extraLines, tossBoxes, leaderTicks, style, batBowl, playingBox, comment, coverOptions, fileName])
 
-  const empty = squad.isSuccess && players.length === 0 && mode !== 'side'
-  const noMatches = mode !== 'blank' && teamMatchList.length === 0
+  const empty = squad.isSuccess && players.length === 0 && mode !== 'side' && !cover
+  const noMatches = !cover && mode !== 'blank' && teamMatchList.length === 0
   // Selected Side: ticked matches with no saved side yet (once every read has answered).
   const sidesLoaded = mode === 'side' && sideQueries.length > 0 && sideQueries.every((query) => query.isSuccess)
   const skipped = sidesLoaded
@@ -248,9 +266,9 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
     : []
   const noSides = sidesLoaded && specs.length === 0
   const preview = specs[0]
-  const pages = preview ? sheetPages(preview.players, extraLines && !preview.selectedSide ? BLANK_LINES : 0, style === 'poster' ? POSTER_ROWS_PER_PAGE : ROWS_PER_PAGE).length : 1
+  const pages = preview && !cover ? sheetPages(preview.players, extraLines && !preview.selectedSide ? BLANK_LINES : 0, style === 'poster' ? POSTER_ROWS_PER_PAGE : ROWS_PER_PAGE).length : 1
   const fill = !phone
-  const title = mode === 'all' || mode === 'side' ? 'Print Match Sheets' : 'Print Team Sheet'
+  const title = cover ? 'Print Cover Page' : mode === 'all' || mode === 'side' ? 'Print Match Sheets' : 'Print Team Sheet'
 
   const controls = (
     <>
@@ -269,8 +287,22 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
         <CompactToggleGroup<Style> value={style} onChange={setStyle} ariaLabel="Sheet style" fullWidthOnPhone>
           <ToggleButton value="plain" aria-label="Plain">Plain</ToggleButton>
           <ToggleButton value="poster" aria-label="Poster">Poster</ToggleButton>
+          <ToggleButton value="cover" aria-label="Cover Page">Cover Page</ToggleButton>
         </CompactToggleGroup>
       </ShareControlGroup>
+      {cover && !leagueId && teamLeagues.length > 1 && (
+        <ShareControlGroup label="League">
+          <Input label="League" select value={blankLeagueId} onChange={(event) => setBlankLeagueId(event.target.value)} sx={{ minWidth: 220 }}>
+            <MenuItem value="">None</MenuItem>
+            {teamLeagues.map((league) => (
+              <MenuItem key={league.id} value={league.id}>
+                {league.name}
+              </MenuItem>
+            ))}
+          </Input>
+        </ShareControlGroup>
+      )}
+      {!cover && (
       <ShareControlGroup label="Sheet">
         <CompactToggleGroup<Mode> value={mode} onChange={setMode} ariaLabel="Sheet type" fullWidthOnPhone>
           <ToggleButton value="blank" aria-label="Blank">Blank</ToggleButton>
@@ -336,6 +368,7 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
           </Box>
         )}
       </ShareControlGroup>
+      )}
       {mode === 'side' && (
         <ShareControlGroup label="Order">
           <CompactToggleGroup<SideOrder> value={sideOrder} onChange={setSideOrder} ariaLabel="Player order" fullWidthOnPhone>
@@ -344,17 +377,27 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
           </CompactToggleGroup>
         </ShareControlGroup>
       )}
-      <ShareControlGroup label="Sort By">
-        <CompactToggleGroup<NameSort> value={nameSort} onChange={setNameSort} ariaLabel="Sort names by" fullWidthOnPhone>
-          <ToggleButton value="surname" aria-label="Surname">Surname</ToggleButton>
-          <ToggleButton value="firstName" aria-label="First Name">First Name</ToggleButton>
-        </CompactToggleGroup>
-      </ShareControlGroup>
+      {!cover && (
+        <ShareControlGroup label="Sort By">
+          <CompactToggleGroup<NameSort> value={nameSort} onChange={setNameSort} ariaLabel="Sort names by" fullWidthOnPhone>
+            <ToggleButton value="surname" aria-label="Surname">Surname</ToggleButton>
+            <ToggleButton value="firstName" aria-label="First Name">First Name</ToggleButton>
+          </CompactToggleGroup>
+        </ShareControlGroup>
+      )}
       <ShareControlGroup label="Include">
         {mode !== 'side' && <CompactSwitch label="Pre-Mark Captain" checked={preMarkCaptain} onChange={setPreMarkCaptain} />}
-        {mode !== 'side' && <CompactSwitch label="Pre-Mark Wicketkeeper" checked={preMarkKeeper} onChange={setPreMarkKeeper} />}
-        {mode !== 'side' && <CompactSwitch label="Two Lines For Late Or Guest Players" checked={extraLines} onChange={setExtraLines} />}
-        {style === 'plain' ? (
+        {mode !== 'side' && !cover && <CompactSwitch label="Pre-Mark Wicketkeeper" checked={preMarkKeeper} onChange={setPreMarkKeeper} />}
+        {mode !== 'side' && !cover && <CompactSwitch label="Two Lines For Late Or Guest Players" checked={extraLines} onChange={setExtraLines} />}
+        {cover ? (
+          <>
+            <CompactSwitch label="Club Logo" checked={clubLogo} onChange={setClubLogo} />
+            <CompactSwitch label="Captain Line" checked={coverCaptain} onChange={setCoverCaptain} />
+            <CompactSwitch label="Manager Line" checked={coverManager} onChange={setCoverManager} />
+            <CompactSwitch label="Contact Line" checked={coverContact} onChange={setCoverContact} />
+            <CompactSwitch label="Notes Lines" checked={coverNotes} onChange={setCoverNotes} />
+          </>
+        ) : style === 'plain' ? (
           <>
             <CompactSwitch label="Toss And Elected Boxes" checked={tossBoxes} onChange={setTossBoxes} />
             <CompactSwitch label="Capt And Keeper Tick Boxes" checked={leaderTicks} onChange={setLeaderTicks} />
@@ -410,7 +453,9 @@ export function TeamSheetDialog({ open, onClose, clubId, teams, seasonId, season
                     </Alert>
                   ) : preview ? (
                     <Box sx={{ minHeight: 0, overflow: 'auto' }}>
-                      {style === 'poster' ? (
+                      {cover ? (
+                        <TeamSheetCoverPreview spec={preview} options={coverOptions} />
+                      ) : style === 'poster' ? (
                         <TeamSheetPosterPreview spec={preview} preMark={preMark} extraLines={extraLines} batBowl={batBowl} playingBox={playingBox} comment={comment} pageCount={pages} />
                       ) : (
                         <TeamSheetPaperPreview spec={preview} preMark={preMark} extraLines={extraLines} tossBoxes={tossBoxes} leaderTicks={leaderTicks} pageCount={pages} />

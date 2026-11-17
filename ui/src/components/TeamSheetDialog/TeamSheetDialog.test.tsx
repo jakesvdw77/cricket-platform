@@ -296,4 +296,66 @@ describe('TeamSheetDialog (spec 153)', () => {
     await screen.findByTestId('team-sheet-ready')
     expect(screen.queryByText(/junior team/i)).not.toBeInTheDocument()
   })
+
+  describe('Cover Page style (spec 159)', () => {
+    const openCover = async (props: Partial<React.ComponentProps<typeof TeamSheetDialog>> = {}) => {
+      renderDialog({ initialStyle: 'cover', ...props })
+      return screen.findByTestId('team-sheet-cover')
+    }
+
+    it('previews the tournament cover and makes one cover page with the default lines', async () => {
+      listLeagues.mockResolvedValue([{ id: 'l1', name: 'VCASA Club Champs', logoUrl: null, format: 'T20', hostName: 'Boland Veterans', hostLogoUrl: null }])
+      const cover = await openCover()
+      expect(screen.getByRole('heading', { name: 'Print Cover Page' })).toBeInTheDocument()
+      expect(cover).toHaveTextContent('VCASA Club Champs 2026')
+      expect(cover).toHaveTextContent('Irene Veterans')
+      expect(cover).toHaveTextContent('Boland Veterans')
+      await waitFor(() => expect(generate.mock.calls.at(-1)?.[1]).toMatchObject({ style: 'cover', cover: { captain: true, manager: false, contact: false, notes: true, fillCaptain: false } }))
+      expect(generate.mock.calls.at(-1)?.[0]).toHaveLength(1)
+      expect(generate.mock.calls.at(-1)?.[1].fileName).toBe('Tournament Cover - VCASA Club Champs - Irene Veterans.pdf')
+    })
+
+    it('hides the sheet type and sort controls, which do not apply to a cover', async () => {
+      await openCover()
+      expect(screen.queryByRole('button', { name: 'One Match' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Surname' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Pre-Mark Wicketkeeper' })).not.toBeInTheDocument()
+    })
+
+    it('has a switch for each write-on line, and Manager and Contact are off by default', async () => {
+      const cover = await openCover()
+      expect(screen.getByRole('checkbox', { name: 'Captain Line' })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Notes Lines' })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Manager Line' })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Contact Line' })).not.toBeChecked()
+      expect(within(cover).queryByText('Manager:')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Manager Line' }))
+      expect(await within(await screen.findByTestId('team-sheet-cover')).findByText('Manager:')).toBeInTheDocument()
+      await waitFor(() => expect(generate.mock.calls.at(-1)?.[1].cover).toMatchObject({ manager: true }))
+    })
+
+    it('fills in the captain only with Pre-Mark Captain', async () => {
+      const cover = await openCover()
+      expect(cover).not.toHaveTextContent('Andre Botha')
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Pre-Mark Captain' }))
+      await waitFor(() => expect(screen.getByTestId('team-sheet-cover')).toHaveTextContent('Andre Botha'))
+      await waitFor(() => expect(generate.mock.calls.at(-1)?.[1].cover).toMatchObject({ fillCaptain: true }))
+    })
+
+    it('asks which tournament when the team plays in more than one league', async () => {
+      listLeagues.mockResolvedValue([
+        { id: 'l1', name: 'VCASA Club Champs', logoUrl: null, format: 'T20' },
+        { id: 'l2', name: 'Boland Cup', logoUrl: null, format: 'T20' },
+      ])
+      renderDialog({ initialStyle: 'cover', matches: [...matches, match('m3', '2026-12-01T09:00:00', 'Paarl Heat', { leagueId: 'l2' })] })
+      expect(await screen.findByRole('combobox', { name: 'League' })).toBeInTheDocument()
+    })
+
+    it('is reached from the Style choice', async () => {
+      renderDialog({ initialStyle: 'plain' })
+      await screen.findByTestId('team-sheet-paper')
+      await userEvent.click(screen.getByRole('button', { name: 'Cover Page' }))
+      expect(await screen.findByTestId('team-sheet-cover')).toBeInTheDocument()
+    })
+  })
 })

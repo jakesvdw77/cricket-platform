@@ -5,6 +5,8 @@ import type { PreMarkOption } from '../teamSheet'
 import type { SheetMatchInfo, SheetPlayer, SheetRow } from '../teamSheet'
 import { imageFormatOf, loadImageDataUrl } from './loadImageDataUrl'
 import { drawPosterPage, posterImageUrls } from './teamSheetPosterPdf'
+import { drawCoverPage } from './tournamentCoverPdf'
+import type { CoverOptions } from './tournamentCoverPdf'
 
 // docs/specs/153-printable-team-sheet.md: the printable team sheet as an A4 portrait PDF, one or more pages per team (a long squad
 // flows onto a second page with the header repeated). Black and white safe: the green header band prints as a dark grey and the tick
@@ -52,7 +54,9 @@ export interface TeamSheetPdfOptions {
   // The Capt and Keeper tick columns; on unless switched off, then Captain and Wicketkeeper are written in boxes under the header.
   leaderTicks?: boolean
   // 'poster' draws the coloured Match Poster style instead of the plain sheet.
-  style?: 'plain' | 'poster'
+  style?: 'plain' | 'poster' | 'cover'
+  // Cover Page style only (docs/specs/159): which write-on lines it carries.
+  cover?: CoverOptions
   // Poster style only: the Bat Pos and Bowl column pair, and a Comment column (both off unless switched on).
   batBowl?: boolean
   // Poster: the Playing tick box column (default on).
@@ -225,13 +229,20 @@ function drawFooter(doc: jsPDF, tableEnd: number): void {
 
 export async function generateTeamSheetPdf(sheets: TeamSheetSpec[], options: TeamSheetPdfOptions): Promise<File> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const poster = options.style === 'poster'
+  const cover = options.style === 'cover'
+  const poster = options.style === 'poster' || cover
   const wanted = [...new Set(sheets.flatMap((sheet) => (poster ? posterImageUrls(sheet) : [sheet.teamLogoUrl, sheet.leagueLogoUrl])).filter((url): url is string => Boolean(url)))]
   const logos = new Map<string, string | null>(await Promise.all(wanted.map(async (url) => [url, await loadImageDataUrl(url)] as const)))
   const imageOf = (url: string | null): string | null => (url ? (logos.get(url) ?? null) : null)
 
   let first = true
   for (const sheet of sheets) {
+    if (cover) {
+      if (!first) doc.addPage()
+      first = false
+      drawCoverPage(doc, sheet, options.cover ?? { captain: true, manager: false, contact: false, notes: true, fillCaptain: false }, imageOf)
+      continue
+    }
     for (const rows of sheetPages(sheet.players, options.extraLines === false || sheet.selectedSide ? 0 : BLANK_LINES, poster ? POSTER_ROWS_PER_PAGE : ROWS_PER_PAGE)) {
       if (!first) doc.addPage()
       first = false

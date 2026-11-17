@@ -118,9 +118,9 @@ describe('generateTeamSheetPdf (spec 153)', () => {
       const at = (label: string) => textSpy.mock.calls.find((call) => String(call[0]).includes(label))
       const league = at('VCASA')
       const team = at('Titans')
-      expect(league?.[1]).toBe(16)
-      // Centred on the first footer tile (16 + 30 / 2), low on the page.
-      expect(team?.[1]).toBe(31)
+      expect(league?.[1]).toBe(21)
+      // Centred on the first footer tile (21 + 30 / 2), low on the page.
+      expect(team?.[1]).toBe(36)
       expect(team?.[2]).toBeGreaterThan(252)
       expect(team?.[3]).toMatchObject({ align: 'center' })
     })
@@ -180,6 +180,65 @@ describe('generateTeamSheetPdf (spec 153)', () => {
         await generateTeamSheetPdf([spec(sidePlayersList.slice(0, 2), { match: matchInfo, poster, selectedSide: true })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
         expect(printed()).toContain('PLAYING XI')
       })
+    })
+  })
+
+  // Owner, 2026-11-17: the side banner printed half cut off when drawn from the paper edge; nothing coloured may sit within SAFE of an edge.
+  describe('printable margin (poster)', () => {
+    const poster = { leagueTitle: 'VCASA Club Champs 2026', dateRange: '19-21 NOV 2026', affiliationName: 'Titans', affiliationLogoUrl: null, hostName: 'Boland Veterans', hostLogoUrl: null, sponsorLogoUrls: [] }
+    it('keeps every filled block at least 7 mm from the paper edge', async () => {
+      await generateTeamSheetPdf([spec([player(1)], { poster })], { preMark: false, style: 'poster', fileName: 'x.pdf' })
+      for (const [x, y, w, h] of rectSpy.mock.calls.filter((call) => call[4] === 'F')) {
+        expect(x).toBeGreaterThanOrEqual(7)
+        expect(x + w).toBeLessThanOrEqual(203)
+        expect(y + h).toBeLessThanOrEqual(290.5)
+      }
+    })
+  })
+
+  describe('Cover Page style (spec 159)', () => {
+    const poster = { leagueTitle: 'VCASA Club Champs 2026', dateRange: '18-20 NOV 2026', affiliationName: 'Titans Veterans', affiliationLogoUrl: null, leagueAffiliationName: 'VCASA', leagueAffiliationLogoUrl: null, hostName: 'Boland Veterans', hostLogoUrl: null, sponsorLogoUrls: [] }
+    const cover = { captain: true, manager: false, contact: false, notes: true, fillCaptain: false }
+    const coverSpec = () => spec([player(1, { firstName: 'Andre', lastName: 'Botha', isCaptain: true })], { poster, match: { ...EMPTY_MATCH_INFO, league: 'VCASA Club Champs' } })
+
+    it('prints the tournament, dates, team, host and a single page', async () => {
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover, fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['VCASA CLUB CHAMPS 2026', '18-20 NOV 2026', 'IRENE VETERANS', 'Over 40  |  2026/2027', 'Titans Veterans', 'BOLAND VETERANS']))
+      expect(printed()).not.toContain('TEAM SHEET')
+      expect(addPageSpy).not.toHaveBeenCalled()
+    })
+
+    it('adds only the write-on lines that are switched on', async () => {
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover, fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['CAPTAIN:', 'NOTES:']))
+      expect(printed()).not.toContain('MANAGER:')
+      expect(printed()).not.toContain('CONTACT:')
+      textSpy.mockClear()
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover: { ...cover, captain: false, manager: true, contact: true, notes: false }, fileName: 'x.pdf' })
+      expect(printed()).toEqual(expect.arrayContaining(['MANAGER:', 'CONTACT:']))
+      expect(printed()).not.toContain('CAPTAIN:')
+      expect(printed()).not.toContain('NOTES:')
+    })
+
+    it('fills the captain only with Pre-Mark Captain', async () => {
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover, fileName: 'x.pdf' })
+      expect(printed()).not.toContain('Andre Botha')
+      textSpy.mockClear()
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover: { ...cover, fillCaptain: true }, fileName: 'x.pdf' })
+      expect(printed()).toContain('Andre Botha')
+    })
+
+    it('makes one page for each sheet', async () => {
+      await generateTeamSheetPdf([coverSpec(), coverSpec()], { preMark: false, style: 'cover', cover, fileName: 'x.pdf' })
+      expect(addPageSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps every filled block at least 7 mm from the paper edge', async () => {
+      await generateTeamSheetPdf([coverSpec()], { preMark: false, style: 'cover', cover, fileName: 'x.pdf' })
+      for (const [x, , w] of rectSpy.mock.calls.filter((call) => call[4] === 'F')) {
+        expect(x).toBeGreaterThanOrEqual(7)
+        expect(x + w).toBeLessThanOrEqual(203)
+      }
     })
   })
 })
