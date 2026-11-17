@@ -19,8 +19,11 @@ const WHITE: Rgb = [255, 255, 255]
 
 const PAGE_W = 210
 const PAGE_H = 297
-const BANNER_W = 11
-const LEFT = 16
+// Printers cannot reach the outer 5 to 6 mm of a sheet, so nothing coloured may sit closer to an edge than SAFE (owner, 2026-11-17: the
+// side banner printed half cut off when it was drawn from the page edge).
+const SAFE = 7
+const BANNER_W = 10
+const LEFT = SAFE + BANNER_W + 4
 const RIGHT = PAGE_W - 12
 const WIDTH = RIGHT - LEFT
 const ROW = 7
@@ -86,13 +89,13 @@ function drawBanner(doc: jsPDF, label: string): void {
   const top = 62
   const height = 192
   doc.setFillColor(...GREEN)
-  doc.rect(0, top, BANNER_W, height, 'F')
+  doc.rect(SAFE, top, BANNER_W, height, 'F')
   doc.setFillColor(...GOLD)
-  doc.rect(0, top + height - 2, BANNER_W, 2, 'F')
+  doc.rect(SAFE, top + height - 2, BANNER_W, 2, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(26)
   doc.setTextColor(...WHITE)
-  doc.text(label, BANNER_W / 2 + 3.5, top + height / 2 + label.length * 2.4, { angle: 90, charSpace: 2 })
+  doc.text(label, SAFE + BANNER_W / 2 + 3.5, top + height / 2 + label.length * 2.4, { angle: 90, charSpace: 2 })
 }
 
 function drawHeader(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): number {
@@ -268,23 +271,24 @@ function drawSignatures(doc: jsPDF, sheet: TeamSheetSpec, options: TeamSheetPdfO
 // The fading band at the foot of the page: the team's affiliation as the first white tile, the sponsor logos on white tiles after it (three
 // when an affiliation is shown, else four), and the tournament host at the right.
 function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
-  const height = PAGE_H - FOOTER_TOP
+  const bottom = PAGE_H - SAFE
+  const height = bottom - FOOTER_TOP
   const strips = 24
   for (let i = 0; i < strips; i += 1) {
     const t = i / (strips - 1)
     const colour = GREEN.map((channel) => Math.round(255 + (channel - 255) * Math.min(1, t * 1.3))) as Rgb
     doc.setFillColor(...colour)
-    doc.rect(0, FOOTER_TOP + (height / strips) * i, PAGE_W, height / strips + 0.3, 'F')
+    doc.rect(SAFE, FOOTER_TOP + (height / strips) * i, PAGE_W - 2 * SAFE, height / strips + 0.3, 'F')
   }
   doc.setFillColor(...GOLD)
-  doc.rect(0, PAGE_H - 2, PAGE_W, 2, 'F')
+  doc.rect(SAFE, bottom - 2, PAGE_W - 2 * SAFE, 2, 'F')
 
   const poster = sheet.poster
   const affiliated = Boolean(poster?.affiliationLogoUrl || poster?.affiliationName)
   const sponsors = (poster?.sponsorLogoUrls ?? []).slice(0, affiliated ? MAX_FOOTER_SPONSORS_WITH_AFFILIATION : 4)
   const slotW = 30
   const slotH = 16
-  const y = PAGE_H - slotH - 8
+  const y = bottom - slotH - 5
   let slot = 0
   if (affiliated) {
     doc.setFillColor(...WHITE)
@@ -304,8 +308,8 @@ function drawFooter(doc: jsPDF, sheet: TeamSheetSpec, imageOf: ImageOf): void {
   if (poster?.hostName || poster?.hostLogoUrl) {
     const textRight = poster.hostLogoUrl ? RIGHT - 28 : RIGHT
     if (poster.hostName) {
-      text(doc, 'HOST:', textRight, PAGE_H - 17, 8, 'bold', WHITE, 'right')
-      text(doc, wrap(doc, poster.hostName.toUpperCase(), 60, 10, 'bold')[0], textRight, PAGE_H - 11.5, 10, 'bold', WHITE, 'right')
+      text(doc, 'HOST:', textRight, bottom - 14, 8, 'bold', WHITE, 'right')
+      text(doc, wrap(doc, poster.hostName.toUpperCase(), 60, 10, 'bold')[0], textRight, bottom - 8.5, 10, 'bold', WHITE, 'right')
     }
     if (poster.hostLogoUrl) {
       doc.setFillColor(...WHITE)
