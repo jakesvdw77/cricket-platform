@@ -63,7 +63,7 @@ export type MatchShareChoices = {
   imageSize: ImageSize
   templates: { pdf: PdfTemplate; image: ImageTemplate; tv: TvTemplate; whatsapp: MatchWhatsAppTemplate; facebook: MatchFacebookTemplate }
   // blankLines: the Team Sheet PDF's blank lines for officials (Scorers, Toss won by, Signed), off by default.
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; blankLines: boolean; picture: boolean; playerPictures: boolean; emoji: boolean; hashtags: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions: boolean; blankLines: boolean; shirtNumbers: boolean; picture: boolean; playerPictures: boolean; emoji: boolean; hashtags: boolean }
 }
 
 // A type alias (not an interface) so it satisfies usePersistedListFilters' Record<string, unknown>.
@@ -133,7 +133,7 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
     lineupOrder: 'BATTING',
     imageSize: 'PORTRAIT',
     templates: { pdf: 'CLUB', image: 'CLUB_GREEN', tv: 'BROADCAST', whatsapp: 'SHORT', facebook: 'ANNOUNCEMENT' },
-    include: { marks: true, venueAndDate: true, weather: false, directions: true, blankLines: false, picture: true, playerPictures: false, emoji: true, hashtags: true },
+    include: { marks: true, venueAndDate: true, weather: false, directions: true, blankLines: false, shirtNumbers: false, picture: true, playerPictures: false, emoji: true, hashtags: true },
   },
 }
 

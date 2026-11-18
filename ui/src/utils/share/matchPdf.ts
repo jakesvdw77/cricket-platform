@@ -35,7 +35,7 @@ const SCALE: Record<PdfTemplate, { title: number; body: number; small: number; r
 export interface MatchPdfOptions {
   template: PdfTemplate
   colour: ResultImageColour
-  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean; blankLines?: boolean }
+  include: { marks: boolean; venueAndDate: boolean; weather: boolean; directions?: boolean; blankLines?: boolean; shirtNumbers?: boolean }
   logos: ResultPdfLogos
   clubWebsite: string | null
   footerLine: boolean
@@ -193,7 +193,8 @@ export async function generateMatchPdf(model: MatchShareModel, options: MatchPdf
       rowY += type.row
       const roles = options.include.marks ? roleText(player.captain, player.keeper) : ''
       if (lineup.numbered) text(player.order != null ? String((position += 1)) : '', x, rowY, type.body, MUTED)
-      text(fit(player.name, width - (nameX - x) - (roles ? 34 : 0), type.body), nameX, rowY, type.body, INK)
+      const shirt = options.include.shirtNumbers && player.jersey != null ? `#${player.jersey}  ` : ''
+      text(fit(`${shirt}${player.name}`, width - (nameX - x) - (roles ? 34 : 0), type.body), nameX, rowY, type.body, INK)
       text(roles, x + width, rowY, type.small + 1, MUTED, 'normal', 'right')
       rule(x, rowY + 1.6, x + width, RULE)
     })
