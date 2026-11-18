@@ -99,17 +99,17 @@ export function useMatchPdfOptions(source: Source): MatchPdfOptions {
   const { club, league, team, teamAffiliation, leagueAffiliation } = choices.logos
   const teamAffiliationUrl = teamAffiliation ? teamAffiliationLogoUrl : null
   const leagueAffiliationUrl = leagueAffiliation ? leagueAffiliationLogoUrl : null
-  const { marks, venueAndDate, weather, directions, blankLines } = choices.match.include
+  const { marks, venueAndDate, weather, directions, blankLines, shirtNumbers } = choices.match.include
   return useMemo(
     () => ({
       template: choices.match.templates.pdf,
       colour: { main, dark, contrastText },
-      include: { marks, venueAndDate, weather, directions, blankLines },
+      include: { marks, venueAndDate, weather, directions, blankLines, shirtNumbers },
       logos: { clubUrl: club ? clubLogoUrl : null, leagueUrl: league ? leagueLogoUrl : null, teamAffiliationUrl, leagueAffiliationUrl, teams: team, sponsorUrls },
       clubWebsite,
       footerLine: choices.footerLine,
     }),
-    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, blankLines, club, league, team, clubLogoUrl, leagueLogoUrl, teamAffiliationUrl, leagueAffiliationUrl, sponsorUrls, clubWebsite, choices.footerLine],
+    [choices.match.templates.pdf, main, dark, contrastText, marks, venueAndDate, weather, directions, blankLines, shirtNumbers, club, league, team, clubLogoUrl, leagueLogoUrl, teamAffiliationUrl, leagueAffiliationUrl, sponsorUrls, clubWebsite, choices.footerLine],
   )
 }
 

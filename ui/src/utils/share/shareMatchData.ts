@@ -157,7 +157,7 @@ export function lineupOf(side: TeamSheetSide, own: boolean, logoUrl: string | nu
       captain: side.side?.captainPlayerId === row.playerProfileId,
       keeper: side.side?.wicketKeeperPlayerId === row.playerProfileId,
       role: row.role,
-      jersey: squadById.get(row.playerProfileId)?.squadJerseyNumber ?? null,
+      jersey: squadById.get(row.playerProfileId)?.squadJerseyNumber ?? squadById.get(row.playerProfileId)?.jerseyNumber ?? null,
       photoUrl: playerAvatarSrc(squadById.get(row.playerProfileId)?.photoUrl, squadById.get(row.playerProfileId)?.gender) ?? null,
     })),
   }
